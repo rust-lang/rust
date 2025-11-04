@@ -35,8 +35,8 @@ use ty::TypingMode;
 use super::compare_impl_item::check_type_bounds;
 use super::*;
 use crate::check::wfcheck::{
-    check_associated_item, check_trait_item, check_variances_for_type_defn, check_where_clauses,
-    enter_wf_checking_ctxt,
+    check_associated_item, check_trait_item, check_type_defn, check_variances_for_type_defn,
+    check_where_clauses, enter_wf_checking_ctxt,
 };
 
 fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T>) {
@@ -87,7 +87,7 @@ pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, 
     }
 }
 
-fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
@@ -98,15 +98,17 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
+    check_type_defn(tcx, def_id, false)
 }
 
-fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_transparent(tcx, def);
     check_union_fields(tcx, span, def_id);
     check_packed(tcx, span, def);
+    check_type_defn(tcx, def_id, true)
 }
 
 fn allowed_union_or_unsafe_field<'tcx>(
@@ -782,9 +784,12 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            crate::collect::lower_enum_variant_types(tcx, def_id.to_def_id());
+            crate::collect::check_enum_variant_types(tcx, def_id.to_def_id());
             check_enum(tcx, def_id);
             check_variances_for_type_defn(tcx, def_id);
+            res = res.and(check_type_defn(tcx, def_id, true));
+            // enums are fully handled by the type based check and have no hir wfcheck logic
+            return res;
         }
         DefKind::Fn => {
             tcx.ensure_ok().generics_of(def_id);
@@ -844,12 +849,19 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     _ => {}
                 }
             }
+            res = res.and(wfcheck::check_trait(tcx, def_id));
+            wfcheck::check_gat_where_clauses(tcx, def_id);
+            // Trait aliases do not have hir checks anymore
+            return res;
         }
         DefKind::TraitAlias => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().explicit_implied_predicates_of(def_id);
             tcx.ensure_ok().explicit_super_predicates_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
+            res = res.and(wfcheck::check_trait(tcx, def_id));
+            // Trait aliases do not have hir checks anymore
+            return res;
         }
         def_kind @ (DefKind::Struct | DefKind::Union) => {
             tcx.ensure_ok().generics_of(def_id);
@@ -864,14 +876,16 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             }
 
             if let Some((_, ctor_def_id)) = adt.ctor {
-                crate::collect::lower_variant_ctor(tcx, ctor_def_id.expect_local());
+                crate::collect::check_ctor(tcx, ctor_def_id.expect_local());
             }
-            match def_kind {
+            res = res.and(match def_kind {
                 DefKind::Struct => check_struct(tcx, def_id),
                 DefKind::Union => check_union(tcx, def_id),
                 _ => unreachable!(),
-            }
+            });
             check_variances_for_type_defn(tcx, def_id);
+            // structs and enums are fully handled by the type based check and have no hir wfcheck logic
+            return res;
         }
         DefKind::OpaqueTy => {
             check_opaque_precise_captures(tcx, def_id);
@@ -920,6 +934,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }));
                 check_variances_for_type_defn(tcx, def_id);
             }
+            // Doesn't have any hir based checks
+            return res;
         }
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);
@@ -984,6 +1000,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     _ => (),
                 }
             }
+            // Doesn't have any hir based checks
+            return res;
         }
         DefKind::Closure => {
             // This is guaranteed to be called by metadata encoding,
@@ -1063,10 +1081,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             return res;
         }
 
-        // Only `Node::Item` and `Node::ForeignItem` still have HIR based
-        // checks. Returning early here does not miss any checks and
-        // avoids this query from having a direct dependency edge on the HIR
-        DefKind::AnonConst | DefKind::InlineConst => return res,
+        // These have no wf checks
+        DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::ExternCrate
+        | DefKind::Macro(..)
+        | DefKind::Use
+        | DefKind::GlobalAsm
+        | DefKind::Mod => return res,
         _ => {}
     }
     let node = tcx.hir_node_by_def_id(def_id);
