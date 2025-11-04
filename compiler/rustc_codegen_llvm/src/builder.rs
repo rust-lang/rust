@@ -751,7 +751,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             OperandValue::Ref(place.val)
         };
 
-        OperandRef { val, layout: place.layout }
+        OperandRef { val, layout: place.layout, move_annotation: None }
     }
 
     fn write_operand_repeatedly(

@@ -345,6 +345,10 @@ language_item_table! {
     EhPersonality,           sym::eh_personality,      eh_personality,             Target::Fn,             GenericRequirement::None;
     EhCatchTypeinfo,         sym::eh_catch_typeinfo,   eh_catch_typeinfo,          Target::Static,         GenericRequirement::None;
 
+    // Profiling markers for move/copy operations (used by -Z annotate-moves)
+    CompilerMove,            sym::compiler_move,       compiler_move_fn,           Target::Fn,             GenericRequirement::Exact(2);
+    CompilerCopy,            sym::compiler_copy,       compiler_copy_fn,           Target::Fn,             GenericRequirement::Exact(2);
+
     OwnedBox,                sym::owned_box,           owned_box,                  Target::Struct,         GenericRequirement::Minimum(1);
     GlobalAlloc,             sym::global_alloc_ty,     global_alloc_ty,            Target::Struct,         GenericRequirement::None;
 
