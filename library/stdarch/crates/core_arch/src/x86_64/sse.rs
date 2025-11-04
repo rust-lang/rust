@@ -11,8 +11,6 @@ unsafe extern "C" {
     fn cvtss2si64(a: __m128) -> i64;
     #[link_name = "llvm.x86.sse.cvttss2si64"]
     fn cvttss2si64(a: __m128) -> i64;
-    #[link_name = "llvm.x86.sse.cvtsi642ss"]
-    fn cvtsi642ss(a: __m128, b: i64) -> __m128;
 }
 
 /// Converts the lowest 32 bit float in the input vector to a 64 bit integer.
@@ -65,7 +63,7 @@ pub fn _mm_cvttss_si64(a: __m128) -> i64 {
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
-    unsafe { cvtsi642ss(a, b) }
+    unsafe { simd_insert!(a, 0, b as f32) }
 }
 
 #[cfg(test)]

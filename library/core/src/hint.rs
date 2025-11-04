@@ -271,11 +271,11 @@ pub fn spin_loop() {
     crate::cfg_select! {
         target_arch = "x86" => {
             // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() }
+            crate::arch::x86::_mm_pause()
         }
         target_arch = "x86_64" => {
             // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() }
+            crate::arch::x86_64::_mm_pause()
         }
         target_arch = "riscv32" => crate::arch::riscv32::pause(),
         target_arch = "riscv64" => crate::arch::riscv64::pause(),

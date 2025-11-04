@@ -191,7 +191,6 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
-LL | impl NewWithCfg {
    |
 
 error: you should consider adding a `Default` implementation for `NewWith2Cfgs`
@@ -212,7 +211,6 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
-LL | impl NewWith2Cfgs {
    |
 
 error: you should consider adding a `Default` implementation for `NewWithExtraneous`
@@ -250,7 +248,6 @@ LL +     fn default() -> Self {
 LL +         Self::new()
 LL +     }
 LL + }
-LL | impl NewWithCfgAndExtraneous {
    |
 
 error: aborting due to 13 previous errors

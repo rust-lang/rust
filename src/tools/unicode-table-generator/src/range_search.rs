@@ -1,7 +1,5 @@
-//! Runtime support for `unicode_data`.
-
 #[inline(always)]
-pub(super) const fn bitset_search<
+const fn bitset_search<
     const N: usize,
     const CHUNK_SIZE: usize,
     const N1: usize,
@@ -48,10 +46,10 @@ pub(super) const fn bitset_search<
 }
 
 #[repr(transparent)]
-pub(super) struct ShortOffsetRunHeader(pub(super) u32);
+struct ShortOffsetRunHeader(u32);
 
 impl ShortOffsetRunHeader {
-    pub(super) const fn new(start_index: usize, prefix_sum: u32) -> Self {
+    const fn new(start_index: usize, prefix_sum: u32) -> Self {
         assert!(start_index < (1 << 11));
         assert!(prefix_sum < (1 << 21));
 
@@ -59,12 +57,12 @@ impl ShortOffsetRunHeader {
     }
 
     #[inline]
-    pub(super) const fn start_index(&self) -> usize {
+    const fn start_index(&self) -> usize {
         (self.0 >> 21) as usize
     }
 
     #[inline]
-    pub(super) const fn prefix_sum(&self) -> u32 {
+    const fn prefix_sum(&self) -> u32 {
         self.0 & ((1 << 21) - 1)
     }
 }
@@ -74,7 +72,7 @@ impl ShortOffsetRunHeader {
 /// - The last element of `short_offset_runs` must be greater than `std::char::MAX`.
 /// - The start indices of all elements in `short_offset_runs` must be less than `OFFSETS`.
 #[inline(always)]
-pub(super) unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
+unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
     needle: char,
     short_offset_runs: &[ShortOffsetRunHeader; SOR],
     offsets: &[u8; OFFSETS],
@@ -127,36 +125,4 @@ pub(super) unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
         offset_idx += 1;
     }
     offset_idx % 2 == 1
-}
-
-/// # Safety
-/// The second component of each tuple in `table` must either be:
-/// - A valid `char`
-/// - A value with the high bit (1 << 22) set, and the lower 22 bits
-///   being a valid index into `multi`.
-#[inline(always)]
-pub(super) unsafe fn case_conversion(
-    c: char,
-    ascii_fn: fn(char) -> char,
-    table: &[(char, u32)],
-    multi: &[[char; 3]],
-) -> [char; 3] {
-    const INDEX_MASK: u32 = 1 << 22;
-
-    if c.is_ascii() {
-        return [ascii_fn(c), '\0', '\0'];
-    }
-
-    let Ok(i) = table.binary_search_by(|&(key, _)| key.cmp(&c)) else {
-        return [c, '\0', '\0'];
-    };
-
-    let u = table[i].1;
-    match char::from_u32(u) {
-        Option::Some(c) => [c, '\0', '\0'],
-        Option::None => {
-            // SAFETY: Index comes from statically generated table
-            unsafe { *multi.get_unchecked((u & (INDEX_MASK - 1)) as usize) }
-        }
-    }
 }

@@ -19,3 +19,6 @@ pretty_env_logger = "0.5.0"
 rayon = "1.5.0"
 diff = "0.1.12"
 itertools = "0.14.0"
+quick-xml = { version = "0.37.5", features = ["serialize", "overlapped-lists"] }
+serde-xml-rs = "0.8.0"
+regex = "1.11.1"
