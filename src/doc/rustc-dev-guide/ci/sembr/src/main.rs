@@ -27,7 +27,7 @@ static REGEX_IGNORE: LazyLock<Regex> =
 static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
-static REGEX_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)\s+").unwrap());
+static REGEX_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|[^r]\?|;|!)\s+").unwrap());
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -92,7 +92,7 @@ fn display(header: &str, paths: &[PathBuf]) {
 
 fn ignore(line: &str, in_code_block: bool) -> bool {
     in_code_block
-        || line.contains("e.g.")
+        || line.to_lowercase().contains("e.g.")
         || line.contains("i.e.")
         || line.contains('|')
         || line.trim_start().starts_with('>')
@@ -174,7 +174,9 @@ fn test_sembr() {
 must! be; split?  and.   normalizes space
 1. ignore numbered
 ignore | tables
-ignore e.g. and i.e.
+ignore e.g. and
+ignore i.e. and
+ignore E.g. too
 - ignore. list
 * ignore. list
 ```
@@ -191,7 +193,9 @@ and.
 normalizes space
 1. ignore numbered
 ignore | tables
-ignore e.g. and i.e.
+ignore e.g. and
+ignore i.e. and
+ignore E.g. too
 - ignore. list
 * ignore. list
 ```
@@ -268,4 +272,20 @@ hi again.
 ";
     let processed = lengthen_lines(&processed, 50);
     assert_eq!(expected, processed);
+}
+
+#[test]
+fn test_sembr_question_mark() {
+    let original = "\
+o? whatever
+r? @reviewer
+ r? @reviewer
+";
+    let expected = "\
+o?
+whatever
+r? @reviewer
+ r? @reviewer
+";
+    assert_eq!(expected, comply(original));
 }
