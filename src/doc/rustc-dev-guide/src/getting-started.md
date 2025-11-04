@@ -59,7 +59,7 @@ you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`. Ignore any com
 "Rollup merge" or commits by `@bors` (see [CI contribution procedures](./contributing.md#ci) for
 more information about these commits).
 
-[map]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+[map]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
 ### Etiquette
 
@@ -98,7 +98,7 @@ Some work is too large to be done by a single person. In this case, it's common 
 issues" to co-ordinate the work between contributors. Here are some example tracking issues where
 it's easy to pick up work without a large time commitment:
 
-- [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
+- *Add recurring work items here.*
 
 If you find more recurring work, please feel free to add it here!
 

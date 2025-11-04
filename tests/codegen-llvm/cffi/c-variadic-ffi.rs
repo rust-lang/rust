@@ -1,5 +1,5 @@
 //! Test calling variadic functions with various ABIs.
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Z merge-functions=disabled
 //@ revisions: x86_32 x86_32_win x86_64 aarch64 arm32
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu

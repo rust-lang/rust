@@ -234,7 +234,7 @@ where
 
         Rvalue::Discriminant(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
-        Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+        Rvalue::CopyForDeref(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
         Rvalue::Use(operand)
         | Rvalue::Repeat(operand, _)

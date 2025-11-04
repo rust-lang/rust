@@ -193,11 +193,11 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
-    .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
-    .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
+lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dropped local variable `{$local_var_name}`
+    .ret_ty = return type is `{$ret_ty}`
+    .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = pointers do not have a lifetime; after returning, the `{$local_var_ty}` will be deallocated at the end of the {$fn_kind} because nothing is referencing it as far as the type system is concerned
+    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
 
 lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
     .label_ptr = this pointer will immediately be invalid
@@ -324,6 +324,9 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
+
+lint_implicit_sysroot_crate_import = dangerous use of `extern crate {$name}` which is not guaranteed to exist exactly once in the sysroot
+    .help = try using a cargo dependency or using a re-export of the dependency provided by a rustc_* crate
 
 lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dereference of a raw pointer
     .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements

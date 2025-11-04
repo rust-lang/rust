@@ -1,6 +1,6 @@
 // Test that the correct module flags are emitted with different control-flow protection flags.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: undefined none branch return full
 //@ needs-llvm-components: x86
 // [undefined] no extra compile-flags

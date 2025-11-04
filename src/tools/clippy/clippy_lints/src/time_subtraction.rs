@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_path_diagnostic_item, ty};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -96,16 +96,16 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
             let lhs_ty = typeck.expr_ty(lhs);
             let rhs_ty = typeck.expr_ty(rhs);
 
-            if ty::is_type_diagnostic_item(cx, lhs_ty, sym::Instant) {
+            if lhs_ty.is_diag_item(cx, sym::Instant) {
                 // Instant::now() - instant
                 if is_instant_now_call(cx, lhs)
-                    && ty::is_type_diagnostic_item(cx, rhs_ty, sym::Instant)
+                    && rhs_ty.is_diag_item(cx, sym::Instant)
                     && let Some(sugg) = Sugg::hir_opt(cx, rhs)
                 {
                     print_manual_instant_elapsed_sugg(cx, expr, sugg);
                 }
                 // instant - duration
-                else if ty::is_type_diagnostic_item(cx, rhs_ty, sym::Duration)
+                else if rhs_ty.is_diag_item(cx, sym::Duration)
                     && !expr.span.from_expansion()
                     && self.msrv.meets(cx, msrvs::TRY_FROM)
                 {
@@ -122,8 +122,8 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
                         print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
                     }
                 }
-            } else if ty::is_type_diagnostic_item(cx, lhs_ty, sym::Duration)
-                && ty::is_type_diagnostic_item(cx, rhs_ty, sym::Duration)
+            } else if lhs_ty.is_diag_item(cx, sym::Duration)
+                && rhs_ty.is_diag_item(cx, sym::Duration)
                 && !expr.span.from_expansion()
                 && self.msrv.meets(cx, msrvs::TRY_FROM)
             {
@@ -146,7 +146,7 @@ impl LateLintPass<'_> for UncheckedTimeSubtraction {
 
 fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
     if let ExprKind::Call(fn_expr, []) = expr_block.kind
-        && is_path_diagnostic_item(cx, fn_expr, sym::instant_now)
+        && cx.ty_based_def(fn_expr).is_diag_item(cx, sym::instant_now)
     {
         true
     } else {
@@ -170,7 +170,7 @@ fn is_chained_time_subtraction(cx: &LateContext<'_>, lhs: &Expr<'_>) -> bool {
 
 /// Returns true if the type is Duration or Instant
 fn is_time_type(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    ty::is_type_diagnostic_item(cx, ty, sym::Duration) || ty::is_type_diagnostic_item(cx, ty, sym::Instant)
+    ty.is_diag_item(cx, sym::Duration) || ty.is_diag_item(cx, sym::Instant)
 }
 
 fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, sugg: Sugg<'_>) {
@@ -194,7 +194,7 @@ fn print_unchecked_duration_subtraction_sugg(
     let typeck = cx.typeck_results();
     let left_ty = typeck.expr_ty(left_expr);
 
-    let lint_msg = if ty::is_type_diagnostic_item(cx, left_ty, sym::Instant) {
+    let lint_msg = if left_ty.is_diag_item(cx, sym::Instant) {
         "unchecked subtraction of a 'Duration' from an 'Instant'"
     } else {
         "unchecked subtraction between 'Duration' values"

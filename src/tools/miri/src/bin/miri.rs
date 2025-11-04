@@ -8,11 +8,6 @@
     rustc::untranslatable_diagnostic
 )]
 
-// Some "regular" crates we want to share with rustc
-extern crate tracing;
-#[cfg(feature = "tracing")]
-extern crate tracing_subscriber;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_data_structures;
@@ -48,6 +43,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
+use rustc_log::tracing::debug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
@@ -60,7 +56,6 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_span::def_id::DefId;
-use tracing::debug;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -715,6 +710,8 @@ fn main() {
                 fatal_error!("-Zmiri-force-page-size requires a power of 2: {page_size}");
             };
             miri_config.page_size = Some(page_size);
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-user-relevant-crates=") {
+            miri_config.user_relevant_crates.extend(param.split(',').map(|s| s.to_owned()));
         } else {
             // Forward to rustc.
             rustc_args.push(arg);

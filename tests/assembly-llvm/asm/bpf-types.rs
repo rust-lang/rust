@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target bpfel-unknown-none -C target_feature=+alu32
 //@ needs-llvm-components: bpf

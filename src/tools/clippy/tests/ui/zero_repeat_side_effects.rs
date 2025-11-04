@@ -1,5 +1,6 @@
 #![warn(clippy::zero_repeat_side_effects)]
 #![expect(clippy::unnecessary_operation, clippy::useless_vec, clippy::needless_late_init)]
+#![allow(clippy::no_effect)] // only fires _after_ the fix
 
 fn f() -> i32 {
     println!("side effect");

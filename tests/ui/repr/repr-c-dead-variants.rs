@@ -1,4 +1,4 @@
-#![feature(no_core, rustc_attrs, lang_items)]
+#![feature(no_core, rustc_attrs)]
 #![allow(dead_code)]
 #![crate_type = "lib"]
 #![no_std]
@@ -9,7 +9,7 @@ use minicore::*;
 
 // See also: repr-c-int-dead-variants.rs
 
-//@ add-core-stubs
+//@ add-minicore
 //@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
@@ -33,6 +33,7 @@ use minicore::*;
 //@ revisions: armebv7r-none-eabi
 //@[armebv7r-none-eabi] compile-flags: --target armebv7r-none-eabi
 //@[armebv7r-none-eabi] needs-llvm-components: arm
+//@ ignore-backends: gcc
 
 // A simple uninhabited type.
 enum Void {}

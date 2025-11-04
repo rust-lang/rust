@@ -160,6 +160,10 @@ impl EraseType for Result<mir::ConstValue, mir::interpret::ErrorHandled> {
     type Result = [u8; size_of::<Result<mir::ConstValue, mir::interpret::ErrorHandled>>()];
 }
 
+impl EraseType for Option<(mir::ConstValue, Ty<'_>)> {
+    type Result = [u8; size_of::<Option<(mir::ConstValue, Ty<'_>)>>()];
+}
+
 impl EraseType for EvalToValTreeResult<'_> {
     type Result = [u8; size_of::<EvalToValTreeResult<'static>>()];
 }
@@ -200,8 +204,8 @@ impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
 
-impl EraseType for Option<ty::ImplTraitHeader<'_>> {
-    type Result = [u8; size_of::<Option<ty::ImplTraitHeader<'static>>>()];
+impl EraseType for ty::ImplTraitHeader<'_> {
+    type Result = [u8; size_of::<ty::ImplTraitHeader<'static>>()];
 }
 
 impl EraseType for Option<ty::EarlyBinder<'_, Ty<'_>>> {
@@ -313,6 +317,7 @@ trivial! {
     rustc_hir::Stability,
     rustc_hir::Upvar,
     rustc_index::bit_set::FiniteBitSet<u32>,
+    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::middle::dependency_format::Linkage,
     rustc_middle::middle::exported_symbols::SymbolExportInfo,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
@@ -336,7 +341,6 @@ trivial! {
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::BoundVariableKind,
     rustc_middle::ty::AnonConstKind,
-    rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::fast_reject::SimplifiedType,
     rustc_middle::ty::ImplPolarity,

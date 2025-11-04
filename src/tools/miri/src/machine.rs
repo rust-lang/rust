@@ -12,10 +12,13 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
+use rustc_ast::expand::allocator::{self, SpecialAllocatorMethod};
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_hir::attrs::InlineAttr;
+use rustc_log::tracing;
 use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
@@ -26,6 +29,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
 
 use crate::alloc_addresses::EvalContextExt;
@@ -576,8 +580,8 @@ pub struct MiriMachine<'tcx> {
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
 
-    /// Crates which are considered local for the purposes of error reporting.
-    pub(crate) local_crates: Vec<CrateNum>,
+    /// Crates which are considered user-relevant for the purposes of error reporting.
+    pub(crate) user_relevant_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their pointer.
     extern_statics: FxHashMap<Symbol, StrictPointer>,
@@ -591,7 +595,7 @@ pub struct MiriMachine<'tcx> {
 
     /// The allocation IDs to report when they are being allocated
     /// (helps for debugging memory leaks and use after free bugs).
-    tracked_alloc_ids: FxHashSet<AllocId>,
+    pub(crate) tracked_alloc_ids: FxHashSet<AllocId>,
     /// For the tracked alloc ids, also report read/write accesses.
     track_alloc_accesses: bool,
 
@@ -651,6 +655,10 @@ pub struct MiriMachine<'tcx> {
     pub(crate) pthread_rwlock_sanity: Cell<bool>,
     pub(crate) pthread_condvar_sanity: Cell<bool>,
 
+    /// (Foreign) symbols that are synthesized as part of the allocator shim: the key indicates the
+    /// name of the symbol being synthesized; the value indicates whether this should invoke some
+    /// other symbol or whether this has special allocator semantics.
+    pub(crate) allocator_shim_symbols: FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>>,
     /// Cache for `mangle_internal_symbol`.
     pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 
@@ -676,7 +684,7 @@ impl<'tcx> MiriMachine<'tcx> {
         genmc_ctx: Option<Rc<GenmcCtx>>,
     ) -> Self {
         let tcx = layout_cx.tcx();
-        let local_crates = helpers::get_local_crates(tcx);
+        let user_relevant_crates = Self::get_user_relevant_crates(tcx, config);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
@@ -766,7 +774,7 @@ impl<'tcx> MiriMachine<'tcx> {
             string_cache: Default::default(),
             exported_symbols_cache: FxHashMap::default(),
             backtrace_style: config.backtrace_style,
-            local_crates,
+            user_relevant_crates,
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             allocator: (!config.native_lib.is_empty())
@@ -818,12 +826,66 @@ impl<'tcx> MiriMachine<'tcx> {
             pthread_mutex_sanity: Cell::new(false),
             pthread_rwlock_sanity: Cell::new(false),
             pthread_condvar_sanity: Cell::new(false),
+            allocator_shim_symbols: Self::allocator_shim_symbols(tcx),
             mangle_internal_symbol_cache: Default::default(),
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
             short_fd_operations: config.short_fd_operations,
         }
+    }
+
+    fn allocator_shim_symbols(
+        tcx: TyCtxt<'tcx>,
+    ) -> FxHashMap<Symbol, Either<Symbol, SpecialAllocatorMethod>> {
+        use rustc_codegen_ssa::base::allocator_shim_contents;
+
+        // codegen uses `allocator_kind_for_codegen` here, but that's only needed to deal with
+        // dylibs which we do not support.
+        let Some(kind) = tcx.allocator_kind(()) else {
+            return Default::default();
+        };
+        let methods = allocator_shim_contents(tcx, kind);
+        let mut symbols = FxHashMap::default();
+        for method in methods {
+            let from_name = Symbol::intern(&mangle_internal_symbol(
+                tcx,
+                &allocator::global_fn_name(method.name),
+            ));
+            let to = match method.special {
+                Some(special) => Either::Right(special),
+                None =>
+                    Either::Left(Symbol::intern(&mangle_internal_symbol(
+                        tcx,
+                        &allocator::default_fn_name(method.name),
+                    ))),
+            };
+            symbols.try_insert(from_name, to).unwrap();
+        }
+        symbols
+    }
+
+    /// Retrieve the list of user-relevant crates based on MIRI_LOCAL_CRATES as set by cargo-miri,
+    /// and extra crates set in the config.
+    fn get_user_relevant_crates(tcx: TyCtxt<'_>, config: &MiriConfig) -> Vec<CrateNum> {
+        // Convert the local crate names from the passed-in config into CrateNums so that they can
+        // be looked up quickly during execution
+        let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
+            .map(|crates| crates.split(',').map(|krate| krate.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default();
+        let mut local_crates = Vec::new();
+        for &crate_num in tcx.crates(()) {
+            let name = tcx.crate_name(crate_num);
+            let name = name.as_str();
+            if local_crate_names
+                .iter()
+                .chain(&config.user_relevant_crates)
+                .any(|local_name| local_name == name)
+            {
+                local_crates.push(crate_num);
+            }
+        }
+        local_crates
     }
 
     pub(crate) fn late_init(
@@ -850,7 +912,7 @@ impl<'tcx> MiriMachine<'tcx> {
     /// Check whether the stack frame that this `FrameInfo` refers to is part of a local crate.
     pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
         let def_id = frame.instance.def_id();
-        def_id.is_local() || self.local_crates.contains(&def_id.krate)
+        def_id.is_local() || self.user_relevant_crates.contains(&def_id.krate)
     }
 
     /// Called when the interpreter is going to shut down abnormally, such as due to a Ctrl-C.
@@ -889,7 +951,7 @@ impl<'tcx> MiriMachine<'tcx> {
         align: Align,
     ) -> InterpResult<'tcx, AllocExtra<'tcx>> {
         if ecx.machine.tracked_alloc_ids.contains(&id) {
-            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id, size, align, kind));
+            ecx.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(id, size, align));
         }
 
         let borrow_tracker = ecx
@@ -967,7 +1029,7 @@ impl VisitProvenance for MiriMachine<'_> {
             string_cache: _,
             exported_symbols_cache: _,
             backtrace_style: _,
-            local_crates: _,
+            user_relevant_crates: _,
             rng: _,
             allocator: _,
             tracked_alloc_ids: _,
@@ -991,6 +1053,7 @@ impl VisitProvenance for MiriMachine<'_> {
             pthread_mutex_sanity: _,
             pthread_rwlock_sanity: _,
             pthread_condvar_sanity: _,
+            allocator_shim_symbols: _,
             mangle_internal_symbol_cache: _,
             force_intrinsic_fallback: _,
             float_nondet: _,
@@ -1460,8 +1523,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
-            machine
-                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Read));
+            machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
+                alloc_id,
+                range,
+                AccessKind::Read,
+            ));
         }
         // The order of checks is deliberate, to prefer reporting a data race over a borrow tracker error.
         match &machine.data_race {
@@ -1470,14 +1536,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 genmc_ctx.memory_load(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_data_race) => {
                 let _trace = enter_trace_span!(data_race::before_memory_read);
-                let AllocDataRaceHandler::Vclocks(data_race, weak_memory) = &alloc_extra.data_race
+                let AllocDataRaceHandler::Vclocks(data_race, _weak_memory) = &alloc_extra.data_race
                 else {
                     unreachable!();
                 };
-                data_race.read(alloc_id, range, NaReadType::Read, None, machine)?;
-                if let Some(weak_memory) = weak_memory {
-                    weak_memory.memory_accessed(range, machine.data_race.as_vclocks_ref().unwrap());
-                }
+                data_race.read_non_atomic(alloc_id, range, NaReadType::Read, None, machine)?;
             }
         }
         if let Some(borrow_tracker) = &alloc_extra.borrow_tracker {
@@ -1496,8 +1559,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         range: AllocRange,
     ) -> InterpResult<'tcx> {
         if machine.track_alloc_accesses && machine.tracked_alloc_ids.contains(&alloc_id) {
-            machine
-                .emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(alloc_id, AccessKind::Write));
+            machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
+                alloc_id,
+                range,
+                AccessKind::Write,
+            ));
         }
         match &machine.data_race {
             GlobalDataRaceHandler::None => {}
@@ -1510,9 +1576,10 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 else {
                     unreachable!()
                 };
-                data_race.write(alloc_id, range, NaWriteType::Write, None, machine)?;
+                data_race.write_non_atomic(alloc_id, range, NaWriteType::Write, None, machine)?;
                 if let Some(weak_memory) = weak_memory {
-                    weak_memory.memory_accessed(range, machine.data_race.as_vclocks_ref().unwrap());
+                    weak_memory
+                        .non_atomic_write(range, machine.data_race.as_vclocks_ref().unwrap());
                 }
             }
         }
@@ -1543,7 +1610,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Vclocks(_global_state) => {
                 let _trace = enter_trace_span!(data_race::before_memory_deallocation);
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
-                data_race.write(
+                data_race.write_non_atomic(
                     alloc_id,
                     alloc_range(Size::ZERO, size),
                     NaWriteType::Deallocate,

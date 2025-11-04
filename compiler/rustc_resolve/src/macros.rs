@@ -1,7 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
-use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
@@ -40,9 +39,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
+    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
+    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -79,7 +78,7 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = &'ra Cell<MacroRulesScope<'ra>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra CacheCell<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -775,8 +774,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             if trace {
-                // FIXME: Should be an output of Speculative Resolution.
-                self.multi_segment_macro_resolutions.borrow_mut().push((
+                self.multi_segment_macro_resolutions.borrow_mut(&self).push((
                     path,
                     path_span,
                     kind,
@@ -803,8 +801,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             if trace {
-                // FIXME: Should be an output of Speculative Resolution.
-                self.single_segment_macro_resolutions.borrow_mut().push((
+                self.single_segment_macro_resolutions.borrow_mut(&self).push((
                     path[0].ident,
                     kind,
                     *parent_scope,
@@ -870,8 +867,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        // FIXME: Should be an output of Speculative Resolution.
-        let macro_resolutions = self.multi_segment_macro_resolutions.take();
+        let macro_resolutions = self.multi_segment_macro_resolutions.take(self);
         for (mut path, path_span, kind, parent_scope, initial_res, ns) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
@@ -948,8 +944,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        // FIXME: Should be an output of Speculative Resolution.
-        let macro_resolutions = self.single_segment_macro_resolutions.take();
+        let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
             match self.cm().resolve_ident_in_scope_set(
                 ident,
@@ -1112,8 +1107,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // If such resolution is successful and gives the same result
             // (e.g. if the macro is re-imported), then silence the lint.
             let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
+            let ident = path.segments[0].ident;
             let fallback_binding = self.reborrow().resolve_ident_in_scope_set(
-                path.segments[0].ident,
+                ident,
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },
                 None,
@@ -1121,7 +1117,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None,
                 None,
             );
-            if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+            if let Ok(fallback_binding) = fallback_binding
+                && fallback_binding.res().opt_def_id() == Some(def_id)
+            {
+                // Silence `unused_imports` on the fallback import as well.
+                self.get_mut().record_use(ident, fallback_binding, Used::Other);
+            } else {
                 let location = match parent_scope.module.kind {
                     ModuleKind::Def(kind, def_id, name) => {
                         if let Some(name) = name {

@@ -1,6 +1,6 @@
 // Checks that the gpu-kernel calling convention correctly translates to LLVM calling conventions.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: amdgpu nvptx
 //@ [amdgpu] compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
 //@ [amdgpu] needs-llvm-components: amdgpu

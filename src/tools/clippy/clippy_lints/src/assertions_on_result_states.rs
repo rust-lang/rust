@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_node};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::ty::{has_debug_impl, is_copy, is_type_diagnostic_item};
+use clippy_utils::sym;
+use clippy_utils::ty::{has_debug_impl, is_copy};
 use clippy_utils::usage::local_used_after_expr;
-use clippy_utils::{path_res, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Node};
@@ -55,13 +56,13 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
             && let ExprKind::MethodCall(method_segment, recv, [], _) = condition.kind
             && let result_type_with_refs = cx.typeck_results().expr_ty(recv)
             && let result_type = result_type_with_refs.peel_refs()
-            && is_type_diagnostic_item(cx, result_type, sym::Result)
+            && result_type.is_diag_item(cx, sym::Result)
             && let ty::Adt(_, args) = result_type.kind()
         {
             if !is_copy(cx, result_type) {
                 if result_type_with_refs != result_type {
                     return;
-                } else if let Res::Local(binding_id) = path_res(cx, recv)
+                } else if let Res::Local(binding_id) = *recv.basic_res()
                     && local_used_after_expr(cx, binding_id, recv)
                 {
                     return;

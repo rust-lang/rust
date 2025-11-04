@@ -116,8 +116,6 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
-use rustc_session::config::CrateType;
-use rustc_session::output::collect_crate_types;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::debug;
@@ -212,7 +210,11 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(sess: &Session, crate_name: Symbol) {
+pub(crate) fn prepare_session_directory(
+    sess: &Session,
+    crate_name: Symbol,
+    stable_crate_id: StableCrateId,
+) {
     if sess.opts.incremental.is_none() {
         return;
     }
@@ -222,7 +224,7 @@ pub(crate) fn prepare_session_directory(sess: &Session, crate_name: Symbol) {
     debug!("prepare_session_directory");
 
     // {incr-comp-dir}/{crate-name-and-disambiguator}
-    let crate_dir = crate_path(sess, crate_name);
+    let crate_dir = crate_path(sess, crate_name, stable_crate_id);
     debug!("crate-dir: {}", crate_dir.display());
     create_dir(sess, &crate_dir, "crate");
 
@@ -595,16 +597,8 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, &'static str> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: Symbol) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
-
-    let crate_types = collect_crate_types(sess, &[]);
-    let stable_crate_id = StableCrateId::new(
-        crate_name,
-        crate_types.contains(&CrateType::Executable),
-        sess.opts.cg.metadata.clone(),
-        sess.cfg_version,
-    );
 
     let crate_name =
         format!("{crate_name}-{}", stable_crate_id.as_u64().to_base_fixed_len(CASE_INSENSITIVE));
@@ -721,10 +715,36 @@ pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<
         }
     }
 
+    let current_session_directory_name =
+        session_directory.file_name().expect("session directory is not `..`");
+
     // Now garbage collect the valid session directories.
     let deletion_candidates =
         lock_file_to_session_dir.items().filter_map(|(lock_file_name, directory_name)| {
             debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
+
+            if directory_name.as_str() == current_session_directory_name {
+                // Skipping our own directory is, unfortunately, important for correctness.
+                //
+                // To summarize #147821: we will try to lock directories before deciding they can be
+                // garbage collected, but the ability of `flock::Lock` to detect a lock held *by the
+                // same process* varies across file locking APIs. Then, if our own session directory
+                // has become old enough to be eligible for GC, we are beholden to platform-specific
+                // details about detecting the our own lock on the session directory.
+                //
+                // POSIX `fcntl(F_SETLK)`-style file locks are maintained across a process. On
+                // systems where this is the mechanism for `flock::Lock`, there is no way to
+                // discover if an `flock::Lock` has been created in the same process on the same
+                // file. Attempting to set a lock on the lockfile again will succeed, even if the
+                // lock was set by another thread, on another file descriptor. Then we would
+                // garbage collect our own live directory, unable to tell it was locked perhaps by
+                // this same thread.
+                //
+                // It's not clear that `flock::Lock` can be fixed for this in general, and our own
+                // incremental session directory is the only one which this process may own, so skip
+                // it here and avoid the problem. We know it's not garbage anyway: we're using it.
+                return None;
+            }
 
             let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
                 debug!(

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{SpanlessEq, fulfill_or_allowed, hash_expr, is_lint_allowed, path_to_local, search_same};
+use clippy_utils::{SpanlessEq, fulfill_or_allowed, hash_expr, is_lint_allowed, search_same};
 use core::cmp::Ordering;
 use core::{iter, slice};
 use itertools::Itertools;
@@ -61,8 +62,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
         let check_eq_with_pat = |expr_a: &Expr<'_>, expr_b: &Expr<'_>| {
             let mut local_map: HirIdMap<HirId> = HirIdMap::default();
             let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
-                if let Some(a_id) = path_to_local(a)
-                    && let Some(b_id) = path_to_local(b)
+                if let Some(a_id) = a.res_local_id()
+                    && let Some(b_id) = b.res_local_id()
                     && let entry = match local_map.entry(a_id) {
                         HirIdMapEntry::Vacant(entry) => entry,
                         // check if using the same bindings as before

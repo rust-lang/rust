@@ -4,6 +4,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{self, DeprecatedSince};
 use rustc_hir::def::CtorKind;
@@ -14,7 +15,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
 use rustc_span::{Pos, kw, sym};
 use rustdoc_json_types::*;
-use thin_vec::ThinVec;
 
 use crate::clean::{self, ItemId};
 use crate::formats::item_type::ItemType;

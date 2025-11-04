@@ -22,7 +22,7 @@ extern "C" {}
 #[link(name = "...", modifiers())] //~ ERROR malformed `link` attribute input
 #[link(name = "...", cfg)] //~ ERROR malformed `link` attribute input
 #[link(name = "...", cfg = "literal")] //~ ERROR malformed `link` attribute input
-#[link(name = "...", cfg("literal"))] //~ ERROR `cfg` predicate key must be an identifier
+#[link(name = "...", cfg("literal"))] //~ ERROR malformed `link` attribute input
 #[link(name = "...", wasm_import_module)] //~ ERROR malformed `link` attribute input
 #[link(name = "...", wasm_import_module())] //~ ERROR malformed `link` attribute input
 extern "C" {}

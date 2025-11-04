@@ -3,7 +3,7 @@
 /// a best-effort approximation for diagnostics. Add new directives to this list when needed.
 pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     // tidy-alphabetical-start
-    "add-core-stubs",
+    "add-minicore",
     "assembly-output",
     "aux-bin",
     "aux-build",
@@ -19,7 +19,6 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "check-test-line-numbers-match",
     "compare-output-by-lines",
     "compile-flags",
-    "core-stubs-compile-flags",
     "disable-gdb-pretty-printers",
     "doc-flags",
     "dont-check-compiler-stderr",
@@ -70,6 +69,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "ignore-gnu",
     "ignore-haiku",
     "ignore-horizon",
+    "ignore-i586",
     "ignore-i686-pc-windows-gnu",
     "ignore-i686-pc-windows-msvc",
     "ignore-illumos",
@@ -140,6 +140,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "min-lldb-version",
     "min-llvm-version",
     "min-system-llvm-version",
+    "minicore-compile-flags",
     "needs-asm-support",
     "needs-backends",
     "needs-crate-type",

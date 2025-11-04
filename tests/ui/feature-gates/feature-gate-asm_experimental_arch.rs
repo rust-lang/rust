@@ -1,6 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target mips-unknown-linux-gnu
 //@ needs-llvm-components: mips
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

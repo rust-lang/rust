@@ -7,7 +7,6 @@
 #![feature(core_intrinsics, rustc_attrs)]
 
 use std::mem;
-use std::intrinsics;
 
 // This is the type with the questionable alignment
 #[derive(Debug)]
@@ -84,12 +83,12 @@ pub fn main() {
 
         let y = format!("{:?}", x);
 
-        println!("align inner = {:?}", intrinsics::align_of::<Inner>());
+        println!("align inner = {:?}", mem::align_of::<Inner>());
         println!("size outer = {:?}", mem::size_of::<Outer>());
         println!("y = {:?}", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
-        assert_eq!(intrinsics::align_of::<Inner>(), m::m::align());
+        assert_eq!(mem::align_of::<Inner>(), m::m::align());
 
         // per clang/gcc the size of `Outer` should be 12
         // because `Inner`s alignment was 4.

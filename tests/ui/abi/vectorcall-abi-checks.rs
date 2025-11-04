@@ -1,8 +1,9 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu -C target-feature=-sse,-sse2
 //@ build-fail
 //@ ignore-pass (test emits codegen-time errors)
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 #![feature(no_core, abi_vectorcall)]
 #![no_core]
 

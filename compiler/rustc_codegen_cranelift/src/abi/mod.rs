@@ -467,7 +467,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         true
     } else {
         instance.is_some_and(|inst| {
-            fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD)
+            fx.tcx.codegen_instance_attrs(inst.def).flags.contains(CodegenFnAttrFlags::COLD)
         })
     };
     if is_cold {

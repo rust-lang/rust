@@ -50,7 +50,7 @@ for larger features an implementation could be broken up into multiple PRs.
 [stabilization-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#stabilization-pr
 [doc-guide]: https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#documentation-prs
 [nightly-style-procedure]: https://github.com/rust-lang/style-team/blob/main/nightly-style-procedure.md 
-[Style Guide]: https://github.com/rust-lang/rust/tree/master/src/doc/style-guide
+[Style Guide]: https://github.com/rust-lang/rust/tree/HEAD/src/doc/style-guide
 
 ### Unresolved Questions
 <!--

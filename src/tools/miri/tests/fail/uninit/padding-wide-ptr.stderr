@@ -6,8 +6,6 @@ LL |         let _val = *c.add(mem::size_of::<*const u8>());
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/uninit/padding-wide-ptr.rs:LL:CC
 
 Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
 ALLOC DUMP

@@ -1,7 +1,7 @@
 // Test that temporary allocas used for call arguments have their lifetimes described by
 // intrinsics.
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=1 -Cno-prepopulate-passes --crate-type=lib --target i686-unknown-linux-gnu
 //@ needs-llvm-components: x86
 #![feature(no_core)]

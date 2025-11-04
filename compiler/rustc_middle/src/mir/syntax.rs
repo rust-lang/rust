@@ -137,6 +137,7 @@ pub enum RuntimePhase {
     /// And the following variants are allowed:
     /// * [`StatementKind::Retag`]
     /// * [`StatementKind::SetDiscriminant`]
+    /// * [`PlaceElem::ConstantIndex`] / [`PlaceElem::Subslice`] after [`PlaceElem::Subslice`]
     ///
     /// Furthermore, `Copy` operands are allowed for non-`Copy` types.
     Initial = 0,
@@ -1246,6 +1247,9 @@ pub enum ProjectionElem<V, T> {
     ///
     /// If `from_end` is true `slice[from..slice.len() - to]`.
     /// Otherwise `array[from..to]`.
+    ///
+    /// This projection cannot have `ConstantIndex` or additional `Subslice` projections after it
+    /// before runtime MIR.
     Subslice {
         from: u64,
         to: u64,
@@ -1559,10 +1563,6 @@ pub enum AggregateKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum NullOp<'tcx> {
-    /// Returns the size of a value of that type
-    SizeOf,
-    /// Returns the minimum alignment of a type
-    AlignOf,
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
     /// Returns whether we should perform some UB-checking at runtime.

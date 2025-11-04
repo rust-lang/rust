@@ -298,7 +298,7 @@ impl Printer {
         }
     }
 
-    // This is is where `BoxMarker`s are produced.
+    // This is where `BoxMarker`s are produced.
     fn scan_begin(&mut self, token: BeginToken) -> BoxMarker {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
@@ -310,7 +310,7 @@ impl Printer {
         BoxMarker
     }
 
-    // This is is where `BoxMarker`s are consumed.
+    // This is where `BoxMarker`s are consumed.
     fn scan_end(&mut self, b: BoxMarker) {
         if self.scan_stack.is_empty() {
             self.print_end();

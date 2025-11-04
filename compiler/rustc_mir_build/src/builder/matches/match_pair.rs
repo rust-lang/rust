@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use rustc_abi::FieldIdx;
 use rustc_hir::ByRef;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -43,13 +44,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
-            match place_resolved.ty(&self.local_decls, tcx).ty.kind() {
-                ty::Array(_, length) => (
-                    length
-                        .try_to_target_usize(tcx)
-                        .expect("expected len of array pat to be definite"),
-                    true,
-                ),
+            let place_ty = place_resolved.ty(&self.local_decls, tcx).ty;
+            match place_ty.kind() {
+                ty::Array(_, length) => {
+                    if let Some(length) = length.try_to_target_usize(tcx) {
+                        (length, true)
+                    } else {
+                        // This can happen when the array length is a generic const
+                        // expression that couldn't be evaluated (e.g., due to an error).
+                        // Since there's already a compilation error, we use a fallback
+                        // to avoid an ICE.
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(self.def_id),
+                            "array length in pattern couldn't be evaluated",
+                        );
+                        ((prefix.len() + suffix.len()).try_into().unwrap(), false)
+                    }
+                }
                 _ => ((prefix.len() + suffix.len()).try_into().unwrap(), false),
             }
         } else {
@@ -289,7 +300,24 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(mutability) } => {
+            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
+                let Some(ref_ty) = pattern.ty.pinned_ty() else {
+                    rustc_middle::bug!("RefPin pattern on non-`Pin` type {:?}", pattern.ty);
+                };
+                MatchPairTree::for_pattern(
+                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
+                    subpattern,
+                    cx,
+                    &mut subpairs,
+                    extra_data,
+                );
+                None
+            }
+
+            PatKind::DerefPattern {
+                ref subpattern,
+                borrow: ByRef::Yes(Pinnedness::Not, mutability),
+            } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(

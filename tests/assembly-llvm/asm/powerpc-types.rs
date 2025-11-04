@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: powerpc powerpc_altivec powerpc_vsx powerpc64 powerpc64_vsx
 //@ assembly-output: emit-asm
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
@@ -222,6 +222,94 @@ check!(vreg_f32, f32, vreg, "vmr");
 // powerpc64_vsx: #NO_APP
 #[cfg(vsx)]
 check!(vreg_f64, f64, vreg, "vmr");
+
+// powerpc_vsx-LABEL: vsreg_i8x16:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i8x16:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_i8x16, i8x16, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i16x8:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i16x8:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_i16x8, i16x8, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i32x4:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i32x4:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_i32x4, i32x4, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i64x2:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i64x2:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_i64x2, i64x2, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32x4:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32x4:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_f32x4, f32x4, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64x2:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64x2:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_f64x2, f64x2, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_f32, f32, vsreg, "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp {{[0-9]+}}, {{[0-9]+}}
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check!(vsreg_f64, f64, vsreg, "xvsqrtdp");
 
 // CHECK-LABEL: reg_i8_r0:
 // CHECK: #APP
@@ -472,3 +560,179 @@ check_reg!(vreg_f32_v18, f32, "18", "v18", "vmr");
 // powerpc64_vsx: #NO_APP
 #[cfg(vsx)]
 check_reg!(vreg_f64_v18, f64, "18", "v18", "vmr");
+
+// powerpc_vsx-LABEL: vsreg_i8x16_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i8x16_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i8x16_vs0, i8x16, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i16x8_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i16x8_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i16x8_vs0, i16x8, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i32x4_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i32x4_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i32x4_vs0, i32x4, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i64x2_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i64x2_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i64x2_vs0, i64x2, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32x4_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32x4_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f32x4_vs0, f32x4, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64x2_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64x2_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f64x2_vs0, f64x2, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f32_vs0, f32, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64_vs0:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 0, 0
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64_vs0:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 0, 0
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f64_vs0, f64, "0", "vs0", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i8x16_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i8x16_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i8x16_v40, i8x16, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i16x8_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i16x8_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i16x8_v40, i16x8, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i32x4_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i32x4_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i32x4_v40, i32x4, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_i64x2_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_i64x2_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_i64x2_v40, i64x2, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32x4_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32x4_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f32x4_v40, f32x4, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64x2_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64x2_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f64x2_v40, f64x2, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f32_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f32_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f32_v40, f32, "40", "vs40", "xvsqrtdp");
+
+// powerpc_vsx-LABEL: vsreg_f64_v40:
+// powerpc_vsx: #APP
+// powerpc_vsx: xvsqrtdp 40, 40
+// powerpc_vsx: #NO_APP
+// powerpc64_vsx-LABEL: vsreg_f64_v40:
+// powerpc64_vsx: #APP
+// powerpc64_vsx: xvsqrtdp 40, 40
+// powerpc64_vsx: #NO_APP
+#[cfg(vsx)]
+check_reg!(vsreg_f64_v40, f64, "40", "vs40", "xvsqrtdp");

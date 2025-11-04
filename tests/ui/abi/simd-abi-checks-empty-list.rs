@@ -1,9 +1,10 @@
 //! At the time of writing, the list of "which target feature enables which vector size" is empty
 //! for SPARC. Ensure that this leads to all vector sizes causing an error.
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: sparc
 //@ compile-flags: --target=sparc-unknown-none-elf --crate-type=rlib
 //@ build-fail
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, repr_simd)]
 #![allow(improper_ctypes_definitions)]

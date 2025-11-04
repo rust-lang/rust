@@ -1145,6 +1145,7 @@ fn find_tails_for_unsizing<'tcx>(
     debug_assert!(!target_ty.has_param(), "{target_ty} should be fully monomorphic");
 
     match (source_ty.kind(), target_ty.kind()) {
+        (&ty::Pat(source, _), &ty::Pat(target, _)) => find_tails_for_unsizing(tcx, source, target),
         (
             &ty::Ref(_, source_pointee, _),
             &ty::Ref(_, target_pointee, _) | &ty::RawPtr(target_pointee, _),
@@ -1568,7 +1569,7 @@ impl<'v> RootCollector<'_, 'v> {
                     }
                 }
             }
-            DefKind::Impl { .. } => {
+            DefKind::Impl { of_trait: true } => {
                 if self.strategy == MonoItemCollectionStrategy::Eager {
                     create_mono_items_for_default_impls(self.tcx, id, self.output);
                 }
@@ -1715,9 +1716,7 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_header(item.owner_id) else {
-        return;
-    };
+    let impl_ = tcx.impl_trait_header(item.owner_id);
 
     if matches!(impl_.polarity, ty::ImplPolarity::Negative) {
         return;

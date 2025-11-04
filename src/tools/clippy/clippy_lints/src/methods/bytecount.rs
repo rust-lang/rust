@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{path_to_local_id, peel_blocks, peel_ref_operators, strip_pat_refs};
+use clippy_utils::{peel_blocks, peel_ref_operators, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Closure, Expr, ExprKind, PatKind};
 use rustc_lint::LateContext;
@@ -23,10 +23,14 @@ pub(super) fn check<'tcx>(
         && let PatKind::Binding(_, arg_id, _, _) = strip_pat_refs(param.pat).kind
         && let ExprKind::Binary(ref op, l, r) = body.value.kind
         && op.node == BinOpKind::Eq
-        && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(filter_recv).peel_refs(), sym::SliceIter)
+        && cx
+            .typeck_results()
+            .expr_ty(filter_recv)
+            .peel_refs()
+            .is_diag_item(cx, sym::SliceIter)
         && let operand_is_arg = (|expr| {
             let expr = peel_ref_operators(cx, peel_blocks(expr));
-            path_to_local_id(expr, arg_id)
+            expr.res_local_id() == Some(arg_id)
         })
         && let needle = if operand_is_arg(l) {
             r

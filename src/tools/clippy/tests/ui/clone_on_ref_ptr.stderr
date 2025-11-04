@@ -37,5 +37,11 @@ error: using `.clone()` on a ref-counted pointer
 LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::rc::Rc::<u8>::clone(&try_opt!(Some(rc)))`
 
-error: aborting due to 6 previous errors
+error: using `.clone()` on a ref-counted pointer
+  --> tests/ui/clone_on_ref_ptr.rs:65:23
+   |
+LL |             let rec = rec.clone() as Weak<dyn Fn(u32) -> u32>;
+   |                       ^^^^^^^^^^^ help: try: `std::rc::Weak::</* generic */>::clone(&rec)`
+
+error: aborting due to 7 previous errors
 

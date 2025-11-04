@@ -1,6 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: nvptx
 //@ compile-flags: --target=nvptx64-nvidia-cuda --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items)]
 

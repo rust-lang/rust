@@ -6,7 +6,9 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
@@ -226,6 +228,7 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
+        (&ty::Pat(a, _), &ty::Pat(b, _)) => unsize_ptr(bx, src, a, b, old_info),
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
         | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
@@ -655,22 +658,32 @@ pub(crate) fn needs_allocator_shim_for_linking(
     !any_dynamic_crate
 }
 
+pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<AllocatorMethod> {
+    let mut methods = Vec::new();
+
+    if kind == AllocatorKind::Default {
+        methods.extend(ALLOCATOR_METHODS.into_iter().copied());
+    }
+
+    // If the return value of allocator_kind_for_codegen is Some then
+    // alloc_error_handler_kind must also be Some.
+    if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
+        methods.push(AllocatorMethod {
+            name: ALLOC_ERROR_HANDLER,
+            special: None,
+            inputs: &[],
+            output: AllocatorTy::Never,
+        });
+    }
+
+    methods
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
 ) -> OngoingCodegen<B> {
-    // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, None);
-
-        ongoing_codegen.codegen_finished(tcx);
-
-        ongoing_codegen.check_for_errors(tcx.sess);
-
-        return ongoing_codegen;
-    }
-
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);
@@ -699,14 +712,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
 
         tcx.sess.time("write_allocator_module", || {
-            let module = backend.codegen_allocator(
-                tcx,
-                &llmod_id,
-                kind,
-                // If allocator_kind is Some then alloc_error_handler_kind must
-                // also be Some.
-                tcx.alloc_error_handler_kind(()).unwrap(),
-            );
+            let module =
+                backend.codegen_allocator(tcx, &llmod_id, &allocator_shim_contents(tcx, kind));
             Some(ModuleCodegen::new_allocator(llmod_id, module))
         })
     } else {

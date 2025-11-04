@@ -3,7 +3,7 @@ src = "src"
 title = "The rustdoc book"
 
 [output.html]
-git-repository-url = "https://github.com/rust-lang/rust/tree/master/src/doc/rustdoc"
+git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/rustdoc"
 
 [output.html.redirect]
 "/what-to-include.html" = "write-documentation/what-to-include.html"

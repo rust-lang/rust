@@ -2,6 +2,7 @@
 //@ ignore-android: FIXME(#10381)
 //@ ignore-aix: FIXME(#137965)
 //@ compile-flags:-g
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

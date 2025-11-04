@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 //@ compile-flags: --crate-type=lib
 

@@ -2000,14 +2000,6 @@ pub(crate) struct TraitAliasCannotBeAuto {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_trait_alias_cannot_be_const)]
-pub(crate) struct TraitAliasCannotBeConst {
-    #[primary_span]
-    #[label(parse_trait_alias_cannot_be_const)]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_trait_alias_cannot_be_unsafe)]
 pub(crate) struct TraitAliasCannotBeUnsafe {
     #[primary_span]
@@ -3349,34 +3341,6 @@ pub(crate) struct KwBadCase<'a> {
     #[suggestion(code = "{kw}", style = "verbose", applicability = "machine-applicable")]
     pub span: Span,
     pub kw: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_cfg_attr_bad_delim)]
-pub(crate) struct CfgAttrBadDelim {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: MetaBadDelimSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_meta_bad_delim_suggestion, applicability = "machine-applicable")]
-pub(crate) struct MetaBadDelimSugg {
-    #[suggestion_part(code = "(")]
-    pub open: Span,
-    #[suggestion_part(code = ")")]
-    pub close: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_malformed_cfg_attr)]
-#[note]
-pub(crate) struct MalformedCfgAttr {
-    #[primary_span]
-    #[suggestion(style = "verbose", code = "{sugg}")]
-    pub span: Span,
-    pub sugg: &'static str,
 }
 
 #[derive(Diagnostic)]

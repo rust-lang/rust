@@ -24,6 +24,7 @@ macro_rules! or_panic {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn basic() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -51,6 +52,7 @@ fn basic() {
 }
 
 #[test]
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn vectored() {
     let (mut s1, mut s2) = or_panic!(UnixStream::pair());
 
@@ -71,6 +73,7 @@ fn vectored() {
 }
 
 #[test]
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn pair() {
     let msg1 = b"hello";
     let msg2 = b"world!";
@@ -95,6 +98,7 @@ fn pair() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn try_clone() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -122,6 +126,7 @@ fn try_clone() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn iter() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -144,6 +149,7 @@ fn iter() {
 }
 
 #[test]
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn long_path() {
     let dir = tmpdir();
     let socket_path = dir.path().join(
@@ -173,6 +179,7 @@ fn long_path() {
 #[cfg(not(target_os = "nto"))]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn timeouts() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -202,6 +209,7 @@ fn timeouts() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_read_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -223,6 +231,7 @@ fn test_read_timeout() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_read_with_timeout() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -252,6 +261,7 @@ fn test_read_with_timeout() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin connect needs handshake
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_stream_timeout_zero_duration() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
@@ -272,6 +282,7 @@ fn test_unix_stream_timeout_zero_duration() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -290,6 +301,7 @@ fn test_unix_datagram() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin autobinds an address
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unnamed_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -308,6 +320,7 @@ fn test_unnamed_unix_datagram() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram_connect_to_recv_addr() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -334,6 +347,7 @@ fn test_unix_datagram_connect_to_recv_addr() {
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
 #[cfg_attr(target_os = "cygwin", ignore)] // Cygwin autobinds an address
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_connect_unix_datagram() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -361,6 +375,7 @@ fn test_connect_unix_datagram() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram_recv() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock1");
@@ -378,6 +393,7 @@ fn test_unix_datagram_recv() {
 }
 
 #[test]
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn datagram_pair() {
     let msg1 = b"hello";
     let msg2 = b"world!";
@@ -404,6 +420,7 @@ fn datagram_pair() {
 // when passed zero Durations
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram_timeout_zero_duration() {
     let dir = tmpdir();
     let path = dir.path().join("sock");
@@ -562,6 +579,7 @@ fn test_abstract_no_pathname_and_not_unnamed() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_stream_peek() {
     let (txdone, rxdone) = crate::sync::mpsc::channel();
 
@@ -595,6 +613,7 @@ fn test_unix_stream_peek() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram_peek() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock");
@@ -620,6 +639,7 @@ fn test_unix_datagram_peek() {
 
 #[test]
 #[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating Unix sockets
+#[cfg_attr(target_os = "vxworks", ignore = "Unix sockets are not implemented in VxWorks")]
 fn test_unix_datagram_peek_from() {
     let dir = tmpdir();
     let path1 = dir.path().join("sock");

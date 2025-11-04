@@ -6,12 +6,13 @@
       let _1: i32;
       let mut _2: i32;
       let mut _3: std::boxed::Box<i32>;
-      let mut _4: usize;
-      let mut _5: usize;
-      let mut _6: *mut u8;
-      let mut _7: std::boxed::Box<i32>;
-      let mut _8: *const i32;
+      let mut _4: *mut u8;
+      let mut _5: std::boxed::Box<i32>;
+      let mut _6: *const i32;
+      let mut _7: std::ptr::NonNull<i32>;
+      let mut _8: std::ptr::Unique<i32>;
       let mut _9: *const i32;
+      let mut _10: *const i32;
       scope 1 {
           debug x => _1;
       }
@@ -21,23 +22,26 @@
 -         StorageLive(_2);
 +         nop;
           StorageLive(_3);
--         _4 = SizeOf(i32);
--         _5 = AlignOf(i32);
--         _6 = alloc::alloc::exchange_malloc(move _4, move _5) -> [return: bb1, unwind unreachable];
-+         _4 = const 4_usize;
-+         _5 = const 4_usize;
-+         _6 = alloc::alloc::exchange_malloc(const 4_usize, const 4_usize) -> [return: bb1, unwind unreachable];
+          _4 = alloc::alloc::exchange_malloc(const <i32 as std::mem::SizedTypeProperties>::SIZE, const <i32 as std::mem::SizedTypeProperties>::ALIGN) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          StorageLive(_7);
-          _7 = ShallowInitBox(move _6, i32);
-          _8 = copy ((_7.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
-          (*_8) = const 42_i32;
-          _3 = move _7;
-          StorageDead(_7);
-          _9 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
-          _2 = copy (*_9);
+          StorageLive(_5);
+-         _6 = move _4 as *const i32 (Transmute);
+-         _7 = NonNull::<i32> { pointer: move _6 };
+-         _8 = Unique::<i32> { pointer: move _7, _marker: const PhantomData::<i32> };
++         _6 = copy _4 as *const i32 (PtrToPtr);
++         _7 = NonNull::<i32> { pointer: copy _6 };
++         _8 = Unique::<i32> { pointer: copy _7, _marker: const PhantomData::<i32> };
+          _5 = Box::<i32>(move _8, const std::alloc::Global);
+-         _9 = copy ((_5.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+-         (*_9) = const 42_i32;
++         _9 = copy _6;
++         (*_6) = const 42_i32;
+          _3 = move _5;
+          StorageDead(_5);
+          _10 = copy ((_3.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>) as *const i32 (Transmute);
+          _2 = copy (*_10);
 -         _1 = Add(move _2, const 0_i32);
 -         StorageDead(_2);
 +         _1 = copy _2;

@@ -93,7 +93,7 @@ pub(super) fn check_min_specialization(
 }
 
 fn parent_specialization_node(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId) -> Option<Node> {
-    let trait_ref = tcx.impl_trait_ref(impl1_def_id)?;
+    let trait_ref = tcx.impl_trait_ref(impl1_def_id);
     let trait_def = tcx.trait_def(trait_ref.skip_binder().def_id);
 
     let impl2_node = trait_def.ancestors(tcx, impl1_def_id.to_def_id()).ok()?.nth(1)?;
@@ -215,7 +215,7 @@ fn unconstrained_parent_impl_args<'tcx>(
     let impl_generic_predicates = tcx.predicates_of(impl_def_id);
     let mut unconstrained_parameters = FxHashSet::default();
     let mut constrained_params = FxHashSet::default();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
 
     // Unfortunately the functions in `constrained_generic_parameters` don't do
     // what we want here. We want only a list of constrained parameters while
@@ -224,7 +224,7 @@ fn unconstrained_parent_impl_args<'tcx>(
     for (clause, _) in impl_generic_predicates.predicates.iter() {
         if let ty::ClauseKind::Projection(proj) = clause.kind().skip_binder() {
             let unbound_trait_ref = proj.projection_term.trait_ref(tcx);
-            if Some(unbound_trait_ref) == impl_trait_ref {
+            if unbound_trait_ref == impl_trait_ref {
                 continue;
             }
 
@@ -373,7 +373,7 @@ fn check_predicates<'tcx>(
         .map(|(c, _span)| c.as_predicate());
 
     // Include the well-formed predicates of the type parameters of the impl.
-    for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity().args {
+    for arg in tcx.impl_trait_ref(impl1_def_id).instantiate_identity().args {
         let Some(term) = arg.as_term() else {
             continue;
         };

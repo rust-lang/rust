@@ -1,5 +1,6 @@
 //! The underlying OsString/OsStr implementation on Windows is a
 //! wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
+
 use alloc::wtf8::{Wtf8, Wtf8Buf};
 use core::clone::CloneToUninit;
 
@@ -11,6 +12,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, mem};
 
 #[derive(Hash)]
+#[repr(transparent)]
 pub struct Buf {
     pub inner: Wtf8Buf,
 }
@@ -213,11 +215,12 @@ impl Buf {
     /// # Safety
     ///
     /// The slice must be valid for the platform encoding (as described in
-    /// [`Slice::from_encoded_bytes_unchecked`]).
+    /// `OsStr::from_encoded_bytes_unchecked`). For this encoding, that means
+    /// `other` must be valid WTF-8.
     ///
-    /// This bypasses the WTF-8 surrogate joining, so either `self` must not
-    /// end with a leading surrogate half, or `other` must not start with a
-    /// trailing surrogate half.
+    /// Additionally, this method bypasses the WTF-8 surrogate joining, so
+    /// either `self` must not end with a leading surrogate half, or `other`
+    /// must not start with a trailing surrogate half.
     #[inline]
     pub unsafe fn extend_from_slice_unchecked(&mut self, other: &[u8]) {
         unsafe {

@@ -17,7 +17,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
-#![cfg_attr(not(bootstrap), feature(duration_from_nanos_u128))]
+#![feature(duration_from_nanos_u128)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -49,20 +49,18 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
-// Some "regular" crates we want to share with rustc
-extern crate either;
-extern crate tracing;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hash;
 extern crate rustc_hir;
 extern crate rustc_index;
+extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -96,8 +94,8 @@ pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
+use rustc_log::tracing::{self, info, trace};
 use rustc_middle::{bug, span_bug};
-use tracing::{info, trace};
 
 #[cfg(all(unix, feature = "native-lib"))]
 pub mod native_lib {

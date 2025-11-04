@@ -3,7 +3,7 @@
 This page describes [`rustdoc`]'s passes and modes. For an overview of `rustdoc`,
 see the ["Rustdoc overview" chapter](./rustdoc.md).
 
-[`rustdoc`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
+[`rustdoc`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
 
 ## From Crate to Clean
 
@@ -72,8 +72,8 @@ which describe the publicly-documentable items in the target crate.
 [`Attributes`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Attributes.html
 [`clean_doc_module`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/fn.clean_doc_module.html
 [`clean::types::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Crate.html
-[`clean/mod.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/clean/mod.rs
-[`core.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/core.rs
+[`clean/mod.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/clean/mod.rs
+[`core.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/core.rs
 [`Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/clean/types/struct.Item.html
 [`run_global_ctxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/core/fn.run_global_ctxt.html
 [`rustc_hir::Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
@@ -150,7 +150,7 @@ There is also a [`stripper`] module in `librustdoc/passes`, but it is a
 collection of utility functions for the `strip-*` passes and is not a pass
 itself.
 
-[`librustdoc/passes`]: https://github.com/rust-lang/rust/tree/master/src/librustdoc/passes
+[`librustdoc/passes`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/passes
 [`stripper`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/passes/stripper/index.html
 
 ## From Clean To HTML
@@ -193,13 +193,13 @@ the test-runner code can find all the `doctest`s in the crate.
 
 [`find_codes`]: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustdoc/html/markdown.rs.html#749-818
 [`formats::renderer::run_format`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/formats/renderer/fn.run_format.html
-[`html/format.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/format.rs
-[`html/layout.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/layout.rs
-[`html/markdown.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/markdown.rs
-[`html/render/mod.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/render/mod.rs
-[`html/render/print_item.rs`]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/render/print_item.rs
-[`librustdoc/formats`]: https://github.com/rust-lang/rust/tree/master/src/librustdoc/formats
-[`librustdoc/html`]: https://github.com/rust-lang/rust/tree/master/src/librustdoc/html
+[`html/format.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/format.rs
+[`html/layout.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/layout.rs
+[`html/markdown.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/markdown.rs
+[`html/render/mod.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/render/mod.rs
+[`html/render/print_item.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/librustdoc/html/render/print_item.rs
+[`librustdoc/formats`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/formats
+[`librustdoc/html`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/html
 [`print_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/print_item/fn.print_item.html
 [Askama]: https://docs.rs/askama/latest/askama/
 

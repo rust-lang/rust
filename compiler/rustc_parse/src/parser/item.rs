@@ -943,9 +943,6 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
-            if let Const::Yes(_) = constness {
-                self.dcx().emit_err(errors::TraitAliasCannotBeConst { span: whole_span });
-            }
             if is_auto == IsAuto::Yes {
                 self.dcx().emit_err(errors::TraitAliasCannotBeAuto { span: whole_span });
             }
@@ -955,7 +952,7 @@ impl<'a> Parser<'a> {
 
             self.psess.gated_spans.gate(sym::trait_alias, whole_span);
 
-            Ok(ItemKind::TraitAlias(ident, generics, bounds))
+            Ok(ItemKind::TraitAlias(Box::new(TraitAlias { constness, ident, generics, bounds })))
         } else {
             // It's a normal trait.
             generics.where_clause = self.parse_where_clause()?;
@@ -1041,32 +1038,11 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let bounds = if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { Vec::new() };
-        let before_where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
-
-        let where_clauses = TyAliasWhereClauses {
-            before: TyAliasWhereClause {
-                has_where_token: before_where_clause.has_where_token,
-                span: before_where_clause.span,
-            },
-            after: TyAliasWhereClause {
-                has_where_token: after_where_clause.has_where_token,
-                span: after_where_clause.span,
-            },
-            split: before_where_clause.predicates.len(),
-        };
-        let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates);
-        let where_clause = WhereClause {
-            has_where_token: before_where_clause.has_where_token
-                || after_where_clause.has_where_token,
-            predicates,
-            span: DUMMY_SP,
-        };
-        generics.where_clause = where_clause;
 
         self.expect_semi()?;
 
@@ -1074,7 +1050,7 @@ impl<'a> Parser<'a> {
             defaultness,
             ident,
             generics,
-            where_clauses,
+            after_where_clause,
             bounds,
             ty,
         })))
@@ -2664,7 +2640,10 @@ impl<'a> Parser<'a> {
                         // Rule out `unsafe extern {`.
                         && !self.is_unsafe_foreign_mod()
                         // Rule out `async gen {` and `async gen move {`
-                        && !self.is_async_gen_block())
+                        && !self.is_async_gen_block()
+                        // Rule out `const unsafe auto` and `const unsafe trait`.
+                        && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait])
+                    )
                 })
             // `extern ABI fn`
             || self.check_keyword_case(exp!(Extern), case)
@@ -3111,7 +3090,7 @@ impl<'a> Parser<'a> {
                 match ty {
                     Ok(ty) => {
                         let pat = this.mk_pat(ty.span, PatKind::Missing);
-                        (pat, ty)
+                        (Box::new(pat), ty)
                     }
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),

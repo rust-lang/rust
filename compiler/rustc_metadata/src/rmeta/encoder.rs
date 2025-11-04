@@ -1791,8 +1791,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
+            let mut is_trivial = false;
             if encode_const {
-                record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
+                if let Some((val, ty)) = tcx.trivial_const(def_id) {
+                    is_trivial = true;
+                    record!(self.tables.trivial_const[def_id.to_def_id()] <- (val, ty));
+                } else {
+                    is_trivial = false;
+                    record!(self.tables.mir_for_ctfe[def_id.to_def_id()] <- tcx.mir_for_ctfe(def_id));
+                }
 
                 // FIXME(generic_const_exprs): this feels wrong to have in `encode_mir`
                 let abstract_const = tcx.thir_abstract_const(def_id);
@@ -1810,7 +1817,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     }
                 }
             }
-            record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+            if !is_trivial {
+                record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
+            }
 
             if self.tcx.is_coroutine(def_id.to_def_id())
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
@@ -2115,7 +2124,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             };
             let def_id = id.owner_id.to_def_id();
 
-            if of_trait && let Some(header) = tcx.impl_trait_header(def_id) {
+            if of_trait {
+                let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
                 self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
@@ -2233,6 +2243,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 
     let reachable_set = tcx.reachable_set(());
     par_for_each_in(tcx.mir_keys(()), |&&def_id| {
+        if tcx.is_trivial_const(def_id) {
+            return;
+        }
         let (encode_const, encode_opt) = should_encode_mir(tcx, reachable_set, def_id);
 
         if encode_const {
@@ -2585,8 +2598,6 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
             // FIXME: Claiming that those kinds of QPaths are simple is probably not true if the Ty
             //        contains const arguments. Is there a *concise* way to check for this?
             hir::ExprKind::Path(hir::QPath::TypeRelative(..)) => Simple,
-            // FIXME: Can they contain const arguments and thus leak private struct fields?
-            hir::ExprKind::Path(hir::QPath::LangItem(..)) => Simple,
             _ => Complex,
         }
     }

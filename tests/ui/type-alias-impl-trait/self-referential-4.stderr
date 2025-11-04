@@ -7,7 +7,9 @@ LL |     i
    |     - return type was inferred to be `&i32` here
    |
    = help: the trait `PartialEq<Bar<'b, 'static>>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `Foo<'static, 'b>`
   --> $DIR/self-referential-4.rs:13:31
@@ -18,7 +20,9 @@ LL |     i
    |     - return type was inferred to be `&i32` here
    |
    = help: the trait `PartialEq<Foo<'static, 'b>>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `Moo<'static, 'a>`
   --> $DIR/self-referential-4.rs:20:31
@@ -29,7 +33,9 @@ LL |     i
    |     - return type was inferred to be `&i32` here
    |
    = help: the trait `PartialEq<Moo<'static, 'a>>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

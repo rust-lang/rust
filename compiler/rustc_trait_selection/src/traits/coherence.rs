@@ -29,7 +29,7 @@ use tracing::{debug, instrument, warn};
 use super::ObligationCtxt;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
 use crate::infer::InferOk;
-use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
+use crate::solve::inspect::{InferCtxtProofTreeExt, InspectGoal, ProofTreeVisitor};
 use crate::solve::{SolverDelegate, deeply_normalize_for_diagnostics, inspect};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
@@ -137,8 +137,8 @@ pub fn overlapping_trait_impls(
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
-    let impl1_args = tcx.impl_trait_ref(impl1_def_id).unwrap().skip_binder().args;
-    let impl2_args = tcx.impl_trait_ref(impl2_def_id).unwrap().skip_binder().args;
+    let impl1_args = tcx.impl_trait_ref(impl1_def_id).skip_binder().args;
+    let impl2_args = tcx.impl_trait_ref(impl2_def_id).skip_binder().args;
     let may_overlap =
         DeepRejectCtxt::relate_infer_infer(tcx).args_may_unify(impl1_args, impl2_args);
 
@@ -209,8 +209,7 @@ fn fresh_impl_header<'tcx>(
         impl_def_id,
         impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
-        trait_ref: is_of_trait
-            .then(|| tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args)),
+        trait_ref: is_of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args)),
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
@@ -736,9 +735,10 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
         // For bound predicates we simply call `infcx.enter_forall`
         // and then prove the resulting predicate as a nested goal.
         let Goal { param_env, predicate } = goal.goal();
-        let trait_ref = match predicate.kind().no_bound_vars() {
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)))
+        let predicate_kind = goal.infcx().enter_forall_and_leak_universe(predicate.kind());
+        let trait_ref = match predicate_kind {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.trait_ref,
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))
                 if matches!(
                     infcx.tcx.def_kind(proj.projection_term.def_id),
                     DefKind::AssocTy | DefKind::AssocConst

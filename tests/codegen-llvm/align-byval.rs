@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions:m68k x86_64-linux x86_64-windows i686-linux i686-windows
 
 //@[m68k] compile-flags: --target m68k-unknown-linux-gnu

@@ -1,6 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{is_integer_literal, is_path_diagnostic_item};
+use clippy_utils::is_integer_literal;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
@@ -35,7 +36,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     // Catching:
     // `std::mem::transmute(std::ptr::null::<i32>())`
     if let ExprKind::Call(func1, []) = arg.kind
-        && is_path_diagnostic_item(cx, func1, sym::ptr_null)
+        && func1.basic_res().is_diag_item(cx, sym::ptr_null)
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;

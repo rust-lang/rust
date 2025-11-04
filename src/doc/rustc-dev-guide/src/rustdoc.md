@@ -19,7 +19,7 @@ and [queries] are discussed in the linked chapters.
 
 [HIR]: ./hir.md
 [queries]: ./query.md
-[rd]: https://github.com/rust-lang/rust/tree/master/src/librustdoc
+[rd]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc
 
 `librustdoc` performs two major steps after that to render a set of
 documentation:
@@ -35,7 +35,7 @@ lots of details, but that's the high-level overview.
 using the project in [`src/tools/rustdoc`][bin]. Note that literally all that
 does is call the `main()` that's in this crate's `lib.rs`, though.)
 
-[bin]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
+[bin]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
 
 ## Cheat sheet
 

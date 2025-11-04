@@ -19,7 +19,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+    pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
@@ -377,6 +378,7 @@ enum LifetimeBinderKind {
     Function,
     Closure,
     ImplBlock,
+    ImplAssocType,
 }
 
 impl LifetimeBinderKind {
@@ -387,6 +389,7 @@ impl LifetimeBinderKind {
             PolyTrait => "bound",
             WhereBound => "bound",
             Item | ConstItem => "item",
+            ImplAssocType => "associated type",
             ImplBlock => "impl block",
             Function => "function",
             Closure => "closure",
@@ -968,7 +971,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                     self.visit_ty_pat(pat)
                 }
             }
-            TyPatKind::Err(_) => {}
+            TyPatKind::NotNull | TyPatKind::Err(_) => {}
         }
     }
 
@@ -1874,9 +1877,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     ty: ty.span,
                                 });
                             } else {
-                                self.r.dcx().emit_err(errors::AnonymousLifetimeNonGatReportError {
-                                    lifetime: lifetime.ident.span,
-                                });
+                                let mut err = self.r.dcx().create_err(
+                                    errors::AnonymousLifetimeNonGatReportError {
+                                        lifetime: lifetime.ident.span,
+                                    },
+                                );
+                                self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
+                                err.emit();
                             }
                         } else {
                             self.r.dcx().emit_err(errors::ElidedAnonymousLifetimeReportError {
@@ -1911,6 +1918,47 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
         self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
         self.report_missing_lifetime_specifiers(vec![missing_lifetime], None);
+    }
+
+    fn point_at_impl_lifetimes(&mut self, err: &mut Diag<'_>, i: usize, lifetime: Span) {
+        let Some((rib, span)) = self.lifetime_ribs[..i]
+            .iter()
+            .rev()
+            .skip(1)
+            .filter_map(|rib| match rib.kind {
+                LifetimeRibKind::Generics { span, kind: LifetimeBinderKind::ImplBlock, .. } => {
+                    Some((rib, span))
+                }
+                _ => None,
+            })
+            .next()
+        else {
+            return;
+        };
+        if !rib.bindings.is_empty() {
+            err.span_label(
+                span,
+                format!(
+                    "there {} named lifetime{} specified on the impl block you could use",
+                    if rib.bindings.len() == 1 { "is a" } else { "are" },
+                    pluralize!(rib.bindings.len()),
+                ),
+            );
+            if rib.bindings.len() == 1 {
+                err.span_suggestion_verbose(
+                    lifetime.shrink_to_hi(),
+                    "consider using the lifetime from the impl block",
+                    format!("{} ", rib.bindings.keys().next().unwrap()),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        } else {
+            err.span_label(
+                span,
+                "you could add a lifetime on the impl block, if the trait or the self type can \
+                 have one",
+            );
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2645,7 +2693,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::TraitAlias(_, ref generics, ref bounds) => {
+            ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -3352,7 +3400,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     &generics.params,
                     RibKind::AssocItem,
                     item.id,
-                    LifetimeBinderKind::Item,
+                    LifetimeBinderKind::ImplAssocType,
                     generics.span,
                     |this| {
                         this.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
@@ -3664,7 +3712,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
-        pats: &[Box<Pat>],
+        pats: &[Pat],
     ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
@@ -3679,11 +3727,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .collect::<Vec<_>>();
 
         // 2) Record any missing bindings or binding mode inconsistencies.
-        for (map_outer, pat_outer) in not_never_pats.iter() {
+        for &(ref map_outer, pat_outer) in not_never_pats.iter() {
             // Check against all arms except for the same pattern which is always self-consistent.
             let inners = not_never_pats.iter().filter(|(_, pat)| pat.id != pat_outer.id);
 
-            for (map, pat) in inners {
+            for &(ref map, pat) in inners {
                 for (&name, binding_inner) in map {
                     match map_outer.get(&name) {
                         None => {
@@ -3695,8 +3743,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     target: Default::default(),
                                     could_be_path: name.as_str().starts_with(char::is_uppercase),
                                 });
-                            binding_error.origin.push((binding_inner.span, (***pat).clone()));
-                            binding_error.target.push((***pat_outer).clone());
+                            binding_error.origin.push((binding_inner.span, pat.clone()));
+                            binding_error.target.push(pat_outer.clone());
                         }
                         Some(binding_outer) => {
                             if binding_outer.annotation != binding_inner.annotation {
@@ -5164,7 +5212,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::Union(_, generics, _)
             | ItemKind::Impl(Impl { generics, .. })
             | ItemKind::Trait(box Trait { generics, .. })
-            | ItemKind::TraitAlias(_, generics, _) => {
+            | ItemKind::TraitAlias(box TraitAlias { generics, .. }) => {
                 if let ItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                     self.collect_fn_info(sig.header, &sig.decl, item.id, &item.attrs);
                 }

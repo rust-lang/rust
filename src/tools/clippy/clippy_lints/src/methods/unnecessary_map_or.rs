@@ -3,10 +3,11 @@ use std::borrow::Cow;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::{Sugg, make_binop};
-use clippy_utils::ty::{get_type_diagnostic_name, implements_trait, is_copy};
+use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{get_parent_expr, is_from_proc_macro, path_to_local_id};
+use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use rustc_ast::LitKind::Bool;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PatKind};
@@ -54,7 +55,7 @@ pub(super) fn check<'a>(
         return;
     };
 
-    let variant = match get_type_diagnostic_name(cx, recv_ty) {
+    let variant = match recv_ty.opt_diag_name(cx) {
         Some(sym::Option) => Variant::Some,
         Some(sym::Result) => Variant::Ok,
         Some(_) | None => return,
@@ -75,11 +76,11 @@ pub(super) fn check<'a>(
             // .map_or(true, |x| x != y)
             // .map_or(true, |x| y != x) - swapped comparison
             && ((BinOpKind::Eq == op.node && !def_bool) || (BinOpKind::Ne == op.node && def_bool))
-            && let non_binding_location = if path_to_local_id(l, hir_id) { r } else { l }
+            && let non_binding_location = if l.res_local_id() == Some(hir_id) { r } else { l }
             && switch_to_eager_eval(cx, non_binding_location)
-            // xor, because if its both then that's a strange edge case and
+            // if its both then that's a strange edge case and
             // we can just ignore it, since by default clippy will error on this
-            && (path_to_local_id(l, hir_id) ^ path_to_local_id(r, hir_id))
+            && (l.res_local_id() == Some(hir_id)) != (r.res_local_id() == Some(hir_id))
             && !is_local_used(cx, non_binding_location, hir_id)
             && let typeck_results = cx.typeck_results()
             && let l_ty = typeck_results.expr_ty(l)

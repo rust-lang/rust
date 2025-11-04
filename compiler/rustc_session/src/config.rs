@@ -583,17 +583,6 @@ pub enum DebugInfoCompression {
     Zstd,
 }
 
-impl ToString for DebugInfoCompression {
-    fn to_string(&self) -> String {
-        match self {
-            DebugInfoCompression::None => "none",
-            DebugInfoCompression::Zlib => "zlib",
-            DebugInfoCompression::Zstd => "zstd",
-        }
-        .to_owned()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum MirStripDebugInfo {
     None,
@@ -1111,7 +1100,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq, Encodable, Decodable)]
+#[derive(Clone, Hash, Debug, HashStable_Generic, PartialEq, Eq, Encodable, Decodable)]
 pub enum OutFileName {
     Real(PathBuf),
     Stdout,
@@ -1211,13 +1200,22 @@ fn maybe_strip_file_name(mut path: PathBuf) -> PathBuf {
     if path.file_name().map_or(0, |name| name.len()) > MAX_FILENAME_LENGTH {
         let filename = path.file_name().unwrap().to_string_lossy();
         let hash_len = 64 / 4; // Hash64 is 64 bits encoded in hex
-        let stripped_len = filename.len() - MAX_FILENAME_LENGTH + hash_len;
+        let hyphen_len = 1; // the '-' we insert between hash and suffix
+
+        // number of bytes of suffix we can keep so that "hash-<suffix>" fits
+        let allowed_suffix = MAX_FILENAME_LENGTH.saturating_sub(hash_len + hyphen_len);
+
+        // number of bytes to remove from the start
+        let stripped_bytes = filename.len().saturating_sub(allowed_suffix);
+
+        // ensure we don't cut in a middle of a char
+        let split_at = filename.ceil_char_boundary(stripped_bytes);
 
         let mut hasher = StableHasher::new();
-        filename[..stripped_len].hash(&mut hasher);
+        filename[..split_at].hash(&mut hasher);
         let hash = hasher.finish::<Hash64>();
 
-        path.set_file_name(format!("{:x}-{}", hash, &filename[stripped_len..]));
+        path.set_file_name(format!("{:x}-{}", hash, &filename[split_at..]));
     }
     path
 }
@@ -1377,10 +1375,12 @@ bitflags::bitflags! {
         const DIAGNOSTICS = 1 << 1;
         /// Apply remappings to debug information
         const DEBUGINFO = 1 << 3;
+        /// Apply remappings to coverage information
+        const COVERAGE = 1 << 4;
 
-        /// An alias for `macro` and `debuginfo`. This ensures all paths in compiled
-        /// executables or libraries are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits();
+        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries and objects are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
     }
 }
 

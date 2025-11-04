@@ -499,7 +499,7 @@ pub enum AttributeKind {
     Coverage(Span, CoverageAttrKind),
 
     /// Represents `#[crate_name = ...]`
-    CrateName { name: Symbol, name_span: Span, attr_span: Span, style: AttrStyle },
+    CrateName { name: Symbol, name_span: Span, attr_span: Span },
 
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
@@ -516,7 +516,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_do_not_implement_via_object]`.
     DoNotImplementViaObject(Span),
 
-    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// Represents [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
@@ -637,6 +637,9 @@ pub enum AttributeKind {
     /// Represents `#[pattern_complexity_limit]`
     PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
+    /// Represents `#[pin_v2]`
+    PinV2(Span),
+
     /// Represents `#[pointee]`
     Pointee(Span),
 
@@ -669,6 +672,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
+
+    /// Represents `#[rustc_main]`.
+    RustcMain,
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,

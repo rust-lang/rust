@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: sparc sparcv8plus sparc_cpu_v9 sparc_feature_v8plus sparc_cpu_v9_feature_v8plus
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
 //@[sparc] needs-llvm-components: sparc
@@ -10,6 +10,7 @@
 //@[sparc_feature_v8plus] needs-llvm-components: sparc
 //@[sparc_cpu_v9_feature_v8plus] compile-flags: --target sparc-unknown-none-elf -C target-cpu=v9 -C target-feature=+v8plus
 //@[sparc_cpu_v9_feature_v8plus] needs-llvm-components: sparc
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(no_core, rustc_attrs, lang_items)]

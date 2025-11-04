@@ -181,7 +181,7 @@ pub(crate) mod system_time_internal {
     /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
     /// epoch used in the original algorithm.
     pub(crate) const fn to_uefi(dur: &Duration, timezone: i16, daylight: u8) -> Option<Time> {
-        // Check timzone validity
+        // Check timezone validity
         assert!(timezone <= 1440 && timezone >= -1440);
 
         // FIXME(#126043): use checked_sub_signed once stabilized

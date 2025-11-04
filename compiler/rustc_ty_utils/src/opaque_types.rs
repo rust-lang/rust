@@ -62,24 +62,6 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         self.span = old;
     }
 
-    fn parent_impl_trait_ref(&self) -> Option<ty::TraitRef<'tcx>> {
-        let parent = self.parent()?;
-        if matches!(self.tcx.def_kind(parent), DefKind::Impl { .. }) {
-            Some(self.tcx.impl_trait_ref(parent)?.instantiate_identity())
-        } else {
-            None
-        }
-    }
-
-    fn parent(&self) -> Option<LocalDefId> {
-        match self.tcx.def_kind(self.item) {
-            DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
-                Some(self.tcx.local_parent(self.item))
-            }
-            _ => None,
-        }
-    }
-
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
         let body = self.tcx.hir_body_owned_by(self.item).value;
@@ -236,13 +218,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // This avoids having to do normalization of `Self::AssocTy` by only
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
-                if let Some(impl_trait_ref) = self.parent_impl_trait_ref() {
+                if let Some(parent) = self.tcx.trait_impl_of_assoc(self.item.to_def_id()) {
+                    let impl_trait_ref = self.tcx.impl_trait_ref(parent).instantiate_identity();
                     // If the trait ref of the associated item and the impl differs,
                     // then we can't use the impl's identity args below, so
                     // just skip.
                     if alias_ty.trait_ref(self.tcx) == impl_trait_ref {
-                        let parent = self.parent().expect("we should have a parent here");
-
                         for &assoc in self.tcx.associated_items(parent).in_definition_order() {
                             trace!(?assoc);
                             if assoc.expect_trait_impl() != Ok(alias_ty.def_id) {

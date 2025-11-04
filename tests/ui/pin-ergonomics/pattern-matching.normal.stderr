@@ -1,0 +1,242 @@
+error[E0658]: the `#[pin_v2]` attribute is an experimental feature
+  --> $DIR/pattern-matching.rs:12:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[pin_v2]` attribute is an experimental feature
+  --> $DIR/pattern-matching.rs:18:1
+   |
+LL | #[pin_v2]
+   | ^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = help: add `#![feature(pin_ergonomics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:33:9
+   |
+LL |     let Foo { x, y } = foo_mut;
+   |         ^^^^^^^^^^^^   ------- this expression has type `Pin<&mut Foo<T, U>>`
+   |         |
+   |         expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&mut Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x, y } = *foo_mut;
+   |                        +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:38:9
+   |
+LL |     let Foo { x, y } = foo_const;
+   |         ^^^^^^^^^^^^   --------- this expression has type `Pin<&Foo<T, U>>`
+   |         |
+   |         expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
+   |
+   = note: expected struct `Pin<&Foo<T, U>>`
+              found struct `Foo<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let Foo { x, y } = *foo_const;
+   |                        +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:46:9
+   |
+LL |     match bar_mut {
+   |           ------- this expression has type `Pin<&mut Bar<T, U>>`
+LL |         Bar::Foo(x, y) => {
+   |         ^^^^^^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+                found enum `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *bar_mut {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:51:18
+   |
+LL |         _ if let Bar::Bar { x, y } = bar_mut => {
+   |                  ^^^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut Bar<T, U>>`
+   |                  |
+   |                  expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&mut Bar<T, U>>`
+                found enum `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         _ if let Bar::Bar { x, y } = *bar_mut => {
+   |                                      +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:59:9
+   |
+LL |     match bar_const {
+   |           --------- this expression has type `Pin<&Bar<T, U>>`
+LL |         Bar::Bar { x, y } => {
+   |         ^^^^^^^^^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&Bar<T, U>>`
+                found enum `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *bar_const {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:64:18
+   |
+LL |         _ if let Bar::Foo(x, y) = bar_const => {
+   |                  ^^^^^^^^^^^^^^   --------- this expression has type `Pin<&Bar<T, U>>`
+   |                  |
+   |                  expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
+   |
+   = note: expected struct `Pin<&Bar<T, U>>`
+                found enum `Bar<_, _>`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         _ if let Bar::Foo(x, y) = *bar_const => {
+   |                                   +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:74:9
+   |
+LL |     let (Foo { x, y },) = foo_mut;
+   |         ^^^^^^^^^^^^^^^   ------- this expression has type `Pin<&mut (Foo<T, U>,)>`
+   |         |
+   |         expected `Pin<&mut (Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&mut (Foo<T, U>,)>`
+               found tuple `(_,)`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let (Foo { x, y },) = *foo_mut;
+   |                           +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:78:9
+   |
+LL |     let (Foo { x, y },) = foo_const;
+   |         ^^^^^^^^^^^^^^^   --------- this expression has type `Pin<&(Foo<T, U>,)>`
+   |         |
+   |         expected `Pin<&(Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&(Foo<T, U>,)>`
+               found tuple `(_,)`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     let (Foo { x, y },) = *foo_const;
+   |                           +
+
+error[E0529]: expected an array or slice, found `Pin<&mut [Foo<T, U>; 1]>`
+  --> $DIR/pattern-matching.rs:85:9
+   |
+LL |     let [Foo { x, y }] = foo_mut;
+   |         ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [Foo<T, U>; 1]>`
+
+error[E0529]: expected an array or slice, found `Pin<&[Foo<T, U>; 1]>`
+  --> $DIR/pattern-matching.rs:89:9
+   |
+LL |     let [Foo { x, y }] = foo_const;
+   |         ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[Foo<T, U>; 1]>`
+
+error[E0529]: expected an array or slice, found `Pin<&mut [Foo<T, U>]>`
+  --> $DIR/pattern-matching.rs:96:12
+   |
+LL |     if let [Foo { x, y }] = foo_mut {
+   |            ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&mut [Foo<T, U>]>`
+
+error[E0529]: expected an array or slice, found `Pin<&[Foo<T, U>]>`
+  --> $DIR/pattern-matching.rs:101:12
+   |
+LL |     if let [Foo { x, y }] = foo_const {
+   |            ^^^^^^^^^^^^^^ pattern cannot match with input type `Pin<&[Foo<T, U>]>`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:109:5
+   |
+LL |     (&mut x,): Pin<&'a mut (&'a mut Foo<T, U>,)>,
+   |     ^^^^^^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut (&mut Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&'a mut (&'a mut Foo<T, U>,)>`
+               found tuple `(_,)`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:115:5
+   |
+LL |     (&mut x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
+   |     ^^^^^^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut &mut (Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&'a mut &'a mut (Foo<T, U>,)>`
+               found tuple `(_,)`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:121:5
+   |
+LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>,
+   |     ^^^^^^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut (&mut Foo<T, U>,)>`, found `&mut _`
+   |
+   = note:         expected struct `Pin<&'a mut (&'a mut Foo<T, U>,)>`
+           found mutable reference `&mut _`
+help: you might have meant to use field `pointer` whose type is `&'a mut (&'a mut Foo<T, U>,)`
+   |
+LL |     &mut (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>.pointer,
+   |                                                 ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:127:5
+   |
+LL |     &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
+   |     ^^^^^^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut &mut (Foo<T, U>,)>`, found `&mut _`
+   |
+   = note:         expected struct `Pin<&'a mut &'a mut (Foo<T, U>,)>`
+           found mutable reference `&mut _`
+help: you might have meant to use field `pointer` whose type is `&'a mut &'a mut (Foo<T, U>,)`
+   |
+LL |     &mut (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>.pointer,
+   |                                                 ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:133:5
+   |
+LL |     (x,): Pin<&'a mut (&'a mut Foo<T, U>,)>,
+   |     ^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut (&mut Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&'a mut (&'a mut Foo<T, U>,)>`
+               found tuple `(_,)`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-matching.rs:139:5
+   |
+LL |     (x,): Pin<&'a mut &'a mut (Foo<T, U>,)>,
+   |     ^^^^  --------------------------------- expected due to this
+   |     |
+   |     expected `Pin<&mut &mut (Foo<T, U>,)>`, found `(_,)`
+   |
+   = note: expected struct `Pin<&'a mut &'a mut (Foo<T, U>,)>`
+               found tuple `(_,)`
+
+error: aborting due to 20 previous errors
+
+Some errors have detailed explanations: E0308, E0529, E0658.
+For more information about an error, try `rustc --explain E0308`.

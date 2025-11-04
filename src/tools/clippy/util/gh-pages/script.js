@@ -1,22 +1,11 @@
 "use strict";
 
 window.searchState = {
-    timeout: null,
     inputElem: document.getElementById("search-input"),
     lastSearch: '',
     clearInput: () => {
         searchState.inputElem.value = "";
         searchState.filterLints();
-    },
-    clearInputTimeout: () => {
-        if (searchState.timeout !== null) {
-            clearTimeout(searchState.timeout);
-            searchState.timeout = null
-        }
-    },
-    resetInputTimeout: () => {
-        searchState.clearInputTimeout();
-        setTimeout(searchState.filterLints, 50);
     },
     filterLints: () => {
         function matchesSearch(lint, terms, searchStr) {
@@ -41,8 +30,6 @@ window.searchState = {
             }
             return true;
         }
-
-        searchState.clearInputTimeout();
 
         let searchStr = searchState.inputElem.value.trim().toLowerCase();
         if (searchStr.startsWith("clippy::")) {
@@ -79,7 +66,7 @@ function handleInputChanged(event) {
     if (event.target !== document.activeElement) {
         return;
     }
-    searchState.resetInputTimeout();
+    searchState.filterLints();
 }
 
 function handleShortcut(ev) {
@@ -149,27 +136,25 @@ function lintAnchor(event) {
     expandLint(id);
 }
 
+const clipboardTimeouts = new Map();
 function copyToClipboard(event) {
     event.preventDefault();
     event.stopPropagation();
 
     const clipboard = event.target;
 
-    let resetClipboardTimeout = null;
-    const resetClipboardIcon = clipboard.innerHTML;
-
-    function resetClipboard() {
-        resetClipboardTimeout = null;
-        clipboard.innerHTML = resetClipboardIcon;
-    }
-
     navigator.clipboard.writeText("clippy::" + clipboard.parentElement.id.slice(5));
 
-    clipboard.innerHTML = "&#10003;";
-    if (resetClipboardTimeout !== null) {
-        clearTimeout(resetClipboardTimeout);
-    }
-    resetClipboardTimeout = setTimeout(resetClipboard, 1000);
+    clipboard.textContent = "✓";
+
+    clearTimeout(clipboardTimeouts.get(clipboard));
+    clipboardTimeouts.set(
+        clipboard,
+        setTimeout(() => {
+            clipboard.textContent = "📋";
+            clipboardTimeouts.delete(clipboard);
+        }, 1000)
+    );
 }
 
 function handleBlur(event, elementId) {
@@ -487,14 +472,6 @@ function generateSettings() {
     setupDropdown("version-filter");
 }
 
-function generateSearch() {
-    searchState.inputElem.addEventListener("change", handleInputChanged);
-    searchState.inputElem.addEventListener("input", handleInputChanged);
-    searchState.inputElem.addEventListener("keydown", handleInputChanged);
-    searchState.inputElem.addEventListener("keyup", handleInputChanged);
-    searchState.inputElem.addEventListener("paste", handleInputChanged);
-}
-
 function scrollToLint(lintId) {
     const target = document.getElementById(lintId);
     if (!target) {
@@ -540,6 +517,8 @@ function parseURLFilters() {
 }
 
 function addListeners() {
+    searchState.inputElem.addEventListener("input", handleInputChanged);
+
     disableShortcutsButton.addEventListener("change", () => {
         disableShortcuts = disableShortcutsButton.checked;
         storeValue("disable-shortcuts", disableShortcuts);
@@ -594,7 +573,6 @@ disableShortcutsButton.checked = disableShortcuts;
 addListeners();
 highlightLazily();
 generateSettings();
-generateSearch();
 parseURLFilters();
 scrollToLintByURL();
 filters.filterLints();

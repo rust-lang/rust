@@ -1,6 +1,6 @@
 // Test LVI load hardening on SGX enclave code, specifically that `ret` is rewritten.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target x86_64-fortanix-unknown-sgx -Copt-level=0
 //@ needs-llvm-components: x86

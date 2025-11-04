@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_config::types::PubUnderscoreFieldsBehaviour;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::is_path_lang_item;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use rustc_hir::{FieldDef, Item, ItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
                 // We ignore fields that have `#[doc(hidden)]`.
                 && !is_doc_hidden(cx.tcx.hir_attrs(field.hir_id))
                 // We ignore fields that are `PhantomData`.
-                && !is_path_lang_item(cx, field.ty, LangItem::PhantomData)
+                && !field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
             {
                 span_lint_hir_and_then(
                     cx,

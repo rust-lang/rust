@@ -83,8 +83,12 @@ error[E0277]: the trait bound `for<'a> &'a (): Qux<'b>` is not satisfied
 LL | fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Qux<'b>> {}
    |                                                                               ^^^^^^^^^^^^ the trait `for<'a> Qux<'b>` is not implemented for `&'a ()`
    |
-   = help: the trait `Qux<'b>` is not implemented for `&'a ()`
-           but trait `Qux<'_>` is implemented for `()`
+help: the trait `Qux<'b>` is not implemented for `&'a ()`
+      but trait `Qux<'_>` is implemented for `()`
+  --> $DIR/nested-rpit-hrtb.rs:22:1
+   |
+LL | impl Qux<'_> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
 error: implementation of `Bar` is not general enough
@@ -102,8 +106,12 @@ error[E0277]: the trait bound `for<'a, 'b> &'a (): Qux<'b>` is not satisfied
 LL | fn two_htrb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Qux<'b>> {}
    |                                                                ^^^^^^^^^^^^^^^^^^^^ the trait `for<'a, 'b> Qux<'b>` is not implemented for `&'a ()`
    |
-   = help: the trait `Qux<'b>` is not implemented for `&'a ()`
-           but trait `Qux<'_>` is implemented for `()`
+help: the trait `Qux<'b>` is not implemented for `&'a ()`
+      but trait `Qux<'_>` is implemented for `()`
+  --> $DIR/nested-rpit-hrtb.rs:22:1
+   |
+LL | impl Qux<'_> for () {}
+   | ^^^^^^^^^^^^^^^^^^^
    = help: for that trait implementation, expected `()`, found `&'a ()`
 
 error: aborting due to 9 previous errors
