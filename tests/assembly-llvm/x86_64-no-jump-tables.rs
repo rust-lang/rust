@@ -1,10 +1,10 @@
-// Test that jump tables are (not) emitted when the `-Zno-jump-tables`
+// Test that jump tables are (not) emitted when the `-Cjump-tables=no`
 // flag is (not) set.
 
 //@ revisions: unset set
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3
-//@ [set] compile-flags: -Zno-jump-tables
+//@ [set] compile-flags: -Cjump-tables=no
 //@ only-x86_64
 //@ ignore-sgx
 
