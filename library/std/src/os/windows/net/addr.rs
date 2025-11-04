@@ -1,5 +1,6 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "56533")]
 
+use crate::mem::offset_of;
 use crate::os::raw::{c_char, c_int};
 use crate::path::Path;
 use crate::sys::c::{self, SOCKADDR};
