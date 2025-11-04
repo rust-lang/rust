@@ -14,7 +14,7 @@ use crate::{LlvmCodegenBackend, SimpleCx, attributes};
 
 pub(crate) fn handle_gpu_code<'ll>(
     _cgcx: &CodegenContext<LlvmCodegenBackend>,
-    _cx: &'ll SimpleCx<'_>,
+    cx: &'ll SimpleCx<'_>,
 ) {
     /*
     // The offload memory transfer type for each kernel
@@ -259,15 +259,14 @@ pub(crate) fn add_global<'ll>(
 // This function returns a memtransfer value which encodes how arguments to this kernel shall be
 // mapped to/from the gpu. It also returns a region_id with the name of this kernel, to be
 // concatenated into the list of region_ids.
-pub(crate) fn gen_define_handling<'ll, 'tcx>(
+pub(crate) fn gen_define_handling<'ll>(
     cx: &SimpleCx<'ll>,
-    tcx: TyCtxt<'tcx>,
-    kernel: &'ll llvm::Value,
+    llfn: &'ll llvm::Value,
     offload_entry_ty: &'ll llvm::Type,
-    metadata: Vec<OffloadMetadata>,
+    metadata: &Vec<OffloadMetadata>,
     symbol: &str,
 ) -> (&'ll llvm::Value, &'ll llvm::Value) {
-    let types = cx.func_params_types(cx.get_type_of_global(kernel));
+    let types = cx.func_params_types(cx.get_type_of_global(llfn));
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
     let ptr_meta = types
@@ -277,7 +276,7 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
             rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
             _ => None,
         })
-        .collect::<Vec<OffloadMetadata>>();
+        .collect::<Vec<_>>();
 
     let ptr_sizes = ptr_meta.iter().map(|m| m.payload_size).collect::<Vec<_>>();
     let ptr_transfer = ptr_meta.iter().map(|m| m.mode as u64 | 0x20).collect::<Vec<_>>();
@@ -286,7 +285,7 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     // A follow-up pr will track these from the frontend, where we still have Rust types.
     // Then, we will be able to figure out that e.g. `&[f32;256]` will result in 4*256 bytes.
     // I decided that 1024 bytes is a great placeholder value for now.
-    add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
+    let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
     // A non-mutable reference or pointer will be 1, an array that's not read, but fully overwritten
@@ -326,6 +325,8 @@ pub(crate) fn gen_define_handling<'ll, 'tcx>(
     llvm::set_alignment(llglobal, Align::EIGHT);
     let c_section_name = CString::new("llvm_offload_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
+
+    add_to_llvm_used(cx, &[offload_sizes, memtransfer_types, region_id, llglobal]);
     (memtransfer_types, region_id)
 }
 
@@ -367,11 +368,10 @@ fn declare_offload_fn<'ll>(
 pub(crate) fn gen_call_handling<'ll>(
     cx: &SimpleCx<'ll>,
     bb: &BasicBlock,
-    kernel: &'ll llvm::Value,
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
     llfn: &'ll Value,
-    metadata: Vec<OffloadMetadata>,
+    metadata: &Vec<OffloadMetadata>,
 ) {
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
@@ -386,7 +386,7 @@ pub(crate) fn gen_call_handling<'ll>(
 
     let mut builder = SBuilder::build(cx, bb);
 
-    let types = cx.func_params_types(cx.get_type_of_global(kernel));
+    let types = cx.func_params_types(cx.get_type_of_global(llfn));
     let num_args = types.len() as u64;
 
     // Step 0)
@@ -442,7 +442,7 @@ pub(crate) fn gen_call_handling<'ll>(
         // As mentioned above, we don't use Rust type information yet. So for now we will just
         // assume that we have 1024 bytes, 256 f32 values.
         // FIXME(offload): write an offload frontend and handle arbitrary types.
-        builder.store(cx.get_const_i64(metadata[i].payload_size), gep3, Align::EIGHT);
+        builder.store(cx.get_const_i64(metadata[i as usize].payload_size), gep3, Align::EIGHT);
     }
 
     // For now we have a very simplistic indexing scheme into our
@@ -516,4 +516,42 @@ pub(crate) fn gen_call_handling<'ll>(
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 
     drop(builder);
+}
+
+// TODO(Sa4dUs): check if there's a better way of doing this, also move to a proper location
+fn add_to_llvm_used<'ll>(cx: &'ll SimpleCx<'_>, globals: &[&'ll Value]) {
+    let ptr_ty = cx.type_ptr();
+    let arr_ty = cx.type_array(ptr_ty, globals.len() as u64);
+    let arr_val = cx.const_array(ptr_ty, globals);
+
+    let name = CString::new("llvm.used").unwrap();
+
+    let used_global_opt = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, name.as_ptr()) };
+
+    if used_global_opt.is_none() {
+        let new_global = unsafe { llvm::LLVMAddGlobal(cx.llmod, arr_ty, name.as_ptr()) };
+        unsafe { llvm::LLVMSetLinkage(new_global, llvm::Linkage::AppendingLinkage) };
+        unsafe {
+            llvm::LLVMSetSection(new_global, CString::new("llvm.metadata").unwrap().as_ptr())
+        };
+        unsafe { llvm::LLVMSetInitializer(new_global, arr_val) };
+        llvm::LLVMSetGlobalConstant(new_global, llvm::TRUE);
+        return;
+    }
+
+    let used_global = used_global_opt.expect("expected @llvm.used");
+    let mut combined: Vec<&'ll Value> = Vec::new();
+
+    if let Some(existing_init) = llvm::LLVMGetInitializer(used_global) {
+        let num_elems = unsafe { llvm::LLVMGetNumOperands(existing_init) };
+        for i in 0..num_elems {
+            if let Some(elem) = unsafe { llvm::LLVMGetOperand(existing_init, i) } {
+                combined.push(elem);
+            }
+        }
+    }
+
+    combined.extend_from_slice(globals);
+    let new_arr = cx.const_array(ptr_ty, &combined);
+    unsafe { llvm::LLVMSetInitializer(used_global, new_arr) };
 }

@@ -1266,9 +1266,6 @@ fn codegen_offload<'ll, 'tcx>(
     };
 
     let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target.clone(), LOCAL_CRATE);
-    let Some(kernel) = cx.get_function(&target_symbol) else {
-        bug!("could not find target function")
-    };
 
     let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
 
@@ -1277,29 +1274,26 @@ fn codegen_offload<'ll, 'tcx>(
     let inputs = sig.inputs();
 
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+    let llfn = bx.llfn();
 
     // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
     let (memtransfer_type, region_id) = crate::builder::gpu_offload::gen_define_handling(
         cx,
-        tcx,
-        kernel,
+        llfn,
         offload_entry_ty,
-        metadata,
+        &metadata,
         &target_symbol,
     );
-
-    let llfn = bx.llfn();
 
     // TODO(Sa4dUs): this is just to a void lifetime's issues
     let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
     crate::builder::gpu_offload::gen_call_handling(
         cx,
         bb,
-        kernel,
         &[memtransfer_type],
         &[region_id],
         llfn,
-        metadata,
+        &metadata,
     );
 }
 

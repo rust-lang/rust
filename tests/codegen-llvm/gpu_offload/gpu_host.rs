@@ -11,12 +11,13 @@
 // when inside of a function called main. This, too, is a temporary workaround for not having a
 // frontend.
 
+#![feature(core_intrinsics)]
 #![no_main]
 
 #[unsafe(no_mangle)]
 fn main() {
     let mut x = [3.0; 256];
-    kernel_1(&mut x);
+    kernel(&mut x);
     core::hint::black_box(&x);
 }
 
@@ -25,13 +26,14 @@ fn main() {
 // CHECK: %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
 // CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 
-// CHECK: @.offload_sizes.1 = private unnamed_addr constant [1 x i64] [i64 1024]
-// CHECK: @.offload_maptypes.1 = private unnamed_addr constant [1 x i64] [i64 35]
-// CHECK: @.kernel_1.region_id = weak unnamed_addr constant i8 0
-// CHECK: @.offloading.entry_name.1 = internal unnamed_addr constant [9 x i8] c"kernel_1\00", section ".llvm.rodata.offloading", align 1
-// CHECK: @.offloading.entry.kernel_1 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.kernel_1.region_id, ptr @.offloading.entry_name.1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
-// CHECK: @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
-// CHECK: @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+// CHECK: @.offload_sizes._kernel = private unnamed_addr constant [1 x i64] [i64 1024]
+// CHECK: @.offload_maptypes._kernel = private unnamed_addr constant [1 x i64] [i64 35]
+// CHECK: @._kernel.region_id = weak unnamed_addr constant i8 0
+// CHECK: @.offloading.entry_name._kernel = internal unnamed_addr constant [8 x i8] c"_kernel\00", section ".llvm.rodata.offloading", align 1
+// CHECK: @.offloading.entry._kernel = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel.region_id, ptr @.offloading.entry_name._kernel, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
+
+// CHECK: @anon.{{.*}}.0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+// CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.{{.*}}.0 }, align 8
 
 // CHECK:  Function Attrs:
 // CHECK-NEXT: define{{( dso_local)?}} void @main()
@@ -99,7 +101,13 @@ fn main() {
 
 #[unsafe(no_mangle)]
 #[inline(never)]
-pub fn kernel_1(x: &mut [f32; 256]) {
+pub fn kernel(x: &mut [f32; 256]) {
+    core::intrinsics::offload(_kernel)
+}
+
+#[unsafe(no_mangle)]
+#[inline(never)]
+pub fn _kernel(x: &mut [f32; 256]) {
     for i in 0..256 {
         x[i] = 21.0;
     }
