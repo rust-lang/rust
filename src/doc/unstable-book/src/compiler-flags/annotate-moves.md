@@ -62,6 +62,14 @@ Stack traces will show the operations:
 2: my_function
 ```
 
+The `compiler_move` and `compiler_copy` functions have two generic parameters:
+the type being moved/copied and its size in bytes. The size is identical to
+`size_of::<T>()`, and is present just so that it's easy to immediately tell how
+large the copy is.
+
+Note that this requires v0 mangling to be properly encoded; legacy mangling does
+not substitute these with a specific type and size.
+
 ## Example
 
 ```rust
