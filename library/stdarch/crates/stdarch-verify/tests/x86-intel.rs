@@ -304,6 +304,14 @@ fn verify_all_signatures() {
             if feature.contains("sse4a") || feature.contains("tbm") {
                 continue;
             }
+
+            // FIXME: these have not been added to Intrinsics Guide yet
+            if ["amx-avx512", "amx-fp8", "amx-movrs", "amx-tf32"]
+                .iter()
+                .any(|f| feature.contains(f))
+            {
+                continue;
+            }
         }
 
         let intel = match map.remove(rust.name) {
