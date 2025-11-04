@@ -2508,7 +2508,7 @@ fn main() {
 }
 
 #[test]
-fn foo() {
+fn module_inside_block() {
     check_types(
         r#"
 fn foo() {
