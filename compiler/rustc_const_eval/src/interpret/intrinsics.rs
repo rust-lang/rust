@@ -333,29 +333,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let r = self.read_immediate(&args[1])?;
                 self.exact_div(&l, &r, dest)?;
             }
-            sym::rotate_left | sym::rotate_right => {
-                // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
-                // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                let layout_val = self.layout_of(instance_args.type_at(0))?;
-                let val = self.read_scalar(&args[0])?;
-                let val_bits = val.to_bits(layout_val.size)?; // sign is ignored here
-
-                let layout_raw_shift = self.layout_of(self.tcx.types.u32)?;
-                let raw_shift = self.read_scalar(&args[1])?;
-                let raw_shift_bits = raw_shift.to_bits(layout_raw_shift.size)?;
-
-                let width_bits = u128::from(layout_val.size.bits());
-                let shift_bits = raw_shift_bits % width_bits;
-                let inv_shift_bits = (width_bits - shift_bits) % width_bits;
-                let result_bits = if intrinsic_name == sym::rotate_left {
-                    (val_bits << shift_bits) | (val_bits >> inv_shift_bits)
-                } else {
-                    (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
-                };
-                let truncated_bits = layout_val.size.truncate(result_bits);
-                let result = Scalar::from_uint(truncated_bits, layout_val.size);
-                self.write_scalar(result, dest)?;
-            }
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
