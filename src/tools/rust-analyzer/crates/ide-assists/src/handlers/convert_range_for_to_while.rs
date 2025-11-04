@@ -43,9 +43,14 @@ pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<
     let body = for_.loop_body()?;
     let last = previous_non_trivia_token(body.stmt_list()?.r_curly_token()?)?;
 
+    let description = if end.is_some() {
+        "Replace with while expression"
+    } else {
+        "Replace with loop expression"
+    };
     acc.add(
         AssistId::refactor("convert_range_for_to_while"),
-        "Replace to while or loop",
+        description,
         for_.syntax().text_range(),
         |builder| {
             let mut edit = builder.make_editor(for_.syntax());
