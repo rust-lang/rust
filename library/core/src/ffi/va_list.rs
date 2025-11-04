@@ -8,11 +8,29 @@ use crate::fmt;
 use crate::intrinsics::{va_arg, va_copy};
 use crate::marker::PhantomCovariantLifetime;
 
-// Most targets explicitly specify the layout of `va_list`, this layout is matched here.
-// For `va_list`s which are single-element array in C (and therefore experience array-to-pointer
-// decay when passed as arguments in C), the `VaList` struct is annotated with
-// `#[rustc_pass_indirectly_in_non_rustic_abis]`. This ensures that the compiler uses the correct
-// ABI for functions like `extern "C" fn takes_va_list(va: VaList<'_>)` by passing `va` indirectly.
+// There are currently three flavors of how a C `va_list` is implemented for
+// targets that Rust supports:
+//
+// - `va_list` is an opaque pointer
+// - `va_list` is a struct
+// - `va_list` is a single-element array, containing a struct
+//
+// The opaque pointer approach is the simplest to implement: the pointer just
+// points to an array of arguments on the caller's stack.
+//
+// The struct and single-element array variants are more complex, but
+// potentially more efficient because the additional state makes it
+// possible to pass variadic arguments via registers.
+//
+// The Rust `VaList` type is ABI-compatible with the C `va_list`.
+// The struct and pointer cases straightforwardly map to their Rust equivalents,
+// but the single-element array case is special: in C, this type is subject to
+// array-to-pointer decay.
+//
+// The `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute is used to match
+// the pointer decay behavior in Rust, while otherwise matching Rust semantics.
+// This attribute ensures that the compiler uses the correct ABI for functions
+// like `extern "C" fn takes_va_list(va: VaList<'_>)` by passing `va` indirectly.
 crate::cfg_select! {
     all(
         target_arch = "aarch64",
@@ -20,8 +38,9 @@ crate::cfg_select! {
         not(target_os = "uefi"),
         not(windows),
     ) => {
-        /// AArch64 ABI implementation of a `va_list`. See the
-        /// [AArch64 Procedure Call Standard] for more details.
+        /// AArch64 ABI implementation of a `va_list`.
+        ///
+        /// See the [AArch64 Procedure Call Standard] for more details.
         ///
         /// [AArch64 Procedure Call Standard]:
         /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
@@ -37,6 +56,12 @@ crate::cfg_select! {
     }
     all(target_arch = "powerpc", not(target_os = "uefi"), not(windows)) => {
         /// PowerPC ABI implementation of a `va_list`.
+        ///
+        /// See the [LLVM source] and [GCC header] for more details.
+        ///
+        /// [LLVM source]:
+        /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/PowerPC/PPCISelLowering.cpp#L4089-L4111
+        /// [GCC header]: https://web.mit.edu/darwin/src/modules/gcc/gcc/ginclude/va-ppc.h
         #[repr(C)]
         #[derive(Debug)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
@@ -50,6 +75,11 @@ crate::cfg_select! {
     }
     target_arch = "s390x" => {
         /// s390x ABI implementation of a `va_list`.
+        ///
+        /// See the [S/390x ELF Application Binary Interface Supplement] for more details.
+        ///
+        /// [S/390x ELF Application Binary Interface Supplement]:
+        /// https://docs.google.com/gview?embedded=true&url=https://github.com/IBM/s390x-abi/releases/download/v1.7/lzsabi_s390x.pdf
         #[repr(C)]
         #[derive(Debug)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
@@ -61,7 +91,12 @@ crate::cfg_select! {
         }
     }
     all(target_arch = "x86_64", not(target_os = "uefi"), not(windows)) => {
-        /// x86_64 ABI implementation of a `va_list`.
+        /// x86_64 System V ABI implementation of a `va_list`.
+        ///
+        /// See the [System V AMD64 ABI] for more details.
+        ///
+        /// [System V AMD64 ABI]:
+        /// https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf
         #[repr(C)]
         #[derive(Debug)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
@@ -74,6 +109,11 @@ crate::cfg_select! {
     }
     target_arch = "xtensa" => {
         /// Xtensa ABI implementation of a `va_list`.
+        ///
+        /// See the [LLVM source] for more details.
+        ///
+        /// [LLVM source]:
+        /// https://github.com/llvm/llvm-project/blob/af9a4263a1a209953a1d339ef781a954e31268ff/llvm/lib/Target/Xtensa/XtensaISelLowering.cpp#L1211-L1215
         #[repr(C)]
         #[derive(Debug)]
         #[rustc_pass_indirectly_in_non_rustic_abis]
@@ -88,6 +128,7 @@ crate::cfg_select! {
     //
     // - apple aarch64 (see https://github.com/rust-lang/rust/pull/56599)
     // - windows
+    // - powerpc64 & powerpc64le
     // - uefi
     // - any other target for which we don't specify the `VaListInner` above
     //
