@@ -21,13 +21,15 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyVar};
 use rustc_span::Span;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use super::StructurallyRelateAliases;
 use super::combine::PredicateEmittingRelation;
-use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
+use crate::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace,
+};
 use crate::traits::{Obligation, PredicateObligations};
 
 #[derive(Clone, Copy)]
@@ -209,6 +211,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         super_combine_consts(self.infcx, self, a, b)
     }
 
+    #[instrument(level = "trace", skip(self))]
     fn binders<T>(
         &mut self,
         a: ty::Binder<'tcx, T>,
@@ -222,16 +225,35 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
             return Ok(a);
         }
 
-        debug!("binders(a={:?}, b={:?})", a, b);
-        if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
+        let instantiate_with_infer = |binder| {
+            let span = self.span();
+            let brct = BoundRegionConversionTime::HigherRankedType;
+            self.infcx.instantiate_binder_with_fresh_vars(span, brct, binder)
+        };
+        let r = match (a.no_bound_vars(), b.no_bound_vars()) {
             // When higher-ranked types are involved, computing the GLB/LUB is
             // very challenging, switch to invariance. This is obviously
             // overly conservative but works ok in practice.
-            self.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
-            Ok(a)
-        } else {
-            Ok(ty::Binder::dummy(self.relate(a.skip_binder(), b.skip_binder())?))
-        }
+            (None, None) => {
+                self.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)?;
+                return Ok(a);
+            }
+
+            // If we only have one type with bound vars then we convert
+            // it to a non higher-ranked signature, This should always
+            // be correct assuming we do not support subtyping of the form:
+            // `fn(&'smallest ()) <: for<'a> fn(&'a ())`
+            // but I don't think we currently do so or intend to start doing so.
+            //
+            // This is a bit of a special case but it was necessary for backwards
+            // compatibility when starting to properly leak checking in coercions.
+            (Some(a), None) => self.relate(a, instantiate_with_infer(b))?,
+            (None, Some(b)) => self.relate(instantiate_with_infer(a), b)?,
+
+            (Some(a), Some(b)) => self.relate(a, b)?,
+        };
+
+        Ok(ty::Binder::dummy(r))
     }
 }
 

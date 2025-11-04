@@ -50,8 +50,11 @@ fn lub_with_fnptr_leak_checking() {
 }
 
 fn order_dependence_closures() {
-    let lhs_closure = |_: &(), _: &'static ()| {};
-    let rhs_closure = |_: &'static (), _: &'static ()| {};
+    // We use a third parameter referencing bound vars so that
+    // lubbing is forced to equate binders instead of choosing
+    // the non-hr sig
+    let lhs_closure = |_: &(), _: &'static (), _: &()| {};
+    let rhs_closure = |_: &'static (), _: &'static (), _: &()| {};
 
     lub!(lhs_closure, rhs_closure);
     //~^ ERROR: `if` and `else` have incompatible types
@@ -61,8 +64,11 @@ fn order_dependence_closures() {
 }
 
 fn order_dependence_fndefs() {
-    fn lhs_fndef(_: &(), _: &'static ()) {}
-    fn rhs_fndef(_: &'static (), _: &'static ()) {}
+    // We use a third parameter referencing bound vars so that
+    // lubbing is forced to equate binders instead of choosing
+    // the non-hr sig
+    fn lhs_fndef(_: &(), _: &'static (), _: &()) {}
+    fn rhs_fndef(_: &'static (), _: &'static (), _: &()) {}
 
     lub!(lhs_fndef, rhs_fndef);
     //~^ ERROR: `if` and `else` have incompatible types
