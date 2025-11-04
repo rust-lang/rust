@@ -2093,6 +2093,8 @@ options! {
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`"),
+    jump_tables: bool = (true, parse_bool, [TRACKED],
+        "allow jump table and lookup table generation from switch case lowering (default: yes)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -2475,8 +2477,6 @@ options! {
         "omit DWARF address ranges that give faster lookups"),
     no_implied_bounds_compat: bool = (false, parse_bool, [TRACKED],
         "disable the compatibility version of the `implied_bounds_ty` query"),
-    no_jump_tables: bool = (false, parse_no_value, [TRACKED],
-        "disable the jump tables and lookup tables that can be generated from a switch case lowering"),
     no_leak_check: bool = (false, parse_no_value, [UNTRACKED],
         "disable the 'leak check' for subtyping; unsound, but useful for tests"),
     no_link: bool = (false, parse_no_value, [TRACKED],
