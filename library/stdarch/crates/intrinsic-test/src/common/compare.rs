@@ -11,16 +11,20 @@ fn runner_command(runner: &str) -> Command {
 }
 
 pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: &str) -> bool {
-    let c = runner_command(runner)
-        .arg("./intrinsic-test-programs")
-        .current_dir("c_programs")
-        .output();
-
-    let rust = runner_command(runner)
-        .arg(format!("./target/{target}/release/intrinsic-test-programs"))
-        .current_dir("rust_programs")
-        .output();
-
+    let (c, rust) = rayon::join(
+        || {
+            runner_command(runner)
+                .arg("./intrinsic-test-programs")
+                .current_dir("c_programs")
+                .output()
+        },
+        || {
+            runner_command(runner)
+                .arg(format!("./target/{target}/release/intrinsic-test-programs"))
+                .current_dir("rust_programs")
+                .output()
+        },
+    );
     let (c, rust) = match (c, rust) {
         (Ok(c), Ok(rust)) => (c, rust),
         a => panic!("{a:#?}"),
@@ -70,18 +74,22 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         .filter_map(|&&intrinsic| {
             let c_output = c_output_map.get(intrinsic).unwrap();
             let rust_output = rust_output_map.get(intrinsic).unwrap();
-            let diff = diff::lines(c_output, rust_output);
-            let diffs = diff
-                .into_iter()
-                .filter_map(|diff| match diff {
-                    diff::Result::Left(_) | diff::Result::Right(_) => Some(diff),
-                    diff::Result::Both(_, _) => None,
-                })
-                .collect_vec();
-            if diffs.len() > 0 {
-                Some((intrinsic, diffs))
-            } else {
+            if rust_output.to_string() == c_output.to_string() {
                 None
+            } else {
+                let diff = diff::lines(c_output, rust_output);
+                let diffs = diff
+                    .into_iter()
+                    .filter_map(|diff| match diff {
+                        diff::Result::Left(_) | diff::Result::Right(_) => Some(diff),
+                        diff::Result::Both(_, _) => None,
+                    })
+                    .collect_vec();
+                if diffs.len() > 0 {
+                    Some((intrinsic, diffs))
+                } else {
+                    None
+                }
             }
         })
         .inspect(|(intrinsic, diffs)| {
