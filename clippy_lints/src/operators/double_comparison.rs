@@ -39,6 +39,18 @@ pub(super) fn check(cx: &LateContext<'_>, op: BinOpKind, lhs: &Expr<'_>, rhs: &E
             | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Le) => {
                 "=="
             },
+            // x != y && x >= y => x > y
+            (BinOpKind::And, BinOpKind::Ne, BinOpKind::Ge)
+            // x >= y && x != y => x > y
+            | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Ne) => {
+                ">"
+            },
+            // x != y && x <= y => x < y
+            (BinOpKind::And, BinOpKind::Ne, BinOpKind::Le)
+            // x <= y && x != y => x < y
+            | (BinOpKind::And, BinOpKind::Le, BinOpKind::Ne) => {
+                "<"
+            },
             _ => return,
         };
 
