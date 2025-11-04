@@ -675,7 +675,7 @@ pub(crate) struct DiagMetadata<'ast> {
     current_trait_assoc_items: Option<&'ast [Box<AssocItem>]>,
 
     /// The current self type if inside an impl (used for better errors).
-    current_self_type: Option<Ty>,
+    pub(crate) current_self_type: Option<Ty>,
 
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,

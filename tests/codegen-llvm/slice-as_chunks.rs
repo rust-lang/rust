@@ -19,7 +19,7 @@ pub fn chunks4(x: &[u8]) -> &[[u8; 4]] {
 // CHECK-LABEL: @chunks4_with_remainder
 #[no_mangle]
 pub fn chunks4_with_remainder(x: &[u8]) -> (&[[u8; 4]], &[u8]) {
-    // CHECK-DAG: and i64 %x.1, -4
+    // CHECK-DAG: and i64 %x.1, [[#0x7FFFFFFFFFFFFFFC]]
     // CHECK-DAG: and i64 %x.1, 3
     // CHECK-DAG: lshr
     // CHECK-NOT: mul

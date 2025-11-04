@@ -8,6 +8,7 @@ LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
    |        |
    |        generic parameter used in this inner function
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bfnr<T, U, V: Baz<U>, W: Fn()>(y: T) {
@@ -25,6 +26,7 @@ LL |     fn baz<U,
 LL |            (y: T) {
    |                ^ use of generic parameter from outer item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn baz<T, U,
@@ -37,11 +39,16 @@ LL | impl<T> Iterator for A<T> {
    | ---- `Self` type implicitly declared here, by this `impl`
 ...
 LL |         fn helper(sel: &Self) -> u8 {
-   |            ------       ^^^^
-   |            |            |
-   |            |            use of `Self` from outer item
-   |            |            refer to the type directly here instead
+   |            ------       ^^^^ use of `Self` from outer item
+   |            |
    |            `Self` used in this inner function
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: refer to the type directly here instead
+   |
+LL -         fn helper(sel: &Self) -> u8 {
+LL +         fn helper(sel: &A<T>) -> u8 {
+   |
 
 error: aborting due to 3 previous errors
 

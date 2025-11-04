@@ -119,7 +119,7 @@ impl CppCompilation {
         output: &str,
     ) -> std::io::Result<std::process::Output> {
         let mut cmd = clone_command(&self.0);
-        cmd.args([input, "-c", "-o", output]);
+        cmd.args([input, "-v", "-c", "-o", output]);
         cmd.output()
     }
 

@@ -9,9 +9,9 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(debug_closure_helpers)]
 #![feature(iter_intersperse)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end

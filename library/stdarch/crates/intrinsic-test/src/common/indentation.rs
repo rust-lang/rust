@@ -10,6 +10,10 @@ impl Indentation {
     pub fn nested(self) -> Self {
         Self(self.0 + 1)
     }
+
+    pub fn nest_by(&self, additional_levels: u32) -> Self {
+        Self(self.0 + additional_levels)
+    }
 }
 
 impl std::fmt::Display for Indentation {

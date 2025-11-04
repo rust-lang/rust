@@ -8,6 +8,7 @@ LL |     fn bar(f: Box<dyn FnMut(T) -> T>) { }
    |        |
    |        generic parameter used in this inner function
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bar<T>(f: Box<dyn FnMut(T) -> T>) { }
@@ -23,6 +24,7 @@ LL |     fn bar(f: Box<dyn FnMut(T) -> T>) { }
    |        |
    |        generic parameter used in this inner function
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 help: try introducing a local generic parameter here
    |
 LL |     fn bar<T>(f: Box<dyn FnMut(T) -> T>) { }

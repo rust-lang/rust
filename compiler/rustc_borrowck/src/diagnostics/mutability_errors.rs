@@ -150,8 +150,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
             }
-            PlaceRef { local: _, projection: [proj_base @ .., ProjectionElem::Deref] } => {
-                if the_place_err.local == ty::CAPTURE_STRUCT_LOCAL
+            PlaceRef { local, projection: [proj_base @ .., ProjectionElem::Deref] } => {
+                if local == ty::CAPTURE_STRUCT_LOCAL
                     && proj_base.is_empty()
                     && !self.upvars.is_empty()
                 {
@@ -165,10 +165,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ", as `Fn` closures cannot mutate their captured variables".to_string()
                     }
                 } else {
-                    let source = self.borrowed_content_source(PlaceRef {
-                        local: the_place_err.local,
-                        projection: proj_base,
-                    });
+                    let source =
+                        self.borrowed_content_source(PlaceRef { local, projection: proj_base });
                     let pointer_type = source.describe_for_immutable_place(self.infcx.tcx);
                     opt_source = Some(source);
                     if let Some(desc) = self.describe_place(access_place.as_ref()) {
@@ -335,10 +333,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
                             binding_mode: BindingMode(ByRef::No, Mutability::Not),
                             opt_ty_info: Some(sp),
+                            pat_span,
                             ..
                         })) => {
                             if suggest {
                                 err.span_note(sp, "the binding is already a mutable borrow");
+                                err.span_suggestion_verbose(
+                                    pat_span.shrink_to_lo(),
+                                    "consider making the binding mutable if you need to reborrow \
+                                     multiple times",
+                                    "mut ".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
                             }
                         }
                         _ => {
@@ -356,9 +362,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             // give a best effort structured suggestion.
                             err.span_suggestion_verbose(
                                 source_info.span.with_hi(source_info.span.lo() + BytePos(5)),
-                                "try removing `&mut` here",
+                                "if there is only one mutable reborrow, remove the `&mut`",
                                 "",
-                                Applicability::MachineApplicable,
+                                Applicability::MaybeIncorrect,
                             );
                         } else {
                             // This can occur with things like `(&mut self).foo()`.
@@ -532,6 +538,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if local == ty::CAPTURE_STRUCT_LOCAL && !self.upvars.is_empty() =>
             {
+                self.point_at_binding_outside_closure(&mut err, local, access_place);
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
@@ -950,6 +957,50 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// When modifying a binding from inside of an `Fn` closure, point at the binding definition.
+    fn point_at_binding_outside_closure(
+        &self,
+        err: &mut Diag<'_>,
+        local: Local,
+        access_place: Place<'tcx>,
+    ) {
+        let place = access_place.as_ref();
+        for (index, elem) in place.projection.into_iter().enumerate() {
+            if let ProjectionElem::Deref = elem {
+                if index == 0 {
+                    if self.body.local_decls[local].is_ref_for_guard() {
+                        continue;
+                    }
+                    if let LocalInfo::StaticRef { .. } = *self.body.local_decls[local].local_info()
+                    {
+                        continue;
+                    }
+                }
+                if let Some(field) = self.is_upvar_field_projection(PlaceRef {
+                    local,
+                    projection: place.projection.split_at(index + 1).0,
+                }) {
+                    let var_index = field.index();
+                    let upvar = self.upvars[var_index];
+                    if let Some(hir_id) = upvar.info.capture_kind_expr_id {
+                        let node = self.infcx.tcx.hir_node(hir_id);
+                        if let hir::Node::Expr(expr) = node
+                            && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                            && let hir::def::Res::Local(hir_id) = path.res
+                            && let hir::Node::Pat(pat) = self.infcx.tcx.hir_node(hir_id)
+                        {
+                            let name = upvar.to_string(self.infcx.tcx);
+                            err.span_label(
+                                pat.span,
+                                format!("`{name}` declared here, outside the closure"),
+                            );
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
     fn expected_fn_found_fn_mut_call(&self, err: &mut Diag<'_>, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {act}"));
@@ -962,6 +1013,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let def_id = tcx.hir_enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
 
+        err.span_label(closure_span, "in this closure");
         // If the HIR node is a function or method call, get the DefId
         // of the callee function or method, the span, and args of the call expr
         let get_call_details = || {
@@ -1032,7 +1084,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if let Some(span) = arg {
                 err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                 err.span_label(call_span, "expects `Fn` instead of `FnMut`");
-                err.span_label(closure_span, "in this closure");
                 look_at_return = false;
             }
         }
@@ -1059,7 +1110,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         sig.decl.output.span(),
                         "change this to return `FnMut` instead of `Fn`",
                     );
-                    err.span_label(closure_span, "in this closure");
                 }
                 _ => {}
             }
