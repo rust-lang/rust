@@ -1,7 +1,5 @@
 /*
  * TODO(antoyo): implement equality in libgccjit based on https://zpz.github.io/blog/overloading-equality-operator-in-cpp-class-hierarchy/ (for type equality?)
- * TODO(antoyo): support #[inline] attributes.
- * TODO(antoyo): support LTO (gcc's equivalent to Full LTO is -flto -flto-partition=one — https://documentation.suse.com/sbp/all/html/SBP-GCC-10/index.html).
  * For Thin LTO, this might be helpful:
 // cspell:disable-next-line
  * In gcc 4.6 -fwhopr was removed and became default with -flto. The non-whopr path can still be executed via -flto-partition=none.
@@ -25,12 +23,6 @@
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
 
-// These crates are pulled from the sysroot because they are part of
-// rustc's public API, so we need to ensure version compatibility.
-extern crate smallvec;
-#[macro_use]
-extern crate tracing;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_apfloat;
@@ -44,6 +36,7 @@ extern crate rustc_hir;
 extern crate rustc_index;
 #[cfg(feature = "master")]
 extern crate rustc_interface;
+extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_middle;
 extern crate rustc_session;
@@ -89,7 +82,7 @@ use back::lto::{ThinBuffer, ThinData};
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn,
@@ -290,8 +283,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> Self::Module {
         let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
@@ -303,7 +295,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         };
 
         unsafe {
-            allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, &mut mods, module_name, methods);
         }
         mods
     }
