@@ -181,7 +181,6 @@ pub struct Thread<'tcx> {
 
     /// The index of the topmost user-relevant frame in `stack`. This field must contain
     /// the value produced by `get_top_user_relevant_frame`.
-    /// The `None` state here represents
     /// This field is a cache to reduce how often we call that method. The cache is manually
     /// maintained inside `MiriMachine::after_stack_push` and `MiriMachine::after_stack_pop`.
     top_user_relevant_frame: Option<usize>,
@@ -232,12 +231,21 @@ impl<'tcx> Thread<'tcx> {
     /// justifying the optimization that only pushes of user-relevant frames require updating the
     /// `top_user_relevant_frame` field.
     fn compute_top_user_relevant_frame(&self, skip: usize) -> Option<usize> {
-        self.stack
-            .iter()
-            .enumerate()
-            .rev()
-            .skip(skip)
-            .find_map(|(idx, frame)| if frame.extra.is_user_relevant { Some(idx) } else { None })
+        // We are search for the frame with maximum relevance.
+        let mut best = None;
+        for (idx, frame) in self.stack.iter().enumerate().rev().skip(skip) {
+            let relevance = frame.extra.user_relevance;
+            if relevance == u8::MAX {
+                // We can short-circuit this search.
+                return Some(idx);
+            }
+            if best.is_none_or(|(_best_idx, best_relevance)| best_relevance < relevance) {
+                // The previous best frame has strictly worse relevance, so despite us being lower
+                // in the stack, we win.
+                best = Some((idx, relevance));
+            }
+        }
+        best.map(|(idx, _relevance)| idx)
     }
 
     /// Re-compute the top user-relevant frame from scratch. `skip` indicates how many top frames
@@ -256,14 +264,20 @@ impl<'tcx> Thread<'tcx> {
     /// Returns the topmost frame that is considered user-relevant, or the
     /// top of the stack if there is no such frame, or `None` if the stack is empty.
     pub fn top_user_relevant_frame(&self) -> Option<usize> {
-        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         // This can be called upon creation of an allocation. We create allocations while setting up
         // parts of the Rust runtime when we do not have any stack frames yet, so we need to handle
         // empty stacks.
         self.top_user_relevant_frame.or_else(|| self.stack.len().checked_sub(1))
     }
 
+    pub fn current_user_relevance(&self) -> u8 {
+        self.top_user_relevant_frame()
+            .map(|frame_idx| self.stack[frame_idx].extra.user_relevance)
+            .unwrap_or(0)
+    }
+
     pub fn current_user_relevant_span(&self) -> Span {
+        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         self.top_user_relevant_frame()
             .map(|frame_idx| self.stack[frame_idx].current_span())
             .unwrap_or(rustc_span::DUMMY_SP)
