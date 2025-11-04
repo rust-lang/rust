@@ -41,10 +41,7 @@ pub fn sockaddr_un(path: &Path) -> io::Result<(c::sockaddr_un, c_int)> {
     Ok((addr, len as _))
 }
 fn sun_path_offset(addr: &c::sockaddr_un) -> usize {
-    // Work with an actual instance of the type since using a null pointer is UB
-    let base = addr as *const _ as usize;
-    let path = &addr.sun_path as *const _ as usize;
-    path - base
+    offset_of!(c::sockaddr_un, sun_path)
 }
 #[allow(dead_code)]
 pub struct SocketAddr {
