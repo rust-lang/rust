@@ -451,7 +451,7 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
+    let msg = msg.trim_prefix("error: ").to_string();
     cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
 }
 
