@@ -86,18 +86,12 @@ pub fn write_main_rs<'a>(
 
     writeln!(w, "fn main() {{")?;
 
-    writeln!(w, "    match std::env::args().nth(1).unwrap().as_str() {{")?;
-
     for binary in intrinsics {
-        writeln!(w, "        \"{binary}\" => run_{binary}(),")?;
+        writeln!(w, "    println!(\"############\");")?;
+        writeln!(w, "    println!(\"{binary}\");")?;
+        writeln!(w, "    run_{binary}();\n")?;
     }
 
-    writeln!(
-        w,
-        "        other => panic!(\"unknown intrinsic `{{}}`\", other),"
-    )?;
-
-    writeln!(w, "    }}")?;
     writeln!(w, "}}")?;
 
     Ok(())

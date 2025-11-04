@@ -147,22 +147,14 @@ pub fn write_main_cpp<'a>(
     }
 
     writeln!(w, "int main(int argc, char **argv) {{")?;
-    writeln!(w, "    std::string intrinsic_name = argv[1];")?;
-
-    writeln!(w, "    if (false) {{")?;
 
     for intrinsic in intrinsics {
-        writeln!(w, "    }} else if (intrinsic_name == \"{intrinsic}\") {{")?;
-        writeln!(w, "        return run_{intrinsic}();")?;
+        writeln!(w, "    std::cout << \"############\" << std::endl;")?;
+        writeln!(w, "    std::cout << \"{intrinsic}\" << std::endl;")?;
+        writeln!(w, "    run_{intrinsic}();\n")?;
     }
 
-    writeln!(w, "    }} else {{")?;
-    writeln!(
-        w,
-        "        std::cerr << \"Unknown command: \" << intrinsic_name << \"\\n\";"
-    )?;
-    writeln!(w, "        return -1;")?;
-    writeln!(w, "    }}")?;
+    writeln!(w, "    return 0;")?;
 
     writeln!(w, "}}")?;
 
