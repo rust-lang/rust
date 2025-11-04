@@ -190,6 +190,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-aarch64",
     "only-aarch64-apple-darwin",
     "only-aarch64-unknown-linux-gnu",
+    "only-aarch64-unknown-uefi",
     "only-apple",
     "only-arm",
     "only-arm64ec",
