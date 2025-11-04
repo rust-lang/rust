@@ -1,5 +1,3 @@
-tests/ui/allocator/no_std-alloc-error-handler-custom.rs
-tests/ui/allocator/no_std-alloc-error-handler-default.rs
 tests/ui/asm/may_unwind.rs
 tests/ui/asm/x86_64/may_unwind.rs
 tests/ui/drop/dynamic-drop-async.rs
@@ -17,7 +15,6 @@ tests/ui/panic-runtime/link-to-abort.rs
 tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
-tests/ui/rfcs/rfc-2091-track-caller/std-panic-locations.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
 tests/ui/drop/panic-during-drop-14875.rs
@@ -31,11 +28,9 @@ tests/ui/coroutine/resume-after-return.rs
 tests/ui/simd/masked-load-store.rs
 tests/ui/simd/repr_packed.rs
 tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs
-tests/ui/consts/try-operator.rs
 tests/ui/coroutine/unwind-abort-mix.rs
 tests/ui/consts/issue-miri-1910.rs
 tests/ui/consts/const_cmp_type_id.rs
-tests/ui/consts/issue-73976-monomorphic.rs
 tests/ui/consts/issue-94675.rs
 tests/ui/traits/const-traits/const-drop-fail.rs
 tests/ui/runtime/on-broken-pipe/child-processes.rs
@@ -53,7 +48,6 @@ tests/ui/sanitizer/cfi/virtual-auto.rs
 tests/ui/sanitizer/cfi/sized-associated-ty.rs
 tests/ui/sanitizer/cfi/can-reveal-opaques.rs
 tests/ui/sanitizer/kcfi-mangling.rs
-tests/ui/statics/const_generics.rs
 tests/ui/backtrace/dylib-dep.rs
 tests/ui/delegation/fn-header.rs
 tests/ui/consts/const-eval/parse_ints.rs
@@ -74,13 +68,7 @@ tests/ui/codegen/equal-pointers-unequal/strict-provenance/zero.rs
 tests/ui/simd/simd-bitmask-notpow2.rs
 tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs
 tests/ui/numbers-arithmetic/u128-as-f32.rs
-tests/ui/lto/all-crates.rs
-tests/ui/uninhabited/uninhabited-transparent-return-abi.rs
-tests/ui/coroutine/panic-drops-resume.rs
-tests/ui/coroutine/panic-drops.rs
-tests/ui/coroutine/panic-safe.rs
 tests/ui/process/nofile-limit.rs
-tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/linking/no-gc-encapsulation-symbols.rs
 tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/attributes/fn-align-dyn.rs
@@ -88,3 +76,4 @@ tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/explicit-tail-calls/recursion-etc.rs
 tests/ui/explicit-tail-calls/indexer.rs
 tests/ui/explicit-tail-calls/drop-order.rs
+tests/ui/c-variadic/valid.rs
