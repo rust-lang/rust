@@ -329,6 +329,12 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
                 accum = f(accum, tmp);
             }
         }
+
+        // There are in fact no remaining elements to forget, but by doing this we can avoid
+        // potentially generating a needless loop to drop the elements that cannot exist at
+        // this point.
+        self.forget_remaining_elements();
+
         accum
     }
 
