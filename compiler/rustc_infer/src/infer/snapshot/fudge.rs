@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::ops::Range;
 
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
@@ -84,11 +85,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// the actual types (`?T`, `Option<?T>`) -- and remember that
     /// after the snapshot is popped, the variable `?T` is no longer
     /// unified.
-    #[instrument(skip(self, f), level = "debug")]
+    #[instrument(skip(self, f), level = "debug", ret)]
     pub fn fudge_inference_if_ok<T, E, F>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce() -> Result<T, E>,
         T: TypeFoldable<TyCtxt<'tcx>>,
+        E: Debug,
     {
         let variable_lengths = self.variable_lengths();
         let (snapshot_vars, value) = self.probe(|_| {
