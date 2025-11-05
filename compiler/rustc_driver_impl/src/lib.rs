@@ -5,14 +5,10 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(decl_macro)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
-#![feature(rustdoc_internals)]
 #![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
