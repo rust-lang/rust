@@ -45,7 +45,7 @@ pub macro panic_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(panic_internals, const_format_args)]
+#[allow_internal_unstable(panic_internals, const_format_args, super_let)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2021 {
@@ -59,7 +59,11 @@ pub macro panic_2021 {
     ($($t:tt)+) => ({
         // Semicolon to prevent temporaries inside the formatting machinery from
         // being considered alive in the caller after the panic_fmt call.
-        $crate::panicking::panic_fmt($crate::const_format_args!($($t)+));
+        super let args = $crate::const_format_args!($($t)+);
+        if let $crate::option::Option::Some(s) = args.as_str() {
+            $crate::panicking::panic(s);
+        }
+        $crate::panicking::panic_fmt(args);
     }),
 }
 

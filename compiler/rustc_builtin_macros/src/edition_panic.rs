@@ -1,9 +1,9 @@
-use rustc_ast::token::{Delimiter, Lit, LitKind, TokenKind};
-use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::token::Delimiter;
+use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::*;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 // Use an enum to ensure that no new macro calls are added without also updating the message in the
 // optimized path below.
@@ -66,55 +66,6 @@ fn expand<'cx>(
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
-
-    // If the call is of the form `panic!(<string literal>)` and there are no formatting arguments
-    // in the string literal, we can call `core::panicking::panic` to centralize the panic logic.
-    if tts.len() == 1
-        && let Some(TokenTree::Token(token, _)) = tts.get(0)
-        && let TokenKind::Literal(lit) = &token.kind
-        && let Lit { kind: LitKind::Str | LitKind::StrRaw(_), symbol, .. } = lit
-        && let msg = symbol.as_str()
-        && !msg.contains(|c| c == '{' || c == '}')
-    {
-        let msg = match mac {
-            InnerCall::Panic2015 | InnerCall::Panic2021 => cx.expr(sp, ExprKind::Lit(*lit)),
-            InnerCall::Unreachable2015 | InnerCall::Unreachable2021 => {
-                let msg = if msg.contains('\\') {
-                    let mut buf = String::with_capacity(msg.len());
-                    // Force-inlining here is aggressive but the closure is
-                    // called on every char in the string, so it can be hot in
-                    // programs with many long strings containing escapes.
-                    rustc_literal_escaper::unescape_str(
-                        msg,
-                        #[inline(always)]
-                        |_, res| match res {
-                            Ok(c) => buf.push(c),
-                            Err(err) => {
-                                assert!(!err.is_fatal(), "failed to unescape string literal")
-                            }
-                        },
-                    );
-                    buf
-                } else {
-                    msg.to_owned()
-                };
-
-                cx.expr_str(
-                    sp,
-                    Symbol::intern(&format!("internal error: entered unreachable code: {msg}")),
-                )
-            }
-        };
-
-        return ExpandResult::Ready(MacEager::expr(cx.expr_call(
-            sp,
-            cx.expr_path(cx.path_global(
-                sp,
-                [sym::core, sym::panicking, sym::panic].map(|sym| Ident::new(sym, sp)).to_vec(),
-            )),
-            [msg].into(),
-        )));
-    }
 
     ExpandResult::Ready(MacEager::expr(
         cx.expr_macro_call(
