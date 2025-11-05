@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor, Lld, SplitDebuginfo,
-    TargetOptions, add_link_args, crt_objects, cvs,
+    BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld,
+    SplitDebuginfo, TargetOptions, add_link_args, crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -78,7 +78,7 @@ pub(crate) fn opts() -> TargetOptions {
 
     TargetOptions {
         os: "windows".into(),
-        env: "gnu".into(),
+        env: Env::Gnu,
         vendor: "pc".into(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,

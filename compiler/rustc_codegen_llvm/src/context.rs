@@ -29,7 +29,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Abi, Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Abi, Arch, Env, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -336,7 +336,7 @@ pub(crate) unsafe fn create_module<'ll>(
     // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
     if sess.target.is_like_msvc
         || (sess.target.options.os == "windows"
-            && sess.target.options.env == "gnu"
+            && sess.target.options.env == Env::Gnu
             && sess.target.options.abi == Abi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
@@ -710,7 +710,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             },
         );
 
-        if self.tcx.sess.target.env == "sim" {
+        if self.tcx.sess.target.env == Env::Sim {
             llvm::add_module_flag_u32(
                 self.llmod,
                 llvm::ModuleFlagMergeBehavior::Error,

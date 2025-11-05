@@ -15,7 +15,9 @@ use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
-use rustc_target::spec::{Abi, Arch, MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
+use rustc_target::spec::{
+    Abi, Arch, Env, MergeFunctions, PanicStrategy, SmallDataThresholdSupport,
+};
 use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
@@ -352,7 +354,7 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
 fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_arch = &sess.target.arch;
     let target_os = sess.target.options.os.as_ref();
-    let target_env = sess.target.options.env.as_ref();
+    let target_env = &sess.target.options.env;
     let target_abi = &sess.target.options.abi;
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
@@ -371,7 +373,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374> (fixed in llvm21)
         (Arch::S390x, _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, "windows") if target_env == "gnu" && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, "windows") if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         (Arch::CSky, _) => false,
         (Arch::Hexagon, _) if lt_21_0_0 => false, // (fixed in llvm21)
@@ -403,7 +405,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // not fail if our compiler-builtins is linked. (fixed in llvm21)
         (Arch::X86, _) if lt_21_0_0 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, "windows") if target_env == "gnu" && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, "windows") if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
         // There are no known problems on other platforms, so the only requirement is that symbols
         // are available. `compiler-builtins` provides all symbols required for core `f128`
         // support, so this should work for everything else.
@@ -424,7 +426,7 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         // (ld is 80-bit extended precision).
         //
         // musl does not implement the symbols required for f128 math at all.
-        _ if target_env == "musl" => false,
+        _ if *target_env == Env::Musl => false,
         (Arch::X86_64, _) => false,
         (_, "linux") if target_pointer_width == 64 => true,
         _ => false,

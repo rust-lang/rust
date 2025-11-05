@@ -8,13 +8,13 @@
 //! all component-model-level imports anyway. Over time the imports of the
 //! standard library will change to WASIp3.
 
-use crate::spec::Target;
+use crate::spec::{Env, Target};
 
 pub(crate) fn target() -> Target {
     // As of now WASIp3 is a lightly edited wasip2 target, so start with that
     // and this may grow over time as more features are supported.
     let mut target = super::wasm32_wasip2::target();
     target.llvm_target = "wasm32-wasip3".into();
-    target.options.env = "p3".into();
+    target.options.env = Env::P3;
     target
 }

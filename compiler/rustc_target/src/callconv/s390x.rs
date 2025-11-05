@@ -4,7 +4,7 @@
 use rustc_abi::{BackendRepr, HasDataLayout, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind};
-use crate::spec::HasTargetSpec;
+use crate::spec::{Env, HasTargetSpec};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     let size = ret.layout.size;
@@ -30,7 +30,7 @@ where
     if arg.is_ignore() {
         // s390x-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
         if cx.target_spec().os == "linux"
-            && matches!(&*cx.target_spec().env, "gnu" | "musl" | "uclibc")
+            && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
             && arg.layout.is_zst()
         {
             arg.make_indirect_from_ignore();

@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{Abi, Arch, BinaryFormat, LinkSelfContainedComponents};
+use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents};
 
 use crate::errors;
 
@@ -79,7 +79,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.env == "macabi"
+        && sess.target.env == Env::MacAbi
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;

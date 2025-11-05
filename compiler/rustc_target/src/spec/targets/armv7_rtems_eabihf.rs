@@ -1,6 +1,6 @@
 use crate::spec::{
-    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions, cvs,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -32,7 +32,7 @@ pub(crate) fn target() -> Target {
             c_enum_min_bits: Some(8),
             eh_frame_header: false,
             no_default_libraries: false,
-            env: "newlib".into(),
+            env: Env::Newlib,
             ..Default::default()
         },
     }
