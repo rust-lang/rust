@@ -13,7 +13,7 @@ LL | |     ) = 3u32;
    | |_____|
    |       expected due to this
    |
-   = note: expected tuple `(local::ActuallyPub, local::DocHidden, local::pub_mod::ActuallyPubInPubMod, local::pub_mod::DocHiddenInPubMod, local::hidden_mod::ActuallyPubInHiddenMod, local::hidden_mod::DocHiddenInHiddenMod)`
+   = note: expected tuple `(local::ActuallyPub, DocHidden, local::pub_mod::ActuallyPubInPubMod, DocHiddenInPubMod, ActuallyPubInHiddenMod, DocHiddenInHiddenMod)`
                found type `u32`
 
 error[E0308]: mismatched types

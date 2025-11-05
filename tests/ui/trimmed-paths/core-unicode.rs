@@ -14,6 +14,6 @@ fn main() {
     let PhantomData::<(inner::unicode, u32)> = PhantomData::<(u32, inner::unicode)>;
     //~^ ERROR mismatched types [E0308]
     //~| NOTE expected `PhantomData<(u32, unicode)>`, found `PhantomData<(unicode, u32)>`
-    //~| NOTE this expression has type `PhantomData<(u32, inner::unicode)>`
-    //~| NOTE expected struct `PhantomData<(u32, inner::unicode)>`
+    //~| NOTE this expression has type `PhantomData<(u32, unicode)>`
+    //~| NOTE expected struct `PhantomData<(u32, unicode)>`
 }
