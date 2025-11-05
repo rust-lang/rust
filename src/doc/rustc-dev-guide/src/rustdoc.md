@@ -65,7 +65,7 @@ Note that literally all that does is call the `main()` that's in this crate's `l
 Rustdoc’s JavaScript and TypeScript are checked during CI by `eslint`, `es-check`, and `tsc` (not by compiletest).
 These run as part of the `tidy` job.
 
-```bash
+```console
 ./x.py test tidy --extra-checks=js
 ```
 

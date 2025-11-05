@@ -283,7 +283,7 @@ Some features of the generated `HTML` documentation might require local
 storage to be used across pages, which doesn't work well without an `HTTP` server.
 To test these features locally, you can run a local `HTTP` server, like this:
 
-```bash
+```console
 $ ./x doc library
 # The documentation has been generated into `build/[YOUR ARCH]/doc`.
 $ python3 -m http.server -d build/[YOUR ARCH]/doc
