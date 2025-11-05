@@ -261,7 +261,7 @@ namespace GenmcScalarExt {
 inline GenmcScalar uninit() {
     return GenmcScalar {
         .value = 0,
-        .extra = 0,
+        .provenance = 0,
         .is_init = false,
     };
 }
@@ -269,19 +269,19 @@ inline GenmcScalar uninit() {
 inline GenmcScalar from_sval(SVal sval) {
     return GenmcScalar {
         .value = sval.get(),
-        .extra = sval.getExtra(),
+        .provenance = sval.getProvenance(),
         .is_init = true,
     };
 }
 
 inline SVal to_sval(GenmcScalar scalar) {
     ERROR_ON(!scalar.is_init, "Cannot convert an uninitialized `GenmcScalar` into an `SVal`\n");
-    return SVal(scalar.value, scalar.extra);
+    return SVal(scalar.value, scalar.provenance);
 }
 
 inline std::optional<SVal> try_to_sval(GenmcScalar scalar) {
     if (scalar.is_init)
-        return { SVal(scalar.value, scalar.extra) };
+        return { SVal(scalar.value, scalar.provenance) };
     return std::nullopt;
 }
 } // namespace GenmcScalarExt

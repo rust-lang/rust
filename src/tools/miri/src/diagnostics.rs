@@ -187,16 +187,14 @@ pub fn prune_stacktrace<'tcx>(
         }
         BacktraceStyle::Short => {
             let original_len = stacktrace.len();
-            // Only prune frames if there is at least one local frame. This check ensures that if
-            // we get a backtrace that never makes it to the user code because it has detected a
-            // bug in the Rust runtime, we don't prune away every frame.
-            let has_local_frame = stacktrace.iter().any(|frame| machine.is_local(frame));
+            // Remove all frames marked with `caller_location` -- that attribute indicates we
+            // usually want to point at the caller, not them.
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
+            // Only prune further frames if there is at least one local frame. This check ensures
+            // that if we get a backtrace that never makes it to the user code because it has
+            // detected a bug in the Rust runtime, we don't prune away every frame.
+            let has_local_frame = stacktrace.iter().any(|frame| machine.is_local(frame.instance));
             if has_local_frame {
-                // Remove all frames marked with `caller_location` -- that attribute indicates we
-                // usually want to point at the caller, not them.
-                stacktrace
-                    .retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
-
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
                 // __rust_end_short_backtrace because the end symbol comes from a call to the default
@@ -216,7 +214,7 @@ pub fn prune_stacktrace<'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame))
+                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame.instance))
                 {
                     stacktrace.pop();
                 }
@@ -619,7 +617,7 @@ pub fn report_msg<'tcx>(
         write!(backtrace_title, ":").unwrap();
         err.note(backtrace_title);
         for (idx, frame_info) in stacktrace.iter().enumerate() {
-            let is_local = machine.is_local(frame_info);
+            let is_local = machine.is_local(frame_info.instance);
             // No span for non-local frames and the first frame (which is the error site).
             if is_local && idx > 0 {
                 err.subdiagnostic(frame_info.as_note(machine.tcx));

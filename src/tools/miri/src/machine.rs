@@ -140,11 +140,10 @@ pub struct FrameExtra<'tcx> {
     /// we use this to register a completed event with `measureme`.
     pub timing: Option<measureme::DetachedTiming>,
 
-    /// Indicates whether a `Frame` is part of a workspace-local crate and is also not
-    /// `#[track_caller]`. We compute this once on creation and store the result, as an
-    /// optimization.
-    /// This is used by `MiriMachine::current_span` and `MiriMachine::caller_span`
-    pub is_user_relevant: bool,
+    /// Indicates how user-relevant this frame is. `#[track_caller]` frames are never relevant.
+    /// Frames from user-relevant crates are maximally relevant; frames from other crates are less
+    /// relevant.
+    pub user_relevance: u8,
 
     /// Data race detector per-frame data.
     pub data_race: Option<data_race::FrameState>,
@@ -153,12 +152,12 @@ pub struct FrameExtra<'tcx> {
 impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Omitting `timing`, it does not support `Debug`.
-        let FrameExtra { borrow_tracker, catch_unwind, timing: _, is_user_relevant, data_race } =
+        let FrameExtra { borrow_tracker, catch_unwind, timing: _, user_relevance, data_race } =
             self;
         f.debug_struct("FrameData")
             .field("borrow_tracker", borrow_tracker)
             .field("catch_unwind", catch_unwind)
-            .field("is_user_relevant", is_user_relevant)
+            .field("user_relevance", user_relevance)
             .field("data_race", data_race)
             .finish()
     }
@@ -166,13 +165,8 @@ impl<'tcx> std::fmt::Debug for FrameExtra<'tcx> {
 
 impl VisitProvenance for FrameExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let FrameExtra {
-            catch_unwind,
-            borrow_tracker,
-            timing: _,
-            is_user_relevant: _,
-            data_race: _,
-        } = self;
+        let FrameExtra { catch_unwind, borrow_tracker, timing: _, user_relevance: _, data_race: _ } =
+            self;
 
         catch_unwind.visit_provenance(visit);
         borrow_tracker.visit_provenance(visit);
@@ -911,8 +905,8 @@ impl<'tcx> MiriMachine<'tcx> {
     }
 
     /// Check whether the stack frame that this `FrameInfo` refers to is part of a local crate.
-    pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
-        let def_id = frame.instance.def_id();
+    pub(crate) fn is_local(&self, instance: ty::Instance<'tcx>) -> bool {
+        let def_id = instance.def_id();
         def_id.is_local() || self.user_relevant_crates.contains(&def_id.krate)
     }
 
@@ -1703,7 +1697,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             borrow_tracker: borrow_tracker.map(|bt| bt.borrow_mut().new_frame()),
             catch_unwind: None,
             timing,
-            is_user_relevant: ecx.machine.is_user_relevant(&frame),
+            user_relevance: ecx.machine.user_relevance(&frame),
             data_race: ecx
                 .machine
                 .data_race
@@ -1759,9 +1753,9 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
 
     #[inline(always)]
     fn after_stack_push(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
-        if ecx.frame().extra.is_user_relevant {
-            // We just pushed a local frame, so we know that the topmost local frame is the topmost
-            // frame. If we push a non-local frame, there's no need to do anything.
+        if ecx.frame().extra.user_relevance >= ecx.active_thread_ref().current_user_relevance() {
+            // We just pushed a frame that's at least as relevant as the so-far most relevant frame.
+            // That means we are now the most relevant frame.
             let stack_len = ecx.active_thread_stack().len();
             ecx.active_thread_mut().set_top_user_relevant_frame(stack_len - 1);
         }
@@ -1775,9 +1769,14 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.on_stack_pop(frame)?;
         }
-        if frame.extra.is_user_relevant {
-            // All that we store is whether or not the frame we just removed is local, so now we
-            // have no idea where the next topmost local frame is. So we recompute it.
+        if ecx
+            .active_thread_ref()
+            .top_user_relevant_frame()
+            .expect("there should always be a most relevant frame for a non-empty stack")
+            == ecx.frame_idx()
+        {
+            // We are popping the most relevant frame. We have no clue what the next relevant frame
+            // below that is, so we recompute that.
             // (If this ever becomes a bottleneck, we could have `push` store the previous
             // user-relevant frame and restore that here.)
             // We have to skip the frame that is just being popped.
