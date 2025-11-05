@@ -1,8 +1,8 @@
-use crate::spec::{Cc, Env, LinkerFlavor, Lld, RelroLevel, TargetOptions, cvs};
+use crate::spec::{Cc, Env, LinkerFlavor, Lld, Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "redox".into(),
+        os: Os::Redox,
         env: Env::Relibc,
         dynamic_linking: true,
         families: cvs!["unix"],

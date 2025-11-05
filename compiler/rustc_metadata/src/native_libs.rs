@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents};
+use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents, Os};
 
 use crate::errors;
 
@@ -68,8 +68,8 @@ pub fn walk_native_lib_search_dirs<R>(
     // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
     // defined, as the search path instead of appending the default search paths.
     if sess.target.abi == Abi::Fortanix
-        || sess.target.os == "linux"
-        || sess.target.os == "fuchsia"
+        || sess.target.os == Os::Linux
+        || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
         || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
     {

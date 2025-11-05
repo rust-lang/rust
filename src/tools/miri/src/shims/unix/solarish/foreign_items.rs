@@ -2,6 +2,7 @@ use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Os;
 
 use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
@@ -26,26 +27,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match link_name.as_str() {
             // epoll, eventfd (NOT available on Solaris!)
             "epoll_create1" => {
-                this.assert_target_os("illumos", "epoll_create1");
+                this.assert_target_os(Os::Illumos, "epoll_create1");
                 let [flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
-                this.assert_target_os("illumos", "epoll_ctl");
+                this.assert_target_os(Os::Illumos, "epoll_ctl");
                 let [epfd, op, fd, event] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
-                this.assert_target_os("illumos", "epoll_wait");
+                this.assert_target_os(Os::Illumos, "epoll_wait");
                 let [epfd, events, maxevents, timeout] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                this.assert_target_os("illumos", "eventfd");
+                this.assert_target_os(Os::Illumos, "eventfd");
                 let [val, flag] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;

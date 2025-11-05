@@ -1,8 +1,8 @@
-use crate::spec::{Env, RelroLevel, TargetOptions, cvs};
+use crate::spec::{Env, Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "managarm".into(),
+        os: Os::Managarm,
         env: Env::Mlibc,
         dynamic_linking: true,
         executables: true,

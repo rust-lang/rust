@@ -1,8 +1,8 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("tvos", Arch::Arm64, TargetEnv::Simulator);
+    let (opts, llvm_target, arch) = base(Os::TvOs, Arch::Arm64, TargetEnv::Simulator);
     Target {
         llvm_target,
         metadata: TargetMetadata {

@@ -1,7 +1,7 @@
 use crate::spec::{Abi, Arch, FloatAbi, RelocModel, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
-    let base = base::solid::opts("asp3");
+    let base = base::solid::opts();
     Target {
         llvm_target: "armv7a-none-eabi".into(),
         metadata: TargetMetadata {
