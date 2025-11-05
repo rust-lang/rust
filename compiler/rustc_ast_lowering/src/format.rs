@@ -101,7 +101,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 && let ExprKind::Lit(lit) = arg.kind
                 && let Some(literal) = self.try_inline_lit(lit)
             {
-
                 // Now we need to mutate the outer FormatArgs.
                 // If this is the first time, this clones the outer FormatArgs.
                 let fmt = fmt.to_mut();
