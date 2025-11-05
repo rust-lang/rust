@@ -17,6 +17,7 @@
 #![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
+#![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 

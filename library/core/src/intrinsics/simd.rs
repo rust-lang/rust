@@ -2,6 +2,8 @@
 //!
 //! In this module, a "vector" is any `repr(simd)` type.
 
+use crate::marker::ConstParamTy;
+
 /// Inserts an element into a vector, returning the updated vector.
 ///
 /// `T` must be a vector with element type `U`, and `idx` must be `const`.
@@ -377,6 +379,19 @@ pub unsafe fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 #[rustc_nounwind]
 pub unsafe fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 
+/// A type for alignment options for SIMD masked load/store intrinsics.
+#[derive(Debug, ConstParamTy, PartialEq, Eq)]
+pub enum SimdAlign {
+    // These values must match the compiler's `SimdAlign` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    /// No alignment requirements on the pointer
+    Unaligned = 0,
+    /// The pointer must be aligned to the element type of the SIMD vector
+    Element = 1,
+    /// The pointer must be aligned to the SIMD vector type
+    Vector = 2,
+}
+
 /// Reads a vector of pointers.
 ///
 /// `T` must be a vector.
@@ -392,13 +407,12 @@ pub unsafe fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 /// `val`.
 ///
 /// # Safety
-/// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
-/// type).
+/// `ptr` must be aligned according to the `ALIGN` parameter, see [`SimdAlign`] for details.
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
+pub unsafe fn simd_masked_load<V, U, T, const ALIGN: SimdAlign>(mask: V, ptr: U, val: T) -> T;
 
 /// Writes to a vector of pointers.
 ///
@@ -414,13 +428,12 @@ pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
 /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
 ///
 /// # Safety
-/// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-/// type).
+/// `ptr` must be aligned according to the `ALIGN` parameter, see [`SimdAlign`] for details.
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T);
+pub unsafe fn simd_masked_store<V, U, T, const ALIGN: SimdAlign>(mask: V, ptr: U, val: T);
 
 /// Adds two simd vectors elementwise, with saturation.
 ///

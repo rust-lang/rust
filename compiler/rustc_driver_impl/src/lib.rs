@@ -13,6 +13,7 @@
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(rustdoc_internals)]
+#![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -466,7 +467,7 @@ pub enum Compilation {
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    if let Ok(code) = upper_cased_code.strip_prefix('E').unwrap_or(&upper_cased_code).parse::<u32>()
+    if let Ok(code) = upper_cased_code.trim_prefix('E').parse::<u32>()
         && code <= ErrCode::MAX_AS_U32
         && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
     {
@@ -1267,7 +1268,7 @@ fn warn_on_confusing_output_filename_flag(
     if let Some(name) = matches.opt_str("o")
         && let Some(suspect) = args.iter().find(|arg| arg.starts_with("-o") && *arg != "-o")
     {
-        let filename = suspect.strip_prefix("-").unwrap_or(suspect);
+        let filename = suspect.trim_prefix("-");
         let optgroups = config::rustc_optgroups();
         let fake_args = ["optimize", "o0", "o1", "o2", "o3", "ofast", "og", "os", "oz"];
 
