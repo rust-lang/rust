@@ -1913,6 +1913,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // and
             // async fn foo() -> dyn Display Box<dyn { .. }>
             span = fn_sig.decl.output.span();
+            err.span(span);
         }
         let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
 

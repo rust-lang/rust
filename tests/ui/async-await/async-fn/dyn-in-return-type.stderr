@@ -1,11 +1,8 @@
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/dyn-in-return-type.rs:3:38
+  --> $DIR/dyn-in-return-type.rs:3:17
    |
-LL |   async fn f() -> dyn core::fmt::Debug {
-   |  ______________________________________^
-...  |
-LL | | }
-   | |_^ doesn't have a size known at compile-time
+LL | async fn f() -> dyn core::fmt::Debug {
+   |                 ^^^^^^^^^^^^^^^^^^^^
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
