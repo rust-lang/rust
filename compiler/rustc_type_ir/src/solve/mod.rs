@@ -71,7 +71,7 @@ pub enum GoalSource {
     /// A nested goal required to prove that types are equal/subtypes.
     /// This is always an unproductive step.
     ///
-    /// This is also used for all `NormalizesTo` goals as we they are used
+    /// This is also used for all `NormalizesTo` goals as those are used
     /// to relate types in `AliasRelate`.
     TypeRelating,
     /// We're proving a where-bound of an impl.

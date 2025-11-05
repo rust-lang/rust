@@ -131,7 +131,7 @@ pub enum PathKind {
     /// `PathKind::Unknown` during coherence until we're fully confident in
     /// our approach.
     Inductive,
-    /// A path which is not be coinductive right now but we may want
+    /// A path which is not coinductive right now but we may want
     /// to change of them to be so in the future. We return an ambiguous
     /// result in this case to prevent people from relying on this.
     Unknown,
