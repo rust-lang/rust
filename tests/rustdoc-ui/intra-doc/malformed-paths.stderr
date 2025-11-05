@@ -1,0 +1,36 @@
+error: unresolved link to `Type::`
+  --> $DIR/malformed-paths.rs:5:7
+   |
+LL | //! [`Type::`]
+   |       ^^^^^^ the struct `Type` has no field or associated item named ``
+   |
+note: the lint level is defined here
+  --> $DIR/malformed-paths.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unresolved link to `Type@field`
+  --> $DIR/malformed-paths.rs:9:7
+   |
+LL | //! [`struct@Type@field`]
+   |       ^^^^^^^^^^^^^^^^^ no item named `Type@field` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `Type&content`
+  --> $DIR/malformed-paths.rs:12:6
+   |
+LL | //! [Type&content]
+   |      ^^^^^^^^^^^^ no item named `Type&content` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
+error: unresolved link to `Type::field%extra`
+  --> $DIR/malformed-paths.rs:14:7
+   |
+LL | //! [`Type::field%extra`]
+   |       ^^^^^^^^^^^^^^^^^ the struct `Type` has no field or associated item named `field%extra`
+
+error: aborting due to 4 previous errors
+
