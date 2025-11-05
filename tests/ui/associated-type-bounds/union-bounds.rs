@@ -4,7 +4,7 @@
 
 trait Tr1: Copy { type As1: Copy; }
 trait Tr2: Copy { type As2: Copy; }
-trait Tr3: Copy { type As3: Copy; }
+trait Tr3: Copy { #[allow(dead_code)] type As3: Copy; }
 trait Tr4<'a>: Copy { type As4: Copy; }
 trait Tr5: Copy { type As5: Copy; }
 
