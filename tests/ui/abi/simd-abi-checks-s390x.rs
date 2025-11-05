@@ -11,6 +11,9 @@
 //@ ignore-backends: gcc
 //[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
 
+//[z13_no_vector,z13_soft_float]~? WARN unstable feature specified for `-Ctarget-feature`
+//[z13_soft_float]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`
+
 #![feature(no_core, repr_simd, s390x_target_feature)]
 #![no_core]
 #![crate_type = "lib"]

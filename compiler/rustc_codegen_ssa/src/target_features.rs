@@ -206,6 +206,9 @@ fn parse_rust_feature_flag<'a>(
 /// to populate `sess.unstable_target_features` and `sess.target_features` (these are the first and
 /// 2nd component of the return value, respectively).
 ///
+/// `to_backend_features` converts a Rust feature name into a list of backend feature names; this is
+/// used for diagnostic purposes only.
+///
 /// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is
 /// enabled in the "base" target machine, i.e., without applying `-Ctarget-feature`. Note that LLVM
 /// may consider features to be implied that we do not and vice-versa. We want `cfg` to be entirely
@@ -213,10 +216,13 @@ fn parse_rust_feature_flag<'a>(
 /// to target features.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
-pub fn cfg_target_feature(
+pub fn cfg_target_feature<'a, const N: usize>(
     sess: &Session,
+    to_backend_features: impl Fn(&'a str) -> SmallVec<[&'a str; N]>,
     mut target_base_has_feature: impl FnMut(&str) -> bool,
 ) -> (Vec<Symbol>, Vec<Symbol>) {
+    let known_features = sess.target.rust_target_features();
+
     // Compute which of the known target features are enabled in the 'base' target machine. We only
     // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
     let mut features: UnordSet<Symbol> = sess
@@ -235,17 +241,23 @@ pub fn cfg_target_feature(
         })
         .collect();
 
+    let mut enabled_disabled_features = FxHashMap::default();
+
     // Add enabled and remove disabled features.
     parse_rust_feature_flag(
         sess,
         /* err_callback */
-        |_| {
-            // Errors are already emitted in `flag_to_backend_features`; avoid duplicates.
+        |feature| {
+            sess.dcx().emit_warn(errors::UnknownCTargetFeaturePrefix { feature });
         },
-        |_base_feature, new_features, enabled| {
+        |base_feature, new_features, enable| {
+            // Iteration order is irrelevant since this only influences an `FxHashMap`.
+            #[allow(rustc::potential_query_instability)]
+            enabled_disabled_features.extend(new_features.iter().map(|&s| (s, enable)));
+
             // Iteration order is irrelevant since this only influences an `UnordSet`.
             #[allow(rustc::potential_query_instability)]
-            if enabled {
+            if enable {
                 features.extend(new_features.into_iter().map(|f| Symbol::intern(f)));
             } else {
                 // Remove `new_features` from `features`.
@@ -253,8 +265,62 @@ pub fn cfg_target_feature(
                     features.remove(&Symbol::intern(new));
                 }
             }
+
+            // Check feature validity.
+            let feature_state = known_features.iter().find(|&&(v, _, _)| v == base_feature);
+            match feature_state {
+                None => {
+                    // This is definitely not a valid Rust feature name. Maybe it is a backend
+                    // feature name? If so, give a better error message.
+                    let rust_feature = known_features.iter().find_map(|&(rust_feature, _, _)| {
+                        let backend_features = to_backend_features(rust_feature);
+                        if backend_features.contains(&base_feature)
+                            && !backend_features.contains(&rust_feature)
+                        {
+                            Some(rust_feature)
+                        } else {
+                            None
+                        }
+                    });
+                    let unknown_feature = if let Some(rust_feature) = rust_feature {
+                        errors::UnknownCTargetFeature {
+                            feature: base_feature,
+                            rust_feature: errors::PossibleFeature::Some { rust_feature },
+                        }
+                    } else {
+                        errors::UnknownCTargetFeature {
+                            feature: base_feature,
+                            rust_feature: errors::PossibleFeature::None,
+                        }
+                    };
+                    sess.dcx().emit_warn(unknown_feature);
+                }
+                Some((_, stability, _)) => {
+                    if let Err(reason) = stability.toggle_allowed() {
+                        sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
+                            feature: base_feature,
+                            enabled: if enable { "enabled" } else { "disabled" },
+                            reason,
+                        });
+                    } else if stability.requires_nightly().is_some() {
+                        // An unstable feature. Warn about using it. It makes little sense
+                        // to hard-error here since we just warn about fully unknown
+                        // features above.
+                        sess.dcx()
+                            .emit_warn(errors::UnstableCTargetFeature { feature: base_feature });
+                    }
+                }
+            }
         },
     );
+
+    if let Some(f) = check_tied_features(sess, &enabled_disabled_features) {
+        sess.dcx().emit_err(errors::TargetFeatureDisableOrEnable {
+            features: f,
+            span: None,
+            missing_features: None,
+        });
+    }
 
     // Filter enabled features based on feature gates.
     let f = |allow_unstable| {
@@ -302,98 +368,26 @@ pub fn check_tied_features(
 
 /// Translates the `-Ctarget-feature` flag into a backend target feature list.
 ///
-/// `to_backend_features` converts a Rust feature name into a list of backend feature names; this is
-/// used for diagnostic purposes only.
-///
 /// `extend_backend_features` extends the set of backend features (assumed to be in mutable state
 /// accessible by that closure) to enable/disable the given Rust feature name.
-pub fn flag_to_backend_features<'a, const N: usize>(
+pub fn flag_to_backend_features<'a>(
     sess: &'a Session,
-    diagnostics: bool,
-    to_backend_features: impl Fn(&'a str) -> SmallVec<[&'a str; N]>,
     mut extend_backend_features: impl FnMut(&'a str, /* enable */ bool),
 ) {
-    let known_features = sess.target.rust_target_features();
-
     // Compute implied features
     let mut rust_features = vec![];
     parse_rust_feature_flag(
         sess,
         /* err_callback */
-        |feature| {
-            if diagnostics {
-                sess.dcx().emit_warn(errors::UnknownCTargetFeaturePrefix { feature });
-            }
+        |_feature| {
+            // Errors are already emitted in `cfg_target_feature`; avoid duplicates.
         },
-        |base_feature, new_features, enable| {
+        |_base_feature, new_features, enable| {
             rust_features.extend(
                 UnordSet::from(new_features).to_sorted_stable_ord().iter().map(|&&s| (enable, s)),
             );
-            // Check feature validity.
-            if diagnostics {
-                let feature_state = known_features.iter().find(|&&(v, _, _)| v == base_feature);
-                match feature_state {
-                    None => {
-                        // This is definitely not a valid Rust feature name. Maybe it is a backend
-                        // feature name? If so, give a better error message.
-                        let rust_feature =
-                            known_features.iter().find_map(|&(rust_feature, _, _)| {
-                                let backend_features = to_backend_features(rust_feature);
-                                if backend_features.contains(&base_feature)
-                                    && !backend_features.contains(&rust_feature)
-                                {
-                                    Some(rust_feature)
-                                } else {
-                                    None
-                                }
-                            });
-                        let unknown_feature = if let Some(rust_feature) = rust_feature {
-                            errors::UnknownCTargetFeature {
-                                feature: base_feature,
-                                rust_feature: errors::PossibleFeature::Some { rust_feature },
-                            }
-                        } else {
-                            errors::UnknownCTargetFeature {
-                                feature: base_feature,
-                                rust_feature: errors::PossibleFeature::None,
-                            }
-                        };
-                        sess.dcx().emit_warn(unknown_feature);
-                    }
-                    Some((_, stability, _)) => {
-                        if let Err(reason) = stability.toggle_allowed() {
-                            sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
-                                feature: base_feature,
-                                enabled: if enable { "enabled" } else { "disabled" },
-                                reason,
-                            });
-                        } else if stability.requires_nightly().is_some() {
-                            // An unstable feature. Warn about using it. It makes little sense
-                            // to hard-error here since we just warn about fully unknown
-                            // features above.
-                            sess.dcx().emit_warn(errors::UnstableCTargetFeature {
-                                feature: base_feature,
-                            });
-                        }
-                    }
-                }
-            }
         },
     );
-
-    if diagnostics {
-        // FIXME(nagisa): figure out how to not allocate a full hashmap here.
-        if let Some(f) = check_tied_features(
-            sess,
-            &FxHashMap::from_iter(rust_features.iter().map(|&(enable, feature)| (feature, enable))),
-        ) {
-            sess.dcx().emit_err(errors::TargetFeatureDisableOrEnable {
-                features: f,
-                span: None,
-                missing_features: None,
-            });
-        }
-    }
 
     // Add this to the backend features.
     for (enable, feature) in rust_features {
