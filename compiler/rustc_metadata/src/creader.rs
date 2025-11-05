@@ -412,7 +412,7 @@ impl CStore {
             match (&left_name_val, &right_name_val) {
                 (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
                     cmp::Ordering::Equal => {
-                        if !l.1.consistent(&tcx.sess.opts, Some(&r.1)) {
+                        if !l.1.consistent(&tcx.sess, Some(&r.1)) {
                             report_diff(
                                 &l.0.prefix,
                                 &l.0.name,
@@ -424,26 +424,26 @@ impl CStore {
                         right_name_val = None;
                     }
                     cmp::Ordering::Greater => {
-                        if !r.1.consistent(&tcx.sess.opts, None) {
+                        if !r.1.consistent(&tcx.sess, None) {
                             report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                         }
                         right_name_val = None;
                     }
                     cmp::Ordering::Less => {
-                        if !l.1.consistent(&tcx.sess.opts, None) {
+                        if !l.1.consistent(&tcx.sess, None) {
                             report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                         }
                         left_name_val = None;
                     }
                 },
                 (Some(l), None) => {
-                    if !l.1.consistent(&tcx.sess.opts, None) {
+                    if !l.1.consistent(&tcx.sess, None) {
                         report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                     }
                     left_name_val = None;
                 }
                 (None, Some(r)) => {
-                    if !r.1.consistent(&tcx.sess.opts, None) {
+                    if !r.1.consistent(&tcx.sess, None) {
                         report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                     }
                     right_name_val = None;

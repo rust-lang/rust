@@ -215,7 +215,7 @@ fn should_ignore(line: &str) -> bool {
     // For `ui_test`-style UI test directives, also ignore
     // - `//@[rev] compile-flags`
     // - `//@[rev] normalize-stderr`
-        || static_regex!("\\s*//@(\\[.*\\]) (compile-flags|normalize-stderr|error-pattern).*")
+        || static_regex!("\\s*//@ *(\\[.*\\]) (compile-flags|normalize-stderr|error-pattern).*")
             .is_match(line)
         // Matching for rustdoc tests commands.
         // It allows to prevent them emitting warnings like `line longer than 100 chars`.
