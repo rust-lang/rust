@@ -103,7 +103,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         match this.tcx.sess.target.os.as_ref() {
             os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
-            "wasi" => shims::wasi::foreign_items::is_dyn_sym(name),
             "windows" => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
@@ -849,10 +848,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return match this.tcx.sess.target.os.as_ref() {
                     _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
-                        ),
-                    "wasi" =>
-                        shims::wasi::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     "windows" =>
