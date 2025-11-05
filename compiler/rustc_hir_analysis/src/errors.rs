@@ -1217,6 +1217,17 @@ pub(crate) struct CoercePointeeNoField {
 }
 
 #[derive(Diagnostic)]
+#[diag("`Deref::Target` does not agree with `Receiver::Target`", code = E0390)]
+#[note("`Deref::Target` is `{$deref_ty}` but `Receiver::Target` is `{$recv_ty}`")]
+#[note("`#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence")]
+pub(crate) struct DerefReceiverTargetDiverge<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub deref_ty: Ty<'a>,
+    pub recv_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
 #[diag("cannot define inherent `impl` for a type outside of the crate where the type is defined", code = E0390)]
 #[help("consider moving this inherent impl into the crate defining the type if possible")]
 pub(crate) struct InherentTyOutsideRelevant {
