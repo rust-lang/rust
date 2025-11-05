@@ -5,7 +5,7 @@ use rustc_abi::{Align, AlignFromBytesError};
 
 use super::crt_objects::CrtObjects;
 use super::{
-    BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
+    Arch, BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
     MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
@@ -486,7 +486,7 @@ struct TargetSpecJson {
     llvm_target: StaticCow<str>,
     target_pointer_width: u16,
     data_layout: StaticCow<str>,
-    arch: StaticCow<str>,
+    arch: Arch,
 
     metadata: Option<TargetSpecJsonMetadata>,
 

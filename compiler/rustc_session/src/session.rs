@@ -32,7 +32,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -1112,7 +1112,7 @@ pub fn build_session(
         _ => CtfeBacktrace::Disabled,
     });
 
-    let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
+    let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
     let target_filesearch =
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
@@ -1202,7 +1202,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
     // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
     // we should allow Shadow Call Stack sanitizer.
-    if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == "aarch64" {
+    if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == Arch::AArch64 {
         unsupported_sanitizers -= SanitizerSet::SHADOWCALLSTACK;
     }
     match unsupported_sanitizers.into_iter().count() {
@@ -1313,7 +1313,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
+    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
         sess.dcx().emit_err(errors::BranchProtectionRequiresAArch64);
     }
 
@@ -1357,13 +1357,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
-        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+        if !matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
             sess.dcx().emit_err(errors::FunctionReturnRequiresX86OrX8664);
         }
     }
 
     if sess.opts.unstable_opts.indirect_branch_cs_prefix {
-        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+        if !matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
             sess.dcx().emit_err(errors::IndirectBranchCsPrefixRequiresX86OrX8664);
         }
     }
@@ -1372,12 +1372,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if regparm > 3 {
             sess.dcx().emit_err(errors::UnsupportedRegparm { regparm });
         }
-        if sess.target.arch != "x86" {
+        if sess.target.arch != Arch::X86 {
             sess.dcx().emit_err(errors::UnsupportedRegparmArch);
         }
     }
     if sess.opts.unstable_opts.reg_struct_return {
-        if sess.target.arch != "x86" {
+        if sess.target.arch != Arch::X86 {
             sess.dcx().emit_err(errors::UnsupportedRegStructReturnArch);
         }
     }
@@ -1399,7 +1399,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.cg.soft_float {
-        if sess.target.arch == "arm" {
+        if sess.target.arch == Arch::Arm {
             sess.dcx().emit_warn(errors::SoftFloatDeprecated);
         } else {
             // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.

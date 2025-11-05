@@ -31,6 +31,7 @@ use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
@@ -716,9 +717,9 @@ impl<'tcx> MiriMachine<'tcx> {
             page_size
         } else {
             let target = &tcx.sess.target;
-            match target.arch.as_ref() {
-                "wasm32" | "wasm64" => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
-                "aarch64" => {
+            match target.arch {
+                Arch::Wasm32 | Arch::Wasm64 => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
+                Arch::AArch64 => {
                     if target.options.vendor.as_ref() == "apple" {
                         // No "definitive" source, but see:
                         // https://www.wwdcnotes.com/notes/wwdc20/10214/

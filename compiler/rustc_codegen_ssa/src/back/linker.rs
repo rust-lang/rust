@@ -17,7 +17,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
+use rustc_target::spec::{Arch, Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -53,7 +53,7 @@ pub(crate) fn get_linker<'a>(
     target_cpu: &'a str,
     codegen_backend: &'static str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
+    let msvc_tool = find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -87,11 +87,11 @@ pub(crate) fn get_linker<'a>(
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
-                let arch = match t.arch.as_ref() {
-                    "x86_64" => Some("x64"),
-                    "x86" => Some("x86"),
-                    "aarch64" => Some("arm64"),
-                    "arm" => Some("arm"),
+                let arch = match t.arch {
+                    Arch::X86_64 => Some("x64"),
+                    Arch::X86 => Some("x86"),
+                    Arch::AArch64 => Some("arm64"),
+                    Arch::Arm => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
@@ -589,7 +589,7 @@ impl<'a> Linker for GccLinker<'a> {
         //
         // Currently this makes sense only when using avr-gcc as a linker, since
         // it brings a couple of hand-written important intrinsics from libgcc.
-        if self.sess.target.arch == "avr" && !self.uses_lld {
+        if self.sess.target.arch == Arch::Avr && !self.uses_lld {
             self.verbatim_arg(format!("-mmcu={}", self.target_cpu));
         }
     }

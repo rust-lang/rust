@@ -1,4 +1,6 @@
-use crate::spec::{FramePointer, LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base};
+use crate::spec::{
+    Arch, FramePointer, LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -28,7 +30,7 @@ pub(crate) fn target() -> Target {
         data_layout:
             "e-m:w-p270:32:32-p271:32:32-p272:64:64-p:64:64-i32:32-i64:64-i128:128-n32:64-S128-Fn32"
                 .into(),
-        arch: "arm64ec".into(),
+        arch: Arch::Arm64EC,
         options: base,
     }
 }

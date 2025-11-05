@@ -1,4 +1,4 @@
-use crate::spec::{CodeModel, SanitizerSet, StackProbeType, Target, TargetMetadata, base};
+use crate::spec::{Arch, CodeModel, SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::fuchsia::opts();
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
-        arch: "riscv64".into(),
+        arch: Arch::RiscV64,
         options: base,
     }
 }

@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{LinkSelfContainedDefault, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, LinkSelfContainedDefault, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:16:32-i8:8:8-i16:16:16-i32:16:32-n8:16:32-a:0:16-S16".into(),
-        arch: "m68k".into(),
+        arch: Arch::M68k,
         options: TargetOptions {
             endian: Endian::Big,
             mcount: "_mcount".into(),
