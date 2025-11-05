@@ -58,10 +58,10 @@ pub fn test1(a: *const u8) {
     // missing-NOT: __security_check_cookie
 }
 
-// test3: array [4 x i8]
-// CHECK-LABEL: test3{{:|\[}}
+// test2: array [4 x i8]
+// CHECK-LABEL: test2{{:|\[}}
 #[no_mangle]
-pub fn test3(a: *const u8) {
+pub fn test2(a: *const u8) {
     let mut buf: [u8; 4] = [0; 4];
 
     unsafe {
@@ -75,10 +75,10 @@ pub fn test3(a: *const u8) {
     // missing-NOT: __security_check_cookie
 }
 
-// test5: no arrays / no nested arrays
-// CHECK-LABEL: test5{{:|\[}}
+// test3: no arrays / no nested arrays
+// CHECK-LABEL: test3{{:|\[}}
 #[no_mangle]
-pub fn test5(a: *const u8) {
+pub fn test3(a: *const u8) {
     unsafe {
         printf(STR.as_ptr(), a);
     }
@@ -89,10 +89,10 @@ pub fn test5(a: *const u8) {
     // missing-NOT: __security_check_cookie
 }
 
-// test6: Address-of local taken (j = &a)
-// CHECK-LABEL: test6{{:|\[}}
+// test4: Address-of local taken (j = &a)
+// CHECK-LABEL: test4{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test6() {
+pub unsafe extern "C" fn test4() {
     let mut a: i32 = 0;
 
     let mut j: *mut i32 = std::ptr::null_mut();
@@ -109,10 +109,10 @@ pub unsafe extern "C" fn test6() {
     // missing-NOT: __security_check_cookie
 }
 
-// test7: PtrToInt Cast
-// CHECK-LABEL: test7{{:|\[}}
+// test5: PtrToInt Cast
+// CHECK-LABEL: test5{{:|\[}}
 #[no_mangle]
-pub fn test7(a: i32) {
+pub fn test5(a: i32) {
     let ptr_val: usize = &a as *const i32 as usize;
 
     unsafe {
@@ -125,10 +125,10 @@ pub fn test7(a: i32) {
     // missing-NOT: __security_check_cookie
 }
 
-// test8: Passing addr-of to function call
-// CHECK-LABEL: test8{{:|\[}}
+// test6: Passing addr-of to function call
+// CHECK-LABEL: test6{{:|\[}}
 #[no_mangle]
-pub fn test8(mut b: i32) {
+pub fn test6(mut b: i32) {
     unsafe {
         funcall(&mut b as *mut i32);
     }
@@ -139,10 +139,10 @@ pub fn test8(mut b: i32) {
     // missing-NOT: __security_check_cookie
 }
 
-// test9: Addr-of in select instruction
-// CHECK-LABEL: test9{{:|\[}}
+// test7: Addr-of in select instruction
+// CHECK-LABEL: test7{{:|\[}}
 #[no_mangle]
-pub fn test9() {
+pub fn test7() {
     let x: f64;
 
     unsafe {
@@ -160,10 +160,10 @@ pub fn test9() {
     // missing-NOT: __security_check_cookie
 }
 
-// test10: Addr-of in phi instruction
-// CHECK-LABEL: test10{{:|\[}}
+// test8: Addr-of in phi instruction
+// CHECK-LABEL: test8{{:|\[}}
 #[no_mangle]
-pub fn test10() {
+pub fn test8() {
     let mut _x: f64;
 
     unsafe {
@@ -193,10 +193,10 @@ pub fn test10() {
     // missing-NOT: __security_check_cookie
 }
 
-// test11: Addr-of struct element(GEP followed by store)
-// CHECK-LABEL: test11{{:|\[}}
+// test9: Addr-of struct element(GEP followed by store)
+// CHECK-LABEL: test9{{:|\[}}
 #[no_mangle]
-pub fn test11() {
+pub fn test9() {
     let mut c = Pair { a: 0, b: 0 };
     let b: *mut i32;
 
@@ -214,10 +214,10 @@ pub fn test11() {
     // missing-NOT: __security_check_cookie
 }
 
-// test12: Addr-of struct element, GEP followed by ptrtoint
-// CHECK-LABEL: test12{{:|\[}}
+// test10: Addr-of struct element, GEP followed by ptrtoint
+// CHECK-LABEL: test10{{:|\[}}
 #[no_mangle]
-pub fn test12() {
+pub fn test10() {
     let mut c = Pair { a: 0, b: 0 };
 
     unsafe {
@@ -234,10 +234,10 @@ pub fn test12() {
     // missing-NOT: __security_check_cookie
 }
 
-// test13: Addr-of struct element, GEP followed by callinst
-// CHECK-LABEL: test13{{:|\[}}
+// test11: Addr-of struct element, GEP followed by callinst
+// CHECK-LABEL: test11{{:|\[}}
 #[no_mangle]
-pub fn test13() {
+pub fn test11() {
     let mut c = Pair { a: 0, b: 0 };
 
     unsafe {
@@ -252,10 +252,10 @@ pub fn test13() {
     // missing-NOT: __security_check_cookie
 }
 
-// test14: Addr-of a local, optimized into a GEP (e.g., &a - 12)
-// CHECK-LABEL: test14{{:|\[}}
+// test12: Addr-of a local, optimized into a GEP (e.g., &a - 12)
+// CHECK-LABEL: test12{{:|\[}}
 #[no_mangle]
-pub fn test14() {
+pub fn test12() {
     let mut a: i32 = 0;
 
     unsafe {
@@ -270,11 +270,11 @@ pub fn test14() {
     // missing-NOT: __security_check_cookie
 }
 
-// test15: Addr-of a local cast to a ptr of a different type
+// test13: Addr-of a local cast to a ptr of a different type
 // (e.g., int a; ... ; ptr b = &a;)
-// CHECK-LABEL: test15{{:|\[}}
+// CHECK-LABEL: test13{{:|\[}}
 #[no_mangle]
-pub fn test15() {
+pub fn test13() {
     let mut a: i32 = 0;
 
     unsafe {
@@ -292,11 +292,11 @@ pub fn test15() {
     // missing-NOT: __security_check_cookie
 }
 
-// test16: Addr-of a local cast to a ptr of a different type (optimized)
+// test14: Addr-of a local cast to a ptr of a different type (optimized)
 // (e.g., int a; ... ; ptr b = &a;)
-// CHECK-LABEL: test16{{:|\[}}
+// CHECK-LABEL: test14{{:|\[}}
 #[no_mangle]
-pub fn test16() {
+pub fn test14() {
     let a: i32 = 0;
     unsafe {
         funfloat((&a as *const i32).cast::<f64>() as *mut f64);
@@ -308,10 +308,10 @@ pub fn test16() {
     // missing-NOT: __security_check_cookie
 }
 
-// test18: Addr-of a variable passed into an invoke instruction
-// CHECK-LABEL: test18{{:|\[}}
+// test15: Addr-of a variable passed into an invoke instruction
+// CHECK-LABEL: test15{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test18() -> i32 {
+pub unsafe extern "C" fn test15() -> i32 {
     // CHECK-DAG: .seh_endprologue
 
     let mut a: i32 = 0;
@@ -330,11 +330,11 @@ pub unsafe extern "C" fn test18() -> i32 {
     // CHECK-DAG: .seh_endproc
 }
 
-// test19: Addr-of a struct element passed into an invoke instruction
+// test16: Addr-of a struct element passed into an invoke instruction
 // (GEP followed by an invoke)
-// CHECK-LABEL: test19{{:|\[}}
+// CHECK-LABEL: test16{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test19() -> i32 {
+pub unsafe extern "C" fn test16() -> i32 {
     // CHECK-DAG: .seh_endprologue
 
     let mut c = Pair { a: 0, b: 0 };
@@ -353,10 +353,10 @@ pub unsafe extern "C" fn test19() -> i32 {
     // CHECK-DAG: .seh_endproc
 }
 
-// test20: Addr-of a pointer
-// CHECK-LABEL: test20{{:|\[}}
+// test17: Addr-of a pointer
+// CHECK-LABEL: test17{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test20() {
+pub unsafe extern "C" fn test17() {
     let mut a: *mut i32 = getp();
 
     let mut _b: *mut *mut i32 = std::ptr::null_mut();
@@ -373,10 +373,10 @@ pub unsafe extern "C" fn test20() {
     // missing-NOT: __security_check_cookie
 }
 
-// test21: Addr-of a casted pointer
-// CHECK-LABEL: test21{{:|\[}}
+// test18: Addr-of a casted pointer
+// CHECK-LABEL: test18{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test21() {
+pub unsafe extern "C" fn test18() {
     let mut a: *mut i32 = getp();
 
     let mut _b: *mut *mut i32 = std::ptr::null_mut();
@@ -393,10 +393,10 @@ pub unsafe extern "C" fn test21() {
     // missing-NOT: __security_check_cookie
 }
 
-// test25: array of [4 x i32]
-// CHECK-LABEL: test25{{:|\[}}
+// test19: array of [4 x i32]
+// CHECK-LABEL: test19{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test25() -> i32 {
+pub unsafe extern "C" fn test19() -> i32 {
     let a: [i32; 4] = [0; 4];
 
     let _whole = std::ptr::read_volatile(&a as *const _); // avoid array a from optimization
@@ -409,12 +409,12 @@ pub unsafe extern "C" fn test25() -> i32 {
     // missing-NOT: __security_check_cookie
 }
 
-// test26: Nested structure, no arrays, no address-of expressions
+// test20: Nested structure, no arrays, no address-of expressions
 // Verify that the resulting gep-of-gep does not incorrectly trigger
 // a stack protector
-// CHECK-LABEL: test26{{:|\[}}
+// CHECK-LABEL: test20{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test26() {
+pub unsafe extern "C" fn test20() {
     let c = Nest { first: Pair { a: 10, b: 11 }, second: Pair { a: 20, b: 21 } };
 
     let whole: Nest = std::ptr::read_volatile(&c);
@@ -426,14 +426,14 @@ pub unsafe extern "C" fn test26() {
     // strong-NOT: __security_check_cookie
 }
 
-// test27: Address-of a structure taken in a function with a loop where
+// test21: Address-of a structure taken in a function with a loop where
 // the alloca is an incoming value to a PHI node and a use of that PHI
 // node is also an incoming value
 // Verify that the address-of analysis does not get stuck in infinite
 // recursion when chasing the alloca through the PHI nodes
-// CHECK-LABEL: test27{{:|\[}}
+// CHECK-LABEL: test21{{:|\[}}
 #[no_mangle]
-pub unsafe extern "C" fn test27() -> i32 {
+pub unsafe extern "C" fn test21() -> i32 {
     let mut tmp: *mut u8 = std::ptr::null_mut();
     let tmp_ptr: *mut *mut u8 = &mut tmp;
 
