@@ -61,9 +61,8 @@ This is the step that actually crawls the
 
 After this step, `clean::krate` invokes [`clean_doc_module`], which actually
 converts the `HIR` items to the cleaned [`AST`][ast].
-This is also the step where cross-
-crate inlining is performed, which requires converting `rustc_middle` data
-structures into the cleaned [`AST`][ast].
+This is also the step where cross-crate inlining is performed,
+which requires converting `rustc_middle` data structures into the cleaned [`AST`][ast].
 
 The other major thing that happens in `clean/mod.rs` is the collection of doc
 comments and `#[doc=""]` attributes into a separate field of the [`Attributes`]
@@ -101,7 +100,7 @@ These are all implemented in the [`librustdoc/passes`] directory, one file per p
 By default, all of these passes are run on a crate, but the ones
 regarding dropping private/hidden items can be bypassed by passing
 `--document-private-items` to `rustdoc`.
-Note that unlike the previous set of [`AST`][ast]
+Note that, unlike the previous set of [`AST`][ast]
 transformations, the passes are run on the _cleaned_ crate.
 
 Here is the list of passes as of <!-- date-check --> March 2023:
