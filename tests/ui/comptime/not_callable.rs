@@ -1,7 +1,4 @@
-#![feature(rustc_attrs)]
-
-//TODO: should fail
-//@check-pass
+#![feature(rustc_attrs, const_trait_impl)]
 
 #[rustc_comptime]
 fn foo() {}
@@ -9,17 +6,17 @@ fn foo() {}
 fn main() {
     // Ok
     const { foo() };
-    // TODO: Not ok
-    foo();
+    // Not Ok
+    foo(); //~ ERROR: comptime fns can only be called at compile time
 }
 
 const fn bar() {
-    // TODO: Not ok
-    foo();
+    // Not Ok
+    foo(); //~ ERROR: comptime fns can only be called at compile time
 }
 
 #[rustc_comptime]
 fn baz() {
-    // Should be allowed
-    foo();
+    // TODO: Should be allowed
+    foo(); //~ ERROR: comptime fns can only be called at compile time
 }
