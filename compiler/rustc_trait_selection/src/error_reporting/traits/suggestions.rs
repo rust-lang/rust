@@ -1886,7 +1886,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::Dynamic(_, _) = trait_pred.self_ty().skip_binder().kind() else {
             return false;
         };
-        if let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. }) =
+        if let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
+        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
+        | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(fn_sig, _), .. }) =
             self.tcx.hir_node_by_def_id(obligation.cause.body_id)
             && let hir::FnRetTy::Return(ty) = fn_sig.decl.output
             && let hir::TyKind::Path(qpath) = ty.kind
@@ -1918,11 +1920,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut span = obligation.cause.span;
         if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
             && let parent = self.tcx.parent(obligation.cause.body_id.into())
-            && let DefKind::Fn = self.tcx.def_kind(parent)
+            && let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(parent)
             && self.tcx.asyncness(parent).is_async()
             && let Some(parent) = parent.as_local()
-            && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. }) =
-                self.tcx.hir_node_by_def_id(parent)
+            && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
+            | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
+            | Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(fn_sig, _), ..
+            }) = self.tcx.hir_node_by_def_id(parent)
         {
             // Do not suggest (#147894)
             // async fn foo() -> dyn Display impl { .. }
