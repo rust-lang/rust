@@ -480,7 +480,7 @@ fn expand_format_args<'hir>(
 
                 // If this placeholder uses the next argument index, is surrounded by literal string
                 // pieces, and uses default formatting options, then we can skip it, as this kind of
-                // placeholder is implied by two consequtive string pieces.
+                // placeholder is implied by two consecutive string pieces.
                 if bits == default_options + implicit_arg_index {
                     if let (Some(FormatArgsPiece::Literal(_)), Some(FormatArgsPiece::Literal(_))) =
                         (template.get(i.wrapping_sub(1)), template.get(i + 1))
