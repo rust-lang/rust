@@ -19,7 +19,7 @@ LL |     assert_send::<Box<dyn Dummy + 'a>>();
    |                   ^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `(dyn Dummy + 'a)`
-   = note: required for `Unique<(dyn Dummy + 'a)>` to implement `Send`
+   = note: required for `std::ptr::Unique<(dyn Dummy + 'a)>` to implement `Send`
 note: required because it appears within the type `Box<(dyn Dummy + 'a)>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 note: required by a bound in `assert_send`
