@@ -1,8 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

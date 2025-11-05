@@ -56,18 +56,14 @@ This API is completely unstable and subject to change.
 */
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(bootstrap, feature(debug_closure_helpers))]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(gen_blocks)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
-#![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]

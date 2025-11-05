@@ -60,6 +60,21 @@ fn main() {
         cmd.arg("--cfg=bootstrap");
     }
 
+    if let Some(crate_name) = parse_value_from_args(&args, "--crate-name") {
+        // Add rust logo and set html root for all rustc crates.
+        if crate_name.starts_with("rustc_") {
+            cmd.arg("-Ainternal_features")
+                .arg("-Zcrate-attr=doc(rust_logo)")
+                .arg("-Zcrate-attr=doc(html_root_url = \"https://doc.rust-lang.org/nightly/nightly-rustc/\")");
+
+            // rustc_proc_macro is another build of library/proc_macro which already enables this
+            // feature
+            if crate_name != "rustc_proc_macro" {
+                cmd.arg("-Zcrate-attr=feature(rustdoc_internals)");
+            }
+        }
+    }
+
     maybe_dump(format!("stage{}-rustdoc", stage + 1), &cmd);
 
     if verbose > 1 {

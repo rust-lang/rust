@@ -5,9 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(extern_types)]
 #![feature(file_buffered)]
@@ -15,7 +12,6 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(macro_derive)]
-#![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]

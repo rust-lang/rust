@@ -11,12 +11,6 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
-// tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
-// tidy-alphabetical-end
-
 mod accepted;
 mod builtin_attrs;
 mod removed;
