@@ -270,7 +270,7 @@
 //! * [DOT language](https://www.graphviz.org/doc/info/lang.html)
 
 // tidy-alphabetical-start
-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

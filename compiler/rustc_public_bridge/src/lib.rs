@@ -13,7 +13,7 @@
 
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_ty_tykind)]
-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(sized_hierarchy)]
 #![feature(trait_alias)]
 // tidy-alphabetical-end

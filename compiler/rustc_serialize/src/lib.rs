@@ -4,7 +4,7 @@
 #![allow(internal_features)]
 #![allow(rustc::internal)]
 #![cfg_attr(test, feature(test))]
-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(core_intrinsics)]
 #![feature(min_specialization)]
 #![feature(never_type)]

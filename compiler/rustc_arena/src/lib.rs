@@ -12,7 +12,7 @@
 #![allow(internal_features)]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(test(no_crate_inject, attr(deny(warnings))))]
+#![doc(test(no_crate_inject, attr(deny(warnings), allow(internal_features))))]
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
