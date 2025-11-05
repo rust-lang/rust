@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-    cvs,
+    Vendor, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             //
             // See <https://github.com/rust-lang/rust/pull/131168> for details.
             os: "psx".into(),
-            vendor: "sony".into(),
+            vendor: Vendor::Sony,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),
             executables: true,

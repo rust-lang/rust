@@ -48,7 +48,7 @@ use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
     LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo,
+    SplitDebuginfo, Vendor,
 };
 use tracing::{debug, info, warn};
 
@@ -1816,7 +1816,7 @@ fn self_contained_components(
                 LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
-                        && sess.target.vendor != "uwp"
+                        && sess.target.vendor != Vendor::Uwp
                         && detect_self_contained_mingw(sess, linker)
                 }
             }

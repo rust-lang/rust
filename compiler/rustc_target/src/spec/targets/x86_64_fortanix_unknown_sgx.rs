@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{
+    Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
+};
 
 pub(crate) fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(
@@ -57,7 +59,7 @@ pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         os: "unknown".into(),
         env: "sgx".into(),
-        vendor: "fortanix".into(),
+        vendor: Vendor::Fortanix,
         abi: "fortanix".into(),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),

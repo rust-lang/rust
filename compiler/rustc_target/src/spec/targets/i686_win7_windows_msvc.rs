@@ -1,8 +1,10 @@
-use crate::spec::{Arch, LinkerFlavor, Lld, RustcAbi, SanitizerSet, Target, TargetMetadata, base};
+use crate::spec::{
+    Arch, LinkerFlavor, Lld, RustcAbi, SanitizerSet, Target, TargetMetadata, Vendor, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
-    base.vendor = "win7".into();
+    base.vendor = Vendor::Win7;
     base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);

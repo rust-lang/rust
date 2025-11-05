@@ -9,7 +9,6 @@ pub(crate) fn opts() -> TargetOptions {
 
     TargetOptions {
         os: "teeos".into(),
-        vendor: "unknown".into(),
         dynamic_linking: true,
         linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         // rpath hardcodes -Wl, so it can't be used together with ld.lld.

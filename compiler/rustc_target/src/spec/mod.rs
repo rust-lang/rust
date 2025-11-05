@@ -1923,6 +1923,38 @@ impl Arch {
     }
 }
 
+crate::target_spec_enum! {
+    pub enum Vendor {
+        Amd = "amd",
+        Apple = "apple",
+        Espressif = "espressif",
+        Fortanix = "fortanix",
+        Ibm = "ibm",
+        Kmc = "kmc",
+        Mti = "mti",
+        Nintendo = "nintendo",
+        Nvidia = "nvidia",
+        Openwrt = "openwrt",
+        Pc = "pc",
+        Risc0 = "risc0",
+        Sony = "sony",
+        Sun = "sun",
+        Unikraft = "unikraft",
+        Unknown = "unknown",
+        Uwp = "uwp",
+        Vex = "vex",
+        Win7 = "win7",
+        Wrs = "wrs",
+    }
+    other_variant = Other;
+}
+
+impl Vendor {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -2052,8 +2084,9 @@ pub struct TargetOptions {
     /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
     /// However, parts of the backend do check this field for specific values to enable special behavior.
     pub abi: StaticCow<str>,
-    /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: StaticCow<str>,
+    /// Vendor name to use for conditional compilation (`target_vendor`).
+    /// Defaults to [`Vendor::Unknown`].
+    pub vendor: Vendor,
 
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
@@ -2554,7 +2587,7 @@ impl Default for TargetOptions {
             os: "none".into(),
             env: "".into(),
             abi: "".into(),
-            vendor: "unknown".into(),
+            vendor: Vendor::Unknown,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker_flavor_json: LinkerFlavorCli::Gcc,
@@ -2744,7 +2777,7 @@ impl Target {
 
         check_eq!(
             self.is_like_darwin,
-            self.vendor == "apple",
+            self.vendor == Vendor::Apple,
             "`is_like_darwin` must be set if and only if `vendor` is `apple`"
         );
         check_eq!(
@@ -2917,7 +2950,9 @@ impl Target {
         // If your target really needs to deviate from the rules below,
         // except it and document the reasons.
         // Keep the default "unknown" vendor instead.
-        check_ne!(self.vendor, "", "`vendor` cannot be empty");
+        if let Vendor::Other(s) = &self.vendor {
+            check!(!s.is_empty(), "`vendor` cannot be empty");
+        }
         check_ne!(self.os, "", "`os` cannot be empty");
         if !self.can_use_os_unknown() {
             // Keep the default "none" for bare metal targets instead.
@@ -3109,7 +3144,7 @@ impl Target {
     fn can_use_os_unknown(&self) -> bool {
         self.llvm_target == "wasm32-unknown-unknown"
             || self.llvm_target == "wasm64-unknown-unknown"
-            || (self.env == "sgx" && self.vendor == "fortanix")
+            || (self.env == "sgx" && self.vendor == Vendor::Fortanix)
     }
 
     /// Load a built-in target

@@ -1,8 +1,8 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, Vendor, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_gnu::opts();
-    base.vendor = "win7".into();
+    base.vendor = Vendor::Win7;
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     // Use high-entropy 64 bit address space for ASLR

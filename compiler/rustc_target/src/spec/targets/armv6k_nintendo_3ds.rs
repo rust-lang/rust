@@ -1,5 +1,6 @@
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions,
+    Vendor, cvs,
 };
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
@@ -27,7 +28,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             os: "horizon".into(),
             env: "newlib".into(),
-            vendor: "nintendo".into(),
+            vendor: Vendor::Nintendo,
             cpu: "mpcore".into(),
             abi: "eabihf".into(),
             llvm_floatabi: Some(FloatAbi::Hard),

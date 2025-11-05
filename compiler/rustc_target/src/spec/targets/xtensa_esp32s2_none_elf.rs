@@ -1,5 +1,5 @@
 use crate::spec::base::xtensa;
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, Vendor};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         },
 
         options: TargetOptions {
-            vendor: "espressif".into(),
+            vendor: Vendor::Espressif,
             cpu: "esp32s2".into(),
             linker: Some("xtensa-esp32s2-elf-gcc".into()),
             max_atomic_width: Some(32),

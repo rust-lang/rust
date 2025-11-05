@@ -1,5 +1,6 @@
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Vendor,
 };
 
 pub(crate) fn target() -> Target {
@@ -17,7 +18,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             os: "zkvm".into(),
-            vendor: "risc0".into(),
+            vendor: Vendor::Risc0,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             cpu: "generic-rv32".into(),

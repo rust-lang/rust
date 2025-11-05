@@ -1,7 +1,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs,
+    BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, Vendor, crt_objects,
+    cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -10,7 +11,7 @@ pub(crate) fn opts() -> TargetOptions {
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: "aix".into(),
-        vendor: "ibm".into(),
+        vendor: Vendor::Ibm,
         dynamic_linking: true,
         endian: Endian::Big,
         executables: true,

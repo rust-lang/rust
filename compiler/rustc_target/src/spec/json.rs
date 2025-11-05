@@ -9,7 +9,7 @@ use super::{
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
     MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
-    TargetKind, TargetOptions, TargetWarnings, TlsModel,
+    TargetKind, TargetOptions, TargetWarnings, TlsModel, Vendor,
 };
 use crate::json::{Json, ToJson};
 use crate::spec::AbiMap;
@@ -507,7 +507,7 @@ struct TargetSpecJson {
     os: Option<StaticCow<str>>,
     env: Option<StaticCow<str>>,
     abi: Option<StaticCow<str>>,
-    vendor: Option<StaticCow<str>>,
+    vendor: Option<Vendor>,
     linker: Option<StaticCow<str>>,
     #[serde(rename = "linker-flavor")]
     linker_flavor_json: Option<LinkerFlavorCli>,

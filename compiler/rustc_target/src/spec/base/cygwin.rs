@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::{
     BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, TlsModel,
-    cvs,
+    Vendor, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -25,7 +25,7 @@ pub(crate) fn opts() -> TargetOptions {
     );
     TargetOptions {
         os: "cygwin".into(),
-        vendor: "pc".into(),
+        vendor: Vendor::Pc,
         // FIXME(#13846) this should be enabled for cygwin
         function_sections: false,
         linker: Some("gcc".into()),

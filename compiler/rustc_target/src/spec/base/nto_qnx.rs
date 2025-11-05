@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, LinkArgs, LinkerFlavor, Lld, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
+    Cc, LinkArgs, LinkerFlavor, Lld, RelroLevel, Target, TargetMetadata, TargetOptions, Vendor, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -62,7 +62,7 @@ pub(crate) fn x86_64() -> Target {
             cpu: "x86-64".into(),
             plt_by_default: false,
             max_atomic_width: Some(64),
-            vendor: "pc".into(),
+            vendor: Vendor::Pc,
             ..opts()
         },
     }

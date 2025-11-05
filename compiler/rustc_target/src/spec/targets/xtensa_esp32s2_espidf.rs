@@ -1,7 +1,7 @@
 use rustc_abi::Endian;
 
 use crate::spec::base::xtensa;
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, Vendor, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
             families: cvs!["unix"],
             os: "espidf".into(),
             env: "newlib".into(),
-            vendor: "espressif".into(),
+            vendor: Vendor::Espressif,
 
             executables: true,
             cpu: "esp32s2".into(),

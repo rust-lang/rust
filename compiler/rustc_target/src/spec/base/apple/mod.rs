@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use crate::spec::{
     BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
-    SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
+    SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, Vendor, cvs,
 };
 
 #[cfg(test)]
@@ -123,7 +123,7 @@ pub(crate) fn base(
         abi: env.target_env().into(),
         cpu: arch.target_cpu(env).into(),
         link_env_remove: link_env_remove(os),
-        vendor: "apple".into(),
+        vendor: Vendor::Apple,
         linker_flavor: LinkerFlavor::Darwin(Cc::Yes, Lld::No),
         // macOS has -dead_strip, which doesn't rely on function_sections
         function_sections: false,

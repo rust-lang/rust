@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions, add_link_args, base};
+use crate::spec::{Cc, LinkArgs, LinkerFlavor, Lld, TargetOptions, Vendor, add_link_args, base};
 
 pub(crate) fn opts() -> TargetOptions {
     let base = base::windows_gnu::opts();
@@ -24,7 +24,7 @@ pub(crate) fn opts() -> TargetOptions {
 
     TargetOptions {
         abi: "uwp".into(),
-        vendor: "uwp".into(),
+        vendor: Vendor::Uwp,
         limit_rdylib_exports: false,
         late_link_args,
         late_link_args_dynamic,

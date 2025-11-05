@@ -1,6 +1,6 @@
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target, TargetMetadata,
-    TargetOptions,
+    TargetOptions, Vendor,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
@@ -24,7 +24,7 @@ pub(crate) fn target() -> Target {
             linker: Some("rust-lld".into()),
             link_script: Some(LINKER_SCRIPT.into()),
             os: "horizon".into(),
-            vendor: "nintendo".into(),
+            vendor: Vendor::Nintendo,
             max_atomic_width: Some(128),
             stack_probes: StackProbeType::Inline,
             panic_strategy: PanicStrategy::Abort,

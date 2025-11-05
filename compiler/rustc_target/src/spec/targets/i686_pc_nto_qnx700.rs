@@ -1,5 +1,5 @@
 use crate::spec::base::nto_qnx;
-use crate::spec::{Arch, RustcAbi, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{Arch, RustcAbi, StackProbeType, Target, TargetOptions, Vendor, base};
 
 pub(crate) fn target() -> Target {
     let mut meta = nto_qnx::meta();
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
                 nto_qnx::Arch::I586,
             ),
             env: "nto70".into(),
-            vendor: "pc".into(),
+            vendor: Vendor::Pc,
             stack_probes: StackProbeType::Inline,
             ..base::nto_qnx::opts()
         },
