@@ -29,7 +29,8 @@ struct Context {
     parent: Option<Scope>,
 
     /// Scope of lifetime-extended temporaries. If `None`, extendable expressions have their usual
-    /// temporary scopes.
+    /// temporary scopes. Distinguishing the case of non-extended temporaries helps minimize the
+    /// number of extended lifetimes we record in the [`ScopeTree`]'s `rvalue_scopes` map.
     extended_parent: Option<ExtendedScope>,
 }
 
@@ -47,9 +48,32 @@ struct NodeInfo {
     extending: bool,
 }
 
-/// Scope of lifetime-extended temporaries. If the field is `None`, no drop is scheduled for them.
+/// Scope of lifetime-extended temporaries.
 #[derive(Debug, Copy, Clone)]
-struct ExtendedScope(Option<Scope>);
+enum ExtendedScope {
+    /// Extendable temporaries' scopes will be extended to match the scope of a `let` statement's
+    /// bindings, a `const`/`static` item, or a `const` block result. In the case of temporaries
+    /// extended by `const`s and `static`s, the field is `None`, meaning no drop is scheduled.
+    ThroughDeclaration(Option<Scope>),
+    /// Extendable temporaries will be dropped in the temporary scope enclosing the given scope.
+    /// This is a separate variant to minimize calls to [`ScopeTree::default_temporary_scope`].
+    ThroughExpression(Scope),
+}
+
+impl ExtendedScope {
+    fn to_scope(self, scope_tree: &ScopeTree) -> TempLifetime {
+        match self {
+            ExtendedScope::ThroughDeclaration(temp_lifetime) => {
+                TempLifetime { temp_lifetime, backwards_incompatible: None }
+            }
+            ExtendedScope::ThroughExpression(non_extending_parent) => {
+                let (temp_scope, backwards_incompatible) =
+                    scope_tree.default_temporary_scope(non_extending_parent);
+                TempLifetime { temp_lifetime: Some(temp_scope), backwards_incompatible }
+            }
+        }
+    }
+}
 
 struct ScopeResolutionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -178,6 +202,14 @@ fn resolve_block<'tcx>(
                     .scope_tree
                     .backwards_incompatible_scope
                     .insert(local_id, Scope { local_id, data: ScopeData::Node });
+
+                // To avoid false positives in `tail_expr_drop_order`, make sure extendable
+                // temporaries are extended past the block tail even if that doesn't change their
+                // scopes in the current edition.
+                if visitor.cx.extended_parent.is_none() {
+                    visitor.cx.extended_parent =
+                        Some(ExtendedScope::ThroughExpression(visitor.cx.parent.unwrap()));
+                }
             }
             resolve_expr(visitor, tail_expr, NodeInfo { drop_temps, extending: true });
         }
@@ -296,8 +328,9 @@ fn resolve_expr<'tcx>(
     //        | E& as ...
     match expr.kind {
         hir::ExprKind::AddrOf(_, _, subexpr) => {
-            // TODO: generalize
-            if let Some(ExtendedScope(lifetime)) = visitor.cx.extended_parent {
+            // Record an extended lifetime for the operand if needed.
+            if let Some(extended_scope) = visitor.cx.extended_parent {
+                let lifetime = extended_scope.to_scope(&visitor.scope_tree);
                 record_subexpr_extended_temp_scopes(&mut visitor.scope_tree, subexpr, lifetime);
             }
             resolve_expr(visitor, subexpr, NodeInfo { drop_temps: false, extending: true });
@@ -563,10 +596,9 @@ fn resolve_local<'tcx>(
         // FIXME(super_let): This ignores backward-incompatible drop hints. Implementing BIDs for
         // `super let` bindings could improve `tail_expr_drop_order` with regard to `pin!`, etc.
 
-        // TODO: generalize
         visitor.cx.var_parent = match visitor.cx.extended_parent {
             // If the extended parent scope was set, use it.
-            Some(ExtendedScope(lifetime)) => lifetime,
+            Some(extended_parent) => extended_parent.to_scope(&visitor.scope_tree).temp_lifetime,
             // Otherwise, like a temporaries, bindings are dropped in the enclosing temporary scope.
             None => visitor
                 .cx
@@ -582,7 +614,7 @@ fn resolve_local<'tcx>(
             record_subexpr_extended_temp_scopes(
                 &mut visitor.scope_tree,
                 expr,
-                visitor.cx.var_parent,
+                TempLifetime { temp_lifetime: visitor.cx.var_parent, backwards_incompatible: None },
             );
         }
 
@@ -592,7 +624,8 @@ fn resolve_local<'tcx>(
             // When visiting the initializer, extend borrows and `super let`s accessible through
             // extending subexpressions to live in the current variable scope (or in the case of
             // statics and consts, for the whole program).
-            visitor.cx.extended_parent = Some(ExtendedScope(visitor.cx.var_parent));
+            visitor.cx.extended_parent =
+                Some(ExtendedScope::ThroughDeclaration(visitor.cx.var_parent));
         }
 
         // Make sure we visit the initializer first.
@@ -694,7 +727,7 @@ fn resolve_local<'tcx>(
 fn record_subexpr_extended_temp_scopes(
     scope_tree: &mut ScopeTree,
     expr: &hir::Expr<'_>,
-    lifetime: Option<Scope>,
+    lifetime: TempLifetime,
 ) {
     // Note: give all the expressions matching `ET` with the
     // extended temporary lifetime, not just the innermost rvalue,
@@ -735,6 +768,19 @@ impl<'tcx> ScopeResolutionVisitor<'tcx> {
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if node_info.drop_temps {
+            // If this scope corresponds to an extending subexpression, we can extend
+            // lifetime-extendable temporaries' scopes through it. If we're not already
+            // lifetime-extending to some larger scope, we set the `extended_parent` to use the
+            // temporary scope enclosing this node as the scope of lifetime-extended temporaries.
+            // We only do this for extending subexpressions that also drop their temporaries, rather
+            // than for all extending subxpressions, so that we only "lifetime-extend" when we're
+            // actually changing expressions' temporary scopes; this avoids unnecessary insertions
+            // to the `ScopeTree`'s table of expressions with extended temporary scopes.
+            if node_info.extending && self.cx.extended_parent.is_none() {
+                self.cx.extended_parent = Some(ExtendedScope::ThroughExpression(
+                    self.cx.parent.expect("extending subexpressions should have parent scopes"),
+                ));
+            }
             self.enter_scope(Scope { local_id: id, data: ScopeData::Destruction });
         }
         self.enter_scope(Scope { local_id: id, data: ScopeData::Node });
