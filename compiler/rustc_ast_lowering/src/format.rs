@@ -401,12 +401,19 @@ fn expand_format_args<'hir>(
     let default_options = 0xE000_0020_0000_0000;
     let mut implicit_arg_index = 0;
 
-    for (i, piece) in fmt.template.iter().enumerate() {
+    let template = if fmt.template.is_empty() {
+        // Treat empty templates as a single literal piece (with an empty string),
+        // so we produce `from_str("")` for those.
+        &[FormatArgsPiece::Literal(sym::empty)][..]
+    } else {
+        &fmt.template[..]
+    };
+
+    for (i, piece) in template.iter().enumerate() {
         match piece {
             &FormatArgsPiece::Literal(sym) => {
-                assert!(!sym.is_empty());
                 // Coalesce adjacent literal pieces.
-                if let Some(FormatArgsPiece::Literal(_)) = fmt.template.get(i + 1) {
+                if let Some(FormatArgsPiece::Literal(_)) = template.get(i + 1) {
                     incomplete_lit.push_str(sym.as_str());
                     continue;
                 }
@@ -419,6 +426,26 @@ fn expand_format_args<'hir>(
                     incomplete_lit.clear();
                     (sym, len)
                 };
+
+                // If this is the last piece and was the only piece, that means
+                // there are no placeholders and the entire format string is just a literal.
+                //
+                // In that case, we don't need an array of `Piece`s: we can just use `from_str`.
+                if i + 1 == template.len() && pieces.is_empty() {
+                    // Generate:
+                    //     <core::fmt::Arguments>::from_str("meow")
+                    let from_str = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
+                        macsp,
+                        hir::LangItem::FormatArguments,
+                        if allow_const { sym::from_str } else { sym::from_str_nonconst },
+                    ));
+                    let s = ctx.expr_str(fmt.span, sym);
+                    let args = ctx.arena.alloc_from_iter([s]);
+                    return hir::ExprKind::Call(from_str, args);
+                }
+
+                // Producing a `Piece::num(0)` would be problematic, as that is the terminator.
+                assert!(len > 0);
 
                 // ```
                 //  Piece::num(4),
@@ -456,7 +483,7 @@ fn expand_format_args<'hir>(
                 // placeholder is implied by two consequtive string pieces.
                 if bits == default_options + implicit_arg_index {
                     if let (Some(FormatArgsPiece::Literal(_)), Some(FormatArgsPiece::Literal(_))) =
-                        (fmt.template.get(i.wrapping_sub(1)), fmt.template.get(i + 1))
+                        (template.get(i.wrapping_sub(1)), template.get(i + 1))
                     {
                         implicit_arg_index += 1;
                         continue;
@@ -515,18 +542,6 @@ fn expand_format_args<'hir>(
     }
 
     let arguments = fmt.arguments.all_args();
-
-    if allow_const && arguments.is_empty() && argmap.is_empty() {
-        // Generate:
-        //     <core::fmt::Arguments>::new_const(template)
-        let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
-            macsp,
-            hir::LangItem::FormatArguments,
-            sym::new_const,
-        ));
-        let new_args = ctx.arena.alloc_from_iter([template]);
-        return hir::ExprKind::Call(new, new_args);
-    }
 
     let (let_statements, args) = if arguments.is_empty() {
         // Generate:

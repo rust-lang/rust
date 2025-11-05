@@ -630,45 +630,39 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
+        if let Some(s) = self.as_str() {
+            return s.len();
+        }
         // Iterate over the template, counting the length of literal pieces.
         let mut length = 0usize;
         let mut starts_with_placeholder = false;
         let mut template = self.template;
-        let mut has_placeholders = false;
         loop {
             // SAFETY: We can assume the template is valid.
             unsafe {
-                let n = template.next().i;
+                let n = template.next_piece().i;
                 if n == 0 {
                     // End of template.
                     break;
                 } else if n <= isize::MAX as _ {
                     // Literal string piece.
-                    if length != 0 {
-                        // More than one literal string piece means we have placeholders.
-                        has_placeholders = true;
-                    }
                     length += n as usize;
-                    let _ptr = template.next(); // Skip the string pointer.
+                    let _ptr = template.next_piece(); // Skip the string pointer.
                 } else {
                     // Placeholder piece.
                     if length == 0 {
                         starts_with_placeholder = true;
                     }
-                    has_placeholders = true;
                     // Skip remainder of placeholder:
                     #[cfg(target_pointer_width = "32")]
-                    let _ = template.next();
+                    let _ = template.next_piece();
                     #[cfg(target_pointer_width = "16")]
-                    let _ = (template.next(), template.next(), template.next());
+                    let _ = (template.next_piece(), template.next_piece(), template.next_piece());
                 }
             }
         }
 
-        if !has_placeholders {
-            // If the template has no placeholders, we know the length exactly.
-            length
-        } else if starts_with_placeholder && length < 16 {
+        if starts_with_placeholder && length < 16 {
             // If the format string starts with a placeholder,
             // don't preallocate anything, unless length
             // of literal pieces is significant.
@@ -730,27 +724,17 @@ impl<'a> Arguments<'a> {
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
-        let mut template = self.template;
-        // SAFETY: We can assume the template is valid.
-        let n = unsafe { template.next().i };
-        if n == 0 {
-            // The template is empty.
-            return Some("");
+        if let Some(len) = self.template.as_str_len() {
+            // SAFETY: This fmt::Arguments stores a &'static str.
+            Some(unsafe {
+                str::from_utf8_unchecked(crate::slice::from_raw_parts(
+                    self.args.cast().as_ptr(),
+                    len,
+                ))
+            })
+        } else {
+            None
         }
-        if n <= isize::MAX as _ {
-            // Template starts with a string piece.
-            // SAFETY: We can assume the template is valid.
-            unsafe {
-                let ptr = template.next().p;
-                if template.next().i == 0 {
-                    // The template has only one piece.
-                    return Some(str::from_utf8_unchecked(crate::slice::from_raw_parts(
-                        ptr, n as usize,
-                    )));
-                }
-            }
-        }
-        None
     }
 
     /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
@@ -1493,6 +1477,10 @@ pub trait UpperExp: PointeeSized {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
+    if let Some(s) = fmt.as_str() {
+        return output.write_str(s);
+    }
+
     let mut template = fmt.template;
     let args = fmt.args;
 
@@ -1501,7 +1489,7 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
 
     loop {
         // SAFETY: We can assume the template is valid.
-        let n = unsafe { template.next().i };
+        let n = unsafe { template.next_piece().i };
         if n == 0 {
             // End of template.
             return Ok(());
@@ -1518,7 +1506,7 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
                 unsafe { arg.fmt(&mut Formatter::new(output, options)) }?;
             }
             // SAFETY: We can assume the strings in the template are valid.
-            let s = unsafe { crate::str::from_raw_parts(template.next().p, n as usize) };
+            let s = unsafe { crate::str::from_raw_parts(template.next_piece().p, n as usize) };
             output.write_str(s)?;
             last_piece_was_str = true;
         } else {
@@ -1527,13 +1515,13 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
             let (high, low) = ((n >> 32) as u32, n as u32);
             #[cfg(target_pointer_width = "32")]
             // SAFETY: We can assume the template is valid.
-            let (high, low) = (n as u32, unsafe { template.next().i } as u32);
+            let (high, low) = (n as u32, unsafe { template.next_piece().i } as u32);
             #[cfg(target_pointer_width = "16")]
             // SAFETY: We can assume the template is valid.
             let (high, low) = unsafe {
                 (
-                    (n as u32) << 16 | template.next().i as u32,
-                    (template.next().i as u32) << 16 | template.next().i as u32,
+                    (n as u32) << 16 | template.next_piece().i as u32,
+                    (template.next_piece().i as u32) << 16 | template.next_piece().i as u32,
                 )
             };
             let arg_index = (low & 0x3FF) as usize;

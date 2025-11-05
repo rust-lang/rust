@@ -9,6 +9,7 @@
 use super::*;
 use crate::hint::unreachable_unchecked;
 use crate::marker::PhantomData;
+use crate::num::NonZeroUsize;
 use crate::ptr::NonNull;
 
 #[lang = "format_template"]
@@ -23,12 +24,29 @@ unsafe impl Sync for Template<'_> {}
 
 impl<'a> Template<'a> {
     #[inline]
-    pub const unsafe fn new<const N: usize>(pieces: &'a [rt::Piece; N]) -> Self {
+    #[rustc_diagnostic_item = "FmtTemplateNew"]
+    pub unsafe fn new<const N: usize>(pieces: &'a [rt::Piece; N]) -> Self {
         Self { pieces: NonNull::from_ref(pieces).cast(), lifetime: PhantomData }
     }
 
     #[inline]
-    pub const unsafe fn next(&mut self) -> Piece {
+    pub const unsafe fn new_str_len(len: usize) -> Self {
+        // SAFETY: We set the lowest bit, so it's nonzero.
+        let bits = unsafe { NonZeroUsize::new_unchecked(len << 1 | 1) };
+        Self { pieces: NonNull::without_provenance(bits), lifetime: PhantomData }
+    }
+
+    #[inline]
+    pub const fn as_str_len(self) -> Option<usize> {
+        // SAFETY: During const eval, `self.pieces` must have come from a usize, not a pointer,
+        // because `new()` above is not const.
+        // Outside const eval, transmuting a pointer to a usize is fine.
+        let bits = unsafe { crate::mem::transmute::<_, usize>(self.pieces) };
+        if bits & 1 == 1 { Some(bits >> 1) } else { None }
+    }
+
+    #[inline]
+    pub const unsafe fn next_piece(&mut self) -> Piece {
         // SAFETY: Guaranteed by caller.
         unsafe {
             let piece = *self.pieces.as_ref();
@@ -40,6 +58,7 @@ impl<'a> Template<'a> {
 
 #[lang = "format_piece"]
 #[derive(Copy, Clone)]
+#[repr(align(2))]
 pub union Piece {
     pub i: usize,
     pub p: *const u8,
@@ -224,31 +243,30 @@ impl Argument<'_> {
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
-#[rustc_diagnostic_item = "FmtArgumentsNew"]
 impl<'a> Arguments<'a> {
     #[inline]
-    pub const fn new_const(template: rt::Template<'a>) -> Arguments<'a> {
-        Arguments { template, args: NonNull::dangling() }
-    }
-
-    #[inline]
-    pub fn new<const N: usize>(
+    pub const fn new<const N: usize>(
         template: rt::Template<'a>,
         args: &'a [rt::Argument<'a>; N],
     ) -> Arguments<'a> {
         Arguments { template, args: NonNull::from_ref(args).cast() }
     }
 
-    // These two methods are used in library/core/src/panicking.rs to create a
-    // `fmt::Arguments` for a `&'static str`.
     #[inline]
-    pub(crate) const fn pieces_for_str(s: &'static str) -> [rt::Piece; 3] {
-        [rt::Piece { i: s.len() as _ }, rt::Piece::str(s), rt::Piece { i: 0 }]
+    pub const fn from_str(s: &'static str) -> Arguments<'a> {
+        Arguments {
+            // SAFETY: This is the "static str" representation of fmt::Arguments.
+            template: unsafe { rt::Template::new_str_len(s.len()) },
+            args: NonNull::from_ref(s).cast(),
+        }
     }
-    /// Safety: Only call this with the result of `pieces_for_str`.
+
+    // Same as `from_str`, but not const.
+    // Used by format_args!() expansion when arguments are inlined,
+    // e.g. format_args!("{}", 123), which is not allowed in const.
     #[inline]
-    pub(crate) const unsafe fn from_pieces(p: &'a [rt::Piece; 3]) -> Self {
-        // SAFETY: Guaranteed by caller.
-        Self::new_const(unsafe { rt::Template::new(p) })
+    #[rustc_diagnostic_item = "FmtArgumentsFromStrNonconst"]
+    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
+        Arguments::from_str(s)
     }
 }
