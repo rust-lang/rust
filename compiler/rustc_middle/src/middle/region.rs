@@ -226,7 +226,7 @@ pub struct ScopeTree {
     /// `rustc_hir_analysis::check::region` and in the [Reference].
     ///
     /// [Reference]: https://doc.rust-lang.org/nightly/reference/destructors.html#temporary-lifetime-extension
-    extended_temp_scopes: ItemLocalMap<Option<Scope>>,
+    extended_temp_scopes: ItemLocalMap<TempLifetime>,
 
     /// Backwards incompatible scoping that will be introduced in future editions.
     /// This information is used later for linting to identify locals and
@@ -235,7 +235,7 @@ pub struct ScopeTree {
 }
 
 /// Temporary lifetime information for expressions, used when lowering to MIR.
-#[derive(Clone, Copy, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable)]
 pub struct TempLifetime {
     /// The scope in which a temporary should be dropped. If `None`, no drop is scheduled; this is
     /// the case for lifetime-extended temporaries extended by a const/static item or const block.
@@ -262,12 +262,13 @@ impl ScopeTree {
     }
 
     /// Make an association between a sub-expression and an extended lifetime
-    pub fn record_extended_temp_scope(&mut self, var: hir::ItemLocalId, lifetime: Option<Scope>) {
+    pub fn record_extended_temp_scope(&mut self, var: hir::ItemLocalId, lifetime: TempLifetime) {
         debug!(?var, ?lifetime);
-        if let Some(lifetime) = lifetime {
+        if let Some(lifetime) = lifetime.temp_lifetime {
             assert!(var != lifetime.local_id);
         }
-        self.extended_temp_scopes.insert(var, lifetime);
+        let old_lifetime = self.extended_temp_scopes.insert(var, lifetime);
+        assert!(old_lifetime.is_none_or(|old| old == lifetime));
     }
 
     /// Returns the narrowest scope that encloses `id`, if any.
@@ -347,7 +348,7 @@ impl ScopeTree {
         // Check for a designated extended temporary scope.
         if let Some(&s) = self.extended_temp_scopes.get(&expr_id) {
             debug!("temporary_scope({expr_id:?}) = {s:?} [custom]");
-            return TempLifetime { temp_lifetime: s, backwards_incompatible: None };
+            return s;
         }
 
         // Otherwise, locate the innermost terminating scope.

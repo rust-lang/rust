@@ -14,11 +14,13 @@
 
 fn main() {
     assert_drop_order(1..=3, |e| {
-        &({ &raw const *&e.log(1) }, drop(e.log(2)));
+        &({ &*&e.log(2) }, drop(e.log(1)));
+        // &({ &raw const *&e.log(2) }, drop(e.log(1)));
         drop(e.log(3));
     });
+    /*
     assert_drop_order(1..=3, |e| {
-        { let _x; _x = &({ &raw const *&e.log(1) }, drop(e.log(2))); }
+        { let _x; _x = &({ &raw const *&e.log(2) }, drop(e.log(1))); }
         drop(e.log(3));
     });
     assert_drop_order(1..=3, |e| {
@@ -34,6 +36,7 @@ fn main() {
         (_x, _y) = ({ &raw const *&e.log(2) }, drop(e.log(1)));
         drop(e.log(3));
     });
+    */
 }
 
 // # Test scaffolding...

@@ -7,21 +7,19 @@
 fn temp() {}
 
 fn main() {
-    // In Rust 2024, block tail expressions are temporary scopes, so the result of `temp()` is
-    // dropped after evaluating `&temp()`.
+    // In Rust 2024, block tail expressions are temporary scopes, but temporary lifetime extension
+    // rules apply: `&temp()` here is an extending borrow expression, so `temp()`'s lifetime is
+    // extended past the block.
     println!("{:?}", { &temp() });
-    //[e2024]~^ ERROR: temporary value dropped while borrowed [E0716]
 
     // Arguments to function calls aren't extending expressions, so `temp()` is dropped at the end
     // of the block in Rust 2024.
     println!("{:?}", { std::convert::identity(&temp()) });
     //[e2024]~^ ERROR: temporary value dropped while borrowed [E0716]
 
-    // In Rust 1.89, `format_args!` extended the lifetime of all extending expressions in its
-    // arguments when provided with two or more arguments. This caused the result of `temp()` to
-    // outlive the result of the block, making this compile.
+    // In Rust 1.89, `format_args!` had different lifetime extension behavior dependent on how many
+    // formatting arguments it had (#145880), so let's test that too.
     println!("{:?}{:?}", { &temp() }, ());
-    //[e2024]~^ ERROR: temporary value dropped while borrowed [E0716]
 
     println!("{:?}{:?}", { std::convert::identity(&temp()) }, ());
     //[e2024]~^ ERROR: temporary value dropped while borrowed [E0716]
@@ -31,12 +29,10 @@ fn main() {
     // blocks of `if` expressions are temporary scopes in all editions, this affects Rust 2021 and
     // earlier as well.
     println!("{:?}{:?}", (), if true { &format!("") } else { "" });
-    //~^ ERROR: temporary value dropped while borrowed [E0716]
 
     println!("{:?}{:?}", (), if true { std::convert::identity(&format!("")) } else { "" });
     //~^ ERROR: temporary value dropped while borrowed [E0716]
 
     // This has likewise occurred with `match`, affecting all editions.
     println!("{:?}{:?}", (), match true { true => &"" as &dyn std::fmt::Debug, false => &temp() });
-    //~^ ERROR: temporary value dropped while borrowed [E0716]
 }
