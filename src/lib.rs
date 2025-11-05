@@ -13,7 +13,7 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![allow(internal_features)]
+#![expect(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![feature(rustc_private)]
@@ -21,7 +21,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
-#![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args)]
 
 // The rustc crates we need
 extern crate rustc_abi;
@@ -46,7 +46,7 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
-#[allow(unused_extern_crates)]
+#[expect(unused_extern_crates)]
 extern crate rustc_driver;
 
 mod abi;
