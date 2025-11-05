@@ -206,8 +206,7 @@ The Cargo flag `--no-deps` inhibits that behavior and generates docs for just th
 
 ### Self-hosted project docs
 
-Some projects like to host their own documentation.
-For example: <https://docs.serde.rs/>.
+Some projects host their own documentation.
 This is easy to do by locally generating docs, and simply copying them to a web server.
 Rustdoc's HTML output can be extensively customized by flags.
 Users can add a theme, set the default theme, and inject arbitrary HTML.
