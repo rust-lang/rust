@@ -1,18 +1,19 @@
-//! Test for #145784: the argument to `pin!` should be treated as an extending expression if and
-//! only if the whole `pin!` invocation is an extending expression. Likewise, since `pin!` is
-//! implemented in terms of `super let`, test the same for `super let` initializers. Since the
-//! argument to `pin!` and the initializer of `super let` are not temporary drop scopes, this only
-//! affects lifetimes in two cases:
+//! Test for #145784. This tests three things:
 //!
-//! - Block tail expressions in Rust 2024, which are both extending expressions and temporary drop
-//! scopes; treating them as extending expressions within a non-extending `pin!` resulted in borrow
-//! expression operands living past the end of the block.
+//! - Since temporary lifetime extension applies to extending subexpressions in all contexts, it
+//!   works through Rust 2024 block tail expressions: extending borrows and `super let`s in block
+//!   tails are extended to outlive the result of the block.
 //!
-//! - Nested `super let` statements, which can have their binding and temporary lifetimes extended
-//! when the block they're in is an extending expression.
+//! - Since `super let`'s initializer has the same temporary scope as the variable scope of its
+//!   bindings, this means that lifetime extension can effectively see through `super let`.
 //!
-//! For more information on extending expressions, see
-//! https://doc.rust-lang.org/reference/destructors.html#extending-based-on-expressions
+//! - In particular, the argument to `pin!` is an extending expression, and the argument of an
+//!   extending `pin!` has an extended temporary scope. The lifetime of the argument, as well those
+//!   of extending borrows and `super lets` within it, should match the result of the `pin!`,
+//!   regardless of whether it itself is extended by a parent expression.
+//!
+//! For more information on temporary lifetime extension, see
+//! https://doc.rust-lang.org/nightly/reference/destructors.html#temporary-lifetime-extension
 //!
 //! For tests that `super let` initializers aren't temporary drop scopes, and tests for
 //! lifetime-extended `super let`, see tests/ui/borrowck/super-let-lifetime-and-drop.rs
@@ -30,14 +31,14 @@ use std::pin::pin;
 fn f<T>(_: LogDrop<'_>, x: T) -> T { x }
 
 fn main() {
-    // Test block arguments to `pin!` in non-extending expressions.
+    // Test block arguments to non-extending `pin!`.
     // In Rust 2021, block tail expressions aren't temporary drop scopes, so their temporaries
     // should outlive the `pin!` invocation.
-    // In Rust 2024, block tail expressions are temporary drop scopes, so their temporaries should
-    // be dropped after evaluating the tail expression within the `pin!` invocation.
-    // By nesting two `pin!` calls, this ensures non-extended `pin!` doesn't extend an inner `pin!`.
+    // In Rust 2024, extending borrows within block tail expressions have extended lifetimes to
+    // outlive result of the block, so the end result is the same in this case.
+    // By nesting two `pin!` calls, this ensures extending borrows in the inner `pin!` outlive the
+    // outer `pin!`.
     assert_drop_order(1..=3, |o| {
-        #[cfg(e2021)]
         (
             pin!((
                 pin!({ &o.log(3) as *const LogDrop<'_> }),
@@ -45,19 +46,10 @@ fn main() {
             )),
             drop(o.log(2)),
         );
-        #[cfg(e2024)]
-        (
-            pin!((
-                pin!({ &o.log(1) as *const LogDrop<'_> }),
-                drop(o.log(2)),
-            )),
-            drop(o.log(3)),
-        );
     });
 
     // The same holds for `super let` initializers in non-extending expressions.
     assert_drop_order(1..=4, |o| {
-        #[cfg(e2021)]
         (
             {
                 super let _ = {
@@ -67,17 +59,6 @@ fn main() {
                 drop(o.log(2))
             },
             drop(o.log(3)),
-        );
-        #[cfg(e2024)]
-        (
-            {
-                super let _ = {
-                    super let _ = { &o.log(1) as *const LogDrop<'_> };
-                    drop(o.log(2))
-                };
-                drop(o.log(3))
-            },
-            drop(o.log(4)),
         );
     });
 
@@ -97,36 +78,18 @@ fn main() {
     // We have extending borrow expressions within an extending block
     // expression (within an extending borrow expression) within a
     // non-extending expresion within the initializer expression.
-    #[cfg(e2021)]
-    {
-        // These two should be the same.
-        assert_drop_order(1..=3, |e| {
-            let _v = f(e.log(1), &{ &raw const *&e.log(2) });
-            drop(e.log(3));
+    // These two should be the same.
+    assert_drop_order(1..=3, |e| {
+        let _v = f(e.log(1), &{ &raw const *&e.log(2) });
+        drop(e.log(3));
+    });
+    assert_drop_order(1..=3, |e| {
+        let _v = f(e.log(1), {
+            super let v = &{ &raw const *&e.log(2) };
+            v
         });
-        assert_drop_order(1..=3, |e| {
-            let _v = f(e.log(1), {
-                super let v = &{ &raw const *&e.log(2) };
-                v
-            });
-            drop(e.log(3));
-        });
-    }
-    #[cfg(e2024)]
-    {
-        // These two should be the same.
-        assert_drop_order(1..=3, |e| {
-            let _v = f(e.log(2), &{ &raw const *&e.log(1) });
-            drop(e.log(3));
-        });
-        assert_drop_order(1..=3, |e| {
-            let _v = f(e.log(2), {
-                super let v = &{ &raw const *&e.log(1) };
-                v
-            });
-            drop(e.log(3));
-        });
-    }
+        drop(e.log(3));
+    });
 
     // We have extending borrow expressions within a non-extending
     // expression within the initializer expression.
