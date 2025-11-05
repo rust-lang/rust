@@ -1897,6 +1897,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // type T = dyn Trait;
             // fn foo() -> impl T { .. }
             err.span_note(self.tcx.def_span(def_id), "this type alias is unsized");
+            err.multipart_suggestion(
+                format!(
+                    "consider boxing the return type, and wrapping all of the returned values in \
+                    `Box::new`",
+                ),
+                vec![
+                    (ty.span.shrink_to_lo(), "Box<".to_string()),
+                    (ty.span.shrink_to_hi(), ">".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
             return false;
         }
 
