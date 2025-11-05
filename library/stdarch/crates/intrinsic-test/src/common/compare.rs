@@ -47,6 +47,7 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         );
     }
 
+    info!("Completed running C++ and Rust test binaries");
     let c = std::str::from_utf8(&c.stdout)
         .unwrap()
         .to_lowercase()
@@ -70,6 +71,8 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         .chain(rust_output_map.keys())
         .unique()
         .collect_vec();
+
+    info!("Comparing outputs");
     let intrinsics_diff_count = intrinsics
         .par_iter()
         .filter_map(|&&intrinsic| {
