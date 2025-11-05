@@ -151,7 +151,14 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     cov_mark::hit!(demorgan_double_parens);
                     editor = builder.make_editor(paren_expr.syntax());
 
-                    editor.replace(paren_expr.syntax(), add_bang_paren(&make, demorganed).syntax());
+                    let new_expr = add_bang_paren(&make, demorganed);
+                    if paren_expr.syntax().parent().is_some_and(|parent| {
+                        new_expr.needs_parens_in_place_of(&parent, paren_expr.syntax())
+                    }) {
+                        editor.replace(paren_expr.syntax(), make.expr_paren(new_expr).syntax());
+                    } else {
+                        editor.replace(paren_expr.syntax(), new_expr.syntax());
+                    }
                 }
             } else {
                 editor = builder.make_editor(bin_expr.syntax());
@@ -634,6 +641,33 @@ fn main() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (x ||$0 !y).then_some(42) }",
+            "fn f() { (!(!x && y)).then_some(42) }",
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver_complex() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a && b ||$0 c && d).then_some(42) }",
+            "fn f() { (!(!(a && b) && !(c && d))).then_some(42) }",
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver_chained() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a ||$0 b).then_some(42).or(Some(0)) }",
+            "fn f() { (!(!a && !b)).then_some(42).or(Some(0)) }",
         );
     }
 }
