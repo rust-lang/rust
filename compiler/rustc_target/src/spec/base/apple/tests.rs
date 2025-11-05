@@ -1,4 +1,5 @@
 use super::OSVersion;
+use crate::spec::Abi;
 use crate::spec::targets::{
     aarch64_apple_darwin, aarch64_apple_ios_sim, aarch64_apple_visionos_sim,
     aarch64_apple_watchos_sim, i686_apple_darwin, x86_64_apple_darwin, x86_64_apple_ios,
@@ -20,7 +21,7 @@ fn simulator_targets_set_env() {
     for target in &all_sim_targets {
         assert_eq!(target.env, "sim");
         // Ensure backwards compat
-        assert_eq!(target.abi, "sim");
+        assert_eq!(target.abi, Abi::Sim);
     }
 }
 

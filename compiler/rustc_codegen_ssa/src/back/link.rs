@@ -46,7 +46,7 @@ use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
+    Abi, BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
     LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
     SplitDebuginfo,
 };
@@ -1819,7 +1819,7 @@ fn self_contained_components(
                 LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
-                        && sess.target.abi != "uwp"
+                        && sess.target.abi != Abi::Uwp
                         && detect_self_contained_mingw(sess, linker)
                 }
             }

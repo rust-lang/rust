@@ -4,7 +4,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
+    Abi, BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
     SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, cvs,
 };
 
@@ -101,6 +101,14 @@ impl TargetEnv {
             Self::Simulator => "sim",
         }
     }
+
+    fn target_abi(self) -> Abi {
+        match self {
+            Self::Normal => Abi::Unspecified,
+            Self::MacCatalyst => Abi::MacAbi,
+            Self::Simulator => Abi::Sim,
+        }
+    }
 }
 
 /// Get the base target options, unversioned LLVM target and `target_arch` from the three
@@ -120,7 +128,7 @@ pub(crate) fn base(
         //
         // But let's continue setting them for backwards compatibility.
         // FIXME(madsmtm): Warn about using these in the future.
-        abi: env.target_env().into(),
+        abi: env.target_abi(),
         cpu: arch.target_cpu(env).into(),
         link_env_remove: link_env_remove(os),
         vendor: "apple".into(),

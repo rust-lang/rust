@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
+    Abi, BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -23,7 +23,7 @@ pub(crate) fn opts() -> TargetOptions {
         os: "windows".into(),
         env: "gnu".into(),
         vendor: "pc".into(),
-        abi: "llvm".into(),
+        abi: Abi::Llvm,
         linker: Some("clang".into()),
         dynamic_linking: true,
         dll_tls_export: false,

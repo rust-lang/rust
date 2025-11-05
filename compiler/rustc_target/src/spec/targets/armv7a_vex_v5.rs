@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions,
 };
 
@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
         env: "v5".into(),
         os: "vexos".into(),
         cpu: "cortex-a9".into(),
-        abi: "eabihf".into(),
+        abi: Abi::EabiHf,
         is_like_vexos: true,
         llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
