@@ -4,7 +4,10 @@ error[E0080]: evaluation panicked: unsafe precondition(s) violated: slice::get_u
   --> $DIR/ub-slice-get-unchecked.rs:7:27
    |
 LL | const B: &[()] = unsafe { A.get_unchecked(3..1) };
-   |                           ^^^^^^^^^^^^^^^^^^^^^ evaluation of `B` failed here
+   |                           ^^^^^^^^^^^^^^^^^^^^^ evaluation of `B` failed inside this call
+   |
+note: inside `core::panicking::panic_nounwind`
+  --> $SRC_DIR/core/src/panicking.rs:LL:COL
 
 error: aborting due to 1 previous error
 
