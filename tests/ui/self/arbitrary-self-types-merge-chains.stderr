@@ -1,0 +1,26 @@
+error: `Deref::Target` does not agree with `Receiver::Target`
+  --> $DIR/arbitrary-self-types-merge-chains.rs:16:1
+   |
+LL | impl Receiver for A {
+   | ^^^^^^^^^^^^^^^^^^^ `Deref::Target` is `u8` but `Receiver::Target` is `u32`
+   |
+note: `#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence
+  --> $DIR/arbitrary-self-types-merge-chains.rs:16:1
+   |
+LL | impl Receiver for A {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: `Deref::Target` does not agree with `Receiver::Target`
+  --> $DIR/arbitrary-self-types-merge-chains.rs:28:1
+   |
+LL | impl<'a, T> Receiver for B<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Deref::Target` is `T` but `Receiver::Target` is `Box<T>`
+   |
+note: `#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence
+  --> $DIR/arbitrary-self-types-merge-chains.rs:28:1
+   |
+LL | impl<'a, T> Receiver for B<'a, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
