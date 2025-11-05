@@ -299,7 +299,7 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         value.get_type()
     }
 
-    #[cfg_attr(feature = "master", allow(unused_mut))]
+    #[cfg_attr(feature = "master", expect(unused_mut))]
     fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
         #[cfg(not(feature = "master"))]
         if let Some(struct_type) = ty.is_struct()

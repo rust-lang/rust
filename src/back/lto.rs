@@ -633,7 +633,7 @@ pub fn optimize_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }*/
-    #[allow(clippy::let_and_return)]
+    #[expect(clippy::let_and_return)]
     module
 }
 

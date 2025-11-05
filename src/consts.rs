@@ -58,7 +58,6 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         global_value
     }
 
-    #[cfg_attr(not(feature = "master"), allow(unused_mut))]
     fn codegen_static(&mut self, def_id: DefId) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
 
@@ -162,7 +161,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    #[cfg_attr(not(feature = "master"), allow(unused_variables))]
+    #[cfg_attr(not(feature = "master"), expect(unused_variables))]
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]
         function.add_attribute(FnAttribute::Used);

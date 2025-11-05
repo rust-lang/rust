@@ -85,7 +85,7 @@ fn wide_aes_output_type<'a, 'gcc, 'tcx>(
     (aes_output_type.as_type(), field1, field2)
 }
 
-#[cfg_attr(not(feature = "master"), allow(unused_variables))]
+#[cfg_attr(not(feature = "master"), expect(unused_variables))]
 pub fn adjust_function<'gcc>(
     context: &'gcc Context<'gcc>,
     func_name: &str,

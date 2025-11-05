@@ -183,7 +183,8 @@ def update_intrinsics(llvm_path, llvmint, llvmint2):
         for arch in archs:
             if len(intrinsics[arch]) == 0:
                 continue
-            out.write("\"{}\" => {{ #[allow(non_snake_case)] fn {}(name: &str,full_name:&str) -> &'static str {{ match name {{".format(arch,arch))
+            attribute = "#[expect(non_snake_case)]" if arch[0].isupper() else ""
+            out.write("\"{}\" => {{ {} fn {}(name: &str,full_name:&str) -> &'static str {{ match name {{".format(arch, attribute, arch))
             intrinsics[arch].sort(key=lambda x: (x[0], x[2]))
             out.write('    // {}\n'.format(arch))
             for entry in intrinsics[arch]:
