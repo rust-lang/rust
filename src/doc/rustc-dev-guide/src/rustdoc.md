@@ -175,7 +175,7 @@ When crates are published to crates.io, docs.rs automatically builds
 and publishes their documentation, for instance at
 <https://docs.rs/serde/latest/serde/>. It always builds with the current nightly
 rustdoc, so any changes you land in rustdoc are "insta-stable" in that they will
-have an immediate public effect on docs.rs. Old documentation is not rebuilt, so
+have an immediate public effect on docs.rs. Old documentation is only sometimes rebuilt, so
 you will see some variation in UI when browsing old releases in docs.rs. Crate
 authors can request rebuilds, which will be run with the latest rustdoc.
 
