@@ -19,14 +19,14 @@ fn main() {
     rustc()
         .input("src/proc.rs")
         .crate_name(proc_crate_name)
-        .edition("2021")
+        .edition("2024")
         .crate_type("proc-macro")
         .emit("dep-info,link")
         .run();
     rustc()
         .input("src/lib.rs")
         .crate_name(crate_name)
-        .edition("2021")
+        .edition("2024")
         .crate_type("lib")
         .emit("dep-info,link")
         .run();
