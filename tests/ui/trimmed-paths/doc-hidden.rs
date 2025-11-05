@@ -45,7 +45,7 @@ fn uses_local() {
     ) = 3u32;
     //~^ ERROR mismatched types [E0308]
     //~| NOTE expected `(ActuallyPub, ..., ..., ..., ..., ...)`, found `u32`
-    //~| NOTE expected tuple `(local::ActuallyPub, local::DocHidden, local::pub_mod::ActuallyPubInPubMod, local::pub_mod::DocHiddenInPubMod, local::hidden_mod::ActuallyPubInHiddenMod, local::hidden_mod::DocHiddenInHiddenMod)`
+    //~| NOTE expected tuple `(local::ActuallyPub, DocHidden, local::pub_mod::ActuallyPubInPubMod, DocHiddenInPubMod, ActuallyPubInHiddenMod, DocHiddenInHiddenMod)`
 }
 
 fn uses_helper() {
