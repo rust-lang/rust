@@ -163,7 +163,7 @@ pub fn test_copy_ref(x: &ExplicitCopy) {
 // CHECK-DAG: ![[#ASSIGN_COPY2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[u64; 20], 160>"
 
 // CHECK-DAG: ![[#INIT_STRUCT_LOC]] = !DILocation({{.*}}scope: ![[#INIT_STRUCT_SCOPE:]]
-// CHECK-DAG: ![[#INIT_STRUCT_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<alloc::string::String, 24>"
+// CHECK-DAG: ![[#INIT_STRUCT_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<alloc::string::String, [[#]]>"
 
 // CHECK-DAG: ![[#TUPLE_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#TUPLE_MOVE_SCOPE:]]
 // CHECK-DAG: ![[#TUPLE_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[u64; 20], 160>"
@@ -175,7 +175,7 @@ pub fn test_copy_ref(x: &ExplicitCopy) {
 // CHECK-DAG: ![[#COPY2_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[u64; 20], 160>"
 
 // CHECK-DAG: ![[#ARRAY_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#ARRAY_MOVE_SCOPE:]]
-// CHECK-DAG: ![[#ARRAY_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[alloc::string::String; 20], 480>"
+// CHECK-DAG: ![[#ARRAY_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[alloc::string::String; 20], [[#]]>"
 
 // CHECK-DAG: ![[#FIELD_MOVE_LOC]] = !DILocation({{.*}}scope: ![[#FIELD_MOVE_SCOPE:]]
 // CHECK-DAG: ![[#FIELD_MOVE_SCOPE]] = {{(distinct )?}}!DISubprogram(name: "compiler_move<[u64; 20], 160>"

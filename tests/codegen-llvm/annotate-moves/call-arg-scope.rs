@@ -28,7 +28,7 @@ pub struct SmallStruct {
 // CHECK-LABEL: call_arg_scope::test_call_with_single_arg
 pub fn test_call_with_single_arg(s: LargeStruct) {
     // CHECK: call void @llvm.memcpy{{.*}}, !dbg ![[#CALL1_ARG_LOC:]]
-    // CHECK: call {{.*}}@{{.*}}helper_single{{.*}}({{.*}}), !dbg ![[#CALL1_LOC:]]
+    // CHECK: call {{.*}}@{{.*}}helper_single{{.*}}({{.*}}){{.*}}, !dbg ![[#CALL1_LOC:]]
     helper_single(s);
 }
 
@@ -43,7 +43,7 @@ fn helper_single(_s: LargeStruct) {}
 pub fn test_call_with_multiple_args(large: LargeStruct, medium: MediumStruct, small: SmallStruct) {
     // CHECK: call void @llvm.memcpy{{.*}}, !dbg ![[#CALL2_ARG1_LOC:]]
     // CHECK: call void @llvm.memcpy{{.*}}, !dbg ![[#CALL2_ARG2_LOC:]]
-    // CHECK: call {{.*}}@{{.*}}helper_multiple{{.*}}({{.*}}), !dbg ![[#CALL2_LOC:]]
+    // CHECK: call {{.*}}@{{.*}}helper_multiple{{.*}}({{.*}}){{.*}}, !dbg ![[#CALL2_LOC:]]
     helper_multiple(large, medium, small);
 }
 
@@ -67,7 +67,7 @@ pub fn test_return_large_value() -> LargeStruct {
 
 // CHECK-LABEL: call_arg_scope::test_call_returning_large
 pub fn test_call_returning_large() {
-    // CHECK: call {{.*}}@{{.*}}make_large_struct{{.*}}({{.*}}), !dbg ![[#CALL3_LOC:]]
+    // CHECK: call {{.*}}@{{.*}}make_large_struct{{.*}}({{.*}}){{.*}}, !dbg ![[#CALL3_LOC:]]
     let _result = make_large_struct();
 }
 
@@ -82,7 +82,7 @@ fn make_large_struct() -> LargeStruct {
 
 // CHECK-LABEL: call_arg_scope::test_mixed_call
 pub fn test_mixed_call(input: LargeStruct) -> LargeStruct {
-    // CHECK: call {{.*}}@{{.*}}transform_large{{.*}}({{.*}}), !dbg ![[#CALL4_LOC:]]
+    // CHECK: call {{.*}}@{{.*}}transform_large{{.*}}({{.*}}){{.*}}, !dbg ![[#CALL4_LOC:]]
     transform_large(input)
 }
 
