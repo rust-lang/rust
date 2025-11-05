@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
     TargetMetadata, TargetOptions, Vendor,
 };
 
@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         vendor: Vendor::Vex,
         env: Env::V5,
-        os: "vexos".into(),
+        os: Os::VexOs,
         cpu: "cortex-a9".into(),
         abi: Abi::EabiHf,
         is_like_vexos: true,

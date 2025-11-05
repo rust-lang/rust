@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
     TargetOptions, Vendor, cvs,
 };
 
@@ -26,7 +26,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            os: "horizon".into(),
+            os: Os::Horizon,
             env: Env::Newlib,
             vendor: Vendor::Nintendo,
             cpu: "mpcore".into(),

@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target,
+    Arch, LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, Os, PanicStrategy, Target,
     TargetMetadata, TargetOptions, Vendor,
 };
 
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
 
         options: TargetOptions {
-            os: "cuda".into(),
+            os: Os::Cuda,
             vendor: Vendor::Nvidia,
             linker_flavor: LinkerFlavor::Ptx,
             // The linker can be installed from `crates.io`.

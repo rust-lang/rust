@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld,
+    BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
     SplitDebuginfo, TargetOptions, Vendor, add_link_args, crt_objects, cvs,
 };
 
@@ -77,7 +77,7 @@ pub(crate) fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        os: "windows".into(),
+        os: Os::Windows,
         env: Env::Gnu,
         vendor: Vendor::Pc,
         // FIXME(#13846) this should be enabled for windows

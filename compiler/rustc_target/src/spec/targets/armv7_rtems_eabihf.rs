@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
     TargetMetadata, TargetOptions, cvs,
 };
 
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            os: "rtems".into(),
+            os: Os::Rtems,
             families: cvs!["unix"],
             abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),

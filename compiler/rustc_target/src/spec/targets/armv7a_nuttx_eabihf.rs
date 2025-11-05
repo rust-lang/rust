@@ -5,8 +5,8 @@
 // configuration with hardware floating point support.
 
 use crate::spec::{
-    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions, cvs,
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -23,7 +23,7 @@ pub(crate) fn target() -> Target {
         emit_debug_gdb_scripts: false,
         c_enum_min_bits: Some(8),
         families: cvs!["unix"],
-        os: "nuttx".into(),
+        os: Os::NuttX,
         ..Default::default()
     };
     Target {

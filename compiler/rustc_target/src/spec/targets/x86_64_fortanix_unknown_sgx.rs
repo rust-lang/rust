@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    Abi, Arch, Cc, Env, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
+    Abi, Arch, Cc, Env, LinkerFlavor, Lld, Os, Target, TargetMetadata, TargetOptions, Vendor, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -57,7 +57,7 @@ pub(crate) fn target() -> Target {
         "TEXT_SIZE",
     ];
     let opts = TargetOptions {
-        os: "unknown".into(),
+        os: Os::Unknown,
         env: Env::Sgx,
         vendor: Vendor::Fortanix,
         abi: Abi::Fortanix,

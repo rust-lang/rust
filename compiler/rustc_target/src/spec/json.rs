@@ -7,7 +7,7 @@ use super::crt_objects::CrtObjects;
 use super::{
     Abi, Arch, BinaryFormat, CodeModel, DebuginfoKind, Env, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
-    MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
+    MergeFunctions, Os, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
     TargetKind, TargetOptions, TargetWarnings, TlsModel, Vendor,
 };
@@ -504,7 +504,7 @@ struct TargetSpecJson {
     #[serde(rename = "target-c-int-width")]
     c_int_width: Option<u16>,
     c_enum_min_bits: Option<u64>,
-    os: Option<StaticCow<str>>,
+    os: Option<Os>,
     env: Option<Env>,
     abi: Option<Abi>,
     vendor: Option<Vendor>,

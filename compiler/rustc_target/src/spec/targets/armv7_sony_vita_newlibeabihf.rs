@@ -1,7 +1,7 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
     TargetOptions, Vendor, cvs,
 };
 
@@ -30,7 +30,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            os: "vita".into(),
+            os: Os::Vita,
             endian: Endian::Little,
             c_int_width: 32,
             env: Env::Newlib,

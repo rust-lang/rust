@@ -1,8 +1,8 @@
-use crate::spec::{Env, PanicStrategy, RelocModel, TargetOptions, Vendor, cvs};
+use crate::spec::{Env, Os, PanicStrategy, RelocModel, TargetOptions, Vendor, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "linux".into(),
+        os: Os::Linux,
         env: Env::Musl,
         vendor: Vendor::Unikraft,
         linker: Some("kraftld".into()),

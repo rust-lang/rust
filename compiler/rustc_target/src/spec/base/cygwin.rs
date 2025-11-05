@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, TlsModel,
-    Vendor, cvs,
+    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, Os, SplitDebuginfo, TargetOptions,
+    TlsModel, Vendor, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -24,7 +24,7 @@ pub(crate) fn opts() -> TargetOptions {
         cygwin_libs,
     );
     TargetOptions {
-        os: "cygwin".into(),
+        os: Os::Cygwin,
         vendor: Vendor::Pc,
         // FIXME(#13846) this should be enabled for cygwin
         function_sections: false,

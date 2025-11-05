@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_span::Span;
-use rustc_target::spec::{Abi, Env, Target, Vendor};
+use rustc_target::spec::{Abi, Env, Os, Target, Vendor};
 
 use crate::traits::*;
 
@@ -172,7 +172,7 @@ pub fn asm_const_to_str<'tcx>(
 
 pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
     target.vendor == Vendor::Pc
-        && target.os == "windows"
+        && target.os == Os::Windows
         && target.env == Env::Gnu
         && target.abi == Abi::Unspecified
 }

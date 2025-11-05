@@ -291,7 +291,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
-    ins_str!(sym::target_os, &sess.target.os);
+    ins_sym!(sym::target_os, sess.target.os.desc_symbol());
     ins_sym!(sym::target_pointer_width, sym::integer(sess.target.pointer_width));
 
     if sess.opts.unstable_opts.has_thread_local.unwrap_or(sess.target.has_thread_local) {
@@ -454,7 +454,7 @@ impl CheckCfg {
                     values_target_family.extend(
                         target.options.families.iter().map(|family| Symbol::intern(family)),
                     );
-                    values_target_os.insert(Symbol::intern(&target.options.os));
+                    values_target_os.insert(target.options.os.desc_symbol());
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
                     values_target_vendor.insert(target.options.vendor.desc_symbol());
                 }

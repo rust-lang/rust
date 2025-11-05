@@ -1,5 +1,5 @@
 use crate::spec::{
-    Abi, Arch, FloatAbi, LinkSelfContainedDefault, PanicStrategy, RelroLevel, Target,
+    Abi, Arch, FloatAbi, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, Target,
     TargetMetadata, TargetOptions,
 };
 
@@ -24,7 +24,7 @@ pub(crate) fn target() -> Target {
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
-            os: "trusty".into(),
+            os: Os::Trusty,
             link_self_contained: LinkSelfContainedDefault::InferredForMusl,
             dynamic_linking: false,
             executables: true,
