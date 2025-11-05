@@ -17,6 +17,6 @@ fn main() {
     let _ = std::collections::HashMap();
     //[ascii]~^ ERROR expected function, tuple struct or tuple variant, found struct `std::collections::HashMap`
     let _ = std::collections::HashMap {};
-    //[ascii]~^ ERROR cannot construct `HashMap<_, _, _>` with struct literal syntax due to private fields
+    //[ascii]~^ ERROR cannot construct `HashMap<_, _, _, _>` with struct literal syntax due to private fields
     let _ = Box {}; //[ascii]~ ERROR cannot construct `Box<_, _>` with struct literal syntax due to private fields
 }
