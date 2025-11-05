@@ -102,24 +102,23 @@ See [Rustdoc tests suites](tests/compiletest.md#rustdoc-test-suites) for more de
 ## Constraints
 
 We try to make rustdoc work reasonably well with JavaScript disabled, and when browsing local files.
-We support
-[these browsers](https://rust-lang.github.io/rfcs/1985-tiered-browser-support.html#supported-browsers).
+We have [a list of supported browsers].
 
 Supporting local files (`file:///` URLs) brings some surprising restrictions.
 Certain browser features that require secure origins, like `localStorage` and
 Service Workers, don't work reliably.
-We can still use such features but we should make sure pages are still usable without them.
+We can still use such features, but we should make sure pages are still usable without them.
 
 Rustdoc [does not type-check function bodies][platform-specific docs].
 This works by [overriding the built-in queries for typeck][override queries],
 by [silencing name resolution errors], and by [not resolving opaque types].
 This comes with several caveats: in particular, rustdoc *cannot* run any parts of the compiler that
 require type-checking bodies;
-for example it cannot generate `.rlib` files or run most lints.
+for example, it cannot generate `.rlib` files or run most lints.
 We want to move away from this model eventually, but we need some alternative for
 [the people using it][async-std];
 see [various][zulip stop accepting broken code]
-[previous][rustdoc meeting 2024-07-08] [Zulip][compiler meeting 2023-01-26] [discussion][notriddle rfc].
+[previous][rustdoc meeting 2024-07-08] [Zulip][compiler meeting 2023-01-26] [discussions][notriddle rfc].
 For examples of code that breaks if this hack is removed, see
 [`tests/rustdoc-ui/error-in-impl-trait`].
 
@@ -133,6 +132,7 @@ For examples of code that breaks if this hack is removed, see
 [zulip stop accepting broken code]: https://rust-lang.zulipchat.com/#narrow/stream/266220-rustdoc/topic/stop.20accepting.20broken.20code
 [notriddle rfc]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/Pre-RFC.3A.20stop.20accepting.20broken.20code
 [`tests/rustdoc-ui/error-in-impl-trait`]: https://github.com/rust-lang/rust/tree/163cb4ea3f0ae3bc7921cc259a08a7bf92e73ee6/tests/rustdoc-ui/error-in-impl-trait
+[a list of supported browsers]: https://rust-lang.github.io/rfcs/1985-tiered-browser-support.html#supported-browsers
 
 ## Multiple runs, same output directory
 
@@ -200,7 +200,7 @@ use.
 In both cases, people may use `--document-private-items` Cargo flag to
 see private methods, fields, and so on, which are normally not displayed.
 
-By default `cargo doc` will generate documentation for a crate and all of its dependencies.
+By default, `cargo doc` will generate documentation for a crate and all of its dependencies.
 That can result in a very large documentation bundle, with a large (and slow) search corpus.
 The Cargo flag `--no-deps` inhibits that behavior and generates docs for just the crate.
 
