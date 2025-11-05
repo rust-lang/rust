@@ -77,10 +77,7 @@
 //! containing both `C` and `packed` annotations.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(decl_macro)]
-#![feature(rustdoc_internals)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

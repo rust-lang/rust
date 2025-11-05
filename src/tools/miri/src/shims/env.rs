@@ -51,7 +51,7 @@ impl<'tcx> EnvVars<'tcx> {
         } else if ecx.tcx.sess.target.os == "windows" {
             EnvVars::Windows(WindowsEnvVars::new(ecx, env_vars)?)
         } else {
-            // Used e.g. for wasi
+            // For "none" targets (i.e., without an OS).
             EnvVars::Uninit
         };
         ecx.machine.env_vars = env_vars;

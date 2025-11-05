@@ -24,7 +24,7 @@ use crate::borrow_tracker::tree_borrows::diagnostics::{
 };
 use crate::borrow_tracker::tree_borrows::foreign_access_skipping::IdempotentForeignAccess;
 use crate::borrow_tracker::tree_borrows::perms::PermTransition;
-use crate::borrow_tracker::tree_borrows::unimap::{UniEntry, UniIndex, UniKeyMap, UniValMap};
+use crate::borrow_tracker::tree_borrows::unimap::{UniIndex, UniKeyMap, UniValMap};
 use crate::borrow_tracker::{GlobalState, ProtectorKind};
 use crate::*;
 
@@ -265,13 +265,15 @@ pub(super) struct Node {
 }
 
 /// Data given to the transition function
-struct NodeAppArgs<'node> {
-    /// Node on which the transition is currently being applied
-    node: &'node mut Node,
-    /// Mutable access to its permissions
-    perm: UniEntry<'node, LocationState>,
-    /// Relative position of the access
+struct NodeAppArgs<'visit> {
+    /// The index of the current node.
+    idx: UniIndex,
+    /// Relative position of the access.
     rel_pos: AccessRelatedness,
+    /// The node map of this tree.
+    nodes: &'visit mut UniValMap<Node>,
+    /// The permissions map of this tree.
+    perms: &'visit mut UniValMap<LocationState>,
 }
 /// Data given to the error handler
 struct ErrHandlerArgs<'node, InErr> {
@@ -348,8 +350,7 @@ where
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> ContinueTraversal {
-        let node = this.nodes.get_mut(idx).unwrap();
-        let args = NodeAppArgs { node, perm: this.perms.entry(idx), rel_pos };
+        let args = NodeAppArgs { idx, rel_pos, nodes: this.nodes, perms: this.perms };
         (self.f_continue)(&args)
     }
 
@@ -359,16 +360,14 @@ where
         idx: UniIndex,
         rel_pos: AccessRelatedness,
     ) -> Result<(), OutErr> {
-        let node = this.nodes.get_mut(idx).unwrap();
-        (self.f_propagate)(NodeAppArgs { node, perm: this.perms.entry(idx), rel_pos }).map_err(
-            |error_kind| {
+        (self.f_propagate)(NodeAppArgs { idx, rel_pos, nodes: this.nodes, perms: this.perms })
+            .map_err(|error_kind| {
                 (self.err_builder)(ErrHandlerArgs {
                     error_kind,
                     conflicting_info: &this.nodes.get(idx).unwrap().debug_info,
                     accessed_info: &this.nodes.get(self.initial).unwrap().debug_info,
                 })
-            },
-        )
+            })
     }
 
     fn go_upwards_from_accessed(
@@ -386,14 +385,14 @@ where
         // be handled differently here compared to the further parents
         // of `accesssed_node`.
         {
-            self.propagate_at(this, accessed_node, AccessRelatedness::This)?;
+            self.propagate_at(this, accessed_node, AccessRelatedness::LocalAccess)?;
             if matches!(visit_children, ChildrenVisitMode::VisitChildrenOfAccessed) {
                 let accessed_node = this.nodes.get(accessed_node).unwrap();
                 // We `rev()` here because we reverse the entire stack later.
                 for &child in accessed_node.children.iter().rev() {
                     self.stack.push((
                         child,
-                        AccessRelatedness::AncestorAccess,
+                        AccessRelatedness::ForeignAccess,
                         RecursionState::BeforeChildren,
                     ));
                 }
@@ -404,7 +403,7 @@ where
         // not the subtree that contains the accessed node.
         let mut last_node = accessed_node;
         while let Some(current) = this.nodes.get(last_node).unwrap().parent {
-            self.propagate_at(this, current, AccessRelatedness::StrictChildAccess)?;
+            self.propagate_at(this, current, AccessRelatedness::LocalAccess)?;
             let node = this.nodes.get(current).unwrap();
             // We `rev()` here because we reverse the entire stack later.
             for &child in node.children.iter().rev() {
@@ -413,7 +412,7 @@ where
                 }
                 self.stack.push((
                     child,
-                    AccessRelatedness::CousinAccess,
+                    AccessRelatedness::ForeignAccess,
                     RecursionState::BeforeChildren,
                 ));
             }
@@ -741,7 +740,9 @@ impl<'tcx> Tree {
                     // visit all children, skipping none
                     |_| ContinueTraversal::Recurse,
                     |args: NodeAppArgs<'_>| -> Result<(), TransitionError> {
-                        let NodeAppArgs { node, perm, .. } = args;
+                        let node = args.nodes.get(args.idx).unwrap();
+                        let perm = args.perms.entry(args.idx);
+
                         let perm =
                             perm.get().copied().unwrap_or_else(|| node.default_location_state());
                         if global.borrow().protected_tags.get(&node.tag)
@@ -812,32 +813,34 @@ impl<'tcx> Tree {
         // `perms_range` is only for diagnostics (it is the range of
         // the `RangeMap` on which we are currently working).
         let node_skipper = |access_kind: AccessKind, args: &NodeAppArgs<'_>| -> ContinueTraversal {
-            let NodeAppArgs { node, perm, rel_pos } = args;
+            let node = args.nodes.get(args.idx).unwrap();
+            let perm = args.perms.get(args.idx);
 
-            let old_state = perm.get().copied().unwrap_or_else(|| node.default_location_state());
-            old_state.skip_if_known_noop(access_kind, *rel_pos)
+            let old_state = perm.copied().unwrap_or_else(|| node.default_location_state());
+            old_state.skip_if_known_noop(access_kind, args.rel_pos)
         };
         let node_app = |perms_range: Range<u64>,
                         access_kind: AccessKind,
                         access_cause: diagnostics::AccessCause,
                         args: NodeAppArgs<'_>|
          -> Result<(), TransitionError> {
-            let NodeAppArgs { node, mut perm, rel_pos } = args;
+            let node = args.nodes.get_mut(args.idx).unwrap();
+            let mut perm = args.perms.entry(args.idx);
 
             let old_state = perm.or_insert(node.default_location_state());
 
             // Call this function now, which ensures it is only called when
             // `skip_if_known_noop` returns `Recurse`, due to the contract of
             // `traverse_this_parents_children_other`.
-            old_state.record_new_access(access_kind, rel_pos);
+            old_state.record_new_access(access_kind, args.rel_pos);
 
             let protected = global.borrow().protected_tags.contains_key(&node.tag);
-            let transition = old_state.perform_access(access_kind, rel_pos, protected)?;
+            let transition = old_state.perform_access(access_kind, args.rel_pos, protected)?;
             // Record the event as part of the history
             if !transition.is_noop() {
                 node.debug_info.history.push(diagnostics::Event {
                     transition,
-                    is_foreign: rel_pos.is_foreign(),
+                    is_foreign: args.rel_pos.is_foreign(),
                     access_cause,
                     access_range: access_range_and_kind.map(|x| x.0),
                     transition_range: perms_range,
@@ -1075,24 +1078,18 @@ impl VisitProvenance for Tree {
 /// Relative position of the access
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AccessRelatedness {
-    /// The accessed pointer is the current one
-    This,
-    /// The accessed pointer is a (transitive) child of the current one.
-    // Current pointer is excluded (unlike in some other places of this module
-    // where "child" is inclusive).
-    StrictChildAccess,
-    /// The accessed pointer is a (transitive) parent of the current one.
-    // Current pointer is excluded.
-    AncestorAccess,
-    /// The accessed pointer is neither of the above.
-    // It's a cousin/uncle/etc., something in a side branch.
-    CousinAccess,
+    /// The access happened either through the node itself or one of
+    /// its transitive children.
+    LocalAccess,
+    /// The access happened through this nodes ancestor or through
+    /// a sibling/cousin/uncle/etc.
+    ForeignAccess,
 }
 
 impl AccessRelatedness {
     /// Check that access is either Ancestor or Distant, i.e. not
     /// a transitive child (initial pointer included).
     pub fn is_foreign(self) -> bool {
-        matches!(self, AccessRelatedness::AncestorAccess | AccessRelatedness::CousinAccess)
+        matches!(self, AccessRelatedness::ForeignAccess)
     }
 }

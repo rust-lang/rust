@@ -13,9 +13,6 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![allow(internal_features)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(rustc_private)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]

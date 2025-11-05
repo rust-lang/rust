@@ -1088,11 +1088,18 @@ impl<'tcx> MiriMachine<'tcx> {
         self.threads.active_thread_ref().top_user_relevant_frame()
     }
 
-    /// This is the source of truth for the `is_user_relevant` flag in our `FrameExtra`.
-    pub fn is_user_relevant(&self, frame: &Frame<'tcx, Provenance>) -> bool {
-        let def_id = frame.instance().def_id();
-        (def_id.is_local() || self.user_relevant_crates.contains(&def_id.krate))
-            && !frame.instance().def.requires_caller_location(self.tcx)
+    /// This is the source of truth for the `user_relevance` flag in our `FrameExtra`.
+    pub fn user_relevance(&self, frame: &Frame<'tcx, Provenance>) -> u8 {
+        if frame.instance().def.requires_caller_location(self.tcx) {
+            return 0;
+        }
+        if self.is_local(frame.instance()) {
+            u8::MAX
+        } else {
+            // A non-relevant frame, but at least it doesn't require a caller location, so
+            // better than nothing.
+            1
+        }
     }
 }
 
