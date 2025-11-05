@@ -1,11 +1,11 @@
-# Rustdoc Internals
+# Rustdoc internals
 
 This page describes [`rustdoc`]'s passes and modes. For an overview of `rustdoc`,
 see the ["Rustdoc overview" chapter](./rustdoc.md).
 
 [`rustdoc`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
 
-## From Crate to Clean
+## From crate to clean
 
 In [`core.rs`] are two central items: the [`rustdoc::core::DocContext`]
 `struct`, and the [`rustdoc::core::run_global_ctxt`] function. The latter is
@@ -153,7 +153,7 @@ itself.
 [`librustdoc/passes`]: https://github.com/rust-lang/rust/tree/HEAD/src/librustdoc/passes
 [`stripper`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/passes/stripper/index.html
 
-## From Clean To HTML
+## From clean to HTML
 
 This is where the "second phase" in `rustdoc` begins. This phase primarily lives
 in the [`librustdoc/formats`] and [`librustdoc/html`] folders, and it all starts with
@@ -247,7 +247,7 @@ generation, as well as just keeping things organized:
 [didn't used to be the case]: https://github.com/rust-lang/rust/pull/80090
 [`SharedContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/html/render/context/struct.SharedContext.html
 
-## Other Tricks Up Its Sleeve
+## Other tricks up its sleeve
 
 All this describes the process for generating `HTML` documentation from a Rust
 crate, but there are couple other major modes that `rustdoc` runs in. It can also
@@ -268,7 +268,7 @@ in `test.rs` is the function `make_test`, which is where hand-written
 Some extra reading about `make_test` can be found
 [here](https://quietmisdreavus.net/code/2018/02/23/how-the-doctests-get-made/).
 
-## Testing Locally
+## Testing locally
 
 Some features of the generated `HTML` documentation might require local
 storage to be used across pages, which doesn't work well without an `HTTP`
@@ -284,7 +284,7 @@ $ python3 -m http.server -d build/[YOUR ARCH]/doc
 Now you can browse your documentation just like you would if it was hosted
 on the internet. For example, the url for `std` will be `rust/std/`.
 
-## See Also
+## See also
 
 - The [`rustdoc` api docs]
 - [An overview of `rustdoc`](./rustdoc.md)
