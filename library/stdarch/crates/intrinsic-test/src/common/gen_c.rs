@@ -1,6 +1,7 @@
 use crate::common::intrinsic::Intrinsic;
 
 use super::argument::Argument;
+use super::compare::INTRINSIC_DELIMITER;
 use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
@@ -149,7 +150,10 @@ pub fn write_main_cpp<'a>(
     writeln!(w, "int main(int argc, char **argv) {{")?;
 
     for intrinsic in intrinsics {
-        writeln!(w, "    std::cout << \"############\" << std::endl;")?;
+        writeln!(
+            w,
+            "    std::cout << \"{INTRINSIC_DELIMITER}\" << std::endl;"
+        )?;
         writeln!(w, "    std::cout << \"{intrinsic}\" << std::endl;")?;
         writeln!(w, "    run_{intrinsic}();\n")?;
     }

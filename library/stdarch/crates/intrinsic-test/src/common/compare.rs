@@ -2,6 +2,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use std::{collections::HashMap, process::Command};
 
+pub const INTRINSIC_DELIMITER: &str = "############";
 fn runner_command(runner: &str) -> Command {
     let mut it = runner.split_whitespace();
     let mut cmd = Command::new(it.next().unwrap());
@@ -27,7 +28,7 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
     );
     let (c, rust) = match (c, rust) {
         (Ok(c), Ok(rust)) => (c, rust),
-        a => panic!("{a:#?}"),
+        failure => panic!("Failed to run: {failure:#?}"),
     };
 
     if !c.status.success() {
@@ -56,11 +57,11 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         .replace("-nan", "nan");
 
     let c_output_map = c
-        .split("############")
+        .split(INTRINSIC_DELIMITER)
         .filter_map(|output| output.trim().split_once("\n"))
         .collect::<HashMap<&str, &str>>();
     let rust_output_map = rust
-        .split("############")
+        .split(INTRINSIC_DELIMITER)
         .filter_map(|output| output.trim().split_once("\n"))
         .collect::<HashMap<&str, &str>>();
 
@@ -74,7 +75,7 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
         .filter_map(|&&intrinsic| {
             let c_output = c_output_map.get(intrinsic).unwrap();
             let rust_output = rust_output_map.get(intrinsic).unwrap();
-            if rust_output.to_string() == c_output.to_string() {
+            if rust_output.eq(c_output) {
                 None
             } else {
                 let diff = diff::lines(c_output, rust_output);
