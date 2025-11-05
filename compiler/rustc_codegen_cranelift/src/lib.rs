@@ -1,9 +1,6 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(doc, allow(internal_features))]
-#![cfg_attr(doc, doc(rust_logo))]
-#![cfg_attr(doc, feature(rustdoc_internals))]
 // Note: please avoid adding other feature gates where possible
 #![feature(rustc_private)]
 // Only used to define intrinsics in `compiler_builtins.rs`.
