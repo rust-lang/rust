@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
-use crate::spec::{RelocModel, Target};
+use crate::spec::{Env, RelocModel, Target};
 
 def_reg_class! {
     AArch64 AArch64InlineAsmRegClass {
@@ -77,7 +77,7 @@ pub(crate) fn target_reserves_x18(target: &Target, target_features: &FxIndexSet<
     // Note that +reserve-x18 is currently not set for the above targets.
     target.os == "android"
         || target.os == "fuchsia"
-        || target.env == "ohos"
+        || target.env == Env::Ohos
         || target.is_like_darwin
         || target.is_like_windows
         || target_features.contains(&sym::reserve_x18)

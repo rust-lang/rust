@@ -4,7 +4,7 @@ use std::num::ParseIntError;
 use std::str::FromStr;
 
 use crate::spec::{
-    Abi, BinaryFormat, Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
+    Abi, BinaryFormat, Cc, DebuginfoKind, Env, FloatAbi, FramePointer, LinkerFlavor, Lld, RustcAbi,
     SplitDebuginfo, StackProbeType, StaticCow, Target, TargetOptions, Vendor, cvs,
 };
 
@@ -94,11 +94,11 @@ pub(crate) enum TargetEnv {
 }
 
 impl TargetEnv {
-    fn target_env(self) -> &'static str {
+    fn target_env(self) -> Env {
         match self {
-            Self::Normal => "",
-            Self::MacCatalyst => "macabi",
-            Self::Simulator => "sim",
+            Self::Normal => Env::Unspecified,
+            Self::MacCatalyst => Env::MacAbi,
+            Self::Simulator => Env::Sim,
         }
     }
 
@@ -121,7 +121,7 @@ pub(crate) fn base(
     let mut opts = TargetOptions {
         llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
-        env: env.target_env().into(),
+        env: env.target_env(),
         // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
         // before it was discovered that those are actually environments:
         // https://github.com/rust-lang/rust/issues/133331
@@ -319,18 +319,18 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, &target.arch, &*target.env) {
+        let (major, minor, patch) = match (&*target.os, &target.arch, &target.env) {
             ("macos", crate::spec::Arch::AArch64, _) => (11, 0, 0),
-            ("ios", crate::spec::Arch::AArch64, "macabi") => (14, 0, 0),
-            ("ios", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, Env::MacAbi) => (14, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),
             ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
             // Mac Catalyst defaults to 13.1 in Clang.
-            ("ios", _, "macabi") => (13, 1, 0),
-            ("tvos", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
-            ("watchos", crate::spec::Arch::AArch64, "sim") => (7, 0, 0),
+            ("ios", _, Env::MacAbi) => (13, 1, 0),
+            ("tvos", crate::spec::Arch::AArch64, Env::Sim) => (14, 0, 0),
+            ("watchos", crate::spec::Arch::AArch64, Env::Sim) => (7, 0, 0),
             // True Aarch64 on watchOS (instead of their Aarch64 Ilp32 called `arm64_32`) has been
             // available since Xcode 14, but it's only actually used more recently in watchOS 26.
-            ("watchos", crate::spec::Arch::AArch64, "")
+            ("watchos", crate::spec::Arch::AArch64, Env::Unspecified)
                 if !target.llvm_target.starts_with("arm64_32") =>
             {
                 (26, 0, 0)

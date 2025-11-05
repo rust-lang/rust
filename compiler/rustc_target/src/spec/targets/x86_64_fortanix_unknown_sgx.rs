@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    Abi, Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
+    Abi, Arch, Cc, Env, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -58,7 +58,7 @@ pub(crate) fn target() -> Target {
     ];
     let opts = TargetOptions {
         os: "unknown".into(),
-        env: "sgx".into(),
+        env: Env::Sgx,
         vendor: Vendor::Fortanix,
         abi: Abi::Fortanix,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

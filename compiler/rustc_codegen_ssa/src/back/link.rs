@@ -46,7 +46,7 @@ use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
+    BinaryFormat, Cc, Env, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
     LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
     SplitDebuginfo, Vendor,
 };
@@ -3068,7 +3068,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // `sess.target.arch` (`target_arch`) is not detailed enough.
     let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
-    let target_env = &*sess.target.env;
+    let target_env = &sess.target.env;
 
     // The architecture name to forward to the linker.
     //
@@ -3120,12 +3120,12 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // > - xros-simulator
         // > - driverkit
         let platform_name = match (target_os, target_env) {
-            (os, "") => os,
-            ("ios", "macabi") => "mac-catalyst",
-            ("ios", "sim") => "ios-simulator",
-            ("tvos", "sim") => "tvos-simulator",
-            ("watchos", "sim") => "watchos-simulator",
-            ("visionos", "sim") => "visionos-simulator",
+            (os, Env::Unspecified) => os,
+            ("ios", Env::MacAbi) => "mac-catalyst",
+            ("ios", Env::Sim) => "ios-simulator",
+            ("tvos", Env::Sim) => "tvos-simulator",
+            ("watchos", Env::Sim) => "watchos-simulator",
+            ("visionos", Env::Sim) => "visionos-simulator",
             _ => bug!("invalid OS/env combination for Apple target: {target_os}, {target_env}"),
         };
 

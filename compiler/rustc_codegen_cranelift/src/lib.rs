@@ -47,7 +47,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{Abi, Arch};
+use rustc_target::spec::{Abi, Arch, Env};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -215,7 +215,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             // available when using a LLVM-built sysroot.
             Arch::X86_64
                 if sess.target.os == "windows"
-                    && sess.target.env == "gnu"
+                    && sess.target.env == Env::Gnu
                     && sess.target.abi != Abi::Llvm =>
             {
                 false

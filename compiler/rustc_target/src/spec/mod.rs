@@ -1924,6 +1924,38 @@ impl Arch {
 }
 
 crate::target_spec_enum! {
+    pub enum Env {
+        Gnu = "gnu",
+        MacAbi = "macabi",
+        Mlibc = "mlibc",
+        Msvc = "msvc",
+        Musl = "musl",
+        Newlib = "newlib",
+        Nto70 = "nto70",
+        Nto71 = "nto71",
+        Nto71IoSock = "nto71_iosock",
+        Nto80 = "nto80",
+        Ohos = "ohos",
+        Relibc = "relibc",
+        Sgx = "sgx",
+        Sim = "sim",
+        P1 = "p1",
+        P2 = "p2",
+        P3 = "p3",
+        Uclibc = "uclibc",
+        V5 = "v5",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Env {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
     pub enum Vendor {
         Amd = "amd",
         Apple = "apple",
@@ -2109,8 +2141,8 @@ pub struct TargetOptions {
     /// A couple of targets having `std` also use "unknown" as an `os` value,
     /// but they are exceptions.
     pub os: StaticCow<str>,
-    /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
-    pub env: StaticCow<str>,
+    /// Environment name to use for conditional compilation (`target_env`). Defaults to [`Env::Unspecified`].
+    pub env: Env,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
     /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
@@ -2617,7 +2649,7 @@ impl Default for TargetOptions {
             endian: Endian::Little,
             c_int_width: 32,
             os: "none".into(),
-            env: "".into(),
+            env: Env::Unspecified,
             abi: Abi::Unspecified,
             vendor: Vendor::Unknown,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
@@ -3176,7 +3208,7 @@ impl Target {
     fn can_use_os_unknown(&self) -> bool {
         self.llvm_target == "wasm32-unknown-unknown"
             || self.llvm_target == "wasm64-unknown-unknown"
-            || (self.env == "sgx" && self.vendor == Vendor::Fortanix)
+            || (self.env == Env::Sgx && self.vendor == Vendor::Fortanix)
     }
 
     /// Load a built-in target
