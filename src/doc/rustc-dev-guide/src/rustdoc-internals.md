@@ -221,7 +221,7 @@ directly, even during `HTML` generation.
 This [didn't used to be the case], and
 a lot of `rustdoc`'s architecture was designed around not doing that, but a
 `TyCtxt` is now passed to `formats::renderer::run_format`, which is used to
-run generation for both `HTML` and the (unstable as of <!-- date-check --> March 2023) JSON format.
+run generation for both `HTML` and the (unstable as of <!-- date-check --> Nov 2025) JSON format.
 
 This change has allowed other changes to remove data from the "clean" [`AST`][ast]
 that can be easily derived from `TyCtxt` queries, and we'll usually accept
