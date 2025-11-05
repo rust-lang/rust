@@ -89,28 +89,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
         let mut inlined_anything = false;
 
-        for i in 0..fmt.template.len() {
-            let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i] else { continue };
-            let Ok(arg_index) = placeholder.argument.index else { continue };
+        let mut i = 0;
 
-            let mut literal = None;
-
-            if let FormatTrait::Display = placeholder.format_trait
+        while i < fmt.template.len() {
+            if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
+                && let Ok(arg_index) = placeholder.argument.index
+                && let FormatTrait::Display = placeholder.format_trait
                 && placeholder.format_options == Default::default()
                 && let arg = fmt.arguments.all_args()[arg_index].expr.peel_parens_and_refs()
                 && let ExprKind::Lit(lit) = arg.kind
+                && let Some(literal) = self.try_inline_lit(lit)
             {
-                literal = self.try_inline_lit(lit);
-            }
 
-            if let Some(literal) = literal {
                 // Now we need to mutate the outer FormatArgs.
                 // If this is the first time, this clones the outer FormatArgs.
                 let fmt = fmt.to_mut();
                 // Replace the placeholder with the literal.
-                fmt.template[i] = FormatArgsPiece::Literal(literal);
+                if literal.is_empty() {
+                    fmt.template.remove(i);
+                } else {
+                    fmt.template[i] = FormatArgsPiece::Literal(literal);
+                    i += 1;
+                }
                 was_inlined[arg_index] = true;
                 inlined_anything = true;
+            } else {
+                i += 1;
             }
         }
 
