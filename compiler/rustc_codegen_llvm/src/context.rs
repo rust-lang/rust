@@ -29,7 +29,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Abi, Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -337,7 +337,7 @@ pub(crate) unsafe fn create_module<'ll>(
     if sess.target.is_like_msvc
         || (sess.target.options.os == "windows"
             && sess.target.options.env == "gnu"
-            && sess.target.options.abi == "llvm")
+            && sess.target.options.abi == Abi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}

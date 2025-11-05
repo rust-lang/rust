@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
+    Abi, Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, Vendor, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -60,7 +60,7 @@ pub(crate) fn target() -> Target {
         os: "unknown".into(),
         env: "sgx".into(),
         vendor: Vendor::Fortanix,
-        abi: "fortanix".into(),
+        abi: Abi::Fortanix,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         max_atomic_width: Some(64),

@@ -1955,6 +1955,38 @@ impl Vendor {
     }
 }
 
+crate::target_spec_enum! {
+    pub enum Abi {
+        Abi64 = "abi64",
+        AbiV2 = "abiv2",
+        AbiV2Hf = "abiv2hf",
+        Eabi = "eabi",
+        EabiHf = "eabihf",
+        ElfV1 = "elfv1",
+        ElfV2 = "elfv2",
+        Fortanix = "fortanix",
+        Ilp32 = "ilp32",
+        Ilp32e = "ilp32e",
+        Llvm = "llvm",
+        MacAbi = "macabi",
+        Sim = "sim",
+        SoftFloat = "softfloat",
+        Spe = "spe",
+        Uwp = "uwp",
+        VecDefault = "vec-default",
+        VecExtAbi = "vec-extabi",
+        X32 = "x32",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Abi {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -2080,10 +2112,10 @@ pub struct TargetOptions {
     /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
     pub env: StaticCow<str>,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
-    /// or `"eabihf"`. Defaults to "".
+    /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
     /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
     /// However, parts of the backend do check this field for specific values to enable special behavior.
-    pub abi: StaticCow<str>,
+    pub abi: Abi,
     /// Vendor name to use for conditional compilation (`target_vendor`).
     /// Defaults to [`Vendor::Unknown`].
     pub vendor: Vendor,
@@ -2586,7 +2618,7 @@ impl Default for TargetOptions {
             c_int_width: 32,
             os: "none".into(),
             env: "".into(),
-            abi: "".into(),
+            abi: Abi::Unspecified,
             vendor: Vendor::Unknown,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),

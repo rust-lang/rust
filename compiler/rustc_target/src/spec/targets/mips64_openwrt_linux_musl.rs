@@ -2,7 +2,7 @@
 
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, Vendor, base};
+use crate::spec::{Abi, Arch, Target, TargetMetadata, TargetOptions, Vendor, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -24,7 +24,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Mips64,
         options: TargetOptions {
             vendor: Vendor::Openwrt,
-            abi: "abi64".into(),
+            abi: Abi::Abi64,
             endian: Endian::Big,
             mcount: "_mcount".into(),
             llvm_abiname: "n64".into(),

@@ -1,6 +1,6 @@
 // Targets the Cortex-M23 processor (Baseline ARMv8-M)
 
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             families: cvs!["unix"],
             os: "nuttx".into(),
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             // ARMv8-M baseline doesn't support unaligned loads/stores so we disable them
             // with +strict-align.

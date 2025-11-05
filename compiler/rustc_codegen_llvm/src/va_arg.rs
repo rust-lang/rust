@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Abi, Arch};
 
 use crate::builder::Builder;
 use crate::llvm::{Type, Value};
@@ -270,7 +270,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
     // Rust does not currently support any powerpc softfloat targets.
     let target = &bx.cx.tcx.sess.target;
-    let is_soft_float_abi = target.abi == "softfloat";
+    let is_soft_float_abi = target.abi == Abi::SoftFloat;
     assert!(!is_soft_float_abi);
 
     // All instances of VaArgSafe are passed directly.

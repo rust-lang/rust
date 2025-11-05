@@ -5,13 +5,13 @@
 // configuration without hardware floating point support.
 
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
     TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
-        abi: "eabi".into(),
+        abi: Abi::Eabi,
         llvm_floatabi: Some(FloatAbi::Soft),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),

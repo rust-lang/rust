@@ -10,8 +10,8 @@
 //! `-Clink-arg=-Tmy_script.ld` to override that with a correct linker script.
 
 use crate::spec::{
-    Arch, FloatAbi, FramePointer, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
-    base, cvs,
+    Abi, Arch, FloatAbi, FramePointer, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions, base, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -36,7 +36,7 @@ pub(crate) fn target() -> Target {
          */
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         options: TargetOptions {
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
 
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):

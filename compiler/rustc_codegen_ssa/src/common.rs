@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::cstore::{DllCallingConvention, DllImport};
 use rustc_span::Span;
-use rustc_target::spec::{Target, Vendor};
+use rustc_target::spec::{Abi, Target, Vendor};
 
 use crate::traits::*;
 
@@ -174,7 +174,7 @@ pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
     target.vendor == Vendor::Pc
         && target.os == "windows"
         && target.env == "gnu"
-        && target.abi.is_empty()
+        && target.abi == Abi::Unspecified
 }
 
 pub fn i686_decorated_name(
