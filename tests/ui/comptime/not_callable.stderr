@@ -10,11 +10,5 @@ error: comptime fns can only be called at compile time
 LL |     foo();
    |     ^^^^^
 
-error: comptime fns can only be called at compile time
-  --> $DIR/not_callable.rs:21:5
-   |
-LL |     foo();
-   |     ^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

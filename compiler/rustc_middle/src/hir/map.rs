@@ -319,7 +319,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                ConstContext::ConstFn
+                if self.constness(def_id) == rustc_hir::Constness::Comptime {
+                    ConstContext::Const { inline: true }
+                } else {
+                    ConstContext::ConstFn
+                }
             }
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
