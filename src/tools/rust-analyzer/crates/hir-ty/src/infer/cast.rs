@@ -11,7 +11,7 @@ use stdx::never;
 use crate::{
     InferenceDiagnostic,
     db::HirDatabase,
-    infer::{AllowTwoPhase, InferenceContext, coerce::CoerceNever},
+    infer::{AllowTwoPhase, InferenceContext, expr::ExprIsRead},
     next_solver::{BoundExistentialPredicates, DbInterner, ParamTy, Ty, TyKind},
 };
 
@@ -120,7 +120,7 @@ impl<'db> CastCheck<'db> {
                 self.expr_ty,
                 self.cast_ty,
                 AllowTwoPhase::No,
-                CoerceNever::Yes,
+                ExprIsRead::Yes,
             )
             .is_ok()
         {
@@ -167,7 +167,7 @@ impl<'db> CastCheck<'db> {
                                 self.expr_ty,
                                 fn_ptr,
                                 AllowTwoPhase::No,
-                                CoerceNever::Yes,
+                                ExprIsRead::Yes,
                             )
                             .is_ok()
                         {
@@ -248,7 +248,7 @@ impl<'db> CastCheck<'db> {
                     self.expr_ty,
                     array_ptr_type,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    ExprIsRead::Yes,
                 )
                 .is_ok()
             {
@@ -263,7 +263,7 @@ impl<'db> CastCheck<'db> {
             // This is a less strict condition than rustc's `demand_eqtype`,
             // but false negative is better than false positive
             if ctx
-                .coerce(self.source_expr.into(), ety, t_cast, AllowTwoPhase::No, CoerceNever::Yes)
+                .coerce(self.source_expr.into(), ety, t_cast, AllowTwoPhase::No, ExprIsRead::Yes)
                 .is_ok()
             {
                 return Ok(());

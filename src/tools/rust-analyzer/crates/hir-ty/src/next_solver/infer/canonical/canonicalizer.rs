@@ -10,8 +10,8 @@ use rustc_index::Idx;
 use rustc_type_ir::InferTy::{self, FloatVar, IntVar, TyVar};
 use rustc_type_ir::inherent::{Const as _, IntoKind as _, Region as _, SliceLike, Ty as _};
 use rustc_type_ir::{
-    BoundVar, BoundVarIndexKind, CanonicalQueryInput, DebruijnIndex, Flags, InferConst, RegionKind,
-    TyVid, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, InferConst, RegionKind, TyVid, TypeFlags,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
 };
 use smallvec::SmallVec;
 use tracing::debug;
@@ -19,7 +19,7 @@ use tracing::debug;
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
     Binder, Canonical, CanonicalVarKind, CanonicalVars, Const, ConstKind, DbInterner, GenericArg,
-    ParamEnvAnd, Placeholder, Region, Ty, TyKind,
+    Placeholder, Region, Ty, TyKind,
 };
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -66,33 +66,19 @@ impl<'db> InferCtxt<'db> {
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query
     pub fn canonicalize_query<V>(
         &self,
-        value: ParamEnvAnd<'db, V>,
+        value: V,
         query_state: &mut OriginalQueryValues<'db>,
-    ) -> CanonicalQueryInput<DbInterner<'db>, ParamEnvAnd<'db, V>>
+    ) -> Canonical<'db, V>
     where
         V: TypeFoldable<DbInterner<'db>>,
     {
-        let (param_env, value) = value.into_parts();
-        // FIXME(#118965): We don't canonicalize the static lifetimes that appear in the
-        // `param_env` because they are treated differently by trait selection.
-        let canonical_param_env = Canonicalizer::canonicalize(
-            param_env,
-            self,
-            self.interner,
-            &CanonicalizeFreeRegionsOtherThanStatic,
-            query_state,
-        );
-
-        let canonical = Canonicalizer::canonicalize_with_base(
-            canonical_param_env,
+        Canonicalizer::canonicalize(
             value,
             self,
             self.interner,
             &CanonicalizeAllFreeRegions,
             query_state,
         )
-        .unchecked_map(|(param_env, value)| ParamEnvAnd { param_env, value });
-        CanonicalQueryInput { canonical, typing_mode: self.typing_mode() }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
@@ -274,26 +260,6 @@ impl CanonicalizeMode for CanonicalizeAllFreeRegions {
         r: Region<'db>,
     ) -> Region<'db> {
         canonicalizer.canonical_var_for_region_in_root_universe(r)
-    }
-
-    fn any(&self) -> bool {
-        true
-    }
-
-    fn preserve_universes(&self) -> bool {
-        false
-    }
-}
-
-struct CanonicalizeFreeRegionsOtherThanStatic;
-
-impl CanonicalizeMode for CanonicalizeFreeRegionsOtherThanStatic {
-    fn canonicalize_free_region<'db>(
-        &self,
-        canonicalizer: &mut Canonicalizer<'_, 'db>,
-        r: Region<'db>,
-    ) -> Region<'db> {
-        if r.is_static() { r } else { canonicalizer.canonical_var_for_region_in_root_universe(r) }
     }
 
     fn any(&self) -> bool {

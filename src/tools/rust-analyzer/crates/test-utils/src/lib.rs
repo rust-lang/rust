@@ -43,7 +43,7 @@ pub const ESCAPED_CURSOR_MARKER: &str = "\\$0";
 #[macro_export]
 macro_rules! assert_eq_text {
     ($left:expr, $right:expr) => {
-        assert_eq_text!($left, $right,)
+        $crate::assert_eq_text!($left, $right,)
     };
     ($left:expr, $right:expr, $($tt:tt)*) => {{
         let left = $left;

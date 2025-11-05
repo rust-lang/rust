@@ -806,7 +806,7 @@ fn f() {
     _ = (x, y);
     let x = Foo;
     let y = &mut *x;
-               //^^ 💡 error: cannot mutate immutable variable `x`
+               // ^ 💡 error: cannot mutate immutable variable `x`
     _ = (x, y);
     let x = Foo;
       //^ 💡 warn: unused variable
@@ -815,13 +815,13 @@ fn f() {
                           //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     _ = (x, y);
     let ref mut y = *x;
-                  //^^ 💡 error: cannot mutate immutable variable `x`
+                  // ^ 💡 error: cannot mutate immutable variable `x`
     _ = y;
     let (ref mut y, _) = *x;
-                       //^^ 💡 error: cannot mutate immutable variable `x`
+                       // ^ 💡 error: cannot mutate immutable variable `x`
     _ = y;
     match *x {
-        //^^ 💡 error: cannot mutate immutable variable `x`
+        // ^ 💡 error: cannot mutate immutable variable `x`
         (ref y, 5) => _ = y,
         (_, ref mut y) => _ = y,
     }
@@ -1130,7 +1130,7 @@ fn f() {
   //^^^^^^^ 💡 error: cannot mutate immutable variable `x`
     let x = Box::new(5);
     let closure = || *x = 2;
-                    //^ 💡 error: cannot mutate immutable variable `x`
+                   //^^^^^^ 💡 error: cannot mutate immutable variable `x`
     _ = closure;
 }
 "#,

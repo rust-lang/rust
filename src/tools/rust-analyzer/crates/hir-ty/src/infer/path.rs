@@ -13,11 +13,12 @@ use crate::{
     InferenceDiagnostic, ValueTyDefId,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
-    lower::LifetimeElisionKind,
-    method_resolution::{self, VisibleFromModule},
+    lower::{GenericPredicates, LifetimeElisionKind},
+    method_resolution::{self, CandidateId, MethodError},
     next_solver::{
         GenericArg, GenericArgs, TraitRef, Ty,
         infer::traits::{Obligation, ObligationCause},
+        util::clauses_as_obligations,
     },
 };
 
@@ -31,7 +32,7 @@ impl<'db> InferenceContext<'_, 'db> {
             }
             ValuePathResolution::NonGeneric(ty) => return Some(ty),
         };
-        let args = self.process_remote_user_written_ty(substs);
+        let args = self.insert_type_vars(substs);
 
         self.add_required_obligations_for_value_path(generic_def, args);
 
@@ -221,14 +222,14 @@ impl<'db> InferenceContext<'_, 'db> {
         def: GenericDefId,
         subst: GenericArgs<'db>,
     ) {
-        let predicates = self.db.generic_predicates(def);
         let interner = self.interner();
+        let predicates = GenericPredicates::query_all(self.db, def);
         let param_env = self.table.trait_env.env;
-        if let Some(predicates) = predicates.instantiate(self.interner(), subst) {
-            self.table.register_predicates(predicates.map(|predicate| {
-                Obligation::new(interner, ObligationCause::new(), param_env, predicate)
-            }));
-        }
+        self.table.register_predicates(clauses_as_obligations(
+            predicates.iter_instantiated_copied(interner, subst.as_slice()),
+            ObligationCause::new(),
+            param_env,
+        ));
 
         // We need to add `Self: Trait` obligation when `def` is a trait assoc item.
         let container = match def {
@@ -265,7 +266,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 match item {
                     AssocItemId::FunctionId(func) => {
                         if segment.name == &self.db.function_signature(func).name {
-                            Some(AssocItemId::FunctionId(func))
+                            Some(CandidateId::FunctionId(func))
                         } else {
                             None
                         }
@@ -273,7 +274,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
                     AssocItemId::ConstId(konst) => {
                         if self.db.const_signature(konst).name.as_ref() == Some(segment.name) {
-                            Some(AssocItemId::ConstId(konst))
+                            Some(CandidateId::ConstId(konst))
                         } else {
                             None
                         }
@@ -282,9 +283,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             })?;
         let def = match item {
-            AssocItemId::FunctionId(f) => ValueNs::FunctionId(f),
-            AssocItemId::ConstId(c) => ValueNs::ConstId(c),
-            AssocItemId::TypeAliasId(_) => unreachable!(),
+            CandidateId::FunctionId(f) => ValueNs::FunctionId(f),
+            CandidateId::ConstId(c) => ValueNs::ConstId(c),
         };
 
         self.write_assoc_resolution(id, item, trait_ref.args);
@@ -305,39 +305,23 @@ impl<'db> InferenceContext<'_, 'db> {
             return Some(result);
         }
 
-        let canonical_ty = self.canonicalize(ty);
-
-        let mut not_visible = None;
-        let res = method_resolution::iterate_method_candidates(
-            &canonical_ty,
-            &mut self.table,
-            Self::get_traits_in_scope(&self.resolver, &self.traits_in_scope)
-                .as_ref()
-                .left_or_else(|&it| it),
-            VisibleFromModule::Filter(self.resolver.module()),
-            Some(name),
-            method_resolution::LookupMode::Path,
-            |_ty, item, visible| {
-                if visible {
-                    Some((item, true))
-                } else {
-                    if not_visible.is_none() {
-                        not_visible = Some((item, false));
-                    }
-                    None
+        let res = self.with_method_resolution(|ctx| {
+            ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty)
+        });
+        let (item, visible) = match res {
+            Ok(res) => (res.item, true),
+            Err(error) => match error {
+                MethodError::PrivateMatch(candidate_id) => (candidate_id.item, false),
+                _ => {
+                    self.push_diagnostic(InferenceDiagnostic::UnresolvedAssocItem { id });
+                    return None;
                 }
             },
-        );
-        let res = res.or(not_visible);
-        if res.is_none() {
-            self.push_diagnostic(InferenceDiagnostic::UnresolvedAssocItem { id });
-        }
-        let (item, visible) = res?;
+        };
 
         let (def, container) = match item {
-            AssocItemId::FunctionId(f) => (ValueNs::FunctionId(f), f.lookup(self.db).container),
-            AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db).container),
-            AssocItemId::TypeAliasId(_) => unreachable!(),
+            CandidateId::FunctionId(f) => (ValueNs::FunctionId(f), f.lookup(self.db).container),
+            CandidateId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db).container),
         };
         let substs = match container {
             ItemContainerId::ImplId(impl_id) => {
@@ -372,6 +356,10 @@ impl<'db> InferenceContext<'_, 'db> {
 
         self.write_assoc_resolution(id, item, substs);
         if !visible {
+            let item = match item {
+                CandidateId::FunctionId(it) => it.into(),
+                CandidateId::ConstId(it) => it.into(),
+            };
             self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item });
         }
         Some((def, substs))

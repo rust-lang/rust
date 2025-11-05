@@ -165,7 +165,7 @@ fn is_ref_and_impls_iter_method(
     let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
 
     let has_wanted_method = ty
-        .iterate_method_candidates(sema.db, &scope, None, Some(&wanted_method), |func| {
+        .iterate_method_candidates(sema.db, &scope, Some(&wanted_method), |func| {
             if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
                 return Some(());
             }

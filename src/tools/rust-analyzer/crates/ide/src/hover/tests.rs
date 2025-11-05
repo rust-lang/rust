@@ -350,7 +350,7 @@ fn main() {
 fn hover_closure() {
     check(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;
@@ -3280,7 +3280,7 @@ fn test_hover_no_memory_layout() {
 
     check_hover_no_memory_layout(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;

@@ -1,25 +1,15 @@
 //! Finds if an expression is an immutable context or a mutable context, which is used in selecting
 //! between `Deref` and `DerefMut` or `Index` and `IndexMut` or similar.
 
-use hir_def::{
-    hir::{
-        Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
-        UnaryOp,
-    },
-    lang_item::LangItem,
+use hir_def::hir::{
+    Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement, UnaryOp,
 };
-use hir_expand::name::Name;
-use intern::sym;
 use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::IntoKind;
 
-use crate::next_solver::infer::traits::{Obligation, ObligationCause};
-use crate::next_solver::{GenericArgs, TraitRef};
 use crate::{
-    Adjust, Adjustment, AutoBorrow, OverloadedDeref,
-    infer::{Expectation, InferenceContext, expr::ExprIsRead},
+    Adjust, AutoBorrow, OverloadedDeref,
+    infer::{InferenceContext, place_op::PlaceOp},
     lower::lower_mutability,
-    next_solver::TyKind,
 };
 
 impl<'db> InferenceContext<'_, 'db> {
@@ -28,13 +18,33 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn infer_mut_expr(&mut self, tgt_expr: ExprId, mut mutability: Mutability) {
+        let krate = self.krate();
         if let Some(adjustments) = self.result.expr_adjustments.get_mut(&tgt_expr) {
-            for adj in adjustments.iter_mut().rev() {
+            let mut adjustments = adjustments.iter_mut().rev().peekable();
+            while let Some(adj) = adjustments.next() {
                 match &mut adj.kind {
                     Adjust::NeverToAny | Adjust::Deref(None) | Adjust::Pointer(_) => (),
-                    Adjust::Deref(Some(d)) => *d = OverloadedDeref(Some(mutability)),
+                    Adjust::Deref(Some(d)) => {
+                        if mutability == Mutability::Mut {
+                            let source_ty = match adjustments.peek() {
+                                Some(prev_adj) => prev_adj.target,
+                                None => self.result.type_of_expr[tgt_expr],
+                            };
+                            if let Some(infer_ok) = Self::try_mutable_overloaded_place_op(
+                                &self.table,
+                                krate,
+                                source_ty,
+                                None,
+                                PlaceOp::Deref,
+                            ) {
+                                self.table.register_predicates(infer_ok.obligations);
+                            }
+                            *d = OverloadedDeref(Some(mutability));
+                        }
+                    }
                     Adjust::Borrow(b) => match b {
-                        AutoBorrow::Ref(_, m) | AutoBorrow::RawPtr(m) => mutability = *m,
+                        AutoBorrow::Ref(m) => mutability = (*m).into(),
+                        AutoBorrow::RawPtr(m) => mutability = *m,
                     },
                 }
             }
@@ -128,75 +138,15 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_not_expr_iter(fields.iter().map(|it| it.expr).chain(*spread))
             }
             &Expr::Index { base, index } => {
-                if mutability == Mutability::Mut
-                    && let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr)
-                    && let Some(index_trait) =
-                        LangItem::IndexMut.resolve_trait(self.db, self.table.trait_env.krate)
-                    && let Some(index_fn) = index_trait
-                        .trait_items(self.db)
-                        .method_by_name(&Name::new_symbol_root(sym::index_mut))
-                {
-                    *f = index_fn;
-                    let mut base_ty = None;
-                    let base_adjustments =
-                        self.result.expr_adjustments.get_mut(&base).and_then(|it| it.last_mut());
-                    if let Some(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
-                        target,
-                    }) = base_adjustments
-                    {
-                        if let TyKind::Ref(_, ty, _) = target.kind() {
-                            base_ty = Some(ty);
-                        }
-                        *mutability = Mutability::Mut;
-                    }
-
-                    // Apply `IndexMut` obligation for non-assignee expr
-                    if let Some(base_ty) = base_ty {
-                        let index_ty = if let Some(ty) = self.result.type_of_expr.get(index) {
-                            *ty
-                        } else {
-                            self.infer_expr(index, &Expectation::none(), ExprIsRead::Yes)
-                        };
-                        let trait_ref = TraitRef::new(
-                            self.interner(),
-                            index_trait.into(),
-                            GenericArgs::new_from_iter(
-                                self.interner(),
-                                [base_ty.into(), index_ty.into()],
-                            ),
-                        );
-                        self.table.register_predicate(Obligation::new(
-                            self.interner(),
-                            ObligationCause::new(),
-                            self.table.trait_env.env,
-                            trait_ref,
-                        ));
-                    }
+                if mutability == Mutability::Mut {
+                    self.convert_place_op_to_mutable(PlaceOp::Index, tgt_expr, base, Some(index));
                 }
                 self.infer_mut_expr(base, mutability);
                 self.infer_mut_expr(index, Mutability::Not);
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
-                let mut mutability = mutability;
-                if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr)
-                    && mutability == Mutability::Mut
-                    && let Some(deref_trait) =
-                        LangItem::DerefMut.resolve_trait(self.db, self.table.trait_env.krate)
-                {
-                    let ty = self.result.type_of_expr.get(*expr);
-                    let is_mut_ptr = ty.is_some_and(|ty| {
-                        let ty = self.table.shallow_resolve(*ty);
-                        matches!(ty.kind(), TyKind::RawPtr(_, Mutability::Mut))
-                    });
-                    if is_mut_ptr {
-                        mutability = Mutability::Not;
-                    } else if let Some(deref_fn) = deref_trait
-                        .trait_items(self.db)
-                        .method_by_name(&Name::new_symbol_root(sym::deref_mut))
-                    {
-                        *f = deref_fn;
-                    }
+                if mutability == Mutability::Mut {
+                    self.convert_place_op_to_mutable(PlaceOp::Deref, tgt_expr, *expr, None);
                 }
                 self.infer_mut_expr(*expr, mutability);
             }

@@ -29,9 +29,10 @@ use type_variable::TypeVariableOrigin;
 use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
 use crate::next_solver::{
-    BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, SolverContext,
+    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
+    SolverContext,
     fold::BoundVarReplacerDelegate,
-    infer::{select::EvaluationResult, traits::PredicateObligation},
+    infer::{at::ToTrace, select::EvaluationResult, traits::PredicateObligation},
     obligation_ctxt::ObligationCtxt,
 };
 
@@ -47,6 +48,7 @@ pub mod at;
 pub mod canonical;
 mod context;
 pub mod opaque_types;
+mod outlives;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
@@ -141,7 +143,14 @@ pub struct InferCtxtInner<'db> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    pub(crate) region_obligations: Vec<RegionObligation<'db>>,
+    pub(crate) region_obligations: Vec<TypeOutlivesConstraint<'db>>,
+
+    /// The outlives bounds that we assume must hold about placeholders that
+    /// come from instantiating the binder of coroutine-witnesses. These bounds
+    /// are deduced from the well-formedness of the witness's types, and are
+    /// necessary because of the way we anonymize the regions in a coroutine,
+    /// which may cause types to no longer be considered well-formed.
+    region_assumptions: Vec<ArgOutlivesPredicate<'db>>,
 
     /// Caches for opaque type inference.
     pub(crate) opaque_type_storage: OpaqueTypeStorage<'db>,
@@ -158,12 +167,13 @@ impl<'db> InferCtxtInner<'db> {
             float_unification_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
+            region_assumptions: Default::default(),
             opaque_type_storage: Default::default(),
         }
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[RegionObligation<'db>] {
+    pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'db>] {
         &self.region_obligations
     }
 
@@ -318,7 +328,7 @@ impl fmt::Display for FixupError {
 
 /// See the `region_obligations` field for more information.
 #[derive(Clone, Debug)]
-pub struct RegionObligation<'db> {
+pub struct TypeOutlivesConstraint<'db> {
     pub sub_region: Region<'db>,
     pub sup_type: Ty<'db>,
 }
@@ -385,6 +395,12 @@ impl<'db> InferCtxt<'db> {
     #[inline(always)]
     pub fn typing_mode_unchecked(&self) -> TypingMode<'db> {
         self.typing_mode
+    }
+
+    /// Evaluates whether the predicate can be satisfied (by any means)
+    /// in the given `ParamEnv`.
+    pub fn predicate_may_hold(&self, obligation: &PredicateObligation<'db>) -> bool {
+        self.evaluate_obligation(obligation).may_apply()
     }
 
     /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
@@ -505,6 +521,22 @@ impl<'db> InferCtxt<'db> {
             }
             result
         })
+    }
+
+    pub fn can_eq<T: ToTrace<'db>>(&self, param_env: ParamEnv<'db>, a: T, b: T) -> bool {
+        self.probe(|_| {
+            let mut ocx = ObligationCtxt::new(self);
+            let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
+                return false;
+            };
+            ocx.try_evaluate_obligations().is_empty()
+        })
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    pub fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'db, Predicate<'db>>) -> bool {
+        <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
     }
 
     pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
@@ -630,6 +662,14 @@ impl<'db> InferCtxt<'db> {
     /// Number of type variables created so far.
     pub fn num_ty_vars(&self) -> usize {
         self.inner.borrow_mut().type_variables().num_vars()
+    }
+
+    pub fn next_var_for_param(&self, id: GenericParamId) -> GenericArg<'db> {
+        match id {
+            GenericParamId::TypeParamId(_) => self.next_ty_var().into(),
+            GenericParamId::ConstParamId(_) => self.next_const_var().into(),
+            GenericParamId::LifetimeParamId(_) => self.next_region_var().into(),
+        }
     }
 
     pub fn next_ty_var(&self) -> Ty<'db> {
@@ -844,6 +884,22 @@ impl<'db> InferCtxt<'db> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn clone_opaque_types(&self) -> Vec<(OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
+    }
+
+    pub fn has_opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> bool {
+        let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        inner.opaque_type_storage.iter_opaque_types().any(|(_, hidden_ty)| {
+            if let TyKind::Infer(InferTy::TyVar(hidden_vid)) = hidden_ty.ty.kind() {
+                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                if opaque_sub_vid == ty_sub_vid {
+                    return true;
+                }
+            }
+
+            false
+        })
     }
 
     #[inline(always)]

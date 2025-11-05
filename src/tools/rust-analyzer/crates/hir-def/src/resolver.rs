@@ -708,6 +708,20 @@ impl<'db> Resolver<'db> {
         self.item_scope_().0
     }
 
+    #[inline]
+    pub fn top_level_def_map(&self) -> &'db DefMap {
+        self.module_scope.def_map
+    }
+
+    #[inline]
+    pub fn is_visible(&self, db: &dyn DefDatabase, visibility: Visibility) -> bool {
+        visibility.is_visible_from_def_map(
+            db,
+            self.module_scope.def_map,
+            self.module_scope.module_id,
+        )
+    }
+
     pub fn generic_def(&self) -> Option<GenericDefId> {
         self.scopes().find_map(|scope| match scope {
             Scope::GenericParams { def, .. } => Some(*def),

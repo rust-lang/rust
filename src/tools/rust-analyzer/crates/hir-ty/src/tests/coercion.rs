@@ -49,7 +49,7 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
-                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not)), Pointer(Unsize)
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
                          // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
@@ -96,7 +96,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +148,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -268,7 +268,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{region error}, Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
 }
 "#,
     );
@@ -854,8 +854,8 @@ impl core::cmp::PartialEq for Struct {
 }
 fn test() {
     Struct == Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
-           // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
+           // ^^^^^^ adjustments: Borrow(Ref(Not))
 }",
     );
 }
@@ -871,7 +871,7 @@ impl core::ops::AddAssign for Struct {
 }
 fn test() {
     Struct += Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Mut))
+ // ^^^^^^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: Yes }))
            // ^^^^^^ adjustments:
 }",
     );
@@ -885,7 +885,7 @@ fn adjust_index() {
 fn test() {
     let x = [1, 2, 3];
     x[2] = 6;
- // ^ adjustments: Borrow(Ref('?0, Mut))
+ // ^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: No }))
 }
     ",
     );
@@ -910,11 +910,11 @@ impl core::ops::IndexMut<usize> for StructMut {
 }
 fn test() {
     Struct[0];
- // ^^^^^^ adjustments: Borrow(Ref('?0, Not))
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
     StructMut[0];
- // ^^^^^^^^^ adjustments: Borrow(Ref('?1, Not))
+ // ^^^^^^^^^ adjustments: Borrow(Ref(Not))
     &mut StructMut[0];
-      // ^^^^^^^^^ adjustments: Borrow(Ref('?2, Mut))
+      // ^^^^^^^^^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: No }))
 }",
     );
 }

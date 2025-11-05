@@ -774,7 +774,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 }
             }
 
-            fn parent_arg(&mut self, param_id: GenericParamId) -> GenericArg<'db> {
+            fn parent_arg(&mut self, _param_idx: u32, param_id: GenericParamId) -> GenericArg<'db> {
                 match param_id {
                     GenericParamId::TypeParamId(_) => {
                         Ty::new_error(self.ctx.ctx.interner, ErrorGuaranteed).into()
@@ -992,7 +992,7 @@ pub(crate) trait GenericArgsLowerer<'db> {
         preceding_args: &[GenericArg<'db>],
     ) -> GenericArg<'db>;
 
-    fn parent_arg(&mut self, param_id: GenericParamId) -> GenericArg<'db>;
+    fn parent_arg(&mut self, param_idx: u32, param_id: GenericParamId) -> GenericArg<'db>;
 }
 
 /// Returns true if there was an error.
@@ -1129,7 +1129,9 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
 
     let mut substs = Vec::with_capacity(def_generics.len());
 
-    substs.extend(def_generics.iter_parent_id().map(|id| ctx.parent_arg(id)));
+    substs.extend(
+        def_generics.iter_parent_id().enumerate().map(|(idx, id)| ctx.parent_arg(idx as u32, id)),
+    );
 
     let mut args = args_slice.iter().enumerate().peekable();
     let mut params = def_generics.iter_self().peekable();

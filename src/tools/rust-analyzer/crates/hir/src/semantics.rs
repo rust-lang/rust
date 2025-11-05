@@ -1581,9 +1581,9 @@ impl<'db> SemanticsImpl<'db> {
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
                             Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
                         }
-                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(_, m)) => {
+                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
                             // FIXME: Handle lifetimes here
-                            Adjust::Borrow(AutoBorrow::Ref(mutability(m)))
+                            Adjust::Borrow(AutoBorrow::Ref(mutability(m.into())))
                         }
                         hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
                     };

@@ -22,10 +22,12 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::next_solver::{
-    Canonical, CanonicalVarValues, Const, DbInterner, GenericArg, PlaceholderConst,
-    PlaceholderRegion, PlaceholderTy, Region, Ty, TyKind, infer::InferCtxt,
+    ArgOutlivesPredicate, Canonical, CanonicalVarValues, Const, DbInterner, GenericArg,
+    OpaqueTypeKey, PlaceholderConst, PlaceholderRegion, PlaceholderTy, Region, Ty, TyKind,
+    infer::InferCtxt,
 };
 use instantiate::CanonicalExt;
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex, inherent::Ty as _};
@@ -135,3 +137,22 @@ impl<'db> InferCtxt<'db> {
         }
     }
 }
+
+/// After we execute a query with a canonicalized key, we get back a
+/// `Canonical<QueryResponse<..>>`. You can use
+/// `instantiate_query_result` to access the data in this result.
+#[derive(Clone, Debug, TypeVisitable, TypeFoldable)]
+pub struct QueryResponse<'db, R> {
+    pub var_values: CanonicalVarValues<'db>,
+    pub region_constraints: QueryRegionConstraints<'db>,
+    pub opaque_types: Vec<(OpaqueTypeKey<'db>, Ty<'db>)>,
+    pub value: R,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+pub struct QueryRegionConstraints<'db> {
+    pub outlives: Vec<QueryOutlivesConstraint<'db>>,
+    pub assumptions: Vec<ArgOutlivesPredicate<'db>>,
+}
+
+pub type QueryOutlivesConstraint<'tcx> = ArgOutlivesPredicate<'tcx>;

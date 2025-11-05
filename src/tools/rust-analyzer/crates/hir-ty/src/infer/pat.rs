@@ -16,8 +16,7 @@ use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic,
     consteval::{self, try_const_usize, usize_const},
     infer::{
-        AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch,
-        coerce::CoerceNever, expr::ExprIsRead,
+        AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch, expr::ExprIsRead,
     },
     lower::lower_mutability,
     next_solver::{GenericArgs, Ty, TyKind},
@@ -306,7 +305,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     expected,
                     ty_inserted_vars,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    ExprIsRead::No,
                 ) {
                     Ok(coerced_ty) => {
                         self.write_pat_ty(pat, coerced_ty);
@@ -374,16 +373,17 @@ impl<'db> InferenceContext<'_, 'db> {
             Pat::Expr(expr) => {
                 let old_inside_assign = std::mem::replace(&mut self.inside_assignment, false);
                 // LHS of assignment doesn't constitute reads.
+                let expr_is_read = ExprIsRead::No;
                 let result =
-                    self.infer_expr_coerce(*expr, &Expectation::has_type(expected), ExprIsRead::No);
+                    self.infer_expr_coerce(*expr, &Expectation::has_type(expected), expr_is_read);
                 // We are returning early to avoid the unifiability check below.
                 let lhs_ty = self.insert_type_vars_shallow(result);
                 let ty = match self.coerce(
-                    pat.into(),
+                    (*expr).into(),
                     expected,
                     lhs_ty,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    expr_is_read,
                 ) {
                     Ok(ty) => ty,
                     Err(_) => {

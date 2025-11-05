@@ -1,4 +1,4 @@
-use hir::{HasCrate, HasVisibility};
+use hir::HasVisibility;
 use ide_db::{FxHashSet, path_transform::PathTransform};
 use syntax::{
     ast::{
@@ -79,8 +79,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
     let mut seen_names = FxHashSet::default();
 
     for ty in sema_field_ty.autoderef(ctx.db()) {
-        let krate = ty.krate(ctx.db());
-        ty.iterate_assoc_items(ctx.db(), krate, |item| {
+        ty.iterate_assoc_items(ctx.db(), |item| {
             if let hir::AssocItem::Function(f) = item {
                 let name = f.name(ctx.db());
                 if f.self_param(ctx.db()).is_some()

@@ -68,6 +68,7 @@
 //!     transmute:
 //!     try: infallible
 //!     tuple:
+//!     unary_ops:
 //!     unpin: sized
 //!     unsize: sized
 //!     write: fmt
@@ -591,13 +592,13 @@ pub mod ops {
         impl<T: PointeeSized> Deref for &T {
             type Target = T;
             fn deref(&self) -> &T {
-                loop {}
+                *self
             }
         }
         impl<T: PointeeSized> Deref for &mut T {
             type Target = T;
             fn deref(&self) -> &T {
-                loop {}
+                *self
             }
         }
         // region:deref_mut
@@ -1056,12 +1057,33 @@ pub mod ops {
                 type Output = $t;
                 fn add(self, other: $t) -> $t { self + other }
             }
+            impl AddAssign for $t {
+                fn add_assign(&mut self, other: $t) { *self += other; }
+            }
         )*)
     }
 
     add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
     // endregion:builtin_impls
     // endregion:add
+
+    // region:unary_ops
+    #[lang = "not"]
+    pub const trait Not {
+        type Output;
+
+        #[must_use]
+        fn not(self) -> Self::Output;
+    }
+
+    #[lang = "neg"]
+    pub const trait Neg {
+        type Output;
+
+        #[must_use = "this returns the result of the operation, without modifying the original"]
+        fn neg(self) -> Self::Output;
+    }
+    // endregion:unary_ops
 
     // region:coroutine
     mod coroutine {
@@ -1117,6 +1139,12 @@ pub mod cmp {
     }
 
     pub trait Eq: PartialEq<Self> + PointeeSized {}
+
+    // region:builtin_impls
+    impl PartialEq for () {
+        fn eq(&self, other: &()) -> bool { true }
+    }
+    // endregion:builtin_impls
 
     // region:derive
     #[rustc_builtin_macro]

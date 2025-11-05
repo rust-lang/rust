@@ -2,17 +2,17 @@
 
 use hir_def::{ImplId, nameres::crate_def_map};
 use intern::sym;
+use rustc_type_ir::inherent::SliceLike;
 use tracing::debug;
 
 use crate::{
     db::HirDatabase,
+    lower::GenericPredicates,
     next_solver::{
         DbInterner, TypingMode,
-        infer::{
-            DbInternerInferExt,
-            traits::{Obligation, ObligationCause},
-        },
+        infer::{DbInternerInferExt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
+        util::clauses_as_obligations,
     },
 };
 
@@ -102,14 +102,12 @@ fn specializes_query(
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
     // only be referenced via projection predicates.
-    if let Some(predicates) =
-        db.generic_predicates(parent_impl_def_id.into()).instantiate(interner, parent_args)
-    {
-        ocx.register_obligations(
-            predicates
-                .map(|predicate| Obligation::new(interner, cause.clone(), param_env, predicate)),
-        );
-    }
+    ocx.register_obligations(clauses_as_obligations(
+        GenericPredicates::query_all(db, parent_impl_def_id.into())
+            .iter_instantiated_copied(interner, parent_args.as_slice()),
+        cause.clone(),
+        param_env,
+    ));
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {

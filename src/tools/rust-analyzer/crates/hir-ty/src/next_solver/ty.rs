@@ -25,8 +25,8 @@ use rustc_type_ir::{
 };
 
 use crate::{
-    ImplTraitId,
     db::{HirDatabase, InternedCoroutine},
+    lower::GenericPredicates,
     next_solver::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
         CoroutineIdWrapper, FnSig, GenericArg, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
@@ -41,6 +41,7 @@ use super::{
     util::{FloatExt, IntegerExt},
 };
 
+pub type SimplifiedType = rustc_type_ir::fast_reject::SimplifiedType<SolverDefId>;
 pub type TyKind<'db> = rustc_type_ir::TyKind<DbInterner<'db>>;
 pub type FnHeader<'db> = rustc_type_ir::FnHeader<DbInterner<'db>>;
 
@@ -125,6 +126,22 @@ impl<'db> Ty<'db> {
 
     pub fn new_empty_tuple(interner: DbInterner<'db>) -> Self {
         Ty::new_tup(interner, &[])
+    }
+
+    pub fn new_imm_ptr(interner: DbInterner<'db>, ty: Ty<'db>) -> Self {
+        Ty::new_ptr(interner, ty, Mutability::Not)
+    }
+
+    pub fn new_imm_ref(interner: DbInterner<'db>, region: Region<'db>, ty: Ty<'db>) -> Self {
+        Ty::new_ref(interner, region, ty, Mutability::Not)
+    }
+
+    pub fn new_opaque(
+        interner: DbInterner<'db>,
+        def_id: SolverDefId,
+        args: GenericArgs<'db>,
+    ) -> Self {
+        Ty::new_alias(interner, AliasTyKind::Opaque, AliasTy::new_from_args(interner, def_id, args))
     }
 
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
@@ -327,8 +344,37 @@ impl<'db> Ty<'db> {
     }
 
     #[inline]
+    pub fn is_bool(self) -> bool {
+        matches!(self.kind(), TyKind::Bool)
+    }
+
+    /// A scalar type is one that denotes an atomic datum, with no sub-components.
+    /// (A RawPtr is scalar because it represents a non-managed pointer, so its
+    /// contents are abstract to rustc.)
+    #[inline]
+    pub fn is_scalar(self) -> bool {
+        matches!(
+            self.kind(),
+            TyKind::Bool
+                | TyKind::Char
+                | TyKind::Int(_)
+                | TyKind::Float(_)
+                | TyKind::Uint(_)
+                | TyKind::FnDef(..)
+                | TyKind::FnPtr(..)
+                | TyKind::RawPtr(_, _)
+                | TyKind::Infer(InferTy::IntVar(_) | InferTy::FloatVar(_))
+        )
+    }
+
+    #[inline]
     pub fn is_infer(self) -> bool {
         matches!(self.kind(), TyKind::Infer(..))
+    }
+
+    #[inline]
+    pub fn is_numeric(self) -> bool {
+        self.is_integral() || self.is_floating_point()
     }
 
     #[inline]
@@ -346,8 +392,25 @@ impl<'db> Ty<'db> {
         matches!(self.kind(), TyKind::RawPtr(..))
     }
 
+    #[inline]
+    pub fn is_array(self) -> bool {
+        matches!(self.kind(), TyKind::Array(..))
+    }
+
+    #[inline]
+    pub fn is_slice(self) -> bool {
+        matches!(self.kind(), TyKind::Slice(..))
+    }
+
     pub fn is_union(self) -> bool {
         self.as_adt().is_some_and(|(adt, _)| matches!(adt, AdtId::UnionId(_)))
+    }
+
+    pub fn boxed_ty(self) -> Option<Ty<'db>> {
+        match self.kind() {
+            TyKind::Adt(adt_def, args) if adt_def.is_box() => Some(args.type_at(0)),
+            _ => None,
+        }
     }
 
     #[inline]
@@ -378,11 +441,9 @@ impl<'db> Ty<'db> {
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
     /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
-    pub fn builtin_deref(self, db: &dyn HirDatabase, explicit: bool) -> Option<Ty<'db>> {
+    pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'db>> {
         match self.kind() {
-            TyKind::Adt(adt, substs) if crate::lang_items::is_box(db, adt.def_id().0) => {
-                Some(substs.as_slice()[0].expect_ty())
-            }
+            TyKind::Adt(adt, substs) if adt.is_box() => Some(substs.as_slice()[0].expect_ty()),
             TyKind::Ref(_, ty, _) => Some(ty),
             TyKind::RawPtr(ty, _) if explicit => Some(ty),
             _ => None,
@@ -562,26 +623,14 @@ impl<'db> Ty<'db> {
         let interner = DbInterner::new_with(db, None, None);
 
         match self.kind() {
-            TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => {
-                match db.lookup_intern_impl_trait_id(opaque_ty.def_id.expect_opaque_ty()) {
-                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        db.return_type_impl_traits(func).map(|it| {
-                            let data =
-                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
-                            data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
-                                .collect()
-                        })
-                    }
-                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        db.type_alias_impl_traits(alias).map(|it| {
-                            let data =
-                                (*it).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
-                            data.iter_instantiated_copied(interner, opaque_ty.args.as_slice())
-                                .collect()
-                        })
-                    }
-                }
-            }
+            TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => Some(
+                opaque_ty
+                    .def_id
+                    .expect_opaque_ty()
+                    .predicates(db)
+                    .iter_instantiated_copied(interner, opaque_ty.args.as_slice())
+                    .collect(),
+            ),
             TyKind::Param(param) => {
                 // FIXME: We shouldn't use `param.id` here.
                 let generic_params = db.generic_params(param.id.parent());
@@ -589,11 +638,8 @@ impl<'db> Ty<'db> {
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::ArgumentImplTrait => {
-                            let predicates = db
-                                .generic_predicates(param.id.parent())
-                                .instantiate_identity()
-                                .into_iter()
-                                .flatten()
+                            let predicates = GenericPredicates::query_all(db, param.id.parent())
+                                .iter_identity_copied()
                                 .filter(|wc| match wc.kind().skip_binder() {
                                     ClauseKind::Trait(tr) => tr.self_ty() == self,
                                     ClauseKind::Projection(pred) => pred.self_ty() == self,

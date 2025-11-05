@@ -79,6 +79,10 @@ impl<'db> Region<'db> {
         matches!(self.inner(), RegionKind::ReStatic)
     }
 
+    pub fn is_erased(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReErased)
+    }
+
     pub fn is_var(&self) -> bool {
         matches!(self.inner(), RegionKind::ReVar(_))
     }
