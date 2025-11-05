@@ -107,7 +107,7 @@ use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
-use crate::gcc_util::target_cpu;
+use crate::gcc_util::{target_cpu, to_gcc_features};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -220,7 +220,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
+        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -446,21 +446,25 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
-    let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
-        // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
-        if feature == "neon" {
-            return false;
-        }
-        target_info.cpu_supports(feature)
-        // cSpell:disable
-        /*
-          adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
-          avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
-          bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-          sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
-        */
-        // cSpell:enable
-    });
+    let (unstable_target_features, target_features) = cfg_target_feature(
+        sess,
+        |feature| to_gcc_features(sess, feature),
+        |feature| {
+            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+            if feature == "neon" {
+                return false;
+            }
+            target_info.cpu_supports(feature)
+            // cSpell:disable
+            /*
+              adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
+              avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+              bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+              sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
+            */
+            // cSpell:enable
+        },
+    );
 
     let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);

@@ -12,7 +12,7 @@ fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
-pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<String> {
+pub(crate) fn global_gcc_features(sess: &Session) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -37,27 +37,18 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
 
     // -Ctarget-features
-    target_features::flag_to_backend_features(
-        sess,
-        diagnostics,
-        |feature| to_gcc_features(sess, feature),
-        |feature, enable| {
-            // We run through `to_gcc_features` when
-            // passing requests down to GCC. This means that all in-language
-            // features also work on the command line instead of having two
-            // different names when the GCC name and the Rust name differ.
-            features.extend(
-                to_gcc_features(sess, feature)
-                    .iter()
-                    .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
-                    .map(
-                        |feature| {
-                            if !enable { format!("-{}", feature) } else { feature.to_string() }
-                        },
-                    ),
-            );
-        },
-    );
+    target_features::flag_to_backend_features(sess, |feature, enable| {
+        // We run through `to_gcc_features` when
+        // passing requests down to GCC. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the GCC name and the Rust name differ.
+        features.extend(
+            to_gcc_features(sess, feature)
+                .iter()
+                .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
+                .map(|feature| if !enable { format!("-{}", feature) } else { feature.to_string() }),
+        );
+    });
 
     gcc_features_by_flags(sess, &mut features);
 
