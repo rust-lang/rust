@@ -924,7 +924,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; new_unchecked, get_context],
                 ),
             };
-            self.arena.alloc(self.expr_unsafe(call))
+            self.arena.alloc(self.expr_unsafe(span, call))
         };
 
         // `::std::task::Poll::Ready(result) => break result`
@@ -1832,7 +1832,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         arena_vec![self; iter],
                     ));
                     // `unsafe { ... }`
-                    let iter = self.arena.alloc(self.expr_unsafe(iter));
+                    let iter = self.arena.alloc(self.expr_unsafe(head_span, iter));
                     let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
                     self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
                 }
@@ -1887,7 +1887,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; iter],
                 ));
                 // `unsafe { ... }`
-                let iter = self.arena.alloc(self.expr_unsafe(iter));
+                let iter = self.arena.alloc(self.expr_unsafe(head_span, iter));
                 let inner_match_expr = self.arena.alloc(self.expr_match(
                     for_span,
                     iter,
@@ -2262,9 +2262,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, expr_path)
     }
 
-    fn expr_unsafe(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
+    pub(super) fn expr_unsafe(
+        &mut self,
+        span: Span,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
-        let span = expr.span;
         self.expr(
             span,
             hir::ExprKind::Block(
