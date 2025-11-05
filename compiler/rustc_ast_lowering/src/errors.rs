@@ -475,3 +475,10 @@ pub(crate) struct UnionWithDefault {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_too_many_format_arguments)]
+pub(crate) struct TooManyFormatArguments {
+    #[primary_span]
+    pub span: Span,
+}

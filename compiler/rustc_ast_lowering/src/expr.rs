@@ -2105,16 +2105,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
-    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
+    pub(super) fn expr_usize(&mut self, sp: Span, value: u64) -> hir::Expr<'hir> {
         self.expr_uint(sp, ast::UintTy::Usize, value as u128)
-    }
-
-    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U32, value as u128)
-    }
-
-    pub(super) fn expr_u16(&mut self, sp: Span, value: u16) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U16, value as u128)
     }
 
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {

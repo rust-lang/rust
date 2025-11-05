@@ -8,28 +8,65 @@
 
 use super::*;
 use crate::hint::unreachable_unchecked;
+use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 
-#[lang = "format_placeholder"]
+#[lang = "format_template"]
 #[derive(Copy, Clone)]
-pub struct Placeholder {
-    pub position: usize,
-    pub flags: u32,
-    pub precision: Count,
-    pub width: Count,
+pub struct Template<'a> {
+    pub(super) pieces: NonNull<rt::Piece>,
+    lifetime: PhantomData<&'a rt::Piece>,
 }
 
-/// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
-/// and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
-#[lang = "format_count"]
+unsafe impl Send for Template<'_> {}
+unsafe impl Sync for Template<'_> {}
+
+impl<'a> Template<'a> {
+    #[inline]
+    pub const unsafe fn new<const N: usize>(pieces: &'a [rt::Piece; N]) -> Self {
+        Self { pieces: NonNull::from_ref(pieces).cast(), lifetime: PhantomData }
+    }
+
+    #[inline]
+    pub const unsafe fn next(&mut self) -> Piece {
+        // SAFETY: Guaranteed by caller.
+        unsafe {
+            let piece = *self.pieces.as_ref();
+            self.pieces = self.pieces.add(1);
+            piece
+        }
+    }
+}
+
+#[lang = "format_piece"]
 #[derive(Copy, Clone)]
-pub enum Count {
-    /// Specified with a literal number, stores the value
-    Is(u16),
-    /// Specified using `$` and `*` syntaxes, stores the index into `args`
-    Param(usize),
-    /// Not specified
-    Implied,
+pub union Piece {
+    pub i: usize,
+    pub p: *const u8,
+}
+
+unsafe impl Send for Piece {}
+unsafe impl Sync for Piece {}
+
+// These are marked as #[stable] because of #[rustc_promotable] and #[rustc_const_stable].
+// With #[rustc_const_unstable], many format_args!() invocations would result in errors.
+//
+// There is still no way to use these on stable, because Piece itself is #[unstable] and not
+// reachable through any public path. (format_args!()'s expansion uses it as a lang item.)
+impl Piece {
+    #[rustc_promotable]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
+    pub const fn str(s: &'static str) -> Self {
+        Self { p: s as *const str as *const u8 }
+    }
+
+    #[rustc_promotable]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
+    pub const fn num(i: usize) -> Self {
+        Self { i }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -187,52 +224,31 @@ impl Argument<'_> {
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
-#[unstable(feature = "fmt_internals", issue = "none")]
 #[rustc_diagnostic_item = "FmtArgumentsNew"]
 impl<'a> Arguments<'a> {
     #[inline]
-    pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
-        const { assert!(N <= 1) };
-        Arguments { pieces, fmt: None, args: &[] }
+    pub const fn new_const(template: rt::Template<'a>) -> Arguments<'a> {
+        Arguments { template, args: NonNull::dangling() }
     }
 
-    /// When using the format_args!() macro, this function is used to generate the
-    /// Arguments structure.
-    ///
-    /// This function should _not_ be const, to make sure we don't accept
-    /// format_args!() and panic!() with arguments in const, even when not evaluated:
-    ///
-    /// ```compile_fail,E0015
-    /// const _: () = if false { panic!("a {}", "a") };
-    /// ```
     #[inline]
-    pub fn new_v1<const P: usize, const A: usize>(
-        pieces: &'a [&'static str; P],
-        args: &'a [rt::Argument<'a>; A],
+    pub fn new<const N: usize>(
+        template: rt::Template<'a>,
+        args: &'a [rt::Argument<'a>; N],
     ) -> Arguments<'a> {
-        const { assert!(P >= A && P <= A + 1, "invalid args") }
-        Arguments { pieces, fmt: None, args }
+        Arguments { template, args: NonNull::from_ref(args).cast() }
     }
 
-    /// Specifies nonstandard formatting parameters.
-    ///
-    /// SAFETY: the following invariants must be held:
-    /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
-    /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
-    ///
-    /// This function should _not_ be const, to make sure we don't accept
-    /// format_args!() and panic!() with arguments in const, even when not evaluated:
-    ///
-    /// ```compile_fail,E0015
-    /// const _: () = if false { panic!("a {:1}", "a") };
-    /// ```
+    // These two methods are used in library/core/src/panicking.rs to create a
+    // `fmt::Arguments` for a `&'static str`.
     #[inline]
-    pub unsafe fn new_v1_formatted(
-        pieces: &'a [&'static str],
-        args: &'a [rt::Argument<'a>],
-        fmt: &'a [rt::Placeholder],
-    ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
+    pub(crate) const fn pieces_for_str(s: &'static str) -> [rt::Piece; 3] {
+        [rt::Piece { i: s.len() as _ }, rt::Piece::str(s), rt::Piece { i: 0 }]
+    }
+    /// Safety: Only call this with the result of `pieces_for_str`.
+    #[inline]
+    pub(crate) const unsafe fn from_pieces(p: &'a [rt::Piece; 3]) -> Self {
+        // SAFETY: Guaranteed by caller.
+        Self::new_const(unsafe { rt::Template::new(p) })
     }
 }

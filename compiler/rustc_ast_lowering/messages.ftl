@@ -169,6 +169,9 @@ ast_lowering_template_modifier = template modifier
 
 ast_lowering_this_not_async = this is not `async`
 
+ast_lowering_too_many_format_arguments =
+    too many arguments used in format string
+
 ast_lowering_underscore_expr_lhs_assign =
     in expressions, `_` can only be used on the left-hand side of an assignment
     .label = `_` not allowed here
