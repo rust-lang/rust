@@ -19,7 +19,6 @@ const fn bar() {
 
 #[rustc_comptime]
 fn baz() {
-    // Should be allowed
+    // Ok
     foo();
-    //~^ ERROR: comptime fns can only be called at compile time
 }
