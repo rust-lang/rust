@@ -1,17 +1,30 @@
 error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
-  --> $DIR/dyn-trait-type-alias-return-type.rs:4:11
+  --> $DIR/dyn-trait-type-alias-return-type.rs:5:11
    |
 LL | fn f() -> T { loop {} }
    |           ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
 note: this type alias is unsized
-  --> $DIR/dyn-trait-type-alias-return-type.rs:1:1
+  --> $DIR/dyn-trait-type-alias-return-type.rs:2:1
    |
 LL | type T = dyn core::fmt::Debug;
    | ^^^^^^
    = note: the return type of a function must have a statically known size
+help: consider boxing the return type, and wrapping all of the returned values in `Box::new`
+   |
+LL | fn f() -> Box<T> { loop {} }
+   |           ++++ +
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `(dyn Debug + 'static)` cannot be known at compilation time
+  --> $DIR/dyn-trait-type-alias-return-type.rs:13:5
+   |
+LL |     f();
+   |     ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + 'static)`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
