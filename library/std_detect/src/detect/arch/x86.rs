@@ -278,4 +278,6 @@ features! {
     /// ERMSB, Enhanced REP MOVSB and STOSB
     @FEATURE: #[unstable(feature = "xop_target_feature", issue = "127208")] xop: "xop";
     /// XOP: eXtended Operations (AMD)
+    @FEATURE: #[unstable(feature = "cpuid_target_feature", issue = "146558")] cpuid: "cpuid";
+    /// CPUID
 }
