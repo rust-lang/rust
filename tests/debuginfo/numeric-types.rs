@@ -202,6 +202,8 @@
 // gdb-command:print nz_usize
 // gdb-check:[...]$12 = 122
 
+// gdb-command:print/x nz_i8
+// gdb-check:[...]$13 = 0xb
 
 
 // === LLDB TESTS ==================================================================================
