@@ -1,7 +1,4 @@
-#![feature(rustc_attrs)]
-
-// TODO: this test should fail
-//@check-pass
+#![feature(rustc_attrs, const_trait_impl)]
 
 #[rustc_comptime]
 fn foo() {}
@@ -11,4 +8,18 @@ fn main() {
     const { foo() };
     // Not ok
     foo();
+    //~^ ERROR: comptime fns can only be called at compile time
+}
+
+const fn bar() {
+    // Not ok
+    foo();
+    //~^ ERROR: comptime fns can only be called at compile time
+}
+
+#[rustc_comptime]
+fn baz() {
+    // Should be allowed
+    foo();
+    //~^ ERROR: comptime fns can only be called at compile time
 }
