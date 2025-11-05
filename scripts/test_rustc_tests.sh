@@ -87,8 +87,7 @@ rm -r tests/ui/instrument-coverage/
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
-rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
-rm tests/ui/statics/const_generics.rs # same
+rm tests/ui/statics/const_generics.rs # tests an optimization
 rm tests/ui/linking/executable-no-mangle-strip.rs # requires --gc-sections to work for statics
 
 # backend specific tests
