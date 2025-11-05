@@ -1,0 +1,14 @@
+error: using deprecated intrinsic `llvm.aarch64.neon.rbit.v8i8`, `llvm.bitreverse.v8i8` can be used instead
+  --> $DIR/deprecated-llvm-intrinsic.rs:21:5
+   |
+LL |     fn foo(a: i8x8) -> i8x8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-llvm-intrinsic.rs:19:12
+   |
+LL |     #[deny(deprecated_llvm_intrinsic)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

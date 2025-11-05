@@ -18,6 +18,7 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
 use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -180,7 +181,39 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
 
-        // todo: check for upgrades, and emit error if not upgradable
+        if let FunctionSignature::MaybeInvalid(..) = signature {
+            let mut new_llfn = None;
+            let can_upgrade =
+                unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+
+            // we can emit diagnostics for local crates only
+            if let Some(instance) = instance
+                && let Some(local_def_id) = instance.def_id().as_local()
+            {
+                let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+                let span = self.tcx.def_span(local_def_id);
+
+                if can_upgrade {
+                    // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                    let msg = if let Some(new_llfn) = new_llfn {
+                        format!(
+                            "using deprecated intrinsic `{name}`, `{}` can be used instead",
+                            str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+                        )
+                    } else {
+                        format!("using deprecated intrinsic `{name}`")
+                    };
+                    self.tcx.node_lint(DEPRECATED_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(msg).span(span);
+                    });
+                } else {
+                    // This is either plain wrong, or this can be caused by incompatible LLVM versions, we let the user decide
+                    self.tcx.node_lint(UNKNOWN_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(format!("invalid LLVM Intrinsic `{name}`")).span(span);
+                    });
+                }
+            }
+        }
 
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             if let Some(instance) = instance {
