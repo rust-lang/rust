@@ -1076,6 +1076,17 @@ pub(crate) struct CoercePointeeNoField {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_deref_receiver_target_diverge)]
+pub(crate) struct DerefReceiverTargetDiverge<'a> {
+    #[primary_span]
+    #[label]
+    #[note]
+    pub span: Span,
+    pub deref_ty: Ty<'a>,
+    pub recv_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = E0390)]
 #[help]
 pub(crate) struct InherentTyOutsideRelevant {

@@ -149,6 +149,11 @@ hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `
 hir_analysis_cross_crate_traits_defined = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type defined in the current crate
     .label = can't implement cross-crate trait for type in another crate
 
+hir_analysis_deref_receiver_target_diverge = `Deref::Target` does not agree with `Receiver::Target`
+    .label = `Deref::Target` is `{$deref_ty}` but `Receiver::Target` is `{$recv_ty}`
+    .note = `#![feature(arbitrary_self_types_merge_chains)]` rejects this kind of divergence
+hir_analysis_deref_receiver_target_diverge_feature = `Receiver::Target` diverging from `Deref::Target` is not supported, we look forward to your feedback
+
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
 hir_analysis_dispatch_from_dyn_zst = the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
