@@ -4,7 +4,7 @@
 //
 //@ revisions: unit never
 //@ check-pass
-#![allow(internal_features)]
+#![expect(internal_features, unmustuse_in_always_ok)]
 #![feature(rustc_attrs, never_type)]
 #![cfg_attr(unit, rustc_never_type_options(fallback = "unit"))]
 #![cfg_attr(never, rustc_never_type_options(fallback = "never"))]

@@ -5,7 +5,7 @@
 
 #![allow(unreachable_patterns)]
 #![allow(unreachable_code)]
-#![allow(unused_variables)]
+#![expect(unused_variables, unmustuse_in_always_ok)]
 
 #[allow(dead_code)]
 fn foo(z: !) {

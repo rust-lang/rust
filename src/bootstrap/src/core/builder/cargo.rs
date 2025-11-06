@@ -1169,6 +1169,10 @@ impl Builder<'_> {
         // Lints just for `compiler/` crates.
         if mode == Mode::Rustc {
             lint_flags.push("-Wrustc::internal");
+            if compiler.stage > 0 {
+                lint_flags.push("-Aunmustuse_in_always_ok");
+                lint_flags.push("-Amustuse_in_always_ok");
+            }
             lint_flags.push("-Drustc::symbol_intern_string_literal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.

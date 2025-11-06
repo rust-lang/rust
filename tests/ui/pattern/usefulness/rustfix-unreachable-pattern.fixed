@@ -1,7 +1,7 @@
 //@ run-rustfix
 #![feature(never_patterns)]
 #![feature(exhaustive_patterns)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features, unmustuse_in_always_ok)]
 #![deny(unreachable_patterns)]
 
 enum Void {}

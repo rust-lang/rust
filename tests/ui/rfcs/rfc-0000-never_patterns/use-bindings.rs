@@ -1,6 +1,6 @@
 //@ check-pass
 #![feature(never_patterns)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features, unmustuse_in_always_ok)]
 
 #[derive(Copy, Clone)]
 enum Void {}

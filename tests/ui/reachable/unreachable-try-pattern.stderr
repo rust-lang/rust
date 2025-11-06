@@ -1,5 +1,5 @@
 warning: unreachable call
-  --> $DIR/unreachable-try-pattern.rs:19:33
+  --> $DIR/unreachable-try-pattern.rs:20:33
    |
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
    |                                 ^^ - any code following this expression is unreachable
@@ -13,7 +13,7 @@ LL | #![warn(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 warning: unreachable pattern
-  --> $DIR/unreachable-try-pattern.rs:19:24
+  --> $DIR/unreachable-try-pattern.rs:20:24
    |
 LL |     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
    |                        ^^^^^-----------------
@@ -29,7 +29,7 @@ LL | #![warn(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: unreachable pattern
-  --> $DIR/unreachable-try-pattern.rs:30:40
+  --> $DIR/unreachable-try-pattern.rs:31:40
    |
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
    |                                        ^^^^^^----------

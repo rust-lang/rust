@@ -3,7 +3,7 @@
 
 #![deny(unused_must_use)]
 #![feature(never_type)]
-
+#![expect(unmustuse_in_always_ok, mustuse_in_always_ok)]
 use core::ops::{ControlFlow, ControlFlow::Continue};
 use dep::{MyUninhabited, MyUninhabitedNonexhaustive};
 

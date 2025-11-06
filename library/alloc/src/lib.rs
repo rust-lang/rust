@@ -82,6 +82,7 @@
 #![warn(rustdoc::unescaped_backticks)]
 #![deny(ffi_unwind_calls)]
 #![warn(unreachable_pub)]
+#![expect(unmustuse_in_always_ok)]
 //
 // Library features:
 // tidy-alphabetical-start

@@ -5,7 +5,7 @@
 #![allow(unreachable_patterns)]
 // Test that we can extract a ! through pattern matching then use it as several different types.
 #![feature(never_type)]
-
+#![expect(unmustuse_in_always_ok)]
 fn main() {
     let x: Result<u32, !> = Ok(123);
     match x {

@@ -2,7 +2,7 @@
 #![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 //~^ NOTE lint level is defined here
-
+#![expect(unmustuse_in_always_ok)]
 #[rustfmt::skip]
 fn main() {
     match (0u8,) {

@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(unreachable_patterns)]
-
+#![expect(unmustuse_in_always_ok)]
 fn never_direct(x: !) {
     x;
 }
