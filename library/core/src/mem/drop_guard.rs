@@ -85,19 +85,19 @@ where
     pub fn dismiss(self) -> T {
         // First we ensure that dropping the guard will not trigger
         // its destructor
-        let mut guard = ManuallyDrop::new(guard);
+        let mut this = ManuallyDrop::new(self);
 
         // Next we manually read the stored value from the guard.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        let value = unsafe { ManuallyDrop::take(&mut guard.inner) };
+        let value = unsafe { ManuallyDrop::take(&mut this.inner) };
 
         // Finally we drop the stored closure. We do this *after* having read
         // the value, so that even if the closure's `drop` function panics,
         // unwinding still tries to drop the value.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        unsafe { ManuallyDrop::drop(&mut guard.f) };
+        unsafe { ManuallyDrop::drop(&mut this.f) };
         value
     }
 }
