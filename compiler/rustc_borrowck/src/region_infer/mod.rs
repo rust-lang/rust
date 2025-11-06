@@ -26,7 +26,7 @@ use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::handle_placeholders::{LoweredConstraints, PlaceholderReachability, RegionTracker};
+use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
@@ -1473,11 +1473,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         scc: ConstraintSccIndex,
     ) -> Option<ty::PlaceholderRegion> {
-        if let PlaceholderReachability::Placeholders { min_placeholder, max_placeholder, .. } =
-            self.scc_annotations[scc].reachable_placeholders
-            && min_placeholder == max_placeholder
-            && let NllRegionVariableOrigin::Placeholder(p) =
-                self.definitions[min_placeholder].origin
+        let ps = self.scc_annotations[scc].reachable_placeholders?;
+
+        if let NllRegionVariableOrigin::Placeholder(p) = self.definitions[ps.min_placeholder].origin
+            && ps.min_placeholder == ps.max_placeholder
         {
             Some(p)
         } else {
