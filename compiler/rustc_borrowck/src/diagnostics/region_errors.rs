@@ -690,6 +690,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             );
 
             diag.span_label(*span, format!("`{fr_name}` escapes the {escapes_from} body here"));
+        } else {
+            diag.span_label(
+                *span,
+                format!("a temporary borrow escapes the {escapes_from} body here"),
+            );
+            if let Some((Some(outlived_name), _)) = outlived_fr_name_and_span {
+                diag.help(format!(
+                    "`{outlived_name}` is declared outside the {escapes_from}, \
+                     so any data borrowed inside the {escapes_from} cannot be stored into it"
+                ));
+            }
         }
 
         // Only show an extra note if we can find an 'error region' for both of the region
