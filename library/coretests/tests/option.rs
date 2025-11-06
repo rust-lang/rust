@@ -495,6 +495,30 @@ const fn option_const_mut() {
     */
 }
 
+/// Test that `Option::get_or_insert_default` is usable in const contexts, including with types that
+/// do not satisfy `T: const Destruct`.
+#[test]
+fn const_get_or_insert_default() {
+    const OPT_DEFAULT: Option<Vec<bool>> = {
+        let mut x = None;
+        x.get_or_insert_default();
+        x
+    };
+    assert!(OPT_DEFAULT.is_some());
+}
+
+/// Test that `Option::get_or_insert_with` is usable in const contexts, including with types that
+/// do not satisfy `T: const Destruct`.
+#[test]
+fn const_get_or_insert_with() {
+    const OPT_WITH: Option<Vec<bool>> = {
+        let mut x = None;
+        x.get_or_insert_with(Vec::new);
+        x
+    };
+    assert!(OPT_WITH.is_some());
+}
+
 #[test]
 fn test_unwrap_drop() {
     struct Dtor<'a> {
