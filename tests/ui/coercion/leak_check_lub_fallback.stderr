@@ -1,0 +1,14 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_fallback.rs:21:15
+   |
+LL |     lub!(lhs, rhs);
+   |          ---  ^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected struct `Foo<for<'a> fn(&(), &'a ())>`
+              found struct `Foo<for<'a> fn(&'a (), &())>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
