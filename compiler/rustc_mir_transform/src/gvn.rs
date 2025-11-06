@@ -1004,21 +1004,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         operand: &mut Operand<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
-        match *operand {
-            Operand::RuntimeChecks(c) => {
-                Some(self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)))
-            }
-            Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
+        let value = match *operand {
+            Operand::RuntimeChecks(c) => self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)),
+            Operand::Constant(ref constant) => self.insert_constant(constant.const_),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
-                let value = self.simplify_place_value(place, location)?;
-                if let Some(const_) = self.try_as_constant(value) {
-                    *operand = Operand::Constant(Box::new(const_));
-                } else if let Value::RuntimeChecks(c) = self.get(value) {
-                    *operand = Operand::RuntimeChecks(c);
-                }
-                Some(value)
+                self.simplify_place_value(place, location)?
             }
+        };
+        if let Some(const_) = self.try_as_constant(value) {
+            *operand = Operand::Constant(Box::new(const_));
+        } else if let Value::RuntimeChecks(c) = self.get(value) {
+            *operand = Operand::RuntimeChecks(c);
         }
+        Some(value)
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -1796,14 +1794,28 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
 
     /// If `index` is a `Value::Constant`, return the `Constant` to be put in the MIR.
     fn try_as_constant(&mut self, index: VnIndex) -> Option<ConstOperand<'tcx>> {
-        // This was already constant in MIR, do not change it. If the constant is not
-        // deterministic, adding an additional mention of it in MIR will not give the same value as
-        // the former mention.
-        if let Value::Constant { value, disambiguator: None } = self.get(index) {
-            debug_assert!(value.is_deterministic());
+        let value = self.get(index);
+
+        // This was already an *evaluated* constant in MIR, do not change it.
+        if let Value::Constant { value, disambiguator: None } = value
+            && let Const::Val(..) = value
+        {
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
+        if let Some(value) = self.try_as_evaluated_constant(index) {
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
+        }
+
+        // We failed to provide an evaluated form, fallback to using the unevaluated constant.
+        if let Value::Constant { value, disambiguator: None } = value {
+            return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
+        }
+
+        None
+    }
+
+    fn try_as_evaluated_constant(&mut self, index: VnIndex) -> Option<Const<'tcx>> {
         let op = self.eval_to_const(index)?;
         if op.layout.is_unsized() {
             // Do not attempt to propagate unsized locals.
@@ -1817,8 +1829,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
-        let const_ = Const::Val(value, op.layout.ty);
-        Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
+        Some(Const::Val(value, op.layout.ty))
     }
 
     /// Construct a place which holds the same value as `index` and for which all locals strictly
