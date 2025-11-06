@@ -2756,6 +2756,28 @@ impl Path {
         iter_after(self.components().rev(), child.components().rev()).is_some()
     }
 
+    /// Checks whether the `Path` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_is_empty)]
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("");
+    /// assert!(path.is_empty());
+    ///
+    /// let path = Path::new("foo");
+    /// assert!(!path.is_empty());
+    ///
+    /// let path = Path::new(".");
+    /// assert!(!path.is_empty());
+    /// ```
+    #[unstable(feature = "path_is_empty", issue = "148494")]
+    pub fn is_empty(&self) -> bool {
+        self.as_os_str().is_empty()
+    }
+
     /// Extracts the stem (non-extension) portion of [`self.file_name`].
     ///
     /// [`self.file_name`]: Path::file_name

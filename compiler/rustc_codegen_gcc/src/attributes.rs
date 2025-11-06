@@ -9,6 +9,8 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 #[cfg(feature = "master")]
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty;
+#[cfg(feature = "master")]
+use rustc_target::spec::Arch;
 
 use crate::context::CodegenCx;
 use crate::gcc_util::to_gcc_features;
@@ -70,7 +72,7 @@ fn inline_attr<'gcc, 'tcx>(
         InlineAttr::Hint => Some(FnAttribute::Inline),
         InlineAttr::Force { .. } => Some(FnAttribute::AlwaysInline),
         InlineAttr::Never => {
-            if cx.sess().target.arch != "amdgpu" {
+            if cx.sess().target.arch != Arch::AmdGpu {
                 Some(FnAttribute::NoInline)
             } else {
                 None
@@ -153,8 +155,8 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         .join(",");
     if !target_features.is_empty() {
         #[cfg(feature = "master")]
-        match cx.sess().target.arch.as_ref() {
-            "x86" | "x86_64" | "powerpc" => {
+        match cx.sess().target.arch {
+            Arch::X86 | Arch::X86_64 | Arch::PowerPC => {
                 func.add_attribute(FnAttribute::Target(&target_features))
             }
             // The target attribute is not supported on other targets in GCC.

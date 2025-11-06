@@ -191,7 +191,7 @@ pub(crate) struct LifetimesOrBoundsMismatchOnTrait {
     #[label]
     pub span: Span,
     #[label(hir_analysis_generics_label)]
-    pub generics_span: Option<Span>,
+    pub generics_span: Span,
     #[label(hir_analysis_where_label)]
     pub where_span: Option<Span>,
     #[label(hir_analysis_bounds_label)]

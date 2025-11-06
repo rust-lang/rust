@@ -11,7 +11,6 @@ use crate::spec::{
 #[cfg(test)]
 mod tests;
 
-use Arch::*;
 #[allow(non_camel_case_types)]
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Arch {
@@ -29,54 +28,60 @@ pub(crate) enum Arch {
 impl Arch {
     fn target_name(self) -> &'static str {
         match self {
-            Armv7k => "armv7k",
-            Armv7s => "armv7s",
-            Arm64 => "arm64",
-            Arm64e => "arm64e",
-            Arm64_32 => "arm64_32",
-            I386 => "i386",
-            I686 => "i686",
-            X86_64 => "x86_64",
-            X86_64h => "x86_64h",
+            Self::Armv7k => "armv7k",
+            Self::Armv7s => "armv7s",
+            Self::Arm64 => "arm64",
+            Self::Arm64e => "arm64e",
+            Self::Arm64_32 => "arm64_32",
+            Self::I386 => "i386",
+            Self::I686 => "i686",
+            Self::X86_64 => "x86_64",
+            Self::X86_64h => "x86_64h",
         }
     }
 
-    pub(crate) fn target_arch(self) -> Cow<'static, str> {
-        Cow::Borrowed(match self {
-            Armv7k | Armv7s => "arm",
-            Arm64 | Arm64e | Arm64_32 => "aarch64",
-            I386 | I686 => "x86",
-            X86_64 | X86_64h => "x86_64",
-        })
+    pub(crate) fn target_arch(self) -> crate::spec::Arch {
+        match self {
+            Self::Armv7k | Self::Armv7s => crate::spec::Arch::Arm,
+            Self::Arm64 | Self::Arm64e | Self::Arm64_32 => crate::spec::Arch::AArch64,
+            Self::I386 | Self::I686 => crate::spec::Arch::X86,
+            Self::X86_64 | Self::X86_64h => crate::spec::Arch::X86_64,
+        }
     }
 
     fn target_cpu(self, env: TargetEnv) -> &'static str {
         match self {
-            Armv7k => "cortex-a8",
-            Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
-            Arm64 => match env {
+            Self::Armv7k => "cortex-a8",
+            Self::Armv7s => "swift", // iOS 10 is only supported on iPhone 5 or higher.
+            Self::Arm64 => match env {
                 TargetEnv::Normal => "apple-a7",
                 TargetEnv::Simulator => "apple-a12",
                 TargetEnv::MacCatalyst => "apple-a12",
             },
-            Arm64e => "apple-a12",
-            Arm64_32 => "apple-s4",
+            Self::Arm64e => "apple-a12",
+            Self::Arm64_32 => "apple-s4",
             // Only macOS 10.12+ is supported, which means
             // all x86_64/x86 CPUs must be running at least penryn
             // https://github.com/llvm/llvm-project/blob/01f924d0e37a5deae51df0d77e10a15b63aa0c0f/clang/lib/Driver/ToolChains/Arch/X86.cpp#L79-L82
-            I386 | I686 => "penryn",
-            X86_64 => "penryn",
+            Self::I386 | Self::I686 => "penryn",
+            Self::X86_64 => "penryn",
             // Note: `core-avx2` is slightly more advanced than `x86_64h`, see
             // comments (and disabled features) in `x86_64h_apple_darwin` for
             // details. It is a higher baseline then `penryn` however.
-            X86_64h => "core-avx2",
+            Self::X86_64h => "core-avx2",
         }
     }
 
     fn stack_probes(self) -> StackProbeType {
         match self {
-            Armv7k | Armv7s => StackProbeType::None,
-            Arm64 | Arm64e | Arm64_32 | I386 | I686 | X86_64 | X86_64h => StackProbeType::Inline,
+            Self::Armv7k | Self::Armv7s => StackProbeType::None,
+            Self::Arm64
+            | Self::Arm64e
+            | Self::Arm64_32
+            | Self::I386
+            | Self::I686
+            | Self::X86_64
+            | Self::X86_64h => StackProbeType::Inline,
         }
     }
 }
@@ -104,7 +109,7 @@ pub(crate) fn base(
     os: &'static str,
     arch: Arch,
     env: TargetEnv,
-) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
+) -> (TargetOptions, StaticCow<str>, crate::spec::Arch) {
     let mut opts = TargetOptions {
         llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
@@ -132,10 +137,10 @@ pub(crate) fn base(
         default_dwarf_version: 4,
         frame_pointer: match arch {
             // clang ignores `-fomit-frame-pointer` for Armv7, it only accepts `-momit-leaf-frame-pointer`
-            Armv7k | Armv7s => FramePointer::Always,
+            Arch::Armv7k | Arch::Armv7s => FramePointer::Always,
             // clang supports omitting frame pointers for the rest, but... don't?
-            Arm64 | Arm64e | Arm64_32 => FramePointer::NonLeaf,
-            I386 | I686 | X86_64 | X86_64h => FramePointer::Always,
+            Arch::Arm64 | Arch::Arm64e | Arch::Arm64_32 => FramePointer::NonLeaf,
+            Arch::I386 | Arch::I686 | Arch::X86_64 | Arch::X86_64h => FramePointer::Always,
         },
         has_rpath: true,
         dll_suffix: ".dylib".into(),
@@ -306,18 +311,22 @@ impl OSVersion {
     /// This matches what LLVM does, see in part:
     /// <https://github.com/llvm/llvm-project/blob/llvmorg-21.1.3/llvm/lib/TargetParser/Triple.cpp#L2140-L2175>
     pub fn minimum_deployment_target(target: &Target) -> Self {
-        let (major, minor, patch) = match (&*target.os, &*target.arch, &*target.env) {
-            ("macos", "aarch64", _) => (11, 0, 0),
-            ("ios", "aarch64", "macabi") => (14, 0, 0),
-            ("ios", "aarch64", "sim") => (14, 0, 0),
+        let (major, minor, patch) = match (&*target.os, &target.arch, &*target.env) {
+            ("macos", crate::spec::Arch::AArch64, _) => (11, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, "macabi") => (14, 0, 0),
+            ("ios", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
             ("ios", _, _) if target.llvm_target.starts_with("arm64e") => (14, 0, 0),
             // Mac Catalyst defaults to 13.1 in Clang.
             ("ios", _, "macabi") => (13, 1, 0),
-            ("tvos", "aarch64", "sim") => (14, 0, 0),
-            ("watchos", "aarch64", "sim") => (7, 0, 0),
+            ("tvos", crate::spec::Arch::AArch64, "sim") => (14, 0, 0),
+            ("watchos", crate::spec::Arch::AArch64, "sim") => (7, 0, 0),
             // True Aarch64 on watchOS (instead of their Aarch64 Ilp32 called `arm64_32`) has been
             // available since Xcode 14, but it's only actually used more recently in watchOS 26.
-            ("watchos", "aarch64", "") if !target.llvm_target.starts_with("arm64_32") => (26, 0, 0),
+            ("watchos", crate::spec::Arch::AArch64, "")
+                if !target.llvm_target.starts_with("arm64_32") =>
+            {
+                (26, 0, 0)
+            }
             (os, _, _) => return Self::os_minimum_deployment_target(os),
         };
         Self { major, minor, patch }

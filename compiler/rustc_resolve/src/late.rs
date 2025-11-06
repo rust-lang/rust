@@ -10,6 +10,7 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
+use std::ops::ControlFlow;
 
 use rustc_ast::visit::{
     AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, try_visit, visit_opt, walk_list,
@@ -19,21 +20,21 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
-    pluralize,
+    Applicability, Diag, DiagArgValue, ErrorGuaranteed, IntoDiagArg, MultiSpan, StashKey,
+    Suggestions, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
-use rustc_middle::ty::{DelegationFnSig, Visibility};
+use rustc_middle::ty::{AssocTag, DelegationFnSig, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -373,11 +374,14 @@ enum LifetimeBinderKind {
     FnPtrType,
     PolyTrait,
     WhereBound,
+    // Item covers foreign items, ADTs, type aliases, trait associated items and
+    // trait alias associated items.
     Item,
     ConstItem,
     Function,
     Closure,
     ImplBlock,
+    // Covers only `impl` associated types.
     ImplAssocType,
 }
 
@@ -723,6 +727,9 @@ pub(crate) struct DiagMetadata<'ast> {
 
     /// The current impl items (used to suggest).
     current_impl_items: Option<&'ast [Box<AssocItem>]>,
+
+    /// The current impl items (used to suggest).
+    current_impl_item: Option<&'ast AssocItem>,
 
     /// When processing impl trait
     currently_processing_impl_trait: Option<(TraitRef, Ty)>,
@@ -1880,9 +1887,31 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     ty: ty.span,
                                 });
                             } else {
+                                let decl = if !trait_id.is_local()
+                                    && let Some(assoc) = self.diag_metadata.current_impl_item
+                                    && let AssocItemKind::Type(_) = assoc.kind
+                                    && let assocs = self.r.tcx.associated_items(trait_id)
+                                    && let Some(ident) = assoc.kind.ident()
+                                    && let Some(assoc) = assocs.find_by_ident_and_kind(
+                                        self.r.tcx,
+                                        ident,
+                                        AssocTag::Type,
+                                        trait_id,
+                                    ) {
+                                    let mut decl: MultiSpan =
+                                        self.r.tcx.def_span(assoc.def_id).into();
+                                    decl.push_span_label(
+                                        self.r.tcx.def_span(trait_id),
+                                        String::new(),
+                                    );
+                                    decl
+                                } else {
+                                    DUMMY_SP.into()
+                                };
                                 let mut err = self.r.dcx().create_err(
                                     errors::AnonymousLifetimeNonGatReportError {
                                         lifetime: lifetime.ident.span,
+                                        decl,
                                     },
                                 );
                                 self.point_at_impl_lifetimes(&mut err, i, lifetime.ident.span);
@@ -1924,17 +1953,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn point_at_impl_lifetimes(&mut self, err: &mut Diag<'_>, i: usize, lifetime: Span) {
-        let Some((rib, span)) = self.lifetime_ribs[..i]
-            .iter()
-            .rev()
-            .skip(1)
-            .filter_map(|rib| match rib.kind {
+        let Some((rib, span)) =
+            self.lifetime_ribs[..i].iter().rev().find_map(|rib| match rib.kind {
                 LifetimeRibKind::Generics { span, kind: LifetimeBinderKind::ImplBlock, .. } => {
                     Some((rib, span))
                 }
                 _ => None,
             })
-            .next()
         else {
             return;
         };
@@ -1956,11 +1981,63 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
         } else {
-            err.span_label(
-                span,
-                "you could add a lifetime on the impl block, if the trait or the self type can \
-                 have one",
-            );
+            struct AnonRefFinder;
+            impl<'ast> Visitor<'ast> for AnonRefFinder {
+                type Result = ControlFlow<Span>;
+
+                fn visit_ty(&mut self, ty: &'ast ast::Ty) -> Self::Result {
+                    if let ast::TyKind::Ref(None, mut_ty) = &ty.kind {
+                        return ControlFlow::Break(mut_ty.ty.span.shrink_to_lo());
+                    }
+                    visit::walk_ty(self, ty)
+                }
+
+                fn visit_lifetime(
+                    &mut self,
+                    lt: &'ast ast::Lifetime,
+                    _cx: visit::LifetimeCtxt,
+                ) -> Self::Result {
+                    if lt.ident.name == kw::UnderscoreLifetime {
+                        return ControlFlow::Break(lt.ident.span);
+                    }
+                    visit::walk_lifetime(self, lt)
+                }
+            }
+
+            if let Some(ty) = &self.diag_metadata.current_self_type
+                && let ControlFlow::Break(sp) = AnonRefFinder.visit_ty(ty)
+            {
+                err.multipart_suggestion_verbose(
+                    "add a lifetime to the impl block and use it in the self type and associated \
+                     type",
+                    vec![
+                        (span, "<'a>".to_string()),
+                        (sp, "'a ".to_string()),
+                        (lifetime.shrink_to_hi(), "'a ".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            } else if let Some(item) = &self.diag_metadata.current_item
+                && let ItemKind::Impl(impl_) = &item.kind
+                && let Some(of_trait) = &impl_.of_trait
+                && let ControlFlow::Break(sp) = AnonRefFinder.visit_trait_ref(&of_trait.trait_ref)
+            {
+                err.multipart_suggestion_verbose(
+                    "add a lifetime to the impl block and use it in the trait and associated type",
+                    vec![
+                        (span, "<'a>".to_string()),
+                        (sp, "'a".to_string()),
+                        (lifetime.shrink_to_hi(), "'a ".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            } else {
+                err.span_label(
+                    span,
+                    "you could add a lifetime on the impl block, if the trait or the self type \
+                     could have one",
+                );
+            }
         }
     }
 
@@ -3304,6 +3381,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
+        let prev = self.diag_metadata.current_impl_item.take();
+        self.diag_metadata.current_impl_item = Some(&item);
         match &item.kind {
             AssocItemKind::Const(box ast::ConstItem {
                 ident,
@@ -3452,6 +3531,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 panic!("unexpanded macro in resolve!")
             }
         }
+        self.diag_metadata.current_impl_item = prev;
     }
 
     fn check_trait_item<F>(

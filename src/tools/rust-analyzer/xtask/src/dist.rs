@@ -45,11 +45,22 @@ impl flags::Dist {
                 allocator,
                 self.zig,
                 self.pgo,
+                // Profiling requires debug information.
+                self.enable_profiling,
             )?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_owned() };
             dist_client(sh, &version, &release_tag, &target)?;
         } else {
-            dist_server(sh, "0.0.0-standalone", &target, allocator, self.zig, self.pgo)?;
+            dist_server(
+                sh,
+                "0.0.0-standalone",
+                &target,
+                allocator,
+                self.zig,
+                self.pgo,
+                // Profiling requires debug information.
+                self.enable_profiling,
+            )?;
         }
         Ok(())
     }
@@ -92,9 +103,11 @@ fn dist_server(
     allocator: Malloc,
     zig: bool,
     pgo: Option<PgoTrainingCrate>,
+    dev_rel: bool,
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
+    let _e = sh.push_env("CARGO_PROFILE_DEV_REL_LTO", "thin");
 
     // Uncomment to enable debug info for releases. Note that:
     //   * debug info is split on windows and macs, so it does nothing for those platforms,
@@ -120,7 +133,7 @@ fn dist_server(
         None
     };
 
-    let mut cmd = build_command(sh, command, &target_name, features);
+    let mut cmd = build_command(sh, command, &target_name, features, dev_rel);
     if let Some(profile) = pgo_profile {
         cmd = cmd.env("RUSTFLAGS", format!("-Cprofile-use={}", profile.to_str().unwrap()));
     }
@@ -141,10 +154,12 @@ fn build_command<'a>(
     command: &str,
     target_name: &str,
     features: &[&str],
+    dev_rel: bool,
 ) -> Cmd<'a> {
+    let profile = if dev_rel { "dev-rel" } else { "release" };
     cmd!(
         sh,
-        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
+        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --profile {profile}"
     )
 }
 

@@ -250,29 +250,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let mut reported = None;
-
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
-                if !suppressed
-                    && error.obligation.cause.span.from_expansion() == from_expansion
-                    && !error.references_error()
-                {
-                    let guar = self.report_fulfillment_error(error);
-                    self.infcx.set_tainted_by_errors(guar);
-                    reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
+                if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
+                    if !error.references_error() {
+                        let guar = self.report_fulfillment_error(error);
+                        self.infcx.set_tainted_by_errors(guar);
+                        reported = Some(guar);
+                        // We want to ignore desugarings here: spans are equivalent even
+                        // if one is the result of a desugaring and the other is not.
+                        let mut span = error.obligation.cause.span;
+                        let expn_data = span.ctxt().outer_expn_data();
+                        if let ExpnKind::Desugaring(_) = expn_data.kind {
+                            span = expn_data.call_site;
+                        }
+                        self.reported_trait_errors
+                            .borrow_mut()
+                            .entry(span)
+                            .or_insert_with(|| (vec![], guar))
+                            .0
+                            .push(error.obligation.as_goal());
                     }
-                    self.reported_trait_errors
-                        .borrow_mut()
-                        .entry(span)
-                        .or_insert_with(|| (vec![], guar))
-                        .0
-                        .push(error.obligation.as_goal());
+                    if let Some(guar) = self.dcx().has_errors() {
+                        self.infcx.set_tainted_by_errors(guar);
+                    }
                 }
             }
         }

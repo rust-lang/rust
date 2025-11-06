@@ -489,9 +489,8 @@ pub fn def_crates<'db>(
 
 /// Look up the method with the given name.
 pub(crate) fn lookup_method<'db>(
-    db: &'db dyn HirDatabase,
     ty: &Canonical<'db, Ty<'db>>,
-    env: Arc<TraitEnvironment<'db>>,
+    table: &mut InferenceTable<'db>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: &Name,
@@ -499,8 +498,7 @@ pub(crate) fn lookup_method<'db>(
     let mut not_visible = None;
     let res = iterate_method_candidates(
         ty,
-        db,
-        env,
+        table,
         traits_in_scope,
         visible_from_module,
         Some(name),
@@ -656,8 +654,7 @@ impl ReceiverAdjustments {
 // FIXME add a context type here?
 pub(crate) fn iterate_method_candidates<'db, T>(
     ty: &Canonical<'db, Ty<'db>>,
-    db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    table: &mut InferenceTable<'db>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -665,10 +662,9 @@ pub(crate) fn iterate_method_candidates<'db, T>(
     mut callback: impl FnMut(ReceiverAdjustments, AssocItemId, bool) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
-    _ = iterate_method_candidates_dyn(
+    _ = iterate_method_candidates_dyn_impl(
         ty,
-        db,
-        env,
+        table,
         traits_in_scope,
         visible_from_module,
         name,
@@ -985,6 +981,7 @@ pub fn check_orphan_rules<'db>(db: &'db dyn HirDatabase, impl_: ImplId) -> bool 
     is_not_orphan
 }
 
+/// To be used from `hir` only.
 pub fn iterate_path_candidates<'db>(
     ty: &Canonical<'db, Ty<'db>>,
     db: &'db dyn HirDatabase,
@@ -1007,10 +1004,31 @@ pub fn iterate_path_candidates<'db>(
     )
 }
 
+/// To be used from `hir` only.
 pub fn iterate_method_candidates_dyn<'db>(
     ty: &Canonical<'db, Ty<'db>>,
     db: &'db dyn HirDatabase,
     env: Arc<TraitEnvironment<'db>>,
+    traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: VisibleFromModule,
+    name: Option<&Name>,
+    mode: LookupMode,
+    callback: &mut dyn MethodCandidateCallback,
+) -> ControlFlow<()> {
+    iterate_method_candidates_dyn_impl(
+        ty,
+        &mut InferenceTable::new(db, env, None),
+        traits_in_scope,
+        visible_from_module,
+        name,
+        mode,
+        callback,
+    )
+}
+
+fn iterate_method_candidates_dyn_impl<'db>(
+    ty: &Canonical<'db, Ty<'db>>,
+    table: &mut InferenceTable<'db>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
@@ -1046,28 +1064,28 @@ pub fn iterate_method_candidates_dyn<'db>(
             // the methods by autoderef order of *receiver types*, not *self
             // types*.
 
-            let mut table = InferenceTable::new(db, env);
-            let ty = table.instantiate_canonical(*ty);
-            let deref_chain = autoderef_method_receiver(&mut table, ty);
+            table.run_in_snapshot(|table| {
+                let ty = table.instantiate_canonical(*ty);
+                let deref_chain = autoderef_method_receiver(table, ty);
 
-            deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
-                iterate_method_candidates_with_autoref(
-                    &mut table,
-                    receiver_ty,
-                    adj,
-                    traits_in_scope,
-                    visible_from_module,
-                    name,
-                    callback,
-                )
+                deref_chain.into_iter().try_for_each(|(receiver_ty, adj)| {
+                    iterate_method_candidates_with_autoref(
+                        table,
+                        receiver_ty,
+                        adj,
+                        traits_in_scope,
+                        visible_from_module,
+                        name,
+                        callback,
+                    )
+                })
             })
         }
         LookupMode::Path => {
             // No autoderef for path lookups
             iterate_method_candidates_for_self_ty(
                 ty,
-                db,
-                env,
+                table,
                 traits_in_scope,
                 visible_from_module,
                 name,
@@ -1250,39 +1268,39 @@ fn iterate_method_candidates_by_receiver<'db>(
 #[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_for_self_ty<'db>(
     self_ty: &Canonical<'db, Ty<'db>>,
-    db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    table: &mut InferenceTable<'db>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
-    let mut table = InferenceTable::new(db, env);
-    let self_ty = table.instantiate_canonical(*self_ty);
-    iterate_inherent_methods(
-        self_ty,
-        &mut table,
-        name,
-        None,
-        None,
-        visible_from_module,
-        LookupMode::Path,
-        &mut |adjustments, item, is_visible| {
-            callback.on_inherent_method(adjustments, item, is_visible)
-        },
-    )?;
-    iterate_trait_method_candidates(
-        self_ty,
-        &mut table,
-        traits_in_scope,
-        name,
-        None,
-        None,
-        LookupMode::Path,
-        &mut |adjustments, item, is_visible| {
-            callback.on_trait_method(adjustments, item, is_visible)
-        },
-    )
+    table.run_in_snapshot(|table| {
+        let self_ty = table.instantiate_canonical(*self_ty);
+        iterate_inherent_methods(
+            self_ty,
+            table,
+            name,
+            None,
+            None,
+            visible_from_module,
+            LookupMode::Path,
+            &mut |adjustments, item, is_visible| {
+                callback.on_inherent_method(adjustments, item, is_visible)
+            },
+        )?;
+        iterate_trait_method_candidates(
+            self_ty,
+            table,
+            traits_in_scope,
+            name,
+            None,
+            None,
+            LookupMode::Path,
+            &mut |adjustments, item, is_visible| {
+                callback.on_trait_method(adjustments, item, is_visible)
+            },
+        )
+    })
 }
 
 #[tracing::instrument(skip_all, fields(name = ?name, visible_from_module, receiver_ty))]

@@ -20,6 +20,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_target::spec::Arch;
 use smallvec::SmallVec;
 
 use self::pass_mode::*;
@@ -155,7 +156,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             let ret = self.lib_call_unadjusted(name, params, returns, &args)[0];
 
             Cow::Owned(vec![codegen_bitcast(self, types::I128, ret)])
-        } else if ret_single_i128 && self.tcx.sess.target.arch == "s390x" {
+        } else if ret_single_i128 && self.tcx.sess.target.arch == Arch::S390x {
             // Return i128 using a return area pointer on s390x.
             let mut params = params;
             let mut args = args.to_vec();
@@ -641,7 +642,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 .flat_map(|arg_abi| arg_abi.get_abi_param(fx.tcx).into_iter()),
         );
 
-        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == "aarch64" {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::AArch64 {
             // Add any padding arguments needed for Apple AArch64.
             // There's no need to pad the argument list unless variadic arguments are actually being
             // passed.
@@ -787,25 +788,25 @@ pub(crate) fn codegen_drop<'tcx>(
 pub(crate) fn lib_call_arg_param(tcx: TyCtxt<'_>, ty: Type, is_signed: bool) -> AbiParam {
     let param = AbiParam::new(ty);
     if ty.is_int() && u64::from(ty.bits()) < tcx.data_layout.pointer_size().bits() {
-        match (&*tcx.sess.target.arch, &*tcx.sess.target.vendor) {
-            ("x86_64", _) | ("aarch64", "apple") => match (ty, is_signed) {
+        match (&tcx.sess.target.arch, tcx.sess.target.vendor.as_ref()) {
+            (Arch::X86_64, _) | (Arch::AArch64, "apple") => match (ty, is_signed) {
                 (types::I8 | types::I16, true) => param.sext(),
                 (types::I8 | types::I16, false) => param.uext(),
                 _ => param,
             },
-            ("aarch64", _) => param,
-            ("riscv64", _) => match (ty, is_signed) {
+            (Arch::AArch64, _) => param,
+            (Arch::RiscV64, _) => match (ty, is_signed) {
                 (types::I32, _) | (_, true) => param.sext(),
                 _ => param.uext(),
             },
-            ("s390x", _) => {
+            (Arch::S390x, _) => {
                 if is_signed {
                     param.sext()
                 } else {
                     param.uext()
                 }
             }
-            _ => unimplemented!("{:?}", tcx.sess.target.arch),
+            (arch, _) => unimplemented!("{arch:?}"),
         }
     } else {
         param

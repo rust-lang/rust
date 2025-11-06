@@ -8,6 +8,10 @@ use syntax::{AstNode, SyntaxKind::*, T, ast};
 
 use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
+pub struct GotoImplementationConfig {
+    pub filter_adjacent_derive_implementations: bool,
+}
+
 // Feature: Go to Implementation
 //
 // Navigates to the impl items of types.
@@ -19,6 +23,7 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 // ![Go to Implementation](https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif)
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
+    config: &GotoImplementationConfig,
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let sema = Semantics::new(db);
@@ -55,7 +60,19 @@ pub(crate) fn goto_implementation(
                 .and_then(|def| {
                     let navs = match def {
                         Definition::Trait(trait_) => impls_for_trait(&sema, trait_),
-                        Definition::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
+                        Definition::Adt(adt) => {
+                            let mut impls = Impl::all_for_type(db, adt.ty(sema.db));
+                            if config.filter_adjacent_derive_implementations {
+                                impls.retain(|impl_| {
+                                    sema.impl_generated_from_derive(*impl_) != Some(adt)
+                                });
+                            }
+                            impls
+                                .into_iter()
+                                .filter_map(|imp| imp.try_to_nav(&sema))
+                                .flatten()
+                                .collect()
+                        }
                         Definition::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
                         Definition::BuiltinType(builtin) => {
                             impls_for_ty(&sema, builtin.ty(sema.db))
@@ -125,12 +142,24 @@ mod tests {
     use ide_db::FileRange;
     use itertools::Itertools;
 
-    use crate::fixture;
+    use crate::{GotoImplementationConfig, fixture};
 
+    const TEST_CONFIG: &GotoImplementationConfig =
+        &GotoImplementationConfig { filter_adjacent_derive_implementations: false };
+
+    #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        check_with_config(TEST_CONFIG, ra_fixture);
+    }
+
+    #[track_caller]
+    fn check_with_config(
+        config: &GotoImplementationConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
 
-        let navs = analysis.goto_implementation(position).unwrap().unwrap().info;
+        let navs = analysis.goto_implementation(config, position).unwrap().unwrap().info;
 
         let cmp = |frange: &FileRange| (frange.file_id, frange.range.start());
 
@@ -414,6 +443,24 @@ fn test() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn filter_adjacent_derives() {
+        check_with_config(
+            &GotoImplementationConfig { filter_adjacent_derive_implementations: true },
+            r#"
+//- minicore: clone, copy, derive
+
+#[derive(Clone, Copy)]
+struct Foo$0;
+
+trait Bar {}
+
+impl Bar for Foo {}
+          // ^^^
+            "#,
         );
     }
 }

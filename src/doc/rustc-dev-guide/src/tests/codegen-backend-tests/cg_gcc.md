@@ -21,7 +21,8 @@ you can use the following command to run UI tests locally using the GCC backend,
 
 If a different test suite has failed on CI, you will have to modify the `tests/ui` part.
 
-To reproduce the whole CI job locally, you can run `cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-gcc`. See [Testing with Docker](../docker.md) for more information.
+To reproduce the whole CI job locally, you can run `cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-gcc`.
+See [Testing with Docker](../docker.md) for more information.
 
 ### What to do in case of a GCC job failure?
 
@@ -32,23 +33,26 @@ If fixing a compiler test that fails with the GCC backend is non-trivial, you ca
 ## Choosing which codegen backends are built
 
 The `rust.codegen-backends = [...]` bootstrap option affects which codegen backends will be built and
-included in the sysroot of the produced `rustc`. To use the GCC codegen backend, `"gcc"` has to
-be included in this array in `bootstrap.toml`:
+included in the sysroot of the produced `rustc`.
+To use the GCC codegen backend, `"gcc"` has to be included in this array in `bootstrap.toml`:
 
 ```toml
 rust.codegen-backends = ["llvm", "gcc"]
 ```
 
 If you don't want to change your `bootstrap.toml` file, you can alternatively run your `x`
-commands with `--set 'rust.codegen-backends=["llvm", "gcc"]'`. For example:
+commands with `--set 'rust.codegen-backends=["llvm", "gcc"]'`.
+For example:
 
 ```bash
 ./x build --set 'rust.codegen-backends=["llvm", "gcc"]'
 ```
 
 The first backend in the `codegen-backends` array will determine which backend will be used as the
-*default backend* of the built `rustc`. This also determines which backend will be used to compile the
-stage 1 standard library (or anything built in stage 2+). To produce `rustc` that uses the GCC backend
+*default backend* of the built `rustc`.
+This also determines which backend will be used to compile the
+stage 1 standard library (or anything built in stage 2+).
+To produce `rustc` that uses the GCC backend
 by default, you can thus put `"gcc"` as the first element of this array:
 
 ```bash
@@ -69,7 +73,8 @@ Note that in order for this to work, the tested compiler must have the GCC codeg
 ## Downloading GCC from CI
 
 The `gcc.download-ci-gcc` bootstrap option controls if GCC (which is a dependency of the GCC codegen backend)
-will be downloaded from CI or built locally. The default value is `true`, which will download GCC from CI
+will be downloaded from CI or built locally.
+The default value is `true`, which will download GCC from CI
 if there are no local changes to the GCC sources and the given host target is available on CI.
 
 ## Running tests of the backend itself

@@ -1497,3 +1497,17 @@ fn main() {
         false,
     );
 }
+
+#[test]
+fn regression_20952() {
+    check_highlighting(
+        r#"
+//- minicore: fmt
+fn main() {
+    format_args!("{} {}, {} (подозрение на спам: {:.2}%)"б);
+}
+"#,
+        expect_file!["./test_data/regression_20952.html"],
+        false,
+    );
+}

@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for glibc Linux on Csky
 
@@ -14,7 +14,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-S32-p:32:32-i32:32:32-i64:32:32-f32:32:32-f64:32:32-v64:32:32-v128:32:32-a:0:32-Fi32-n32".into(),
-        arch: "csky".into(),
+        arch: Arch::CSky,
         options: TargetOptions {
             abi: "abiv2hf".into(),
             cpu: "ck860fv".into(),

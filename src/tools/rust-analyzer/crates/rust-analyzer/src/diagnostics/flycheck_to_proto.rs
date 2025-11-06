@@ -4,6 +4,7 @@
 use crate::flycheck::{Applicability, DiagnosticLevel, DiagnosticSpan};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use stdx::format_to;
 use vfs::{AbsPath, AbsPathBuf};
 
@@ -18,12 +19,12 @@ use super::{DiagnosticsMapConfig, Fix};
 fn diagnostic_severity(
     config: &DiagnosticsMapConfig,
     level: crate::flycheck::DiagnosticLevel,
-    code: Option<crate::flycheck::DiagnosticCode>,
+    code: Option<&crate::flycheck::DiagnosticCode>,
 ) -> Option<lsp_types::DiagnosticSeverity> {
     let res = match level {
         DiagnosticLevel::Ice => lsp_types::DiagnosticSeverity::ERROR,
         DiagnosticLevel::Error => lsp_types::DiagnosticSeverity::ERROR,
-        DiagnosticLevel::Warning => match &code {
+        DiagnosticLevel::Warning => match code {
             // HACK: special case for `warnings` rustc lint.
             Some(code)
                 if config.warnings_as_hint.iter().any(|lint| {
@@ -143,11 +144,11 @@ fn primary_location(
 fn diagnostic_related_information(
     config: &DiagnosticsMapConfig,
     workspace_root: &AbsPath,
-    span: &DiagnosticSpan,
+    span: DiagnosticSpan,
     snap: &GlobalStateSnapshot,
 ) -> Option<lsp_types::DiagnosticRelatedInformation> {
-    let message = span.label.clone()?;
-    let location = location(config, workspace_root, span, snap);
+    let location = location(config, workspace_root, &span, snap);
+    let message = span.label?;
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
 }
 
@@ -184,7 +185,7 @@ fn map_rust_child_diagnostic(
     rd: &crate::flycheck::Diagnostic,
     snap: &GlobalStateSnapshot,
 ) -> MappedRustChildDiagnostic {
-    let spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
+    let spans: SmallVec<[&DiagnosticSpan; 1]> = rd.spans.iter().filter(|s| s.is_primary).collect();
     if spans.is_empty() {
         // `rustc` uses these spanless children as a way to print multi-line
         // messages
@@ -227,42 +228,37 @@ fn map_rust_child_diagnostic(
         message.push_str(&suggestions);
     }
 
-    if edit_map.is_empty() {
-        MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
-            related: lsp_types::DiagnosticRelatedInformation {
-                location: location(config, workspace_root, spans[0], snap),
-                message,
-            },
-            suggested_fix: None,
-        })
+    let suggested_fix = if edit_map.is_empty() {
+        None
     } else {
-        MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
-            related: lsp_types::DiagnosticRelatedInformation {
-                location: location(config, workspace_root, spans[0], snap),
-                message: message.clone(),
+        Some(Box::new(Fix {
+            ranges: spans
+                .iter()
+                .map(|&span| location(config, workspace_root, span, snap).range)
+                .collect(),
+            action: lsp_ext::CodeAction {
+                title: message.clone(),
+                group: None,
+                kind: Some(lsp_types::CodeActionKind::QUICKFIX),
+                edit: Some(lsp_ext::SnippetWorkspaceEdit {
+                    // FIXME: there's no good reason to use edit_map here....
+                    changes: Some(edit_map),
+                    document_changes: None,
+                    change_annotations: None,
+                }),
+                is_preferred: Some(is_preferred),
+                data: None,
+                command: None,
             },
-            suggested_fix: Some(Box::new(Fix {
-                ranges: spans
-                    .iter()
-                    .map(|&span| location(config, workspace_root, span, snap).range)
-                    .collect(),
-                action: lsp_ext::CodeAction {
-                    title: message,
-                    group: None,
-                    kind: Some(lsp_types::CodeActionKind::QUICKFIX),
-                    edit: Some(lsp_ext::SnippetWorkspaceEdit {
-                        // FIXME: there's no good reason to use edit_map here....
-                        changes: Some(edit_map),
-                        document_changes: None,
-                        change_annotations: None,
-                    }),
-                    is_preferred: Some(is_preferred),
-                    data: None,
-                    command: None,
-                },
-            })),
-        })
-    }
+        }))
+    };
+    MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
+        related: lsp_types::DiagnosticRelatedInformation {
+            location: location(config, workspace_root, spans[0], snap),
+            message,
+        },
+        suggested_fix,
+    })
 }
 
 #[derive(Debug)]
@@ -284,48 +280,56 @@ pub(crate) struct MappedRustDiagnostic {
 /// If the diagnostic has no primary span this will return `None`
 pub(crate) fn map_rust_diagnostic_to_lsp(
     config: &DiagnosticsMapConfig,
-    rd: &crate::flycheck::Diagnostic,
+    crate::flycheck::Diagnostic {
+        mut message,
+        code: diagnostic_code,
+        level,
+        spans,
+        children,
+        rendered,
+        ..
+    }: crate::flycheck::Diagnostic,
     workspace_root: &AbsPath,
     snap: &GlobalStateSnapshot,
 ) -> Vec<MappedRustDiagnostic> {
-    let primary_spans: Vec<&DiagnosticSpan> = rd.spans.iter().filter(|s| s.is_primary).collect();
+    let (primary_spans, secondary_spans): (
+        SmallVec<[DiagnosticSpan; 1]>,
+        SmallVec<[DiagnosticSpan; 1]>,
+    ) = spans.into_iter().partition(|s| s.is_primary);
     if primary_spans.is_empty() {
         return Vec::new();
     }
 
-    let severity = diagnostic_severity(config, rd.level, rd.code.clone());
+    let mut code = diagnostic_code.as_ref().map(|c| &*c.code);
 
-    let mut source = String::from("rustc");
-    let mut code = rd.code.as_ref().map(|c| c.code.clone());
-
-    if let Some(code_val) = &code
+    if let Some(code_val) = code
         && config.check_ignore.contains(code_val)
     {
         return Vec::new();
     }
 
-    if let Some(code_val) = &code {
+    let severity = diagnostic_severity(config, level, diagnostic_code.as_ref());
+
+    let mut source = "rustc";
+    if let Some(code_val) = code {
         // See if this is an RFC #2103 scoped lint (e.g. from Clippy)
-        let scoped_code: Vec<&str> = code_val.split("::").collect();
-        if scoped_code.len() == 2 {
-            source = String::from(scoped_code[0]);
-            code = Some(String::from(scoped_code[1]));
+        if let Some((s, c)) = code_val.split("::").collect_tuple() {
+            source = s;
+            code = Some(c);
         }
     }
 
     let mut needs_primary_span_label = true;
     let mut subdiagnostics = Vec::new();
-    let mut tags = Vec::new();
 
-    for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
+    for secondary_span in secondary_spans {
         let related = diagnostic_related_information(config, workspace_root, secondary_span, snap);
         if let Some(related) = related {
             subdiagnostics.push(SubDiagnostic { related, suggested_fix: None });
         }
     }
 
-    let mut message = rd.message.clone();
-    for child in &rd.children {
+    for child in &children {
         let child = map_rust_child_diagnostic(config, workspace_root, child, snap);
         match child {
             MappedRustChildDiagnostic::SubDiagnostic(sub) => {
@@ -340,155 +344,146 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
             }
         }
     }
+    let message = message;
 
-    if let Some(code) = &rd.code {
-        let code = code.code.as_str();
-        if matches!(
-            code,
-            "dead_code"
-                | "unknown_lints"
-                | "unreachable_code"
-                | "unused_attributes"
-                | "unused_imports"
-                | "unused_macros"
-                | "unused_variables"
-        ) {
-            tags.push(lsp_types::DiagnosticTag::UNNECESSARY);
-        }
-
-        if matches!(code, "deprecated") {
-            tags.push(lsp_types::DiagnosticTag::DEPRECATED);
+    let mut tag = None;
+    if let Some(code) = &diagnostic_code {
+        match &*code.code {
+            "dead_code" | "unknown_lints" | "unreachable_code" | "unused_attributes"
+            | "unused_imports" | "unused_macros" | "unused_variables" => {
+                tag = Some(lsp_types::DiagnosticTag::UNNECESSARY);
+            }
+            "deprecated" => {
+                tag = Some(lsp_types::DiagnosticTag::DEPRECATED);
+            }
+            _ => {}
         }
     }
 
-    let code_description = match source.as_str() {
-        "rustc" => rustc_code_description(code.as_deref()),
-        "clippy" => clippy_code_description(code.as_deref()),
+    let code_description = match source {
+        "rustc" => rustc_code_description(code),
+        "clippy" => clippy_code_description(code),
         _ => None,
     };
+    // Each primary diagnostic span may result in multiple LSP diagnostics.
+    let mut diagnostics = Vec::new();
 
-    primary_spans
-        .iter()
-        .flat_map(|primary_span| {
-            let primary_location = primary_location(config, workspace_root, primary_span, snap);
-            let message = {
-                let mut message = message.clone();
-                if needs_primary_span_label && let Some(primary_span_label) = &primary_span.label {
-                    format_to!(message, "\n{}", primary_span_label);
-                }
-                message
-            };
-            // Each primary diagnostic span may result in multiple LSP diagnostics.
-            let mut diagnostics = Vec::new();
+    for primary_span in primary_spans {
+        let primary_location = primary_location(config, workspace_root, &primary_span, snap);
+        let message = {
+            let mut message = message.clone();
+            if needs_primary_span_label && let Some(primary_span_label) = &primary_span.label {
+                format_to!(message, "\n{}", primary_span_label);
+            }
+            message
+        };
 
-            let mut related_info_macro_calls = vec![];
+        let mut related_info_macro_calls = vec![];
 
-            // If error occurs from macro expansion, add related info pointing to
-            // where the error originated
-            // Also, we would generate an additional diagnostic, so that exact place of macro
-            // will be highlighted in the error origin place.
-            let span_stack = std::iter::successors(Some(*primary_span), |span| {
-                Some(&span.expansion.as_ref()?.span)
-            });
-            for (i, span) in span_stack.enumerate() {
-                if is_dummy_macro_file(&span.file_name) {
-                    continue;
-                }
-
-                // First span is the original diagnostic, others are macro call locations that
-                // generated that code.
-                let is_in_macro_call = i != 0;
-
-                let secondary_location = location(config, workspace_root, span, snap);
-                if secondary_location == primary_location {
-                    continue;
-                }
-                related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
-                    location: secondary_location.clone(),
-                    message: if is_in_macro_call {
-                        "Error originated from macro call here".to_owned()
-                    } else {
-                        "Actual error occurred here".to_owned()
-                    },
-                });
-                // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
-                let information_for_additional_diagnostic =
-                    vec![lsp_types::DiagnosticRelatedInformation {
-                        location: primary_location.clone(),
-                        message: "Exact error occurred here".to_owned(),
-                    }];
-
-                let diagnostic = lsp_types::Diagnostic {
-                    range: secondary_location.range,
-                    // downgrade to hint if we're pointing at the macro
-                    severity: Some(lsp_types::DiagnosticSeverity::HINT),
-                    code: code.clone().map(lsp_types::NumberOrString::String),
-                    code_description: code_description.clone(),
-                    source: Some(source.clone()),
-                    message: message.clone(),
-                    related_information: Some(information_for_additional_diagnostic),
-                    tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
-                };
-                diagnostics.push(MappedRustDiagnostic {
-                    url: secondary_location.uri,
-                    diagnostic,
-                    fix: None,
-                });
+        // If error occurs from macro expansion, add related info pointing to
+        // where the error originated
+        // Also, we would generate an additional diagnostic, so that exact place of macro
+        // will be highlighted in the error origin place.
+        let span_stack =
+            std::iter::successors(Some(&primary_span), |span| Some(&span.expansion.as_ref()?.span))
+                .skip(1);
+        for (i, span) in span_stack.enumerate() {
+            if is_dummy_macro_file(&span.file_name) {
+                continue;
+            }
+            let secondary_location = location(config, workspace_root, span, snap);
+            if secondary_location == primary_location {
+                continue;
             }
 
-            // Emit the primary diagnostic.
-            diagnostics.push(MappedRustDiagnostic {
-                url: primary_location.uri.clone(),
-                diagnostic: lsp_types::Diagnostic {
-                    range: primary_location.range,
-                    severity,
-                    code: code.clone().map(lsp_types::NumberOrString::String),
-                    code_description: code_description.clone(),
-                    source: Some(source.clone()),
-                    message,
-                    related_information: {
-                        let info = related_info_macro_calls
-                            .iter()
-                            .cloned()
-                            .chain(subdiagnostics.iter().map(|sub| sub.related.clone()))
-                            .collect::<Vec<_>>();
-                        if info.is_empty() { None } else { Some(info) }
-                    },
-                    tags: if tags.is_empty() { None } else { Some(tags.clone()) },
-                    data: Some(serde_json::json!({ "rendered": rd.rendered })),
+            // First span is the original diagnostic, others are macro call locations that
+            // generated that code.
+            let is_in_macro_call = i != 0;
+
+            related_info_macro_calls.push(lsp_types::DiagnosticRelatedInformation {
+                location: secondary_location.clone(),
+                message: if is_in_macro_call {
+                    "Error originated from macro call here".to_owned()
+                } else {
+                    "Actual error occurred here".to_owned()
                 },
+            });
+            // For the additional in-macro diagnostic we add the inverse message pointing to the error location in code.
+            let information_for_additional_diagnostic =
+                vec![lsp_types::DiagnosticRelatedInformation {
+                    location: primary_location.clone(),
+                    message: "Exact error occurred here".to_owned(),
+                }];
+
+            let diagnostic = lsp_types::Diagnostic {
+                range: secondary_location.range,
+                // downgrade to hint if we're pointing at the macro
+                severity: Some(lsp_types::DiagnosticSeverity::HINT),
+                code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                code_description: code_description.clone(),
+                source: Some(source.to_owned()),
+                message: message.clone(),
+                related_information: Some(information_for_additional_diagnostic),
+                tags: tag.clone().map(|tag| vec![tag]),
+                data: Some(serde_json::json!({ "rendered": rendered })),
+            };
+            diagnostics.push(MappedRustDiagnostic {
+                url: secondary_location.uri,
+                diagnostic,
                 fix: None,
             });
+        }
 
-            // Emit hint-level diagnostics for all `related_information` entries such as "help"s.
-            // This is useful because they will show up in the user's editor, unlike
-            // `related_information`, which just produces hard-to-read links, at least in VS Code.
-            let back_ref = lsp_types::DiagnosticRelatedInformation {
-                location: primary_location,
-                message: "original diagnostic".to_owned(),
-            };
-            for sub in &subdiagnostics {
-                diagnostics.push(MappedRustDiagnostic {
-                    url: sub.related.location.uri.clone(),
-                    fix: sub.suggested_fix.clone(),
-                    diagnostic: lsp_types::Diagnostic {
-                        range: sub.related.location.range,
-                        severity: Some(lsp_types::DiagnosticSeverity::HINT),
-                        code: code.clone().map(lsp_types::NumberOrString::String),
-                        code_description: code_description.clone(),
-                        source: Some(source.clone()),
-                        message: sub.related.message.clone(),
-                        related_information: Some(vec![back_ref.clone()]),
-                        tags: None, // don't apply modifiers again
-                        data: None,
-                    },
-                });
-            }
+        // Emit the primary diagnostic.
+        diagnostics.push(MappedRustDiagnostic {
+            url: primary_location.uri.clone(),
+            diagnostic: lsp_types::Diagnostic {
+                range: primary_location.range,
+                severity,
+                code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                code_description: code_description.clone(),
+                source: Some(source.to_owned()),
+                message,
+                related_information: {
+                    let info = related_info_macro_calls
+                        .iter()
+                        .cloned()
+                        .chain(subdiagnostics.iter().map(|sub| sub.related.clone()))
+                        .collect::<Vec<_>>();
+                    if info.is_empty() { None } else { Some(info) }
+                },
+                tags: tag.clone().map(|tag| vec![tag]),
+                data: Some(serde_json::json!({ "rendered": rendered })),
+            },
+            fix: None,
+        });
 
-            diagnostics
-        })
-        .collect()
+        // Emit hint-level diagnostics for all `related_information` entries such as "help"s.
+        // This is useful because they will show up in the user's editor, unlike
+        // `related_information`, which just produces hard-to-read links, at least in VS Code.
+        let back_ref = lsp_types::DiagnosticRelatedInformation {
+            location: primary_location,
+            message: "original diagnostic".to_owned(),
+        };
+        for sub in &subdiagnostics {
+            diagnostics.push(MappedRustDiagnostic {
+                url: sub.related.location.uri.clone(),
+                fix: sub.suggested_fix.clone(),
+                diagnostic: lsp_types::Diagnostic {
+                    range: sub.related.location.range,
+                    severity: Some(lsp_types::DiagnosticSeverity::HINT),
+                    code: code.map(ToOwned::to_owned).map(lsp_types::NumberOrString::String),
+                    code_description: code_description.clone(),
+                    source: Some(source.to_owned()),
+                    message: sub.related.message.clone(),
+                    related_information: Some(vec![back_ref.clone()]),
+                    tags: None, // don't apply modifiers again
+                    data: None,
+                },
+            });
+        }
+    }
+    diagnostics
 }
 
 fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
@@ -545,7 +540,7 @@ mod tests {
             ),
         );
         let snap = state.snapshot();
-        let mut actual = map_rust_diagnostic_to_lsp(&config, &diagnostic, workspace_root, &snap);
+        let mut actual = map_rust_diagnostic_to_lsp(&config, diagnostic, workspace_root, &snap);
         actual.iter_mut().for_each(|diag| diag.diagnostic.data = None);
         expect.assert_debug_eq(&actual)
     }

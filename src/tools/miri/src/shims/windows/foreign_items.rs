@@ -6,6 +6,7 @@ use rustc_abi::{Align, CanonAbi, Size, X86Call};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
 use crate::shims::os_str::bytes_to_os_str;
@@ -140,7 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // https://github.com/rust-lang/rust/blob/fb00adbdb69266f10df95a4527b767b0ad35ea48/compiler/rustc_target/src/spec/mod.rs#L2766-L2768,
         // x86-32 Windows uses a different calling convention than other Windows targets
         // for the "system" ABI.
-        let sys_conv = if this.tcx.sess.target.arch == "x86" {
+        let sys_conv = if this.tcx.sess.target.arch == Arch::X86 {
             CanonAbi::X86(X86Call::Stdcall)
         } else {
             CanonAbi::C

@@ -33,7 +33,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
-    config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
+    config::{
+        ClientCommandsConfig, Config, HoverActionsConfig, RustfmtConfig, WorkspaceSymbolConfig,
+    },
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
@@ -124,17 +126,35 @@ pub(crate) fn handle_analyzer_status(
     Ok(buf)
 }
 
-pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Result<String> {
+pub(crate) fn handle_memory_usage(_state: &mut GlobalState, _: ()) -> anyhow::Result<String> {
     let _p = tracing::info_span!("handle_memory_usage").entered();
-    let mem = state.analysis_host.per_query_memory_usage();
 
-    let mut out = String::new();
-    for (name, bytes, entries) in mem {
-        format_to!(out, "{:>8} {:>6} {}\n", bytes, entries, name);
+    #[cfg(not(feature = "dhat"))]
+    {
+        Err(anyhow::anyhow!(
+            "Memory profiling is not enabled for this build of rust-analyzer.\n\n\
+            To build rust-analyzer with profiling support, pass `--features dhat --profile dev-rel` to `cargo build`
+            when building from source, or pass `--enable-profiling` to `cargo xtask`."
+        ))
     }
-    format_to!(out, "{:>8}        Remaining\n", profile::memory_usage().allocated);
-
-    Ok(out)
+    #[cfg(feature = "dhat")]
+    {
+        if let Some(dhat_output_file) = _state.config.dhat_output_file() {
+            let mut profiler = crate::DHAT_PROFILER.lock().unwrap();
+            let old_profiler = profiler.take();
+            // Need to drop the old profiler before creating a new one.
+            drop(old_profiler);
+            *profiler = Some(dhat::Profiler::builder().file_name(&dhat_output_file).build());
+            Ok(format!(
+                "Memory profile was saved successfully to {dhat_output_file}.\n\n\
+                See https://docs.rs/dhat/latest/dhat/#viewing for how to inspect the profile."
+            ))
+        } else {
+            Err(anyhow::anyhow!(
+                "Please set `rust-analyzer.profiling.memoryProfile` to the path where you want to save the profile."
+            ))
+        }
+    }
 }
 
 pub(crate) fn handle_view_syntax_tree(
@@ -264,6 +284,7 @@ pub(crate) fn handle_run_test(
                     path,
                     state.config.cargo_test_options(None),
                     cargo.workspace_root(),
+                    Some(cargo.target_directory().as_ref()),
                     target,
                     state.test_run_sender.clone(),
                 )?;
@@ -847,10 +868,11 @@ pub(crate) fn handle_goto_implementation(
     let _p = tracing::info_span!("handle_goto_implementation").entered();
     let position =
         try_default!(from_proto::file_position(&snap, params.text_document_position_params)?);
-    let nav_info = match snap.analysis.goto_implementation(position)? {
-        None => return Ok(None),
-        Some(it) => it,
-    };
+    let nav_info =
+        match snap.analysis.goto_implementation(&snap.config.goto_implementation(), position)? {
+            None => return Ok(None),
+            Some(it) => it,
+        };
     let src = FileRange { file_id: position.file_id, range: nav_info.range };
     let res = to_proto::goto_definition_response(&snap, Some(src), nav_info.info)?;
     Ok(Some(res))
@@ -1325,8 +1347,12 @@ pub(crate) fn handle_rename(
     let _p = tracing::info_span!("handle_rename").entered();
     let position = try_default!(from_proto::file_position(&snap, params.text_document_position)?);
 
-    let mut change =
-        snap.analysis.rename(position, &params.new_name)?.map_err(to_proto::rename_error)?;
+    let source_root = snap.analysis.source_root_id(position.file_id).ok();
+    let config = snap.config.rename(source_root);
+    let mut change = snap
+        .analysis
+        .rename(position, &params.new_name, &config)?
+        .map_err(to_proto::rename_error)?;
 
     // this is kind of a hack to prevent double edits from happening when moving files
     // When a module gets renamed by renaming the mod declaration this causes the file to move
@@ -1459,13 +1485,14 @@ pub(crate) fn handle_code_action(
         resolve,
         frange,
     )?;
+    let client_commands = snap.config.client_commands();
     for (index, assist) in assists.into_iter().enumerate() {
         let resolve_data = if code_action_resolve_cap {
             Some((index, params.clone(), snap.file_version(file_id)))
         } else {
             None
         };
-        let code_action = to_proto::code_action(&snap, assist, resolve_data)?;
+        let code_action = to_proto::code_action(&snap, &client_commands, assist, resolve_data)?;
 
         // Check if the client supports the necessary `ResourceOperation`s.
         let changes = code_action.edit.as_ref().and_then(|it| it.document_changes.as_ref());
@@ -1566,7 +1593,7 @@ pub(crate) fn handle_code_action_resolve(
         ))
         .into());
     }
-    let ca = to_proto::code_action(&snap, assist.clone(), None)?;
+    let ca = to_proto::code_action(&snap, &snap.config.client_commands(), assist.clone(), None)?;
     code_action.edit = ca.edit;
     code_action.command = ca.command;
 
@@ -2130,10 +2157,15 @@ fn to_command_link(command: lsp_types::Command, tooltip: String) -> lsp_ext::Com
 fn show_impl_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
+    implementations: bool,
+    show_references: bool,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().implementations
-        && snap.config.client_commands().show_reference
-        && let Some(nav_data) = snap.analysis.goto_implementation(*position).unwrap_or(None)
+    if implementations
+        && show_references
+        && let Some(nav_data) = snap
+            .analysis
+            .goto_implementation(&snap.config.goto_implementation(), *position)
+            .unwrap_or(None)
     {
         let uri = to_proto::url(snap, position.file_id);
         let line_index = snap.file_line_index(position.file_id).ok()?;
@@ -2157,9 +2189,11 @@ fn show_impl_command_link(
 fn show_ref_command_link(
     snap: &GlobalStateSnapshot,
     position: &FilePosition,
+    references: bool,
+    show_reference: bool,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if snap.config.hover_actions().references
-        && snap.config.client_commands().show_reference
+    if references
+        && show_reference
         && let Some(ref_search_res) = snap
             .analysis
             .find_all_refs(
@@ -2194,8 +2228,9 @@ fn show_ref_command_link(
 fn runnable_action_links(
     snap: &GlobalStateSnapshot,
     runnable: Runnable,
+    hover_actions_config: &HoverActionsConfig,
+    client_commands_config: &ClientCommandsConfig,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    let hover_actions_config = snap.config.hover_actions();
     if !hover_actions_config.runnable() {
         return None;
     }
@@ -2205,7 +2240,6 @@ fn runnable_action_links(
         return None;
     }
 
-    let client_commands_config = snap.config.client_commands();
     if !(client_commands_config.run_single || client_commands_config.debug_single) {
         return None;
     }
@@ -2240,11 +2274,10 @@ fn runnable_action_links(
 fn goto_type_action_links(
     snap: &GlobalStateSnapshot,
     nav_targets: &[HoverGotoTypeData],
+    hover_actions: &HoverActionsConfig,
+    client_commands: &ClientCommandsConfig,
 ) -> Option<lsp_ext::CommandLinkGroup> {
-    if !snap.config.hover_actions().goto_type_def
-        || nav_targets.is_empty()
-        || !snap.config.client_commands().goto_location
-    {
+    if !hover_actions.goto_type_def || nav_targets.is_empty() || !client_commands.goto_location {
         return None;
     }
 
@@ -2264,13 +2297,29 @@ fn prepare_hover_actions(
     snap: &GlobalStateSnapshot,
     actions: &[HoverAction],
 ) -> Vec<lsp_ext::CommandLinkGroup> {
+    let hover_actions = snap.config.hover_actions();
+    let client_commands = snap.config.client_commands();
     actions
         .iter()
         .filter_map(|it| match it {
-            HoverAction::Implementation(position) => show_impl_command_link(snap, position),
-            HoverAction::Reference(position) => show_ref_command_link(snap, position),
-            HoverAction::Runnable(r) => runnable_action_links(snap, r.clone()),
-            HoverAction::GoToType(targets) => goto_type_action_links(snap, targets),
+            HoverAction::Implementation(position) => show_impl_command_link(
+                snap,
+                position,
+                hover_actions.implementations,
+                client_commands.show_reference,
+            ),
+            HoverAction::Reference(position) => show_ref_command_link(
+                snap,
+                position,
+                hover_actions.references,
+                client_commands.show_reference,
+            ),
+            HoverAction::Runnable(r) => {
+                runnable_action_links(snap, r.clone(), &hover_actions, &client_commands)
+            }
+            HoverAction::GoToType(targets) => {
+                goto_type_action_links(snap, targets, &hover_actions, &client_commands)
+            }
         })
         .collect()
 }

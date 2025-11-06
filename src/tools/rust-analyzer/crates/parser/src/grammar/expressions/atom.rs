@@ -588,6 +588,12 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
     }
     params::param_list_closure(p);
     if opt_ret_type(p) {
+        // test_err closure_ret_recovery
+        // fn foo() { || -> A> { let x = 1; } }
+        while p.at(T![>]) {
+            // recover from unbalanced return type brackets
+            p.err_and_bump("expected a curly brace");
+        }
         // test lambda_ret_block
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);

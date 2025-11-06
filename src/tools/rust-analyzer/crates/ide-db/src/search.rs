@@ -387,12 +387,14 @@ impl Definition {
             return SearchScope::reverse_dependencies(db, module.krate());
         }
 
-        let vis = self.visibility(db);
-        if let Some(Visibility::Public) = vis {
-            return SearchScope::reverse_dependencies(db, module.krate());
-        }
-        if let Some(Visibility::Module(module, _)) = vis {
-            return SearchScope::module_and_children(db, module.into());
+        if let Some(vis) = self.visibility(db) {
+            return match vis {
+                Visibility::Module(module, _) => {
+                    SearchScope::module_and_children(db, module.into())
+                }
+                Visibility::PubCrate(krate) => SearchScope::krate(db, krate.into()),
+                Visibility::Public => SearchScope::reverse_dependencies(db, module.krate()),
+            };
         }
 
         let range = match module_source {

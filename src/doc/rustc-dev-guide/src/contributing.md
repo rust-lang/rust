@@ -2,9 +2,9 @@
 
 ## Bug reports
 
-While bugs are unfortunate, they're a reality in software. We can't fix what we
-don't know about, so please report liberally. If you're not sure if something
-is a bug or not, feel free to file a bug anyway.
+While bugs are unfortunate, they're a reality in software.
+We can't fix what we don't know about, so please report liberally.
+If you're not sure if something is a bug, feel free to open an issue anyway.
 
 **If you believe reporting your bug publicly represents a security risk to Rust users,
 please follow our [instructions for reporting security vulnerabilities][vuln]**.
@@ -12,16 +12,18 @@ please follow our [instructions for reporting security vulnerabilities][vuln]**.
 [vuln]: https://www.rust-lang.org/policies/security
 
 If you're using the nightly channel, please check if the bug exists in the
-latest toolchain before filing your bug. It might be fixed already.
+latest toolchain before filing your bug.
+It might be fixed already.
 
 If you have the chance, before reporting a bug, please [search existing issues],
-as it's possible that someone else has already reported your error. This doesn't
-always work, and sometimes it's hard to know what to search for, so consider this
-extra credit. We won't mind if you accidentally file a duplicate report.
+as it's possible that someone else has already reported your error.
+This doesn't always work, and sometimes it's hard to know what to search for, so consider this
+extra credit.
+We won't mind if you accidentally file a duplicate report.
 
 Similarly, to help others who encountered the bug find your issue, consider
-filing an issue with a descriptive title, which contains information that might
-be unique to it.  This can be the language or compiler feature used, the
+filing an issue with a descriptive title, which contains information that might be unique to it.
+This can be the language or compiler feature used, the
 conditions that trigger the bug, or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
@@ -31,14 +33,15 @@ in the appropriate provided template.
 
 ## Bug fixes or "normal" code changes
 
-For most PRs, no special procedures are needed. You can just [open a PR], and it
-will be reviewed, approved, and merged. This includes most bug fixes,
-refactorings, and other user-invisible changes. The next few sections talk
-about exceptions to this rule.
+For most PRs, no special procedures are needed.
+You can just [open a PR], and it will be reviewed, approved, and merged.
+This includes most bug fixes, refactorings, and other user-invisible changes.
+The next few sections talk about exceptions to this rule.
 
 Also, note that it is perfectly acceptable to open WIP PRs or GitHub [Draft PRs].
 Some people prefer to do this so they can get feedback along the
-way or share their code with a collaborator. Others do this so they can utilize
+way or share their code with a collaborator.
+Others do this so they can utilize
 the CI to build and test their PR (e.g. when developing on a slow machine).
 
 [open a PR]: #pull-requests
@@ -46,9 +49,9 @@ the CI to build and test their PR (e.g. when developing on a slow machine).
 
 ## New features
 
-Rust has strong backwards-compatibility guarantees. Thus, new features can't
-just be implemented directly in stable Rust. Instead, we have 3 release
-channels: stable, beta, and nightly.
+Rust has strong backwards-compatibility guarantees.
+Thus, new features can't just be implemented directly in stable Rust.
+Instead, we have 3 release channels: stable, beta, and nightly.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
@@ -65,35 +68,36 @@ Breaking changes have a [dedicated section][Breaking Changes] in the dev-guide.
 
 ### Major changes
 
-The compiler team has a special process for large changes, whether or not they
-cause breakage. This process is called a Major Change Proposal (MCP). MCP is a
-relatively lightweight mechanism for getting feedback on large changes to the
+The compiler team has a special process for large changes, whether or not they cause breakage.
+This process is called a Major Change Proposal (MCP).
+MCP is a relatively lightweight mechanism for getting feedback on large changes to the
 compiler (as opposed to a full RFC or a design meeting with the team).
 
 Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something, or
 smaller user-facing changes.
 
-**When in doubt, ask on [Zulip]. It would be a shame to put a lot of work
-into a PR that ends up not getting merged!** [See this document][mcpinfo] for
-more info on MCPs.
+**When in doubt, ask [on Zulip].
+It would be a shame to put a lot of work
+into a PR that ends up not getting merged!** [See this document][mcpinfo] for more info on MCPs.
 
 [mcpinfo]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#how-do-i-submit-an-mcp
-[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
+[on Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ### Performance
 
-Compiler performance is important. We have put a lot of effort over the last
-few years into [gradually improving it][perfdash].
+Compiler performance is important.
+We have put a lot of effort over the last few years into [gradually improving it][perfdash].
 
 [perfdash]: https://perf.rust-lang.org/dashboard.html
 
 If you suspect that your change may cause a performance regression (or
 improvement), you can request a "perf run" (and your reviewer may also request one
-before approving). This is yet another bot that will compile a collection of
-benchmarks on a compiler with your changes. The numbers are reported
-[here][perf], and you can see a comparison of your changes against the latest
-master.
+before approving).
+This is yet another bot that will compile a collection of
+benchmarks on a compiler with your changes.
+The numbers are reported
+[here][perf], and you can see a comparison of your changes against the latest master.
 
 > For an introduction to the performance of Rust code in general
 > which would also be useful in rustc development, see [The Rust Performance Book].
@@ -104,11 +108,11 @@ master.
 ## Pull requests
 
 Pull requests (or PRs for short) are the primary mechanism we use to change Rust.
-GitHub itself has some [great documentation][about-pull-requests] on using the
-Pull Request feature. We use the "fork and pull" model [described here][development-models],
+GitHub itself has some [great documentation][about-pull-requests] on using the Pull Request feature.
+We use the ["fork and pull" model][development-models],
 where contributors push changes to their personal fork and create pull requests to
-bring those changes into the source repository. We have more info about how to use git
-when contributing to Rust under [the git section](./git.md).
+bring those changes into the source repository.
+We have [a chapter](git.md) on how to use Git when contributing to Rust.
 
 > **Advice for potentially large, complex, cross-cutting and/or very domain-specific changes**
 >
@@ -150,7 +154,8 @@ when contributing to Rust under [the git section](./git.md).
 ### Keeping your branch up-to-date
 
 The CI in rust-lang/rust applies your patches directly against the current master,
-not against the commit your branch is based on. This can lead to unexpected failures
+not against the commit your branch is based on.
+This can lead to unexpected failures
 if your branch is outdated, even when there are no explicit merge conflicts.
 
 Update your branch only when needed: when you have merge conflicts, upstream CI is broken and blocking your green PR, or a maintainer requests it.
@@ -159,30 +164,31 @@ During review, make incremental commits to address feedback.
 Prefer to squash or rebase only at the end, or when a reviewer requests it.
 
 When updating, use `git push --force-with-lease` and leave a brief comment explaining what changed.
-Some repos prefer merging from `upstream/master` instead of rebasing; follow the project's conventions.
+Some repos prefer merging from `upstream/master` instead of rebasing;
+follow the project's conventions.
 See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
 
 After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
 
 ### r?
 
-All pull requests are reviewed by another person. We have a bot,
-[@rustbot], that will automatically assign a random person
+All pull requests are reviewed by another person.
+We have a bot, [@rustbot], that will automatically assign a random person
 to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
-can add an `r?` to the pull request description or in a comment. For example,
-if you want to ask a review to @awesome-reviewer, add
+can add an `r?` to the pull request description or in a comment.
+For example, if you want to ask a review by @awesome-reviewer,
+add the following to the end of the pull request description:
 
     r? @awesome-reviewer
 
-to the end of the pull request description, and [@rustbot] will assign
-them instead of a random person. This is entirely optional.
+[@rustbot] will then assign the PR to that reviewer instead of a random person.
+This is entirely optional.
 
 You can also assign a random reviewer from a specific team by writing `r? rust-lang/groupname`.
-As an example,
-if you were making a diagnostics change,
-then you could get a reviewer from the diagnostics team by adding:
+As an example, if you were making a diagnostics change,
+you could get a reviewer from the diagnostics team by adding:
 
     r? rust-lang/diagnostics
 
@@ -209,15 +215,15 @@ or the list of teams in the [rust-lang teams database].
 >   the author is ready for a review,
 >   and this PR will be queued again in the reviewer's queue.
 
-Please note that the reviewers are humans, who for the most part work on `rustc`
-in their free time. This means that they can take some time to respond and review
-your PR. It also means that reviewers can miss some PRs that are assigned to them.
+Please note that the reviewers are humans, who for the most part work on `rustc` in their free time.
+This means that they can take some time to respond and review your PR.
+It also means that reviewers can miss some PRs that are assigned to them.
 
 To try to move PRs forward, the Triage WG regularly goes through all PRs that
-are waiting for review and haven't been discussed for at least 2 weeks. If you
-don't get a review within 2 weeks, feel free to ask the Triage WG on
-Zulip ([#t-release/triage]). They have knowledge of when to ping, who might be
-on vacation, etc.
+are waiting for review and haven't been discussed for at least 2 weeks.
+If you don't get a review within 2 weeks, feel free to ask the Triage WG on
+Zulip ([#t-release/triage]).
+They have knowledge of when to ping, who might be on vacation, etc.
 
 The reviewer may request some changes using the GitHub code review interface.
 They may also request special procedures for some PRs.
@@ -230,7 +236,8 @@ See [Crater] and [Breaking Changes] chapters for some examples of such procedure
 ### CI
 
 In addition to being reviewed by a human, pull requests are automatically tested,
-thanks to continuous integration (CI). Basically, every time you open and update
+thanks to continuous integration (CI).
+Basically, every time you open and update
 a pull request, CI builds the compiler and tests it against the
 [compiler test suite], and also performs other tests such as checking that
 your pull request is in compliance with Rust's style guidelines.
@@ -240,58 +247,64 @@ without going through a first review cycle, and also helps reviewers stay aware
 of the status of a particular pull request.
 
 Rust has plenty of CI capacity, and you should never have to worry about wasting
-computational resources each time you push a change. It is also perfectly fine
-(and even encouraged!) to use the CI to test your changes if it can help your
-productivity. In particular, we don't recommend running the full `./x test` suite locally,
+computational resources each time you push a change.
+It is also perfectly fine
+(and even encouraged!) to use the CI to test your changes if it can help your productivity.
+In particular, we don't recommend running the full `./x test` suite locally,
 since it takes a very long time to execute.
 
 ### r+
 
 After someone has reviewed your pull request, they will leave an annotation
-on the pull request with an `r+`. It will look something like this:
+on the pull request with an `r+`.
+It will look something like this:
 
     @bors r+
 
-This tells [@bors], our lovable integration bot, that your pull request has
-been approved. The PR then enters the [merge queue], where [@bors]
-will run *all* the tests on *every* platform we support. If it all works out,
-[@bors] will merge your code into `master` and close the pull request.
+This tells [@bors], our lovable integration bot, that your pull request has been approved.
+The PR then enters the [merge queue], where [@bors]
+will run *all* the tests on *every* platform we support.
+If it all works out, [@bors] will merge your code into `master` and close the pull request.
 
 Depending on the scale of the change, you may see a slightly different form of `r+`:
 
     @bors r+ rollup
 
 The additional `rollup` tells [@bors] that this change should always be "rolled up".
-Changes that are rolled up are tested and merged alongside other PRs, to
-speed the process up. Typically only small changes that are expected not to conflict
+Changes that are rolled up are tested and merged alongside other PRs, to speed the process up.
+Typically, only small changes that are expected not to conflict
 with one another are marked as "always roll up".
 
-Be patient; this can take a while and the queue can sometimes be long. PRs are never merged by hand.
+Be patient;
+this can take a while and the queue can sometimes be long.
+Also, note that PRs are never merged by hand.
 
 [@rustbot]: https://github.com/rustbot
 [@bors]: https://github.com/bors
 
 ### Opening a PR
 
-You are now ready to file a pull request? Great! Here are a few points you
-should be aware of.
+You are now ready to file a pull request (PR)?
+Great!
+Here are a few points you should be aware of.
 
 All pull requests should be filed against the `master` branch,
 unless you know for sure that you should target a different branch.
 
-Make sure your pull request is in compliance with Rust's style guidelines by running
+Run some style checks before you submit the PR:
 
-    $ ./x test tidy --bless
+    ./x test tidy --bless
 
-We recommend to make this check before every pull request (and every new commit
-in a pull request); you can add [git hooks]
-before every push to make sure you never forget to make this check.
+We recommend to make this check before every pull request (and every new commit in a pull request);
+you can add [git hooks] before every push to make sure you never forget to make this check.
 The CI will also run tidy and will fail if tidy fails.
 
-Rust follows a _no merge-commit policy_, meaning, when you encounter merge
-conflicts you are expected to always rebase instead of merging.  E.g. always use
-rebase when bringing the latest changes from the master branch to your feature
-branch. If your PR contains merge commits, it will get marked as `has-merge-commits`.
+Rust follows a _no merge-commit policy_,
+meaning that when you encounter merge conflicts,
+you are expected to always rebase instead of merging.
+For example,
+always use rebase when bringing the latest changes from the master branch to your feature branch.
+If your PR contains merge commits, it will get marked as `has-merge-commits`.
 Once you have removed the merge commits, e.g., through an interactive rebase, you
 should remove the label again:
 
@@ -300,13 +313,14 @@ should remove the label again:
 See [this chapter][labeling] for more details.
 
 If you encounter merge conflicts or when a reviewer asks you to perform some
-changes, your PR will get marked as `S-waiting-on-author`. When you resolve
-them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
+changes, your PR will get marked as `S-waiting-on-author`.
+When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
 
     @rustbot ready
 
-GitHub allows [closing issues using keywords][closing-keywords]. This feature
-should be used to keep the issue tracker tidy. However, it is generally preferred
+GitHub allows [closing issues using keywords][closing-keywords].
+This feature should be used to keep the issue tracker tidy.
+However, it is generally preferred
 to put the "closes #123" text in the PR description rather than the issue commit;
 particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
@@ -319,9 +333,10 @@ Please update the PR description while still mentioning the issue somewhere.
 For example, you could write `Fixes (after beta backport) #NNN.`.
 
 As for further actions, please keep a sharp look-out for a PR whose title begins with
-`[beta]` or `[stable]` and which backports the PR in question. When that one gets
-merged, the relevant issue can be closed. The closing comment should mention all
-PRs that were involved. If you don't have the permissions to close the issue, please
+`[beta]` or `[stable]` and which backports the PR in question.
+When that one gets merged, the relevant issue can be closed.
+The closing comment should mention all PRs that were involved.
+If you don't have the permissions to close the issue, please
 leave a comment on the original PR asking the reviewer to close it for you.
 
 [labeling]: ./rustbot.md#issue-relabeling
@@ -330,11 +345,13 @@ leave a comment on the original PR asking the reviewer to close it for you.
 ### Reverting a PR
 
 When a PR leads to miscompile, significant performance regressions, or other critical issues, we may
-want to revert that PR with a regression test case. You can also check out the [revert policy] on
+want to revert that PR with a regression test case.
+You can also check out the [revert policy] on
 Forge docs (which is mainly targeted for reviewers, but contains useful info for PR authors too).
 
 If the PR contains huge changes, it can be challenging to revert, making it harder to review
-incremental fixes in subsequent updates. Or if certain code in that PR is heavily depended upon by
+incremental fixes in subsequent updates.
+Or if certain code in that PR is heavily depended upon by
 subsequent PRs, reverting it can become difficult.
 
 In such cases, we can identify the problematic code and disable it for some input, as shown in [#128271][#128271].
@@ -352,7 +369,8 @@ This section has moved to ["Using External Repositories"](./external-repos.md).
 
 ## Writing documentation
 
-Documentation improvements are very welcome. The source of `doc.rust-lang.org`
+Documentation improvements are very welcome.
+The source of `doc.rust-lang.org`
 is located in [`src/doc`] in the tree, and standard API documentation is generated
 from the source code itself (e.g. [`library/std/src/lib.rs`][std-root]). Documentation pull requests
 function in the same way as other pull requests.
@@ -370,8 +388,8 @@ Results should appear in `build/host/doc`, as well as automatically open in your
 See [Building Documentation](./building/compiler-documenting.md#building-documentation) for more
 information.
 
-You can also use `rustdoc` directly to check small fixes. For example,
-`rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
+You can also use `rustdoc` directly to check small fixes.
+For example, `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
 The CSS might be messed up, but you can verify that the HTML is right.
 
 Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
@@ -389,18 +407,25 @@ There are issues for beginners and advanced compiler devs alike!
 Just a few things to keep in mind:
 
 - Please try to avoid overly long lines and use semantic line breaks (where you break the line after each sentence).
-  There is no strict limit on line lengths; let the sentence or part of the sentence flow to its proper end on the same line.
+  There is no strict limit on line lengths;
+  let the sentence or part of the sentence flow to its proper end on the same line.
+
+  You can use a tool in ci/sembr to help with this.
+  Its help output can be seen with this command:
+
+  ```console
+  cargo run --manifest-path ci/sembr/Cargo.toml -- --help
+  ```
 
 - When contributing text to the guide, please contextualize the information with some time period
   and/or a reason so that the reader knows how much to trust the information.
   Aim to provide a reasonable amount of context, possibly including but not limited to:
 
-  - A reason for why the data may be out of date other than "change",
+  - A reason for why the text may be out of date other than "change",
     as change is a constant across the project.
 
   - The date the comment was added, e.g. instead of writing _"Currently, ..."_
-    or _"As of now, ..."_,
-    consider adding the date, in one of the following formats:
+    or _"As of now, ..."_, consider adding the date, in one of the following formats:
     - Jan 2021
     - January 2021
     - jan 2021
@@ -410,24 +435,23 @@ Just a few things to keep in mind:
     that generates a monthly report showing those that are over 6 months old
     ([example](https://github.com/rust-lang/rustc-dev-guide/issues/2052)).
 
-    For the action to pick the date,
-    add a special annotation before specifying the date:
+    For the action to pick the date, add a special annotation before specifying the date:
 
     ```md
-    <!-- date-check --> Apr 2025
+    <!-- date-check --> Nov 2025
     ```
 
     Example:
 
     ```md
-    As of <!-- date-check --> Apr 2025, the foo did the bar.
+    As of <!-- date-check --> Nov 2025, the foo did the bar.
     ```
 
     For cases where the date should not be part of the visible rendered output,
     use the following instead:
 
     ```md
-    <!-- date-check: Apr 2025 -->
+    <!-- date-check: Nov 2025 -->
     ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide
@@ -435,8 +459,7 @@ Just a few things to keep in mind:
     outdated.
 
 - If a text grows rather long (more than a few page scrolls) or complicated (more than four
-  subsections),
-  it might benefit from having a Table of Contents at the beginning,
+  subsections), it might benefit from having a Table of Contents at the beginning,
   which you can auto-generate by including the `<!-- toc -->` marker at the top.
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes

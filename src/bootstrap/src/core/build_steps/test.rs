@@ -3337,6 +3337,42 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
     builder.remove_dir(dir);
 }
 
+/// Runs unit tests in `bootstrap_test.py`, which test the Python parts of bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct BootstrapPy;
+
+impl Step for BootstrapPy {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Bootstrap tests might not be perfectly self-contained and can depend
+        // on the environment, so only run them by default in CI, not locally.
+        // See `test::Bootstrap::should_run`.
+        let is_ci = run.builder.config.is_running_on_ci;
+        run.alias("bootstrap-py").default_condition(is_ci)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BootstrapPy)
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let mut check_bootstrap = command(builder.python());
+        check_bootstrap
+            .args(["-m", "unittest", "bootstrap_test.py"])
+            // Forward command-line args after `--` to unittest, for filtering etc.
+            .args(builder.config.test_args())
+            .env("BUILD_DIR", &builder.out)
+            .env("BUILD_PLATFORM", builder.build.host_target.triple)
+            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
+            .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
+            .current_dir(builder.src.join("src/bootstrap/"));
+        check_bootstrap.delay_failure().run(builder);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bootstrap;
 
@@ -3352,18 +3388,6 @@ impl Step for Bootstrap {
 
         // Some tests require cargo submodule to be present.
         builder.build.require_submodule("src/tools/cargo", None);
-
-        let mut check_bootstrap = command(builder.python());
-        check_bootstrap
-            .args(["-m", "unittest", "bootstrap_test.py"])
-            .env("BUILD_DIR", &builder.out)
-            .env("BUILD_PLATFORM", builder.build.host_target.triple)
-            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
-            .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
-            .current_dir(builder.src.join("src/bootstrap/"));
-        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
-        // Use `python -m unittest` manually if you want to pass arguments.
-        check_bootstrap.delay_failure().run(builder);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,

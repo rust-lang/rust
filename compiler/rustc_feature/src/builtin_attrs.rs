@@ -657,6 +657,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, "https://doc.rust-lang.org/reference/attributes/codegen.html#the-naked-attribute"),
         WarnFollowing, EncodeCrossCrate::No
     ),
+    // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+    rustc_attr!(
+        rustc_pass_indirectly_in_non_rustic_abis, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No,
+        "types marked with `#[rustc_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic abis."
+    ),
 
     // Limits:
     ungated!(
