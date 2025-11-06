@@ -8,8 +8,11 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [none] compile-flags: -Z stack-protector=none
 //@ [safestack] compile-flags: -Z stack-protector=none -Z sanitizer=safestack
+// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ [safestack_strong] compile-flags: -Z stack-protector=strong -Z sanitizer=safestack
+// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ [safestack_all] compile-flags: -Z stack-protector=all -Z sanitizer=safestack
+// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 
 #![crate_type = "lib"]
