@@ -1,6 +1,4 @@
 //@ only-x86_64
-#![feature(atomic_try_update)]
-
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 fn main() {

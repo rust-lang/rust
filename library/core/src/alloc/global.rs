@@ -57,7 +57,7 @@ use crate::{cmp, ptr};
 ///         let mut allocated = 0;
 ///         if self
 ///             .remaining
-///             .fetch_update(Relaxed, Relaxed, |mut remaining| {
+///             .try_update(Relaxed, Relaxed, |mut remaining| {
 ///                 if size > remaining {
 ///                     return None;
 ///                 }
