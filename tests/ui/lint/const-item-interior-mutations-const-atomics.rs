@@ -3,7 +3,6 @@
 
 #![allow(deprecated)]
 #![allow(dead_code)]
-#![feature(atomic_try_update)]
 
 use std::sync::atomic::{AtomicBool, AtomicPtr, AtomicU32, Ordering};
 
