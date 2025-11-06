@@ -1,4 +1,3 @@
-use rustc_errors::Diag;
 use rustc_hir::{self as hir, HirId};
 use rustc_infer::traits;
 use rustc_middle::ty::{Ty, TypeVisitableExt};
@@ -127,7 +126,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.set_diverges(initial_diverges, &guarded, &tail);
+        let mut tail_diverges = tail.diverges();
+        for branch in guarded.branches.iter().rev() {
+            tail_diverges = branch.cond_diverges | (branch.body.diverges & tail_diverges);
+        }
+        self.diverges.set(initial_diverges | tail_diverges);
 
         let result_ty = coerce.complete(self);
 
@@ -164,7 +167,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             cause,
             Some(expr),
             ty,
-            move |err| self.explain_if_branch_mismatch(err, prev_branch_span),
+            move |err| {
+                if let Some(prev_branch_span) = prev_branch_span {
+                    err.span_label(prev_branch_span, "expected because of this");
+                }
+            },
             false,
         );
     }
@@ -180,7 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             then_span,
             "block in `if` or `while` expression",
         );
-        let cond_diverges = self.take_diverges();
+        let cond_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
         (cond_ty, cond_diverges)
     }
 
@@ -226,16 +234,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_else_expr
     }
 
-    fn reset_diverges_to_maybe(&self) {
-        self.diverges.set(Diverges::Maybe);
-    }
-
-    fn take_diverges(&self) -> Diverges {
-        let diverges = self.diverges.get();
-        self.reset_diverges_to_maybe();
-        diverges
-    }
-
     fn ensure_if_branch_type(&self, hir_id: HirId, ty: Ty<'tcx>) {
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
@@ -253,29 +251,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> BranchBody<'tcx> {
-        self.reset_diverges_to_maybe();
+        self.diverges.set(Diverges::Maybe);
         let ty = self.check_expr_with_expectation(expr, expected);
-        let diverges = self.take_diverges();
+        let diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
         let span = self.find_block_span_from_hir_id(expr.hir_id);
         BranchBody { expr, ty, diverges, span }
-    }
-
-    fn explain_if_branch_mismatch(&self, err: &mut Diag<'_>, prev_branch_span: Option<Span>) {
-        if let Some(prev_branch_span) = prev_branch_span {
-            err.span_label(prev_branch_span, "expected because of this");
-        }
-    }
-
-    fn set_diverges(
-        &self,
-        initial_diverges: Diverges,
-        guarded: &IfGuardedBranches<'tcx>,
-        tail: &IfChainTail<'tcx>,
-    ) {
-        let mut tail_diverges = tail.diverges();
-        for branch in guarded.branches.iter().rev() {
-            tail_diverges = branch.cond_diverges | (branch.body.diverges & tail_diverges);
-        }
-        self.diverges.set(initial_diverges | tail_diverges);
     }
 }
