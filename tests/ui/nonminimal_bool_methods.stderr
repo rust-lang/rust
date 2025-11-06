@@ -247,5 +247,11 @@ error: this boolean expression can be simplified
 LL |     _ = !opt.is_none_or(|x| x.is_err());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `opt.is_some_and(|x| x.is_ok())`
 
-error: aborting due to 41 previous errors
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool_methods.rs:246:5
+   |
+LL |     !(vec![1, 2, 3] <= vec![1, 2, 3, 3]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(vec![1, 2, 3] > vec![1, 2, 3, 3])`
+
+error: aborting due to 42 previous errors
 
