@@ -38,7 +38,7 @@ impl Condvar {
         // possible for `counter` to decrease due to a condvar timing out, in which
         // case the corresponding `timed_out` will increase accordingly.
         let Ok(waiter_count) =
-            self.counter.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |counter| {
+            self.counter.try_update(Ordering::Relaxed, Ordering::Relaxed, |counter| {
                 if counter == 0 {
                     return None;
                 } else {
