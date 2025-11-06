@@ -20,8 +20,6 @@ pub(crate) fn lock<'a>() -> BacktraceLock<'a> {
 
 impl BacktraceLock<'_> {
     /// Prints the current backtrace.
-    ///
-    /// NOTE: this function is not Sync. The caller must hold a mutex lock, or there must be only one thread in the program.
     pub(crate) fn print(&mut self, w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
         // There are issues currently linking libbacktrace into tests, and in
         // general during std's own unit tests we're not testing this path. In
@@ -36,6 +34,7 @@ impl BacktraceLock<'_> {
         }
         impl fmt::Display for DisplayBacktrace {
             fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // SAFETY: the backtrace lock is held
                 unsafe { _print_fmt(fmt, self.format) }
             }
         }
@@ -43,6 +42,9 @@ impl BacktraceLock<'_> {
     }
 }
 
+/// # Safety
+///
+/// This function is not Sync. The caller must hold a mutex lock, or there must be only one thread in the program.
 unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::Result {
     // Always 'fail' to get the cwd when running under Miri -
     // this allows Miri to display backtraces in isolation mode

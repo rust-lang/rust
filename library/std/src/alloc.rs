@@ -394,7 +394,6 @@ fn default_alloc_error_hook(layout: Layout) {
     let mut lock = crate::sys::backtrace::lock();
 
     match crate::panic::get_backtrace_style() {
-        // SAFETY: we took out a lock just a second ago.
         Some(crate::panic::BacktraceStyle::Short) => {
             drop(lock.print(&mut out, crate::backtrace_rs::PrintFmt::Short))
         }
