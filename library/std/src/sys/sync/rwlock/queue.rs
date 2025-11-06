@@ -329,7 +329,7 @@ impl RwLock {
 
     #[inline]
     pub fn try_read(&self) -> bool {
-        self.state.fetch_update(Acquire, Relaxed, read_lock).is_ok()
+        self.state.try_update(Acquire, Relaxed, read_lock).is_ok()
     }
 
     #[inline]
@@ -343,7 +343,7 @@ impl RwLock {
     pub fn try_write(&self) -> bool {
         // Atomically set the `LOCKED` bit. This is lowered to a single atomic instruction on most
         // modern processors (e.g. "lock bts" on x86 and "ldseta" on modern AArch64), and therefore
-        // is more efficient than `fetch_update(lock(true))`, which can spuriously fail if a new
+        // is more efficient than `try_update(lock(true))`, which can spuriously fail if a new
         // node is appended to the queue.
         self.state.fetch_or(LOCKED, Acquire).addr() & LOCKED == 0
     }
@@ -453,7 +453,7 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        match self.state.fetch_update(Release, Acquire, |state| {
+        match self.state.try_update(Release, Acquire, |state| {
             if state.addr() & QUEUED == 0 {
                 // If there are no threads queued, simply decrement the reader count.
                 let count = state.addr() - (SINGLE | LOCKED);
