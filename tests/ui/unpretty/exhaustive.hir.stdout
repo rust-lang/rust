@@ -394,11 +394,11 @@ mod expressions {
         {
             super let args = (&expr,);
             super let args = [format_argument::new_display(args.0)];
-            format_arguments::new(unsafe {
-                    format_template::new(const
-                                &[format_piece::num(16140901201934811136usize),
-                                            format_piece::num(0usize)])
-                }, &args)
+            unsafe {
+                format_arguments::new(const
+                            &[format_piece::num(16140901201934811136usize),
+                                        format_piece::num(0usize)], &args)
+            }
         };
     }
 }

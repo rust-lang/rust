@@ -524,19 +524,6 @@ fn expand_format_args<'hir>(
     let zero = ctx.expr_usize(macsp, 0);
     pieces.push(make_piece(ctx, sym::num, zero, macsp));
 
-    // ```
-    //   unsafe { <core::fmt::rt::Template>::new(const { &[pieces…] }) }
-    // ```
-    let template_new =
-        ctx.expr_lang_item_type_relative(macsp, hir::LangItem::FormatTemplate, sym::new);
-    let pieces = ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(pieces));
-    let pieces = ctx.expr_const(macsp, pieces);
-    let template = ctx.expr(
-        macsp,
-        hir::ExprKind::Call(ctx.arena.alloc(template_new), ctx.arena.alloc_from_iter([pieces])),
-    );
-    let template = ctx.expr_unsafe(macsp, ctx.arena.alloc(template));
-
     // Ensure all argument indexes actually fit in 10 bits, as we truncated them to 10 bits before.
     if argmap.len() >= 1 << 10 {
         ctx.dcx().emit_err(TooManyFormatArguments { span: fmt.span });
@@ -615,10 +602,14 @@ fn expand_format_args<'hir>(
     };
 
     // Generate:
-    //     <core::fmt::Arguments>::new(
-    //         template,
-    //         &args,
-    //     )
+    //     unsafe {
+    //         <core::fmt::Arguments>::new(
+    //             const { &[pieces…] },
+    //             &args,
+    //         )
+    //     }
+    let pieces = ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(pieces));
+    let pieces = ctx.expr_const(macsp, pieces);
     let call = {
         let new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
             macsp,
@@ -626,9 +617,20 @@ fn expand_format_args<'hir>(
             sym::new,
         ));
         let args = ctx.expr_ref(macsp, args);
-        let new_args = ctx.arena.alloc_from_iter([template, args]);
-        hir::ExprKind::Call(new, new_args)
+        let new_args = ctx.arena.alloc_from_iter([pieces, args]);
+        ctx.expr_call(macsp, new, new_args)
     };
+    let call = hir::ExprKind::Block(
+        ctx.arena.alloc(hir::Block {
+            stmts: &[],
+            expr: Some(call),
+            hir_id: ctx.next_id(),
+            rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
+            span: macsp,
+            targeted_by_break: false,
+        }),
+        None,
+    );
 
     if !let_statements.is_empty() {
         // Generate:

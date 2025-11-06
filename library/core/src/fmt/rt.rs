@@ -12,7 +12,6 @@ use crate::marker::PhantomData;
 use crate::mem;
 use crate::ptr::NonNull;
 
-#[lang = "format_template"]
 #[derive(Copy, Clone)]
 pub struct Template<'a> {
     pub(super) pieces: NonNull<rt::Piece>,
@@ -24,7 +23,6 @@ unsafe impl Sync for Template<'_> {}
 
 impl<'a> Template<'a> {
     #[inline]
-    #[rustc_diagnostic_item = "FmtTemplateNew"]
     pub unsafe fn new<const N: usize>(pieces: &'a [rt::Piece; N]) -> Self {
         Self { pieces: NonNull::from_ref(pieces).cast(), lifetime: PhantomData }
     }
@@ -232,23 +230,25 @@ impl Argument<'_> {
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
+#[rustc_diagnostic_item = "FmtArgumentsNew"]
 impl<'a> Arguments<'a> {
     #[inline]
-    pub const fn new<const N: usize>(
-        template: rt::Template<'a>,
-        args: &'a [rt::Argument<'a>; N],
+    pub unsafe fn new<const N: usize, const M: usize>(
+        pieces: &'a [rt::Piece; N],
+        args: &'a [rt::Argument<'a>; M],
     ) -> Arguments<'a> {
-        Arguments { template, args: NonNull::from_ref(args).cast() }
+        Arguments {
+            // SAFETY: Responsibility of the caller.
+            template: unsafe { Template::new(pieces) },
+            args: NonNull::from_ref(args).cast(),
+        }
     }
 
     #[inline]
     pub const fn from_str(s: &'static str) -> Arguments<'a> {
         // SAFETY: This is the "static str" representation of fmt::Arguments.
         unsafe {
-            Arguments {
-                template: rt::Template::new_str_len(s.len()),
-                args: mem::transmute(s.as_ptr()),
-            }
+            Arguments { template: Template::new_str_len(s.len()), args: mem::transmute(s.as_ptr()) }
         }
     }
 
@@ -256,7 +256,6 @@ impl<'a> Arguments<'a> {
     // Used by format_args!() expansion when arguments are inlined,
     // e.g. format_args!("{}", 123), which is not allowed in const.
     #[inline]
-    #[rustc_diagnostic_item = "FmtArgumentsFromStrNonconst"]
     pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
         Arguments::from_str(s)
     }
