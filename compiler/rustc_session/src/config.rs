@@ -262,6 +262,16 @@ pub enum AutoDiff {
     NoTT,
 }
 
+/// The different settings that the `-Z annotate-moves` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum AnnotateMoves {
+    /// `-Z annotate-moves=no` (or `off`, `false` etc.)
+    Disabled,
+    /// `-Z annotate-moves` or `-Z annotate-moves=yes` (use default size limit)
+    /// `-Z annotate-moves=SIZE` (use specified size limit)
+    Enabled(Option<u64>),
+}
+
 /// Settings for `-Z instrument-xray` flag.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InstrumentXRay {
@@ -3239,13 +3249,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy, OptLevel, OutFileName,
-        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload, OomStrategy,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3288,6 +3298,7 @@ pub(crate) mod dep_tracking {
 
     impl_dep_tracking_hash_via_hash!(
         (),
+        AnnotateMoves,
         AutoDiff,
         Offload,
         bool,
