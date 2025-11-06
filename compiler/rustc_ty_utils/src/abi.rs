@@ -1,3 +1,4 @@
+use std::assert_matches::assert_matches;
 use std::iter;
 
 use rustc_abi::Primitive::Pointer;
@@ -388,6 +389,12 @@ fn fn_abi_sanity_check<'tcx>(
             if let PassMode::Indirect { on_stack, .. } = arg.mode {
                 assert!(!on_stack, "rust abi shouldn't use on_stack");
             }
+        } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            assert_matches!(
+                arg.mode,
+                PassMode::Indirect { on_stack: false, .. },
+                "the {spec_abi} ABI does not implement `#[rustc_pass_indirectly_in_non_rustic_abis]`"
+            );
         }
 
         match &arg.mode {

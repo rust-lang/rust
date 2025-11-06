@@ -114,9 +114,9 @@ pub struct HighlightConfig<'a> {
 // |-----------|--------------------------------|
 // |operator| Emitted for general operators.|
 // |arithmetic| Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.|
-// |bitwise| Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.|
+// |bitwise| Emitted for the bitwise operators `\|`, `&`, `!`, `^`, `\|=`, `&=`, `^=`.|
 // |comparison| Emitted for the comparison oerators `>`, `<`, `==`, `>=`, `<=`, `!=`.|
-// |logical| Emitted for the logical operators `||`, `&&`, `!`.|
+// |logical| Emitted for the logical operators `\|\|`, `&&`, `!`.|
 //
 // - For punctuation:
 //
@@ -172,20 +172,20 @@ pub struct HighlightConfig<'a> {
 // |constant| Emitted for const.|
 // |consuming| Emitted for locals that are being consumed when use in a function call.|
 // |controlFlow| Emitted for control-flow related tokens, this includes th `?` operator.|
-// |crateRoot| Emitted for crate names, like `serde` and `crate.|
+// |crateRoot| Emitted for crate names, like `serde` and `crate`.|
 // |declaration| Emitted for names of definitions, like `foo` in `fn foo(){}`.|
-// |defaultLibrary| Emitted for items from built-in crates (std, core, allc, test and proc_macro).|
+// |defaultLibrary| Emitted for items from built-in crates (std, core, alloc, test and proc_macro).|
 // |documentation| Emitted for documentation comment.|
 // |injected| Emitted for doc-string injected highlighting like rust source blocks in documentation.|
 // |intraDocLink| Emitted for intra doc links in doc-string.|
-// |library| Emitted for items that are defined outside of the current crae.|
+// |library| Emitted for items that are defined outside of the current crate.|
 // |macro|  Emitted for tokens inside macro call.|
 // |mutable| Emitted for mutable locals and statics as well as functions taking `&mut self`.|
-// |public| Emitted for items that are from the current crate and are `pub.|
-// |reference| Emitted for locals behind a reference and functions taking self` by reference.|
-// |static| Emitted for "static" functions, also known as functions that d not take a `self` param, as well as statics and consts.|
+// |public| Emitted for items that are from the current crate and are `pub`.|
+// |reference| Emitted for locals behind a reference and functions taking `self` by reference.|
+// |static| Emitted for "static" functions, also known as functions that do not take a `self` param, as well as statics and consts.|
 // |trait| Emitted for associated trait item.|
-// |unsafe| Emitted for unsafe operations, like unsafe function calls, as ell as the `unsafe` token.|
+// |unsafe| Emitted for unsafe operations, like unsafe function calls, as well as the `unsafe` token.|
 //
 // ![Semantic Syntax Highlighting](https://user-images.githubusercontent.com/48062697/113164457-06cfb980-9239-11eb-819b-0f93e646acf8.png)
 // ![Semantic Syntax Highlighting](https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png)

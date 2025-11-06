@@ -74,7 +74,7 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind, Value,
+    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKind, Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -1571,6 +1571,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // This is here instead of layout because the choice must make it into metadata.
         if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
+        }
+
+        // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+        if find_attr!(
+            self.get_all_attrs(did),
+            AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
+        ) {
+            flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }

@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -28,7 +28,7 @@ pub(crate) fn target() -> Target {
             ":2048:2048"
         )
         .into(),
-        arch: "hexagon".into(),
+        arch: Arch::Hexagon,
         options: base,
     }
 }

@@ -82,6 +82,20 @@ fn reserved_r13(
     }
 }
 
+fn reserved_r29(
+    arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    _target_features: &FxIndexSet<Symbol>,
+    _target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if arch != InlineAsmArch::PowerPC {
+        Ok(())
+    } else {
+        Err("r29 is used internally by LLVM and cannot be used as an operand for inline asm")
+    }
+}
+
 fn reserved_v20to31(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
@@ -129,6 +143,7 @@ def_regs! {
         r26: reg, reg_nonzero = ["r26", "26"],
         r27: reg, reg_nonzero = ["r27", "27"],
         r28: reg, reg_nonzero = ["r28", "28"],
+        r29: reg, reg_nonzero = ["r29", "29"] % reserved_r29,
         f0: freg = ["f0", "fr0"],
         f1: freg = ["f1", "fr1"],
         f2: freg = ["f2", "fr2"],
@@ -274,8 +289,6 @@ def_regs! {
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r2", "2"] =>
             "r2 is a system reserved register and cannot be used as an operand for inline asm",
-        #error = ["r29", "29"] =>
-            "r29 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r30", "30"] =>
             "r30 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r31", "31", "fp"] =>
@@ -306,7 +319,7 @@ impl PowerPCInlineAsmReg {
             (r0, "0"), (r3, "3"), (r4, "4"), (r5, "5"), (r6, "6"), (r7, "7");
             (r8, "8"), (r9, "9"), (r10, "10"), (r11, "11"), (r12, "12"), (r13, "13"), (r14, "14"), (r15, "15");
             (r16, "16"), (r17, "17"), (r18, "18"), (r19, "19"), (r20, "20"), (r21, "21"), (r22, "22"), (r23, "23");
-            (r24, "24"), (r25, "25"), (r26, "26"), (r27, "27"), (r28, "28");
+            (r24, "24"), (r25, "25"), (r26, "26"), (r27, "27"), (r28, "28"), (r29, "29");
             (f0, "0"), (f1, "1"), (f2, "2"), (f3, "3"), (f4, "4"), (f5, "5"), (f6, "6"), (f7, "7");
             (f8, "8"), (f9, "9"), (f10, "10"), (f11, "11"), (f12, "12"), (f13, "13"), (f14, "14"), (f15, "15");
             (f16, "16"), (f17, "17"), (f18, "18"), (f19, "19"), (f20, "20"), (f21, "21"), (f22, "22"), (f23, "23");

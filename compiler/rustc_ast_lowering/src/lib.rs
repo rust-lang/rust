@@ -31,11 +31,8 @@
 //! in the HIR, especially for multiple identifiers.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::sync::Arc;

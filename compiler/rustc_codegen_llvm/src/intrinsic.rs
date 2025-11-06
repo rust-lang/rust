@@ -13,7 +13,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
@@ -1840,14 +1840,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(call);
     }
 
+    fn llvm_alignment<'ll, 'tcx>(
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        alignment: SimdAlign,
+        vector_ty: Ty<'tcx>,
+        element_ty: Ty<'tcx>,
+    ) -> u64 {
+        match alignment {
+            SimdAlign::Unaligned => 1,
+            SimdAlign::Element => bx.align_of(element_ty).bytes(),
+            SimdAlign::Vector => bx.align_of(vector_ty).bytes(),
+        }
+    }
+
     if name == sym::simd_masked_load {
-        // simd_masked_load(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
+        // simd_masked_load<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
         // Loads contiguous elements from memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .unwrap_leaf()
+            .to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -1905,7 +1922,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = llvm_alignment(bx, alignment, values_ty, values_elem);
 
         let llvm_pointer = bx.type_ptr();
 
@@ -1932,13 +1949,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_masked_store {
-        // simd_masked_store(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
+        // simd_masked_store<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
         // Stores contiguous elements to memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .unwrap_leaf()
+            .to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -1990,7 +2011,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = llvm_alignment(bx, alignment, values_ty, values_elem);
 
         let llvm_pointer = bx.type_ptr();
 

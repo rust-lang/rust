@@ -180,7 +180,7 @@ impl<'a> IntoIterator for &'a Grid {
     "#,
         expect![[r#"
             150..154 'self': &'a Grid
-            174..181 '{     }': impl Iterator<Item = &'a ()>
+            174..181 '{     }': <&'a Grid as IntoIterator>::IntoIter
         "#]],
     );
 }

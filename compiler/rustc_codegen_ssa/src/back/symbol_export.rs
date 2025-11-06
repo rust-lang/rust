@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolNam
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::TlsModel;
+use rustc_target::spec::{Arch, TlsModel};
 use tracing::debug;
 
 use crate::back::symbol_export;
@@ -659,11 +659,11 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         return undecorated;
     }
 
-    let prefix = match &target.arch[..] {
-        "x86" => Some('_'),
-        "x86_64" => None,
+    let prefix = match target.arch {
+        Arch::X86 => Some('_'),
+        Arch::X86_64 => None,
         // Only functions are decorated for arm64ec.
-        "arm64ec" if export_kind == SymbolExportKind::Text => Some('#'),
+        Arch::Arm64EC if export_kind == SymbolExportKind::Text => Some('#'),
         // Only x86/64 and arm64ec use symbol decorations.
         _ => return undecorated,
     };

@@ -11,6 +11,7 @@ use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
 use rustc_session::cstore::DllImport;
 use rustc_span::Symbol;
+use rustc_target::spec::Arch;
 
 use crate::back::archive::ImportLibraryItem;
 use crate::back::link::ArchiveBuilderBuilder;
@@ -77,7 +78,7 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
             let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
-                    if sess.target.arch == "x86" {
+                    if sess.target.arch == Arch::X86 {
                         ImportLibraryItem {
                             name: common::i686_decorated_name(
                                 import,

@@ -9,7 +9,7 @@ use std::{env, fs, ops::Not, path::Path, process::Command};
 
 use anyhow::{Result, format_err};
 use itertools::Itertools;
-use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use toolchain::{Tool, probe_for_binary};
@@ -219,7 +219,6 @@ impl Sysroot {
         &self,
         sysroot_source_config: &RustSourceWorkspaceConfig,
         no_deps: bool,
-        target_dir: &Utf8Path,
         progress: &dyn Fn(String),
     ) -> Option<RustLibSrcWorkspace> {
         assert!(matches!(self.workspace, RustLibSrcWorkspace::Empty), "workspace already loaded");
@@ -233,7 +232,6 @@ impl Sysroot {
                 match self.load_library_via_cargo(
                     &library_manifest,
                     src_root,
-                    target_dir,
                     cargo_config,
                     no_deps,
                     progress,
@@ -328,7 +326,6 @@ impl Sysroot {
         &self,
         library_manifest: &ManifestPath,
         current_dir: &AbsPath,
-        target_dir: &Utf8Path,
         cargo_config: &CargoMetadataConfig,
         no_deps: bool,
         progress: &dyn Fn(String),
@@ -345,7 +342,7 @@ impl Sysroot {
         let locked = true;
         let (mut res, err) =
             FetchMetadata::new(library_manifest, current_dir, &cargo_config, self, no_deps)
-                .exec(target_dir, locked, progress)?;
+                .exec(locked, progress)?;
 
         // Patch out `rustc-std-workspace-*` crates to point to the real crates.
         // This is done prior to `CrateGraph` construction to prevent de-duplication logic from failing.

@@ -1,12 +1,12 @@
 use crate::spec::base::xtensa;
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "xtensa-none-elf".into(),
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-v1:8:8-i64:64-i128:128-n32".into(),
-        arch: "xtensa".into(),
+        arch: Arch::Xtensa,
         metadata: TargetMetadata {
             description: Some("Xtensa ESP32-S3".into()),
             tier: Some(3),

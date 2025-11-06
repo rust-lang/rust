@@ -25,7 +25,9 @@ use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
 use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
-use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{
+    Arch, CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel,
+};
 use tracing::{debug, trace};
 
 use crate::back::lto::ThinBuffer;
@@ -107,7 +109,7 @@ pub(crate) fn create_informational_target_machine(
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, false, only_base_features);
+    let features = llvm_util::global_llvm_features(sess, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
 }
@@ -206,7 +208,7 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+    let float_abi = if sess.target.arch == Arch::Arm && sess.opts.cg.soft_float {
         llvm::FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
@@ -451,7 +453,7 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
+    let msg = msg.trim_prefix("error: ").to_string();
     cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
 }
 

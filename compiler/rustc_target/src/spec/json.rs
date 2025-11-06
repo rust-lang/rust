@@ -5,7 +5,7 @@ use rustc_abi::{Align, AlignFromBytesError};
 
 use super::crt_objects::CrtObjects;
 use super::{
-    BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
+    Arch, BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
     MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
@@ -214,6 +214,11 @@ impl Target {
                 supported_sanitizers.into_iter().fold(SanitizerSet::empty(), |a, b| a | b);
         }
 
+        if let Some(default_sanitizers) = json.default_sanitizers {
+            base.default_sanitizers =
+                default_sanitizers.into_iter().fold(SanitizerSet::empty(), |a, b| a | b);
+        }
+
         forward!(generate_arange_section);
         forward!(supports_stack_protector);
         forward!(small_data_threshold_support);
@@ -392,6 +397,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
+        target_option_val!(default_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
@@ -486,7 +492,7 @@ struct TargetSpecJson {
     llvm_target: StaticCow<str>,
     target_pointer_width: u16,
     data_layout: StaticCow<str>,
-    arch: StaticCow<str>,
+    arch: Arch,
 
     metadata: Option<TargetSpecJsonMetadata>,
 
@@ -612,6 +618,7 @@ struct TargetSpecJson {
     split_debuginfo: Option<SplitDebuginfo>,
     supported_split_debuginfo: Option<StaticCow<[SplitDebuginfo]>>,
     supported_sanitizers: Option<Vec<SanitizerSet>>,
+    default_sanitizers: Option<Vec<SanitizerSet>>,
     generate_arange_section: Option<bool>,
     supports_stack_protector: Option<bool>,
     small_data_threshold_support: Option<SmallDataThresholdSupport>,

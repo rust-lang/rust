@@ -1,4 +1,4 @@
-use crate::spec::{PanicStrategy, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, PanicStrategy, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
             ":2048:2048"
         )
         .into(),
-        arch: "hexagon".into(),
+        arch: Arch::Hexagon,
 
         options: TargetOptions {
             cpu: "hexagonv60".into(),

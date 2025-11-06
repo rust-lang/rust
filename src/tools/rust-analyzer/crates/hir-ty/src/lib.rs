@@ -27,9 +27,11 @@ mod infer;
 mod inhabitedness;
 mod lower;
 pub mod next_solver;
+mod opaques;
 mod specialization;
 mod target_feature;
 mod utils;
+mod variance;
 
 pub mod autoderef;
 pub mod consteval;
@@ -50,7 +52,6 @@ pub mod traits;
 mod test_db;
 #[cfg(test)]
 mod tests;
-mod variance;
 
 use std::hash::Hash;
 
@@ -471,6 +472,7 @@ where
     }
 }
 
+/// To be used from `hir` only.
 pub fn callable_sig_from_fn_trait<'db>(
     self_ty: Ty<'db>,
     trait_env: Arc<TraitEnvironment<'db>>,
@@ -482,7 +484,7 @@ pub fn callable_sig_from_fn_trait<'db>(
         .trait_items(db)
         .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
 
-    let mut table = InferenceTable::new(db, trait_env.clone());
+    let mut table = InferenceTable::new(db, trait_env.clone(), None);
 
     // Register two obligations:
     // - Self: FnOnce<?args_ty>

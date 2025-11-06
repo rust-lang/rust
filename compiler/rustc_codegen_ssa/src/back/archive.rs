@@ -17,6 +17,7 @@ use rustc_fs_util::TempDirBuilder;
 use rustc_metadata::EncodedMetadata;
 use rustc_session::Session;
 use rustc_span::Symbol;
+use rustc_target::spec::Arch;
 use tracing::trace;
 
 use super::metadata::{create_compressed_metadata_file, search_for_section};
@@ -42,7 +43,7 @@ pub struct ImportLibraryItem {
 
 impl ImportLibraryItem {
     fn into_coff_short_export(self, sess: &Session) -> COFFShortExport {
-        let import_name = (sess.target.arch == "arm64ec").then(|| self.name.clone());
+        let import_name = (sess.target.arch == Arch::Arm64EC).then(|| self.name.clone());
         COFFShortExport {
             name: self.name,
             ext_name: None,
@@ -117,12 +118,12 @@ pub trait ArchiveBuilderBuilder {
 
             let exports =
                 items.into_iter().map(|item| item.into_coff_short_export(sess)).collect::<Vec<_>>();
-            let machine = match &*sess.target.arch {
-                "x86_64" => MachineTypes::AMD64,
-                "x86" => MachineTypes::I386,
-                "aarch64" => MachineTypes::ARM64,
-                "arm64ec" => MachineTypes::ARM64EC,
-                "arm" => MachineTypes::ARMNT,
+            let machine = match &sess.target.arch {
+                Arch::X86_64 => MachineTypes::AMD64,
+                Arch::X86 => MachineTypes::I386,
+                Arch::AArch64 => MachineTypes::ARM64,
+                Arch::Arm64EC => MachineTypes::ARM64EC,
+                Arch::Arm => MachineTypes::ARMNT,
                 cpu => panic!("unsupported cpu type {cpu}"),
             };
 
@@ -223,12 +224,12 @@ fn create_mingw_dll_import_lib(
     };
     // dlltool target architecture args from:
     // https://github.com/llvm/llvm-project-release-prs/blob/llvmorg-15.0.6/llvm/lib/ToolDrivers/llvm-dlltool/DlltoolDriver.cpp#L69
-    let (dlltool_target_arch, dlltool_target_bitness) = match sess.target.arch.as_ref() {
-        "x86_64" => ("i386:x86-64", "--64"),
-        "x86" => ("i386", "--32"),
-        "aarch64" => ("arm64", "--64"),
-        "arm" => ("arm", "--32"),
-        _ => panic!("unsupported arch {}", sess.target.arch),
+    let (dlltool_target_arch, dlltool_target_bitness) = match &sess.target.arch {
+        Arch::X86_64 => ("i386:x86-64", "--64"),
+        Arch::X86 => ("i386", "--32"),
+        Arch::AArch64 => ("arm64", "--64"),
+        Arch::Arm => ("arm", "--32"),
+        arch => panic!("unsupported arch {arch}"),
     };
     let mut dlltool_cmd = std::process::Command::new(&dlltool);
     dlltool_cmd
@@ -281,10 +282,10 @@ fn find_binutils_dlltool(sess: &Session) -> OsString {
         "dlltool.exe"
     } else {
         // On other platforms, use the architecture-specific name.
-        match sess.target.arch.as_ref() {
-            "x86_64" => "x86_64-w64-mingw32-dlltool",
-            "x86" => "i686-w64-mingw32-dlltool",
-            "aarch64" => "aarch64-w64-mingw32-dlltool",
+        match sess.target.arch {
+            Arch::X86_64 => "x86_64-w64-mingw32-dlltool",
+            Arch::X86 => "i686-w64-mingw32-dlltool",
+            Arch::AArch64 => "aarch64-w64-mingw32-dlltool",
 
             // For non-standard architectures (e.g., aarch32) fallback to "dlltool".
             _ => "dlltool",
@@ -378,9 +379,9 @@ pub fn try_extract_macho_fat_archive(
     archive_path: &Path,
 ) -> io::Result<Option<PathBuf>> {
     let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
-    let target_arch = match sess.target.arch.as_ref() {
-        "aarch64" => object::Architecture::Aarch64,
-        "x86_64" => object::Architecture::X86_64,
+    let target_arch = match sess.target.arch {
+        Arch::AArch64 => object::Architecture::Aarch64,
+        Arch::X86_64 => object::Architecture::X86_64,
         _ => return Ok(None),
     };
 
@@ -531,7 +532,7 @@ impl<'a> ArArchiveBuilder<'a> {
             &entries,
             archive_kind,
             false,
-            /* is_ec = */ Some(self.sess.target.arch == "arm64ec"),
+            /* is_ec = */ Some(self.sess.target.arch == Arch::Arm64EC),
         )?;
         archive_tmpfile.flush()?;
         drop(archive_tmpfile);

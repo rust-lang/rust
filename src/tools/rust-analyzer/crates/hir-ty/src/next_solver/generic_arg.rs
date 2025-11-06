@@ -63,6 +63,14 @@ impl<'db> GenericArg<'db> {
         }
     }
 
+    #[inline]
+    pub(crate) fn expect_region(self) -> Region<'db> {
+        match self {
+            GenericArg::Lifetime(region) => region,
+            _ => panic!("expected a region, got {self:?}"),
+        }
+    }
+
     pub fn error_from_id(interner: DbInterner<'db>, id: GenericParamId) -> GenericArg<'db> {
         match id {
             GenericParamId::TypeParamId(_) => Ty::new_error(interner, ErrorGuaranteed).into(),

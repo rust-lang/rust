@@ -3,7 +3,7 @@ use std::{cmp, fmt};
 
 use rustc_abi::{
     AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
-    PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
+    PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
 use rustc_error_messages::DiagMessage;
@@ -72,7 +72,10 @@ impl abi::Integer {
     /// signed discriminant range and `#[repr]` attribute.
     /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr<'tcx>(
+    ///
+    /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
+    /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
+    fn discr_range_of_repr<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
@@ -108,7 +111,8 @@ impl abi::Integer {
             abi::Integer::I8
         };
 
-        // Pick the smallest fit.
+        // Pick the smallest fit. Prefer unsigned; that matches clang in cases where this makes a
+        // difference (https://godbolt.org/z/h4xEasW1d) so it is crucial for repr(C).
         if unsigned_fit <= signed_fit {
             (cmp::max(unsigned_fit, at_least), false)
         } else {
@@ -1172,6 +1176,11 @@ where
 
     fn is_transparent(this: TyAndLayout<'tcx>) -> bool {
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
+    }
+
+    /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
+    fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().flags.contains(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS))
     }
 }
 

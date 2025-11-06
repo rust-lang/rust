@@ -16,7 +16,7 @@ use rustc_session::{Session, config};
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{Arch, SanitizerSet};
 use smallvec::SmallVec;
 
 use crate::attributes::{self, llfn_attrs_from_instance};
@@ -96,7 +96,7 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
                 }
             }
         }
-    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+    } else if cx.tcx.sess.sanitizers().contains(SanitizerSet::MEMORY) {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
         // memory sanitizer's behavior.
 
@@ -698,16 +698,11 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
-        CanonAbi::GpuKernel => {
-            let arch = sess.target.arch.as_ref();
-            if arch == "amdgpu" {
-                llvm::AmdgpuKernel
-            } else if arch == "nvptx64" {
-                llvm::PtxKernel
-            } else {
-                panic!("Architecture {arch} does not support GpuKernel calling convention");
-            }
-        }
+        CanonAbi::GpuKernel => match &sess.target.arch {
+            Arch::AmdGpu => llvm::AmdgpuKernel,
+            Arch::Nvptx64 => llvm::PtxKernel,
+            arch => panic!("Architecture {arch} does not support GpuKernel calling convention"),
+        },
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
             InterruptKind::Avr => llvm::AvrInterrupt,
             InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,

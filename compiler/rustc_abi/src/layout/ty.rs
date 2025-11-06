@@ -172,6 +172,8 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {
     fn is_tuple(this: TyAndLayout<'a, Self>) -> bool;
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
+    /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
+    fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
 }
 
 impl<'a, Ty> TyAndLayout<'a, Ty> {
@@ -267,6 +269,30 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_transparent(self)
+    }
+
+    /// If this method returns `true`, then this type should always have a `PassMode` of
+    /// `Indirect { on_stack: false, .. }` when being used as the argument type of a function with a
+    /// non-Rustic ABI (this is true for structs annotated with the
+    /// `#[rustc_pass_indirectly_in_non_rustic_abis]` attribute).
+    ///
+    /// This is used to replicate some of the behaviour of C array-to-pointer decay; however unlike
+    /// C any changes the caller makes to the passed value will not be reflected in the callee, so
+    /// the attribute is only useful for types where observing the value in the caller after the
+    /// function call isn't allowed (a.k.a. `va_list`).
+    ///
+    /// This function handles transparent types automatically.
+    pub fn pass_indirectly_in_non_rustic_abis<C>(mut self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        while self.is_transparent()
+            && let Some((_, field)) = self.non_1zst_field(cx)
+        {
+            self = field;
+        }
+
+        Ty::is_pass_indirectly_in_non_rustic_abis_flag_set(self)
     }
 
     /// Finds the one field that is not a 1-ZST.

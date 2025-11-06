@@ -33,6 +33,7 @@ use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::Arch;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -982,9 +983,9 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let add_prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => |name: String, _: SymbolExportKind| format!("_{name}"),
-                (true, "arm64ec") => {
+            let add_prefix = match (target.is_like_windows, &target.arch) {
+                (true, Arch::X86) => |name: String, _: SymbolExportKind| format!("_{name}"),
+                (true, Arch::Arm64EC) => {
                     // Only functions are decorated for arm64ec.
                     |name: String, export_kind: SymbolExportKind| match export_kind {
                         SymbolExportKind::Text => format!("#{name}"),

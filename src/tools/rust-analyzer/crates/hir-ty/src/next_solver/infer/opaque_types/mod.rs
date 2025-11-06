@@ -4,9 +4,11 @@ pub(crate) mod table;
 
 pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
+use macros::{TypeFoldable, TypeVisitable};
+
 use crate::next_solver::{OpaqueTypeKey, Ty, infer::InferCtxt};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, TypeVisitable, TypeFoldable)]
 pub struct OpaqueHiddenType<'db> {
     pub ty: Ty<'db>,
 }

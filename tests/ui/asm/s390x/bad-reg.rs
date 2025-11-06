@@ -8,6 +8,8 @@
 //@[s390x_vector_stable] needs-llvm-components: systemz
 //@ ignore-backends: gcc
 
+//~? WARN unstable feature specified for `-Ctarget-feature`
+
 #![crate_type = "rlib"]
 #![feature(no_core, repr_simd)]
 #![cfg_attr(not(s390x_vector_stable), feature(asm_experimental_reg))]
