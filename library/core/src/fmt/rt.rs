@@ -67,22 +67,11 @@ pub union Piece {
 unsafe impl Send for Piece {}
 unsafe impl Sync for Piece {}
 
-// These are marked as #[stable] because of #[rustc_promotable] and #[rustc_const_stable].
-// With #[rustc_const_unstable], many format_args!() invocations would result in errors.
-//
-// There is still no way to use these on stable, because Piece itself is #[unstable] and not
-// reachable through any public path. (format_args!()'s expansion uses it as a lang item.)
 impl Piece {
-    #[rustc_promotable]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
     pub const fn str(s: &'static str) -> Self {
         Self { p: s as *const str as *const u8 }
     }
 
-    #[rustc_promotable]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
     pub const fn num(i: usize) -> Self {
         Self { i }
     }

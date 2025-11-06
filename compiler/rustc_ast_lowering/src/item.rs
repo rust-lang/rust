@@ -1174,7 +1174,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn record_body(
+    pub(super) fn record_body(
         &mut self,
         params: &'hir [hir::Param<'hir>],
         value: hir::Expr<'hir>,

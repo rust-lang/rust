@@ -2270,6 +2270,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         )
     }
 
+    pub(super) fn expr_const(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Expr<'hir> {
+        let node_id = self.next_node_id();
+        let def_id =
+            self.create_def(node_id, None, DefKind::InlineConst, DefPathData::LateAnonConst, span);
+        let hir_id = self.lower_node_id(node_id);
+        let body = self.record_body(&[], expr);
+        self.expr(span, hir::ExprKind::ConstBlock(hir::ConstBlock { hir_id, def_id, body }))
+    }
+
     fn expr_block_empty(&mut self, span: Span) -> &'hir hir::Expr<'hir> {
         let blk = self.block_all(span, &[], None);
         let expr = self.expr_block(blk);

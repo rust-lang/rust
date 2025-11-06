@@ -525,11 +525,12 @@ fn expand_format_args<'hir>(
     pieces.push(make_piece(ctx, sym::num, zero, macsp));
 
     // ```
-    //   unsafe { <core::fmt::rt::Template>::new(&[pieces…]) }
+    //   unsafe { <core::fmt::rt::Template>::new(const { &[pieces…] }) }
     // ```
     let template_new =
         ctx.expr_lang_item_type_relative(macsp, hir::LangItem::FormatTemplate, sym::new);
     let pieces = ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(pieces));
+    let pieces = ctx.expr_const(macsp, pieces);
     let template = ctx.expr(
         macsp,
         hir::ExprKind::Call(ctx.arena.alloc(template_new), ctx.arena.alloc_from_iter([pieces])),
