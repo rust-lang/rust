@@ -34,6 +34,9 @@ pub(crate) fn target() -> Target {
             no_builtins: true,
             simd_types_indirect: false,
 
+            // Clearly a GPU
+            is_like_gpu: true,
+
             // Allow `cdylib` crate type.
             dynamic_linking: true,
             only_cdylib: true,
