@@ -1,5 +1,3 @@
-#![feature(supertrait_item_shadowing)]
-
 trait A {
     fn hello(&self) {
         println!("A");

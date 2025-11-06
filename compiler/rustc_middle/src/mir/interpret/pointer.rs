@@ -70,7 +70,7 @@ pub trait Provenance: Copy + PartialEq + fmt::Debug + 'static {
     const WILDCARD: Option<Self>;
 
     /// Determines how a pointer should be printed.
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+    fn fmt_ptr(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
     /// identify the allocation this ptr points to (i.e., this must return `Some`).
@@ -174,7 +174,7 @@ impl Provenance for CtfeProvenance {
     // `CtfeProvenance` does not implement wildcard provenance.
     const WILDCARD: Option<Self> = None;
 
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt_ptr(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Print AllocId.
         fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
         // Print offset only if it is non-zero.
@@ -206,7 +206,7 @@ impl Provenance for AllocId {
     // `AllocId` does not implement wildcard provenance.
     const WILDCARD: Option<Self> = None;
 
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt_ptr(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `alternate` flag to `alloc_id` printing.
         if f.alternate() {
             write!(f, "{:#?}", ptr.provenance)?;
@@ -248,14 +248,14 @@ static_assert_size!(Pointer<Option<CtfeProvenance>>, 16);
 // all the Miri types.
 impl<Prov: Provenance> fmt::Debug for Pointer<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Provenance::fmt(self, f)
+        Provenance::fmt_ptr(self, f)
     }
 }
 
 impl<Prov: Provenance> fmt::Debug for Pointer<Option<Prov>> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.provenance {
-            Some(prov) => Provenance::fmt(&Pointer::new(prov, self.offset), f),
+            Some(prov) => Provenance::fmt_ptr(&Pointer::new(prov, self.offset), f),
             None => write!(f, "{:#x}[noalloc]", self.offset.bytes()),
         }
     }

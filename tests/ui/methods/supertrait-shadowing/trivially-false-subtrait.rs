@@ -3,8 +3,8 @@
 // Make sure we don't prefer a subtrait that we would've otherwise eliminated
 // in `consider_probe` during method probing.
 
-#![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
+#![allow(supertrait_item_shadowing_definition)]
 
 struct W<T>(T);
 

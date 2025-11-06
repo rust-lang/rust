@@ -1,5 +1,6 @@
 use crate::int::{DInt, HInt, Int};
 
+#[allow(supertrait_item_shadowing_definition)]
 trait Mul: DInt + Int
 where
     Self::H: DInt,

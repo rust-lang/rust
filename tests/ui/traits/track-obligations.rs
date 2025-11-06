@@ -1,5 +1,7 @@
 // These are simplifications of the tower traits by the same name:
 
+#![allow(supertrait_item_shadowing_definition)]
+
 pub trait Service<Request> {
     type Response;
 }
@@ -15,15 +17,9 @@ pub struct Res;
 
 // This is encoding a trait alias.
 
-pub trait ParticularService:
-    Service<Req, Response = Res> {
-}
+pub trait ParticularService: Service<Req, Response = Res> {}
 
-impl<T> ParticularService for T
-where
-    T: Service<Req, Response = Res>,
-{
-}
+impl<T> ParticularService for T where T: Service<Req, Response = Res> {}
 
 // This is also a trait alias.
 // The weird = <Self as ...> bound is there so that users of the trait do not
@@ -73,7 +69,11 @@ where
     fn check(&self) {}
 }
 
-fn check<C>(_: C) where ALayer<C>: ParticularServiceLayer<C> {}
+fn check<C>(_: C)
+where
+    ALayer<C>: ParticularServiceLayer<C>,
+{
+}
 
 // But, they give very different error messages.
 

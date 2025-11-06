@@ -104,7 +104,7 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        <Self as SpecFold>::fold(self, init, f)
+        <Self as SpecFold>::spec_fold(self, init, f)
     }
 }
 
@@ -196,7 +196,7 @@ where
 }
 
 trait SpecFold: Iterator {
-    fn fold<B, F>(self, init: B, f: F) -> B
+    fn spec_fold<B, F>(self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B;
@@ -207,7 +207,7 @@ where
     I: Iterator,
 {
     #[inline]
-    default fn fold<B, F>(mut self, init: B, f: F) -> B
+    default fn spec_fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
@@ -221,7 +221,7 @@ where
     I: Iterator + TrustedRandomAccessNoCoerce,
 {
     #[inline]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn spec_fold<B, F>(mut self, init: B, mut f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,

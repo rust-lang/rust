@@ -1,3 +1,5 @@
+#![allow(supertrait_item_shadowing_definition)]
+
 //@ check-pass
 pub trait Subscriber {
     type Input;

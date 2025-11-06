@@ -1,6 +1,8 @@
 // Test that no help message is emitted that suggests renaming the
 // associated type from a non-local trait
 
+#![allow(supertrait_item_shadowing_definition)]
+
 pub trait NewIter: Iterator {
     type Item;
 }

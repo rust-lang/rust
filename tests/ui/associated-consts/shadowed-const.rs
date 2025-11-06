@@ -1,5 +1,8 @@
 // Checking that none of these ICE, which was introduced in
 // https://github.com/rust-lang/rust/issues/93553
+
+#![allow(supertrait_item_shadowing_definition)]
+
 trait Foo {
     type Bar;
 }
@@ -15,9 +18,9 @@ trait Baz2: Foo {
 }
 
 trait Baz3 {
-  const BAR: usize;
-  const QUX: Self::BAR;
-  //~^ ERROR expected type, found constant
+    const BAR: usize;
+    const QUX: Self::BAR;
+    //~^ ERROR expected type, found constant
 }
 
 fn main() {}

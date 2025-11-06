@@ -20,6 +20,7 @@ trait UAddSub: DInt + Int {
 
 impl UAddSub for u128 {}
 
+#[allow(supertrait_item_shadowing_definition)]
 trait AddSub: Int
 where
     <Self as MinInt>::Unsigned: UAddSub,

@@ -4923,11 +4923,8 @@ declare_lint! {
     /// silently, this lint detects these cases when users want to deny them
     /// or fix the call sites.
     pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
-    // FIXME(supertrait_item_shadowing): It is not decided if this should
-    // warn by default at the call site.
     Allow,
     "detects when a supertrait item is shadowed by a subtrait item",
-    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {
@@ -4962,11 +4959,8 @@ declare_lint! {
     /// silently, this lint detects these cases when users want to deny them
     /// or fix their trait definitions.
     pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
-    // FIXME(supertrait_item_shadowing): It is not decided if this should
-    // warn by default at the usage site.
-    Allow,
+    Warn,
     "detects when a supertrait item is shadowed by a subtrait item",
-    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {

@@ -2,11 +2,11 @@ trait A {
     fn foo(&mut self) {}
 }
 
-trait B : A {
+trait B {
     fn foo(&mut self) {}
 }
 
-fn bar<T: B>(a: &T) {
+fn bar<T: A + B>(a: &T) {
     a.foo() //~ ERROR multiple applicable items
 }
 
@@ -14,23 +14,23 @@ trait C {
     fn foo(&self) {}
 }
 
-trait D : C {
+trait D {
     fn foo(&self) {}
 }
 
-fn quz<T: D>(a: &T) {
+fn quz<T: C + D>(a: &T) {
     a.foo() //~ ERROR multiple applicable items
 }
 
-trait E : Sized {
+trait E: Sized {
     fn foo(self) {}
 }
 
-trait F : E {
+trait F: Sized {
     fn foo(self) {}
 }
 
-fn foo<T: F>(a: T) {
+fn foo<T: E + F>(a: T) {
     a.foo() //~ ERROR multiple applicable items
 }
 

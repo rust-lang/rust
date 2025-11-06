@@ -1,5 +1,5 @@
 error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
-  --> $DIR/associated-type-shadowed-from-non-local-supertrait.rs:8:27
+  --> $DIR/associated-type-shadowed-from-non-local-supertrait.rs:10:27
    |
 LL |     type Item;
    |     --------- `Iterator::Item` shadowed here, consider renaming it

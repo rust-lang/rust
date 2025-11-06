@@ -409,6 +409,8 @@ declare_features! (
     (accepted, struct_field_attributes, "1.20.0", Some(38814)),
     /// Allows struct variants `Foo { baz: u8, .. }` in enums (RFC 418).
     (accepted, struct_variant, "1.0.0", None),
+    /// Allows subtrait items to shadow supertrait items.
+    (accepted, supertrait_item_shadowing, "CURRENT_RUSTC_VERSION", Some(89151)),
     /// Allows `#[target_feature(...)]`.
     (accepted, target_feature, "1.27.0", None),
     /// Allows the use of `#[target_feature]` on safe functions.

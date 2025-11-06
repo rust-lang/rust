@@ -2,6 +2,7 @@
 
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait Trait {
     fn foo(&self) -> u8 { 0 }

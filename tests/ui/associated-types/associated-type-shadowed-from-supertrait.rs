@@ -1,6 +1,8 @@
 // Test Setting the value of an associated type
 // that is shadowed from a supertrait
 
+#![allow(supertrait_item_shadowing_definition)]
+
 pub trait Super {
     type X;
 }

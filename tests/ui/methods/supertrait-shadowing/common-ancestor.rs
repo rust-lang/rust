@@ -1,7 +1,6 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(supertrait_item_shadowing)]
 #![warn(supertrait_item_shadowing_usage)]
 #![warn(supertrait_item_shadowing_definition)]
 #![allow(dead_code)]

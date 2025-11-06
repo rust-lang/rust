@@ -144,6 +144,7 @@ fn issue11880() {
         type U;
     }
     trait Y: X {
+        #[allow(supertrait_item_shadowing_definition)]
         type T;
         type V;
     }

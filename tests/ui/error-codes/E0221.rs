@@ -1,3 +1,5 @@
+#![allow(supertrait_item_shadowing_definition)]
+
 trait T1 {}
 trait T2 {}
 
@@ -5,7 +7,7 @@ trait Foo {
     type A: T1;
 }
 
-trait Bar : Foo {
+trait Bar: Foo {
     type A: T2;
     fn do_something() {
         let _: Self::A;
@@ -15,7 +17,7 @@ trait Bar : Foo {
 
 trait T3 {}
 
-trait My : std::str::FromStr {
+trait My: std::str::FromStr {
     type Err: T3;
     fn test() {
         let _: Self::Err;
@@ -23,5 +25,4 @@ trait My : std::str::FromStr {
     }
 }
 
-fn main() {
-}
+fn main() {}

@@ -1,5 +1,5 @@
 error[E0191]: the value of the associated type `X` in `Super` must be specified
-  --> $DIR/associated-type-shadowed-from-supertrait.rs:12:27
+  --> $DIR/associated-type-shadowed-from-supertrait.rs:14:27
    |
 LL |     type X;
    |     ------ `Super::X` defined here, consider renaming it
