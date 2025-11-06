@@ -56,7 +56,7 @@ case ${TARGET} in
 
     aarch64_be-unknown-linux-gnu*)
         TEST_CPPFLAGS="-fuse-ld=lld"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
+        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64_be.txt
         TEST_CXX_COMPILER="clang++"
         TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
         : "${TEST_SAMPLE_INTRINSICS_PERCENTAGE:=100}"

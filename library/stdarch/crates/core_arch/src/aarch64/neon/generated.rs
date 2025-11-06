@@ -9500,10 +9500,10 @@ pub fn vdivh_f16(a: f16, b: f16) -> f16 {
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: int32x4_t = vreinterpretq_s32_s8(c);
     unsafe {
-        let c: int32x4_t = transmute(c);
         let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_s32(a, b, transmute(c))
+        vdot_s32(a, b, vreinterpret_s8_s32(c))
     }
 }
 #[doc = "Dot product arithmetic (indexed)"]
@@ -9515,11 +9515,11 @@ pub fn vdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x16_t) 
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: int32x4_t = vreinterpretq_s32_s8(c);
     unsafe {
-        let c: int32x4_t = transmute(c);
         let c: int32x4_t =
             simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_s32(a, b, transmute(c))
+        vdotq_s32(a, b, vreinterpretq_s8_s32(c))
     }
 }
 #[doc = "Dot product arithmetic (indexed)"]
@@ -9531,10 +9531,10 @@ pub fn vdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x16_t
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: uint32x4_t = vreinterpretq_u32_u8(c);
     unsafe {
-        let c: uint32x4_t = transmute(c);
         let c: uint32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vdot_u32(a, b, transmute(c))
+        vdot_u32(a, b, vreinterpret_u8_u32(c))
     }
 }
 #[doc = "Dot product arithmetic (indexed)"]
@@ -9546,11 +9546,11 @@ pub fn vdot_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x16_
 #[unstable(feature = "stdarch_neon_dotprod", issue = "117224")]
 pub fn vdotq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: uint32x4_t = vreinterpretq_u32_u8(c);
     unsafe {
-        let c: uint32x4_t = transmute(c);
         let c: uint32x4_t =
             simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vdotq_u32(a, b, transmute(c))
+        vdotq_u32(a, b, vreinterpretq_u8_u32(c))
     }
 }
 #[doc = "Set all vector lanes to the same value"]
@@ -28283,10 +28283,10 @@ pub fn vuqadds_s32(a: i32, b: u32) -> i32 {
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vusdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x16_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: int32x4_t = vreinterpretq_s32_s8(c);
     unsafe {
-        let c: int32x4_t = transmute(c);
         let c: int32x2_t = simd_shuffle!(c, c, [LANE as u32, LANE as u32]);
-        vusdot_s32(a, b, transmute(c))
+        vusdot_s32(a, b, vreinterpret_s8_s32(c))
     }
 }
 #[doc = "Dot product index form with unsigned and signed integers"]
@@ -28298,11 +28298,11 @@ pub fn vusdot_laneq_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x16_
 #[unstable(feature = "stdarch_neon_i8mm", issue = "117223")]
 pub fn vusdotq_laneq_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 2);
+    let c: int32x4_t = vreinterpretq_s32_s8(c);
     unsafe {
-        let c: int32x4_t = transmute(c);
         let c: int32x4_t =
             simd_shuffle!(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
-        vusdotq_s32(a, b, transmute(c))
+        vusdotq_s32(a, b, vreinterpretq_s8_s32(c))
     }
 }
 #[doc = "Unzip vectors"]

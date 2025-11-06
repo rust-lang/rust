@@ -6261,19 +6261,19 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - ['_lane_s32', int32x2_t, uint8x8_t, '[LANE as u32, LANE as u32]']
-      - ['q_lane_s32', int32x4_t, uint8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - ['_lane_s32', int32x2_t, uint8x8_t, '[LANE as u32, LANE as u32]','']
+      - ['q_lane_s32', int32x4_t, uint8x16_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
           - int32x2_t
-          - FnCall: [transmute, [c]]
+          - FnCall: ['vreinterpret_s32_s8', [c]]
       - Let:
           - c
           - "{type[1]}"
           - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: [transmute, [c]]}]]
+      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]]
 
   - name: "vsudot{neon_type[0].lane_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -6290,19 +6290,23 @@ intrinsics:
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, uint8x8_t, '[LANE as u32, LANE as u32]', uint32x2_t]
-      - [int32x4_t, int8x16_t, uint8x8_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]', uint32x4_t]
+      - [int32x2_t, int8x8_t, uint8x8_t, '[LANE as u32, LANE as u32]', uint32x2_t,'']
+      - [int32x4_t, int8x16_t, uint8x8_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]', uint32x4_t,'q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
           - uint32x2_t
-          - FnCall: [transmute, [c]]
+          - FnCall: ['vreinterpret_u32_u8', [c]]
       - Let:
           - c
           - "{type[4]}"
           - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: ["vusdot{neon_type[0].no}", [a, {FnCall: [transmute, [c]]}, b]]
+      - FnCall: 
+          - "vusdot{neon_type[0].no}"
+          - - a
+            - FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
+            - b
 
   - name: "vmul{neon_type[1].no}"
     doc: Multiply
@@ -7113,14 +7117,14 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [int32x2_t, int8x8_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32]']
-      - [int32x4_t, int8x16_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [int32x2_t, int8x8_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32]','']
+      - [int32x4_t, int8x16_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]]
+          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7129,7 +7133,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]]
+            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vdot{neon_type[0].lane_nox}"
     doc: Dot product arithmetic (indexed)
@@ -7146,14 +7150,14 @@ intrinsics:
       - *neon-cfg-arm-unstable
     safety: safe
     types:
-      - [uint32x2_t, uint8x8_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32]']
-      - [uint32x4_t, uint8x16_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]']
+      - [uint32x2_t, uint8x8_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32]','']
+      - [uint32x4_t, uint8x16_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
     compose:
       - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: [transmute, [c]]
+          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7162,7 +7166,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: [transmute, [c]]
+            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
