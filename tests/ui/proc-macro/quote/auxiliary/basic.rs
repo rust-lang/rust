@@ -11,8 +11,12 @@ use proc_macro::*;
 
 #[proc_macro]
 pub fn run_tests(_: TokenStream) -> TokenStream {
-    test_sep();
-    test_dollar_dollar();
+    test_sep1();
+    test_sep2();
+    test_sep_group1();
+    test_sep_group2();
+    test_dollar_dollar1();
+    test_dollar_dollar2();
 
     test_quote_impl();
     test_substitution();
@@ -53,7 +57,7 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     TokenStream::new()
 }
 
-fn test_sep() {
+fn test_sep1() {
     let iter = ["a", "b"].into_iter();
     let tokens = quote!($($iter) << *);
 
@@ -61,12 +65,46 @@ fn test_sep() {
     assert_eq!(expected, tokens.to_string());
 }
 
-fn test_dollar_dollar() {
-    let iter = ["a", "b"].into_iter();
+fn test_sep2() {
+    let iter1 = ["a", "b"].into_iter();
+    let iter2 = [1, 2, 3];
+    let tokens = quote!($($iter1) ($($iter1) $($iter2),* A) *);
+
+    let expected = "\"a\" ($(\"b\") 1i32, 2i32, 3i32 A) \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_sep_group1() {
     let x = "X";
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($x) >> $($iter) << *);
+
+    let expected = "$(\"X\") >> \"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_sep_group2() {
+    let x = "X";
+    let iter = ["a", "b"].into_iter();
+    let tokens = quote!($($x) >> > $($iter) << *);
+
+    let expected = "$(\"X\") >> > \"a\" << \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar1() {
+    let iter = ["a", "b"].into_iter();
     let tokens = quote!($$ x $($$ x $iter)*);
 
     let expected = "$x $x \"a\" $x \"b\"";
+    assert_eq!(expected, tokens.to_string());
+}
+
+fn test_dollar_dollar2() {
+    let iter = ["a", "b", "c"].into_iter();
+    let tokens = quote!($($iter) $$ *);
+
+    let expected = "\"a\" $ \"b\" $ \"c\"";
     assert_eq!(expected, tokens.to_string());
 }
 
