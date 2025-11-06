@@ -206,9 +206,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::offset_of => {
                 let tp_ty = instance.args.type_at(0);
 
-                let u32_layout = self.layout_of(self.tcx.types.u32)?;
-                let variant = self.read_scalar(&args[0])?.to_bits(u32_layout.size)? as u32;
-                let field = self.read_scalar(&args[1])?.to_bits(u32_layout.size)? as usize;
+                let variant = self.read_scalar(&args[0])?.to_u32()?;
+                let field = self.read_scalar(&args[1])?.to_u32()? as usize;
 
                 let layout = self.layout_of(tp_ty)?;
                 let cx = ty::layout::LayoutCx::new(*self.tcx, self.typing_env);
