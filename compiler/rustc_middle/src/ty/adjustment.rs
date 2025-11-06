@@ -203,10 +203,7 @@ pub enum AutoBorrow {
 /// Demanding this struct also has the side-effect of reporting errors
 /// for inappropriate impls.
 #[derive(Clone, Copy, TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct CoerceSharedInfo {
-    pub is_trivial: bool,
-    pub participating_lifetimes: u8,
-}
+pub struct CoerceSharedInfo {}
 
 /// Information for `CoerceUnsized` impls, storing information we
 /// have computed about the coercion.

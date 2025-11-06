@@ -2482,7 +2482,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // *p`, where the `p` has type `&'b mut Foo`, for example, we
         // need to ensure that `'b: 'a`.
 
-        debug!("add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})", mutability, location, dest, borrowed_place);
+        debug!(
+            "add_generic_reborrow_constraint({:?}, {:?}, {:?}, {:?})",
+            mutability, location, dest, borrowed_place
+        );
 
         let tcx = self.infcx.tcx;
         let def = self.body.source.def_id().expect_local();
@@ -2504,16 +2507,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // We cannot just attempt to relate T and <T as CoerceShared>::Target
             // by calling relate_types.
             let dest_adt = dest_ty.ty_adt_def().unwrap();
-            let ty::Adt(_, dest_args) = dest_ty.kind() else {
-                unreachable!()
-            };
-            let ty::Adt(_, borrowed_args) = borrowed_ty.kind() else {
-                unreachable!()
-            };
+            let ty::Adt(_, dest_args) = dest_ty.kind() else { unreachable!() };
+            let ty::Adt(_, borrowed_args) = borrowed_ty.kind() else { unreachable!() };
             let borrowed_adt = borrowed_ty.ty_adt_def().unwrap();
             let borrowed_fields = borrowed_adt.all_fields().collect::<Vec<_>>();
             for dest_field in dest_adt.all_fields() {
-                let Some(borrowed_field) = borrowed_fields.iter().find(|f| f.name == dest_field.name) else {
+                let Some(borrowed_field) =
+                    borrowed_fields.iter().find(|f| f.name == dest_field.name)
+                else {
                     continue;
                 };
                 let dest_ty = dest_field.ty(tcx, dest_args);
@@ -2538,7 +2539,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             )
             .unwrap();
         }
-
     }
 
     fn prove_aggregate_predicates(

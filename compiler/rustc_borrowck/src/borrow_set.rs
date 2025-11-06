@@ -310,9 +310,6 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                     continue;
                 };
                 let region = region.as_var();
-                eprintln!(
-                    "Lifetime borrow: {arg:?} {region:?} {location:?} {borrowed_place:?} {assigned_place:?}"
-                );
                 let kind = if mutability == Mutability::Mut {
                     mir::BorrowKind::Mut { kind: mir::MutBorrowKind::Default }
                 } else {

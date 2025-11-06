@@ -9,8 +9,8 @@ use rustc_hir as hir;
 use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::{self, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
-use rustc_infer::traits::Obligation;
+use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt};
+use rustc_infer::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::adjustment::{CoerceSharedInfo, CoerceUnsizedInfo};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -389,22 +389,64 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     }
 }
 
+fn structurally_normalize_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    impl_did: LocalDefId,
+    span: Span,
+    ty: Ty<'tcx>,
+) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
+    let ocx = ObligationCtxt::new(infcx);
+    let Ok(normalized_ty) = ocx.structurally_normalize_ty(
+        &traits::ObligationCause::misc(span, impl_did),
+        tcx.param_env(impl_did),
+        ty,
+    ) else {
+        // We shouldn't have errors here in the old solver, except for
+        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
+        return None;
+    };
+    let errors = ocx.try_evaluate_obligations();
+    if !errors.is_empty() {
+        if infcx.next_trait_solver() {
+            unreachable!();
+        }
+        // We shouldn't have errors here in the old solver, except for
+        // evaluate/fulfill mismatches, but that's not a reason for an ICE.
+        debug!(?errors, "encountered errors while fulfilling");
+        return None;
+    }
+
+    Some((normalized_ty, ocx.into_pending_obligations()))
+}
+
 pub(crate) fn coerce_shared_info<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_did: LocalDefId,
 ) -> Result<CoerceSharedInfo, ErrorGuaranteed> {
     debug!("compute_coerce_shared_info(impl_did={:?})", impl_did);
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let span = tcx.def_span(impl_did);
     let trait_name = "CoerceShared";
 
     let coerce_shared_trait = tcx.require_lang_item(LangItem::CoerceShared, span);
-    let copy_trait = tcx.require_lang_item(LangItem::Copy, span);
+    let coerce_shared_target = tcx.require_lang_item(LangItem::CoerceSharedTarget, span);
+    let _copy_trait = tcx.require_lang_item(LangItem::Copy, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
-    let target = trait_ref.args.type_at(1);
+    let Some((target, _obligations)) = structurally_normalize_ty(
+        tcx,
+        &infcx,
+        impl_did,
+        span,
+        Ty::new_projection(tcx, coerce_shared_target, trait_ref.args),
+    ) else {
+        // return Err(tcx.dcx().emit_err(todo!()));
+        todo!();
+    };
     debug!("visit_implementation_of_coerce_shared: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
@@ -412,100 +454,22 @@ pub(crate) fn coerce_shared_info<'tcx>(
 
     debug!("visit_implementation_of_coerce_shared: {:?} -> {:?} (free)", source, target);
 
-    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-    let cause = ObligationCause::misc(span, impl_did);
-    let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
-                       mt_b: ty::TypeAndMut<'tcx>,
-                       mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
-        if mt_a.mutbl < mt_b.mutbl {
-            infcx
-                .err_ctxt()
-                .report_mismatched_types(
-                    &cause,
-                    param_env,
-                    mk_ptr(mt_b.ty),
-                    target,
-                    ty::error::TypeError::Mutability,
-                )
-                .emit();
-        }
-        (mt_a.ty, mt_b.ty, copy_trait, None, span)
-    };
-    let (source, target, trait_def_id, kind, field_span) = match (source.kind(), target.kind()) {
-        (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
-            infcx.sub_regions(SubregionOrigin::RelateObjectBound(span), r_b, r_a);
-            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
-        }
-
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
-        | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
-            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
-        }
-
+    let _cause = ObligationCause::misc(span, impl_did);
+    let data = match (source.kind(), target.kind()) {
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
-            if def_a != def_b {
-                let source_path = tcx.def_path_str(def_a.did());
-                let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
-                    span,
-                    trait_name,
-                    note: true,
-                    source_path,
-                    target_path,
-                }));
-            }
+            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()> } -> struct FooRef<'a> { a: u32, b: PhantomData<&'a ()> }
+            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()>, c: u32 } -> struct FooRef<'a> { a: u32, b: PhantomData<&'a ()> }
+            // struct FooMut<'a> { a: u32, b: PhantomData<&'a ()>, c: u32 } -> struct FooRef<'a> { c: u32, a: u32, b: PhantomData<&'a ()> }
 
-            // Here we are considering a case of converting
-            // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
-            // which acts like a pointer to `U`, but carries along some extra data of type `T`:
-            //
-            //     struct Foo<T, U> {
-            //         extra: T,
-            //         ptr: *mut U,
-            //     }
-            //
-            // We might have an impl that allows (e.g.) `Foo<T, [i32; 3]>` to be unsized
-            // to `Foo<T, [i32]>`. That impl would look like:
-            //
-            //   impl<T, U: Unsize<V>, V> CoerceUnsized<Foo<T, V>> for Foo<T, U> {}
-            //
-            // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
-            // when this coercion occurs, we would be changing the
-            // field `ptr` from a thin pointer of type `*mut [i32;
-            // 3]` to a wide pointer of type `*mut [i32]` (with
-            // extra data `3`). **The purpose of this check is to
-            // make sure that we know how to do this conversion.**
-            //
-            // To check if this impl is legal, we would walk down
-            // the fields of `Foo` and consider their types with
-            // both generic parameters. We are looking to find that
-            // exactly one (non-phantom) field has changed its
-            // type, which we will expect to be the pointer that
-            // is becoming fat (we could probably generalize this
-            // to multiple thin pointers of the same type becoming
-            // fat, but we don't). In this case:
-            //
-            // - `extra` has type `T` before and type `T` after
-            // - `ptr` has type `*mut U` before and type `*mut V` after
-            //
-            // Since just one field changed, we would then check
-            // that `*mut U: CoerceUnsized<*mut V>` is implemented
-            // (in other words, that we know how to do this
-            // conversion). This will work out because `U:
-            // Unsize<V>`, and we have a builtin rule that `*mut
-            // U` can be coerced to `*mut V` if `U: Unsize<V>`.
-            let fields = &def_a.non_enum_variant().fields;
-            let diff_fields = fields
+            // Parent { Child, u32, i32 }, Child { u64, u32 } => ParentRef { ChildRef, u32 }, ChildRef { u64 }
+
+            let a_data_fields = def_a
+                .non_enum_variant()
+                .fields
                 .iter_enumerated()
                 .filter_map(|(i, f)| {
-                    let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
-
                     // Ignore PhantomData fields
                     let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
                     if tcx
@@ -519,32 +483,32 @@ pub(crate) fn coerce_shared_info<'tcx>(
                         return None;
                     }
 
-                    // Ignore fields that aren't changed; it may
-                    // be that we could get away with subtyping or
-                    // something more accepting, but we use
-                    // equality because we want to be able to
-                    // perform this check without computing
-                    // variance or constraining opaque types' hidden types.
-                    // (This is because we may have to evaluate constraint
-                    // expressions in the course of execution.)
-                    // See e.g., #41936.
-                    if a == b {
+                    let a = f.ty(tcx, args_a);
+
+                    // Collect up all fields that were significantly changed.
+                    Some((i, a, tcx.def_span(f.did)))
+                })
+                .collect::<Vec<_>>();
+            let b_data_fields = def_b
+                .non_enum_variant()
+                .fields
+                .iter_enumerated()
+                .filter_map(|(i, f)| {
+                    let b = f.ty(tcx, args_b);
+
+                    if b.is_phantom_data() {
                         return None;
                     }
 
-                    // Collect up all fields that were significantly changed
-                    // i.e., those that contain T in coerce_unsized T -> U
-                    Some((i, a, b, tcx.def_span(f.did)))
+                    // Collect up all fields that were significantly changed.
+                    Some((i, b, tcx.def_span(f.did)))
                 })
                 .collect::<Vec<_>>();
 
-            if diff_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
-                    span,
-                    trait_name,
-                    note: true,
-                }));
-            } else if diff_fields.len() > 1 {
+            if a_data_fields.len() > 1
+                || b_data_fields.len() > 1
+                || a_data_fields.len() != b_data_fields.len()
+            {
                 let item = tcx.hir_expect_item(impl_did);
                 let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) =
                     &item.kind
@@ -554,54 +518,56 @@ pub(crate) fn coerce_shared_info<'tcx>(
                     tcx.def_span(impl_did)
                 };
 
+                let mut fields = a_data_fields.iter().map(|(_, _, s)| *s).collect::<Vec<_>>();
+                fields.extend(b_data_fields.iter().map(|(_, _, s)| *s));
                 return Err(tcx.dcx().emit_err(errors::CoerceMulti {
                     span,
                     trait_name,
-                    number: diff_fields.len(),
-                    fields: diff_fields.iter().map(|(_, _, _, s)| *s).collect::<Vec<_>>().into(),
+                    number: a_data_fields.len() + b_data_fields.len(),
+                    fields: fields.into(),
                 }));
             }
 
-            let (i, a, b, field_span) = diff_fields[0];
-            let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
-            (a, b, coerce_shared_trait, Some(kind), field_span)
+            let kind = ty::adjustment::CoerceSharedInfo {};
+            if a_data_fields.len() == 1 {
+                let (_a_i, a, span_a) = a_data_fields[0];
+                let (_b_i, b, span_b) = b_data_fields[0];
+
+                Some((a, b, coerce_shared_trait, kind, span_a, span_b))
+            } else {
+                None
+            }
         }
 
         _ => {
-            return Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
+            return Err(tcx.dcx().emit_err(errors::CoerceSharedNonStruct { span, trait_name }));
         }
     };
 
-    // Register an obligation for `A: Trait<B>`.
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let cause = traits::ObligationCause::misc(span, impl_did);
-    let obligation = Obligation::new(
-        tcx,
-        cause,
-        param_env,
-        ty::TraitRef::new(tcx, trait_def_id, [source, target]),
-    );
-    ocx.register_obligation(obligation);
-    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+    if let Some((source, target, trait_def_id, _kind, _source_field_span, _target_field_span)) =
+        data
+    {
+        // Register an obligation for `A: Trait<B>`.
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let cause = traits::ObligationCause::misc(span, impl_did);
+        let obligation = Obligation::new(
+            tcx,
+            cause,
+            param_env,
+            ty::TraitRef::new(tcx, trait_def_id, [source, target]),
+        );
+        ocx.register_obligation(obligation);
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-    if !errors.is_empty() {
-        if is_from_coerce_pointee_derive(tcx, span) {
-            return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
-                span,
-                trait_name,
-                ty: trait_ref.self_ty(),
-                field_span,
-                field_ty: source,
-            }));
-        } else {
+        if !errors.is_empty() {
             return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
         }
+
+        // Finally, resolve all regions.
+        ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
     }
 
-    // Finally, resolve all regions.
-    ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
-
-    Ok(CoerceSharedInfo { is_trivial: true, participating_lifetimes: 1  })
+    Ok(CoerceSharedInfo {})
 }
 
 pub(crate) fn coerce_unsized_info<'tcx>(
