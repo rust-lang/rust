@@ -246,12 +246,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
         alloc_extra.sync.insert(offset, Box::new(data));
         // Mark this as "initialized".
+        let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
+        assert!(init_offset + init_cookie.size() <= primitive.layout.size);
         let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
-        this.write_scalar_atomic(
-            Scalar::from_u32(LAZY_INIT_COOKIE),
-            &init_field,
-            AtomicWriteOrd::Relaxed,
-        )?;
+        this.write_scalar_atomic(init_cookie, &init_field, AtomicWriteOrd::Relaxed)?;
         interp_ok(this.get_alloc_extra(alloc)?.get_sync::<T>(offset).unwrap())
     }
 
@@ -278,6 +276,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
         // So we just try to replace MUTEX_INIT_COOKIE with itself.
         let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
+        assert!(init_offset + init_cookie.size() <= primitive.layout.size);
         let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
         let (_init, success) = this
             .atomic_compare_exchange_scalar(
