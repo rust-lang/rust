@@ -2,6 +2,8 @@
 
 use std::fmt::{self, Display, Formatter, FormattingOptions};
 
+use crate::html::render::Context;
+
 pub(crate) trait Joined: IntoIterator {
     /// Takes an iterator over elements that implement [`Display`], and format them into `f`, separated by `sep`.
     ///
@@ -127,5 +129,18 @@ impl WithOpts {
             let mut f = f.with_options(self.opts);
             t.fmt(&mut f)
         })
+    }
+}
+
+pub(crate) trait DisplayFn<C: ?Sized> {
+    fn display_fn(&self, clean_item: &C, cx: &Context<'_>) -> impl Display;
+}
+
+impl<F, C: ?Sized> DisplayFn<C> for F
+where
+    F: Fn(&mut Formatter<'_>, &C, &Context<'_>) -> fmt::Result,
+{
+    fn display_fn(&self, clean_item: &C, cx: &Context<'_>) -> impl Display {
+        fmt::from_fn(move |f| self(f, clean_item, cx))
     }
 }

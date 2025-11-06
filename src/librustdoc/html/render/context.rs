@@ -22,6 +22,7 @@ use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions, ShouldMerge};
+use crate::display::DisplayFn as _;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -249,7 +250,7 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !render_redirect_pages {
-            let content = print_item(self, it);
+            let content = print_item.display_fn(it, self);
             let page = layout::Page {
                 css_class: tyname_s,
                 root_path: &self.root_path(),

@@ -40,6 +40,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use super::{Context, RenderMode, collect_paths_for_type, ensure_trailing_slash};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
+use crate::display::DisplayFn as _;
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
@@ -602,11 +603,10 @@ impl TypeAliasPart {
                             )
                             .to_string();
                             // The alternate display prints it as plaintext instead of HTML.
-                            let trait_ = impl_
-                                .inner_impl()
-                                .trait_
-                                .as_ref()
-                                .map(|trait_| format!("{:#}", print_path(trait_, cx)));
+                            let trait_ =
+                                impl_.inner_impl().trait_.as_ref().map(|trait_| {
+                                    format!("{:#}", print_path.display_fn(trait_, cx))
+                                });
                             ret = Some(AliasSerializableImpl {
                                 text,
                                 trait_,

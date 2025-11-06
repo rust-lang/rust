@@ -11,6 +11,7 @@ use tracing::debug;
 
 use super::{Context, ItemSection, item_ty_to_section};
 use crate::clean;
+use crate::display::DisplayFn as _;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::format::{print_path, print_type};
@@ -559,8 +560,8 @@ fn sidebar_deref_methods<'a>(
                 };
                 let title = format!(
                     "Methods from {:#}<Target={:#}>",
-                    print_path(impl_.inner_impl().trait_.as_ref().unwrap(), cx),
-                    print_type(real_target, cx),
+                    print_path.display_fn(impl_.inner_impl().trait_.as_ref().unwrap(), cx),
+                    print_type.display_fn(real_target, cx),
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
@@ -691,7 +692,8 @@ fn sidebar_render_assoc_items(
                     ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                     ty::ImplPolarity::Negative => "!",
                 };
-                let generated = Link::new(encoded, format!("{prefix}{:#}", print_path(trait_, cx)));
+                let generated =
+                    Link::new(encoded, format!("{prefix}{:#}", print_path.display_fn(trait_, cx)));
                 if links.insert(generated.clone()) { Some(generated) } else { None }
             })
             .collect::<Vec<Link<'static>>>();
