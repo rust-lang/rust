@@ -23,7 +23,7 @@ use rustc_target::callconv::PassMode;
 use rustc_target::spec::Os;
 use tracing::debug;
 
-use crate::abi::FnAbiLlvmExt;
+use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::TgtOffloadEntry;
@@ -1276,12 +1276,14 @@ fn codegen_offload<'ll, 'tcx>(
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
     let llfn = bx.llfn();
 
+    let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
+
     // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
     let (memtransfer_type, region_id) = crate::builder::gpu_offload::gen_define_handling(
         cx,
-        llfn,
         offload_entry_ty,
         &metadata,
+        &types,
         &target_symbol,
     );
 
@@ -1293,6 +1295,7 @@ fn codegen_offload<'ll, 'tcx>(
         &[memtransfer_type],
         &[region_id],
         llfn,
+        &types,
         &metadata,
     );
 }

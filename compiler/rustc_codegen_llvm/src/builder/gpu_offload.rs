@@ -261,12 +261,11 @@ pub(crate) fn add_global<'ll>(
 // concatenated into the list of region_ids.
 pub(crate) fn gen_define_handling<'ll>(
     cx: &SimpleCx<'ll>,
-    llfn: &'ll llvm::Value,
     offload_entry_ty: &'ll llvm::Type,
     metadata: &Vec<OffloadMetadata>,
+    types: &Vec<&Type>,
     symbol: &str,
 ) -> (&'ll llvm::Value, &'ll llvm::Value) {
-    let types = cx.func_params_types(cx.get_type_of_global(llfn));
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
     let ptr_meta = types
@@ -371,6 +370,7 @@ pub(crate) fn gen_call_handling<'ll>(
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
     llfn: &'ll Value,
+    types: &Vec<&Type>,
     metadata: &Vec<OffloadMetadata>,
 ) {
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
@@ -386,7 +386,6 @@ pub(crate) fn gen_call_handling<'ll>(
 
     let mut builder = SBuilder::build(cx, bb);
 
-    let types = cx.func_params_types(cx.get_type_of_global(llfn));
     let num_args = types.len() as u64;
 
     // Step 0)
