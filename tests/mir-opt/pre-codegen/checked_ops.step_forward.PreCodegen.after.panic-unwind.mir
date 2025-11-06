@@ -72,7 +72,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     }
 
     bb6: {
-        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const core::num::<impl u16>::MAX, const 1_u16) -> [success: bb7, unwind continue];
+        assert(!const true, "attempt to compute `{} + {}`, which would overflow", const u16::MAX, const 1_u16) -> [success: bb7, unwind continue];
     }
 
     bb7: {
