@@ -831,18 +831,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
         *diag.long_ty_path() = file;
-        if !self.predicate_may_hold(&Obligation::new(
+        let obligation = Obligation::new(
             self.tcx,
             ObligationCause::dummy(),
             param_env,
             trait_ref,
-        )) {
+        );
+        if !self.predicate_may_hold(&obligation) {
             diag.downgrade_to_delayed_bug();
         }
-        for candidate in self.find_similar_impl_candidates(trait_ref) {
-            let CandidateSimilarity::Exact { .. } = candidate.similarity else { continue };
-            let impl_did = candidate.impl_def_id;
-            let trait_did = candidate.trait_ref.def_id;
+
+        if let Ok(Some(ImplSource::UserDefined(impl_data))) =
+            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+        {
+            let impl_did = impl_data.impl_def_id;
+            let trait_did = trait_ref.def_id();
             let impl_span = self.tcx.def_span(impl_did);
             let trait_name = self.tcx.item_name(trait_did);
 
