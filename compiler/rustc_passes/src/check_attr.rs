@@ -23,8 +23,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId, Item,
-    ItemKind, MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target,
+    self as hir, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, Constness, FnSig, ForeignItem, HirId,
+    Item, ItemKind, MethodKind, PartialConstStability, Safety, Stability, StabilityLevel, Target,
     TraitItem, find_attr,
 };
 use rustc_macros::LintDiagnostic;
@@ -54,6 +54,10 @@ use crate::{errors, fluent_generated as fluent};
 #[derive(LintDiagnostic)]
 #[diag(passes_diagnostic_diagnostic_on_unimplemented_only_for_traits)]
 struct DiagnosticOnUnimplementedOnlyForTraits;
+
+#[derive(LintDiagnostic)]
+#[diag(passes_diagnostic_diagnostic_on_const_only_for_trait_impls)]
+struct DiagnosticOnConstOnlyForTraitImpls;
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
@@ -293,6 +297,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
+                        [sym::diagnostic, sym::on_const, ..] => {
+                            self.check_diagnostic_on_const(attr.span(), hir_id, target, item)
+                        }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
                             attr,
@@ -514,6 +521,31 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 DiagnosticOnUnimplementedOnlyForTraits,
             );
         }
+    }
+
+    /// Checks if `#[diagnostic::on_const]` is applied to a trait impl
+    fn check_diagnostic_on_const(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) {
+        if matches!(target, Target::Impl { of_trait: true }) {
+            match item.unwrap() {
+                ItemLike::Item(it) => match it.expect_impl().constness {
+                    Constness::Const => {}
+                    Constness::NotConst => return,
+                },
+                ItemLike::ForeignItem => {}
+            }
+        }
+        self.tcx.emit_node_span_lint(
+            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+            hir_id,
+            attr_span,
+            DiagnosticOnConstOnlyForTraitImpls,
+        );
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.
