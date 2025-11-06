@@ -113,6 +113,11 @@ fn success<'tcx>(
     Ok(InferOk { value: (adj, target), obligations })
 }
 
+enum LeakCheck {
+    Yes,
+    Default,
+}
+
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn new(
         fcx: &'f FnCtxt<'f, 'tcx>,
@@ -123,9 +128,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Coerce { fcx, cause, allow_two_phase, use_lub: false, coerce_never }
     }
 
-    fn unify_raw(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    fn unify_raw(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        leak_check: LeakCheck,
+    ) -> InferResult<'tcx, Ty<'tcx>> {
         debug!("unify(a: {:?}, b: {:?}, use_lub: {})", a, b, self.use_lub);
-        self.commit_if_ok(|_| {
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
             let at = self.at(&self.cause, self.fcx.param_env);
 
             let res = if self.use_lub {
@@ -138,7 +150,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // In the new solver, lazy norm may allow us to shallowly equate
             // more types, but we emit possibly impossible-to-satisfy obligations.
             // Filter these cases out to make sure our coercion is more accurate.
-            match res {
+            let res = match res {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
@@ -149,13 +161,35 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     }
                 }
                 res => res,
+            };
+
+            // We leak check here mostly because lub operations are
+            // kind of scuffed around binders. Instead of computing an actual
+            // lub'd binder we instead:
+            // - Equate the binders
+            // - Return the lhs of the lub operation
+            //
+            // This may lead to incomplete type inference for the resulting type
+            // of a `match` or `if .. else`, etc. This is a backwards compat
+            // hazard for if/when we start handling `lub` more correctly.
+            //
+            // In order to actually ensure that equating the binders *does*
+            // result in equal binders, and that the lhs is actually a supertype
+            // of the rhs, we must perform a leak check here.
+            //
+            // FIXME: Type relations should handle leak checks
+            // themselves whenever a binder is entered.
+            if matches!(leak_check, LeakCheck::Yes) {
+                self.leak_check(outer_universe, Some(snapshot))?;
             }
+
+            res
         })
     }
 
     /// Unify two types (using sub or lub).
-    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        self.unify_raw(a, b)
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>, leak_check: LeakCheck) -> CoerceResult<'tcx> {
+        self.unify_raw(a, b, leak_check)
             .and_then(|InferOk { value: ty, obligations }| success(vec![], ty, obligations))
     }
 
@@ -166,8 +200,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         b: Ty<'tcx>,
         adjustments: impl IntoIterator<Item = Adjustment<'tcx>>,
         final_adjustment: Adjust,
+        leak_check: LeakCheck,
     ) -> CoerceResult<'tcx> {
-        self.unify_raw(a, b).and_then(|InferOk { value: ty, obligations }| {
+        self.unify_raw(a, b, leak_check).and_then(|InferOk { value: ty, obligations }| {
             success(
                 adjustments
                     .into_iter()
@@ -196,7 +231,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 );
             } else {
                 // Otherwise the only coercion we can do is unification.
-                return self.unify(a, b);
+                return self.unify(a, b, LeakCheck::Default);
             }
         }
 
@@ -266,7 +301,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => {
                 // Otherwise, just use unification rules.
-                self.unify(a, b)
+                self.unify(a, b, LeakCheck::Default)
             }
         }
     }
@@ -305,7 +340,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         } else {
             // One unresolved type variable: just apply subtyping, we may be able
             // to do something useful.
-            self.unify(a, b)
+            self.unify(a, b, LeakCheck::Default)
         }
     }
 
@@ -332,7 +367,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 coerce_mutbls(mutbl, mutbl_b)?;
                 (r_a, ty::TypeAndMut { ty, mutbl })
             }
-            _ => return self.unify(a, b),
+            _ => return self.unify(a, b, LeakCheck::Default),
         };
 
         // Look at each step in the `Deref` chain and check if
@@ -383,7 +418,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // the `Target` type with the pointee of `b`. This is necessary
             // to properly account for the differing variances of the pointees
             // of `&` vs `&mut` references.
-            match self.unify_raw(autorefd_deref_ty, b) {
+            match self.unify_raw(autorefd_deref_ty, b, LeakCheck::Default) {
                 Ok(ok) => Some(ok),
                 Err(err) => {
                     if first_error.is_none() {
@@ -580,6 +615,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             target,
             reborrow.into_iter().flat_map(|(deref, autoref)| [deref, autoref]),
             Adjust::Pointer(PointerCoercion::Unsize),
+            LeakCheck::Default,
         )?;
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
@@ -794,7 +830,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
-        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b))
+        self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b), LeakCheck::Default)
     }
 
     fn coerce_from_safe_fn(
@@ -805,39 +841,26 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     ) -> CoerceResult<'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
-        self.commit_if_ok(|snapshot| {
-            let outer_universe = self.infcx.universe();
-
-            let result = if let ty::FnPtr(_, hdr_b) = b.kind()
-                && fn_ty_a.safety().is_safe()
-                && hdr_b.safety.is_unsafe()
-            {
-                let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
-                self.unify_and(
-                    unsafe_a,
-                    b,
-                    adjustment
-                        .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
-                    Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
-                )
-            } else {
-                let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
-                match adjustment {
-                    Some(adjust) => self.unify_and(a, b, [], adjust),
-                    None => self.unify(a, b),
-                }
-            };
-
-            // FIXME(#73154): This is a hack. Currently LUB can generate
-            // unsolvable constraints. Additionally, it returns `a`
-            // unconditionally, even when the "LUB" is `b`. In the future, we
-            // want the coerced type to be the actual supertype of these two,
-            // but for now, we want to just error to ensure we don't lock
-            // ourselves into a specific behavior with NLL.
-            self.leak_check(outer_universe, Some(snapshot))?;
-
-            result
-        })
+        if let ty::FnPtr(_, hdr_b) = b.kind()
+            && fn_ty_a.safety().is_safe()
+            && hdr_b.safety.is_unsafe()
+        {
+            let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
+            self.unify_and(
+                unsafe_a,
+                b,
+                adjustment
+                    .map(|kind| Adjustment { kind, target: Ty::new_fn_ptr(self.tcx, fn_ty_a) }),
+                Adjust::Pointer(PointerCoercion::UnsafeFnPointer),
+                LeakCheck::Yes,
+            )
+        } else {
+            let a = Ty::new_fn_ptr(self.tcx, fn_ty_a);
+            match adjustment {
+                Some(adjust) => self.unify_and(a, b, [], adjust, LeakCheck::Yes),
+                None => self.unify(a, b, LeakCheck::Yes),
+            }
+        }
     }
 
     fn coerce_from_fn_pointer(
@@ -901,7 +924,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 obligations.extend(o2);
                 Ok(InferOk { value, obligations })
             }
-            _ => self.unify(a, b),
+            _ => self.unify(a, b, LeakCheck::Default),
         }
     }
 
@@ -946,9 +969,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     b,
                     [],
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety)),
+                    LeakCheck::Default,
                 )
             }
-            _ => self.unify(a, b),
+            _ => self.unify(a, b, LeakCheck::Default),
         }
     }
 
@@ -965,7 +989,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::RawPtr(ty, mutbl) => (false, ty::TypeAndMut { ty, mutbl }),
-            _ => return self.unify(a, b),
+            _ => return self.unify(a, b, LeakCheck::Default),
         };
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
@@ -980,11 +1004,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 b,
                 [Adjustment { kind: Adjust::Deref(None), target: mt_a.ty }],
                 Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)),
+                LeakCheck::Default,
             )
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_raw, b, [], Adjust::Pointer(PointerCoercion::MutToConstPointer))
+            self.unify_and(
+                a_raw,
+                b,
+                [],
+                Adjust::Pointer(PointerCoercion::MutToConstPointer),
+                LeakCheck::Default,
+            )
         } else {
-            self.unify(a_raw, b)
+            self.unify(a_raw, b, LeakCheck::Default)
         }
     }
 }
@@ -1083,7 +1114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We don't ever need two-phase here since we throw out the result of the coercion.
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No, true);
         coerce.autoderef(DUMMY_SP, expr_ty).find_map(|(ty, steps)| {
-            self.probe(|_| coerce.unify_raw(ty, target)).ok().map(|_| steps)
+            self.probe(|_| coerce.unify_raw(ty, target, LeakCheck::Default)).ok().map(|_| steps)
         })
     }
 
