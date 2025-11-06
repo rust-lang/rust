@@ -11,6 +11,7 @@
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(if_let_guard)]
 #![feature(iter_advance_by)]
 #![feature(iter_intersperse)]

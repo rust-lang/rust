@@ -2,7 +2,7 @@ pub(crate) mod encode;
 mod serde;
 
 use std::collections::BTreeSet;
-use std::collections::hash_map::Entry;
+use std::hash::{Hash, Hasher};
 use std::io;
 use std::path::Path;
 use std::string::FromUtf8Error;
@@ -10,9 +10,12 @@ use std::string::FromUtf8Error;
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
 use ::serde::{Deserialize, Serialize};
+use hashbrown::hash_map::EntryRef;
+use hashbrown::{Equivalent, HashMap};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hash::FxBuildHasher;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
@@ -29,6 +32,46 @@ use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CratePath(ItemType, Vec<Symbol>);
+
+impl Hash for CratePath {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        CratePathRef(self.0, &[&self.1[..]]).hash(state);
+    }
+}
+
+/// This struct allows doing lookups on a map where the keys are [`CratePath`]s, without having to allocate a vector.
+struct CratePathRef<'sym>(ItemType, &'sym [&'sym [Symbol]]);
+
+impl<'sym> CratePathRef<'sym> {
+    fn symbols(&self) -> impl Iterator<Item = &Symbol> {
+        self.1.iter().copied().flatten()
+    }
+}
+
+impl<'a, 'sym> From<&'a CratePathRef<'sym>> for CratePath {
+    fn from(value: &'a CratePathRef<'sym>) -> Self {
+        Self(value.0, value.symbols().copied().collect())
+    }
+}
+
+impl<'sym> Equivalent<CratePath> for CratePathRef<'sym> {
+    fn equivalent(&self, key: &CratePath) -> bool {
+        self.0 == key.0 && self.symbols().eq(&key.1)
+    }
+}
+
+impl<'sym> Hash for CratePathRef<'sym> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+        state.write_length_prefix(self.symbols().count());
+        for sym in self.symbols() {
+            sym.hash(state);
+        }
+    }
+}
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub(crate) struct SerializedSearchIndex {
@@ -55,7 +98,7 @@ pub(crate) struct SerializedSearchIndex {
     generic_inverted_index: Vec<Vec<Vec<u32>>>,
     // generated in-memory backref cache
     #[serde(skip)]
-    crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize>,
+    crate_paths_index: HashMap<CratePath, usize, FxBuildHasher>,
 }
 
 impl SerializedSearchIndex {
@@ -185,7 +228,7 @@ impl SerializedSearchIndex {
         // generic_inverted_index is not the same length as other columns,
         // because it's actually a completely different set of objects
 
-        let mut crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize> = FxHashMap::default();
+        let mut crate_paths_index = HashMap::default();
         for (i, (name, path_data)) in names.iter().zip(path_data.iter()).enumerate() {
             if let Some(path_data) = path_data {
                 let full_path = if path_data.module_path.is_empty() {
@@ -195,7 +238,7 @@ impl SerializedSearchIndex {
                     full_path.push(Symbol::intern(name));
                     full_path
                 };
-                crate_paths_index.insert((path_data.ty, full_path), i);
+                crate_paths_index.insert(CratePath(path_data.ty, full_path), i);
             }
         }
 
@@ -225,15 +268,10 @@ impl SerializedSearchIndex {
         assert_eq!(self.names.len(), self.path_data.len());
         if let Some(path_data) = &path_data
             && let name = Symbol::intern(&name)
-            && let fqp = if path_data.module_path.is_empty() {
-                vec![name]
-            } else {
-                let mut v = path_data.module_path.clone();
-                v.push(name);
-                v
-            }
-            && let Some(&other_path) = self.crate_paths_index.get(&(path_data.ty, fqp))
-            && self.path_data.get(other_path).map_or(false, Option::is_some)
+            && let Some(&other_path) = self
+                .crate_paths_index
+                .get(&CratePathRef(path_data.ty, &[&path_data.module_path, &[name]]))
+            && let Some(Some(_)) = self.path_data.get(other_path)
         {
             self.path_data.push(None);
         } else {
@@ -255,20 +293,20 @@ impl SerializedSearchIndex {
     ///
     /// The returned ID can be used to attach more data to the search result.
     fn add_entry(&mut self, name: Symbol, entry_data: EntryData, desc: String) -> usize {
-        let fqp = if let Some(module_path_index) = entry_data.module_path {
-            let mut fqp = self.path_data[module_path_index].as_ref().unwrap().module_path.clone();
-            fqp.push(Symbol::intern(&self.names[module_path_index]));
-            fqp.push(name);
-            fqp
+        let fqp: [&[Symbol]; _] = if let Some(module_path_index) = entry_data.module_path {
+            [
+                &self.path_data[module_path_index].as_ref().unwrap().module_path,
+                &[Symbol::intern(&self.names[module_path_index]), name],
+            ]
         } else {
-            vec![name]
+            [&[name], &[]]
         };
         // If a path with the same name already exists, but no entry does,
         // we can fill in the entry without having to allocate a new row ID.
         //
         // Because paths and entries both share the same index, using the same
         // ID saves space by making the tree smaller.
-        if let Some(&other_path) = self.crate_paths_index.get(&(entry_data.ty, fqp))
+        if let Some(&other_path) = self.crate_paths_index.get(&CratePathRef(entry_data.ty, &fqp))
             && self.entry_data[other_path].is_none()
             && self.descs[other_path].is_empty()
         {
@@ -291,9 +329,9 @@ impl SerializedSearchIndex {
 
     fn get_id_by_module_path(&mut self, path: &[Symbol]) -> usize {
         let ty = if path.len() == 1 { ItemType::ExternCrate } else { ItemType::Module };
-        match self.crate_paths_index.entry((ty, path.to_vec())) {
-            Entry::Occupied(index) => *index.get(),
-            Entry::Vacant(slot) => {
+        match self.crate_paths_index.entry_ref(&CratePathRef(ty, &[path])) {
+            EntryRef::Occupied(index) => *index.get(),
+            EntryRef::Vacant(slot) => {
                 slot.insert(self.path_data.len());
                 let (name, module_path) = path.split_last().unwrap();
                 self.push_path(
@@ -310,16 +348,18 @@ impl SerializedSearchIndex {
         let mut skips = FxHashSet::default();
         for (other_pathid, other_path_data) in other.path_data.iter().enumerate() {
             if let Some(other_path_data) = other_path_data {
-                let mut fqp = other_path_data.module_path.clone();
                 let name = Symbol::intern(&other.names[other_pathid]);
-                fqp.push(name);
+                let fqp = [&other_path_data.module_path[..], &[name]];
                 let self_pathid = other_entryid_offset + other_pathid;
-                let self_pathid = match self.crate_paths_index.entry((other_path_data.ty, fqp)) {
-                    Entry::Vacant(slot) => {
+                let self_pathid = match self
+                    .crate_paths_index
+                    .entry_ref(&CratePathRef(other_path_data.ty, &fqp))
+                {
+                    EntryRef::Vacant(slot) => {
                         slot.insert(self_pathid);
                         self_pathid
                     }
-                    Entry::Occupied(existing_entryid) => {
+                    EntryRef::Occupied(existing_entryid) => {
                         skips.insert(other_pathid);
                         let self_pathid = *existing_entryid.get();
                         let new_type_data = match (
@@ -1301,9 +1341,9 @@ pub(crate) fn build_index(
     let crate_doc =
         short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
     let crate_idx = {
-        let crate_path = (ItemType::ExternCrate, vec![crate_name]);
-        match serialized_index.crate_paths_index.entry(crate_path) {
-            Entry::Occupied(index) => {
+        let crate_path = CratePathRef(ItemType::ExternCrate, &[&[crate_name]]);
+        match serialized_index.crate_paths_index.entry_ref(&crate_path) {
+            EntryRef::Occupied(index) => {
                 let index = *index.get();
                 serialized_index.descs[index] = crate_doc;
                 for type_data in serialized_index.type_data.iter_mut() {
@@ -1352,7 +1392,7 @@ pub(crate) fn build_index(
                 }
                 index
             }
-            Entry::Vacant(slot) => {
+            EntryRef::Vacant(slot) => {
                 let krate = serialized_index.names.len();
                 slot.insert(krate);
                 serialized_index.push(
@@ -1393,9 +1433,12 @@ pub(crate) fn build_index(
                     .or_else(|| check_external.then(|| cache.external_paths.get(&defid)).flatten())
                     .map(|&(ref fqp, ty)| {
                         let pathid = serialized_index.names.len();
-                        match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
-                            Entry::Occupied(entry) => *entry.get(),
-                            Entry::Vacant(entry) => {
+                        match serialized_index
+                            .crate_paths_index
+                            .entry_ref(&CratePathRef(ty, &[&&fqp[..]]))
+                        {
+                            EntryRef::Occupied(entry) => *entry.get(),
+                            EntryRef::Vacant(entry) => {
                                 entry.insert(pathid);
                                 let (name, path) = fqp.split_last().unwrap();
                                 serialized_index.push_path(
@@ -1542,46 +1585,47 @@ pub(crate) fn build_index(
             used_in_function_signature: &mut BTreeSet<isize>,
         ) -> RenderTypeId {
             let pathid = serialized_index.names.len();
-            let pathid = match serialized_index.crate_paths_index.entry((ty, path.to_vec())) {
-                Entry::Occupied(entry) => {
-                    let id = *entry.get();
-                    if serialized_index.type_data[id].as_mut().is_none() {
-                        serialized_index.type_data[id] = Some(TypeData {
-                            search_unbox,
-                            inverted_function_inputs_index: Vec::new(),
-                            inverted_function_output_index: Vec::new(),
-                        });
-                    } else if search_unbox {
-                        serialized_index.type_data[id].as_mut().unwrap().search_unbox = true;
+            let pathid =
+                match serialized_index.crate_paths_index.entry_ref(&CratePathRef(ty, &[path])) {
+                    EntryRef::Occupied(entry) => {
+                        let id = *entry.get();
+                        if serialized_index.type_data[id].as_mut().is_none() {
+                            serialized_index.type_data[id] = Some(TypeData {
+                                search_unbox,
+                                inverted_function_inputs_index: Vec::new(),
+                                inverted_function_output_index: Vec::new(),
+                            });
+                        } else if search_unbox {
+                            serialized_index.type_data[id].as_mut().unwrap().search_unbox = true;
+                        }
+                        id
                     }
-                    id
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(pathid);
-                    let (name, path) = path.split_last().unwrap();
-                    serialized_index.push_type(
-                        name.to_string(),
-                        PathData {
-                            ty,
-                            module_path: path.to_vec(),
-                            exact_module_path: if let Some(exact_path) = exact_path
-                                && let Some((name2, exact_path)) = exact_path.split_last()
-                                && name == name2
-                            {
-                                Some(exact_path.to_vec())
-                            } else {
-                                None
+                    EntryRef::Vacant(entry) => {
+                        entry.insert(pathid);
+                        let (name, path) = path.split_last().unwrap();
+                        serialized_index.push_type(
+                            name.to_string(),
+                            PathData {
+                                ty,
+                                module_path: path.to_vec(),
+                                exact_module_path: if let Some(exact_path) = exact_path
+                                    && let Some((name2, exact_path)) = exact_path.split_last()
+                                    && name == name2
+                                {
+                                    Some(exact_path.to_vec())
+                                } else {
+                                    None
+                                },
                             },
-                        },
-                        TypeData {
-                            inverted_function_inputs_index: Vec::new(),
-                            inverted_function_output_index: Vec::new(),
-                            search_unbox,
-                        },
-                    );
-                    pathid
-                }
-            };
+                            TypeData {
+                                inverted_function_inputs_index: Vec::new(),
+                                inverted_function_output_index: Vec::new(),
+                                search_unbox,
+                            },
+                        );
+                        pathid
+                    }
+                };
             used_in_function_signature.insert(isize::try_from(pathid).unwrap());
             RenderTypeId::Index(isize::try_from(pathid).unwrap())
         }
