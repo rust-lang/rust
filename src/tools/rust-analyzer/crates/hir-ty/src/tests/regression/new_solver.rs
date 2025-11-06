@@ -605,5 +605,91 @@ impl SimpleModel for ExampleData {
     }
 }
 "#,
+    )
+}
+
+#[test]
+fn regression_20975() {
+    check_infer(
+        r#"
+//- minicore: future, iterators, range
+use core::future::Future;
+
+struct Foo<T>(T);
+
+trait X {}
+
+impl X for i32 {}
+impl X for i64 {}
+
+impl<T: X> Iterator for Foo<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_spec()
+    }
+}
+
+trait Bar {
+    type Item;
+
+    fn next_spec(&mut self) -> Option<Self::Item>;
+}
+
+impl<T: X> Bar for Foo<T> {
+    type Item = T;
+
+    fn next_spec(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+struct JoinAll<F>
+where
+    F: Future,
+{
+    f: F,
+}
+
+fn join_all<I>(iter: I) -> JoinAll<<I as IntoIterator>::Item>
+where
+    I: IntoIterator,
+    <I as IntoIterator>::Item: Future,
+{
+    loop {}
+}
+
+fn main() {
+    let x = Foo(42).filter_map(|_| Some(async {}));
+    join_all(x);
+}
+"#,
+        expect![[r#"
+            164..168 'self': &'? mut Foo<T>
+            192..224 '{     ...     }': Option<T>
+            202..206 'self': &'? mut Foo<T>
+            202..218 'self.n...spec()': Option<T>
+            278..282 'self': &'? mut Self
+            380..384 'self': &'? mut Foo<T>
+            408..428 '{     ...     }': Option<T>
+            418..422 'None': Option<T>
+            501..505 'iter': I
+            614..629 '{     loop {} }': JoinAll<impl Future>
+            620..627 'loop {}': !
+            625..627 '{}': ()
+            641..713 '{     ...(x); }': ()
+            651..652 'x': FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>
+            655..658 'Foo': fn Foo<i32>(i32) -> Foo<i32>
+            655..662 'Foo(42)': Foo<i32>
+            655..693 'Foo(42...c {}))': FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>
+            659..661 '42': i32
+            674..692 '|_| So...nc {})': impl FnMut(i32) -> Option<impl Future<Output = ()>>
+            675..676 '_': i32
+            678..682 'Some': fn Some<impl Future<Output = ()>>(impl Future<Output = ()>) -> Option<impl Future<Output = ()>>
+            678..692 'Some(async {})': Option<impl Future<Output = ()>>
+            683..691 'async {}': impl Future<Output = ()>
+            699..707 'join_all': fn join_all<FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>>(FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>) -> JoinAll<<FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>> as IntoIterator>::Item>
+            699..710 'join_all(x)': JoinAll<impl Future<Output = ()>>
+            708..709 'x': FilterMap<Foo<i32>, impl FnMut(i32) -> Option<impl Future<Output = ()>>>
+        "#]],
     );
 }
