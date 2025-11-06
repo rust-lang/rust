@@ -43,5 +43,5 @@ fn main() {
         .extern_("minibevy", "libminibevy-b.rmeta")
         .extern_("minirapier", "libminirapier.rmeta")
         .run_fail()
-        .assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug");
+        .assert_not_ice();
 }
