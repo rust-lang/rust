@@ -227,6 +227,10 @@ pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> 
     tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
+/// Get the path to an item in a URL sense: we use it to generate the URL to the actual item.
+///
+/// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
+/// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.
 pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> Vec<Symbol> {
     let crate_name = tcx.crate_name(def_id.krate);
     let relative = item_relative_path(tcx, def_id);

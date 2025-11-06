@@ -410,6 +410,8 @@ fn generate_macro_def_id_path(
     Ok((url, item_type, fqp))
 }
 
+/// If the function succeeded, it will return the full URL to the item, its type and a `Vec`
+/// representing its `use` path.
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
