@@ -5,6 +5,7 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
 use rustc_macros::LintDiagnostic;
@@ -103,7 +104,27 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
             return OnUnimplementedNote::default();
         }
+        let (condition_options, format_args) =
+            self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
+        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, trait_pred.def_id())
+        {
+            command.evaluate(
+                self.tcx,
+                trait_pred.skip_binder().trait_ref,
+                &condition_options,
+                &format_args,
+            )
+        } else {
+            OnUnimplementedNote::default()
+        }
+    }
 
+    pub(crate) fn on_unimplemented_components(
+        &self,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+        long_ty_path: &mut Option<PathBuf>,
+    ) -> (ConditionOptions, FormatArgs<'tcx>) {
         let (def_id, args) = self
             .impl_similar_to(trait_pred, obligation)
             .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
@@ -293,12 +314,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             .collect();
 
         let format_args = FormatArgs { this, trait_sugared, generic_args, item_context };
-
-        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_pred.trait_ref, &condition_options, &format_args)
-        } else {
-            OnUnimplementedNote::default()
-        }
+        (condition_options, format_args)
     }
 }
 
@@ -325,7 +341,7 @@ pub struct OnUnimplementedDirective {
 }
 
 /// For the `#[rustc_on_unimplemented]` attribute
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
@@ -562,17 +578,21 @@ impl<'tcx> OnUnimplementedDirective {
     }
 
     pub fn of_item(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<Option<Self>, ErrorGuaranteed> {
-        if !tcx.is_trait(item_def_id) {
+        let attr = if tcx.is_trait(item_def_id) {
+            sym::on_unimplemented
+        } else if let DefKind::Impl { of_trait: true } = tcx.def_kind(item_def_id) {
+            sym::on_const
+        } else {
             // It could be a trait_alias (`trait MyTrait = SomeOtherTrait`)
             // or an implementation (`impl MyTrait for Foo {}`)
             //
             // We don't support those.
             return Ok(None);
-        }
+        };
         if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
             return Self::parse_attribute(attr, false, tcx, item_def_id);
         } else {
-            tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, sym::on_unimplemented])
+            tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, attr])
                 .filter_map(|attr| Self::parse_attribute(attr, true, tcx, item_def_id).transpose())
                 .try_fold(None, |aggr: Option<Self>, directive| {
                     let directive = directive?;

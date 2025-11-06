@@ -2000,6 +2000,10 @@ impl<T, const N: usize> *mut [T; N] {
 
 /// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> PartialEq for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
@@ -2010,10 +2014,18 @@ impl<T: PointeeSized> PartialEq for *mut T {
 
 /// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> Eq for *mut T {}
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> Ord for *mut T {
     #[inline]
     #[allow(ambiguous_wide_pointer_comparisons)]
@@ -2030,6 +2042,10 @@ impl<T: PointeeSized> Ord for *mut T {
 
 /// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<T: PointeeSized> PartialOrd for *mut T {
     #[inline(always)]
     #[allow(ambiguous_wide_pointer_comparisons)]
