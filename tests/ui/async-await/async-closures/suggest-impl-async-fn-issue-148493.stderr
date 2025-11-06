@@ -1,0 +1,87 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:7:15
+   |
+LL | fn test1() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test1() -> _ {
+LL + fn test1() -> impl AsyncFn() {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:14:15
+   |
+LL | fn test2() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test2() -> _ {
+LL + fn test2() -> impl AsyncFn(i32) -> i32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:21:15
+   |
+LL | fn test3() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test3() -> _ {
+LL + fn test3() -> impl AsyncFn(i32, i32) -> i32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:28:15
+   |
+LL | fn test4() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test4() -> _ {
+LL + fn test4() -> impl AsyncFn() {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:35:15
+   |
+LL | fn test5() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test5() -> _ {
+LL + fn test5() -> impl AsyncFn() -> i32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:43:15
+   |
+LL | fn test6() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test6() -> _ {
+LL + fn test6() -> impl AsyncFnMut() -> i32 {
+   |
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/suggest-impl-async-fn-issue-148493.rs:54:15
+   |
+LL | fn test7() -> _ {
+   |               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn test7() -> _ {
+LL + fn test7() -> impl AsyncFnOnce() {
+   |
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0121`.
