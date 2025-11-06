@@ -478,6 +478,11 @@ impl<'tcx> Const<'tcx> {
     /// Return true if any evaluation of this constant always returns the same value,
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
+        // Primitive types cannot contain provenance and always have the same value.
+        if self.ty().is_primitive() {
+            return true;
+        }
+
         // Some constants may generate fresh allocations for pointers they contain,
         // so using the same constant twice can yield two different results.
         // Notably, valtrees purposefully generate new allocations.
@@ -487,24 +492,19 @@ impl<'tcx> Const<'tcx> {
                 // A valtree may be a reference. Valtree references correspond to a
                 // different allocation each time they are evaluated. Valtrees for primitive
                 // types are fine though.
-                ty::ConstKind::Value(cv) => cv.ty.is_primitive(),
-                ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
+                ty::ConstKind::Value(..)
+                | ty::ConstKind::Expr(..)
+                | ty::ConstKind::Unevaluated(..)
                 // This can happen if evaluation of a constant failed. The result does not matter
                 // much since compilation is doomed.
-                ty::ConstKind::Error(..) => false,
+                | ty::ConstKind::Error(..) => false,
                 // Should not appear in runtime MIR.
                 ty::ConstKind::Infer(..)
                 | ty::ConstKind::Bound(..)
                 | ty::ConstKind::Placeholder(..) => bug!(),
             },
             Const::Unevaluated(..) => false,
-            Const::Val(
-                ConstValue::Slice { .. }
-                | ConstValue::ZeroSized
-                | ConstValue::Scalar(_)
-                | ConstValue::Indirect { .. },
-                _,
-            ) => true,
+            Const::Val(..) => true,
         }
     }
 }
