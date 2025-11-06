@@ -54,6 +54,20 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNMUSTUSE_IN_ALWAYS_OK,
+    Warn,
+    "",
+    report_in_external_macro
+}
+
+declare_lint! {
+    pub MUSTUSE_IN_ALWAYS_OK,
+    Warn,
+    "",
+    report_in_external_macro
+}
+
+declare_lint! {
     /// The `unused_results` lint checks for the unused result of an
     /// expression in a statement.
     ///
@@ -92,7 +106,7 @@ declare_lint! {
     "unused result of an expression in a statement"
 }
 
-declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
+declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS, UNMUSTUSE_IN_ALWAYS_OK, MUSTUSE_IN_ALWAYS_OK]);
 
 impl<'tcx> LateLintPass<'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_>, s: &hir::Stmt<'_>) {
@@ -136,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         let ty = cx.typeck_results().expr_ty(expr);
 
-        let must_use_result = is_ty_must_use(cx, ty, expr, expr.span);
+        let must_use_result = is_ty_must_use(cx, ty, expr, expr.span, false);
         let type_lint_emitted_or_suppressed = match must_use_result {
             Some(path) => {
                 emit_must_use_untranslated(cx, &path, "", "", 1, false, expr_is_from_block);
@@ -209,6 +223,12 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             cx.emit_span_lint(UNUSED_RESULTS, s.span, UnusedResult { ty });
         }
     }
+
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+        let ty = cx.typeck_results().expr_ty(expr);
+
+        _ = is_ty_must_use(cx, ty, expr, expr.span, true);
+    }
 }
 
 fn check_fn_must_use(cx: &LateContext<'_>, expr: &hir::Expr<'_>, expr_is_from_block: bool) -> bool {
@@ -259,12 +279,33 @@ enum MustUsePath {
     Coroutine(Span),
 }
 
+fn is_suppressed(p: &MustUsePath) -> bool {
+    match p {
+        MustUsePath::Suppressed => true,
+
+        MustUsePath::Def(..) | MustUsePath::Closure(..) | MustUsePath::Coroutine(..) => false,
+
+        MustUsePath::Boxed(must_use_path)
+        | MustUsePath::Pinned(must_use_path)
+        | MustUsePath::Opaque(must_use_path)
+        | MustUsePath::Array(must_use_path, _)
+        | MustUsePath::TraitObject(must_use_path)
+        | MustUsePath::Result(must_use_path)
+        | MustUsePath::ControlFlow(must_use_path) => is_suppressed(must_use_path),
+
+        MustUsePath::TupleElement(items) => {
+            items.iter().all(|(_, must_use_path)| is_suppressed(must_use_path))
+        }
+    }
+}
+
 #[instrument(skip(cx, expr), level = "debug", ret)]
 fn is_ty_must_use<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
     expr: &hir::Expr<'_>,
     span: Span,
+    tmp_lint: bool,
 ) -> Option<MustUsePath> {
     if ty.is_unit() {
         return Some(MustUsePath::Suppressed);
@@ -276,11 +317,12 @@ fn is_ty_must_use<'tcx>(
     match *ty.kind() {
         _ if is_uninhabited(ty) => Some(MustUsePath::Suppressed),
         ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
-            is_ty_must_use(cx, boxed, expr, span).map(|inner| MustUsePath::Boxed(Box::new(inner)))
+            is_ty_must_use(cx, boxed, expr, span, tmp_lint)
+                .map(|inner| MustUsePath::Boxed(Box::new(inner)))
         }
         ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Pin) => {
             let pinned_ty = args.type_at(0);
-            is_ty_must_use(cx, pinned_ty, expr, span)
+            is_ty_must_use(cx, pinned_ty, expr, span, tmp_lint)
                 .map(|inner| MustUsePath::Pinned(Box::new(inner)))
         }
         // Consider `Result<T, Uninhabited>` (e.g. `Result<(), !>`) equivalent to `T`.
@@ -289,7 +331,30 @@ fn is_ty_must_use<'tcx>(
                 && is_uninhabited(args.type_at(1)) =>
         {
             let ok_ty = args.type_at(0);
-            is_ty_must_use(cx, ok_ty, expr, span).map(Box::new).map(MustUsePath::Result)
+            let res = is_ty_must_use(cx, ok_ty, expr, span, tmp_lint)
+                .map(Box::new)
+                .map(MustUsePath::Result);
+
+            if tmp_lint
+                && !matches!(ok_ty.kind(), ty::Param(_))
+                && !ok_ty.is_unit()
+                && res.as_ref().is_none_or(is_suppressed)
+            {
+                cx.span_lint(UNMUSTUSE_IN_ALWAYS_OK, span, |d| {
+                    d.primary_message(format!("this type will no longer be must used: {ty}"));
+                });
+            }
+
+            if tmp_lint
+                && !matches!(ok_ty.kind(), ty::Param(_))
+                && res.as_ref().is_some_and(|x| !is_suppressed(x))
+            {
+                cx.span_lint(MUSTUSE_IN_ALWAYS_OK, span, |d| {
+                    d.primary_message(format!("this type continue be must used: {ty}"));
+                });
+            }
+
+            res
         }
         // Consider `ControlFlow<Uninhabited, T>` (e.g. `ControlFlow<!, ()>`) equivalent to `T`.
         ty::Adt(def, args)
@@ -297,7 +362,30 @@ fn is_ty_must_use<'tcx>(
                 && is_uninhabited(args.type_at(0)) =>
         {
             let continue_ty = args.type_at(1);
-            is_ty_must_use(cx, continue_ty, expr, span).map(Box::new).map(MustUsePath::ControlFlow)
+            let res = is_ty_must_use(cx, continue_ty, expr, span, tmp_lint)
+                .map(Box::new)
+                .map(MustUsePath::ControlFlow);
+
+            if tmp_lint
+                && !matches!(continue_ty.kind(), ty::Param(_))
+                && !continue_ty.is_unit()
+                && res.as_ref().is_none_or(is_suppressed)
+            {
+                cx.span_lint(UNMUSTUSE_IN_ALWAYS_OK, span, |d| {
+                    d.primary_message(format!("this type will no longer be must used: {ty}"));
+                });
+            }
+
+            if tmp_lint
+                && !matches!(continue_ty.kind(), ty::Param(_))
+                && res.as_ref().is_some_and(|x| !is_suppressed(x))
+            {
+                cx.span_lint(MUSTUSE_IN_ALWAYS_OK, span, |d| {
+                    d.primary_message(format!("this type continue be must used: {ty}"));
+                });
+            }
+
+            res
         }
         ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
         ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
@@ -343,7 +431,7 @@ fn is_ty_must_use<'tcx>(
                 .zip(elem_exprs)
                 .enumerate()
                 .filter_map(|(i, (ty, expr))| {
-                    is_ty_must_use(cx, ty, expr, expr.span).map(|path| (i, path))
+                    is_ty_must_use(cx, ty, expr, expr.span, tmp_lint).map(|path| (i, path))
                 })
                 .collect::<Vec<_>>();
 
@@ -357,7 +445,7 @@ fn is_ty_must_use<'tcx>(
             // If the array is empty we don't lint, to avoid false positives
             Some(0) | None => None,
             // If the array is definitely non-empty, we can do `#[must_use]` checking.
-            Some(len) => is_ty_must_use(cx, ty, expr, span)
+            Some(len) => is_ty_must_use(cx, ty, expr, span, tmp_lint)
                 .map(|inner| MustUsePath::Array(Box::new(inner), len)),
         },
         ty::Closure(..) | ty::CoroutineClosure(..) => Some(MustUsePath::Closure(span)),
