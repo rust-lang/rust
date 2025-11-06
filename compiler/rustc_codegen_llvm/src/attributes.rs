@@ -101,7 +101,7 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     no_sanitize: SanitizerSet,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
+    let enabled = tcx.sess.sanitizers() - no_sanitize;
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -240,13 +240,7 @@ fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<&
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
-    if tcx
-        .sess
-        .opts
-        .unstable_opts
-        .sanitizer
-        .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
-    {
+    if tcx.sess.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD) {
         return None;
     }
 
