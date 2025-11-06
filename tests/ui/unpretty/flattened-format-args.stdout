@@ -14,9 +14,10 @@ fn main() {
                 super let args = (&x,);
                 super let args = [format_argument::new_display(args.0)];
                 format_arguments::new(unsafe {
-                        format_template::new(&[format_piece::num(8usize),
-                                        format_piece::str("a 123 b "), format_piece::num(5usize),
-                                        format_piece::str(" xyz\n"), format_piece::num(0usize)])
+                        format_template::new(const
+                                    &[format_piece::num(8usize), format_piece::str("a 123 b "),
+                                                format_piece::num(5usize), format_piece::str(" xyz\n"),
+                                                format_piece::num(0usize)])
                     }, &args)
             });
     };

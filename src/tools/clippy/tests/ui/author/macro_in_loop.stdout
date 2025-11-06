@@ -50,31 +50,8 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && let ExprKind::Call(func3, args3) = trailing_expr1.kind
     && func3.res(cx).is_diag_item(cx, sym::FmtTemplateNew)
     && args3.len() == 1
-    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args3[0].kind
-    && let ExprKind::Array(elements2) = inner1.kind
-    && elements2.len() == 4
-    && let ExprKind::Call(func4, args4) = elements2[0].kind
-    && paths::CORE_FMT_RT_PIECE_NUM.matches_path(cx, func4) // Add the path to `clippy_utils::paths` if needed
-    && args4.len() == 1
-    && let ExprKind::Lit(ref lit2) = args4[0].kind
-    && let LitKind::Int(16140901201934811136, LitIntType::Unsigned(UintTy::Usize)) = lit2.node
-    && let ExprKind::Call(func5, args5) = elements2[1].kind
-    && paths::CORE_FMT_RT_PIECE_NUM.matches_path(cx, func5) // Add the path to `clippy_utils::paths` if needed
-    && args5.len() == 1
-    && let ExprKind::Lit(ref lit3) = args5[0].kind
-    && let LitKind::Int(1, LitIntType::Unsigned(UintTy::Usize)) = lit3.node
-    && let ExprKind::Call(func6, args6) = elements2[2].kind
-    && paths::CORE_FMT_RT_PIECE_STR.matches_path(cx, func6) // Add the path to `clippy_utils::paths` if needed
-    && args6.len() == 1
-    && let ExprKind::Lit(ref lit4) = args6[0].kind
-    && let LitKind::Str(s, _) = lit4.node
-    && s.as_str() == "\n"
-    && let ExprKind::Call(func7, args7) = elements2[3].kind
-    && paths::CORE_FMT_RT_PIECE_NUM.matches_path(cx, func7) // Add the path to `clippy_utils::paths` if needed
-    && args7.len() == 1
-    && let ExprKind::Lit(ref lit5) = args7[0].kind
-    && let LitKind::Int(0, LitIntType::Unsigned(UintTy::Usize)) = lit5.node
-    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[1].kind
+    && let ExprKind::ConstBlock(_) = args3[0].kind
+    && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner1) = args2[1].kind
     && block1.expr.is_none()
     && block.expr.is_none()
 {
