@@ -200,7 +200,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
-                codegen_offload(self, tcx, instance, args, result);
+                codegen_offload(self, tcx, instance, args);
                 return Ok(());
             }
             sym::is_val_statically_known => {
@@ -1241,8 +1241,7 @@ fn codegen_offload<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
-    _args: &[OperandRef<'tcx, &'ll Value>],
-    _result: PlaceRef<'tcx, &'ll Value>,
+    args: &[OperandRef<'tcx, &'ll Value>],
 ) {
     let cx = bx.cx;
     let fn_args = instance.args;
@@ -1265,7 +1264,8 @@ fn codegen_offload<'ll, 'tcx>(
         }
     };
 
-    let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target.clone(), LOCAL_CRATE);
+    let args = get_args_from_tuple(bx, args[1], fn_target);
+    let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
 
     let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
 
@@ -1274,7 +1274,6 @@ fn codegen_offload<'ll, 'tcx>(
     let inputs = sig.inputs();
 
     let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
-    let llfn = bx.llfn();
 
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
@@ -1294,7 +1293,7 @@ fn codegen_offload<'ll, 'tcx>(
         bb,
         &[memtransfer_type],
         &[region_id],
-        llfn,
+        &args,
         &types,
         &metadata,
     );

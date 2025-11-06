@@ -3326,7 +3326,7 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn offload<F, R>(f: F) -> R;
+pub const fn offload<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

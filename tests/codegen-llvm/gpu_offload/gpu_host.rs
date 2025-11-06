@@ -102,7 +102,7 @@ fn main() {
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub fn kernel(x: &mut [f32; 256]) {
-    core::intrinsics::offload(_kernel)
+    core::intrinsics::offload(_kernel, (x,))
 }
 
 #[unsafe(no_mangle)]

@@ -262,23 +262,19 @@ pub(crate) fn add_global<'ll>(
 pub(crate) fn gen_define_handling<'ll>(
     cx: &SimpleCx<'ll>,
     offload_entry_ty: &'ll llvm::Type,
-    metadata: &Vec<OffloadMetadata>,
-    types: &Vec<&Type>,
+    metadata: &[OffloadMetadata],
+    types: &[&Type],
     symbol: &str,
 ) -> (&'ll llvm::Value, &'ll llvm::Value) {
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
-    let ptr_meta = types
-        .iter()
-        .zip(metadata)
-        .filter_map(|(&x, meta)| match cx.type_kind(x) {
-            rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
+        rustc_codegen_ssa::common::TypeKind::Pointer => Some(meta),
+        _ => None,
+    });
 
-    let ptr_sizes = ptr_meta.iter().map(|m| m.payload_size).collect::<Vec<_>>();
-    let ptr_transfer = ptr_meta.iter().map(|m| m.mode as u64 | 0x20).collect::<Vec<_>>();
+    let (ptr_sizes, ptr_transfer): (Vec<_>, Vec<_>) =
+        ptr_meta.map(|m| (m.payload_size, m.mode as u64 | 0x20)).unzip();
 
     // We do not know their size anymore at this level, so hardcode a placeholder.
     // A follow-up pr will track these from the frontend, where we still have Rust types.
@@ -369,9 +365,9 @@ pub(crate) fn gen_call_handling<'ll>(
     bb: &BasicBlock,
     memtransfer_types: &[&'ll llvm::Value],
     region_ids: &[&'ll llvm::Value],
-    llfn: &'ll Value,
-    types: &Vec<&Type>,
-    metadata: &Vec<OffloadMetadata>,
+    args: &[&'ll Value],
+    types: &[&Type],
+    metadata: &[OffloadMetadata],
 ) {
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
@@ -413,7 +409,7 @@ pub(crate) fn gen_call_handling<'ll>(
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
     for index in 0..num_args {
-        let v = unsafe { llvm::LLVMGetParam(llfn, index as u32) };
+        let v = args[index as usize];
         let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
         vals.push(v);
         geps.push(gep);
