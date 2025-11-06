@@ -38,10 +38,10 @@ LL |     field2: SafeEnum::Variant4("str".to_string()),
 note: method `to_string` is not const because trait `ToString` is not const
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-   = note: this trait is not const
+   = note: this method is not const
   ::: $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-   = note: this method is not const
+   = note: this trait is not const
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 

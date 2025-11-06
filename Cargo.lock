@@ -80,9 +80,9 @@ dependencies = [
 
 [[package]]
 name = "annotate-snippets"
-version = "0.12.7"
+version = "0.12.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47224528f74de27d1d06aad6a5dda4f865b6ebe2e56c538943d746a7270cb67e"
+checksum = "025c7edcdffa4ccc5c0905f472a0ae3759378cfbef88ef518a3575e19ae3aebd"
 dependencies = [
  "anstyle",
  "unicode-width 0.2.2",
@@ -3766,7 +3766,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets 0.12.7",
+ "annotate-snippets 0.12.8",
  "anstream",
  "anstyle",
  "derive_setters",
