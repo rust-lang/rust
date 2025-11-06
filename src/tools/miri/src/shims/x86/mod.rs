@@ -42,9 +42,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
-                if unprefixed_name.ends_with("64")
-                    && this.tcx.sess.target.arch != Arch::X86_64
-                {
+                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
