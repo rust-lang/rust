@@ -525,5 +525,161 @@ LL | |             (a, b) => b < c,
 LL | |         }
    | |_________^ help: consider using the match body instead: `b < c`
 
-error: aborting due to 37 previous errors
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:357:9
+   |
+LL | /         match { a } {
+LL | |
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~         {
+LL +             { a };
+LL +             ()
+LL ~         },
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:366:9
+   |
+LL | /         match { a } {
+LL | |
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~         {
+LL +             { a };
+LL +             ()
+LL ~         },
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:376:9
+   |
+LL | /         match { a } {
+LL | |
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~         {
+LL +             { a };
+LL +             ()
+LL ~         },
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:390:9
+   |
+LL | /         match { a } {
+LL | |
+LL | |             _ => (),
+LL | |         },
+   | |_________^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~         {
+LL +             { a };
+LL +             ()
+LL ~         },
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:397:6
+   |
+LL |       -match { a } {
+   |  ______^
+LL | |
+LL | |         _ => 1,
+LL | |     };
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     -{
+LL +         { a };
+LL +         1
+LL ~     };
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:402:9
+   |
+LL |       _ = match { a } {
+   |  _________^
+LL | |
+LL | |         _ => 1,
+LL | |     };
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     _ = { a };
+LL ~     1;
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:407:16
+   |
+LL |       if let x = match { a } {
+   |  ________________^
+LL | |
+LL | |         _ => 1,
+LL | |     } {}
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     if let x = {
+LL +         { a };
+LL +         1
+LL ~     } {}
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:412:8
+   |
+LL |       if match { a } {
+   |  ________^
+LL | |
+LL | |         _ => true,
+LL | |     } {
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     if {
+LL +         { a };
+LL +         true
+LL ~     } {
+   |
+
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:419:15
+   |
+LL |       [1, 2, 3][match { a } {
+   |  _______________^
+LL | |
+LL | |         _ => 1usize,
+LL | |     }];
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     [1, 2, 3][{
+LL +         { a };
+LL +         1usize
+LL ~     }];
+   |
+
+error: aborting due to 46 previous errors
 
