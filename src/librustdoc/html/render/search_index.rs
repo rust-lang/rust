@@ -1051,28 +1051,21 @@ impl Serialize for TypeData {
     where
         S: Serializer,
     {
-        if self.search_unbox
-            || !self.inverted_function_inputs_index.is_empty()
-            || !self.inverted_function_output_index.is_empty()
-        {
-            let mut seq = serializer.serialize_seq(None)?;
-            let mut buf = Vec::new();
-            encode::write_postings_to_string(&self.inverted_function_inputs_index, &mut buf);
-            let mut serialized_result = Vec::new();
-            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
-            seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
-            buf.clear();
-            serialized_result.clear();
-            encode::write_postings_to_string(&self.inverted_function_output_index, &mut buf);
-            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
-            seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
-            if self.search_unbox {
-                seq.serialize_element(&1)?;
-            }
-            seq.end()
-        } else {
-            None::<()>.serialize(serializer)
+        let mut seq = serializer.serialize_seq(None)?;
+        let mut buf = Vec::new();
+        encode::write_postings_to_string(&self.inverted_function_inputs_index, &mut buf);
+        let mut serialized_result = Vec::new();
+        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+        seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
+        buf.clear();
+        serialized_result.clear();
+        encode::write_postings_to_string(&self.inverted_function_output_index, &mut buf);
+        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+        seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
+        if self.search_unbox {
+            seq.serialize_element(&1)?;
         }
+        seq.end()
     }
 }
 
