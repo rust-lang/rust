@@ -9,7 +9,7 @@
 use super::*;
 use crate::hint::unreachable_unchecked;
 use crate::marker::PhantomData;
-use crate::num::NonZeroUsize;
+use crate::mem;
 use crate::ptr::NonNull;
 
 #[lang = "format_template"]
@@ -31,9 +31,9 @@ impl<'a> Template<'a> {
 
     #[inline]
     pub const unsafe fn new_str_len(len: usize) -> Self {
+        let bits = len << 1 | 1;
         // SAFETY: We set the lowest bit, so it's nonzero.
-        let bits = unsafe { NonZeroUsize::new_unchecked(len << 1 | 1) };
-        Self { pieces: NonNull::without_provenance(bits), lifetime: PhantomData }
+        Self { pieces: unsafe { mem::transmute(bits) }, lifetime: PhantomData }
     }
 
     #[inline]
@@ -41,7 +41,7 @@ impl<'a> Template<'a> {
         // SAFETY: During const eval, `self.pieces` must have come from a usize, not a pointer,
         // because `new()` above is not const.
         // Outside const eval, transmuting a pointer to a usize is fine.
-        let bits = unsafe { crate::mem::transmute::<_, usize>(self.pieces) };
+        let bits: usize = unsafe { mem::transmute(self.pieces) };
         if bits & 1 == 1 { Some(bits >> 1) } else { None }
     }
 
@@ -243,10 +243,12 @@ impl<'a> Arguments<'a> {
 
     #[inline]
     pub const fn from_str(s: &'static str) -> Arguments<'a> {
-        Arguments {
-            // SAFETY: This is the "static str" representation of fmt::Arguments.
-            template: unsafe { rt::Template::new_str_len(s.len()) },
-            args: NonNull::from_ref(s).cast(),
+        // SAFETY: This is the "static str" representation of fmt::Arguments.
+        unsafe {
+            Arguments {
+                template: rt::Template::new_str_len(s.len()),
+                args: mem::transmute(s.as_ptr()),
+            }
         }
     }
 
