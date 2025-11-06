@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
@@ -5,12 +6,36 @@ use std::default::Default;
 use std::ops::Not;
 use std::rc::Rc;
 use std::time::Duration;
+use std::{fmt, iter};
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
 use super::vector_clock::VClock;
 use crate::*;
+
+/// A trait for the synchronization metadata that can be attached to a memory location.
+pub trait SyncObj: Any {
+    /// Determines whether this object's metadata shall be deleted when a write to its
+    /// location occurs.
+    fn delete_on_write(&self) -> bool {
+        false
+    }
+}
+
+impl dyn SyncObj {
+    #[inline(always)]
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        let x: &dyn Any = self;
+        x.downcast_ref()
+    }
+}
+
+impl fmt::Debug for dyn SyncObj {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SyncObj").finish_non_exhaustive()
+    }
+}
 
 /// The mutex state.
 #[derive(Default, Debug)]
@@ -214,15 +239,15 @@ pub(super) trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> AllocExtra<'tcx> {
     fn get_sync<T: 'static>(&self, offset: Size) -> Option<&T> {
-        self.sync.get(&offset).and_then(|s| s.downcast_ref::<T>())
+        self.sync_objs.get(&offset).and_then(|s| s.downcast_ref::<T>())
     }
 }
 
-/// We designate an `init`` field in all primitives.
-/// If `init` is set to this, we consider the primitive initialized.
+/// We designate an `init`` field in all synchronization objects.
+/// If `init` is set to this, we consider the object initialized.
 pub const LAZY_INIT_COOKIE: u32 = 0xcafe_affe;
 
-// Public interface to synchronization primitives. Please note that in most
+// Public interface to synchronization objects. Please note that in most
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
@@ -231,9 +256,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper for lazily initialized `alloc_extra.sync` data:
     /// this forces an immediate init.
     /// Return a reference to the data in the machine state.
-    fn lazy_sync_init<'a, T: 'static>(
+    fn lazy_sync_init<'a, T: SyncObj>(
         &'a mut self,
-        primitive: &MPlaceTy<'tcx>,
+        obj: &MPlaceTy<'tcx>,
         init_offset: Size,
         data: T,
     ) -> InterpResult<'tcx, &'a T>
@@ -242,27 +267,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         let this = self.eval_context_mut();
 
-        let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
-        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
-        alloc_extra.sync.insert(offset, Box::new(data));
+        let (alloc, offset, _) = this.ptr_get_alloc_id(obj.ptr(), 0)?;
         // Mark this as "initialized".
         let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
-        assert!(init_offset + init_cookie.size() <= primitive.layout.size);
-        let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
+        assert!(init_offset + init_cookie.size() <= obj.layout.size);
+        let init_field = obj.offset(init_offset, this.machine.layouts.u32, this)?;
         this.write_scalar_atomic(init_cookie, &init_field, AtomicWriteOrd::Relaxed)?;
+        // Insert sync obj, and return reference to it.
+        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
+        alloc_extra.sync_objs.insert(offset, Box::new(data));
         interp_ok(this.get_alloc_extra(alloc)?.get_sync::<T>(offset).unwrap())
     }
 
     /// Helper for lazily initialized `alloc_extra.sync` data:
-    /// Checks if the primitive is initialized:
+    /// Checks if the synchronization object is initialized:
     /// - If yes, fetches the data from `alloc_extra.sync`, or calls `missing_data` if that fails
     ///   and stores that in `alloc_extra.sync`.
-    /// - Otherwise, calls `new_data` to initialize the primitive.
+    /// - Otherwise, calls `new_data` to initialize the object.
     ///
     /// Return a reference to the data in the machine state.
-    fn lazy_sync_get_data<'a, T: 'static>(
+    fn lazy_sync_get_data<'a, T: SyncObj>(
         &'a mut self,
-        primitive: &MPlaceTy<'tcx>,
+        obj: &MPlaceTy<'tcx>,
         init_offset: Size,
         missing_data: impl FnOnce() -> InterpResult<'tcx, T>,
         new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
@@ -276,8 +302,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
         // So we just try to replace MUTEX_INIT_COOKIE with itself.
         let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
-        assert!(init_offset + init_cookie.size() <= primitive.layout.size);
-        let init_field = primitive.offset(init_offset, this.machine.layouts.u32, this)?;
+        assert!(init_offset + init_cookie.size() <= obj.layout.size);
+        let init_field = obj.offset(init_offset, this.machine.layouts.u32, this)?;
         let (_init, success) = this
             .atomic_compare_exchange_scalar(
                 &init_field,
@@ -290,27 +316,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .to_scalar_pair();
 
         if success.to_bool()? {
-            // If it is initialized, it must be found in the "sync primitive" table,
+            // If it is initialized, it must be found in the "sync obj" table,
             // or else it has been moved illegally.
-            let (alloc, offset, _) = this.ptr_get_alloc_id(primitive.ptr(), 0)?;
+            let (alloc, offset, _) = this.ptr_get_alloc_id(obj.ptr(), 0)?;
             let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
             // Due to borrow checker reasons, we have to do the lookup twice.
             if alloc_extra.get_sync::<T>(offset).is_none() {
                 let data = missing_data()?;
-                alloc_extra.sync.insert(offset, Box::new(data));
+                alloc_extra.sync_objs.insert(offset, Box::new(data));
             }
             interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
         } else {
             let data = new_data(this)?;
-            this.lazy_sync_init(primitive, init_offset, data)
+            this.lazy_sync_init(obj, init_offset, data)
         }
     }
 
-    /// Get the synchronization primitive associated with the given pointer,
+    /// Get the synchronization object associated with the given pointer,
     /// or initialize a new one.
     ///
     /// Return `None` if this pointer does not point to at least 1 byte of mutable memory.
-    fn get_sync_or_init<'a, T: 'static>(
+    fn get_sync_or_init<'a, T: SyncObj>(
         &'a mut self,
         ptr: Pointer,
         new: impl FnOnce(&'a mut MiriMachine<'tcx>) -> T,
@@ -331,9 +357,92 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Due to borrow checker reasons, we have to do the lookup twice.
         if alloc_extra.get_sync::<T>(offset).is_none() {
             let new = new(machine);
-            alloc_extra.sync.insert(offset, Box::new(new));
+            alloc_extra.sync_objs.insert(offset, Box::new(new));
         }
         Some(alloc_extra.get_sync::<T>(offset).unwrap())
+    }
+
+    /// Helper for "immovable" synchronization objects: the expected protocol for these objects is
+    /// that they use a static initializer of `uninit_val`, and we set them to `init_val` upon
+    /// initialization. At that point we also register a synchronization object, which is expected
+    /// to have `delete_on_write() == true`. So in the future, if we still see the object, we know
+    /// the location must still contain `init_val`. If the object is copied somewhere, that will
+    /// show up as a non-`init_val` value without a synchronization object, which we can then use to
+    /// error.
+    ///
+    /// `new_meta_obj` gets invoked when there is not yet an initialization object.
+    /// It has to ensure that the in-memory representation indeed matches `uninit_val`.
+    fn get_immovable_sync_with_static_init<'a, T: SyncObj>(
+        &'a mut self,
+        obj: &MPlaceTy<'tcx>,
+        init_offset: Size,
+        uninit_val: u8,
+        init_val: u8,
+        new_meta_obj: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, &'a T>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable)?;
+        assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
+        let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
+
+        let (alloc, offset, _) = this.ptr_get_alloc_id(init_field.ptr(), 0)?;
+        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
+        // Due to borrow checker reasons, we have to do the lookup twice.
+        if alloc_extra.get_sync::<T>(offset).is_some() {
+            let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
+            return interp_ok(alloc_extra.get_sync::<T>(offset).unwrap());
+        }
+
+        // There's no sync object there yet. Create one, and try a CAS for uninit_val to init_val.
+        let meta_obj = new_meta_obj(this)?;
+        let (_init, success) = this
+            .atomic_compare_exchange_scalar(
+                &init_field,
+                &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
+                Scalar::from_u8(init_val),
+                AtomicRwOrd::Relaxed,
+                AtomicReadOrd::Relaxed,
+                /* can_fail_spuriously */ false,
+            )?
+            .to_scalar_pair();
+        assert!(success.to_bool()?, "`new_meta_obj` should have ensured that this CAS succeeds.");
+
+        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
+        assert!(meta_obj.delete_on_write());
+        alloc_extra.sync_objs.insert(offset, Box::new(meta_obj));
+        interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
+    }
+
+    /// Explicitly initializes an object that would usually be implicitly initialized with
+    /// `get_immovable_sync_with_static_init`.
+    fn init_immovable_sync<'a, T: SyncObj>(
+        &'a mut self,
+        obj: &MPlaceTy<'tcx>,
+        init_offset: Size,
+        init_val: u8,
+        new_meta_obj: T,
+    ) -> InterpResult<'tcx, Option<&'a T>>
+    where
+        'tcx: 'a,
+    {
+        let this = self.eval_context_mut();
+        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable)?;
+        assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
+        let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
+
+        // Zero the entire object, and then store `init_val` directly.
+        this.write_bytes_ptr(obj.ptr(), iter::repeat_n(0, obj.layout.size.bytes_usize()))?;
+        this.write_scalar(Scalar::from_u8(init_val), &init_field)?;
+
+        // Create meta-level initialization object.
+        let (alloc, offset, _) = this.ptr_get_alloc_id(init_field.ptr(), 0)?;
+        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
+        assert!(new_meta_obj.delete_on_write());
+        alloc_extra.sync_objs.insert(offset, Box::new(new_meta_obj));
+        interp_ok(Some(alloc_extra.get_sync::<T>(offset).unwrap()))
     }
 
     /// Lock by setting the mutex owner and increasing the lock count.

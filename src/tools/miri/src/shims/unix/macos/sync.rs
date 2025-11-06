@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use rustc_abi::Size;
 
-use crate::concurrency::sync::FutexRef;
+use crate::concurrency::sync::{FutexRef, SyncObj};
 use crate::*;
 
 #[derive(Clone)]
@@ -23,6 +23,8 @@ enum MacOsUnfairLock {
     Poisoned,
     Active { mutex_ref: MutexRef },
 }
+
+impl SyncObj for MacOsUnfairLock {}
 
 pub enum MacOsFutexTimeout<'a, 'tcx> {
     None,
@@ -43,6 +45,8 @@ struct MacOsFutex {
     /// Whether the futex is shared across process boundaries.
     shared: Cell<bool>,
 }
+
+impl SyncObj for MacOsFutex {}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {

@@ -1,9 +1,9 @@
 //! Global machine state as well as implementation of the interpreter engine
 //! `Machine` trait.
 
-use std::any::Any;
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
 use std::{fmt, process};
@@ -36,6 +36,7 @@ use rustc_target::spec::Arch;
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
+use crate::concurrency::sync::SyncObj;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
@@ -399,11 +400,11 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
-    /// Synchronization primitives like to attach extra data to particular addresses. We store that
+    /// Synchronization objects like to attach extra data to particular addresses. We store that
     /// inside the relevant allocation, to ensure that everything is removed when the allocation is
     /// freed.
     /// This maps offsets to synchronization-primitive-specific data.
-    pub sync: FxHashMap<Size, Box<dyn Any>>,
+    pub sync_objs: BTreeMap<Size, Box<dyn SyncObj>>,
 }
 
 // We need a `Clone` impl because the machine passes `Allocation` through `Cow`...
@@ -416,7 +417,7 @@ impl<'tcx> Clone for AllocExtra<'tcx> {
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra { borrow_tracker, data_race, backtrace: _, sync: _ } = self;
+        let AllocExtra { borrow_tracker, data_race, backtrace: _, sync_objs: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -991,7 +992,12 @@ impl<'tcx> MiriMachine<'tcx> {
                 .insert(id, (ecx.machine.current_user_relevant_span(), None));
         }
 
-        interp_ok(AllocExtra { borrow_tracker, data_race, backtrace, sync: FxHashMap::default() })
+        interp_ok(AllocExtra {
+            borrow_tracker,
+            data_race,
+            backtrace,
+            sync_objs: BTreeMap::default(),
+        })
     }
 }
 
@@ -1580,6 +1586,18 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_write(alloc_id, prov_extra, range, machine)?;
+        }
+        // Delete sync objects that don't like writes.
+        // Most of the time, we can just skip this.
+        if !alloc_extra.sync_objs.is_empty() {
+            let to_delete = alloc_extra
+                .sync_objs
+                .range(range.start..range.end())
+                .filter_map(|(offset, obj)| obj.delete_on_write().then_some(*offset))
+                .collect::<Vec<_>>();
+            for offset in to_delete {
+                alloc_extra.sync_objs.remove(&offset);
+            }
         }
         interp_ok(())
     }

@@ -3,7 +3,7 @@ use std::time::Duration;
 use rustc_abi::Size;
 
 use crate::concurrency::init_once::{EvalContextExt as _, InitOnceStatus};
-use crate::concurrency::sync::FutexRef;
+use crate::concurrency::sync::{FutexRef, SyncObj};
 use crate::*;
 
 #[derive(Clone)]
@@ -11,9 +11,13 @@ struct WindowsInitOnce {
     init_once: InitOnceRef,
 }
 
+impl SyncObj for WindowsInitOnce {}
+
 struct WindowsFutex {
     futex: FutexRef,
 }
+
+impl SyncObj for WindowsFutex {}
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
