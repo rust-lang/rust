@@ -591,4 +591,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`yarn` is now used instead of `npm` to install dependencies for some extra tidy checks. Use `build.yarn` to manually specify the path to `yarn` (`build.npm` is no longer used).",
     },
+    ChangeInfo {
+        change_id: 148803,
+        severity: ChangeSeverity::Info,
+        summary: "The `-Zannotate-moves` option is now always enabled when building rustc, sysroot and tools.",
+    },
 ];

@@ -217,6 +217,7 @@ pub struct Config {
     pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
+    pub rust_annotate_moves_size_limit: Option<u64>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
@@ -561,6 +562,7 @@ impl Config {
             control_flow_guard: rust_control_flow_guard,
             ehcont_guard: rust_ehcont_guard,
             new_symbol_mangling: rust_new_symbol_mangling,
+            annotate_moves_size_limit: rust_annotate_moves_size_limit,
             profile_generate: rust_profile_generate,
             profile_use: rust_profile_use,
             download_rustc: rust_download_rustc,
@@ -1405,6 +1407,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_annotate_moves_size_limit,
             rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
