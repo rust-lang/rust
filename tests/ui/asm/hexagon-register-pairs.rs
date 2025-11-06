@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target hexagon-unknown-linux-musl -C target-feature=+hvx-length128b
 //@ needs-llvm-components: hexagon
 //@ ignore-backends: gcc
@@ -6,6 +6,8 @@
 #![feature(no_core, asm_experimental_arch)]
 #![crate_type = "lib"]
 #![no_core]
+
+//~? WARN unstable feature specified for `-Ctarget-feature`: `hvx-length128b`
 
 extern crate minicore;
 use minicore::*;
