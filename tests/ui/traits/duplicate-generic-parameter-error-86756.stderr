@@ -6,7 +6,7 @@ LL | trait Foo<T, T = T> {}
    |           |
    |           first use of `T`
 
-error[E0412]: cannot find type `dyn` in this scope
+error[E0425]: cannot find type `dyn` in this scope
   --> $DIR/duplicate-generic-parameter-error-86756.rs:7:10
    |
 LL |     eq::<dyn, Foo>
@@ -44,5 +44,5 @@ LL |     eq::<dyn, Foo<T>>
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0107, E0403, E0412.
+Some errors have detailed explanations: E0107, E0403, E0425.
 For more information about an error, try `rustc --explain E0107`.

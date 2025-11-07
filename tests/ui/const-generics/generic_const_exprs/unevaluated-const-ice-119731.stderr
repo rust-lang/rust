@@ -13,7 +13,7 @@ error[E0425]: cannot find value `v8` in this scope
 LL |     const v0: [[usize; v4]; v4] = v6(v8);
    |                                      ^^ not found in this scope
 
-error[E0412]: cannot find type `v18` in this scope
+error[E0425]: cannot find type `v18` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:23:31
    |
 LL |     pub type v11 = [[usize; v4]; v4];
@@ -22,7 +22,7 @@ LL |     pub type v11 = [[usize; v4]; v4];
 LL |         pub const fn v21() -> v18 {}
    |                               ^^^ help: a type alias with a similar name exists: `v11`
 
-error[E0412]: cannot find type `v18` in this scope
+error[E0425]: cannot find type `v18` in this scope
   --> $DIR/unevaluated-const-ice-119731.rs:35:31
    |
 LL |     pub type v11 = [[usize; v4]; v4];
@@ -129,5 +129,5 @@ LL |         pub const fn v21() -> v18 {
 
 error: aborting due to 14 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0412, E0422, E0425, E0432, E0592.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0422, E0425, E0432, E0592.
+For more information about an error, try `rustc --explain E0422`.

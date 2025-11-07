@@ -705,7 +705,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if !enum_candidates.is_empty() {
                 enum_candidates.sort();
 
-                // Contextualize for E0412 "cannot find type", but don't belabor the point
+                // Contextualize for E0425 "cannot find type", but don't belabor the point
                 // (that it's a variant) for E0573 "expected type, found variant".
                 let preamble = if res.is_none() {
                     let others = match enum_candidates.len() {
@@ -1135,7 +1135,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 self.suggest_ident_hidden_by_hygiene(err, path, span);
-            } else if err_code == E0412 {
+                // cannot find type in this scope
                 if let Some(correct) = Self::likely_rust_type(path) {
                     err.span_suggestion(
                         span,
