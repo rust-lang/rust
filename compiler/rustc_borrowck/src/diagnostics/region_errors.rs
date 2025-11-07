@@ -29,7 +29,6 @@ use tracing::{debug, instrument, trace};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
-use crate::region_infer::values::RegionElement;
 use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
@@ -104,19 +103,9 @@ pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
 
-    /// 'a outlives 'b, which does not hold. 'a is always a
-    /// placeholder and 'b is either an existential that cannot name
-    /// 'a, or another placeholder.
+    /// 'p outlives 'r, which does not hold. 'p is always a placeholder
+    /// and 'r is some other region.
     PlaceholderOutlivesIllegalRegion { longer_fr: RegionVid, illegally_outlived_r: RegionVid },
-
-    /// Higher-ranked subtyping error. A placeholder outlives
-    /// either a location or a universal region.
-    PlaceholderOutlivesLocationOrUniversal {
-        /// The placeholder free region.
-        longer_fr: RegionVid,
-        /// The region element that erroneously must be outlived by `longer_fr`.
-        error_element: RegionElement,
-    },
 
     /// Any other lifetime error.
     RegionError {
@@ -339,14 +328,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.buffer_error(diag);
                     }
                 }
-
-                RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
-                    longer_fr,
-                    error_element,
-                } => self.report_erroneous_rvid_reaches_placeholder(
-                    longer_fr,
-                    self.regioncx.region_from_element(longer_fr, &error_element),
-                ),
 
                 RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                     longer_fr,
