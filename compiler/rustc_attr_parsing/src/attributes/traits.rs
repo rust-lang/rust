@@ -94,12 +94,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for DenyExplicitImplParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DenyExplicitImpl;
 }
 
-pub(crate) struct DoNotImplementViaObjectParser;
-impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
-    const PATH: &[Symbol] = &[sym::rustc_do_not_implement_via_object];
+pub(crate) struct DynIncompatibleTraitParser;
+impl<S: Stage> NoArgsAttributeParser<S> for DynIncompatibleTraitParser {
+    const PATH: &[Symbol] = &[sym::rustc_dyn_incompatible_trait];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::DynIncompatibleTrait;
 }
 
 // Specialization

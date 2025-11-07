@@ -39,9 +39,9 @@ impl AttributeKind {
             DebuggerVisualizer(..) => No,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
-            DoNotImplementViaObject(..) => No,
             DocComment { .. } => Yes,
             Dummy => No,
+            DynIncompatibleTrait(..) => Yes, // FIXME: is this needed?
             ExportName { .. } => Yes,
             ExportStable => No,
             FfiConst(..) => No,

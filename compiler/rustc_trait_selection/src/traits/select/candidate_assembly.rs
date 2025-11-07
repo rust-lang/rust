@@ -904,7 +904,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             "assemble_candidates_from_object_ty",
         );
 
-        if !self.tcx().trait_def(obligation.predicate.def_id()).implement_via_object {
+        if self.tcx().is_sizedness_trait(obligation.predicate.def_id()) {
+            tracing::info!("FIXME: try removing this");
             return;
         }
 
