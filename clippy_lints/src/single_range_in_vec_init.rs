@@ -9,6 +9,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::DesugaringKind;
 use std::fmt::{self, Display, Formatter};
 
 declare_clippy_lint! {
@@ -91,6 +92,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
         };
 
         if cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
+            && inner_expr.span.is_desugaring(DesugaringKind::RangeExpr)
             && let ty = cx.typeck_results().expr_ty(start.expr)
             && let Some(snippet) = span.get_source_text(cx)
             // `is_from_proc_macro` will skip any `vec![]`. Let's not!

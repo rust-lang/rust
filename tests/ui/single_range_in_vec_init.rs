@@ -66,3 +66,9 @@ fn main() {
         vec![0..200];
     }
 }
+
+fn issue16042() {
+    use std::ops::Range;
+
+    let input = vec![Range { start: 0, end: 5 }];
+}
