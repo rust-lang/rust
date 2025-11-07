@@ -31,9 +31,10 @@ pub mod version {
     /// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
     pub const EXTENDED_LEAF_DATA: u32 = 5;
     pub const HASHED_AST_ID: u32 = 6;
+    pub const POSTCARD_WIRE: u32 = 7;
 
     /// Current API version of the proc-macro protocol.
-    pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
+    pub const CURRENT_API_VERSION: u32 = POSTCARD_WIRE;
 }
 
 /// Represents different kinds of procedural macros that can be expanded by the external server.

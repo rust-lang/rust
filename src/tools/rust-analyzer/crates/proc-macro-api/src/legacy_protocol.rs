@@ -2,6 +2,7 @@
 
 pub mod json;
 pub mod msg;
+pub mod postcard_wire;
 
 use std::{
     io::{BufRead, Write},
@@ -151,7 +152,11 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
         return Err(server_error.clone());
     }
 
-    srv.send_task(send_request, req)
+    if srv.use_postcard() {
+        srv.send_task_bin(send_request_postcard, req)
+    } else {
+        srv.send_task(send_request, req)
+    }
 }
 
 /// Sends a request to the server and reads the response.
@@ -170,4 +175,35 @@ fn send_request(
         io: Some(Arc::new(err)),
     })?;
     Ok(res)
+}
+
+fn send_request_postcard(
+    mut writer: &mut dyn Write,
+    mut reader: &mut dyn BufRead,
+    req: Request,
+    buf: &mut Vec<u8>,
+) -> Result<Option<Response>, ServerError> {
+    let bytes = postcard_wire::encode_cobs(&req)
+        .map_err(|_| ServerError { message: "failed to write request".into(), io: None })?;
+
+    postcard_wire::write_postcard(&mut writer, &bytes).map_err(|err| ServerError {
+        message: "failed to write request".into(),
+        io: Some(Arc::new(err)),
+    })?;
+
+    let frame = postcard_wire::read_postcard(&mut reader, buf).map_err(|err| ServerError {
+        message: "failed to read response".into(),
+        io: Some(Arc::new(err)),
+    })?;
+
+    match frame {
+        None => Ok(None),
+        Some(bytes) => {
+            let resp: Response = postcard_wire::decode_cobs(bytes).map_err(|e| ServerError {
+                message: format!("failed to decode message: {e}"),
+                io: None,
+            })?;
+            Ok(Some(resp))
+        }
+    }
 }
