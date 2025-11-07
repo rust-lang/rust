@@ -372,6 +372,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// `new_meta_obj` gets invoked when there is not yet an initialization object.
     /// It has to ensure that the in-memory representation indeed matches `uninit_val`.
+    ///
+    /// The point of storing an `init_val` is so that if this memory gets copied somewhere else,
+    /// it does not look like the static initializer (i.e., `uninit_val`) any more. For some
+    /// objects we could just entirely forbid reading their bytes to ensure they don't get copied,
+    /// but that does not work for objects without a destructor (Windows `InitOnce`, macOS
+    /// `os_unfair_lock`).
     fn get_immovable_sync_with_static_init<'a, T: SyncObj>(
         &'a mut self,
         obj: &MPlaceTy<'tcx>,
@@ -383,6 +389,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
+        assert!(init_val != uninit_val);
         let this = self.eval_context_mut();
         this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable)?;
         assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
@@ -398,7 +405,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // There's no sync object there yet. Create one, and try a CAS for uninit_val to init_val.
         let meta_obj = new_meta_obj(this)?;
-        let (_init, success) = this
+        let (old_init, success) = this
             .atomic_compare_exchange_scalar(
                 &init_field,
                 &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
@@ -408,7 +415,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 /* can_fail_spuriously */ false,
             )?
             .to_scalar_pair();
-        assert!(success.to_bool()?, "`new_meta_obj` should have ensured that this CAS succeeds.");
+        if !success.to_bool()? {
+            // This can happen for the macOS lock if it is already marked as initialized.
+            assert_eq!(
+                old_init.to_u8()?,
+                init_val,
+                "`new_meta_obj` should have ensured that this CAS succeeds"
+            );
+        }
 
         let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc).unwrap();
         assert!(meta_obj.delete_on_write());

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 
 use crate::concurrency::init_once::{EvalContextExt as _, InitOnceStatus};
 use crate::concurrency::sync::{FutexRef, SyncObj};
@@ -11,7 +11,11 @@ struct WindowsInitOnce {
     init_once: InitOnceRef,
 }
 
-impl SyncObj for WindowsInitOnce {}
+impl SyncObj for WindowsInitOnce {
+    fn delete_on_write(&self) -> bool {
+        true
+    }
+}
 
 struct WindowsFutex {
     futex: FutexRef,
@@ -22,7 +26,7 @@ impl SyncObj for WindowsFutex {}
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Windows sync primitives are pointer sized.
-    // We only use the first 4 bytes for the id.
+    // We only use the first byte for the "init" flag.
 
     fn init_once_get_data<'a>(
         &'a mut self,
@@ -37,13 +41,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.deref_pointer_as(init_once_ptr, this.windows_ty_layout("INIT_ONCE"))?;
         let init_offset = Size::ZERO;
 
-        this.lazy_sync_get_data(
+        this.get_immovable_sync_with_static_init(
             &init_once,
             init_offset,
-            || throw_ub_format!("`INIT_ONCE` can't be moved after first use"),
-            |_| {
-                // TODO: check that this is still all-zero.
-                interp_ok(WindowsInitOnce { init_once: InitOnceRef::new() })
+            /* uninit_val */ 0,
+            /* init_val */ 1,
+            |this| {
+                let ptr_field = this.project_field(&init_once, FieldIdx::from_u32(0))?;
+                let val = this.read_target_usize(&ptr_field)?;
+                if val == 0 {
+                    interp_ok(WindowsInitOnce { init_once: InitOnceRef::new() })
+                } else {
+                    throw_ub_format!("`INIT_ONCE` was not properly initialized at this location, or it got overwritten");
+                }
             },
         )
     }
