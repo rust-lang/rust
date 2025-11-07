@@ -2,7 +2,8 @@
 
 mod sve;
 mod sve2;
-mod types;
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub mod types;
 
 // 导出辅助函数
 #[inline(always)]
