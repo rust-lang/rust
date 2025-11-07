@@ -5,5 +5,8 @@
     "eslint": "^8.57.1",
     "eslint-js": "github:eslint/js",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "rollup": "4.52.5"
   }
 }
