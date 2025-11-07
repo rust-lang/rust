@@ -57,7 +57,9 @@ impl MiriEnv {
             .arg("--")
             .args(&["miri", "setup", "--print-sysroot"])
             .args(target_flag);
-        cmd.set_quiet(quiet);
+        if quiet {
+            cmd = cmd.arg("--quiet");
+        }
         let output = cmd.read()?;
         self.sh.set_var("MIRI_SYSROOT", &output);
         Ok(output.into())
