@@ -728,9 +728,6 @@ pub enum AttributeKind {
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
     Deprecation { deprecation: Deprecation, span: Span },
 
-    /// Represents `#[rustc_do_not_implement_via_object]`.
-    DoNotImplementViaObject(Span),
-
     /// Represents `#[diagnostic::do_not_recommend]`.
     DoNotRecommend { attr_span: Span },
 
@@ -745,6 +742,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dummy]`.
     Dummy,
+
+    /// Represents `#[rustc_dyn_incompatible_trait]`.
+    DynIncompatibleTrait(Span),
 
     /// Implementation detail of `#[eii]`
     EiiDeclaration(EiiDecl),

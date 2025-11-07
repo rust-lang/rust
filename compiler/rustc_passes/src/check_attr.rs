@@ -244,7 +244,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
                     | AttributeKind::DenyExplicitImpl(..)
-                    | AttributeKind::DoNotImplementViaObject(..)
+                    | AttributeKind::DynIncompatibleTrait(..)
                     | AttributeKind::SpecializationTrait(..)
                     | AttributeKind::UnsafeSpecializationMarker(..)
                     | AttributeKind::ParenSugar(..)

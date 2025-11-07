@@ -709,10 +709,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(def_id).is_fundamental
     }
 
-    fn trait_may_be_implemented_via_object(self, trait_def_id: DefId) -> bool {
-        self.trait_def(trait_def_id).implement_via_object
-    }
-
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
         self.trait_def(trait_def_id).safety.is_unsafe()
     }
