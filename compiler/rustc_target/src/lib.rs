@@ -137,6 +137,14 @@ macro_rules! target_spec_enum {
                 $( #[$variant_attr:meta] )*
                 $Variant,
             )*
+            /// The vast majority of the time, the compiler deals with a fixed
+            /// set of values, so it is convenient for them to be represented in
+            /// an enum. However, it is possible to have arbitrary values in a
+            /// target JSON file (which can be parsed when `--target` is
+            /// specified). This might occur, for example, for an out-of-tree
+            /// codegen backend that supports a value (e.g. architecture or OS)
+            /// that rustc currently doesn't know about. This variant exists as
+            /// an escape hatch for such cases.
             $( #[$other_variant_attr] )*
             $OtherVariant(crate::spec::StaticCow<str>),
         }
