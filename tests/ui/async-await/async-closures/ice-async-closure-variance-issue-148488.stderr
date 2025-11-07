@@ -11,6 +11,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | fn ord<a>() -> _ {
    |                ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn ord<a>() -> _ {
+LL + fn ord<a>() -> impl AsyncFn() {
+   |
 
 error[E0392]: lifetime parameter `'g` is never used
   --> $DIR/ice-async-closure-variance-issue-148488.rs:3:10
