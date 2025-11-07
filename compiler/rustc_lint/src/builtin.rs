@@ -216,6 +216,8 @@ declare_lint! {
     /// #[no_mangle]
     /// #[link_section = ".example_section"]
     /// pub static VAR1: u32 = 1;
+    ///
+    /// unsafe fn unsafe_func() { }
     /// ```
     ///
     /// {{produces}}
@@ -226,6 +228,20 @@ declare_lint! {
     /// constructs (including, but not limited to `no_mangle`, `link_section`
     /// and `export_name` attributes) wrong usage of which causes undefined
     /// behavior.
+    ///
+    /// However, the declaration of an unsafe trait cannot cause any undefined
+    /// behavior — only its implementations can — that's why it is not covered
+    /// by this lint, despite the `unsafe` prefix.
+    ///
+    /// Along the same line, unsafe declaration of function (or method) cannot
+    /// cause any undefined behavior. Nevertheless, unsafe functions can contain
+    /// unsafe operations without `unsafe` block, as checked by the
+    /// [`unsafe_op_in_unsafe_fn`] lint. As a consequence, unless
+    /// `unsafe_op_in_unsafe_fn` is set to `forbid`, unsafe function declarations
+    /// *with a body* are covered by this lint. Declarations of unsafe functions
+    /// *without body* (e.g., in traits) are always allowed.
+    ///
+    /// [`unsafe_op_in_unsafe_fn`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#unsafe-op-in-unsafe-fn
     UNSAFE_CODE,
     Allow,
     "usage of `unsafe` code and other potentially unsound constructs",
@@ -263,10 +279,6 @@ impl EarlyLintPass for UnsafeCode {
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         match it.kind {
-            ast::ItemKind::Trait(box ast::Trait { safety: ast::Safety::Unsafe(_), .. }) => {
-                self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
-            }
-
             ast::ItemKind::Impl(ast::Impl {
                 of_trait: Some(box ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
                 ..
@@ -306,12 +318,6 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
             }
 
-            ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
-                if let Safety::Unsafe(_) = safety {
-                    self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
-                }
-            }
-
             ast::ItemKind::MacroDef(..) => {
                 if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
                     AttributeParser::parse_limited(
@@ -343,6 +349,9 @@ impl EarlyLintPass for UnsafeCode {
     }
 
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, span: Span, _: ast::NodeId) {
+        if cx.get_lint_level(UNSAFE_OP_IN_UNSAFE_FN).level == Level::Forbid {
+            return;
+        }
         if let FnKind::Fn(
             ctxt,
             _,
@@ -356,7 +365,7 @@ impl EarlyLintPass for UnsafeCode {
             let decorator = match ctxt {
                 FnCtxt::Foreign => return,
                 FnCtxt::Free => BuiltinUnsafe::DeclUnsafeFn,
-                FnCtxt::Assoc(_) if body.is_none() => BuiltinUnsafe::DeclUnsafeMethod,
+                FnCtxt::Assoc(_) if body.is_none() => return,
                 FnCtxt::Assoc(_) => BuiltinUnsafe::ImplUnsafeMethod,
             };
             self.report_unsafe(cx, span, decorator);

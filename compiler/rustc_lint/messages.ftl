@@ -64,7 +64,7 @@ lint_builtin_const_no_mangle = const items should never be `#[no_mangle]`
     .suggestion = try a static value
 
 lint_builtin_decl_unsafe_fn = declaration of an `unsafe` function
-lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
+    .note = declaration of `unsafe` function is allowed when lint `unsafe_op_in_unsafe_fn` is set to `forbid` level
 
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
@@ -91,6 +91,7 @@ lint_builtin_global_asm = usage of `core::arch::global_asm`
 lint_builtin_global_macro_unsafety = using this macro is unsafe even though it does not need an `unsafe` block
 
 lint_builtin_impl_unsafe_method = implementation of an `unsafe` method
+    .note = implementation of `unsafe` method is allowed when lint `unsafe_op_in_unsafe_fn` is set to `forbid` level
 
 lint_builtin_incomplete_features = the feature `{$name}` is incomplete and may not be safe to use and/or cause compiler crashes
     .note = see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
@@ -165,11 +166,7 @@ lint_builtin_unreachable_pub = unreachable `pub` {$what}
 
 lint_builtin_unsafe_block = usage of an `unsafe` block
 
-lint_builtin_unsafe_extern_block = usage of an `unsafe extern` block
-
 lint_builtin_unsafe_impl = implementation of an `unsafe` trait
-
-lint_builtin_unsafe_trait = declaration of an `unsafe` trait
 
 lint_builtin_unstable_features = use of an unstable feature
 

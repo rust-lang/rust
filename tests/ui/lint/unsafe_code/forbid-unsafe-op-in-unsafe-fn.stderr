@@ -1,0 +1,14 @@
+error: usage of an `unsafe` block
+  --> $DIR/forbid-unsafe-op-in-unsafe-fn.rs:22:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/forbid-unsafe-op-in-unsafe-fn.rs:4:9
+   |
+LL | #![deny(unsafe_code)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

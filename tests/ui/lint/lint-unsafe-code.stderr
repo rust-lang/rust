@@ -89,23 +89,11 @@ error: declaration of an `unsafe` function
 LL | unsafe fn baz() {}
    | ^^^^^^^^^^^^^^^^^^
 
-error: declaration of an `unsafe` trait
-  --> $DIR/lint-unsafe-code.rs:65:1
-   |
-LL | unsafe trait Foo {}
-   | ^^^^^^^^^^^^^^^^^^^
-
 error: implementation of an `unsafe` trait
   --> $DIR/lint-unsafe-code.rs:66:1
    |
 LL | unsafe impl Foo for Bar {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: declaration of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:69:5
-   |
-LL |     unsafe fn baz(&self);
-   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
   --> $DIR/lint-unsafe-code.rs:70:5
@@ -220,5 +208,5 @@ LL |     unsafe_in_macro!()
    |
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 28 previous errors
+error: aborting due to 26 previous errors
 
