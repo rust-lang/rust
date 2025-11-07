@@ -38,10 +38,7 @@ impl<'de> Deserialize<'de> for TextRange {
     {
         let (start, end) = Deserialize::deserialize(deserializer)?;
         if !(start <= end) {
-            return Err(de::Error::custom(format!(
-                "invalid range: {:?}..{:?}",
-                start, end
-            )));
+            return Err(de::Error::custom(format!("invalid range: {:?}..{:?}", start, end)));
         }
         Ok(TextRange::new(start, end))
     }

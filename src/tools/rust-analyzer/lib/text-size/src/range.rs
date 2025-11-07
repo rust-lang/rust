@@ -83,10 +83,7 @@ impl TextRange {
     /// ```
     #[inline]
     pub const fn empty(offset: TextSize) -> TextRange {
-        TextRange {
-            start: offset,
-            end: offset,
-        }
+        TextRange { start: offset, end: offset }
     }
 
     /// Create a range up to the given end (`..end`).
@@ -105,10 +102,7 @@ impl TextRange {
     /// ```
     #[inline]
     pub const fn up_to(end: TextSize) -> TextRange {
-        TextRange {
-            start: TextSize::new(0),
-            end,
-        }
+        TextRange { start: TextSize::new(0), end }
     }
 }
 
@@ -130,9 +124,7 @@ impl TextRange {
     #[inline]
     pub const fn len(self) -> TextSize {
         // HACK for const fn: math on primitives only
-        TextSize {
-            raw: self.end().raw - self.start().raw,
-        }
+        TextSize { raw: self.end().raw - self.start().raw }
     }
 
     /// Check if this range is empty.
@@ -418,8 +410,7 @@ impl Add<TextSize> for TextRange {
     type Output = TextRange;
     #[inline]
     fn add(self, offset: TextSize) -> TextRange {
-        self.checked_add(offset)
-            .expect("TextRange +offset overflowed")
+        self.checked_add(offset).expect("TextRange +offset overflowed")
     }
 }
 
@@ -427,8 +418,7 @@ impl Sub<TextSize> for TextRange {
     type Output = TextRange;
     #[inline]
     fn sub(self, offset: TextSize) -> TextRange {
-        self.checked_sub(offset)
-            .expect("TextRange -offset overflowed")
+        self.checked_sub(offset).expect("TextRange -offset overflowed")
     }
 }
 

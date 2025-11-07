@@ -883,7 +883,7 @@ dependencies = [
  "syntax-bridge",
  "test-fixture",
  "test-utils",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "thin-vec",
  "tracing",
  "triomphe",
@@ -1403,7 +1403,7 @@ version = "0.1.2"
 dependencies = [
  "nohash-hasher",
  "oorandom",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1413,7 +1413,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e27e0ed5a392a7f5ba0b3808a2afccff16c64933312c84b57618b49d1209bd2"
 dependencies = [
  "nohash-hasher",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2334,7 +2334,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "memoffset",
  "rustc-hash 1.1.0",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2667,6 +2667,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_test"
+version = "1.0.177"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f901ee573cab6b3060453d2d5f0bae4e6d628c23c0a962ff9b5f1d7c8d4f1ed"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "sharded-slab"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2721,7 +2730,7 @@ dependencies = [
  "salsa",
  "stdx",
  "syntax",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "vfs",
 ]
 
@@ -2739,6 +2748,12 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "stdx"
@@ -2862,7 +2877,16 @@ dependencies = [
  "profile",
  "rustc-hash 2.1.1",
  "stdx",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "text-size"
+version = "1.1.1"
+dependencies = [
+ "serde",
+ "serde_test",
+ "static_assertions",
 ]
 
 [[package]]
@@ -3147,7 +3171,7 @@ dependencies = [
  "intern",
  "ra-ap-rustc_lexer",
  "stdx",
- "text-size",
+ "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
