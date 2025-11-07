@@ -303,14 +303,7 @@ impl TestCx<'_> {
                 &["-quiet".as_ref(), "-batch".as_ref(), "-nx".as_ref(), &debugger_script];
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-
-            // FIXME: we are propagating `PYTHONPATH` from the environment, not a compiletest flag!
-            let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
-                format!("{pp}:{rust_pp_module_abs_path}")
-            } else {
-                rust_pp_module_abs_path.to_string()
-            };
-            gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
+            gdb.args(debugger_opts);
 
             debugger_run_result =
                 self.compose_and_run(gdb, self.config.run_lib_path.as_path(), None, None);
@@ -449,19 +442,12 @@ impl TestCx<'_> {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
 
-        // FIXME: `PYTHONPATH` takes precedence over the flag...?
-        let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
-            format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
-        } else {
-            self.config.lldb_python_dir.clone().unwrap()
-        };
         self.run_command_to_procres(
             Command::new(&self.config.python)
                 .arg(&lldb_script_path)
                 .arg(test_executable)
                 .arg(debugger_script)
-                .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
-                .env("PYTHONPATH", pythonpath),
+                .env("PYTHONUNBUFFERED", "1"), // Help debugging #78665
         )
     }
 }

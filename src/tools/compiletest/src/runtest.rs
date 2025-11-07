@@ -196,14 +196,12 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         Some(Debugger::Gdb) => {
             config.gdb.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
-            env::var_os("PYTHONPATH").hash(&mut hash);
         }
 
         Some(Debugger::Lldb) => {
             config.python.hash(&mut hash);
             config.lldb_python_dir.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
-            env::var_os("PYTHONPATH").hash(&mut hash);
         }
 
         None => {}

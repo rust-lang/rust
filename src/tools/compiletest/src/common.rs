@@ -524,9 +524,6 @@ pub struct Config {
     ///
     /// FIXME: the fallback path when `gdb` isn't provided tries to find *a* `gdb` or `gdb.exe` from
     /// `PATH`, which is... arguably questionable.
-    ///
-    /// FIXME: we are propagating a python from `PYTHONPATH`, not from an explicit config for gdb
-    /// debugger script.
     pub gdb: Option<String>,
 
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
@@ -587,8 +584,6 @@ pub struct Config {
     pub adb_device_status: bool,
 
     /// Path containing LLDB's Python module.
-    ///
-    /// FIXME: `PYTHONPATH` takes precedence over this flag...? See `runtest::run_lldb`.
     pub lldb_python_dir: Option<String>,
 
     /// Verbose dump a lot of info.
