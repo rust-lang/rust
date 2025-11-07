@@ -1881,7 +1881,7 @@ crate::target_spec_enum! {
         X86_64 = "x86_64",
         Xtensa = "xtensa",
     }
-    other_variant = Unknown;
+    other_variant = Other;
 }
 
 impl Arch {
@@ -1918,7 +1918,7 @@ impl Arch {
             Self::X86 => sym::x86,
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
-            Self::Unknown(name) => rustc_span::Symbol::intern(name),
+            Self::Other(name) => rustc_span::Symbol::intern(name),
         }
     }
 }
@@ -3291,7 +3291,7 @@ impl Target {
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64
-            | Arch::Unknown(_) => return None,
+            | Arch::Other(_) => return None,
         })
     }
 
