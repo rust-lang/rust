@@ -1246,9 +1246,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // else about it!
         if let Some(error_element) = self.scc_values.elements_contained_in(longer_fr_scc).next() {
             // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
-            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesLocationOrUniversal {
+            let illegally_outlived_r = match error_element {
+                RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
+                RegionElement::RootUniversalRegion(r) => r,
+            };
+            errors_buffer.push(RegionErrorKind::PlaceholderOutlivesIllegalRegion {
                 longer_fr,
-                error_element,
+                illegally_outlived_r,
             });
         } else {
             debug!("check_bound_universal_region: all bounds satisfied");
@@ -1436,18 +1440,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }, true).unwrap().1
     }
 
-    /// Get the region outlived by `longer_fr` and live at `element`.
-    pub(crate) fn region_from_element(
-        &self,
-        longer_fr: RegionVid,
-        element: &RegionElement,
-    ) -> RegionVid {
-        match *element {
-            RegionElement::Location(l) => self.find_sub_region_live_at(longer_fr, l),
-            RegionElement::RootUniversalRegion(r) => r,
-        }
-    }
-
     /// Get the region definition of `r`.
     pub(crate) fn region_definition(&self, r: RegionVid) -> &RegionDefinition<'tcx> {
         &self.definitions[r]
@@ -1459,8 +1451,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         scc: ConstraintSccIndex,
     ) -> Option<ty::PlaceholderRegion> {
-        if let Representative::Placeholder(r) = self.scc_annotations[scc].representative
-            && let NllRegionVariableOrigin::Placeholder(p) = self.definitions[r].origin
+        if let NllRegionVariableOrigin::Placeholder(p) =
+            self.definitions[self.scc_annotations[scc].representative.rvid()].origin
         {
             Some(p)
         } else {

@@ -66,6 +66,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             universal_regions.fr_static,
             &mut outlives_constraints,
             &mut RegionErrors::new(infcx.tcx),
+            &definitions,
         );
 
         if added_constraints {
