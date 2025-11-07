@@ -102,6 +102,12 @@ impl TargetEnv {
         }
     }
 
+    // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
+    // before it was discovered that those are actually environments:
+    // https://github.com/rust-lang/rust/issues/133331
+    //
+    // But let's continue setting them for backwards compatibility.
+    // FIXME(madsmtm): Warn about using these in the future.
     fn target_abi(self) -> Abi {
         match self {
             Self::Normal => Abi::Unspecified,
@@ -124,12 +130,6 @@ pub(crate) fn base(
         llvm_floatabi: Some(FloatAbi::Hard),
         os,
         env: env.target_env(),
-        // NOTE: We originally set `cfg(target_abi = "macabi")` / `cfg(target_abi = "sim")`,
-        // before it was discovered that those are actually environments:
-        // https://github.com/rust-lang/rust/issues/133331
-        //
-        // But let's continue setting them for backwards compatibility.
-        // FIXME(madsmtm): Warn about using these in the future.
         abi: env.target_abi(),
         cpu: arch.target_cpu(env).into(),
         link_env_remove,
