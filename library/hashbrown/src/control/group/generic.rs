@@ -102,7 +102,7 @@ impl Group {
     /// - This never happens for `EMPTY` and `DELETED`, only full entries.
     /// - The check for key equality will catch these.
     /// - This only happens if there is at least 1 true match.
-    /// - The chance of this happening is very low (< 1% chance per byte).
+    /// - The chance of this happening is very low (< 1% chance per tag).
     #[inline]
     pub(crate) fn match_tag(self, tag: Tag) -> BitMask {
         // This algorithm is derived from
