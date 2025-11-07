@@ -62,11 +62,11 @@ impl AssocFnTrait for AssocFnBar {
 }
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
-unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait
+unsafe trait Foo {}
 unsafe impl Foo for Bar {} //~ ERROR: implementation of an `unsafe` trait
 
 trait Baz {
-    unsafe fn baz(&self); //~ ERROR: declaration of an `unsafe` method
+    unsafe fn baz(&self);
     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
@@ -95,7 +95,6 @@ impl Baz for Bar3 {
     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
 
-#[allow(unsafe_code)]
 unsafe trait B {
     fn dummy(&self) {}
 }
