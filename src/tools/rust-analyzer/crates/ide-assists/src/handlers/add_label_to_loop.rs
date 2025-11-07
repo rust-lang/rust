@@ -35,9 +35,9 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let loop_kw = ctx.find_token_syntax_at_offset(T![loop])?;
-    let loop_expr = loop_kw.parent().and_then(ast::LoopExpr::cast)?;
-    if loop_expr.label().is_some() {
+    let loop_expr = ctx.find_node_at_offset::<ast::AnyHasLoopBody>()?;
+    let loop_kw = loop_token(&loop_expr)?;
+    if loop_expr.label().is_some() || !loop_kw.text_range().contains_inclusive(ctx.offset()) {
         return None;
     }
 
@@ -80,6 +80,14 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     )
 }
 
+fn loop_token(loop_expr: &ast::AnyHasLoopBody) -> Option<syntax::SyntaxToken> {
+    loop_expr
+        .syntax()
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| matches!(it.kind(), T![for] | T![loop] | T![while]))
+}
+
 fn insert_label_after_token(
     editor: &mut SyntaxEditor,
     make: &SyntaxFactory,
@@ -116,6 +124,48 @@ fn main() {
             r#"
 fn main() {
     ${1:'l}: loop {
+        break ${2:'l};
+        continue ${0:'l};
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn add_label_to_while_expr() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    while$0 true {
+        break;
+        continue;
+    }
+}"#,
+            r#"
+fn main() {
+    ${1:'l}: while true {
+        break ${2:'l};
+        continue ${0:'l};
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn add_label_to_for_expr() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    for$0 _ in 0..5 {
+        break;
+        continue;
+    }
+}"#,
+            r#"
+fn main() {
+    ${1:'l}: for _ in 0..5 {
         break ${2:'l};
         continue ${0:'l};
     }
@@ -188,6 +238,31 @@ fn main() {
             r#"
 fn main() {
     'l: loop$0 {
+        break 'l;
+        continue 'l;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn do_not_add_label_if_outside_keyword() {
+        check_assist_not_applicable(
+            add_label_to_loop,
+            r#"
+fn main() {
+    'l: loop {$0
+        break 'l;
+        continue 'l;
+    }
+}"#,
+        );
+
+        check_assist_not_applicable(
+            add_label_to_loop,
+            r#"
+fn main() {
+    'l: while true {$0
         break 'l;
         continue 'l;
     }
