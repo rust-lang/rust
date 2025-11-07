@@ -692,9 +692,9 @@ declare_clippy_lint! {
     /// ///
     /// /// It was chosen by a fair dice roll.
     /// ```
-    #[clippy::version = "1.92.0"]
+    #[clippy::version = "1.93.0"]
     pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
-    nursery,
+    restriction,
     "missing terminal punctuation in doc comments"
 }
 
