@@ -5,7 +5,7 @@ LL |     NonConst.func();
    |              ^^^^
    |
 note: trait `MyTrait` is implemented but not `const`
-  --> $DIR/auxiliary/cross-crate.rs:12:1
+  --> $DIR/auxiliary/cross-crate.rs:11:1
    |
 LL | impl MyTrait for NonConst {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

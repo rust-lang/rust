@@ -7,12 +7,10 @@
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
 
-#[const_trait]
 #[rustc_specialization_trait]
-trait Specialize {}
+const trait Specialize {}
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn foo();
 }
 
@@ -27,8 +25,7 @@ where
     fn foo() {}
 }
 
-#[const_trait]
-trait Bar {
+const trait Bar {
     fn bar() {}
 }
 

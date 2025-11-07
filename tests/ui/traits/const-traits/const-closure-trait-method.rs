@@ -3,8 +3,7 @@
 //@[next] compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Tr {
+const trait Tr {
     fn a(self) -> i32;
 }
 

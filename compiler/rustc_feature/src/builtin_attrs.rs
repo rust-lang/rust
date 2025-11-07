@@ -846,14 +846,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, experimental!(register_tool),
     ),
 
-    // RFC 2632
-    // FIXME(const_trait_impl) remove this
-    gated!(
-        const_trait, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No, const_trait_impl,
-        "`const_trait` is a temporary placeholder for marking a trait that is suitable for `const` \
-        `impls` and all default bodies as `const`, which may be removed or renamed in the \
-        future."
-    ),
     // lang-team MCP 147
     gated!(
         deprecated_safe, Normal, template!(List: &[r#"since = "version", note = "...""#]), ErrorFollowing,

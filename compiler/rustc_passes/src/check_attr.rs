@@ -235,7 +235,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Marker(..)
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
-                    | AttributeKind::ConstTrait(..)
                     | AttributeKind::DenyExplicitImpl(..)
                     | AttributeKind::DoNotImplementViaObject(..)
                     | AttributeKind::SpecializationTrait(..)

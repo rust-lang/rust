@@ -1,11 +1,11 @@
 error[E0015]: cannot call non-const function `non_const` in constant functions
-  --> $DIR/const-check-fns-in-const-impl.rs:14:16
+  --> $DIR/const-check-fns-in-const-impl.rs:13:16
    |
 LL |     fn foo() { non_const() }
    |                ^^^^^^^^^^^
    |
 note: function `non_const` is not const
-  --> $DIR/const-check-fns-in-const-impl.rs:11:1
+  --> $DIR/const-check-fns-in-const-impl.rs:10:1
    |
 LL | fn non_const() {}
    | ^^^^^^^^^^^^^^

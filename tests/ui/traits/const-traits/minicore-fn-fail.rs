@@ -10,8 +10,7 @@ use minicore::*;
 
 const fn call_indirect<T: [const] Fn()>(t: &T) { t() }
 
-#[const_trait]
-trait Foo {}
+const trait Foo {}
 impl Foo for () {}
 const fn foo<T: [const] Foo>() {}
 

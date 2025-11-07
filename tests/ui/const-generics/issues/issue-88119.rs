@@ -3,8 +3,7 @@
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, generic_const_exprs)]
 
-#[const_trait]
-trait ConstName {
+const trait ConstName {
     const NAME_BYTES: &'static [u8];
 }
 

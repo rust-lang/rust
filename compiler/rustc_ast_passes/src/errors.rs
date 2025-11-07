@@ -56,7 +56,7 @@ pub(crate) struct TraitFnConst {
     pub make_impl_const_sugg: Option<Span>,
     #[suggestion(
         ast_passes_make_trait_const_sugg,
-        code = "#[const_trait]\n",
+        code = "const ",
         applicability = "maybe-incorrect"
     )]
     pub make_trait_const_sugg: Option<Span>,

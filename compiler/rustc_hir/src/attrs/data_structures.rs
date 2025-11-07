@@ -489,9 +489,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
 
-    /// Represents `#[const_trait]`.
-    ConstTrait(Span),
-
     /// Represents `#[coroutine]`.
     Coroutine(Span),
 

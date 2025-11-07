@@ -890,15 +890,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     };
 
     let attrs = tcx.get_all_attrs(def_id);
-    // Only regular traits can be const.
-    // FIXME(const_trait_impl): remove this
-    let constness = if constness == hir::Constness::Const
-        || !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_))
-    {
-        hir::Constness::Const
-    } else {
-        hir::Constness::NotConst
-    };
 
     let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
@@ -1366,22 +1357,27 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
-    let (local_trait_span, suggestion_pre) =
-        match (trait_def_id.is_local(), tcx.sess.is_nightly_build()) {
-            (true, true) => (
-                Some(tcx.def_span(trait_def_id).shrink_to_lo()),
+    let (suggestion, suggestion_pre) = match (trait_def_id.as_local(), tcx.sess.is_nightly_build())
+    {
+        (Some(trait_def_id), true) => {
+            let span = tcx.hir_expect_item(trait_def_id).vis_span;
+            let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+            (
+                Some(span.shrink_to_hi()),
                 if tcx.features().const_trait_impl() {
                     ""
                 } else {
                     "enable `#![feature(const_trait_impl)]` in your crate and "
                 },
-            ),
-            (false, _) | (_, false) => (None, ""),
-        };
+            )
+        }
+        (None, _) | (_, false) => (None, ""),
+    };
     tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
-        local_trait_span,
+        suggestion,
         suggestion_pre,
         marking: (),
         adding: (),
