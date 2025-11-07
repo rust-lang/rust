@@ -16,6 +16,7 @@ def_reg_class! {
         cr,
         ctr,
         lr,
+        vscr,
         xer,
     }
 }
@@ -63,7 +64,7 @@ impl PowerPCInlineAsmRegClass {
             Self::vsreg => types! {
                 vsx: F32, F64, VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
-            Self::cr | Self::ctr | Self::lr | Self::xer => &[],
+            Self::cr | Self::ctr | Self::lr | Self::vscr | Self::xer => &[],
         }
     }
 }
@@ -284,6 +285,7 @@ def_regs! {
         cr7: cr = ["cr7"],
         ctr: ctr = ["ctr"],
         lr: lr = ["lr"],
+        vscr: vscr = ["vscr"],
         xer: xer = ["xer"],
         #error = ["r1", "1", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
@@ -341,6 +343,7 @@ impl PowerPCInlineAsmReg {
             (cr0, "0"), (cr1, "1"), (cr2, "2"), (cr3, "3"), (cr4, "4"), (cr5, "5"), (cr6, "6"), (cr7, "7");
             (ctr, "ctr");
             (lr, "lr");
+            (vscr, "vscr");
             (xer, "xer");
         }
     }

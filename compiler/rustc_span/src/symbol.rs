@@ -2441,6 +2441,7 @@ symbols! {
         volatile_store,
         vreg,
         vreg_low16,
+        vscr,
         vsreg,
         vsx,
         vtable_align,

@@ -710,6 +710,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             PowerPCInlineAsmRegClass::cr
             | PowerPCInlineAsmRegClass::ctr
             | PowerPCInlineAsmRegClass::lr
+            | PowerPCInlineAsmRegClass::vscr
             | PowerPCInlineAsmRegClass::xer,
         ) => {
             unreachable!("clobber-only")
@@ -793,6 +794,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             PowerPCInlineAsmRegClass::cr
             | PowerPCInlineAsmRegClass::ctr
             | PowerPCInlineAsmRegClass::lr
+            | PowerPCInlineAsmRegClass::vscr
             | PowerPCInlineAsmRegClass::xer,
         ) => {
             unreachable!("clobber-only")
