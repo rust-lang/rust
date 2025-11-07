@@ -318,6 +318,12 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::GlobalAsm);
             }
 
+            ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
+                if let Safety::Unsafe(_) = safety {
+                    self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
+                }
+            }
+
             ast::ItemKind::MacroDef(..) => {
                 if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
                     AttributeParser::parse_limited(

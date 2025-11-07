@@ -1,4 +1,5 @@
 use core::iter::TrustedLen;
+use core::option::{self};
 use core::slice::{self};
 
 use super::{IntoIter, Vec};
@@ -33,6 +34,15 @@ impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
             self.append_elements(iterator.as_slice() as _);
         }
         iterator.forget_remaining_elements();
+    }
+}
+
+impl<T, A: Allocator> SpecExtend<T, option::IntoIter<T>> for Vec<T, A> {
+    #[track_caller]
+    fn spec_extend(&mut self, mut iterator: option::IntoIter<T>) {
+        if let Some(element) = iterator.next() {
+            self.push(element);
+        }
     }
 }
 

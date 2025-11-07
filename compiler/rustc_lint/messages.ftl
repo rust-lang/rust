@@ -166,6 +166,8 @@ lint_builtin_unreachable_pub = unreachable `pub` {$what}
 
 lint_builtin_unsafe_block = usage of an `unsafe` block
 
+lint_builtin_unsafe_extern_block = usage of an `unsafe extern` block
+
 lint_builtin_unsafe_impl = implementation of an `unsafe` trait
 
 lint_builtin_unstable_features = use of an unstable feature
