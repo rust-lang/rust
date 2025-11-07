@@ -3338,6 +3338,10 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// except that it also works with slice elements that are Clone but not Copy.
     /// If Rust gets specialization this function may be deprecated.
     ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
+    ///
     /// # Examples
     ///
     /// ```
@@ -3359,8 +3363,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if starting index is greater than the end index
-    /// or if the index is greater than the length of the vector.
+    /// Panics if starting index is greater than the end index, if the index is
+    /// greater than the length of the vector, or if the new capacity exceeds
+    /// `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
