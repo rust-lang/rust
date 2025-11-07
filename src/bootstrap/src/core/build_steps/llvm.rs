@@ -461,7 +461,13 @@ impl Step for Llvm {
             //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
             //Remove this line once they achieved it.
             enabled_llvm_runtimes.push("openmp");
-            enabled_llvm_projects.push("compiler-rt");
+            enabled_llvm_runtimes.push("compiler-rt");
+
+            let runtime_targets = vec!["default", "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
+            cfg.define("LLVM_RUNTIME_TARGETS", runtime_targets.join(";"));
+
+            cfg.define("RUNTIMES_nvptx64-nvidia-cuda_LLVM_ENABLE_RUNTIMES", "openmp");
+            cfg.define("RUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES", "openmp");
         }
 
         if !enabled_llvm_projects.is_empty() {
