@@ -257,95 +257,12 @@ impl<'tcx> AllocExtra<'tcx> {
     }
 }
 
-/// We designate an `init`` field in all synchronization objects.
-/// If `init` is set to this, we consider the object initialized.
-pub const LAZY_INIT_COOKIE: u32 = 0xcafe_affe;
-
 // Public interface to synchronization objects. Please note that in most
 // cases, the function calls are infallible and it is the client's (shim
 // implementation's) responsibility to detect and deal with erroneous
 // situations.
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    /// Helper for lazily initialized `alloc_extra.sync` data:
-    /// this forces an immediate init.
-    /// Return a reference to the data in the machine state.
-    fn lazy_sync_init<'a, T: SyncObj>(
-        &'a mut self,
-        obj: &MPlaceTy<'tcx>,
-        init_offset: Size,
-        data: T,
-    ) -> InterpResult<'tcx, &'a T>
-    where
-        'tcx: 'a,
-    {
-        let this = self.eval_context_mut();
-
-        let (alloc, offset, _) = this.ptr_get_alloc_id(obj.ptr(), 0)?;
-        // Mark this as "initialized".
-        let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
-        assert!(init_offset + init_cookie.size() <= obj.layout.size);
-        let init_field = obj.offset(init_offset, this.machine.layouts.u32, this)?;
-        this.write_scalar_atomic(init_cookie, &init_field, AtomicWriteOrd::Relaxed)?;
-        // Insert sync obj, and return reference to it.
-        let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
-        alloc_extra.sync_objs.insert(offset, Box::new(data));
-        interp_ok(this.get_alloc_extra(alloc)?.get_sync::<T>(offset).unwrap())
-    }
-
-    /// Helper for lazily initialized `alloc_extra.sync` data:
-    /// Checks if the synchronization object is initialized:
-    /// - If yes, fetches the data from `alloc_extra.sync`, or calls `missing_data` if that fails
-    ///   and stores that in `alloc_extra.sync`.
-    /// - Otherwise, calls `new_data` to initialize the object.
-    ///
-    /// Return a reference to the data in the machine state.
-    fn lazy_sync_get_data<'a, T: SyncObj>(
-        &'a mut self,
-        obj: &MPlaceTy<'tcx>,
-        init_offset: Size,
-        missing_data: impl FnOnce() -> InterpResult<'tcx, T>,
-        new_data: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, T>,
-    ) -> InterpResult<'tcx, &'a T>
-    where
-        'tcx: 'a,
-    {
-        let this = self.eval_context_mut();
-
-        // Check if this is already initialized. Needs to be atomic because we can race with another
-        // thread initializing. Needs to be an RMW operation to ensure we read the *latest* value.
-        // So we just try to replace MUTEX_INIT_COOKIE with itself.
-        let init_cookie = Scalar::from_u32(LAZY_INIT_COOKIE);
-        assert!(init_offset + init_cookie.size() <= obj.layout.size);
-        let init_field = obj.offset(init_offset, this.machine.layouts.u32, this)?;
-        let (_init, success) = this
-            .atomic_compare_exchange_scalar(
-                &init_field,
-                &ImmTy::from_scalar(init_cookie, this.machine.layouts.u32),
-                init_cookie,
-                AtomicRwOrd::Relaxed,
-                AtomicReadOrd::Relaxed,
-                /* can_fail_spuriously */ false,
-            )?
-            .to_scalar_pair();
-
-        if success.to_bool()? {
-            // If it is initialized, it must be found in the "sync obj" table,
-            // or else it has been moved illegally.
-            let (alloc, offset, _) = this.ptr_get_alloc_id(obj.ptr(), 0)?;
-            let (alloc_extra, _machine) = this.get_alloc_extra_mut(alloc)?;
-            // Due to borrow checker reasons, we have to do the lookup twice.
-            if alloc_extra.get_sync::<T>(offset).is_none() {
-                let data = missing_data()?;
-                alloc_extra.sync_objs.insert(offset, Box::new(data));
-            }
-            interp_ok(alloc_extra.get_sync::<T>(offset).unwrap())
-        } else {
-            let data = new_data(this)?;
-            this.lazy_sync_init(obj, init_offset, data)
-        }
-    }
-
     /// Get the synchronization object associated with the given pointer,
     /// or initialize a new one.
     ///
