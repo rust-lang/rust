@@ -115,15 +115,6 @@ impl VisitProvenance for GlobalStateInner {
 /// We need interior mutable access to the global state.
 pub type GlobalState = RefCell<GlobalStateInner>;
 
-impl fmt::Display for AccessKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AccessKind::Read => write!(f, "read access"),
-            AccessKind::Write => write!(f, "write access"),
-        }
-    }
-}
-
 /// Policy on whether to recurse into fields to retag
 #[derive(Copy, Clone, Debug)]
 pub enum RetagFields {

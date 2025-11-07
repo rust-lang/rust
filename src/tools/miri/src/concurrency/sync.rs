@@ -16,6 +16,11 @@ use crate::*;
 
 /// A trait for the synchronization metadata that can be attached to a memory location.
 pub trait SyncObj: Any {
+    /// Determines whether reads/writes to this object's location are currently permitted.
+    fn on_access<'tcx>(&self, _access_kind: AccessKind) -> InterpResult<'tcx> {
+        interp_ok(())
+    }
+
     /// Determines whether this object's metadata shall be deleted when a write to its
     /// location occurs.
     fn delete_on_write(&self) -> bool {
@@ -61,6 +66,10 @@ impl MutexRef {
     /// Get the id of the thread that currently owns this lock, or `None` if it is not locked.
     pub fn owner(&self) -> Option<ThreadId> {
         self.0.borrow().owner
+    }
+
+    pub fn queue_is_empty(&self) -> bool {
+        self.0.borrow().queue.is_empty()
     }
 }
 
@@ -138,6 +147,11 @@ impl RwLockRef {
     pub fn is_write_locked(&self) -> bool {
         self.0.borrow().is_write_locked()
     }
+
+    pub fn queue_is_empty(&self) -> bool {
+        let inner = self.0.borrow();
+        inner.reader_queue.is_empty() && inner.writer_queue.is_empty()
+    }
 }
 
 impl VisitProvenance for RwLockRef {
@@ -165,8 +179,8 @@ impl CondvarRef {
         Self(Default::default())
     }
 
-    pub fn is_awaited(&self) -> bool {
-        !self.0.borrow().waiters.is_empty()
+    pub fn queue_is_empty(&self) -> bool {
+        self.0.borrow().waiters.is_empty()
     }
 }
 

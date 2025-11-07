@@ -12,6 +12,15 @@ struct WindowsInitOnce {
 }
 
 impl SyncObj for WindowsInitOnce {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.init_once.queue_is_empty() {
+            throw_ub_format!(
+                "{access_kind} to `INIT_ONCE` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
     fn delete_on_write(&self) -> bool {
         true
     }

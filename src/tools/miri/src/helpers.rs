@@ -1,7 +1,7 @@
 use std::num::NonZero;
 use std::sync::Mutex;
 use std::time::Duration;
-use std::{cmp, iter};
+use std::{cmp, fmt, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
@@ -27,6 +27,15 @@ use crate::*;
 pub enum AccessKind {
     Read,
     Write,
+}
+
+impl fmt::Display for AccessKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AccessKind::Read => write!(f, "read access"),
+            AccessKind::Write => write!(f, "write access"),
+        }
+    }
 }
 
 /// Gets an instance for a path.

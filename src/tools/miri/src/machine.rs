@@ -1547,6 +1547,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(borrow_tracker) = &alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_read(alloc_id, prov_extra, range, machine)?;
         }
+        // Check if there are any sync objects that would like to prevent reading this memory.
+        for (_offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
+            obj.on_access(AccessKind::Read)?;
+        }
+
         interp_ok(())
     }
 
@@ -1590,11 +1595,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         // Delete sync objects that don't like writes.
         // Most of the time, we can just skip this.
         if !alloc_extra.sync_objs.is_empty() {
-            let to_delete = alloc_extra
-                .sync_objs
-                .range(range.start..range.end())
-                .filter_map(|(offset, obj)| obj.delete_on_write().then_some(*offset))
-                .collect::<Vec<_>>();
+            let mut to_delete = vec![];
+            for (offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
+                obj.on_access(AccessKind::Write)?;
+                if obj.delete_on_write() {
+                    to_delete.push(*offset);
+                }
+            }
             for offset in to_delete {
                 alloc_extra.sync_objs.remove(&offset);
             }

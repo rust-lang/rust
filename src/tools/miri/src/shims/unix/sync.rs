@@ -110,6 +110,15 @@ struct PthreadMutex {
 }
 
 impl SyncObj for PthreadMutex {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.mutex_ref.queue_is_empty() {
+            throw_ub_format!(
+                "{access_kind} to `pthread_mutex_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
     fn delete_on_write(&self) -> bool {
         true
     }
@@ -230,6 +239,15 @@ struct PthreadRwLock {
 }
 
 impl SyncObj for PthreadRwLock {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.rwlock_ref.queue_is_empty() {
+            throw_ub_format!(
+                "{access_kind} to `pthread_rwlock_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
     fn delete_on_write(&self) -> bool {
         true
     }
@@ -361,6 +379,15 @@ struct PthreadCondvar {
 }
 
 impl SyncObj for PthreadCondvar {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if !self.condvar_ref.queue_is_empty() {
+            throw_ub_format!(
+                "{access_kind} to `pthread_cond_t` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
     fn delete_on_write(&self) -> bool {
         true
     }
@@ -900,7 +927,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reading the field also has the side-effect that we detect double-`destroy`
         // since we make the field uninit below.
         let condvar = &cond_get_data(this, cond_op)?.condvar_ref;
-        if condvar.is_awaited() {
+        if !condvar.queue_is_empty() {
             throw_ub_format!("destroying an awaited conditional variable");
         }
 

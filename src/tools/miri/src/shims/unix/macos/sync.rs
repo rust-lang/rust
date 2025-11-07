@@ -25,6 +25,17 @@ enum MacOsUnfairLock {
 }
 
 impl SyncObj for MacOsUnfairLock {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if let MacOsUnfairLock::Active { mutex_ref } = self
+            && !mutex_ref.queue_is_empty()
+        {
+            throw_ub_format!(
+                "{access_kind} to `os_unfair_lock` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
     fn delete_on_write(&self) -> bool {
         true
     }
@@ -81,10 +92,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This is a lock that got copied while it is initialized. We de-initialize
                     // locks when they get released, so it got copied while locked. Unfortunately
                     // that is something `std` needs to support (the guard could have been leaked).
-                    // So we behave like a futex-based lock whose wait queue got pruned: any attempt
-                    // to acquire the lock will just wait forever.
-                    // In practice there actually could be a wait queue there, if someone moves a
-                    // lock *while threads are queued*; this is UB we will not detect.
+                    // On the plus side, we know nobody was queued for the lock while it got copied;
+                    // that would have been rejected by our `on_access`. So we behave like a
+                    // futex-based lock would in this case: any attempt to acquire the lock will
+                    // just wait forever, since there's nobody to wake us up.
                     interp_ok(MacOsUnfairLock::PermanentlyLocked)
                 } else {
                     throw_ub_format!("`os_unfair_lock` was not properly initialized at this location, or it got overwritten");
