@@ -2322,11 +2322,6 @@ impl HumanEmitter {
                 show_code_change
             {
                 for part in parts {
-                    let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
-                        snippet
-                    } else {
-                        String::new()
-                    };
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
@@ -2402,7 +2397,7 @@ impl HumanEmitter {
                         // LL - REMOVED <- row_num - 2 - (newlines - first_i - 1)
                         // LL + NEWER
                         //    |         <- row_num
-
+                        let snippet = sm.span_to_snippet(part.span).unwrap_or_default();
                         let newlines = snippet.lines().count();
                         if newlines > 0 && row_num > newlines {
                             // Account for removals where the part being removed spans multiple
