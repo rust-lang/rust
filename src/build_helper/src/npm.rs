@@ -29,6 +29,8 @@ pub fn install(src_root_path: &Path, out_dir: &Path, npm: &Path) -> Result<PathB
     // this makes tidy output less noisy, and also significantly improves runtime
     // of repeated tidy invocations.
     cmd.args(&["--audit=false", "--save=false", "--fund=false"]);
+    // temporary workaround for rollup breakage
+    cmd.arg("--ignore-scripts");
     cmd.current_dir(out_dir);
     let exit_status = cmd.spawn()?.wait()?;
     if !exit_status.success() {
