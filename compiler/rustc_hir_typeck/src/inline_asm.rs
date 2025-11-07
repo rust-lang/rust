@@ -93,6 +93,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
             }
             ty::Adt(adt, args) if adt.repr().simd() => {
+                if !adt.is_struct() {
+                    self.fcx.dcx().span_delayed_bug(
+                        span,
+                        format!("repr(simd) should only be used on structs, got {}", adt.descr()),
+                    );
+                    return Err(NonAsmTypeReason::Invalid(ty));
+                }
+
                 let fields = &adt.non_enum_variant().fields;
                 if fields.is_empty() {
                     return Err(NonAsmTypeReason::EmptySIMDArray(ty));
