@@ -1074,11 +1074,17 @@ impl Step for RustdocJSNotStd {
 
 fn get_browser_ui_test_version_inner(
     builder: &Builder<'_>,
-    npm: &Path,
+    yarn: &Path,
     global: bool,
 ) -> Option<String> {
-    let mut command = command(npm);
-    command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
+    let mut command = command(yarn);
+    command
+        .arg("--cwd")
+        .arg(&builder.build.out)
+        .arg("list")
+        .arg("--parseable")
+        .arg("--long")
+        .arg("--depth=0");
     if global {
         command.arg("--global");
     }
@@ -1089,9 +1095,9 @@ fn get_browser_ui_test_version_inner(
         .map(|v| v.to_owned())
 }
 
-fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<String> {
-    get_browser_ui_test_version_inner(builder, npm, false)
-        .or_else(|| get_browser_ui_test_version_inner(builder, npm, true))
+fn get_browser_ui_test_version(builder: &Builder<'_>, yarn: &Path) -> Option<String> {
+    get_browser_ui_test_version_inner(builder, yarn, false)
+        .or_else(|| get_browser_ui_test_version_inner(builder, yarn, true))
 }
 
 /// Run GUI tests on a given rustdoc.
@@ -1115,7 +1121,7 @@ impl Step for RustdocGUI {
                 && builder.doc_tests != DocTests::Only
                 && builder
                     .config
-                    .npm
+                    .yarn
                     .as_ref()
                     .map(|p| get_browser_ui_test_version(builder, p).is_some())
                     .unwrap_or(false)
@@ -1178,8 +1184,8 @@ impl Step for RustdocGUI {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        if let Some(ref npm) = builder.config.npm {
-            cmd.arg("--npm").arg(npm);
+        if let Some(ref yarn) = builder.config.yarn {
+            cmd.arg("--yarn").arg(yarn);
         }
 
         let _time = helpers::timeit(builder);
@@ -1222,11 +1228,11 @@ impl Step for Tidy {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
         cmd.arg(jobs.to_string());
-        // pass the path to the npm command used for installing js deps.
-        if let Some(npm) = &builder.config.npm {
-            cmd.arg(npm);
+        // pass the path to the yarn command used for installing js deps.
+        if let Some(yarn) = &builder.config.yarn {
+            cmd.arg(yarn);
         } else {
-            cmd.arg("npm");
+            cmd.arg("yarn");
         }
         if builder.is_verbose() {
             cmd.arg("--verbose");
