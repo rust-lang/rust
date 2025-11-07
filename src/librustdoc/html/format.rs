@@ -1545,7 +1545,7 @@ fn print_generic_arg(generic_arg: &clean::GenericArg, cx: &Context<'_>) -> impl 
         clean::GenericArg::Lifetime(lt) => f.write_str(print_lifetime(lt)),
         clean::GenericArg::Type(ty) => print_type(ty, cx).fmt(f),
         clean::GenericArg::Const(ct) => print_constant_kind(ct, cx.tcx()).fmt(f),
-        clean::GenericArg::Infer => Display::fmt("_", f),
+        clean::GenericArg::Infer => f.write_char('_'),
     })
 }
 
