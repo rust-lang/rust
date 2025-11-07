@@ -1407,11 +1407,9 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         Some(LinkerFlavorCli::Llbc) => Some(LinkerFlavor::Llbc),
         Some(LinkerFlavorCli::Ptx) => Some(LinkerFlavor::Ptx),
         // The linker flavors that corresponds to targets needs logic that keeps the base LinkerFlavor
-        _ => sess
-            .opts
-            .cg
-            .linker_flavor
-            .map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor)),
+        linker_flavor => {
+            linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor))
+        }
     };
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor, features) {
         return ret;
