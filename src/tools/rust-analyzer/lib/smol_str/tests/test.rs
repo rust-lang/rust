@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_types)]
 use std::sync::Arc;
 
 #[cfg(not(miri))]
@@ -8,10 +9,7 @@ use smol_str::{SmolStr, SmolStrBuilder};
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn smol_str_is_smol() {
-    assert_eq!(
-        ::std::mem::size_of::<SmolStr>(),
-        ::std::mem::size_of::<String>(),
-    );
+    assert_eq!(::std::mem::size_of::<SmolStr>(), ::std::mem::size_of::<String>(),);
 }
 
 #[test]
@@ -341,10 +339,7 @@ mod test_str_ext {
     #[test]
     fn large() {
         let lowercase = "aaaaaaAAAAAaaaaaaaaaaaaaaaaaaaaaAAAAaaaaaaaaaaaaaa".to_lowercase_smolstr();
-        assert_eq!(
-            lowercase,
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-        );
+        assert_eq!(lowercase, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         assert!(lowercase.is_heap_allocated());
     }
 

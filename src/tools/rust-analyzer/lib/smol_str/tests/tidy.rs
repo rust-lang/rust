@@ -1,3 +1,4 @@
+#![allow(clippy::disallowed_methods, clippy::print_stdout)]
 #![cfg(not(miri))]
 use std::{
     env,

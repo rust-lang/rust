@@ -33,8 +33,5 @@ serde = ["dep:serde_core"]
 name = "bench"
 harness = false
 
-[profile.bench]
-lto = "fat"
-
 [lints]
 workspace = true

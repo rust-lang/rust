@@ -67,10 +67,7 @@ where
         {
             match String::from_utf8(v) {
                 Ok(s) => Ok(SmolStr::from(s)),
-                Err(e) => Err(Error::invalid_value(
-                    Unexpected::Bytes(&e.into_bytes()),
-                    &self,
-                )),
+                Err(e) => Err(Error::invalid_value(Unexpected::Bytes(&e.into_bytes()), &self)),
             }
         }
     }
