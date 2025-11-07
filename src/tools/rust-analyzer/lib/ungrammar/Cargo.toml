@@ -8,8 +8,6 @@ edition = "2018"
 
 exclude = ["/bors.toml", "/.github"]
 
-[workspace]
-members = ["ungrammar2json"]
 
 [dependencies]
 # nope

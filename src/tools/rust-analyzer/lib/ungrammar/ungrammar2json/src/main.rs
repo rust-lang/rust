@@ -1,3 +1,4 @@
+#![allow(clippy::print_stderr, clippy::print_stdout)]
 use std::{
     env,
     io::{self, Read},

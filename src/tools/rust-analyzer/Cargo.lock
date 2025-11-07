@@ -3195,8 +3195,20 @@ checksum = "eaea85b334db583fe3274d12b4cd1880032beab409c0d774be044d4480ab9a94"
 [[package]]
 name = "ungrammar"
 version = "1.16.1"
+
+[[package]]
+name = "ungrammar"
+version = "1.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e5df347f0bf3ec1d670aad6ca5c6a1859cd9ea61d2113125794654ccced68f"
+
+[[package]]
+name = "ungrammar2json"
+version = "1.0.0"
+dependencies = [
+ "ungrammar 1.16.1",
+ "write-json",
+]
 
 [[package]]
 name = "unicase"
@@ -3707,7 +3719,7 @@ dependencies = [
  "quote",
  "stdx",
  "time",
- "ungrammar",
+ "ungrammar 1.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "write-json",
  "xflags",
  "xshell",

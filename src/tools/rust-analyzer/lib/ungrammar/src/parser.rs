@@ -1,4 +1,5 @@
 //! Simple hand-written ungrammar parser.
+#![allow(clippy::disallowed_types)]
 use std::collections::HashMap;
 
 use crate::{
@@ -36,10 +37,7 @@ const DUMMY_RULE: Rule = Rule::Node(Node(!0));
 impl Parser {
     fn new(mut tokens: Vec<lexer::Token>) -> Parser {
         tokens.reverse();
-        Parser {
-            tokens,
-            ..Parser::default()
-        }
+        Parser { tokens, ..Parser::default() }
     }
 
     fn peek(&self) -> Option<&lexer::Token> {
@@ -49,9 +47,7 @@ impl Parser {
         self.tokens.iter().nth_back(n)
     }
     fn bump(&mut self) -> Result<lexer::Token> {
-        self.tokens
-            .pop()
-            .ok_or_else(|| format_err!("unexpected EOF"))
+        self.tokens.pop().ok_or_else(|| format_err!("unexpected EOF"))
     }
     fn expect(&mut self, kind: TokenKind, what: &str) -> Result<()> {
         let token = self.bump()?;
@@ -75,10 +71,7 @@ impl Parser {
         let len = self.node_table.len();
         let grammar = &mut self.grammar;
         *self.node_table.entry(name.clone()).or_insert_with(|| {
-            grammar.nodes.push(NodeData {
-                name,
-                rule: DUMMY_RULE,
-            });
+            grammar.nodes.push(NodeData { name, rule: DUMMY_RULE });
             Node(len)
         })
     }
@@ -127,11 +120,7 @@ fn rule(p: &mut Parser) -> Result<Rule> {
         let rule = seq_rule(p)?;
         alt.push(rule)
     }
-    let res = if alt.len() == 1 {
-        alt.pop().unwrap()
-    } else {
-        Rule::Alt(alt)
-    };
+    let res = if alt.len() == 1 { alt.pop().unwrap() } else { Rule::Alt(alt) };
     Ok(res)
 }
 
@@ -142,11 +131,7 @@ fn seq_rule(p: &mut Parser) -> Result<Rule> {
     while let Some(rule) = opt_atom_rule(p)? {
         seq.push(rule)
     }
-    let res = if seq.len() == 1 {
-        seq.pop().unwrap()
-    } else {
-        Rule::Seq(seq)
-    };
+    let res = if seq.len() == 1 { seq.pop().unwrap() } else { Rule::Seq(seq) };
     Ok(res)
 }
 
@@ -175,10 +160,7 @@ fn opt_atom_rule(p: &mut Parser) -> Result<Option<Rule>> {
                         p.bump()?;
                         p.bump()?;
                         let rule = atom_rule(p)?;
-                        let res = Rule::Labeled {
-                            label,
-                            rule: Box::new(rule),
-                        };
+                        let res = Rule::Labeled { label, rule: Box::new(rule) };
                         return Ok(Some(res));
                     }
                     _ => (),

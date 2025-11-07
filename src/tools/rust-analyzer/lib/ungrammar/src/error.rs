@@ -27,10 +27,7 @@ impl std::error::Error for Error {}
 
 impl Error {
     pub(crate) fn with_location(self, location: Location) -> Error {
-        Error {
-            location: Some(location),
-            ..self
-        }
+        Error { location: Some(location), ..self }
     }
 }
 
