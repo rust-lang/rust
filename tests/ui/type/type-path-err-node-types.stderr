@@ -35,5 +35,5 @@ LL |     let _ = |a: /* Type */, b: _| -> _ { 0 };
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0282, E0425, E0425, E0433, E0576.
+Some errors have detailed explanations: E0282, E0425, E0433, E0576.
 For more information about an error, try `rustc --explain E0282`.

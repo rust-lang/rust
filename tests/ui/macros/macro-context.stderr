@@ -80,8 +80,7 @@ LL |     let i = m!();
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0425, E0425.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.
 Future incompatibility report: Future breakage diagnostic:
 error: trailing semicolon in macro used in expression position
   --> $DIR/macro-context.rs:3:15

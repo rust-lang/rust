@@ -36,5 +36,5 @@ LL +     std::mem::size_of();
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0061, E0425, E0423.
+Some errors have detailed explanations: E0061, E0423, E0425.
 For more information about an error, try `rustc --explain E0061`.
