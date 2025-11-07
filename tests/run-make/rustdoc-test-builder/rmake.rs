@@ -5,7 +5,7 @@
 
 //@ needs-target-std
 
-use run_make_support::{path, rfs, rustc, rustc_path, rustdoc};
+use run_make_support::{bare_rustc, path, rfs, rustc_path, rustdoc};
 
 fn main() {
     // Test 1: Verify that a non-executable test-builder fails gracefully
@@ -24,9 +24,10 @@ fn main() {
     output.assert_not_ice();
 
     // Test 2: Verify that a valid test-builder is invoked with correct arguments
-    // Build a custom test-builder that logs its arguments and forwards to rustc
+    // Build a custom test-builder that logs its arguments and forwards to rustc.
+    // Use `bare_rustc` so we compile for the host architecture even in cross builds.
     let builder_bin = path("builder-bin");
-    rustc().input("builder.rs").output(&builder_bin).run();
+    bare_rustc().input("builder.rs").output(&builder_bin).run();
 
     let log_path = path("builder.log");
     let _ = std::fs::remove_file(&log_path);
