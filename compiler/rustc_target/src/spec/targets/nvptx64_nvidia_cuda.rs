@@ -42,6 +42,9 @@ pub(crate) fn target() -> Target {
             // Let the `ptx-linker` to handle LLVM lowering into MC / assembly.
             obj_is_bitcode: true,
 
+            // Clearly a GPU
+            is_like_gpu: true,
+
             // Convenient and predicable naming scheme.
             dll_prefix: "".into(),
             dll_suffix: ".ptx".into(),
