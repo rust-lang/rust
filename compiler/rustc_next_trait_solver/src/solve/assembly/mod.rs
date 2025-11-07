@@ -788,11 +788,6 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let cx = self.cx();
-        if cx.is_sizedness_trait(goal.predicate.trait_def_id(cx)) {
-            // `dyn MetaSized` is valid, but should get its `MetaSized` impl from being `dyn`.
-            tracing::info!("FIXME: try removing this");
-            return;
-        }
 
         let self_ty = goal.predicate.self_ty();
         let bounds = match self_ty.kind() {
