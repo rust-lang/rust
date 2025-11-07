@@ -119,7 +119,7 @@ declare namespace rustdoc {
         containerElement: function(): Element|null;
         title: string;
         titleBeforeSearch: string;
-        timeout: ReturnType<typeof setTimeout>|null;
+        timeout: number|null;
         currentTab: number;
         focusedByTab: [Element|null, Element|null, Element|null];
         clearInputTimeout: function;
