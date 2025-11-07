@@ -996,7 +996,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         });
 
     let deny_explicit_impl = find_attr!(attrs, AttributeKind::DenyExplicitImpl(_));
-    let implement_via_object = !find_attr!(attrs, AttributeKind::DoNotImplementViaObject(_));
+    let force_dyn_incompatible =
+        find_attr!(attrs, AttributeKind::DynIncompatibleTrait(span) => *span);
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
@@ -1011,7 +1012,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         skip_boxed_slice_during_method_dispatch,
         specialization_kind,
         must_implement_one_of,
-        implement_via_object,
+        force_dyn_incompatible,
         deny_explicit_impl,
     }
 }
