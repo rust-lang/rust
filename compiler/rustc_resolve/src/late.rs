@@ -3161,7 +3161,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         result
     }
 
-    /// When evaluating a `trait` use its associated types' idents for suggestions in EO425.
+    /// When evaluating a `trait` use its associated types' idents for suggestions in E0425.
     fn resolve_trait_items(&mut self, trait_items: &'ast [Box<AssocItem>]) {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
