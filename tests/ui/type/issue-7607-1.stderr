@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Fo` in this scope
+error[E0425]: cannot find type `Fo` in this scope
   --> $DIR/issue-7607-1.rs:5:6
    |
 LL | impl Fo {
@@ -10,4 +10,4 @@ LL | impl Fo {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

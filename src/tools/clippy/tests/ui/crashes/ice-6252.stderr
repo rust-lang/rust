@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `PhantomData` in this scope
+error[E0425]: cannot find type `PhantomData` in this scope
   --> tests/ui/crashes/ice-6252.rs:9:9
    |
 LL |     _n: PhantomData,
@@ -9,7 +9,7 @@ help: consider importing this struct
 LL + use std::marker::PhantomData;
    |
 
-error[E0412]: cannot find type `VAL` in this scope
+error[E0425]: cannot find type `VAL` in this scope
   --> tests/ui/crashes/ice-6252.rs:12:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
@@ -31,5 +31,5 @@ LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0046, E0412.
+Some errors have detailed explanations: E0046, E0425.
 For more information about an error, try `rustc --explain E0046`.

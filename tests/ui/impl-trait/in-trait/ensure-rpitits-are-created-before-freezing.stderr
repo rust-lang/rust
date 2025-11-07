@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/ensure-rpitits-are-created-before-freezing.rs:8:19
    |
 LL | impl Iterable for Missing {
@@ -6,4 +6,4 @@ LL | impl Iterable for Missing {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

@@ -1,22 +1,22 @@
-error[E0412]: cannot find type `Color` in this scope
+error[E0425]: cannot find type `Color` in this scope
   --> $DIR/trait-selection-ice-84727.rs:5:17
    |
 LL |     foreground: Color<Fg>,
    |                 ^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Color` in this scope
+error[E0425]: cannot find type `Color` in this scope
   --> $DIR/trait-selection-ice-84727.rs:7:17
    |
 LL |     background: Color<Bg>,
    |                 ^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Color` in this scope
+error[E0425]: cannot find type `Color` in this scope
   --> $DIR/trait-selection-ice-84727.rs:18:16
    |
 LL |     Self: Over<Color<BottomBg>, Cell<NewFg>>,
    |                ^^^^^ not found in this scope
 
-error[E0412]: cannot find type `NewBg` in this scope
+error[E0425]: cannot find type `NewBg` in this scope
   --> $DIR/trait-selection-ice-84727.rs:32:27
    |
 LL |     fn over(self) -> Cell<NewBg> {
@@ -43,5 +43,5 @@ LL |         self.over();
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0308, E0412.
+Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

@@ -31,7 +31,7 @@ help: consider introducing lifetime `'a` here
 LL | fn main<'a>() {
    |        ++++
 
-error[E0412]: cannot find type `Pin` in this scope
+error[E0425]: cannot find type `Pin` in this scope
   --> $DIR/ice-cast-type-with-error-124848.rs:7:60
    |
 LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
@@ -66,5 +66,5 @@ LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as 
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0061, E0261, E0412, E0606.
+Some errors have detailed explanations: E0061, E0261, E0425, E0606.
 For more information about an error, try `rustc --explain E0061`.

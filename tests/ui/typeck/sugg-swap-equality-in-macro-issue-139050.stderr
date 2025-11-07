@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Item` in this scope
+error[E0425]: cannot find type `Item` in this scope
   --> $DIR/sugg-swap-equality-in-macro-issue-139050.rs:29:5
    |
 LL |     Item: Eq + Debug,
@@ -35,5 +35,5 @@ LL +                 if !(*right_val == *left_val) {
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0308, E0412.
+Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

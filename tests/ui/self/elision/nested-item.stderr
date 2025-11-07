@@ -35,7 +35,7 @@ LL - fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
 LL + fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> () {
    |
 
-error[E0412]: cannot find type `Wrap` in this scope
+error[E0425]: cannot find type `Wrap` in this scope
   --> $DIR/nested-item.rs:5:15
    |
 LL | fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
@@ -43,5 +43,5 @@ LL | fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0106, E0412.
+Some errors have detailed explanations: E0106, E0425.
 For more information about an error, try `rustc --explain E0106`.

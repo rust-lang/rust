@@ -4,7 +4,7 @@ error: at least one trait must be specified
 LL | fn server() -> impl {
    |                ^^^^
 
-error[E0412]: cannot find type `F` in this scope
+error[E0425]: cannot find type `F` in this scope
   --> $DIR/issue-78720.rs:14:12
    |
 LL |     _func: F,
@@ -55,5 +55,5 @@ LL |     fn map2<F>(&self, f: F) -> Map2<F> {}
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0282, E0308, E0412.
+Some errors have detailed explanations: E0277, E0282, E0308, E0425.
 For more information about an error, try `rustc --explain E0277`.

@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `c` in this scope
+error[E0425]: cannot find type `c` in this scope
   --> $DIR/elided-lifetime-in-const-param-type.rs:8:27
    |
 LL | type A = dyn for<const B: c(&())> D;
@@ -16,5 +16,5 @@ LL | type A = dyn for<const B: c(&())> D;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0658.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

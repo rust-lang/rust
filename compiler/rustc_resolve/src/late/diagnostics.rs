@@ -1127,7 +1127,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 self.suggest_ident_hidden_by_hygiene(err, path, span);
-            } else if err_code == E0412 {
+                // cannot find type in this scope
                 if let Some(correct) = Self::likely_rust_type(path) {
                     err.span_suggestion(
                         span,

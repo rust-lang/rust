@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/gvn-nonsensical-coroutine-layout.rs:6:14
    |
 LL |     TestSome(T),
@@ -22,5 +22,5 @@ LL + use std::error::Request;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0574.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0574.
+For more information about an error, try `rustc --explain E0425`.
