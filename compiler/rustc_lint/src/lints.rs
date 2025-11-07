@@ -125,6 +125,8 @@ pub(crate) enum BuiltinUnsafe {
     AllowInternalUnsafe,
     #[diag(lint_builtin_unsafe_block)]
     UnsafeBlock,
+    #[diag(lint_builtin_unsafe_extern_block)]
+    UnsafeExternBlock,
     #[diag(lint_builtin_unsafe_impl)]
     UnsafeImpl,
     #[diag(lint_builtin_no_mangle_fn)]
