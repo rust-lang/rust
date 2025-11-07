@@ -1525,10 +1525,11 @@ impl Build {
     /// Path to the python interpreter to use
     fn python(&self) -> &Path {
         if self.config.host_target.ends_with("apple-darwin") {
-            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
-            // LLDB plugin's compiled module which only works with the system python
-            // (namely not Homebrew-installed python)
-            Path::new("/usr/bin/python3")
+            // LLDB tests require the Python version the LLDB plugin was built for.
+            // On macOS, the system Python/LLDB are compatible. Many users install
+            // Homebrew Python but not Homebrew LLVM, so default to system Python.
+            // Can be overridden via `build.python` for custom LLVM installations.
+            self.config.python.as_deref().unwrap_or_else(|| Path::new("/usr/bin/python3"))
         } else {
             self.config
                 .python
