@@ -1,5 +1,5 @@
 //! The main loop of the proc-macro server.
-use std::io;
+use std::{io, thread};
 
 use proc_macro_api::{
     legacy_protocol::{
@@ -14,6 +14,7 @@ use proc_macro_api::{
 use proc_macro_srv::{EnvSnapshot, SpanId};
 
 use crate::ProtocolFormat;
+use std::io::BufReader;
 
 struct SpanTrans;
 
@@ -37,8 +38,7 @@ impl SpanTransformer for SpanTrans {
 pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
         ProtocolFormat::Json => run_json(),
-        #[cfg(feature = "postcard")]
-        ProtocolFormat::Postcard => unimplemented!(),
+        ProtocolFormat::Postcard => run_postcard(),
     }
 }
 
@@ -167,6 +167,146 @@ fn run_json() -> io::Result<()> {
             }
         };
         write_response(res)?
+    }
+
+    Ok(())
+}
+
+fn run_postcard() -> io::Result<()> {
+    fn macro_kind_to_api(kind: proc_macro_srv::ProcMacroKind) -> proc_macro_api::ProcMacroKind {
+        match kind {
+            proc_macro_srv::ProcMacroKind::CustomDerive => {
+                proc_macro_api::ProcMacroKind::CustomDerive
+            }
+            proc_macro_srv::ProcMacroKind::Bang => proc_macro_api::ProcMacroKind::Bang,
+            proc_macro_srv::ProcMacroKind::Attr => proc_macro_api::ProcMacroKind::Attr,
+        }
+    }
+
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let mut reader = BufReader::new(stdin.lock());
+    let mut writer = stdout.lock();
+    let mut buf = vec![0; 1024];
+
+    let env = proc_macro_srv::EnvSnapshot::default();
+    let srv = proc_macro_srv::ProcMacroSrv::new(&env);
+
+    let mut span_mode = msg::SpanMode::Id;
+    use proc_macro_api::legacy_protocol::postcard_wire;
+
+    while let Some(req) = postcard_wire::read_postcard(&mut reader, &mut buf)? {
+        let Ok(req) = postcard_wire::decode_cobs(req) else {
+            thread::sleep(std::time::Duration::from_secs(1));
+            continue;
+        };
+        dbg!(&req);
+
+        let res = match req {
+            msg::Request::ListMacros { dylib_path } => {
+                msg::Response::ListMacros(srv.list_macros(&dylib_path).map(|macros| {
+                    macros.into_iter().map(|(name, kind)| (name, macro_kind_to_api(kind))).collect()
+                }))
+            }
+            msg::Request::ExpandMacro(task) => {
+                let msg::ExpandMacro {
+                    lib,
+                    env,
+                    current_dir,
+                    data:
+                        msg::ExpandMacroData {
+                            macro_body,
+                            macro_name,
+                            attributes,
+                            has_global_spans:
+                                msg::ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
+                            span_data_table,
+                        },
+                } = *task;
+                match span_mode {
+                    msg::SpanMode::Id => msg::Response::ExpandMacro({
+                        let def_site = proc_macro_srv::SpanId(def_site as u32);
+                        let call_site = proc_macro_srv::SpanId(call_site as u32);
+                        let mixed_site = proc_macro_srv::SpanId(mixed_site as u32);
+
+                        let macro_body =
+                            macro_body.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION);
+                        let attributes = attributes
+                            .map(|it| it.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION));
+
+                        srv.expand(
+                            lib,
+                            &env,
+                            current_dir,
+                            &macro_name,
+                            macro_body,
+                            attributes,
+                            def_site,
+                            call_site,
+                            mixed_site,
+                        )
+                        .map(|it| {
+                            msg::FlatTree::new_raw::<SpanTrans>(
+                                tt::SubtreeView::new(&it),
+                                CURRENT_API_VERSION,
+                            )
+                        })
+                        .map_err(|e| e.into_string().unwrap_or_default())
+                        .map_err(msg::PanicMessage)
+                    }),
+                    msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
+                        let mut span_data_table =
+                            msg::deserialize_span_data_index_map(&span_data_table);
+
+                        let def_site = span_data_table[def_site];
+                        let call_site = span_data_table[call_site];
+                        let mixed_site = span_data_table[mixed_site];
+
+                        let macro_body =
+                            macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table);
+                        let attributes = attributes.map(|it| {
+                            it.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table)
+                        });
+                        srv.expand(
+                            lib,
+                            &env,
+                            current_dir,
+                            &macro_name,
+                            macro_body,
+                            attributes,
+                            def_site,
+                            call_site,
+                            mixed_site,
+                        )
+                        .map(|it| {
+                            (
+                                msg::FlatTree::new(
+                                    tt::SubtreeView::new(&it),
+                                    CURRENT_API_VERSION,
+                                    &mut span_data_table,
+                                ),
+                                msg::serialize_span_data_index_map(&span_data_table),
+                            )
+                        })
+                        .map(|(tree, span_data_table)| msg::ExpandMacroExtended {
+                            tree,
+                            span_data_table,
+                        })
+                        .map_err(|e| e.into_string().unwrap_or_default())
+                        .map_err(msg::PanicMessage)
+                    }),
+                }
+            }
+            msg::Request::ApiVersionCheck {} => msg::Response::ApiVersionCheck(CURRENT_API_VERSION),
+            msg::Request::SetConfig(config) => {
+                span_mode = config.span_mode;
+                msg::Response::SetConfig(config)
+            }
+        };
+
+        dbg!(&res);
+        let res = postcard_wire::encode_cobs(&res).unwrap();
+        postcard_wire::write_postcard(&mut writer, &res)?;
     }
 
     Ok(())
