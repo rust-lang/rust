@@ -54,7 +54,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | Arch::Nvptx64
             | Arch::PowerPC64LE
             | Arch::SpirV
-            | Arch::Unknown(_)) => bug!("unsupported target architecture for malloc: `{arch}`"),
+            | Arch::Other(_)) => bug!("unsupported target architecture for malloc: `{arch}`"),
         };
         // The C standard only requires sufficient alignment for any *type* with size less than or
         // equal to the size requested. Types one can define in standard C seem to never have an alignment
