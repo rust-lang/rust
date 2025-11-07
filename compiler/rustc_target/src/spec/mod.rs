@@ -1881,13 +1881,6 @@ crate::target_spec_enum! {
         X86_64 = "x86_64",
         Xtensa = "xtensa",
     }
-    /// The vast majority of the time, the compiler deals with a fixed set of
-    /// target architectures, so it is convenient for them to be represented in
-    /// an enum. However, it is possible to have arbitrary values for the "arch"
-    /// field in a target JSON file (which can be parsed when `--target` is
-    /// specified). This might occur, for example, for an out-of-tree codegen
-    /// backend that supports an architecture that rustc currently doesn't know
-    /// about. This variant exists as an escape hatch for such cases.
     other_variant = Unknown;
 }
 
