@@ -2268,7 +2268,11 @@ fn render_impl_summary(
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let inner_impl = i.inner_impl();
-        let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
+        let id = cx.derive_id(get_id_for_impl(
+            cx.tcx(),
+            i.impl_item.item_id,
+            inner_impl.trait_.is_some(),
+        ));
         let aliases = (!aliases.is_empty())
             .then_some(fmt::from_fn(|f| {
                 write!(f, " data-aliases=\"{}\"", fmt::from_fn(|f| aliases.iter().joined(",", f)))
@@ -2395,7 +2399,7 @@ pub(crate) fn small_url_encode(s: String) -> String {
     }
 }
 
-fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
+fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId, is_of_trait: bool) -> String {
     use rustc_middle::ty::print::with_forced_trimmed_paths;
     let (type_, trait_) = match impl_id {
         ItemId::Auto { trait_, for_ } => {
@@ -2403,8 +2407,8 @@ fn get_id_for_impl(tcx: TyCtxt<'_>, impl_id: ItemId) -> String {
             (ty, Some(ty::TraitRef::new(tcx, trait_, [ty])))
         }
         ItemId::Blanket { impl_id, .. } | ItemId::DefId(impl_id) => {
-            if let Some(trait_ref) = tcx.impl_opt_trait_ref(impl_id) {
-                let trait_ref = trait_ref.skip_binder();
+            if is_of_trait {
+                let trait_ref = tcx.impl_trait_ref(impl_id).skip_binder();
                 (trait_ref.self_ty(), Some(trait_ref))
             } else {
                 (tcx.type_of(impl_id).skip_binder(), None)
@@ -2423,7 +2427,10 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
         clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
             // so this parameter does nothing.
-            Some((format!("{:#}", i.for_.print(cx)), get_id_for_impl(cx.tcx(), item.item_id)))
+            Some((
+                format!("{:#}", i.for_.print(cx)),
+                get_id_for_impl(cx.tcx(), item.item_id, i.trait_.is_some()),
+            ))
         }
         _ => None,
     }

@@ -1507,7 +1507,11 @@ pub(crate) fn build_index(
                         .unwrap_or(0)
                         > 1
                 {
-                    Some(render::get_id_for_impl(tcx, ItemId::DefId(impl_id)))
+                    Some(render::get_id_for_impl(
+                        tcx,
+                        ItemId::DefId(impl_id),
+                        item.trait_parent.is_some(),
+                    ))
                 } else {
                     None
                 },
