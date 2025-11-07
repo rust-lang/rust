@@ -126,25 +126,25 @@ LL |     unsafe fn provided_override(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:106:5
+  --> $DIR/lint-unsafe-code.rs:101:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:112:5
+  --> $DIR/lint-unsafe-code.rs:107:5
    |
 LL |     unsafe fn provided(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementation of an `unsafe` method
-  --> $DIR/lint-unsafe-code.rs:116:5
+  --> $DIR/lint-unsafe-code.rs:111:5
    |
 LL |     unsafe fn baz(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of an `unsafe` block
-  --> $DIR/lint-unsafe-code.rs:127:5
+  --> $DIR/lint-unsafe-code.rs:122:5
    |
 LL |     unsafe {}
    |     ^^^^^^^^^

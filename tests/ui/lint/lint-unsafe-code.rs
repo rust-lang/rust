@@ -95,32 +95,28 @@ impl Baz for Bar3 {
     unsafe fn provided_override(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
 
-unsafe trait B {
-    fn dummy(&self) {}
-}
-
-trait C {
+trait B {
     #[allow(unsafe_code)]
     unsafe fn baz(&self);
     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
 
-impl C for Bar {
+impl B for Bar {
     #[allow(unsafe_code)]
     unsafe fn baz(&self) {}
     unsafe fn provided(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
 
-impl C for Bar2 {
+impl B for Bar2 {
     unsafe fn baz(&self) {} //~ ERROR: implementation of an `unsafe` method
 }
 
-trait D {
+trait C {
     #[allow(unsafe_code)]
     unsafe fn unsafe_provided(&self) {}
 }
 
-impl D for Bar {}
+impl C for Bar {}
 
 fn main() {
     unsafe {} //~ ERROR: usage of an `unsafe` block
