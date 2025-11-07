@@ -20,15 +20,15 @@ body:
       label: Reproducer
       description: Please provide the code and steps to reproduce the bug
       value: |
-        I tried this code:
+        Code:
 
         ```rust
         <code>
         ```
 
-        I expected to see this happen:
+        Current output:
 
-        Instead, this happened:
+        Desired output:
   - type: textarea
     id: version
     attributes:
