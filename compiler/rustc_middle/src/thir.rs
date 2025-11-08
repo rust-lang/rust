@@ -256,23 +256,13 @@ pub struct Expr<'tcx> {
     /// The type of this expression
     pub ty: Ty<'tcx>,
 
-    /// The lifetime of this expression if it should be spilled into a
-    /// temporary
-    pub temp_lifetime: TempLifetime,
+    /// The id of the HIR expression whose [temporary scope] should be used for this expression.
+    ///
+    /// [temporary scope]: https://doc.rust-lang.org/reference/destructors.html#temporary-scopes
+    pub temp_scope_id: hir::ItemLocalId,
 
     /// span of the expression in the source
     pub span: Span,
-}
-
-/// Temporary lifetime information for THIR expressions
-#[derive(Clone, Copy, Debug, HashStable)]
-pub struct TempLifetime {
-    /// Lifetime for temporaries as expected.
-    /// This should be `None` in a constant context.
-    pub temp_lifetime: Option<region::Scope>,
-    /// If `Some(lt)`, indicates that the lifetime of this temporary will change to `lt` in a future edition.
-    /// If `None`, then no changes are expected, or lints are disabled.
-    pub backwards_incompatible: Option<region::Scope>,
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -1127,7 +1117,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block, 48);
-    static_assert_size!(Expr<'_>, 72);
+    static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 64);
     static_assert_size!(PatKind<'_>, 48);

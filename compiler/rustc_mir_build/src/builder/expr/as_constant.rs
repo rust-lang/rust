@@ -21,7 +21,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> ConstOperand<'tcx> {
         let this = self;
         let tcx = this.tcx;
-        let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
+        let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
         match kind {
             ExprKind::Scope { region_scope: _, lint_level: _, value } => {
                 this.as_constant(&this.thir[*value])
@@ -46,7 +46,7 @@ pub(crate) fn as_constant_inner<'tcx>(
     push_cuta: impl FnMut(&Box<CanonicalUserType<'tcx>>) -> Option<UserTypeAnnotationIndex>,
     tcx: TyCtxt<'tcx>,
 ) -> ConstOperand<'tcx> {
-    let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
+    let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
     match *kind {
         ExprKind::Literal { lit, neg } => {
             let const_ = lit_to_mir_constant(tcx, LitToConstInput { lit: lit.node, ty, neg });

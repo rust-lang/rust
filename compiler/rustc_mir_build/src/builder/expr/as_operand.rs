@@ -1,5 +1,6 @@
 //! See docs in build/expr/mod.rs
 
+use rustc_middle::middle::region::TempLifetime;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
