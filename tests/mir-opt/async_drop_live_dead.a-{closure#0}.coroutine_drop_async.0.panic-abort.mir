@@ -2,7 +2,7 @@
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>) -> Poll<()> {
     debug _task_context => _2;
-    debug x => ((*_20).0: T);
+    debug x => (((*_20) as variant#0).0: T);
     let mut _0: std::task::Poll<()>;
     let _3: T;
     let mut _4: impl std::future::Future<Output = ()>;
@@ -83,7 +83,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a<T>()}>, _2: &mut Context<'_>)
     }
 
     bb11: {
-        drop(((*_20).0: T)) -> [return: bb10, unwind unreachable];
+        drop((((*_20) as variant#0).0: T)) -> [return: bb10, unwind unreachable];
     }
 
     bb12: {
