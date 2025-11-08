@@ -13,9 +13,15 @@ help: the following other types implement trait `From<T>`
   --> $SRC_DIR/core/src/convert/num.rs:LL:COL
    |
    = note: `u8` implements `From<bool>`
+  ::: $SRC_DIR/core/src/convert/num.rs:LL:COL
+   |
+   = note: in this macro invocation
   --> $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
    |
    = note: `u8` implements `From<Char>`
+  ::: $SRC_DIR/core/src/ascii/ascii_char.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `impl_from` which comes from the expansion of the macro `into_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`

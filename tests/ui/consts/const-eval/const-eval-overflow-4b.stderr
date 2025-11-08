@@ -14,13 +14,19 @@ LL |     : [u32; (i8::MAX as i8 + 1u8) as usize]
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i8` implements `Add<i8>`
+   = note: `i8` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i8` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&i8` implements `Add<i8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `i8` implements `Add<&i8>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `i8` implements `Add`
+   = note: `&i8` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0604]: only `u8` can be cast as `char`, not `i8`

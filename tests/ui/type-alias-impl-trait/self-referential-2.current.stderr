@@ -9,6 +9,9 @@ LL |     42_i32
 help: the trait `PartialEq<Foo>` is not implemented for `i32`
       but trait `PartialEq<i32>` is implemented for it
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
+  ::: $SRC_DIR/core/src/cmp.rs:LL:COL
+   |
+   = note: in this macro invocation
    = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error

@@ -86,13 +86,19 @@ LL | trait ProjectionPred<T:Iterator = IntoIter<i32>> where T::Item : Add<u8> {}
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i32` implements `Add<i32>`
+   = note: `i32` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&i32` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&i32` implements `Add<i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `i32` implements `Add<&i32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `i32` implements `Add`
+   = note: `&i32` implements `Add`
 note: required by a bound in `ProjectionPred`
   --> $DIR/type-check-defaults.rs:24:66
    |

@@ -8,13 +8,19 @@ LL |     1.0f64 - 1
 help: the following other types implement trait `Sub<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub<f64>`
+   = note: `f64` implements `Sub`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&f64` implements `Sub`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&f64` implements `Sub<f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `f64` implements `Sub<&f64>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `f64` implements `Sub`
+   = note: `&f64` implements `Sub`
    = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a floating-point literal by writing it with `.0`
    |
