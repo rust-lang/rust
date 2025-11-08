@@ -60,3 +60,38 @@ cfg_select! {
 
 cfg_select! {}
 //~^ ERROR none of the predicates in this `cfg_select` evaluated to true
+
+cfg_select! {
+    => {}
+    //~^ ERROR expected unsuffixed literal, found `=>`
+}
+
+cfg_select! {
+    () => {}
+    //~^ ERROR expected unsuffixed literal, found `(`
+}
+
+cfg_select! { //~ ERROR none of the predicates in this `cfg_select` evaluated to true
+    "str" => {}
+    //~^ ERROR literal in `cfg` predicate value must be a boolean
+}
+
+cfg_select! {
+    a::b => {}
+    //~^ ERROR `cfg` predicate key must be an identifier
+}
+
+cfg_select! { //~ ERROR none of the predicates in this `cfg_select` evaluated to true
+    a() => {}
+    //~^ ERROR invalid predicate `a` [E0537]
+}
+
+cfg_select! {
+    a + 1 => {}
+    //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `+`
+}
+
+cfg_select! {
+    cfg!() => {}
+    //~^ ERROR expected one of `(`, `::`, `=>`, or `=`, found `!`
+}

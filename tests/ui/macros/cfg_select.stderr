@@ -21,5 +21,67 @@ error: none of the predicates in this `cfg_select` evaluated to true
 LL | cfg_select! {}
    | ^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: expected unsuffixed literal, found `=>`
+  --> $DIR/cfg_select.rs:65:5
+   |
+LL |     => {}
+   |     ^^
 
+error: expected unsuffixed literal, found `(`
+  --> $DIR/cfg_select.rs:70:5
+   |
+LL |     () => {}
+   |     ^
+
+error[E0565]: literal in `cfg` predicate value must be a boolean
+  --> $DIR/cfg_select.rs:75:5
+   |
+LL |     "str" => {}
+   |     ^^^^^
+
+error: none of the predicates in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:74:1
+   |
+LL | / cfg_select! {
+LL | |     "str" => {}
+LL | |
+LL | | }
+   | |_^
+
+error: `cfg` predicate key must be an identifier
+  --> $DIR/cfg_select.rs:80:5
+   |
+LL |     a::b => {}
+   |     ^^^^
+
+error[E0537]: invalid predicate `a`
+  --> $DIR/cfg_select.rs:85:5
+   |
+LL |     a() => {}
+   |     ^^^
+
+error: none of the predicates in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:84:1
+   |
+LL | / cfg_select! {
+LL | |     a() => {}
+LL | |
+LL | | }
+   | |_^
+
+error: expected one of `(`, `::`, `=>`, or `=`, found `+`
+  --> $DIR/cfg_select.rs:90:7
+   |
+LL |     a + 1 => {}
+   |       ^ expected one of `(`, `::`, `=>`, or `=`
+
+error: expected one of `(`, `::`, `=>`, or `=`, found `!`
+  --> $DIR/cfg_select.rs:95:8
+   |
+LL |     cfg!() => {}
+   |        ^ expected one of `(`, `::`, `=>`, or `=`
+
+error: aborting due to 11 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0537, E0565.
+For more information about an error, try `rustc --explain E0537`.
