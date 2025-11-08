@@ -12,10 +12,11 @@ pub(crate) fn build_backend(
     dirs: &Dirs,
     bootstrap_host_compiler: &Compiler,
     use_unstable_features: bool,
+    panic_unwind_support: bool,
 ) -> PathBuf {
     let _group = LogGroup::guard("Build backend");
 
-    let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
+    let mut cmd = CG_CLIF.build(bootstrap_host_compiler, dirs);
 
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
     rustflags.push("-Zallow-features=rustc_private,f16,f128".to_owned());
@@ -29,6 +30,10 @@ pub(crate) fn build_backend(
 
     if use_unstable_features {
         cmd.arg("--features").arg("unstable-features");
+    }
+
+    if panic_unwind_support {
+        cmd.arg("--features").arg("unwinding");
     }
 
     cmd.arg("--release");

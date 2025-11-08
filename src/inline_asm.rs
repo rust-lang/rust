@@ -7,6 +7,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::LangItem;
 use rustc_span::sym;
 use rustc_target::asm::*;
+use rustc_target::spec::Arch;
 use target_lexicon::BinaryFormat;
 
 use crate::prelude::*;
@@ -48,6 +49,26 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     // the LLVM backend.
     if template.len() == 1 && template[0] == InlineAsmTemplatePiece::String("int $$0x29".into()) {
         fx.bcx.ins().trap(TrapCode::user(2).unwrap());
+        return;
+    }
+
+    if fx.tcx.sess.target.arch == Arch::S390x
+        && template.len() == 3
+        && template[0] == InlineAsmTemplatePiece::String("stfle 0(".into())
+        && let InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: None, span: _ } =
+            template[1]
+        && template[2] == InlineAsmTemplatePiece::String(")".into())
+    {
+        // FIXME no inline asm support for s390x yet, but stdarch needs it for feature detection
+        match destination {
+            Some(destination) => {
+                let destination_block = fx.get_block(destination);
+                fx.bcx.ins().jump(destination_block, &[]);
+            }
+            None => {
+                fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
+            }
+        }
         return;
     }
 
@@ -103,11 +124,12 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
                     // be exported from the main codegen unit and may thus be unreachable from the
                     // object file created by an external assembler.
                     let wrapper_name = format!(
-                        "__inline_asm_{}_wrapper_n{}",
-                        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-                        fx.cx.inline_asm_index
+                        "{}__inline_asm_{}_wrapper_n{}",
+                        fx.symbol_name,
+                        fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+                        fx.inline_asm_index,
                     );
-                    fx.cx.inline_asm_index += 1;
+                    fx.inline_asm_index += 1;
                     let sig =
                         get_function_sig(fx.tcx, fx.target_config.default_call_conv, instance);
                     create_wrapper_function(fx.module, sig, &wrapper_name, symbol.name);
@@ -166,14 +188,15 @@ pub(crate) fn codegen_inline_asm_inner<'tcx>(
     asm_gen.allocate_stack_slots();
 
     let asm_name = format!(
-        "__inline_asm_{}_n{}",
-        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-        fx.cx.inline_asm_index
+        "{}__inline_asm_{}_n{}",
+        fx.symbol_name,
+        fx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+        fx.inline_asm_index,
     );
-    fx.cx.inline_asm_index += 1;
+    fx.inline_asm_index += 1;
 
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
-    fx.cx.global_asm.push_str(&generated_asm);
+    fx.inline_asm.push_str(&generated_asm);
 
     let mut inputs = Vec::new();
     let mut outputs = Vec::new();
@@ -546,20 +569,6 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                                         .emit(&mut generated_asm, InlineAsmArch::X86_64, *modifier)
                                         .unwrap(),
                                 },
-                                InlineAsmArch::AArch64 => match reg {
-                                    InlineAsmReg::AArch64(reg) if reg.vreg_index().is_some() => {
-                                        // rustc emits v0 rather than q0
-                                        reg.emit(
-                                            &mut generated_asm,
-                                            InlineAsmArch::AArch64,
-                                            Some(modifier.unwrap_or('q')),
-                                        )
-                                        .unwrap()
-                                    }
-                                    _ => reg
-                                        .emit(&mut generated_asm, InlineAsmArch::AArch64, *modifier)
-                                        .unwrap(),
-                                },
                                 _ => reg.emit(&mut generated_asm, self.arch, *modifier).unwrap(),
                             }
                         }
@@ -827,6 +836,7 @@ fn call_inline_asm<'tcx>(
     }
 
     let stack_slot_addr = stack_slot.get_addr(fx);
+    // FIXME use try_call once unwinding inline assembly is supported
     fx.bcx.ins().call(inline_asm_func, &[stack_slot_addr]);
 
     for (offset, place) in outputs {

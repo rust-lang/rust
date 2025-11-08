@@ -6,9 +6,7 @@ use std::path::{Component, Path};
 use cranelift_codegen::MachSrcLoc;
 use cranelift_codegen::binemit::CodeOffset;
 use gimli::write::{AttributeValue, FileId, FileInfo, LineProgram, LineString, LineStringTable};
-use rustc_span::{
-    FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHash, SourceFileHashAlgorithm, hygiene,
-};
+use rustc_span::{FileName, Pos, SourceFile, SourceFileAndLine, SourceFileHashAlgorithm, hygiene};
 
 use crate::debuginfo::FunctionDebugContext;
 use crate::debuginfo::emit::address_for_func;
@@ -44,21 +42,27 @@ fn osstr_as_utf8_bytes(path: &OsStr) -> &[u8] {
     }
 }
 
-const MD5_LEN: usize = 16;
+fn make_file_info(source_file: &SourceFile, embed_source: bool) -> Option<FileInfo> {
+    let has_md5 = source_file.src_hash.kind == SourceFileHashAlgorithm::Md5;
+    let has_source = embed_source && source_file.src.is_some();
 
-fn make_file_info(hash: SourceFileHash) -> Option<FileInfo> {
-    if hash.kind == SourceFileHashAlgorithm::Md5 {
-        let mut buf = [0u8; MD5_LEN];
-        buf.copy_from_slice(hash.hash_bytes());
-        Some(FileInfo {
-            timestamp: 0,
-            size: 0,
-            md5: buf,
-            source: None, // FIXME implement -Zembed-source
-        })
-    } else {
-        None
+    if !has_md5 && !has_source {
+        return None;
     }
+
+    let mut info = FileInfo::default();
+
+    if has_md5 {
+        info.md5.copy_from_slice(source_file.src_hash.hash_bytes());
+    }
+
+    if embed_source {
+        if let Some(src) = &source_file.src {
+            info.source = Some(LineString::String(src.as_bytes().to_vec()));
+        }
+    }
+
+    Some(info)
 }
 
 impl DebugContext {
@@ -105,15 +109,19 @@ impl DebugContext {
                     let file_name =
                         LineString::new(file_name, line_program.encoding(), line_strings);
 
-                    let info = make_file_info(source_file.src_hash);
+                    let info = make_file_info(source_file, self.embed_source);
 
-                    line_program.file_has_md5 &= info.is_some();
+                    let has_md5 = source_file.src_hash.kind == SourceFileHashAlgorithm::Md5;
+                    line_program.file_has_md5 &= has_md5;
                     line_program.add_file(file_name, dir_id, info)
                 }
                 filename => {
-                    let dir_id = line_program.default_directory();
+                    // For anonymous sources, create an empty directory instead of using the default
+                    let empty_dir = LineString::new(b"", line_program.encoding(), line_strings);
+                    let dir_id = line_program.add_directory(empty_dir);
+
                     let dummy_file_name = LineString::new(
-                        filename.display(self.filename_display_preference).to_string().into_bytes(),
+                        filename.prefer_remapped_unconditionally().to_string().into_bytes(),
                         line_program.encoding(),
                         line_strings,
                     );
