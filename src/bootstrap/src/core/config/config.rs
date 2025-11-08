@@ -1219,12 +1219,13 @@ impl Config {
             Warnings::Default => rust_deny_warnings.unwrap_or(true),
         };
 
-        let gcc_ci_mode = match gcc_download_ci_gcc {
-            Some(value) => match value {
+        let gcc_ci_mode = match (&libgccjit_libs_dir, gcc_download_ci_gcc) {
+            (Some(_), _) => GccCiMode::CopyFromLibsDir,
+            (None, Some(value)) => match value {
                 true => GccCiMode::DownloadFromCi,
                 false => GccCiMode::BuildLocally,
             },
-            None => GccCiMode::default(),
+            (None, None) => GccCiMode::default(),
         };
 
         let targets = flags_target
