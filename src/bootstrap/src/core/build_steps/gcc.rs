@@ -26,7 +26,11 @@ pub struct Gcc {
 
 #[derive(Clone)]
 pub struct GccOutput {
-    pub libgccjit: PathBuf,
+    /// Path to a built or downloaded libgccjit.
+    /// Is None when setting libgccjit-libs-dir.
+    /// FIXME: it seems wrong to make this an Option.
+    /// Perhaps it should be a Vec so that we can install all libs from libgccjit-libs-dir?
+    pub libgccjit: Option<PathBuf>,
     target: TargetSelection,
 }
 
@@ -37,20 +41,22 @@ impl GccOutput {
             return;
         }
 
-        let target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
+        if let Some(ref path) = self.libgccjit {
+            let mut target_filename = path.file_name().unwrap().to_str().unwrap().to_string();
 
-        // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
-        // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
-        // which wouldn't work.
-        let actual_libgccjit_path = t!(
-            self.libgccjit.canonicalize(),
-            format!("Cannot find libgccjit at {}", self.libgccjit.display())
-        );
+            // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
+            // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
+            // which wouldn't work.
+            let actual_libgccjit_path = t!(
+                path.canonicalize(),
+                format!("Cannot find libgccjit at {}", path.display())
+            );
 
-        let dest_dir = directory.join("rustlib").join(self.target).join("lib");
-        t!(fs::create_dir_all(&dest_dir));
-        let dst = dest_dir.join(target_filename);
-        builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+            let dest_dir = directory.join("rustlib").join(self.target).join("lib");
+            t!(fs::create_dir_all(&dest_dir));
+            let dst = dest_dir.join(target_filename);
+            builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
+        }
 
         if let Some(ref path) = builder.config.libgccjit_libs_dir {
             let host_target = builder.config.host_target.triple;
@@ -62,13 +68,14 @@ impl GccOutput {
                 .map(|target| target.triple)
                 .chain(std::iter::once(host_target));
 
+            let target_filename = "libgccjit.so.0";
             for target in targets {
-                let source = source.join(target).join(&target_filename);
+                let source = source.join(target).join(target_filename);
                 // To support symlinks in libgccjit-libs-dir, we have to resolve it first,
                 // otherwise we'd create a symlink to a symlink, which wouldn't work.
                 let actual_libgccjit_path = t!(
                     source.canonicalize(),
-                    format!("Cannot find libgccjit at {}", self.libgccjit.display())
+                    format!("Cannot find libgccjit at {}", source.display())
                 );
                 let target_dir = dst.join(target);
                 t!(
@@ -102,7 +109,8 @@ impl Step for Gcc {
 
         // If GCC has already been built, we avoid building it again.
         let metadata = match get_gcc_build_status(builder, target) {
-            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path, target },
+            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: Some(path), target },
+            GccBuildStatus::InLibsDir => return GccOutput { libgccjit: None },
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
@@ -112,14 +120,14 @@ impl Step for Gcc {
 
         let libgccjit_path = libgccjit_built_path(&metadata.install_dir);
         if builder.config.dry_run() {
-            return GccOutput { libgccjit: libgccjit_path, target };
+            return GccOutput { libgccjit: Some(libgccjit_path), target };
         }
 
         build_gcc(&metadata, builder, target);
 
         t!(metadata.stamp.write());
 
-        GccOutput { libgccjit: libgccjit_path, target }
+        GccOutput { libgccjit: Some(libgccjit_path), target }
     }
 }
 
@@ -133,6 +141,7 @@ pub struct Meta {
 pub enum GccBuildStatus {
     /// libgccjit is already built at this path
     AlreadyBuilt(PathBuf),
+    InLibsDir,
     ShouldBuild(Meta),
 }
 
@@ -197,6 +206,11 @@ fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<
 /// It's used to avoid busting caches during x.py check -- if we've already built
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
+    if matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::CopyFromLibsDir) {
+        // TODO: check if this is OK.
+        return GccBuildStatus::InLibsDir;
+    }
+
     if let Some(path) = try_download_gcc(builder, target) {
         return GccBuildStatus::AlreadyBuilt(path);
     }
@@ -320,7 +334,9 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
 /// Configures a Cargo invocation so that it can build the GCC codegen backend.
 pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
     // Add the path to libgccjit.so to the linker search paths.
-    cargo.rustflag(&format!("-L{}", gcc.libgccjit.parent().unwrap().to_str().unwrap()));
+    if let Some(ref path) = gcc.libgccjit {
+        cargo.rustflag(&format!("-L{}", path.parent().unwrap().to_str().unwrap()));
+    }
 }
 
 /// The absolute path to the downloaded GCC artifacts.

@@ -2857,7 +2857,9 @@ impl Step for Gcc {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let tarball = Tarball::new(builder, "gcc", &self.target.triple);
         let output = builder.ensure(super::gcc::Gcc { target: self.target });
-        tarball.add_file(&output.libgccjit, "lib", FileType::NativeLibrary);
+        if let Some(ref path) = output.libgccjit {
+            tarball.add_file(path, "lib", FileType::NativeLibrary);
+        }
         tarball.generate()
     }
 

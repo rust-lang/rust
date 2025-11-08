@@ -433,6 +433,7 @@ pub enum GccCiMode {
     /// If it is not available on CI, it will be built locally instead.
     #[default]
     DownloadFromCi,
+    CopyFromLibsDir,
 }
 
 pub fn threads_from_config(v: u32) -> u32 {
