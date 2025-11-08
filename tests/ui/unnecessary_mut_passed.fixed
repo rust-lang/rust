@@ -146,7 +146,7 @@ fn main() {
     my_struct.takes_raw_mut(a);
 }
 
-// not supported currently
+// These shouldn't be linted, see https://github.com/rust-lang/rust-clippy/pull/15962#issuecomment-3503704832
 fn raw_ptrs(my_struct: MyStruct) {
     let mut n = 42;
 
