@@ -26,6 +26,8 @@ pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "cygwin".into(),
         vendor: "pc".into(),
+        // FIXME(#13846) this should be enabled for cygwin
+        function_sections: false,
         linker: Some("gcc".into()),
         dynamic_linking: true,
         dll_prefix: "".into(),
