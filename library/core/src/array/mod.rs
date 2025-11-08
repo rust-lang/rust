@@ -442,7 +442,7 @@ impl<T: Copy, const N: usize> Copy for [T; N] {}
 impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
     fn clone(&self) -> Self {
-        SpecArrayClone::clone(self)
+        SpecArrayClone::spec_clone(self)
     }
 
     #[inline]
@@ -452,19 +452,19 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
 }
 
 trait SpecArrayClone: Clone {
-    fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
+    fn spec_clone<const N: usize>(array: &[Self; N]) -> [Self; N];
 }
 
 impl<T: Clone> SpecArrayClone for T {
     #[inline]
-    default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+    default fn spec_clone<const N: usize>(array: &[T; N]) -> [T; N] {
         from_trusted_iterator(array.iter().cloned())
     }
 }
 
 impl<T: Copy> SpecArrayClone for T {
     #[inline]
-    fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
+    fn spec_clone<const N: usize>(array: &[T; N]) -> [T; N] {
         *array
     }
 }

@@ -1,5 +1,7 @@
 //@ aux-build:dyn-incompatible.rs
 
+#![allow(supertrait_item_shadowing_definition)]
+
 extern crate dyn_incompatible;
 
 pub trait B where

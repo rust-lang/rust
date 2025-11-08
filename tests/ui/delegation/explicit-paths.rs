@@ -1,5 +1,6 @@
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait Trait {
     fn foo1(&self, x: i32) -> i32 { x }

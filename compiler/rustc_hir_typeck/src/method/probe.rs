@@ -1728,12 +1728,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // We collapse to a subtrait pick *after* filtering unstable candidates
             // to make sure we don't prefer a unstable subtrait method over a stable
             // supertrait method.
-            if self.tcx.features().supertrait_item_shadowing() {
-                if let Some(pick) =
-                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
-                {
-                    return Some(Ok(pick));
-                }
+            if let Some(pick) =
+                self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+            {
+                return Some(Ok(pick));
             }
 
             let sources =

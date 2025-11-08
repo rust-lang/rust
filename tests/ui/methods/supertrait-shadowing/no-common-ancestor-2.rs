@@ -1,4 +1,4 @@
-#![feature(supertrait_item_shadowing)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait A {
     fn hello(&self) {

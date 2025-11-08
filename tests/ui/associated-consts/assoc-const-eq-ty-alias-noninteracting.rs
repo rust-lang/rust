@@ -6,6 +6,7 @@
 //@ check-pass
 
 #![feature(associated_const_equality)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait Trait: SuperTrait {
     type N;

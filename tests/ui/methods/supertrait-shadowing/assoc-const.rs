@@ -1,8 +1,8 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait A {
     const CONST: i32;

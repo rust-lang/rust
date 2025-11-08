@@ -193,7 +193,7 @@ LL +     fn f3() -> impl Trait4<i8, X = i32, Y = i128> {}
    |
 
 error: this bound is already specified as the supertrait of `Y`
-  --> tests/ui/implied_bounds_in_impls.rs:165:21
+  --> tests/ui/implied_bounds_in_impls.rs:166:21
    |
 LL |     fn f3() -> impl X + Y {}
    |                     ^
@@ -205,7 +205,7 @@ LL +     fn f3() -> impl Y {}
    |
 
 error: this bound is already specified as the supertrait of `Y<T = u32>`
-  --> tests/ui/implied_bounds_in_impls.rs:167:21
+  --> tests/ui/implied_bounds_in_impls.rs:168:21
    |
 LL |     fn f4() -> impl X + Y<T = u32> {}
    |                     ^
@@ -217,7 +217,7 @@ LL +     fn f4() -> impl Y<T = u32> {}
    |
 
 error: this bound is already specified as the supertrait of `Y<T = u32>`
-  --> tests/ui/implied_bounds_in_impls.rs:169:21
+  --> tests/ui/implied_bounds_in_impls.rs:170:21
    |
 LL |     fn f5() -> impl X<U = String> + Y<T = u32> {}
    |                     ^^^^^^^^^^^^^
@@ -229,7 +229,7 @@ LL +     fn f5() -> impl Y<T = u32, U = String> {}
    |
 
 error: this bound is already specified as the supertrait of `DerefMut`
-  --> tests/ui/implied_bounds_in_impls.rs:173:17
+  --> tests/ui/implied_bounds_in_impls.rs:174:17
    |
 LL | fn apit(_: impl Deref + DerefMut) {}
    |                 ^^^^^
@@ -241,7 +241,7 @@ LL + fn apit(_: impl DerefMut) {}
    |
 
 error: this bound is already specified as the supertrait of `DerefMut`
-  --> tests/ui/implied_bounds_in_impls.rs:177:20
+  --> tests/ui/implied_bounds_in_impls.rs:178:20
    |
 LL |     fn f() -> impl Deref + DerefMut;
    |                    ^^^^^
@@ -253,7 +253,7 @@ LL +     fn f() -> impl DerefMut;
    |
 
 error: this bound is already specified as the supertrait of `DerefMut`
-  --> tests/ui/implied_bounds_in_impls.rs:186:23
+  --> tests/ui/implied_bounds_in_impls.rs:187:23
    |
 LL |     type Assoc = impl Deref + DerefMut;
    |                       ^^^^^
@@ -265,7 +265,7 @@ LL +     type Assoc = impl DerefMut;
    |
 
 error: this bound is already specified as the supertrait of `DerefMut`
-  --> tests/ui/implied_bounds_in_impls.rs:193:18
+  --> tests/ui/implied_bounds_in_impls.rs:194:18
    |
 LL | type Tait = impl Deref + DerefMut;
    |                  ^^^^^

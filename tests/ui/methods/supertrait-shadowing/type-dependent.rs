@@ -3,8 +3,8 @@
 
 // Makes sure we can shadow with type-dependent method syntax.
 
-#![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait A {
     fn hello() {

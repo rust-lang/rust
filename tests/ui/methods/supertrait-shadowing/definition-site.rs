@@ -1,4 +1,3 @@
-#![feature(supertrait_item_shadowing)]
 #![deny(supertrait_item_shadowing_definition)]
 
 trait SuperSuper {

@@ -2,6 +2,7 @@
 
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
+#![allow(supertrait_item_shadowing_definition)]
 
 trait ToReuse {
     fn foo(&self, x: i32) -> i32 { x }

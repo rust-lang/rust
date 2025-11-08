@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/no-common-ancestor.rs:18:8
+  --> $DIR/no-common-ancestor.rs:16:8
    |
 LL |     ().hello();
    |        ^^^^^ multiple `hello` found
    |
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
-  --> $DIR/no-common-ancestor.rs:4:5
+  --> $DIR/no-common-ancestor.rs:2:5
    |
 LL |     fn hello(&self) {
    |     ^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
-  --> $DIR/no-common-ancestor.rs:11:5
+  --> $DIR/no-common-ancestor.rs:9:5
    |
 LL |     fn hello(&self) {
    |     ^^^^^^^^^^^^^^^
