@@ -23,7 +23,7 @@ use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir::data_structures::HashMap;
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 mod stack;
 use stack::{Stack, StackDepth, StackEntry};
@@ -916,6 +916,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 /// heads from the stack. This may not necessarily mean that we've actually
 /// reached a fixpoint for that cycle head, which impacts the way we rebase
 /// provisional cache entries.
+#[derive_where(Debug; X: Cx)]
 enum RebaseReason<X: Cx> {
     NoCycleUsages,
     Ambiguity(X::AmbiguityInfo),
@@ -950,6 +951,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     /// cache entries to also be ambiguous. This causes some undesirable ambiguity for nested
     /// goals whose result doesn't actually depend on this cycle head, but that's acceptable
     /// to me.
+    #[instrument(level = "trace", skip(self, cx))]
     fn rebase_provisional_cache_entries(
         &mut self,
         cx: X,
@@ -969,6 +971,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 let popped_head = if heads.highest_cycle_head_index() == popped_head_index {
                     heads.remove_highest_cycle_head()
                 } else {
+                    debug_assert!(heads.highest_cycle_head_index() < popped_head_index);
                     return true;
                 };
 
@@ -1056,6 +1059,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     stack_entry.step_kind_from_parent,
                     new_highest_head_index,
                 ));
+
+                trace!(?input, ?entry, "rebased provisional cache entry");
 
                 true
             });
@@ -1379,7 +1384,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             }
 
             // Clear all provisional cache entries which depend on a previous provisional
-            // result of this goal and rerun.
+            // result of this goal and rerun. This does not remove goals which accessed this
+            // goal without depending on its result.
             self.clear_dependent_provisional_results_for_rerun();
 
             debug!(?result, "fixpoint changed provisional results");
@@ -1399,7 +1405,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // similar to the previous iterations when reevaluating, it's better
                 // for caching if the reevaluation also starts out with `false`.
                 encountered_overflow: false,
-                usages: None,
+                // We keep provisional cache entries around if they used this goal
+                // without depending on its result.
+                //
+                // We still need to drop or rebase these cache entries once we've
+                // finished evaluating this goal.
+                usages: Some(HeadUsages::default()),
                 candidate_usages: None,
             });
         }
