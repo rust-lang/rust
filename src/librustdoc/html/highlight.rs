@@ -601,52 +601,52 @@ pub(super) fn write_code(
     };
     let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, file_span);
 
-    Classifier::new(
+    classify(
         &src,
-        token_handler.href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
+        token_handler.href_context.as_ref().map_or(DUMMY_SP, |c| c.file_span),
         decoration_info,
-    )
-    .highlight(&mut |span, highlight| match highlight {
-        Highlight::Token { text, class } => {
-            token_handler.push_token(class, Cow::Borrowed(text));
+        &mut |span, highlight| match highlight {
+            Highlight::Token { text, class } => {
+                token_handler.push_token(class, Cow::Borrowed(text));
 
-            if text == "\n" {
-                if current_expansion.is_none() {
-                    current_expansion = get_expansion(&mut token_handler, expanded_codes, span);
-                }
-                if let Some(ref current_expansion) = current_expansion
-                    && current_expansion.span.lo() == span.hi()
-                {
-                    token_handler.add_expanded_code(current_expansion);
-                }
-            } else {
-                let mut need_end = false;
-                if let Some(ref current_expansion) = current_expansion {
-                    if current_expansion.span.lo() == span.hi() {
-                        token_handler.add_expanded_code(current_expansion);
-                    } else if current_expansion.end_line == token_handler.line
-                        && span.hi() >= current_expansion.span.hi()
+                if text == "\n" {
+                    if current_expansion.is_none() {
+                        current_expansion = get_expansion(&mut token_handler, expanded_codes, span);
+                    }
+                    if let Some(ref current_expansion) = current_expansion
+                        && current_expansion.span.lo() == span.hi()
                     {
-                        need_end = true;
+                        token_handler.add_expanded_code(current_expansion);
+                    }
+                } else {
+                    let mut need_end = false;
+                    if let Some(ref current_expansion) = current_expansion {
+                        if current_expansion.span.lo() == span.hi() {
+                            token_handler.add_expanded_code(current_expansion);
+                        } else if current_expansion.end_line == token_handler.line
+                            && span.hi() >= current_expansion.span.hi()
+                        {
+                            need_end = true;
+                        }
+                    }
+                    if need_end {
+                        current_expansion = end_expansion(&mut token_handler, expanded_codes, span);
                     }
                 }
-                if need_end {
-                    current_expansion = end_expansion(&mut token_handler, expanded_codes, span);
-                }
             }
-        }
-        Highlight::EnterSpan { class } => {
-            token_handler.class_stack.enter_elem(
-                token_handler.out,
-                &token_handler.href_context,
-                class,
-                None,
-            );
-        }
-        Highlight::ExitSpan => {
-            token_handler.class_stack.exit_elem();
-        }
-    });
+            Highlight::EnterSpan { class } => {
+                token_handler.class_stack.enter_elem(
+                    token_handler.out,
+                    &token_handler.href_context,
+                    class,
+                    None,
+                );
+            }
+            Highlight::ExitSpan => {
+                token_handler.class_stack.exit_elem();
+            }
+        },
+    );
 }
 
 fn write_footer(playground_button: Option<&str>) -> impl Display {
@@ -770,6 +770,12 @@ struct TokenIter<'a> {
     cursor: Cursor<'a>,
 }
 
+impl<'a> TokenIter<'a> {
+    fn new(src: &'a str) -> Self {
+        Self { src, cursor: Cursor::new(src, FrontmatterAllowed::Yes) }
+    }
+}
+
 impl<'a> Iterator for TokenIter<'a> {
     type Item = (TokenKind, &'a str);
     fn next(&mut self) -> Option<(TokenKind, &'a str)> {
@@ -781,21 +787,6 @@ impl<'a> Iterator for TokenIter<'a> {
         self.src = rest;
         Some((token.kind, text))
     }
-}
-
-/// Classifies into identifier class; returns `None` if this is a non-keyword identifier.
-fn get_real_ident_class(text: &str, allow_path_keywords: bool) -> Option<Class> {
-    let ignore: &[&str] =
-        if allow_path_keywords { &["self", "Self", "super", "crate"] } else { &["self", "Self"] };
-    if ignore.contains(&text) {
-        return None;
-    }
-    Some(match text {
-        "ref" | "mut" => Class::RefKeyWord,
-        "false" | "true" => Class::Bool,
-        _ if Symbol::intern(text).is_reserved(|| Edition::Edition2021) => Class::KeyWord,
-        _ => return None,
-    })
 }
 
 /// This iterator comes from the same idea than "Peekable" except that it allows to "peek" more than
@@ -815,16 +806,16 @@ impl<'a> PeekIter<'a> {
         Self { stored: VecDeque::new(), peek_pos: 0, iter }
     }
     /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
-    fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
+    fn peek(&mut self) -> Option<(TokenKind, &'a str)> {
         if self.stored.is_empty()
             && let Some(next) = self.iter.next()
         {
             self.stored.push_back(next);
         }
-        self.stored.front()
+        self.stored.front().copied()
     }
     /// Returns the next item after the last one peeked. It doesn't interfere with `peek` output.
-    fn peek_next(&mut self) -> Option<&(TokenKind, &'a str)> {
+    fn peek_next(&mut self) -> Option<(TokenKind, &'a str)> {
         self.peek_pos += 1;
         if self.peek_pos - 1 < self.stored.len() {
             self.stored.get(self.peek_pos - 1)
@@ -834,6 +825,7 @@ impl<'a> PeekIter<'a> {
         } else {
             None
         }
+        .copied()
     }
 
     fn stop_peeking(&mut self) {
@@ -878,6 +870,54 @@ fn new_span(lo: u32, text: &str, file_span: Span) -> Span {
     file_span.with_lo(file_lo + BytePos(lo)).with_hi(file_lo + BytePos(hi))
 }
 
+fn classify<'src>(
+    src: &'src str,
+    file_span: Span,
+    decoration_info: Option<&DecorationInfo>,
+    sink: &mut dyn FnMut(Span, Highlight<'src>),
+) {
+    let offset = rustc_lexer::strip_shebang(src);
+
+    if let Some(offset) = offset {
+        sink(DUMMY_SP, Highlight::Token { text: &src[..offset], class: Some(Class::Comment) });
+    }
+
+    let mut classifier =
+        Classifier::new(src, offset.unwrap_or_default(), file_span, decoration_info);
+
+    loop {
+        if let Some(decs) = classifier.decorations.as_mut() {
+            let byte_pos = classifier.byte_pos;
+            let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
+            for (_, kind) in decs.starts.drain(0..n_starts) {
+                sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Decoration(kind) });
+            }
+
+            let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
+            for _ in decs.ends.drain(0..n_ends) {
+                sink(DUMMY_SP, Highlight::ExitSpan);
+            }
+        }
+
+        if let Some((TokenKind::Colon | TokenKind::Ident, _)) = classifier.tokens.peek() {
+            let tokens = classifier.get_full_ident_path();
+            for &(token, start, end) in &tokens {
+                let text = &classifier.src[start..end];
+                classifier.advance(token, text, sink, start as u32);
+                classifier.byte_pos += text.len() as u32;
+            }
+            if !tokens.is_empty() {
+                continue;
+            }
+        }
+        if let Some((token, text, before)) = classifier.next() {
+            classifier.advance(token, text, sink, before);
+        } else {
+            break;
+        }
+    }
+}
+
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'src> {
@@ -892,21 +932,23 @@ struct Classifier<'src> {
 }
 
 impl<'src> Classifier<'src> {
-    /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
-    /// file span which will be used later on by the `span_correspondence_map`.
-    fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
-        let tokens =
-            PeekIter::new(TokenIter { src, cursor: Cursor::new(src, FrontmatterAllowed::Yes) });
-        let decorations = decoration_info.map(Decorations::new);
+    /// Takes as argument the source code to HTML-ify and the source code file span
+    /// which will be used later on by the `span_correspondence_map`.
+    fn new(
+        src: &'src str,
+        byte_pos: usize,
+        file_span: Span,
+        decoration_info: Option<&DecorationInfo>,
+    ) -> Self {
         Classifier {
-            tokens,
+            tokens: PeekIter::new(TokenIter::new(&src[byte_pos..])),
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,
-            byte_pos: 0,
+            byte_pos: byte_pos as u32,
             file_span,
             src,
-            decorations,
+            decorations: decoration_info.map(Decorations::new),
         }
     }
 
@@ -934,15 +976,10 @@ impl<'src> Classifier<'src> {
                 }
             }
 
-            if let Some((None, text)) = self.tokens.peek().map(|(token, text)| {
-                if *token == TokenKind::Ident {
-                    let class = get_real_ident_class(text, true);
-                    (class, text)
-                } else {
-                    // Doesn't matter which Class we put in here...
-                    (Some(Class::Comment), text)
-                }
-            }) {
+            if let Some((TokenKind::Ident, text)) = self.tokens.peek()
+                && let symbol = Symbol::intern(text)
+                && (symbol.is_path_segment_keyword() || !is_keyword(symbol))
+            {
                 // We only "add" the colon if there is an ident behind.
                 pos += text.len() + nb;
                 has_ident = true;
@@ -970,50 +1007,6 @@ impl<'src> Classifier<'src> {
             Some((kind, text, before))
         } else {
             None
-        }
-    }
-
-    /// Exhausts the `Classifier` writing the output into `sink`.
-    ///
-    /// The general structure for this method is to iterate over each token,
-    /// possibly giving it an HTML span with a class specifying what flavor of
-    /// token is used.
-    fn highlight(mut self, sink: &mut dyn FnMut(Span, Highlight<'src>)) {
-        loop {
-            if let Some(decs) = self.decorations.as_mut() {
-                let byte_pos = self.byte_pos;
-                let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
-                for (_, kind) in decs.starts.drain(0..n_starts) {
-                    sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Decoration(kind) });
-                }
-
-                let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
-                for _ in decs.ends.drain(0..n_ends) {
-                    sink(DUMMY_SP, Highlight::ExitSpan);
-                }
-            }
-
-            if self
-                .tokens
-                .peek()
-                .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
-                .unwrap_or(false)
-            {
-                let tokens = self.get_full_ident_path();
-                for (token, start, end) in &tokens {
-                    let text = &self.src[*start..*end];
-                    self.advance(*token, text, sink, *start as u32);
-                    self.byte_pos += text.len() as u32;
-                }
-                if !tokens.is_empty() {
-                    continue;
-                }
-            }
-            if let Some((token, text, before)) = self.next() {
-                self.advance(token, text, sink, before);
-            } else {
-                break;
-            }
         }
     }
 
@@ -1054,6 +1047,7 @@ impl<'src> Classifier<'src> {
                     Class::Comment
                 }
             }
+            TokenKind::Frontmatter { .. } => Class::Comment,
             // Consider this as part of a macro invocation if there was a
             // leading identifier.
             TokenKind::Bang if self.in_macro => {
@@ -1152,7 +1146,6 @@ impl<'src> Classifier<'src> {
             | TokenKind::At
             | TokenKind::Tilde
             | TokenKind::Colon
-            | TokenKind::Frontmatter { .. }
             | TokenKind::Unknown => return no_highlight(sink),
 
             TokenKind::Question => Class::QuestionMark,
@@ -1224,7 +1217,7 @@ impl<'src> Classifier<'src> {
             },
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
             TokenKind::Ident | TokenKind::RawIdent
-                if self.peek_non_whitespace() == Some(TokenKind::Bang) =>
+                if let Some((TokenKind::Bang, _)) = self.peek_non_trivia() =>
             {
                 self.in_macro = true;
                 let span = new_span(before, text, file_span);
@@ -1232,26 +1225,7 @@ impl<'src> Classifier<'src> {
                 sink(span, Highlight::Token { text, class: None });
                 return;
             }
-            TokenKind::Ident => {
-                match get_real_ident_class(text, false) {
-                    None => match text {
-                        "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
-                        "Some" | "None" | "Ok" | "Err" => {
-                            Class::PreludeVal(new_span(before, text, file_span))
-                        }
-                        // "union" is a weak keyword and is only considered as a keyword when declaring
-                        // a union type.
-                        "union" if self.check_if_is_union_keyword() => Class::KeyWord,
-                        _ if self.in_macro_nonterminal => {
-                            self.in_macro_nonterminal = false;
-                            Class::MacroNonTerminal
-                        }
-                        "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
-                        _ => Class::Ident(new_span(before, text, file_span)),
-                    },
-                    Some(c) => c,
-                }
-            }
+            TokenKind::Ident => self.classify_ident(before, text),
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
@@ -1272,25 +1246,66 @@ impl<'src> Classifier<'src> {
         }
     }
 
-    fn peek(&mut self) -> Option<TokenKind> {
-        self.tokens.peek().map(|(token_kind, _text)| *token_kind)
+    fn classify_ident(&mut self, before: u32, text: &'src str) -> Class {
+        // Macro non-terminals (meta vars) take precedence.
+        if self.in_macro_nonterminal {
+            self.in_macro_nonterminal = false;
+            return Class::MacroNonTerminal;
+        }
+
+        let file_span = self.file_span;
+        let span = || new_span(before, text, file_span);
+
+        match text {
+            "ref" | "mut" => Class::RefKeyWord,
+            "false" | "true" => Class::Bool,
+            "self" | "Self" => Class::Self_(span()),
+            "Option" | "Result" => Class::PreludeTy(span()),
+            "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
+            _ if self.is_weak_keyword(text) || is_keyword(Symbol::intern(text)) => Class::KeyWord,
+            _ => Class::Ident(span()),
+        }
     }
 
-    fn peek_non_whitespace(&mut self) -> Option<TokenKind> {
-        while let Some((token_kind, _)) = self.tokens.peek_next() {
-            if *token_kind != TokenKind::Whitespace {
-                let token_kind = *token_kind;
-                self.tokens.stop_peeking();
-                return Some(token_kind);
+    fn is_weak_keyword(&mut self, text: &str) -> bool {
+        // NOTE: `yeet` (`do yeet $expr`), `catch` (`do catch $block`), `default` (specialization),
+        // `contract_{ensures,requires}`, `builtin` (builtin_syntax) & `reuse` (fn_delegation) are
+        // too difficult or annoying to properly detect under this simple scheme.
+
+        let matches = match text {
+            "auto" => |text| text == "trait", // `auto trait Trait {}` (`auto_traits`)
+            "pin" => |text| text == "const" || text == "mut", // `&pin mut Type` (`pin_ergonomics`)
+            "raw" => |text| text == "const" || text == "mut", // `&raw const local`
+            "safe" => |text| text == "fn" || text == "extern", // `unsafe extern { safe fn f(); }`
+            "union" => |_| true,              // `union Untagged { field: () }`
+            _ => return false,
+        };
+        matches!(self.peek_non_trivia(), Some((TokenKind::Ident, text)) if matches(text))
+    }
+
+    fn peek(&mut self) -> Option<TokenKind> {
+        self.tokens.peek().map(|(kind, _)| kind)
+    }
+
+    fn peek_non_trivia(&mut self) -> Option<(TokenKind, &str)> {
+        while let Some(token @ (kind, _)) = self.tokens.peek_next() {
+            if let TokenKind::Whitespace
+            | TokenKind::LineComment { doc_style: None }
+            | TokenKind::BlockComment { doc_style: None, .. } = kind
+            {
+                continue;
             }
+            self.tokens.stop_peeking();
+            return Some(token);
         }
         self.tokens.stop_peeking();
         None
     }
+}
 
-    fn check_if_is_union_keyword(&mut self) -> bool {
-        self.peek_non_whitespace().is_some_and(|kind| kind == TokenKind::Ident)
-    }
+fn is_keyword(symbol: Symbol) -> bool {
+    // FIXME(#148221): Don't hard-code the edition. The classifier should take it as an argument.
+    symbol.is_reserved(|| Edition::Edition2024)
 }
 
 fn generate_link_to_def(
