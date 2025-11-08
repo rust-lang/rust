@@ -52,7 +52,8 @@ pub(crate) fn build_sysroot(
             .arg(dirs.source_dir.join("scripts").join(format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
-            .arg("-Cstrip=debuginfo");
+            .arg("-Cstrip=debuginfo")
+            .arg("--check-cfg=cfg(support_panic_unwind)");
         if panic_unwind_support {
             build_cargo_wrapper_cmd.arg("--cfg").arg("support_panic_unwind");
         }
