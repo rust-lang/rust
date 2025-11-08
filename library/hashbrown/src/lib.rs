@@ -59,9 +59,9 @@ extern crate std;
 #[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
 extern crate alloc;
 
-#[cfg(feature = "nightly")]
+#[doc = include_str!("../README.md")]
 #[cfg(doctest)]
-doc_comment::doctest!("../README.md");
+pub struct ReadmeDoctests;
 
 #[macro_use]
 mod macros;
