@@ -22,7 +22,7 @@ use crate::io::try_set_output_capture;
 use crate::mem::{self, ManuallyDrop};
 use crate::panic::{BacktraceStyle, PanicHookInfo};
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
-use crate::sync::{PoisonError, RwLock};
+use crate::sync::nonpoison::RwLock;
 use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
 use crate::{fmt, intrinsics, process, thread};
@@ -144,13 +144,9 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>) {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
-    let new = Hook::Custom(hook);
-    let mut hook = HOOK.write().unwrap_or_else(PoisonError::into_inner);
-    let old = mem::replace(&mut *hook, new);
-    drop(hook);
-    // Only drop the old hook after releasing the lock to avoid deadlocking
-    // if its destructor panics.
-    drop(old);
+    // Drop the old hook after changing the hook to avoid deadlocking if its
+    // destructor panics.
+    drop(HOOK.replace(Hook::Custom(hook)));
 }
 
 /// Unregisters the current panic hook and returns it, registering the default hook
@@ -188,11 +184,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
-    let mut hook = HOOK.write().unwrap_or_else(PoisonError::into_inner);
-    let old_hook = mem::take(&mut *hook);
-    drop(hook);
-
-    old_hook.into_box()
+    HOOK.replace(Hook::Default).into_box()
 }
 
 /// Atomic combination of [`take_hook`] and [`set_hook`]. Use this to replace the panic handler with
@@ -238,7 +230,7 @@ where
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
-    let mut hook = HOOK.write().unwrap_or_else(PoisonError::into_inner);
+    let mut hook = HOOK.write();
     let prev = mem::take(&mut *hook).into_box();
     *hook = Hook::Custom(Box::new(move |info| hook_fn(&prev, info)));
 }
@@ -822,7 +814,7 @@ fn panic_with_hook(
         crate::process::abort();
     }
 
-    match *HOOK.read().unwrap_or_else(PoisonError::into_inner) {
+    match *HOOK.read() {
         // Some platforms (like wasm) know that printing to stderr won't ever actually
         // print anything, and if that's the case we can skip the default
         // hook. Since string formatting happens lazily when calling `payload`
