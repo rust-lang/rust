@@ -4,7 +4,7 @@ error: doc paragraphs should end with a terminal punctuation mark
 LL |     /// Sometimes the doc comment ends with parentheses (like this)
    |                                                                    ^
    |
-   = help: end the doc comment with some punctuation
+   = help: end the paragraph with some punctuation
    = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::doc_paragraphs_missing_punctuation)]`
 
@@ -14,7 +14,7 @@ error: doc paragraphs should end with a terminal punctuation mark
 LL |     /// This comment ends with "a quote"
    |                                         ^
    |
-   = help: end the doc comment with some punctuation
+   = help: end the paragraph with some punctuation
 
 error: aborting due to 2 previous errors
 

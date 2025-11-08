@@ -20,7 +20,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
                         DOC_PARAGRAPHS_MISSING_PUNCTUATION,
                         span,
                         MSG,
-                        "end the doc comment with some punctuation",
+                        "end the paragraph with some punctuation",
                         PUNCTUATION_SUGGESTION.to_string(),
                         Applicability::MaybeIncorrect,
                     );
@@ -35,7 +35,7 @@ pub fn check(cx: &LateContext<'_>, doc: &str, fragments: Fragments<'_>) {
                         span,
                         MSG,
                         None,
-                        "end the doc comment with some punctuation",
+                        "end the paragraph with some punctuation",
                     );
                 }
             },
