@@ -62,4 +62,7 @@ pub enum AttributeLintKind {
         target: Target,
         target_span: Span,
     },
+    DuplicateDocAlias {
+        first_definition: Span,
+    },
 }
