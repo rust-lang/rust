@@ -12,7 +12,7 @@ pub use self::task_queue::JoinNotifier;
 
 mod task_queue {
     use super::wait_notify;
-    use crate::sync::{Mutex, MutexGuard};
+    use crate::sync::nonpoison::{Mutex, MutexGuard};
 
     pub type JoinHandle = wait_notify::Waiter;
 
@@ -48,7 +48,7 @@ mod task_queue {
     static TASK_QUEUE: Mutex<Vec<Task>> = Mutex::new(Vec::new());
 
     pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {
-        TASK_QUEUE.lock().unwrap()
+        TASK_QUEUE.lock()
     }
 }
 

@@ -16,7 +16,7 @@ use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandl
 use crate::os::windows::process::ProcThreadAttributeList;
 use crate::path::{Path, PathBuf};
 use crate::process::StdioPipes;
-use crate::sync::Mutex;
+use crate::sync::nonpoison::Mutex;
 use crate::sys::args::{self, Arg};
 use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::fs::{File, OpenOptions};

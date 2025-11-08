@@ -27,8 +27,8 @@
 use crate::collections::BTreeMap;
 use crate::hint::spin_loop;
 use crate::ops::Range;
-use crate::sync::Mutex;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::nonpoison::Mutex;
 use crate::sys::os::errno_location;
 
 pub struct ThreadInfo {

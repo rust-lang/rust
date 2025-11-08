@@ -1257,11 +1257,11 @@ impl ThreadId {
                 }
             }
             _ => {
-                use crate::sync::{Mutex, PoisonError};
+                use crate::sync::nonpoison::Mutex;
 
                 static COUNTER: Mutex<u64> = Mutex::new(0);
 
-                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
+                let mut counter = COUNTER.lock();
                 let Some(id) = counter.checked_add(1) else {
                     // in case the panic handler ends up calling `ThreadId::new()`,
                     // avoid reentrant lock acquire.
