@@ -1600,8 +1600,12 @@ fn const_of_item<'tcx>(
     };
     let ct_arg = match ct_rhs {
         hir::ConstItemRhs::TypeConst(ct_arg) => ct_arg,
-        hir::ConstItemRhs::Body(body_id) => {
-            bug!("cannot call const_of_item on a non-type_const {body_id:?}")
+        hir::ConstItemRhs::Body(_) => {
+            let e = tcx.dcx().span_delayed_bug(
+                tcx.def_span(def_id),
+                "cannot call const_of_item on a non-type_const",
+            );
+            return ty::EarlyBinder::bind(Const::new_error(tcx, e));
         }
     };
     let icx = ItemCtxt::new(tcx, def_id);
