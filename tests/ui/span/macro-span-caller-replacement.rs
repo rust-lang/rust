@@ -2,7 +2,7 @@ macro_rules! macro_with_format { () => {
     fn check_5(arg : usize) -> String {
         let s : &str;
         if arg < 5 {
-            s = format!("{arg}");
+            s = format!("{arg}"); //~ ERROR mismatched types
         } else {
             s = String::new(); //~ ERROR mismatched types
         }
@@ -11,6 +11,6 @@ macro_rules! macro_with_format { () => {
 }}
 
 fn main() {
-    macro_with_format!(); //~ ERROR mismatched types
-    println!( "{}", check_5(6) ); 
+    macro_with_format!();
+    println!( "{}", check_5(6) );
 }
