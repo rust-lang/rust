@@ -687,7 +687,6 @@ impl<'a> Parser<'a> {
         let mut err =
             self.dcx().struct_span_err(span, format!("expected `;` or `]`, found {}", token_descr));
         err.span_label(span, "expected `;` or `]`");
-        err.note("you might have meant to write a slice or array type");
 
         // If we cannot recover, return the error immediately.
         if !self.may_recover() {
@@ -696,12 +695,10 @@ impl<'a> Parser<'a> {
 
         let snapshot = self.create_snapshot_for_diagnostic();
 
-        let suggestion_span = if self.eat(exp!(Comma)) || self.eat(exp!(Star)) {
-            // Consume common erroneous separators.
-            self.prev_token.span
-        } else {
-            self.token.span.shrink_to_lo()
-        };
+        // Consume common erroneous separators.
+        let hi = self.prev_token.span.hi();
+        _ = self.eat(exp!(Comma)) || self.eat(exp!(Colon)) || self.eat(exp!(Star));
+        let suggestion_span = self.prev_token.span.with_lo(hi);
 
         // we first try to parse pattern like `[u8 5]`
         let length = match self.parse_expr_anon_const() {
