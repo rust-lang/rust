@@ -1228,9 +1228,12 @@ impl Step for ErrorIndex {
         t!(fs::create_dir_all(&out));
         tool::ErrorIndex::command(builder, self.compilers)
             .arg("html")
-            .arg(out)
+            .arg(&out)
             .arg(&builder.version)
             .run(builder);
+
+        let index = out.join("error-index.html");
+        builder.maybe_open_in_browser::<Self>(index);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
