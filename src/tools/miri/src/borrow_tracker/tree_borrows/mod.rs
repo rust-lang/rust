@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty};
 
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
 use crate::concurrency::data_race::NaReadType;
 use crate::*;
 

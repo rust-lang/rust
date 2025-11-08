@@ -139,7 +139,7 @@ pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
 pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
-pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
+pub use crate::helpers::{EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AlignmentCheck, AllocExtra, BacktraceStyle, DynMachineCallback, FloatRoundingErrorMode,

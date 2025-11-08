@@ -25,7 +25,7 @@ use crate::borrow_tracker::tree_borrows::diagnostics::{
 use crate::borrow_tracker::tree_borrows::foreign_access_skipping::IdempotentForeignAccess;
 use crate::borrow_tracker::tree_borrows::perms::PermTransition;
 use crate::borrow_tracker::tree_borrows::unimap::{UniIndex, UniKeyMap, UniValMap};
-use crate::borrow_tracker::{GlobalState, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalState, ProtectorKind};
 use crate::*;
 
 mod tests;

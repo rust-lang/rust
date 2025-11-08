@@ -23,7 +23,7 @@ fn main() {
         // Third thread: tries to read the lock while second thread is queued.
         s.spawn(|| {
             let atomic_ref = unsafe { &*lock.get().cast::<AtomicU32>() };
-            let _val = atomic_ref.load(Ordering::Relaxed); //~ERROR: read access to `os_unfair_lock` is forbidden while the queue is non-empty
+            let _val = atomic_ref.load(Ordering::Relaxed); //~ERROR: read of `os_unfair_lock` is forbidden while the queue is non-empty
         });
     });
 }

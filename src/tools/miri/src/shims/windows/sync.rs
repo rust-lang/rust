@@ -3,7 +3,7 @@ use std::time::Duration;
 use rustc_abi::{FieldIdx, Size};
 
 use crate::concurrency::init_once::{EvalContextExt as _, InitOnceStatus};
-use crate::concurrency::sync::{FutexRef, SyncObj};
+use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
 use crate::*;
 
 #[derive(Clone)]
@@ -15,7 +15,7 @@ impl SyncObj for WindowsInitOnce {
     fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
         if !self.init_once.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} to `INIT_ONCE` is forbidden while the queue is non-empty"
+                "{access_kind} of `INIT_ONCE` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())

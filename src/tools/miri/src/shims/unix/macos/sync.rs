@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use rustc_abi::{Endian, FieldIdx, Size};
 
-use crate::concurrency::sync::{FutexRef, SyncObj};
+use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
 use crate::*;
 
 #[derive(Clone)]
@@ -30,7 +30,7 @@ impl SyncObj for MacOsUnfairLock {
             && !mutex_ref.queue_is_empty()
         {
             throw_ub_format!(
-                "{access_kind} to `os_unfair_lock` is forbidden while the queue is non-empty"
+                "{access_kind} of `os_unfair_lock` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())

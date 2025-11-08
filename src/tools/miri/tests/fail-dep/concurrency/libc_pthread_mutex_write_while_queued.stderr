@@ -1,8 +1,8 @@
-error: Undefined Behavior: write access to `pthread_mutex_t` is forbidden while the queue is non-empty
+error: Undefined Behavior: write of `pthread_mutex_t` is forbidden while the queue is non-empty
   --> tests/fail-dep/concurrency/libc_pthread_mutex_write_while_queued.rs:LL:CC
    |
-LL | ...   atomic_ref.store(0, Ordering::Relaxed);
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+LL |             atomic_ref.store(0, Ordering::Relaxed);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -1527,7 +1527,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
                 alloc_id,
                 range,
-                AccessKind::Read,
+                borrow_tracker::AccessKind::Read,
             ));
         }
         // The order of checks is deliberate, to prefer reporting a data race over a borrow tracker error.
@@ -1549,7 +1549,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         // Check if there are any sync objects that would like to prevent reading this memory.
         for (_offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
-            obj.on_access(AccessKind::Read)?;
+            obj.on_access(concurrency::sync::AccessKind::Read)?;
         }
 
         interp_ok(())
@@ -1568,7 +1568,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             machine.emit_diagnostic(NonHaltingDiagnostic::AccessedAlloc(
                 alloc_id,
                 range,
-                AccessKind::Write,
+                borrow_tracker::AccessKind::Write,
             ));
         }
         match &machine.data_race {
@@ -1597,7 +1597,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if !alloc_extra.sync_objs.is_empty() {
             let mut to_delete = vec![];
             for (offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
-                obj.on_access(AccessKind::Write)?;
+                obj.on_access(concurrency::sync::AccessKind::Write)?;
                 if obj.delete_on_write() {
                     to_delete.push(*offset);
                 }
@@ -1642,6 +1642,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, size, machine)?;
         }
+        // Check if there are any sync objects that would like to prevent freeing this memory.
+        for obj in alloc_extra.sync_objs.values() {
+            obj.on_access(concurrency::sync::AccessKind::Dealloc)?;
+        }
+
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
         {
             *deallocated_at = Some(machine.current_user_relevant_span());

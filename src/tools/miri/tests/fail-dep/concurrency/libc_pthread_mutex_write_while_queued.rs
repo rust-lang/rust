@@ -35,7 +35,7 @@ fn main() {
         // Third thread: tries to overwrite the lock while second thread is queued.
         s.spawn(|| {
             let atomic_ref = unsafe { &*m.get().byte_add(OFFSET).cast::<AtomicU32>() };
-            atomic_ref.store(0, Ordering::Relaxed); //~ERROR: write access to `pthread_mutex_t` is forbidden while the queue is non-empty
+            atomic_ref.store(0, Ordering::Relaxed); //~ERROR: write of `pthread_mutex_t` is forbidden while the queue is non-empty
         });
     });
 }

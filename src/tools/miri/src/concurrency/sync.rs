@@ -14,6 +14,24 @@ use rustc_data_structures::fx::FxHashMap;
 use super::vector_clock::VClock;
 use crate::*;
 
+/// Indicates which kind of access is being performed.
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
+pub enum AccessKind {
+    Read,
+    Write,
+    Dealloc,
+}
+
+impl fmt::Display for AccessKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AccessKind::Read => write!(f, "read"),
+            AccessKind::Write => write!(f, "write"),
+            AccessKind::Dealloc => write!(f, "deallocation"),
+        }
+    }
+}
+
 /// A trait for the synchronization metadata that can be attached to a memory location.
 pub trait SyncObj: Any {
     /// Determines whether reads/writes to this object's location are currently permitted.

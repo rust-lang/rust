@@ -1,6 +1,6 @@
 use rustc_abi::Size;
 
-use crate::concurrency::sync::SyncObj;
+use crate::concurrency::sync::{AccessKind, SyncObj};
 use crate::*;
 
 /// Do a bytewise comparison of the two places. This is used to check if
@@ -113,7 +113,7 @@ impl SyncObj for PthreadMutex {
     fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
         if !self.mutex_ref.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} to `pthread_mutex_t` is forbidden while the queue is non-empty"
+                "{access_kind} of `pthread_mutex_t` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())
@@ -242,7 +242,7 @@ impl SyncObj for PthreadRwLock {
     fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
         if !self.rwlock_ref.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} to `pthread_rwlock_t` is forbidden while the queue is non-empty"
+                "{access_kind} of `pthread_rwlock_t` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())
@@ -382,7 +382,7 @@ impl SyncObj for PthreadCondvar {
     fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
         if !self.condvar_ref.queue_is_empty() {
             throw_ub_format!(
-                "{access_kind} to `pthread_cond_t` is forbidden while the queue is non-empty"
+                "{access_kind} of `pthread_cond_t` is forbidden while the queue is non-empty"
             );
         }
         interp_ok(())

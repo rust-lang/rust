@@ -1,7 +1,7 @@
 use std::num::NonZero;
 use std::sync::Mutex;
 use std::time::Duration;
-use std::{cmp, fmt, iter};
+use std::{cmp, iter};
 
 use rand::RngCore;
 use rustc_abi::{Align, ExternAbi, FieldIdx, FieldsShape, Size, Variants};
@@ -21,22 +21,6 @@ use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::*;
-
-/// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum AccessKind {
-    Read,
-    Write,
-}
-
-impl fmt::Display for AccessKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AccessKind::Read => write!(f, "read access"),
-            AccessKind::Write => write!(f, "write access"),
-        }
-    }
-}
 
 /// Gets an instance for a path.
 ///
