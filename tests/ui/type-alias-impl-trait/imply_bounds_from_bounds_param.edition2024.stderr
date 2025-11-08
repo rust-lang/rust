@@ -35,7 +35,6 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let mut thing = test(&mut z);
    |                     ^^^^^^^^^^^^
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
@@ -57,7 +56,6 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let mut thing = test(&mut z);
    |                     ^^^^^^^^^^^^
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
@@ -79,7 +77,6 @@ note: this call may capture more lifetimes than intended, because Rust 2024 has 
    |
 LL |     let mut thing = test(&mut z);
    |                     ^^^^^^^^^^^^
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
 LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {

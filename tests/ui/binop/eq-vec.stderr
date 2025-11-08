@@ -12,7 +12,6 @@ note: an implementation of `PartialEq` might be missing for `Foo`
    |
 LL |     enum Foo {
    |     ^^^^^^^^ must implement `PartialEq`
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `Foo` with `#[derive(PartialEq)]`
    |
 LL +     #[derive(PartialEq)]

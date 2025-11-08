@@ -5,7 +5,6 @@ LL |     let _: NotDebug = dbg!(NotDebug);
    |                       ^^^^^^^^^^^^^^ the trait `Debug` is not implemented for `NotDebug`
    |
    = note: add `#[derive(Debug)]` to `NotDebug` or manually `impl Debug for NotDebug`
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NotDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

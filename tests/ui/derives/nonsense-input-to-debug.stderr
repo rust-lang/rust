@@ -13,8 +13,6 @@ LL |     should_be_vec_t: vec![T],
    |                      expected type
    |                      in this macro invocation
    |                      this macro call doesn't expand to a type
-   |
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0392]: type parameter `T` is never used
   --> $DIR/nonsense-input-to-debug.rs:5:17

@@ -10,7 +10,6 @@ help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
 LL | pub struct NonDisplay;
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `NonDisplay` doesn't implement `std::fmt::Display`
   --> $DIR/non-source-literals.rs:10:45
@@ -24,7 +23,6 @@ help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
 LL | pub struct NonDisplay;
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `NonDebug` doesn't implement `Debug`
   --> $DIR/non-source-literals.rs:11:42
@@ -34,7 +32,6 @@ LL |     let _ = format!(concat!("{:", "?}"), NonDebug);
    |
    = help: the trait `Debug` is not implemented for `NonDebug`
    = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NonDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]
@@ -49,7 +46,6 @@ LL |     let _ = format!(concat!("{", "0", ":?}"), NonDebug);
    |
    = help: the trait `Debug` is not implemented for `NonDebug`
    = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
-   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `NonDebug` with `#[derive(Debug)]`
    |
 LL + #[derive(Debug)]

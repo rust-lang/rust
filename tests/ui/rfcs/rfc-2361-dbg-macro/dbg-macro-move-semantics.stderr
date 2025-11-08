@@ -8,7 +8,6 @@ LL |     let _ = dbg!(a);
 LL |     let _ = dbg!(a);
    |             ^^^^^^^ value used here after move
    |
-   = note: this error originates in the macro `dbg` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing instead of transferring ownership
    |
 LL |     let _ = dbg!(&a);

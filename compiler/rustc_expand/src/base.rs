@@ -851,6 +851,7 @@ pub struct SyntaxExtension {
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
     pub collapse_debuginfo: bool,
+    pub hide_backtrace: bool,
 }
 
 impl SyntaxExtension {
@@ -884,6 +885,7 @@ impl SyntaxExtension {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             collapse_debuginfo: false,
+            hide_backtrace: false,
         }
     }
 
@@ -939,6 +941,12 @@ impl SyntaxExtension {
         collapse_table[flag as usize][attr as usize]
     }
 
+    fn get_hide_backtrace(attrs: &[hir::Attribute]) -> bool {
+        // FIXME(estebank): instead of reusing `#[rustc_diagnostic_item]` as a proxy, introduce a
+        // new attribute purely for this under the `#[diagnostic]` namespace.
+        ast::attr::find_by_name(attrs, sym::rustc_diagnostic_item).is_some()
+    }
+
     /// Constructs a syntax extension with the given properties
     /// and other properties converted from attributes.
     pub fn new(
@@ -975,6 +983,7 @@ impl SyntaxExtension {
             // Not a built-in macro
             None => (None, helper_attrs),
         };
+        let hide_backtrace = builtin_name.is_some() || Self::get_hide_backtrace(attrs);
 
         let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 
@@ -1009,6 +1018,7 @@ impl SyntaxExtension {
             allow_internal_unsafe,
             local_inner_macros,
             collapse_debuginfo,
+            hide_backtrace,
         }
     }
 
@@ -1088,7 +1098,7 @@ impl SyntaxExtension {
             self.allow_internal_unsafe,
             self.local_inner_macros,
             self.collapse_debuginfo,
-            self.builtin_name.is_some(),
+            self.hide_backtrace,
         )
     }
 }
