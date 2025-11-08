@@ -18,7 +18,7 @@ use hir_ty::{
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
+use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
 use crate::{HasCrate, Module, ModuleDef, Semantics};
 
@@ -29,7 +29,7 @@ pub struct FileSymbol {
     pub name: Symbol,
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
-    pub container_name: Option<SmolStr>,
+    pub container_name: Option<Symbol>,
     /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
@@ -65,7 +65,7 @@ pub struct SymbolCollector<'a> {
     db: &'a dyn HirDatabase,
     symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
-    current_container_name: Option<SmolStr>,
+    current_container_name: Option<Symbol>,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
@@ -108,7 +108,7 @@ impl<'a> SymbolCollector<'a> {
         tracing::info!(?work, "SymbolCollector::do_work");
         self.db.unwind_if_revision_cancelled();
 
-        let parent_name = work.parent.map(|name| name.as_str().to_smolstr());
+        let parent_name = work.parent.map(|name| Symbol::intern(name.as_str()));
         self.with_container_name(parent_name, |s| s.collect_from_module(work.module_id));
     }
 
@@ -125,7 +125,7 @@ impl<'a> SymbolCollector<'a> {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(id)) => {
                     this.push_decl(id, name, false, None);
-                    let enum_name = this.db.enum_signature(id).name.as_str().to_smolstr();
+                    let enum_name = Symbol::intern(this.db.enum_signature(id).name.as_str());
                     this.with_container_name(Some(enum_name), |this| {
                         let variants = id.enum_variants(this.db);
                         for (variant_id, variant_name, _) in &variants.variants {
@@ -328,7 +328,7 @@ impl<'a> SymbolCollector<'a> {
                 )
                 .to_smolstr(),
         );
-        self.with_container_name(impl_name, |s| {
+        self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, None)
             }
@@ -337,14 +337,14 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_trait(&mut self, trait_id: TraitId, trait_do_not_complete: Complete) {
         let trait_data = self.db.trait_signature(trait_id);
-        self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
+        self.with_container_name(Some(Symbol::intern(trait_data.name.as_str())), |s| {
             for &(ref name, assoc_item_id) in &trait_id.trait_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, Some(trait_do_not_complete));
             }
         });
     }
 
-    fn with_container_name(&mut self, container_name: Option<SmolStr>, f: impl FnOnce(&mut Self)) {
+    fn with_container_name(&mut self, container_name: Option<Symbol>, f: impl FnOnce(&mut Self)) {
         if let Some(container_name) = container_name {
             let prev = self.current_container_name.replace(container_name);
             f(self);

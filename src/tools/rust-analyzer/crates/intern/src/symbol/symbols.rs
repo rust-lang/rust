@@ -85,6 +85,7 @@ define_symbols! {
     false_ = "false",
     let_ = "let",
     const_ = "const",
+    kw_impl = "impl",
     proc_dash_macro = "proc-macro",
     aapcs_dash_unwind = "aapcs-unwind",
     avr_dash_interrupt = "avr-interrupt",

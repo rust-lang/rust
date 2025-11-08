@@ -245,7 +245,7 @@ fn try_lookup_include_path(
     Some(NavigationTarget {
         file_id,
         full_range: TextRange::new(0.into(), size),
-        name: path.into(),
+        name: hir::Symbol::intern(&path),
         alias: None,
         focus_range: None,
         kind: None,
@@ -598,7 +598,13 @@ fn expr_to_nav(
     let value_range = value.syntax().text_range();
     let navs = navigation_target::orig_range_with_focus_r(db, file_id, value_range, focus_range);
     navs.map(|(hir::FileRangeWrapper { file_id, range }, focus_range)| {
-        NavigationTarget::from_syntax(file_id, "<expr>".into(), focus_range, range, kind)
+        NavigationTarget::from_syntax(
+            file_id,
+            hir::Symbol::intern("<expr>"),
+            focus_range,
+            range,
+            kind,
+        )
     })
 }
 
@@ -607,7 +613,6 @@ mod tests {
     use crate::{GotoDefinitionConfig, fixture};
     use ide_db::{FileRange, MiniCore};
     use itertools::Itertools;
-    use syntax::SmolStr;
 
     const TEST_CONFIG: GotoDefinitionConfig<'_> =
         GotoDefinitionConfig { minicore: MiniCore::default() };
@@ -658,7 +663,7 @@ mod tests {
         let Some(target) = navs.into_iter().next() else {
             panic!("expected single navigation target but encountered none");
         };
-        assert_eq!(target.name, SmolStr::new_inline(expected_name));
+        assert_eq!(target.name, hir::Symbol::intern(expected_name));
     }
 
     #[test]
