@@ -10,10 +10,11 @@
 //! [1]: https://devblogs.microsoft.com/oldnewthing/20191011-00/?p=102989
 
 use core::ffi::c_void;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use crate::cell::Cell;
 use crate::ptr;
-use crate::sys::c;
+use crate::sys::c::{self, FLS_OUT_OF_INDEXES};
 
 pub type Key = u32;
 
@@ -35,15 +36,33 @@ unsafe fn set(key: Key, ptr: *const c_void) {
     }
 }
 
+static KEY: AtomicU32 = AtomicU32::new(FLS_OUT_OF_INDEXES);
+
 pub fn enable() {
     #[thread_local]
     static REGISTERED: Cell<bool> = Cell::new(false);
 
     if !REGISTERED.replace(true) {
-        unsafe {
-            let key = create(Some(cleanup));
-            set(key, ptr::dangling());
+        let current_key = KEY.load(Ordering::Acquire);
+
+        // If we already allocated a key, we only need to set it to a non-null value so that the dtor is run.
+        let key = if current_key != FLS_OUT_OF_INDEXES {
+            current_key
+        } else {
+            // Otherwise, we try to allocate a key.
+            let new_key = unsafe { create(Some(cleanup)) };
+
+            // Now we need to set this key to be used by everyone else.
+            // If we won the race, our key is the right one and we can set it to non-null value.
+            // If we lost, we'll use the winning key.
+            // Note: we are not freeing our losing key since according to the docs
+            // > It is expected that DLLs call [the FlsFree] function (if at all) only during DLL_PROCESS_DETACH.
+            match KEY.compare_exchange(current_key, new_key, Ordering::Release, Ordering::Acquire) {
+                Ok(_) => new_key,
+                Err(other_key) => other_key,
+            }
         };
+        unsafe { set(key, ptr::without_provenance(1)) };
     }
 }
 
