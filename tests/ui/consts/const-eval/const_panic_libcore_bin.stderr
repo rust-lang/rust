@@ -15,8 +15,6 @@ error[E0080]: evaluation panicked: not implemented
    |
 LL | const X: () = unimplemented!();
    |               ^^^^^^^^^^^^^^^^ evaluation of `X` failed here
-   |
-   = note: this error originates in the macro `unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

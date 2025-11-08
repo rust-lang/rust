@@ -21,48 +21,36 @@ error[E0080]: evaluation panicked: not yet implemented
    |
 LL |     const _: () = todo!();
    |                   ^^^^^^^ evaluation of `impls::_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:20:19
    |
 LL |     const _: () = todo!();
    |                   ^^^^^^^ evaluation of `impls::_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:21:19
    |
 LL |     const _: () = todo!();
    |                   ^^^^^^^ evaluation of `impls::_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:22:19
    |
 LL |     const _: () = todo!();
    |                   ^^^^^^^ evaluation of `impls::_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:23:19
    |
 LL |     const _: () = todo!();
    |                   ^^^^^^^ evaluation of `impls::_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation panicked: not yet implemented
   --> $DIR/underscore-bindings-disambiguators.rs:28:15
    |
 LL | const _: () = todo!();
    |               ^^^^^^^ evaluation of `_` failed here
-   |
-   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 8 previous errors
 

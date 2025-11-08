@@ -59,8 +59,6 @@ LL |         return Some(y);
 ...
 LL |     println!("{:?}", x.data);
    |                      ^^^^^^ immutable borrow occurs here
-   |
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0499]: cannot borrow `*vec` as mutable more than once at a time
   --> $DIR/nll-problem-case-3-issue-21906.rs:77:9
