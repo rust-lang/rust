@@ -5,10 +5,13 @@ LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `post_monomorphization_error::ValidateConstImm::<2, 0, 1>::VALID` failed here
 
 note: erroneous constant encountered
-  --> $DIR/auxiliary/post_monomorphization_error.rs:19:5
+  --> $DIR/auxiliary/post_monomorphization_error.rs:13:17
    |
+LL |         let _ = $crate::ValidateConstImm::<$imm, 0, { (1 << 1) - 1 }>::VALID;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
 LL |     static_assert_imm1!(IMM1);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ------------------------- in this macro invocation
    |
    = note: this note originates in the macro `static_assert_imm1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
