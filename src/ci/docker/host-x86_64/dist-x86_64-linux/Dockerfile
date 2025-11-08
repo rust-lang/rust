@@ -91,6 +91,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set llvm.offload=true \
+      --set llvm.clang=true \
       --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \
