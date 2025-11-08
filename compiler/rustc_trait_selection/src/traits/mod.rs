@@ -635,9 +635,10 @@ pub fn try_evaluate_const<'tcx>(
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
 
-                    let typing_env = infcx
-                        .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                        .with_post_analysis_normalized(tcx);
+                    // Since there is no generic parameter, we can just drop the environment
+                    // to prevent query cycle.
+                    let typing_env = infcx.typing_env(ty::ParamEnv::empty());
+
                     (uv.args, typing_env)
                 }
             };
