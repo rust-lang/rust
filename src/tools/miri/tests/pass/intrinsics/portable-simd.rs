@@ -62,7 +62,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
 #[rustc_nounwind]
 pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
-pub fn simd_ops_f16() {
+fn simd_ops_f16() {
     use intrinsics::*;
 
     // small hack to make type inference better
@@ -273,7 +273,7 @@ fn simd_ops_f64() {
     assert_eq!(f64x2::from_array([f64::NAN, 0.0]).reduce_min(), 0.0);
 }
 
-pub fn simd_ops_f128() {
+fn simd_ops_f128() {
     use intrinsics::*;
 
     // small hack to make type inference better
@@ -454,6 +454,18 @@ fn simd_ops_i32() {
             0x3fffffffu32 as i32
         ])
     );
+
+    // these values are taken from the doctests of `u32::funnel_shl` and `u32::funnel_shr`
+    let c = u32x4::splat(0x010000b3);
+    let d = u32x4::splat(0x2fe78e45);
+
+    unsafe {
+        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(0)), c);
+        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(8)), u32x4::splat(0x0000b32f));
+
+        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(0)), d);
+        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(8)), u32x4::splat(0xb32fe78e));
+    }
 }
 
 fn simd_mask() {
