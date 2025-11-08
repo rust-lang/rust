@@ -458,7 +458,7 @@ impl SerializedSearchIndex {
                     other.descs[other_entryid].clone(),
                     other.function_data[other_entryid].clone().map(|mut func| {
                         fn map_fn_sig_item(
-                            map_other_pathid_to_self_pathid: &mut Vec<usize>,
+                            map_other_pathid_to_self_pathid: &Vec<usize>,
                             ty: &mut RenderType,
                         ) {
                             match ty.id {
@@ -501,14 +501,14 @@ impl SerializedSearchIndex {
                             }
                         }
                         for input in &mut func.inputs {
-                            map_fn_sig_item(&mut map_other_pathid_to_self_pathid, input);
+                            map_fn_sig_item(&map_other_pathid_to_self_pathid, input);
                         }
                         for output in &mut func.output {
-                            map_fn_sig_item(&mut map_other_pathid_to_self_pathid, output);
+                            map_fn_sig_item(&map_other_pathid_to_self_pathid, output);
                         }
                         for clause in &mut func.where_clause {
                             for entry in clause {
-                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, entry);
+                                map_fn_sig_item(&map_other_pathid_to_self_pathid, entry);
                             }
                         }
                         func
