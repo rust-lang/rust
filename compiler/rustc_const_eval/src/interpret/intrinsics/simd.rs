@@ -3,7 +3,7 @@ use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
-use rustc_middle::ty::{FloatTy, SimdAlign};
+use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{bug, err_ub_format, mir, span_bug, throw_unsup_format, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -742,6 +742,58 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         FloatTy::F128 => self.float_muladd::<Quad>(a, b, c, typ)?,
                     };
                     self.write_scalar(val, &dest)?;
+                }
+            }
+            sym::simd_funnel_shl | sym::simd_funnel_shr => {
+                let (left, _) = self.project_to_simd(&args[0])?;
+                let (right, _) = self.project_to_simd(&args[1])?;
+                let (shift, _) = self.project_to_simd(&args[2])?;
+                let (dest, _) = self.project_to_simd(&dest)?;
+
+                let (len, elem_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
+                let (elem_size, _signed) = elem_ty.int_size_and_signed(*self.tcx);
+                let elem_size_bits = u128::from(elem_size.bits());
+
+                let is_left = intrinsic_name == sym::simd_funnel_shl;
+
+                for i in 0..len {
+                    let left =
+                        self.read_scalar(&self.project_index(&left, i)?)?.to_bits(elem_size)?;
+                    let right =
+                        self.read_scalar(&self.project_index(&right, i)?)?.to_bits(elem_size)?;
+                    let shift_bits =
+                        self.read_scalar(&self.project_index(&shift, i)?)?.to_bits(elem_size)?;
+
+                    if shift_bits >= elem_size_bits {
+                        throw_ub_format!(
+                            "overflowing shift by {shift_bits} in `{intrinsic_name}` in lane {i}"
+                        );
+                    }
+                    let inv_shift_bits = u32::try_from(elem_size_bits - shift_bits).unwrap();
+
+                    // A funnel shift left by S can be implemented as `(x << S) | y.unbounded_shr(SIZE - S)`.
+                    // The `unbounded_shr` is needed because otherwise if `S = 0`, it would be `x | y`
+                    // when it should be `x`.
+                    //
+                    // This selects the least-significant `SIZE - S` bits of `x`, followed by the `S` most
+                    // significant bits of `y`. As `left` and `right` both occupy the lower `SIZE` bits,
+                    // we can treat the lower `SIZE` bits as an integer of the right width and use
+                    // the same implementation, but on a zero-extended `x` and `y`. This works because
+                    // `x << S` just pushes the `SIZE-S` MSBs out, and `y >> (SIZE - S)` shifts in
+                    // zeros, as it is zero-extended. To the lower `SIZE` bits, this looks just like a
+                    // funnel shift left.
+                    //
+                    // Note that the `unbounded_sh{l,r}`s are needed only in case we are using this on
+                    // `u128xN` and `inv_shift_bits == 128`.
+                    let result_bits = if is_left {
+                        (left << shift_bits) | right.unbounded_shr(inv_shift_bits)
+                    } else {
+                        left.unbounded_shl(inv_shift_bits) | (right >> shift_bits)
+                    };
+                    let (result, _overflow) = ScalarInt::truncate_from_uint(result_bits, elem_size);
+
+                    let dest = self.project_index(&dest, i)?;
+                    self.write_scalar(result, &dest)?;
                 }
             }
 
