@@ -290,9 +290,12 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     }
 
     /// Removes all provenance inside the given range.
-    /// If there is provenance overlapping with the edges, might result in an error.
     #[allow(irrefutable_let_patterns)] // these actually make the code more clear
     pub fn clear(&mut self, range: AllocRange, data_bytes: &[u8], cx: &impl HasDataLayout) {
+        if range.size == Size::ZERO {
+            return;
+        }
+
         let start = range.start;
         let end = range.end();
         // Clear the bytewise part -- this is easy.
