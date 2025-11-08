@@ -12,11 +12,11 @@
 //! nightly Rust feature `-Zbuild-std`. This target is for people who want to
 //! use stable Rust, and target a stable set pf WebAssembly features.
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Os, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
-    options.os = "none".into();
+    options.os = Os::None;
 
     // WebAssembly 1.0 shipped in 2019 and included exactly one proposal
     // after the initial "MVP" feature set: "mutable-globals".

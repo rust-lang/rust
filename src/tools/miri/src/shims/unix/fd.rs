@@ -6,6 +6,7 @@ use std::io::ErrorKind;
 
 use rand::Rng;
 use rustc_abi::Size;
+use rustc_target::spec::Os;
 
 use crate::shims::files::FileDescription;
 use crate::shims::sig::check_min_vararg_count;
@@ -197,7 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 fd.set_flags(flag, this)
             }
-            cmd if this.tcx.sess.target.os == "macos"
+            cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
             {
                 // Reject if isolation is enabled.

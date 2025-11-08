@@ -1881,14 +1881,7 @@ crate::target_spec_enum! {
         X86_64 = "x86_64",
         Xtensa = "xtensa",
     }
-    /// The vast majority of the time, the compiler deals with a fixed set of
-    /// target architectures, so it is convenient for them to be represented in
-    /// an enum. However, it is possible to have arbitrary values for the "arch"
-    /// field in a target JSON file (which can be parsed when `--target` is
-    /// specified). This might occur, for example, for an out-of-tree codegen
-    /// backend that supports an architecture that rustc currently doesn't know
-    /// about. This variant exists as an escape hatch for such cases.
-    other_variant = Unknown;
+    other_variant = Other;
 }
 
 impl Arch {
@@ -1925,8 +1918,164 @@ impl Arch {
             Self::X86 => sym::x86,
             Self::X86_64 => sym::x86_64,
             Self::Xtensa => sym::xtensa,
-            Self::Unknown(name) => rustc_span::Symbol::intern(name),
+            Self::Other(name) => rustc_span::Symbol::intern(name),
         }
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Os {
+        Aix = "aix",
+        AmdHsa = "amdhsa",
+        Android = "android",
+        Cuda = "cuda",
+        Cygwin = "cygwin",
+        Dragonfly = "dragonfly",
+        Emscripten = "emscripten",
+        EspIdf = "espidf",
+        FreeBsd = "freebsd",
+        Fuchsia = "fuchsia",
+        Haiku = "haiku",
+        HelenOs = "helenos",
+        Hermit = "hermit",
+        Horizon = "horizon",
+        Hurd = "hurd",
+        Illumos = "illumos",
+        IOs = "ios",
+        L4Re = "l4re",
+        Linux = "linux",
+        LynxOs178 = "lynxos178",
+        MacOs = "macos",
+        Managarm = "managarm",
+        Motor = "motor",
+        NetBsd = "netbsd",
+        None = "none",
+        Nto = "nto",
+        NuttX = "nuttx",
+        OpenBsd = "openbsd",
+        Psp = "psp",
+        Psx = "psx",
+        Redox = "redox",
+        Rtems = "rtems",
+        Solaris = "solaris",
+        SolidAsp3 = "solid_asp3",
+        TeeOs = "teeos",
+        Trusty = "trusty",
+        TvOs = "tvos",
+        Uefi = "uefi",
+        VexOs = "vexos",
+        VisionOs = "visionos",
+        Vita = "vita",
+        VxWorks = "vxworks",
+        Wasi = "wasi",
+        WatchOs = "watchos",
+        Windows = "windows",
+        Xous = "xous",
+        Zkvm = "zkvm",
+        Unknown = "unknown",
+    }
+    other_variant = Other;
+}
+
+impl Os {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Env {
+        Gnu = "gnu",
+        MacAbi = "macabi",
+        Mlibc = "mlibc",
+        Msvc = "msvc",
+        Musl = "musl",
+        Newlib = "newlib",
+        Nto70 = "nto70",
+        Nto71 = "nto71",
+        Nto71IoSock = "nto71_iosock",
+        Nto80 = "nto80",
+        Ohos = "ohos",
+        Relibc = "relibc",
+        Sgx = "sgx",
+        Sim = "sim",
+        P1 = "p1",
+        P2 = "p2",
+        P3 = "p3",
+        Uclibc = "uclibc",
+        V5 = "v5",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Env {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Vendor {
+        Amd = "amd",
+        Apple = "apple",
+        Espressif = "espressif",
+        Fortanix = "fortanix",
+        Ibm = "ibm",
+        Kmc = "kmc",
+        Mti = "mti",
+        Nintendo = "nintendo",
+        Nvidia = "nvidia",
+        Openwrt = "openwrt",
+        Pc = "pc",
+        Risc0 = "risc0",
+        Sony = "sony",
+        Sun = "sun",
+        Unikraft = "unikraft",
+        Unknown = "unknown",
+        Uwp = "uwp",
+        Vex = "vex",
+        Win7 = "win7",
+        Wrs = "wrs",
+    }
+    other_variant = Other;
+}
+
+impl Vendor {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Abi {
+        Abi64 = "abi64",
+        AbiV2 = "abiv2",
+        AbiV2Hf = "abiv2hf",
+        Eabi = "eabi",
+        EabiHf = "eabihf",
+        ElfV1 = "elfv1",
+        ElfV2 = "elfv2",
+        Fortanix = "fortanix",
+        Ilp32 = "ilp32",
+        Ilp32e = "ilp32e",
+        Llvm = "llvm",
+        MacAbi = "macabi",
+        Sim = "sim",
+        SoftFloat = "softfloat",
+        Spe = "spe",
+        Uwp = "uwp",
+        VecDefault = "vec-default",
+        VecExtAbi = "vec-extabi",
+        X32 = "x32",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Abi {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
     }
 }
 
@@ -2047,20 +2196,21 @@ pub struct TargetOptions {
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: u16,
-    /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
-    /// "none" implies a bare metal target without `std` library.
-    /// A couple of targets having `std` also use "unknown" as an `os` value,
+    /// OS name to use for conditional compilation (`target_os`). Defaults to [`Os::None`].
+    /// [`Os::None`] implies a bare metal target without `std` library.
+    /// A couple of targets having `std` also use [`Os::Unknown`] as their `os` value,
     /// but they are exceptions.
-    pub os: StaticCow<str>,
-    /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
-    pub env: StaticCow<str>,
+    pub os: Os,
+    /// Environment name to use for conditional compilation (`target_env`). Defaults to [`Env::Unspecified`].
+    pub env: Env,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
-    /// or `"eabihf"`. Defaults to "".
+    /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
     /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
     /// However, parts of the backend do check this field for specific values to enable special behavior.
-    pub abi: StaticCow<str>,
-    /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: StaticCow<str>,
+    pub abi: Abi,
+    /// Vendor name to use for conditional compilation (`target_vendor`).
+    /// Defaults to [`Vendor::Unknown`].
+    pub vendor: Vendor,
 
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
@@ -2558,10 +2708,10 @@ impl Default for TargetOptions {
         TargetOptions {
             endian: Endian::Little,
             c_int_width: 32,
-            os: "none".into(),
-            env: "".into(),
-            abi: "".into(),
-            vendor: "unknown".into(),
+            os: Os::None,
+            env: Env::Unspecified,
+            abi: Abi::Unspecified,
+            vendor: Vendor::Unknown,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker_flavor_json: LinkerFlavorCli::Gcc,
@@ -2751,12 +2901,12 @@ impl Target {
 
         check_eq!(
             self.is_like_darwin,
-            self.vendor == "apple",
+            self.vendor == Vendor::Apple,
             "`is_like_darwin` must be set if and only if `vendor` is `apple`"
         );
         check_eq!(
             self.is_like_solaris,
-            self.os == "solaris" || self.os == "illumos",
+            matches!(self.os, Os::Solaris | Os::Illumos),
             "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
         );
         check_eq!(
@@ -2766,7 +2916,7 @@ impl Target {
         );
         check_eq!(
             self.is_like_windows,
-            self.os == "windows" || self.os == "uefi" || self.os == "cygwin",
+            matches!(self.os, Os::Windows | Os::Uefi | Os::Cygwin),
             "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
         );
         check_eq!(
@@ -2777,7 +2927,7 @@ impl Target {
         if self.is_like_msvc {
             check!(self.is_like_windows, "if `is_like_msvc` is set, `is_like_windows` must be set");
         }
-        if self.os == "emscripten" {
+        if self.os == Os::Emscripten {
             check!(self.is_like_wasm, "the `emcscripten` os only makes sense on wasm-like targets");
         }
 
@@ -2793,12 +2943,12 @@ impl Target {
             "`linker_flavor` must be `msvc` if and only if `is_like_msvc` is set"
         );
         check_eq!(
-            self.is_like_wasm && self.os != "emscripten",
+            self.is_like_wasm && self.os != Os::Emscripten,
             matches!(self.linker_flavor, LinkerFlavor::WasmLld(..)),
             "`linker_flavor` must be `wasm-lld` if and only if `is_like_wasm` is set and the `os` is not `emscripten`",
         );
         check_eq!(
-            self.os == "emscripten",
+            self.os == Os::Emscripten,
             matches!(self.linker_flavor, LinkerFlavor::EmCc),
             "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
         );
@@ -2924,13 +3074,17 @@ impl Target {
         // If your target really needs to deviate from the rules below,
         // except it and document the reasons.
         // Keep the default "unknown" vendor instead.
-        check_ne!(self.vendor, "", "`vendor` cannot be empty");
-        check_ne!(self.os, "", "`os` cannot be empty");
+        if let Vendor::Other(s) = &self.vendor {
+            check!(!s.is_empty(), "`vendor` cannot be empty");
+        }
+        if let Os::Other(s) = &self.os {
+            check!(!s.is_empty(), "`os` cannot be empty");
+        }
         if !self.can_use_os_unknown() {
             // Keep the default "none" for bare metal targets instead.
             check_ne!(
                 self.os,
-                "unknown",
+                Os::Unknown,
                 "`unknown` os can only be used on particular targets; use `none` for bare-metal targets"
             );
         }
@@ -2944,7 +3098,7 @@ impl Target {
             // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
             // hexagon: when targeting QuRT, that OS can load dynamic libraries.
             // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
-            if self.os == "none"
+            if self.os == Os::None
                 && !matches!(self.arch, Arch::Bpf | Arch::Hexagon | Arch::Wasm32 | Arch::Wasm64)
             {
                 check!(
@@ -2977,7 +3131,7 @@ impl Target {
                 );
             }
             // The UEFI targets do not support dynamic linking but still require PIC (#101377).
-            if self.relocation_model == RelocModel::Pic && (self.os != "uefi") {
+            if self.relocation_model == RelocModel::Pic && self.os != Os::Uefi {
                 check!(
                     self.dynamic_linking || self.position_independent_executables,
                     "when the relocation model is `pic`, the target must support dynamic linking or use position-independent executables. \
@@ -3116,7 +3270,7 @@ impl Target {
     fn can_use_os_unknown(&self) -> bool {
         self.llvm_target == "wasm32-unknown-unknown"
             || self.llvm_target == "wasm64-unknown-unknown"
-            || (self.env == "sgx" && self.vendor == "fortanix")
+            || (self.env == Env::Sgx && self.vendor == Vendor::Fortanix)
     }
 
     /// Load a built-in target
@@ -3298,7 +3452,7 @@ impl Target {
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64
-            | Arch::Unknown(_) => return None,
+            | Arch::Other(_) => return None,
         })
     }
 

@@ -20,7 +20,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, Vendor};
 use smallvec::SmallVec;
 
 use self::pass_mode::*;
@@ -788,8 +788,8 @@ pub(crate) fn codegen_drop<'tcx>(
 pub(crate) fn lib_call_arg_param(tcx: TyCtxt<'_>, ty: Type, is_signed: bool) -> AbiParam {
     let param = AbiParam::new(ty);
     if ty.is_int() && u64::from(ty.bits()) < tcx.data_layout.pointer_size().bits() {
-        match (&tcx.sess.target.arch, tcx.sess.target.vendor.as_ref()) {
-            (Arch::X86_64, _) | (Arch::AArch64, "apple") => match (ty, is_signed) {
+        match (&tcx.sess.target.arch, &tcx.sess.target.vendor) {
+            (Arch::X86_64, _) | (Arch::AArch64, Vendor::Apple) => match (ty, is_signed) {
                 (types::I8 | types::I16, true) => param.sext(),
                 (types::I8 | types::I16, false) => param.uext(),
                 _ => param,

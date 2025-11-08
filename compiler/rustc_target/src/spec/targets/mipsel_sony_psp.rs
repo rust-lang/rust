@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata, TargetOptions, Vendor, cvs,
 };
 
 // The PSP has custom linker requirements.
@@ -24,8 +24,8 @@ pub(crate) fn target() -> Target {
         arch: Arch::Mips,
 
         options: TargetOptions {
-            os: "psp".into(),
-            vendor: "sony".into(),
+            os: Os::Psp,
+            vendor: Vendor::Sony,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips2".into(),
             linker: Some("rust-lld".into()),

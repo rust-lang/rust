@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions,
+    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, Target, TargetMetadata, TargetOptions, Vendor,
 };
 
 pub(crate) fn target() -> Target {
@@ -16,8 +16,8 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
 
         options: TargetOptions {
-            os: "amdhsa".into(),
-            vendor: "amd".into(),
+            os: Os::AmdHsa,
+            vendor: Vendor::Amd,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
 

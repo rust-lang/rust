@@ -1,10 +1,10 @@
-use crate::spec::{TargetOptions, cvs};
+use crate::spec::{Env, Os, TargetOptions, Vendor, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "vxworks".into(),
-        env: "gnu".into(),
-        vendor: "wrs".into(),
+        os: Os::VxWorks,
+        env: Env::Gnu,
+        vendor: Vendor::Wrs,
         linker: Some("wr-c++".into()),
         exe_suffix: ".vxe".into(),
         dynamic_linking: true,

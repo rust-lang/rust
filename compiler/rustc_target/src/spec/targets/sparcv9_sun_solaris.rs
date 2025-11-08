@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, Vendor, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
     // llvm calls this "v9"
     base.cpu = "v9".into();
-    base.vendor = "sun".into();
+    base.vendor = Vendor::Sun;
     base.max_atomic_width = Some(64);
 
     Target {

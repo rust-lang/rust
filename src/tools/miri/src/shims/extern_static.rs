@@ -1,5 +1,7 @@
 //! Provides the `extern static` that this platform expects.
 
+use rustc_target::spec::Os;
+
 use crate::*;
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -49,28 +51,28 @@ impl<'tcx> MiriMachine<'tcx> {
             Self::add_extern_static(ecx, "environ", environ);
         }
 
-        match ecx.tcx.sess.target.os.as_ref() {
-            "linux" => {
+        match &ecx.tcx.sess.target.os {
+            Os::Linux => {
                 Self::null_ptr_extern_statics(
                     ecx,
                     &["__cxa_thread_atexit_impl", "__clock_gettime64"],
                 )?;
                 Self::weak_symbol_extern_statics(ecx, &["getrandom", "gettid", "statx"])?;
             }
-            "freebsd" => {
+            Os::FreeBsd => {
                 Self::null_ptr_extern_statics(ecx, &["__cxa_thread_atexit_impl"])?;
             }
-            "android" => {
+            Os::Android => {
                 Self::null_ptr_extern_statics(ecx, &["bsd_signal"])?;
                 Self::weak_symbol_extern_statics(ecx, &["signal", "getrandom", "gettid"])?;
             }
-            "windows" => {
+            Os::Windows => {
                 // "_tls_used"
                 // This is some obscure hack that is part of the Windows TLS story. It's a `u8`.
                 let val = ImmTy::from_int(0, ecx.machine.layouts.u8);
                 Self::alloc_extern_static(ecx, "_tls_used", val)?;
             }
-            "illumos" | "solaris" => {
+            Os::Illumos | Os::Solaris => {
                 Self::weak_symbol_extern_statics(ecx, &["pthread_setname_np"])?;
             }
             _ => {} // No "extern statics" supported on this target

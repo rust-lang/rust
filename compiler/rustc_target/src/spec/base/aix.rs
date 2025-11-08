@@ -1,16 +1,17 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs,
+    Abi, BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, Os, TargetOptions, Vendor,
+    crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        abi: "vec-extabi".into(),
+        abi: Abi::VecExtAbi,
         code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
-        os: "aix".into(),
-        vendor: "ibm".into(),
+        os: Os::Aix,
+        vendor: Vendor::Ibm,
         dynamic_linking: true,
         endian: Endian::Big,
         executables: true,

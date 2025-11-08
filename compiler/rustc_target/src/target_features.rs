@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::{Symbol, sym};
 
-use crate::spec::{Arch, FloatAbi, RustcAbi, Target};
+use crate::spec::{Abi, Arch, FloatAbi, RustcAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 /// These exist globally and are not in the target-specific lists below.
@@ -977,7 +977,7 @@ impl Target {
             | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Xtensa
-            | Arch::Unknown(_) => &[],
+            | Arch::Other(_) => &[],
         }
     }
 
@@ -1006,7 +1006,7 @@ impl Target {
             | Arch::PowerPC64LE
             | Arch::SpirV
             | Arch::Xtensa
-            | Arch::Unknown(_) => &[],
+            | Arch::Other(_) => &[],
         }
     }
 
@@ -1119,20 +1119,17 @@ impl Target {
             Arch::AArch64 | Arch::Arm64EC => {
                 // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
                 // the use of soft-float, so all we can do here is some crude hacks.
-                match &*self.abi {
-                    "softfloat" => {
-                        // LLVM will use float registers when `fp-armv8` is available, e.g. for
-                        // calls to built-ins. The only way to ensure a consistent softfloat ABI
-                        // on aarch64 is to never enable `fp-armv8`, so we enforce that.
-                        // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
-                        // feature we have to mark as incompatible.
-                        FeatureConstraints { required: &[], incompatible: &["neon"] }
-                    }
-                    _ => {
-                        // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
-                        // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
-                        FeatureConstraints { required: &["neon"], incompatible: &[] }
-                    }
+                if matches!(self.abi, Abi::SoftFloat) {
+                    // LLVM will use float registers when `fp-armv8` is available, e.g. for
+                    // calls to built-ins. The only way to ensure a consistent softfloat ABI
+                    // on aarch64 is to never enable `fp-armv8`, so we enforce that.
+                    // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
+                    // feature we have to mark as incompatible.
+                    FeatureConstraints { required: &[], incompatible: &["neon"] }
+                } else {
+                    // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
+                    // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
+                    FeatureConstraints { required: &["neon"], incompatible: &[] }
                 }
             }
             Arch::RiscV32 | Arch::RiscV64 => {

@@ -1,12 +1,12 @@
-use crate::spec::{TargetOptions, base, cvs};
+use crate::spec::{Env, Os, TargetOptions, Vendor, base, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     let base = base::msvc::opts();
 
     TargetOptions {
-        os: "windows".into(),
-        env: "msvc".into(),
-        vendor: "pc".into(),
+        os: Os::Windows,
+        env: Env::Msvc,
+        vendor: Vendor::Pc,
         dynamic_linking: true,
         dll_prefix: "".into(),
         dll_suffix: ".dll".into(),

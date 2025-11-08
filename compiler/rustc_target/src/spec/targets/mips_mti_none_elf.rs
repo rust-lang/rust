@@ -2,6 +2,7 @@ use rustc_abi::Endian;
 
 use crate::spec::{
     Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Vendor,
 };
 
 pub(crate) fn target() -> Target {
@@ -18,7 +19,7 @@ pub(crate) fn target() -> Target {
         arch: Arch::Mips,
 
         options: TargetOptions {
-            vendor: "mti".into(),
+            vendor: Vendor::Mti,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             endian: Endian::Big,

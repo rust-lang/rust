@@ -5,11 +5,11 @@ use rustc_abi::{Align, AlignFromBytesError};
 
 use super::crt_objects::CrtObjects;
 use super::{
-    Arch, BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
+    Abi, Arch, BinaryFormat, CodeModel, DebuginfoKind, Env, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
-    MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
+    MergeFunctions, Os, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
-    TargetKind, TargetOptions, TargetWarnings, TlsModel,
+    TargetKind, TargetOptions, TargetWarnings, TlsModel, Vendor,
 };
 use crate::json::{Json, ToJson};
 use crate::spec::AbiMap;
@@ -504,10 +504,10 @@ struct TargetSpecJson {
     #[serde(rename = "target-c-int-width")]
     c_int_width: Option<u16>,
     c_enum_min_bits: Option<u64>,
-    os: Option<StaticCow<str>>,
-    env: Option<StaticCow<str>>,
-    abi: Option<StaticCow<str>>,
-    vendor: Option<StaticCow<str>>,
+    os: Option<Os>,
+    env: Option<Env>,
+    abi: Option<Abi>,
+    vendor: Option<Vendor>,
     linker: Option<StaticCow<str>>,
     #[serde(rename = "linker-flavor")]
     linker_flavor_json: Option<LinkerFlavorCli>,

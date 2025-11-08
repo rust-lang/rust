@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+    Arch, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetMetadata, Vendor, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.vendor = "pc".into();
+    base.vendor = Vendor::Pc;
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;

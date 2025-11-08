@@ -273,7 +273,7 @@ impl InlineAsmArch {
             Arch::Msp430 => Some(Self::Msp430),
             Arch::M68k => Some(Self::M68k),
             Arch::CSky => Some(Self::CSKY),
-            Arch::AmdGpu | Arch::Xtensa | Arch::Unknown(_) => None,
+            Arch::AmdGpu | Arch::Xtensa | Arch::Other(_) => None,
         }
     }
 }

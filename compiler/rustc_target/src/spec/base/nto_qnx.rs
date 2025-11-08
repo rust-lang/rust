@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkArgs, LinkerFlavor, Lld, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
+    Cc, LinkArgs, LinkerFlavor, Lld, Os, RelroLevel, Target, TargetMetadata, TargetOptions, Vendor,
+    cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -11,7 +12,7 @@ pub(crate) fn opts() -> TargetOptions {
         has_rpath: true,
         has_thread_local: false,
         linker: Some("qcc".into()),
-        os: "nto".into(),
+        os: Os::Nto,
         // We want backtraces to work by default and they rely on unwind tables
         // (regardless of `-C panic` strategy).
         default_uwtable: true,
@@ -62,7 +63,7 @@ pub(crate) fn x86_64() -> Target {
             cpu: "x86-64".into(),
             plt_by_default: false,
             max_atomic_width: Some(64),
-            vendor: "pc".into(),
+            vendor: Vendor::Pc,
             ..opts()
         },
     }
