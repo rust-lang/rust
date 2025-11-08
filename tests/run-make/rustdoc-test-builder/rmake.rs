@@ -23,6 +23,13 @@ fn main() {
     // ... and that we didn't panic.
     output.assert_not_ice();
 
+    // Some targets (for example wasm) cannot execute doctests directly even with a runner,
+    // so only exercise the success path when the target can run on the host.
+    let target = std::env::var("TARGET").expect("TARGET must be set");
+    if target.contains("wasm") {
+        return;
+    }
+
     // Test 2: Verify that a valid test-builder is invoked with correct arguments
     // Build a custom test-builder that logs its arguments and forwards to rustc.
     // Use `bare_rustc` so we compile for the host architecture even in cross builds.
