@@ -6,6 +6,7 @@ use crate::ffi::{OsStr, OsString, c_void};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit, offset_of};
+use crate::os::windows::ffi::OsStringExt;
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
@@ -18,7 +19,6 @@ use crate::sys::time::SystemTime;
 use crate::sys::{Align8, c, cvt};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, ptr, slice};
-use crate::os::windows::ffi::OsStringExt;
 
 mod remove_dir_all;
 use remove_dir_all::remove_dir_all_iterative;
