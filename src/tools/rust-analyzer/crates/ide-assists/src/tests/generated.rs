@@ -70,6 +70,27 @@ enum TheEnum {
 }
 
 #[test]
+fn doctest_add_explicit_method_call_deref() {
+    check_doc_test(
+        "add_explicit_method_call_deref",
+        r#####"
+struct Foo;
+impl Foo { fn foo(&self) {} }
+fn test() {
+    Foo$0.$0foo();
+}
+"#####,
+        r#####"
+struct Foo;
+impl Foo { fn foo(&self) {} }
+fn test() {
+    (&Foo).foo();
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_add_explicit_type() {
     check_doc_test(
         "add_explicit_type",

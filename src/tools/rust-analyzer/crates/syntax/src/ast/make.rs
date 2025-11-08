@@ -690,6 +690,13 @@ pub fn expr_macro(path: ast::Path, tt: ast::TokenTree) -> ast::MacroExpr {
 pub fn expr_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
     expr_from_text(&if exclusive { format!("&mut {expr}") } else { format!("&{expr}") })
 }
+pub fn expr_raw_ref(expr: ast::Expr, exclusive: bool) -> ast::Expr {
+    expr_from_text(&if exclusive {
+        format!("&raw mut {expr}")
+    } else {
+        format!("&raw const {expr}")
+    })
+}
 pub fn expr_reborrow(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("&mut *{expr}"))
 }
