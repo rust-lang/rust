@@ -12,6 +12,8 @@ use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_session::config::OutputFilenames;
+use rustc_span::Symbol;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
@@ -25,11 +27,13 @@ pub(crate) struct CodegenedFunction {
     func: Function,
     clif_comments: CommentWriter,
     func_debug_cx: Option<FunctionDebugContext>,
+    inline_asm: String,
 }
 
 pub(crate) fn codegen_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
-    cx: &mut crate::CodegenCx,
+    cgu_name: Symbol,
+    mut debug_context: Option<&mut DebugContext>,
     type_dbg: &mut TypeDebugContext<'tcx>,
     cached_func: Function,
     module: &mut dyn Module,
@@ -60,7 +64,9 @@ pub(crate) fn codegen_fn<'tcx>(
     func.clear();
     func.name = UserFuncName::user(0, func_id.as_u32());
     func.signature = sig;
-    func.collect_debug_info();
+    if debug_context.is_some() {
+        func.collect_debug_info();
+    }
 
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
@@ -74,23 +80,27 @@ pub(crate) fn codegen_fn<'tcx>(
     // Make FunctionCx
     let target_config = module.target_config();
     let pointer_type = target_config.pointer_type();
+    assert_eq!(pointer_ty(tcx), pointer_type);
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance, fn_abi);
 
-    let func_debug_cx = if let Some(debug_context) = &mut cx.debug_context {
+    let func_debug_cx = if let Some(debug_context) = debug_context.as_deref_mut() {
         Some(debug_context.define_function(tcx, type_dbg, instance, fn_abi, &symbol_name, mir.span))
     } else {
         None
     };
 
+    let exception_slot = bcx.declare_var(pointer_type);
+
     let mut fx = FunctionCx {
-        cx,
         module,
+        debug_context,
         tcx,
         target_config,
         pointer_type,
         constants_cx: ConstantCx::new(),
         func_debug_cx,
 
+        cgu_name,
         instance,
         symbol_name,
         mir,
@@ -100,9 +110,11 @@ pub(crate) fn codegen_fn<'tcx>(
         block_map,
         local_map: IndexVec::with_capacity(mir.local_decls.len()),
         caller_location: None, // set by `codegen_fn_prelude`
+        exception_slot,
 
         clif_comments,
-        next_ssa_var: 0,
+        inline_asm: String::new(),
+        inline_asm_index: 0,
     };
 
     tcx.prof.generic_activity("codegen clif ir").run(|| codegen_fn_body(&mut fx, start_block));
@@ -113,10 +125,11 @@ pub(crate) fn codegen_fn<'tcx>(
     let symbol_name = fx.symbol_name;
     let clif_comments = fx.clif_comments;
     let func_debug_cx = fx.func_debug_cx;
+    let inline_asm = fx.inline_asm;
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
-    if cx.should_write_ir {
+    if crate::pretty_clif::should_write_ir(tcx.sess) {
         crate::pretty_clif::write_clif_file(
             tcx.output_filenames(()),
             &symbol_name,
@@ -130,20 +143,24 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx, inline_asm }
 }
 
 pub(crate) fn compile_fn(
-    cx: &mut crate::CodegenCx,
     profiler: &SelfProfilerRef,
+    output_filenames: &OutputFilenames,
+    should_write_ir: bool,
     cached_context: &mut Context,
     module: &mut dyn Module,
+    debug_context: Option<&mut DebugContext>,
+    global_asm: &mut String,
     codegened_func: CodegenedFunction,
 ) {
     let _timer =
         profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
 
     let clif_comments = codegened_func.clif_comments;
+    global_asm.push_str(&codegened_func.inline_asm);
 
     // Store function in context
     let context = cached_context;
@@ -180,7 +197,7 @@ pub(crate) fn compile_fn(
 
     // Define function
     profiler.generic_activity("define function").run(|| {
-        context.want_disasm = cx.should_write_ir;
+        context.want_disasm = should_write_ir;
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
@@ -210,10 +227,10 @@ pub(crate) fn compile_fn(
         }
     });
 
-    if cx.should_write_ir {
+    if should_write_ir {
         // Write optimized function to file for debugging
         crate::pretty_clif::write_clif_file(
-            &cx.output_filenames,
+            output_filenames,
             &codegened_func.symbol_name,
             "opt",
             module.isa(),
@@ -223,7 +240,7 @@ pub(crate) fn compile_fn(
 
         if let Some(disasm) = &context.compiled_code().unwrap().vcode {
             crate::pretty_clif::write_ir_file(
-                &cx.output_filenames,
+                output_filenames,
                 &format!("{}.vcode", codegened_func.symbol_name),
                 |file| file.write_all(disasm.as_bytes()),
             )
@@ -231,7 +248,6 @@ pub(crate) fn compile_fn(
     }
 
     // Define debuginfo for function
-    let debug_context = &mut cx.debug_context;
     profiler.generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
@@ -250,12 +266,12 @@ fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func
 
     tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
-        match cranelift_codegen::verify_function(&func, &flags) {
+        match cranelift_codegen::verify_function(func, &flags) {
             Ok(_) => {}
             Err(err) => {
                 tcx.dcx().err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
-                    &func,
+                    func,
                     Some(Box::new(writer)),
                     err,
                 );
@@ -295,11 +311,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         }
 
         if bb_data.is_cleanup {
-            // Unwinding after panicking is not supported
-            continue;
+            if cfg!(not(feature = "unwinding")) {
+                continue;
+            }
 
-            // FIXME Once unwinding is supported and Cranelift supports marking blocks as cold, do
-            // so for cleanup blocks.
+            fx.bcx.set_cold_block(block);
         }
 
         fx.bcx.ins().nop();
@@ -369,7 +385,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 fx.bcx.ins().nop();
 
                 match &**msg {
-                    AssertKind::BoundsCheck { ref len, ref index } => {
+                    AssertKind::BoundsCheck { len, index } => {
                         let len = codegen_operand(fx, len).load_scalar(fx);
                         let index = codegen_operand(fx, index).load_scalar(fx);
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
@@ -382,7 +398,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             source_info.span,
                         );
                     }
-                    AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+                    AssertKind::MisalignedPointerDereference { required, found } => {
                         let required = codegen_operand(fx, required).load_scalar(fx);
                         let found = codegen_operand(fx, found).load_scalar(fx);
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
@@ -538,14 +554,22 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     template,
                     operands,
                     *options,
-                    targets.get(0).copied(),
+                    targets.first().copied(),
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
                 codegen_unwind_terminate(fx, source_info.span, *reason);
             }
             TerminatorKind::UnwindResume => {
-                // FIXME implement unwinding
+                if cfg!(feature = "unwinding") {
+                    let exception_ptr = fx.bcx.use_var(fx.exception_slot);
+                    fx.lib_call(
+                        "_Unwind_Resume",
+                        vec![AbiParam::new(fx.pointer_type)],
+                        vec![],
+                        &[exception_ptr],
+                    );
+                }
                 fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Unreachable => {
@@ -929,7 +953,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::Coverage { .. } => unreachable!(),
-        StatementKind::Intrinsic(ref intrinsic) => match &**intrinsic {
+        StatementKind::Intrinsic(intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
             NonDivergingIntrinsic::Assume(_) => {}
             NonDivergingIntrinsic::CopyNonOverlapping(mir::CopyNonOverlapping {
@@ -1060,7 +1084,7 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
     msg_str: &str,
     span: Span,
 ) {
-    let msg_ptr = fx.anonymous_str(msg_str);
+    let msg_ptr = crate::constant::pointer_for_anonymous_str(fx, msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];
 
@@ -1085,7 +1109,7 @@ fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
-    _unwind: UnwindAction,
+    unwind: UnwindAction,
     span: Span,
 ) {
     fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
@@ -1101,14 +1125,23 @@ fn codegen_panic_inner<'tcx>(
 
     let symbol_name = fx.tcx.symbol_name(instance).name;
 
-    // FIXME implement cleanup on exceptions
+    let sig = Signature {
+        params: args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
+        returns: vec![],
+        call_conv: fx.target_config.default_call_conv,
+    };
+    let func_id = fx.module.declare_function(symbol_name, Linkage::Import, &sig).unwrap();
+    let func_ref = fx.module.declare_func_in_func(func_id, fx.bcx.func);
+    if fx.clif_comments.enabled() {
+        fx.add_comment(func_ref, format!("{:?}", symbol_name));
+    }
 
-    fx.lib_call(
-        symbol_name,
-        args.iter().map(|&arg| AbiParam::new(fx.bcx.func.dfg.value_type(arg))).collect(),
-        vec![],
-        args,
-    );
+    let nop_inst = fx.bcx.ins().nop();
+    if fx.clif_comments.enabled() {
+        fx.add_comment(nop_inst, format!("panic {}", symbol_name));
+    }
+
+    codegen_call_with_unwind_action(fx, span, CallTarget::Direct(func_ref), unwind, args, None);
 
     fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }

@@ -1,11 +1,12 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
-use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
+use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use rustc_abi::{Float, Integer, Primitive};
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
+use rustc_span::Symbol;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{Arch, HasTargetSpec, Target};
@@ -256,7 +257,7 @@ pub(crate) fn create_wrapper_function(
             .map(|param| func.dfg.append_block_param(block, param.value_type))
             .collect::<Vec<Value>>();
 
-        let callee_func_ref = module.declare_func_in_func(callee_func_id, &mut bcx.func);
+        let callee_func_ref = module.declare_func_in_func(callee_func_id, bcx.func);
         let call_inst = bcx.ins().call(callee_func_ref, &args);
         let results = bcx.inst_results(call_inst).to_vec(); // Clone to prevent borrow error
 
@@ -268,14 +269,15 @@ pub(crate) fn create_wrapper_function(
 }
 
 pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
-    pub(crate) cx: &'clif mut crate::CodegenCx,
     pub(crate) module: &'m mut dyn Module,
+    pub(crate) debug_context: Option<&'clif mut DebugContext>,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) target_config: TargetFrontendConfig, // Cached from module
     pub(crate) pointer_type: Type,                  // Cached from module
     pub(crate) constants_cx: ConstantCx,
     pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
+    pub(crate) cgu_name: Symbol,
     pub(crate) instance: Instance<'tcx>,
     pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
@@ -288,10 +290,13 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
 
+    /// During cleanup the exception pointer will be stored in this variable.
+    pub(crate) exception_slot: Variable,
+
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
 
-    /// This should only be accessed by `CPlace::new_var`.
-    pub(crate) next_ssa_var: u32,
+    pub(crate) inline_asm: String,
+    pub(crate) inline_asm_index: u32,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
@@ -369,7 +374,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
         assert!(
-            size % align == 0,
+            size.is_multiple_of(align),
             "size must be a multiple of alignment (size={size}, align={align})"
         );
 
@@ -379,7 +384,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 kind: StackSlotKind::ExplicitSlot,
                 // FIXME Don't force the size to a multiple of <abi_align> bytes once Cranelift gets
                 // a way to specify stack slot alignment.
-                size: (size + abi_align - 1) / abi_align * abi_align,
+                size: size.div_ceil(abi_align) * abi_align,
                 align_shift: 4,
             });
             Pointer::stack_slot(stack_slot)
@@ -401,7 +406,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
-        if let Some(debug_context) = &mut self.cx.debug_context {
+        if let Some(debug_context) = &mut self.debug_context {
             let (file_id, line, column) =
                 debug_context.get_span_loc(self.tcx, self.mir.span, source_info.span);
 
@@ -416,21 +421,6 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             let const_loc = self.tcx.span_as_caller_location(span);
             crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
         })
-    }
-
-    pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
-        let mut data = DataDescription::new();
-        data.define(msg.as_bytes().to_vec().into_boxed_slice());
-        let msg_id = self.module.declare_anonymous_data(false, false).unwrap();
-
-        // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.module.define_data(msg_id, &data);
-
-        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
-        if self.clif_comments.enabled() {
-            self.add_comment(local_msg_id, msg);
-        }
-        self.bcx.ins().global_value(self.pointer_type, local_msg_id)
     }
 }
 

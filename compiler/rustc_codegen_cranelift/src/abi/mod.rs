@@ -7,7 +7,9 @@ mod returning;
 use std::borrow::Cow;
 use std::mem;
 
-use cranelift_codegen::ir::{ArgumentPurpose, SigRef};
+use cranelift_codegen::ir::{
+    ArgumentPurpose, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag, SigRef,
+};
 use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
 use rustc_abi::{CanonAbi, ExternAbi, X86Call};
@@ -21,10 +23,12 @@ use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::Arch;
-use smallvec::SmallVec;
+use smallvec::{SmallVec, smallvec};
 
 use self::pass_mode::*;
 pub(crate) use self::returning::codegen_return;
+use crate::base::codegen_unwind_terminate;
+use crate::debuginfo::EXCEPTION_HANDLER_CLEANUP;
 use crate::prelude::*;
 
 fn clif_sig_from_fn_abi<'tcx>(
@@ -82,7 +86,7 @@ pub(crate) fn get_function_sig<'tcx>(
     clif_sig_from_fn_abi(
         tcx,
         default_call_conv,
-        &FullyMonomorphizedLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
+        FullyMonomorphizedLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
     )
 }
 
@@ -111,7 +115,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, self.module, inst);
-        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_ref = self.module.declare_func_in_func(func_id, self.bcx.func);
 
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", inst));
@@ -182,7 +186,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
-        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_ref = self.module.declare_func_in_func(func_id, self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", name));
@@ -267,7 +271,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                 // individual function arguments.
 
                 let tupled_arg_tys = match arg_ty.kind() {
-                    ty::Tuple(ref tys) => tys,
+                    ty::Tuple(tys) => tys,
                     _ => bug!("spread argument isn't a tuple?! but {:?}", arg_ty),
                 };
 
@@ -297,7 +301,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
             Some(cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap());
     }
 
-    assert!(arg_abis_iter.next().is_none(), "ArgAbi left behind");
+    assert_eq!(arg_abis_iter.next(), None, "ArgAbi left behind for {:?}", fx.fn_abi);
     assert!(block_params_iter.next().is_none(), "arg_value left behind");
 
     self::comments::add_locals_header_comment(fx);
@@ -381,7 +385,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     args: &[Spanned<Operand<'tcx>>],
     destination: Place<'tcx>,
     target: Option<BasicBlock>,
-    _unwind: UnwindAction,
+    unwind: UnwindAction,
 ) {
     let func = codegen_operand(fx, func);
     let fn_sig = func.layout().ty.fn_sig(fx.tcx);
@@ -416,7 +420,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
-                &fx.tcx.symbol_name(instance).name,
+                fx.tcx.symbol_name(instance).name,
                 args,
                 ret_place,
                 target,
@@ -490,7 +494,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         let tupled_arguments = match pack_arg.value.layout().ty.kind() {
-            ty::Tuple(ref tupled_arguments) => tupled_arguments,
+            ty::Tuple(tupled_arguments) => tupled_arguments,
             _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
         };
 
@@ -516,12 +520,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let args = args;
     assert_eq!(fn_abi.args.len(), args.len());
 
-    #[derive(Copy, Clone)]
-    enum CallTarget {
-        Direct(FuncRef),
-        Indirect(SigRef, Value),
-    }
-
     let (func_ref, first_arg_override) = match instance {
         // Trait object call
         Some(Instance { def: InstanceKind::Virtual(_, idx), .. }) => {
@@ -537,7 +535,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0].value, idx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, method), Some(ptr.get_addr(fx)))
@@ -557,7 +555,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
 
             let func = func.load_scalar(fx);
-            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+            let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
             let sig = fx.bcx.import_signature(sig);
 
             (CallTarget::Indirect(sig, func), None)
@@ -567,7 +565,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     self::returning::codegen_with_call_return_arg(fx, &fn_abi.ret, ret_place, |fx, return_ptr| {
         let mut call_args = return_ptr
             .into_iter()
-            .chain(first_arg_override.into_iter())
+            .chain(first_arg_override)
             .chain(
                 args.into_iter()
                     .enumerate()
@@ -580,21 +578,15 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         // FIXME: Find a cleaner way to support varargs.
         if fn_abi.c_variadic {
-            adjust_call_for_c_variadic(fx, &fn_abi, source_info, func_ref, &mut call_args);
+            adjust_call_for_c_variadic(fx, fn_abi, source_info, func_ref, &mut call_args);
         }
-
-        let call_inst = match func_ref {
-            CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, &call_args),
-            CallTarget::Indirect(sig, func_ptr) => {
-                fx.bcx.ins().call_indirect(sig, func_ptr, &call_args)
-            }
-        };
 
         if fx.clif_comments.enabled() {
-            with_no_trimmed_paths!(fx.add_comment(call_inst, format!("abi: {:?}", fn_abi)));
+            let nop_inst = fx.bcx.ins().nop();
+            with_no_trimmed_paths!(fx.add_post_comment(nop_inst, format!("abi: {:?}", fn_abi)));
         }
 
-        fx.bcx.func.dfg.inst_results(call_inst).iter().copied().collect::<SmallVec<[Value; 2]>>()
+        codegen_call_with_unwind_action(fx, source_info.span, func_ref, unwind, &call_args, None)
     });
 
     if let Some(dest) = target {
@@ -704,7 +696,7 @@ pub(crate) fn codegen_drop<'tcx>(
     source_info: mir::SourceInfo,
     drop_place: CPlace<'tcx>,
     target: BasicBlock,
-    _unwind: UnwindAction,
+    unwind: UnwindAction,
 ) {
     let ty = drop_place.layout().ty;
     let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
@@ -748,11 +740,16 @@ pub(crate) fn codegen_drop<'tcx>(
                 let fn_abi = FullyMonomorphizedLayoutCx(fx.tcx)
                     .fn_abi_of_instance(virtual_drop, ty::List::empty());
 
-                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, &fn_abi);
+                let sig = clif_sig_from_fn_abi(fx.tcx, fx.target_config.default_call_conv, fn_abi);
                 let sig = fx.bcx.import_signature(sig);
-                // FIXME implement cleanup on exceptions
-                fx.bcx.ins().call_indirect(sig, drop_fn, &[ptr]);
-                fx.bcx.ins().jump(ret_block, &[]);
+                codegen_call_with_unwind_action(
+                    fx,
+                    source_info.span,
+                    CallTarget::Indirect(sig, drop_fn),
+                    unwind,
+                    &[ptr],
+                    Some(ret_block),
+                );
             }
             _ => {
                 assert!(!matches!(drop_instance.def, InstanceKind::Virtual(_, _)));
@@ -771,15 +768,146 @@ pub(crate) fn codegen_drop<'tcx>(
                 if drop_instance.def.requires_caller_location(fx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
                     let caller_location = fx.get_caller_location(source_info);
-                    call_args.extend(
-                        adjust_arg_for_abi(fx, caller_location, &fn_abi.args[1], false).into_iter(),
-                    );
+                    call_args.extend(adjust_arg_for_abi(
+                        fx,
+                        caller_location,
+                        &fn_abi.args[1],
+                        false,
+                    ));
                 }
 
                 let func_ref = fx.get_function_ref(drop_instance);
-                fx.bcx.ins().call(func_ref, &call_args);
-                // FIXME implement cleanup on exceptions
-                fx.bcx.ins().jump(ret_block, &[]);
+                codegen_call_with_unwind_action(
+                    fx,
+                    source_info.span,
+                    CallTarget::Direct(func_ref),
+                    unwind,
+                    &call_args,
+                    Some(ret_block),
+                );
+            }
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) enum CallTarget {
+    Direct(FuncRef),
+    Indirect(SigRef, Value),
+}
+
+pub(crate) fn codegen_call_with_unwind_action(
+    fx: &mut FunctionCx<'_, '_, '_>,
+    span: Span,
+    func_ref: CallTarget,
+    mut unwind: UnwindAction,
+    call_args: &[Value],
+    target_block: Option<Block>,
+) -> SmallVec<[Value; 2]> {
+    let sig_ref = match func_ref {
+        CallTarget::Direct(func_ref) => fx.bcx.func.dfg.ext_funcs[func_ref].signature,
+        CallTarget::Indirect(sig_ref, _func_ptr) => sig_ref,
+    };
+
+    if target_block.is_some() {
+        assert!(fx.bcx.func.dfg.signatures[sig_ref].returns.is_empty());
+    }
+
+    if cfg!(not(feature = "unwinding")) {
+        unwind = UnwindAction::Unreachable;
+    }
+
+    match unwind {
+        UnwindAction::Continue | UnwindAction::Unreachable => {
+            let call_inst = match func_ref {
+                CallTarget::Direct(func_ref) => fx.bcx.ins().call(func_ref, call_args),
+                CallTarget::Indirect(sig, func_ptr) => {
+                    fx.bcx.ins().call_indirect(sig, func_ptr, call_args)
+                }
+            };
+
+            if let Some(target_block) = target_block {
+                fx.bcx.ins().jump(target_block, &[]);
+                smallvec![]
+            } else {
+                fx.bcx
+                    .func
+                    .dfg
+                    .inst_results(call_inst)
+                    .iter()
+                    .copied()
+                    .collect::<SmallVec<[Value; 2]>>()
+            }
+        }
+        UnwindAction::Cleanup(_) | UnwindAction::Terminate(_) => {
+            let returns_types = fx.bcx.func.dfg.signatures[sig_ref]
+                .returns
+                .iter()
+                .map(|return_param| return_param.value_type)
+                .collect::<Vec<_>>();
+
+            let fallthrough_block = fx.bcx.create_block();
+            let fallthrough_block_call_args = returns_types
+                .iter()
+                .enumerate()
+                .map(|(i, _)| BlockArg::TryCallRet(i.try_into().unwrap()))
+                .collect::<Vec<_>>();
+            let fallthrough_block_call = fx.bcx.func.dfg.block_call(
+                target_block.unwrap_or(fallthrough_block),
+                &fallthrough_block_call_args,
+            );
+            let pre_cleanup_block = fx.bcx.create_block();
+            let pre_cleanup_block_call =
+                fx.bcx.func.dfg.block_call(pre_cleanup_block, &[BlockArg::TryCallExn(0)]);
+            let exception_table = fx.bcx.func.dfg.exception_tables.push(ExceptionTableData::new(
+                sig_ref,
+                fallthrough_block_call,
+                [ExceptionTableItem::Tag(
+                    ExceptionTag::with_number(EXCEPTION_HANDLER_CLEANUP).unwrap(),
+                    pre_cleanup_block_call,
+                )],
+            ));
+
+            match func_ref {
+                CallTarget::Direct(func_ref) => {
+                    fx.bcx.ins().try_call(func_ref, call_args, exception_table);
+                }
+                CallTarget::Indirect(_sig, func_ptr) => {
+                    fx.bcx.ins().try_call_indirect(func_ptr, call_args, exception_table);
+                }
+            }
+
+            fx.bcx.seal_block(pre_cleanup_block);
+            fx.bcx.switch_to_block(pre_cleanup_block);
+            fx.bcx.set_cold_block(pre_cleanup_block);
+            match unwind {
+                UnwindAction::Continue | UnwindAction::Unreachable => unreachable!(),
+                UnwindAction::Cleanup(cleanup) => {
+                    let exception_ptr =
+                        fx.bcx.append_block_param(pre_cleanup_block, fx.pointer_type);
+                    fx.bcx.def_var(fx.exception_slot, exception_ptr);
+                    let cleanup_block = fx.get_block(cleanup);
+                    fx.bcx.ins().jump(cleanup_block, &[]);
+                }
+                UnwindAction::Terminate(reason) => {
+                    // FIXME dedup terminate blocks
+                    fx.bcx.append_block_param(pre_cleanup_block, fx.pointer_type);
+
+                    codegen_unwind_terminate(fx, span, reason);
+                }
+            }
+
+            if target_block.is_none() {
+                fx.bcx.seal_block(fallthrough_block);
+                fx.bcx.switch_to_block(fallthrough_block);
+                let returns = returns_types
+                    .into_iter()
+                    .map(|ty| fx.bcx.append_block_param(fallthrough_block, ty))
+                    .collect();
+                fx.bcx.ins().nop();
+                returns
+            } else {
+                smallvec![]
             }
         }
     }
