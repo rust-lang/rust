@@ -20,7 +20,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::util::{self, is_within_packed};
+use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -409,7 +409,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                     // The call destination place and Operand::Move place used as an argument might
                     // be passed by a reference to the callee. Consequently they cannot be packed.
-                    if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
+                    if most_packed_projection(self.tcx, &self.body.local_decls, destination)
+                        .is_some()
+                    {
                         // This is bad! The callee will expect the memory to be aligned.
                         self.fail(
                             location,
@@ -423,7 +425,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                 for arg in args {
                     if let Operand::Move(place) = &arg.node {
-                        if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
+                        if most_packed_projection(self.tcx, &self.body.local_decls, *place)
+                            .is_some()
+                        {
                             // This is bad! The callee will expect the memory to be aligned.
                             self.fail(
                                 location,
