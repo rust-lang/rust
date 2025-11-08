@@ -36,6 +36,8 @@
 #![feature(box_as_ptr)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
 #![feature(debug_closure_helpers)]
 #![feature(decl_macro)]

@@ -382,6 +382,16 @@ pub struct DebugVisualizer {
     pub path: Symbol,
 }
 
+#[derive(Clone, Copy, Debug, Decodable, Encodable, Eq, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+#[derive_const(Default)]
+pub enum RtsanSetting {
+    Nonblocking,
+    Blocking,
+    #[default]
+    Caller,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -689,7 +699,13 @@ pub enum AttributeKind {
     ///
     /// the on set and off set are distjoint since there's a third option: unset.
     /// a node may not set the sanitizer setting in which case it inherits from parents.
-    Sanitize { on_set: SanitizerSet, off_set: SanitizerSet, span: Span },
+    /// rtsan is unset if None
+    Sanitize {
+        on_set: SanitizerSet,
+        off_set: SanitizerSet,
+        rtsan: Option<RtsanSetting>,
+        span: Span,
+    },
 
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },

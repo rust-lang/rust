@@ -1252,6 +1252,9 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::SAFESTACK) {
         link_sanitizer_runtime(sess, flavor, linker, "safestack");
     }
+    if sanitizer.contains(SanitizerSet::REALTIME) {
+        link_sanitizer_runtime(sess, flavor, linker, "rtsan");
+    }
 }
 
 fn link_sanitizer_runtime(

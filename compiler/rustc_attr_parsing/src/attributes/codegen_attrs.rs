@@ -1,4 +1,4 @@
-use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, SanitizerSet, UsedBy};
+use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy};
 use rustc_session::parse::feature_err;
 
 use super::prelude::*;
@@ -592,7 +592,8 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
         r#"memory = "on|off""#,
         r#"memtag = "on|off""#,
         r#"shadow_call_stack = "on|off""#,
-        r#"thread = "on|off""#
+        r#"thread = "on|off""#,
+        r#"realtime = "nonblocking|blocking|caller""#,
     ]);
 
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
@@ -606,6 +607,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
 
         let mut on_set = SanitizerSet::empty();
         let mut off_set = SanitizerSet::empty();
+        let mut rtsan = None;
 
         for item in list.mixed() {
             let Some(item) = item.meta_item() else {
@@ -654,6 +656,17 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                 Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
                 Some(sym::thread) => apply(SanitizerSet::THREAD),
                 Some(sym::hwaddress) => apply(SanitizerSet::HWADDRESS),
+                Some(sym::realtime) => match value.value_as_str() {
+                    Some(sym::nonblocking) => rtsan = Some(RtsanSetting::Nonblocking),
+                    Some(sym::blocking) => rtsan = Some(RtsanSetting::Blocking),
+                    Some(sym::caller) => rtsan = Some(RtsanSetting::Caller),
+                    _ => {
+                        cx.expected_specific_argument_strings(
+                            value.value_span,
+                            &[sym::nonblocking, sym::blocking, sym::caller],
+                        );
+                    }
+                },
                 _ => {
                     cx.expected_specific_argument_strings(
                         item.path().span(),
@@ -666,6 +679,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
                             sym::shadow_call_stack,
                             sym::thread,
                             sym::hwaddress,
+                            sym::realtime,
                         ],
                     );
                     continue;
@@ -673,7 +687,7 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
             }
         }
 
-        Some(AttributeKind::Sanitize { on_set, off_set, span: cx.attr_span })
+        Some(AttributeKind::Sanitize { on_set, off_set, rtsan, span: cx.attr_span })
     }
 }
 
