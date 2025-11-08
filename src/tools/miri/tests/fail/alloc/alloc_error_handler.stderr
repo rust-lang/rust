@@ -1,11 +1,15 @@
 memory allocation of 4 bytes failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: abnormal termination: the program aborted execution
   --> RUSTLIB/std/src/alloc.rs:LL:CC
    |
-LL |     crate::process::abort()
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
+LL |         crate::process::abort()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/alloc.rs:LL:CC
+   = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::alloc::rust_oom::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
    = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
    = note: inside `std::alloc::_::__rust_alloc_error_handler` at RUSTLIB/std/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
