@@ -2094,11 +2094,11 @@ Please disable assertions with `rust.debug-assertions = false`.
                 cmd.arg("--gdb").arg(gdb);
             }
 
-            if let Some(debuggers::Lldb { lldb_version, lldb_python_dir }) =
+            if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
                 debuggers::discover_lldb(builder)
             {
+                cmd.arg("--lldb").arg(lldb_exe);
                 cmd.arg("--lldb-version").arg(lldb_version);
-                cmd.arg("--lldb-python-dir").arg(lldb_python_dir);
             }
         }
 
