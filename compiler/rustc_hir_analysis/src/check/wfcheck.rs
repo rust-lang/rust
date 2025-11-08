@@ -951,7 +951,12 @@ pub(crate) fn check_associated_item(
                 let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
 
-                if item.defaultness(tcx).has_value() {
+                let has_value = item.defaultness(tcx).has_value();
+                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                    check_type_const(wfcx, def_id, ty, has_value)?;
+                }
+
+                if has_value {
                     let code = ObligationCauseCode::SizedConstOrStatic;
                     wfcx.register_bound(
                         ObligationCause::new(span, def_id, code),
@@ -959,8 +964,6 @@ pub(crate) fn check_associated_item(
                         ty,
                         tcx.require_lang_item(LangItem::Sized, span),
                     );
-
-                    check_const_item_rhs(wfcx, def_id)?;
                 }
 
                 Ok(())
@@ -1230,16 +1233,33 @@ pub(crate) fn check_static_item<'tcx>(
 }
 
 #[instrument(level = "debug", skip(wfcx))]
-pub(super) fn check_const_item_rhs<'tcx>(
+pub(super) fn check_type_const<'tcx>(
     wfcx: &WfCheckingCtxt<'_, 'tcx>,
     def_id: LocalDefId,
+    item_ty: Ty<'tcx>,
+    has_value: bool,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
-    if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+    let span = tcx.def_span(def_id);
+
+    wfcx.register_bound(
+        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+        wfcx.param_env,
+        item_ty,
+        tcx.require_lang_item(LangItem::ConstParamTy, span),
+    );
+
+    if has_value {
         let raw_ct = tcx.const_of_item(def_id).instantiate_identity();
-        let span = tcx.def_span(def_id);
         let norm_ct = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), raw_ct);
         wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(def_id)), norm_ct.into());
+
+        wfcx.register_obligation(Obligation::new(
+            tcx,
+            ObligationCause::new(span, def_id, ObligationCauseCode::WellFormed(None)),
+            wfcx.param_env,
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
+        ));
     }
     Ok(())
 }
