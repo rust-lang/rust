@@ -176,18 +176,22 @@ def start_watchdog():
     watchdog_thread.start()
 
 
+def get_env_arg(name):
+    value = os.environ.get(name)
+    if value is None:
+        print("must set %s" % name)
+        sys.exit(1)
+    return value
+
+
 ####################################################################################################
 # ~main
 ####################################################################################################
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("usage: python lldb_batchmode.py target-path script-path")
-        sys.exit(1)
-
-    target_path = sys.argv[1]
-    script_path = sys.argv[2]
+    target_path = get_env_arg("LLDB_BATCHMODE_TARGET_PATH")
+    script_path = get_env_arg("LLDB_BATCHMODE_SCRIPT_PATH")
 
     print("LLDB batch-mode script")
     print("----------------------")

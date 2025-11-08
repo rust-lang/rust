@@ -458,8 +458,8 @@ impl TestCx<'_> {
         self.run_command_to_procres(
             Command::new(&self.config.python)
                 .arg(&lldb_script_path)
-                .arg(test_executable)
-                .arg(debugger_script)
+                .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
+                .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
                 .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
                 .env("PYTHONPATH", pythonpath),
         )
