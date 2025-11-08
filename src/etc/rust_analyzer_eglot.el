@@ -28,7 +28,7 @@
                                                                     "--build-dir"
                                                                     "build-rust-analyzer"
                                                                     "--json-output"
-                                                                    "--compile-time-deps"])]
+                                                                    "--compile-time-deps"])
                                         :sysrootSrc "./library"
                                         :extraEnv (:RUSTC_BOOTSTRAP "1"))
                  :rustc ( :source "./Cargo.toml" )))))))

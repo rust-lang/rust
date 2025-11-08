@@ -708,9 +708,9 @@ macro_rules! nonzero_integer {
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1)?.highest_one(), 0);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x10)?.highest_one(), 4);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1f)?.highest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.highest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_0000)?.highest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_1111)?.highest_one(), 4);")]
             /// # Some(())
             /// # }
             /// ```
@@ -732,9 +732,9 @@ macro_rules! nonzero_integer {
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1)?.lowest_one(), 0);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x10)?.lowest_one(), 4);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1f)?.lowest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.lowest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_0000)?.lowest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_1111)?.lowest_one(), 0);")]
             /// # Some(())
             /// # }
             /// ```

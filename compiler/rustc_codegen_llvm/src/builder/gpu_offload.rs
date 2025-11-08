@@ -19,6 +19,9 @@ pub(crate) fn handle_gpu_code<'ll>(
     let mut memtransfer_types = vec![];
     let mut region_ids = vec![];
     let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
+    // This is a temporary hack, we only search for kernel_0 to kernel_9 functions.
+    // There is a draft PR in progress which will introduce a proper offload intrinsic to remove
+    // this limitation.
     for num in 0..9 {
         let kernel = cx.get_function(&format!("kernel_{num}"));
         if let Some(kernel) = kernel {

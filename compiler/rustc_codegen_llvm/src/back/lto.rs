@@ -616,7 +616,8 @@ pub(crate) fn run_pass_manager(
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage);
     }
 
-    if enable_gpu && !thin {
+    // Here we only handle the GPU host (=cpu) code.
+    if enable_gpu && !thin && !cgcx.target_is_like_gpu {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);

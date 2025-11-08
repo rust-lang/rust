@@ -2180,6 +2180,8 @@ pub struct TargetOptions {
     /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
     pub is_like_darwin: bool,
+    /// Whether the target is a GPU (e.g. NVIDIA, AMD, Intel).
+    pub is_like_gpu: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
@@ -2590,6 +2592,7 @@ impl Default for TargetOptions {
             abi_return_struct_as_int: false,
             is_like_aix: false,
             is_like_darwin: false,
+            is_like_gpu: false,
             is_like_solaris: false,
             is_like_windows: false,
             is_like_msvc: false,
@@ -2755,6 +2758,11 @@ impl Target {
             self.is_like_solaris,
             self.os == "solaris" || self.os == "illumos",
             "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
+        );
+        check_eq!(
+            self.is_like_gpu,
+            self.arch == Arch::Nvptx64 || self.arch == Arch::AmdGpu,
+            "`is_like_gpu` must be set if and only if `target` is `nvptx64` or `amdgcn`"
         );
         check_eq!(
             self.is_like_windows,

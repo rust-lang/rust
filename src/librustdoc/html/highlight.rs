@@ -427,6 +427,27 @@ impl<'a, F: Write> TokenHandler<'a, '_, F> {
             }
         }
     }
+
+    /// Used when we're done with the current expansion "original code" (ie code before expansion).
+    /// We close all tags inside `Class::Original` and only keep the ones that were not closed yet.
+    fn close_original_tag(&mut self) {
+        let mut classes_to_reopen = Vec::new();
+        while let Some(mut class_info) = self.class_stack.open_classes.pop() {
+            if class_info.class == Class::Original {
+                while let Some(class_info) = classes_to_reopen.pop() {
+                    self.class_stack.open_classes.push(class_info);
+                }
+                class_info.close_tag(self.out);
+                return;
+            }
+            class_info.close_tag(self.out);
+            if !class_info.pending_exit {
+                class_info.closing_tag = None;
+                classes_to_reopen.push(class_info);
+            }
+        }
+        panic!("Didn't find `Class::Original` to close");
+    }
 }
 
 impl<F: Write> Drop for TokenHandler<'_, '_, F> {
@@ -484,7 +505,9 @@ fn end_expansion<'a, W: Write>(
     expanded_codes: &'a [ExpandedCode],
     span: Span,
 ) -> Option<&'a ExpandedCode> {
-    token_handler.class_stack.exit_elem();
+    // We close `Class::Original` and everything open inside it.
+    token_handler.close_original_tag();
+    // Then we check if we have another macro expansion on the same line.
     let expansion = get_next_expansion(expanded_codes, token_handler.line, span);
     if expansion.is_none() {
         token_handler.close_expansion();

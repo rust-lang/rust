@@ -77,6 +77,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             false
         };
+
+        // Special case: range expressions are desugared to struct literals in HIR,
+        // so they would normally return `Unambiguous` precedence in expr.precedence.
+        // we should return `Range` precedence for correct parenthesization in suggestions.
+        if is_range_literal(expr) {
+            return ExprPrecedence::Range;
+        }
+
         expr.precedence(&has_attr)
     }
 
