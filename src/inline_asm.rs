@@ -7,6 +7,7 @@ use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::LangItem;
 use rustc_span::sym;
 use rustc_target::asm::*;
+use rustc_target::spec::Arch;
 use target_lexicon::BinaryFormat;
 
 use crate::prelude::*;
@@ -51,7 +52,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
         return;
     }
 
-    if fx.tcx.sess.target.arch == "s390x"
+    if fx.tcx.sess.target.arch == Arch::S390x
         && template.len() == 3
         && template[0] == InlineAsmTemplatePiece::String("stfle 0(".into())
         && let InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: None, span: _ } =
