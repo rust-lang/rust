@@ -1,5 +1,5 @@
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/associated-constant-not-allowed-102467.rs:7:17
+  --> $DIR/associated-constant-not-allowed-102467.rs:8:17
    |
 LL |     type A: S<C<X = 0i32> = 34>;
    |                 ^^^^^^^^ associated item constraint not allowed here
@@ -11,7 +11,7 @@ LL +     type A: S<C = 34>;
    |
 
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/associated-constant-not-allowed-102467.rs:7:17
+  --> $DIR/associated-constant-not-allowed-102467.rs:8:17
    |
 LL |     type A: S<C<X = 0i32> = 34>;
    |                 ^^^^^^^^ associated item constraint not allowed here

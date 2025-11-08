@@ -1,5 +1,5 @@
 error: the type of the associated constant `K` cannot capture late-bound generic parameters
-  --> $DIR/assoc-const-eq-esc-bound-var-in-ty.rs:9:35
+  --> $DIR/assoc-const-eq-esc-bound-var-in-ty.rs:11:35
    |
 LL | fn take(_: impl for<'r> Trait<'r, K = { &() }>) {}
    |                     --            ^ its type cannot capture the late-bound lifetime parameter `'r`

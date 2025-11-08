@@ -2115,19 +2115,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_type_const(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let tcx = self.tcx;
-        if target == Target::AssocConst
-            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
-            && self.tcx.def_kind(parent) == DefKind::Trait
-        {
+    fn check_type_const(&self, _hir_id: HirId, attr_span: Span, target: Target) {
+        if matches!(target, Target::AssocConst | Target::Const) {
             return;
         } else {
             self.dcx()
-                .struct_span_err(
-                    attr_span,
-                    "`#[type_const]` must only be applied to trait associated constants",
-                )
+                .struct_span_err(attr_span, "`#[type_const]` must only be applied to const items")
                 .emit();
         }
     }
