@@ -35,6 +35,8 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
 
 // for raw `write` in the bad-alloc handler
@@ -140,6 +142,28 @@ extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
 extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   auto OS = RawRustStringOstream(OutBuf);
   llvm::PrintStatistics(OS);
+}
+
+extern "C" void LLVMRustOffloadMapper(LLVMModuleRef M, LLVMValueRef OldFn,
+                                      LLVMValueRef NewFn) {
+  llvm::Module *module = llvm::unwrap(M);
+  llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
+  llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
+
+  // Map old arguments to new arguments. We skip the first dyn_ptr argument,
+  // since it can't be used directly by user code.
+  llvm::ValueToValueMapTy vmap;
+  auto newArgIt = newFn->arg_begin();
+  newArgIt->setName("dyn_ptr");
+  ++newArgIt; // skip %dyn_ptr
+  for (auto &oldArg : oldFn->args()) {
+    vmap[&oldArg] = &*newArgIt++;
+  }
+
+  llvm::SmallVector<llvm::ReturnInst *, 8> returns;
+  llvm::CloneFunctionInto(newFn, oldFn, vmap,
+                          llvm::CloneFunctionChangeType::LocalChangesOnly,
+                          returns);
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,

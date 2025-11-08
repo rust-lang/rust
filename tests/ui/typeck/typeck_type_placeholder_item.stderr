@@ -686,11 +686,12 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |
 note: method `filter` is not const because trait `Iterator` is not const
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-   = note: this trait is not const
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: this method is not const
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this trait is not const
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:240:29: 240:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:240:49: 240:52}>` in constants
@@ -701,11 +702,12 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |
 note: method `map` is not const because trait `Iterator` is not const
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-   = note: this trait is not const
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: this method is not const
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this trait is not const
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 83 previous errors

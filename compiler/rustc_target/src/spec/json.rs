@@ -147,6 +147,7 @@ impl Target {
         forward!(is_like_darwin);
         forward!(is_like_solaris);
         forward!(is_like_windows);
+        forward!(is_like_gpu);
         forward!(is_like_msvc);
         forward!(is_like_wasm);
         forward!(is_like_android);
@@ -342,6 +343,7 @@ impl ToJson for Target {
         target_option_val!(is_like_darwin);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
+        target_option_val!(is_like_gpu);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(is_like_android);
@@ -562,6 +564,7 @@ struct TargetSpecJson {
     is_like_darwin: Option<bool>,
     is_like_solaris: Option<bool>,
     is_like_windows: Option<bool>,
+    is_like_gpu: Option<bool>,
     is_like_msvc: Option<bool>,
     is_like_wasm: Option<bool>,
     is_like_android: Option<bool>,
