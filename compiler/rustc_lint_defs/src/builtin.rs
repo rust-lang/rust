@@ -4522,7 +4522,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #147319 <https://github.com/rust-lang/rust/issues/147319>",
-        report_in_deps: true,
+        report_in_deps: false,
     };
 }
 
