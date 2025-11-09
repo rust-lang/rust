@@ -1104,7 +1104,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 let kind = FnKind::Fn(FnCtxt::Free, &item.vis, &*func);
-                self.visit_fn(kind, item.span, item.id);
+                self.visit_fn(kind, &item.attrs, item.span, item.id);
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod_span, Some(item.span));
@@ -1478,7 +1478,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_param_bound(self, bound)
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'a>, _attrs: &AttrVec, span: Span, id: NodeId) {
         // Only associated `fn`s can have `self` parameters.
         let self_semantic = match fk.ctxt() {
             Some(FnCtxt::Assoc(_)) => SelfSemantic::Yes,
@@ -1648,7 +1648,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, &func.ident);
                 let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.vis, &*func);
-                self.visit_fn(kind, item.span, item.id);
+                self.visit_fn(kind, &item.attrs, item.span, item.id);
             }
             AssocItemKind::Type(_) => {
                 let disallowed = (!parent_is_const).then(|| match self.outer_trait_or_trait_impl {
