@@ -30,7 +30,7 @@ LL |         == (Error::new(ErrorKind::Other, "2"), thread::current());
    |         ^^ ------------------------------------------------------ (std::io::Error, Thread)
    |
 note: `Thread` does not implement `PartialEq`
-  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
+  --> $SRC_DIR/std/src/thread/thread.rs:LL:COL
    |
    = note: `Thread` is defined in another crate
 note: `std::io::Error` does not implement `PartialEq`
@@ -54,7 +54,7 @@ LL | struct T1;
 LL | struct T2;
    | ^^^^^^^^^ must implement `PartialEq`
 note: `Thread` does not implement `PartialEq`
-  --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
+  --> $SRC_DIR/std/src/thread/thread.rs:LL:COL
    |
    = note: `Thread` is defined in another crate
 note: `std::io::Error` does not implement `PartialEq`

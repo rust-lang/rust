@@ -7,7 +7,7 @@ LL |         self.thread.join().unwrap();
    |         move occurs because `self.thread` has type `JoinHandle<()>`, which does not implement the `Copy` trait
    |
 note: `JoinHandle::<T>::join` takes ownership of the receiver `self`, which moves `self.thread`
-  --> remapped/library/std/src/thread/mod.rs:LL:COL
+  --> remapped/library/std/src/thread/join_handle.rs:LL:COL
    |
 LL |     pub fn join(self) -> Result<T> {
    |                 ^^^^
