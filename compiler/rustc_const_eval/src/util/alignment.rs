@@ -1,12 +1,12 @@
 use rustc_abi::Align;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::debug;
 
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'tcx, L>(
+pub fn is_potentially_misaligned<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     typing_env: ty::TypingEnv<'tcx>,
@@ -15,38 +15,71 @@ pub fn is_disaligned<'tcx, L>(
 where
     L: HasLocalDecls<'tcx>,
 {
-    debug!("is_disaligned({:?})", place);
+    debug!("is_potentially_misaligned({:?})", place);
     let Some(pack) = is_within_packed(tcx, local_decls, place) else {
-        debug!("is_disaligned({:?}) - not within packed", place);
+        debug!("is_potentially_misaligned({:?}) - not within packed", place);
         return false;
     };
 
     let ty = place.ty(local_decls, tcx).ty;
     let unsized_tail = || tcx.struct_tail_for_codegen(ty, typing_env);
+
     match tcx.layout_of(typing_env.as_query_input(ty)) {
-        Ok(layout)
+        Ok(layout) => {
             if layout.align.abi <= pack
-                && (layout.is_sized()
-                    || matches!(unsized_tail().kind(), ty::Slice(..) | ty::Str)) =>
-        {
-            // If the packed alignment is greater or equal to the field alignment, the type won't be
-            // further disaligned.
-            // However we need to ensure the field is sized; for unsized fields, `layout.align` is
-            // just an approximation -- except when the unsized tail is a slice, where the alignment
-            // is fully determined by the type.
-            debug!(
-                "is_disaligned({:?}) - align = {}, packed = {}; not disaligned",
-                place,
-                layout.align.bytes(),
-                pack.bytes()
-            );
-            false
+                && (layout.is_sized() || matches!(unsized_tail().kind(), ty::Slice(..) | ty::Str))
+            {
+                // If the packed alignment is greater or equal to the field alignment, the type won't be
+                // further disaligned.
+                // However we need to ensure the field is sized; for unsized fields, `layout.align` is
+                // just an approximation -- except when the unsized tail is a slice, where the alignment
+                // is fully determined by the type.
+                debug!(
+                    "is_potentially_misaligned({:?}) - align = {}, packed = {}; not disaligned",
+                    place,
+                    layout.align.abi.bytes(),
+                    pack.bytes()
+                );
+                false
+            } else {
+                true
+            }
         }
-        _ => {
-            // We cannot figure out the layout. Conservatively assume that this is disaligned.
-            debug!("is_disaligned({:?}) - true", place);
-            true
+        Err(_) => {
+            // Soundness: For any `T`, the ABI alignment requirement of `[T]` equals that of `T`.
+            // Proof sketch:
+            //  (1) From `&[T]` we can obtain `&T`, hence align([T]) >= align(T).
+            //  (2) Using `std::array::from_ref(&T)` we can obtain `&[T; 1]` (and thus `&[T]`),
+            //      hence align(T) >= align([T]).
+            // Therefore align([T]) == align(T). Length does not affect alignment.
+
+            // Try to determine alignment from the type structure
+            if let Some(element_align) = get_element_alignment(tcx, typing_env, ty) {
+                element_align > pack
+            } else {
+                // If we still can't determine alignment, conservatively assume disaligned
+                true
+            }
         }
+    }
+}
+
+// For arrays/slices, `align([T]) == align(T)` (independent of length).
+// So if layout_of([T; N]) is unavailable, we can fall back to layout_of(T).
+fn get_element_alignment<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Align> {
+    match ty.kind() {
+        ty::Array(elem_ty, _) | ty::Slice(elem_ty) => {
+            // Try to obtain the element's layout; if we can, use its ABI align.
+            match tcx.layout_of(typing_env.as_query_input(*elem_ty)) {
+                Ok(layout) => Some(layout.align.abi),
+                Err(_) => None, // stay conservative when even the element's layout is unknown
+            }
+        }
+        _ => None,
     }
 }
 
