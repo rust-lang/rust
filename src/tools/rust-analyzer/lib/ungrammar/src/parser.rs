@@ -3,9 +3,9 @@
 use std::collections::HashMap;
 
 use crate::{
-    error::{bail, format_err, Result},
-    lexer::{self, TokenKind},
     Grammar, Node, NodeData, Rule, Token, TokenData,
+    error::{Result, bail, format_err},
+    lexer::{self, TokenKind},
 };
 
 macro_rules! bail {

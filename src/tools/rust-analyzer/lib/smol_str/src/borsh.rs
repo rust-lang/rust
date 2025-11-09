@@ -1,8 +1,8 @@
-use crate::{Repr, SmolStr, INLINE_CAP};
+use crate::{INLINE_CAP, Repr, SmolStr};
 use alloc::string::{String, ToString};
 use borsh::{
-    io::{Error, ErrorKind, Read, Write},
     BorshDeserialize, BorshSerialize,
+    io::{Error, ErrorKind, Read, Write},
 };
 use core::mem::transmute;
 

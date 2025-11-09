@@ -1,6 +1,6 @@
 use {
     crate::{TextRange, TextSize},
-    serde::{de, Deserialize, Deserializer, Serialize, Serializer},
+    serde::{Deserialize, Deserializer, Serialize, Serializer, de},
 };
 
 impl Serialize for TextSize {

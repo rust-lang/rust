@@ -1,7 +1,7 @@
 [package]
 name = "text-size"
 version = "1.1.1"
-edition = "2018"
+edition = "2024"
 
 authors = [
     "Aleksey Kladov <aleksey.kladov@gmail.com>",
@@ -13,7 +13,7 @@ repository = "https://github.com/rust-analyzer/text-size"
 documentation = "https://docs.rs/text-size"
 
 [dependencies]
-serde = { version = "1.0", optional = true, default_features = false }
+serde = { version = "1.0", optional = true, default-features = false }
 
 [dev-dependencies]
 serde_test = "1.0"
@@ -23,3 +23,6 @@ static_assertions = "1.1"
 name = "serde"
 path = "tests/serde.rs"
 required-features = ["serde"]
+
+[lints]
+workspace = true

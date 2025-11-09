@@ -434,8 +434,7 @@ impl FromStr for SmolStr {
 const INLINE_CAP: usize = InlineSize::_V23 as usize;
 const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
-const WS: &str =
-    "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                                                ";
+const WS: &str = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                                                ";
 const _: () = {
     assert!(WS.len() == N_NEWLINES + N_SPACES);
     assert!(WS.as_bytes()[N_NEWLINES - 1] == b'\n');
@@ -690,24 +689,24 @@ impl StrExt for str {
     #[inline]
     fn replacen_smolstr(&self, from: &str, to: &str, mut count: usize) -> SmolStr {
         // Fast path for replacing a single ASCII character with another inline.
-        if let [from_u8] = from.as_bytes() {
-            if let [to_u8] = to.as_bytes() {
-                return if self.len() <= count {
-                    // SAFETY: `from_u8` & `to_u8` are ascii
-                    unsafe { replacen_1_ascii(self, |b| if b == from_u8 { *to_u8 } else { *b }) }
-                } else {
-                    unsafe {
-                        replacen_1_ascii(self, |b| {
-                            if b == from_u8 && count != 0 {
-                                count -= 1;
-                                *to_u8
-                            } else {
-                                *b
-                            }
-                        })
-                    }
-                };
-            }
+        if let [from_u8] = from.as_bytes()
+            && let [to_u8] = to.as_bytes()
+        {
+            return if self.len() <= count {
+                // SAFETY: `from_u8` & `to_u8` are ascii
+                unsafe { replacen_1_ascii(self, |b| if b == from_u8 { *to_u8 } else { *b }) }
+            } else {
+                unsafe {
+                    replacen_1_ascii(self, |b| {
+                        if b == from_u8 && count != 0 {
+                            count -= 1;
+                            *to_u8
+                        } else {
+                            *b
+                        }
+                    })
+                }
+            };
         }
 
         let mut result = SmolStrBuilder::new();

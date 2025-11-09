@@ -5,7 +5,7 @@ description = "small-string optimized string type with O(1) clone"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/smol_str"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>", "Lukas Wirth <lukastw97@gmail.com>"]
-edition = "2021"
+edition = "2024"
 rust-version = "1.89"
 
 [package.metadata.docs.rs]
