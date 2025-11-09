@@ -1,7 +1,7 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{CfgSelectBranches, CfgSelectPredicate, parse_cfg_select};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
-use rustc_parse::parser::cfg_select::{CfgSelectBranches, CfgSelectPredicate, parse_cfg_select};
 use rustc_span::{Ident, Span, sym};
 
 use crate::errors::{CfgSelectNoMatches, CfgSelectUnreachable};
