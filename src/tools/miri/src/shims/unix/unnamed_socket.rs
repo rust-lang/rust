@@ -82,8 +82,9 @@ impl FileDescription for AnonSocket {
         }
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

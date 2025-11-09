@@ -37,8 +37,9 @@ impl FileDescription for EventFd {
         "event"
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

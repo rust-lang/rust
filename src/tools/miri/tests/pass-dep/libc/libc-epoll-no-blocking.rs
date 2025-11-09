@@ -41,18 +41,10 @@ fn check_epoll_wait<const N: usize>(epfd: i32, expected_notifications: &[(u32, u
     if res < 0 {
         panic!("epoll_wait failed: {}", std::io::Error::last_os_error());
     }
-    assert_eq!(
-        res,
-        expected_notifications.len().try_into().unwrap(),
-        "got wrong number of notifications"
-    );
-    let slice = unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
-    for (return_event, expected_event) in slice.iter().zip(expected_notifications.iter()) {
-        let event = return_event.events;
-        let data = return_event.u64;
-        assert_eq!(event, expected_event.0, "got wrong events");
-        assert_eq!(data, expected_event.1, "got wrong data");
-    }
+    let got_notifications =
+        unsafe { std::slice::from_raw_parts(array_ptr, res.try_into().unwrap()) };
+    let got_notifications = got_notifications.iter().map(|e| (e.events, e.u64)).collect::<Vec<_>>();
+    assert_eq!(got_notifications, expected_notifications, "got wrong notifications");
 }
 
 fn test_epoll_socketpair() {
@@ -70,16 +62,16 @@ fn test_epoll_socketpair() {
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
-    // Register fd[1] with EPOLLOUT|EPOLLET|EPOLLRDHUP but NOT EPOLLIN
+    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
         u64: u64::try_from(fds[1]).unwrap(),
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
-    // Check result from epoll_wait. EPOLLIN should be masked away.
-    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
+    // Check result from epoll_wait.
+    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = u64::try_from(fds[1]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
@@ -101,7 +93,8 @@ fn test_epoll_socketpair() {
 
     // Check result from epoll_wait.
     // We expect to get a read, write, HUP notification from the close since closing an FD always unblocks reads and writes on its peer.
-    let expected_event = u32::try_from(libc::EPOLLRDHUP | libc::EPOLLOUT | libc::EPOLLHUP).unwrap();
+    let expected_event =
+        u32::try_from(libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLHUP | libc::EPOLLRDHUP).unwrap();
     let expected_value = u64::try_from(fds[1]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
@@ -229,7 +222,7 @@ fn test_two_same_fd_in_same_epoll_instance() {
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
-    //Two notification should be received.
+    // Two notification should be received.
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = 5 as u64;
     check_epoll_wait::<8>(
@@ -287,7 +280,7 @@ fn test_epoll_socketpair_both_sides() {
     let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
-    //Two notification should be received.
+    // Two notification should be received.
     let expected_event0 = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value0 = fds[0] as u64;
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -447,12 +440,13 @@ fn test_socketpair_read() {
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
-    // Write 5 bytes to fds[1].
-    let data = "abcde".as_bytes().as_ptr();
-    let res = unsafe { libc_utils::write_all(fds[1], data as *const libc::c_void, 5) };
-    assert_eq!(res, 5);
+    // Write a bunch of data bytes to fds[1].
+    let data = [42u8; 40000];
+    let res =
+        unsafe { libc_utils::write_all(fds[1], data.as_ptr() as *const libc::c_void, data.len()) };
+    assert_eq!(res, data.len() as isize);
 
-    //Two notification should be received.
+    // Two notification should be received.
     let expected_event0 = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value0 = fds[0] as u64;
     let expected_event1 = u32::try_from(libc::EPOLLOUT).unwrap();
@@ -462,36 +456,26 @@ fn test_socketpair_read() {
         &[(expected_event0, expected_value0), (expected_event1, expected_value1)],
     );
 
-    // Read 3 bytes from fds[0].
-    let mut buf: [u8; 3] = [0; 3];
+    // Read a lof of databytes from fds[0].
+    // If we make this read too small, Linux won't actually trigger a notification.
+    // So to ensure the test works on real systems, we make a sizable read.
+    let mut buf = [0; 38000];
     let res =
         unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-    assert_eq!(res, 3);
-    assert_eq!(buf, "abc".as_bytes());
+    assert_eq!(res, buf.len() as isize);
 
-    // Notification will be provided in Miri.
-    // But in real systems, no notification will be provided here, since Linux prefers to avoid
-    // wakeups that are likely to lead to only small amounts of data being read/written.
-    // We make the test work in both cases, thus documenting the difference in behavior.
+    // fds[1] can be written now.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value = fds[1] as u64;
-    if cfg!(miri) {
-        check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
-    } else {
-        check_epoll_wait::<8>(epfd, &[]);
-    }
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
     // Read until the buffer is empty.
-    let mut buf: [u8; 2] = [0; 2];
+    let rest = data.len() - buf.len();
     let res =
-        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-    assert_eq!(res, 2);
-    assert_eq!(buf, "de".as_bytes());
+        unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), rest as libc::size_t) };
+    assert_eq!(res, rest as isize);
 
-    // Notification will be provided.
-    // In real system, notification will be provided too.
-    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
-    let expected_value = fds[1] as u64;
+    // Again we get a notification that fds[1] can be written.
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
@@ -511,7 +495,7 @@ fn test_no_notification_for_unregister_flag() {
         events: (libc::EPOLLOUT | libc::EPOLLET) as _,
         u64: u64::try_from(fds[0]).unwrap(),
     };
-    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[0], &mut ev) };
     assert_eq!(res, 0);
 
     // Write to fd[1].
@@ -598,7 +582,7 @@ fn test_epoll_lost_events() {
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
-    //Two notification should be received. But we only provide buffer for one event.
+    // Two notification should be received. But we only provide buffer for one event.
     let expected_event0 = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value0 = fds[0] as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event0, expected_value0)]);
@@ -640,7 +624,8 @@ fn test_ready_list_fetching_logic() {
     check_epoll_wait::<1>(epfd, &[(expected_event1, expected_value1)]);
 }
 
-// In epoll_ctl, if the value of epfd equals to fd, EINVAL should be returned.
+// In epoll_ctl, if the value of epfd equals to fd, EFAULT should be returned.
+// (The docs say loops cause EINVAL, but experiments show it is EFAULT.)
 fn test_epoll_ctl_epfd_equal_fd() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -649,7 +634,7 @@ fn test_epoll_ctl_epfd_equal_fd() {
     let array_ptr = std::ptr::without_provenance_mut::<libc::epoll_event>(0x100);
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, epfd, array_ptr) };
     let e = std::io::Error::last_os_error();
-    assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
+    assert_eq!(e.raw_os_error(), Some(libc::EFAULT));
     assert_eq!(res, -1);
 }
 

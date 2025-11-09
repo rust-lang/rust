@@ -14,7 +14,7 @@ use crate::*;
 
 /// A unique id for file descriptions. While we could use the address, considering that
 /// is definitely unique, the address would expose interpreter internal state when used
-/// for sorting things. So instead we generate a unique id per file description is the name
+/// for sorting things. So instead we generate a unique id per file description which is the same
 /// for all `dup`licates and is never reused.
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FdId(usize);
@@ -48,25 +48,11 @@ impl<T: ?Sized> FileDescriptionRef<T> {
     pub fn id(&self) -> FdId {
         self.0.id
     }
-}
 
-impl<T: ?Sized> PartialEq for FileDescriptionRef<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
-    }
-}
-
-impl<T: ?Sized> Eq for FileDescriptionRef<T> {}
-
-impl<T: ?Sized> PartialOrd for FileDescriptionRef<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T: ?Sized> Ord for FileDescriptionRef<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.id().cmp(&other.id())
+    /// Returns the raw address of this file description. Useful for equality comparisons.
+    /// Use `id` instead if this can affect user-visible behavior!
+    pub fn addr(&self) -> usize {
+        Rc::as_ptr(&self.0).addr()
     }
 }
 
@@ -89,6 +75,11 @@ impl<T: ?Sized> FileDescriptionRef<T> {
 impl<T: ?Sized> WeakFileDescriptionRef<T> {
     pub fn upgrade(&self) -> Option<FileDescriptionRef<T>> {
         self.0.upgrade().map(FileDescriptionRef)
+    }
+
+    /// Returns the raw address of this file description. Useful for equality comparisons.
+    pub fn addr(&self) -> usize {
+        self.0.as_ptr().addr()
     }
 }
 
@@ -125,12 +116,13 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
         communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
+        let addr = self.addr();
         match Rc::into_inner(self.0) {
             Some(fd) => {
-                // Remove entry from the global epoll_event_interest table.
-                ecx.machine.epoll_interests.remove(fd.id);
+                // There might have been epolls interested in this FD. Remove that.
+                ecx.machine.epoll_interests.remove_epolls(fd.id);
 
-                fd.inner.close(communicate_allowed, ecx)
+                fd.inner.destroy(addr, communicate_allowed, ecx)
             }
             None => {
                 // Not the last reference.
@@ -203,9 +195,12 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("cannot seek on {}", self.name());
     }
 
-    /// Close the file descriptor.
-    fn close<'tcx>(
+    /// Destroys the file description. Only called when the last duplicate file descriptor is closed.
+    ///
+    /// `self_addr` is the address that this file description used to be stored at.
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>>
@@ -382,8 +377,9 @@ impl FileDescription for FileHandle {
         interp_ok((&mut &self.file).seek(offset))
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
