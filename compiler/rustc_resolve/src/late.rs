@@ -4370,7 +4370,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 //
                 // Thus (since we're in expression-position at this point), not to
                 // confuse the user, we want to keep the *message* from E0433 (so
-                // `parent_err`), but we want *hints* from the unified E0425 (so `err`).
+                // `parent_err`), but we want *hints* from E0425 (so `err`).
                 //
                 // And that's what happens below - we're just mixing both messages
                 // into a single one.
