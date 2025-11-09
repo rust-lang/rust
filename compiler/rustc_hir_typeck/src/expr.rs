@@ -39,6 +39,7 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use crate::_if::IfExprParts;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::coercion::CoerceMany;
 use crate::errors::{
@@ -584,7 +585,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.demand_eqtype(e.span, ascribed_ty, ty);
                 ascribed_ty
             }
-            ExprKind::If(..) => self.check_expr_if(expr.hir_id, expr.span, expected),
+            ExprKind::If(cond, then_expr, else_branch) => {
+                let parts = IfExprParts { cond, then: then_expr, else_branch };
+                self.check_expr_if(expr.hir_id, expr.span, &parts, expected)
+            }
             ExprKind::DropTemps(e) => self.check_expr_with_expectation(e, expected),
             ExprKind::Array(args) => self.check_expr_array(args, expected, expr),
             ExprKind::ConstBlock(ref block) => self.check_expr_const_block(block, expected),

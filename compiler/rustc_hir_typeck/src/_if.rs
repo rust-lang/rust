@@ -7,6 +7,13 @@ use smallvec::SmallVec;
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::{Diverges, Expectation, FnCtxt, bug};
 
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct IfExprParts<'tcx> {
+    pub cond: &'tcx hir::Expr<'tcx>,
+    pub then: &'tcx hir::Expr<'tcx>,
+    pub else_branch: Option<&'tcx hir::Expr<'tcx>>,
+}
+
 #[derive(Clone, Debug)]
 struct BranchBody<'tcx> {
     expr: &'tcx hir::Expr<'tcx>,
@@ -55,6 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_id: HirId,
         sp: Span,
+        parts: &IfExprParts<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let root_if_expr = self.tcx.hir_expect_expr(expr_id);
@@ -62,7 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let initial_diverges = self.diverges.get();
 
-        let (guarded, tail) = self.collect_if_chain(root_if_expr, expected);
+        let (guarded, tail) = self.collect_if_chain(root_if_expr, parts, expected);
 
         let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
@@ -195,17 +203,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn collect_if_chain(
         &self,
         mut current_if: &'tcx hir::Expr<'tcx>,
+        parts: &IfExprParts<'tcx>,
         expected: Expectation<'tcx>,
     ) -> (IfGuardedBranches<'tcx>, IfChainTail<'tcx>) {
         let mut chain: IfGuardedBranches<'tcx> = IfGuardedBranches::default();
+        let mut current_parts = *parts;
 
         loop {
-            let Some(else_expr) = self.collect_if_branch(current_if, expected, &mut chain) else {
+            let Some(else_expr) =
+                self.collect_if_branch(current_if, &current_parts, expected, &mut chain)
+            else {
                 return (chain, IfChainTail::Missing(current_if));
             };
 
-            if let hir::ExprKind::If(..) = else_expr.kind {
+            if let hir::ExprKind::If(cond, then, else_branch) = else_expr.kind {
                 current_if = else_expr;
+                current_parts = IfExprParts { cond, then, else_branch };
                 continue;
             }
 
@@ -216,22 +229,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn collect_if_branch(
         &self,
         if_expr: &'tcx hir::Expr<'tcx>,
+        parts: &IfExprParts<'tcx>,
         expected: Expectation<'tcx>,
         chain: &mut IfGuardedBranches<'tcx>,
     ) -> Option<&'tcx hir::Expr<'tcx>> {
-        let hir::ExprKind::If(cond_expr, then_expr, opt_else_expr) = if_expr.kind else {
-            bug!("expected `if` expression, found {:#?}", if_expr);
-        };
-
-        let (cond_ty, cond_diverges) = self.check_if_condition(cond_expr, then_expr.span);
+        let (cond_ty, cond_diverges) = self.check_if_condition(parts.cond, parts.then.span);
         if let Err(guar) = cond_ty.error_reported() {
             chain.cond_error.get_or_insert(guar);
         }
-        let branch_body = self.check_branch_body(then_expr, expected);
+        let branch_body = self.check_branch_body(parts.then, expected);
 
         chain.branches.push(IfGuardedBranch { if_expr, cond_diverges, body: branch_body });
 
-        opt_else_expr
+        parts.else_branch
     }
 
     fn ensure_if_branch_type(&self, hir_id: HirId, ty: Ty<'tcx>) {
