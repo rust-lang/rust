@@ -757,22 +757,18 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     }
 
     match tcx.def_kind(def_id) {
-        def_kind @ (DefKind::Static { .. } | DefKind::Const) => {
+        DefKind::Static { .. } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            match def_kind {
-                DefKind::Static { .. } => {
-                    check_static_inhabited(tcx, def_id);
-                    check_static_linkage(tcx, def_id);
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    res = res.and(wfcheck::check_static_item(
-                        tcx, def_id, ty, /* should_check_for_sync */ true,
-                    ));
-                }
-                DefKind::Const => res = res.and(wfcheck::check_const_item(tcx, def_id)),
-                _ => unreachable!(),
-            }
+
+            check_static_inhabited(tcx, def_id);
+            check_static_linkage(tcx, def_id);
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            res = res.and(wfcheck::check_static_item(
+                tcx, def_id, ty, /* should_check_for_sync */ true,
+            ));
+
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
             // checks. Returning early here does not miss any checks and
             // avoids this query from having a direct dependency edge on the HIR
@@ -900,6 +896,39 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
+        DefKind::Const => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+
+            res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                let ty_span = tcx.ty_span(def_id);
+                let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
+                wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
+                wfcx.register_bound(
+                    traits::ObligationCause::new(
+                        ty_span,
+                        def_id,
+                        ObligationCauseCode::SizedConstOrStatic,
+                    ),
+                    tcx.param_env(def_id),
+                    ty,
+                    tcx.require_lang_item(LangItem::Sized, ty_span),
+                );
+                check_where_clauses(wfcx, def_id);
+
+                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                    wfcheck::check_type_const(wfcx, def_id, ty, true)?;
+                }
+                Ok(())
+            }));
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
+        }
         DefKind::TyAlias => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
@@ -920,6 +949,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }));
                 check_variances_for_type_defn(tcx, def_id);
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);

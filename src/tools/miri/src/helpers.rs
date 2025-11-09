@@ -22,13 +22,6 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::*;
 
-/// Indicates which kind of access is being performed.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub enum AccessKind {
-    Read,
-    Write,
-}
-
 /// Gets an instance for a path.
 ///
 /// A `None` namespace indicates we are looking for a module.

@@ -1,5 +1,5 @@
 error[E0379]: functions in trait impls cannot be declared const
-  --> $DIR/ice-121536-const-method.rs:11:5
+  --> $DIR/ice-121536-const-method.rs:10:5
    |
 LL |     const fn add(self) -> Vec3 {
    |     ^^^^^ functions in trait impls cannot be const

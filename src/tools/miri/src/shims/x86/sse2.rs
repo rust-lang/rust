@@ -36,42 +36,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Intrinsincs sufixed with "epiX" or "epuX" operate with X-bit signed or unsigned
         // vectors.
         match unprefixed_name {
-            // Used to implement the _mm_madd_epi16 function.
-            // Multiplies packed signed 16-bit integers in `left` and `right`, producing
-            // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
-            // intermediate 32-bit integers, and pack the results in `dest`.
-            "pmadd.wd" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.strict_mul(2), left_len);
-
-                for i in 0..dest_len {
-                    let j1 = i.strict_mul(2);
-                    let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_i16()?;
-                    let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i16()?;
-
-                    let j2 = j1.strict_add(1);
-                    let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_i16()?;
-                    let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i16()?;
-
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Multiplications are i16*i16->i32, which will not overflow.
-                    let mul1 = i32::from(left1).strict_mul(right1.into());
-                    let mul2 = i32::from(left2).strict_mul(right2.into());
-                    // However, this addition can overflow in the most extreme case
-                    // (-0x8000)*(-0x8000)+(-0x8000)*(-0x8000) = 0x80000000
-                    let res = mul1.wrapping_add(mul2);
-
-                    this.write_scalar(Scalar::from_i32(res), &dest)?;
-                }
-            }
             // Used to implement the _mm_sad_epu8 function.
             // Computes the absolute differences of packed unsigned 8-bit integers in `a`
             // and `b`, then horizontally sum each consecutive 8 differences to produce
@@ -320,10 +284,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_immediate(*res, dest)?;
             }
-            // Used to implement the _mm_cvtsd_ss and _mm_cvtss_sd functions.
-            // Converts the first f64/f32 from `right` to f32/f64 and copies
-            // the remaining elements from `left`
-            "cvtsd2ss" | "cvtss2sd" => {
+            // Used to implement the _mm_cvtsd_ss function.
+            // Converts the first f64 from `right` to f32 and copies the remaining
+            // elements from `left`
+            "cvtsd2ss" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
@@ -336,8 +300,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Convert first element of `right`
                 let right0 = this.read_immediate(&this.project_index(&right, 0)?)?;
                 let dest0 = this.project_index(&dest, 0)?;
-                // `float_to_float_or_int` here will convert from f64 to f32 (cvtsd2ss) or
-                // from f32 to f64 (cvtss2sd).
                 let res0 = this.float_to_float_or_int(&right0, dest0.layout)?;
                 this.write_immediate(*res0, &dest0)?;
 

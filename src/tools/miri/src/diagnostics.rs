@@ -128,7 +128,7 @@ pub enum NonHaltingDiagnostic {
     PoppedPointerTag(Item, String),
     TrackingAlloc(AllocId, Size, Align),
     FreedAlloc(AllocId),
-    AccessedAlloc(AllocId, AllocRange, AccessKind),
+    AccessedAlloc(AllocId, AllocRange, borrow_tracker::AccessKind),
     RejectedIsolatedOp(String),
     ProgressReport {
         block_count: u64, // how many basic blocks have been run so far

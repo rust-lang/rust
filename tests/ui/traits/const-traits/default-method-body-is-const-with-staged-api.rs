@@ -9,8 +9,7 @@
 #![feature(const_trait_impl)]
 #![stable(feature = "foo", since = "3.3.3")]
 
-#[const_trait]
-trait Tr {
+const trait Tr {
     fn a() {}
 }
 

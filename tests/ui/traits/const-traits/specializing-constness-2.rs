@@ -1,13 +1,11 @@
 #![feature(const_trait_impl, min_specialization, rustc_attrs)]
 //@ known-bug: #110395
 #[rustc_specialization_trait]
-#[const_trait]
-pub trait Sup {}
+pub const trait Sup {}
 
 impl const Sup for () {}
 
-#[const_trait]
-pub trait A {
+pub const trait A {
     fn a() -> u32;
 }
 

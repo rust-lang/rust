@@ -21,7 +21,7 @@ pub use self::stack::Stack;
 use crate::borrow_tracker::stacked_borrows::diagnostics::{
     AllocHistory, DiagnosticCx, DiagnosticCxBuilder,
 };
-use crate::borrow_tracker::{GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind};
 use crate::concurrency::data_race::{NaReadType, NaWriteType};
 use crate::*;
 

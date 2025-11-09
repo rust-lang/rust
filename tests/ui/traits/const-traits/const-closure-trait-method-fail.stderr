@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): const Tr` is not satisfied
-  --> $DIR/const-closure-trait-method-fail.rs:18:23
+  --> $DIR/const-closure-trait-method-fail.rs:17:23
    |
 LL | const _: () = assert!(need_const_closure(Tr::a) == 42);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^

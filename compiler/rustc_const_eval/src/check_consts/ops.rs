@@ -381,23 +381,21 @@ fn build_error_for_const_call<'tcx>(
                             `{trait_name}` is not const",
                         ),
                     );
-                    if parent.is_local() && ccx.tcx.sess.is_nightly_build() {
+                    if let Some(parent) = parent.as_local()
+                        && ccx.tcx.sess.is_nightly_build()
+                    {
                         if !ccx.tcx.features().const_trait_impl() {
                             err.help(
                                 "add `#![feature(const_trait_impl)]` to the crate attributes to \
-                                 enable `#[const_trait]`",
+                                 enable const traits",
                             );
                         }
-                        let indentation = ccx
-                            .tcx
-                            .sess
-                            .source_map()
-                            .indentation_before(trait_span)
-                            .unwrap_or_default();
+                        let span = ccx.tcx.hir_expect_item(parent).vis_span;
+                        let span = ccx.tcx.sess.source_map().span_extend_while_whitespace(span);
                         err.span_suggestion_verbose(
-                            trait_span.shrink_to_lo(),
+                            span.shrink_to_hi(),
                             format!("consider making trait `{trait_name}` const"),
-                            format!("#[const_trait]\n{indentation}"),
+                            "const ".to_owned(),
                             Applicability::MaybeIncorrect,
                         );
                     } else if !ccx.tcx.sess.is_nightly_build() {
