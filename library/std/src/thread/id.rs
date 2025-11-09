@@ -24,7 +24,8 @@ use crate::sync::atomic::{Atomic, Ordering};
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
 ///
-/// [`id`]: Thread::id
+/// [`Thread`]: super::Thread
+/// [`id`]: super::Thread::id
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(NonZero<u64>);

@@ -137,6 +137,7 @@
 //! Note that the stack size of the main thread is *not* determined by Rust.
 //!
 //! [channels]: crate::sync::mpsc
+//! [`Arc`]: crate::sync::Arc
 //! [`join`]: JoinHandle::join
 //! [`Result`]: crate::result::Result
 //! [`Ok`]: crate::result::Result::Ok

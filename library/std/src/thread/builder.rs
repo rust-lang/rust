@@ -39,7 +39,7 @@ use crate::io;
 /// [`stack_size`]: Builder::stack_size
 /// [`name`]: Builder::name
 /// [`spawn`]: Builder::spawn
-/// [`thread::spawn`]: spawn
+/// [`thread::spawn`]: super::spawn
 /// [`io::Result`]: crate::io::Result
 /// [`unwrap`]: crate::result::Result::unwrap
 /// [naming-threads]: ./index.html#naming-threads
@@ -133,10 +133,12 @@ impl Builder {
         self
     }
 
-    /// Disables running and inheriting [spawn hooks](add_spawn_hook).
+    /// Disables running and inheriting [spawn hooks].
     ///
     /// Use this if the parent thread is in no way relevant for the child thread.
     /// For example, when lazily spawning threads for a thread pool.
+    ///
+    /// [spawn hooks]: super::add_spawn_hook
     #[unstable(feature = "thread_spawn_hook", issue = "132951")]
     pub fn no_hooks(mut self) -> Builder {
         self.no_hooks = true;
@@ -151,7 +153,7 @@ impl Builder {
     /// thread finishes). The join handle can be used to block on
     /// termination of the spawned thread, including recovering its panics.
     ///
-    /// For a more complete documentation see [`thread::spawn`][`spawn`].
+    /// For a more complete documentation see [`thread::spawn`].
     ///
     /// # Errors
     ///
@@ -178,6 +180,9 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [`thread::spawn`]: super::spawn
+    /// [`spawn`]: super::spawn
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
@@ -199,7 +204,7 @@ impl Builder {
     ///
     /// This method is identical to [`thread::Builder::spawn`][`Builder::spawn`],
     /// except for the relaxed lifetime bounds, which render it unsafe.
-    /// For a more complete documentation see [`thread::spawn`][`spawn`].
+    /// For a more complete documentation see [`thread::spawn`].
     ///
     /// # Errors
     ///
@@ -221,7 +226,7 @@ impl Builder {
     /// data is dropped
     /// - use only types with `'static` lifetime bounds, i.e., those with no or only
     /// `'static` references (both [`thread::Builder::spawn`][`Builder::spawn`]
-    /// and [`thread::spawn`][`spawn`] enforce this property statically)
+    /// and [`thread::spawn`] enforce this property statically)
     ///
     /// # Examples
     ///
@@ -246,6 +251,8 @@ impl Builder {
     /// ```
     ///
     /// [`io::Result`]: crate::io::Result
+    /// [`thread::spawn`]: super::spawn
+    /// [`spawn`]: super::spawn
     #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>

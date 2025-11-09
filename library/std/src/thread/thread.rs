@@ -65,9 +65,8 @@ impl Inner {
 /// Threads are represented via the `Thread` type, which you can get in one of
 /// two ways:
 ///
-/// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
-///   function, and calling [`thread`][`JoinHandle::thread`] on the
-///   [`JoinHandle`].
+/// * By spawning a new thread, e.g., using the [`thread::spawn`]
+///   function, and calling [`thread`] on the [`JoinHandle`].
 /// * By requesting the current thread, using the [`thread::current`] function.
 ///
 /// The [`thread::current`] function is available even for threads not spawned
@@ -77,7 +76,12 @@ impl Inner {
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
-/// [`thread::current`]: current::current
+/// [`thread::spawn`]: super::spawn
+/// [`thread`]: super::JoinHandle::thread
+/// [`JoinHandle`]: super::JoinHandle
+/// [`thread::current`]: super::current::current
+/// [`Builder`]: super::Builder
+/// [`spawn`]: super::spawn
 pub struct Thread {
     // We use the System allocator such that creating or dropping this handle
     // does not interfere with a potential Global allocator using thread-local
@@ -111,6 +115,8 @@ impl Thread {
     ///
     /// # Safety
     /// May only be called from the thread to which this handle belongs.
+    ///
+    /// [`park`]: super::park
     pub(crate) unsafe fn park(&self) {
         unsafe { self.inner.as_ref().parker().park() }
     }
@@ -120,6 +126,8 @@ impl Thread {
     ///
     /// # Safety
     /// May only be called from the thread to which this handle belongs.
+    ///
+    /// [`park_timeout`]: super::park_timeout
     pub(crate) unsafe fn park_timeout(&self, dur: Duration) {
         unsafe { self.inner.as_ref().parker().park_timeout(dur) }
     }
@@ -127,10 +135,10 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// Every thread is equipped with some basic low-level blocking support, via
-    /// the [`park`][park] function and the `unpark()` method. These can be
-    /// used as a more CPU-efficient implementation of a spinlock.
+    /// the [`park`] function and the `unpark()` method. These can be used as a
+    /// more CPU-efficient implementation of a spinlock.
     ///
-    /// See the [park documentation][park] for more details.
+    /// See the [park documentation] for more details.
     ///
     /// # Examples
     ///
@@ -167,6 +175,9 @@ impl Thread {
     ///
     /// parked_thread.join().unwrap();
     /// ```
+    ///
+    /// [`park`]: super::park
+    /// [park documentation]: super::park
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn unpark(&self) {
