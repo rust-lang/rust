@@ -259,6 +259,7 @@ unsafe fn box_new_uninit(size: usize, align: usize) -> *mut u8 {
 #[unstable(feature = "liballoc_internals", issue = "none")]
 #[inline(always)]
 #[cfg(not(no_global_oom_handling))]
+#[rustc_diagnostic_item = "box_assume_init_into_vec_unsafe"]
 pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
     b: Box<MaybeUninit<[T; N]>>,
 ) -> crate::vec::Vec<T> {

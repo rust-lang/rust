@@ -113,10 +113,7 @@ fn main() {
     }
 
     // #6811
-    match Some(0) {
-        Some(x) => Some(vec![x]),
-        None => None,
-    };
+    Some(0).map(|x| vec![x]);
 
     // Don't lint, coercion
     let x: Option<Vec<&[u8]>> = match Some(()) {
