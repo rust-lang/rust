@@ -1,3 +1,4 @@
+use crate::marker::Destruct;
 use crate::{convert, ops};
 
 /// Used to tell an operation whether it should exit early or go on as usual.
@@ -185,7 +186,11 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    pub fn break_value(self) -> Option<B> {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub const fn break_value(self) -> Option<B>
+    where
+        Self: [const] Destruct,
+    {
         match self {
             ControlFlow::Continue(..) => None,
             ControlFlow::Break(x) => Some(x),
@@ -271,7 +276,11 @@ impl<B, C> ControlFlow<B, C> {
     /// to the break value in case it exists.
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    pub fn map_break<T>(self, f: impl FnOnce(B) -> T) -> ControlFlow<T, C> {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub const fn map_break<T, F>(self, f: F) -> ControlFlow<T, C>
+    where
+        F: [const] FnOnce(B) -> T + [const] Destruct,
+    {
         match self {
             ControlFlow::Continue(x) => ControlFlow::Continue(x),
             ControlFlow::Break(x) => ControlFlow::Break(f(x)),
@@ -291,7 +300,11 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    pub fn continue_value(self) -> Option<C> {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub const fn continue_value(self) -> Option<C>
+    where
+        Self: [const] Destruct,
+    {
         match self {
             ControlFlow::Continue(x) => Some(x),
             ControlFlow::Break(..) => None,
@@ -376,7 +389,11 @@ impl<B, C> ControlFlow<B, C> {
     /// to the continue value in case it exists.
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
-    pub fn map_continue<T>(self, f: impl FnOnce(C) -> T) -> ControlFlow<B, T> {
+    #[rustc_const_unstable(feature = "const_control_flow", issue = "148739")]
+    pub const fn map_continue<T, F>(self, f: F) -> ControlFlow<B, T>
+    where
+        F: [const] FnOnce(C) -> T + [const] Destruct,
+    {
         match self {
             ControlFlow::Continue(x) => ControlFlow::Continue(f(x)),
             ControlFlow::Break(x) => ControlFlow::Break(x),
