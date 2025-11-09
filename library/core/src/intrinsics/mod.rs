@@ -2589,6 +2589,24 @@ pub const fn ub_checks() -> bool {
     cfg!(ub_checks)
 }
 
+/// Returns whether we should perform some overflow-checking at runtime. This eventually evaluates to
+/// `cfg!(overflow_checks)`, but behaves different from `cfg!` when mixing crates built with different
+/// flags: if the crate has overflow checks enabled or carries the `#[rustc_inherit_overflow_checks]`
+/// attribute, evaluation is delayed until monomorphization (or until the call gets inlined into
+/// a crate that does not delay evaluation further); otherwise it can happen any time.
+///
+/// The common case here is a user program built with overflow_checks linked against the distributed
+/// sysroot which is built without overflow_checks but with `#[rustc_inherit_overflow_checks]`.
+/// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
+/// `#[inline]`), gating assertions on `overflow_checks()` rather than `cfg!(overflow_checks)` means that
+/// assertions are enabled whenever the *user crate* has overflow checks enabled. However if the
+/// user has overflow checks disabled, the checks will still get optimized out.
+#[inline(always)]
+#[rustc_intrinsic]
+pub const fn overflow_checks() -> bool {
+    cfg!(debug_assertions)
+}
+
 /// Allocates a block of memory at compile time.
 /// At runtime, just returns a null pointer.
 ///

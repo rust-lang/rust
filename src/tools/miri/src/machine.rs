@@ -1347,13 +1347,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn ub_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
-        interp_ok(ecx.tcx.sess.ub_checks())
-    }
-
-    #[inline(always)]
-    fn contract_checks(ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool> {
-        interp_ok(ecx.tcx.sess.contract_checks())
+    fn runtime_checks(ecx: &InterpCx<'tcx, Self>, r: mir::RuntimeChecks) -> InterpResult<'tcx, bool> {
+        interp_ok(r.value(&ecx.tcx.sess))
     }
 
     #[inline(always)]

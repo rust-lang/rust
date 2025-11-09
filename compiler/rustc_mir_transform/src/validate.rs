@@ -1478,7 +1478,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::NullaryOp(NullOp::UbChecks | NullOp::ContractChecks, _)
+            | Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _)
             | Rvalue::Discriminant(_) => {}
 
             Rvalue::WrapUnsafeBinder(op, ty) => {
