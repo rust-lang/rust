@@ -469,7 +469,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
@@ -587,12 +586,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignFn),
+        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
 
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [

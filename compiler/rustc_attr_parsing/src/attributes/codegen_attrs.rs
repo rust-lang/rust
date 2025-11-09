@@ -57,7 +57,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
@@ -343,7 +342,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: false })), // `#[track_caller]` is inherited from trait methods
         Allow(Target::ForeignFn),
         Allow(Target::Closure),
         Warn(Target::MacroDef),
