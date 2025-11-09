@@ -16,6 +16,7 @@ fn main() {
     test_epoll_block_then_unblock();
     test_notification_after_timeout();
     test_epoll_race();
+    wakeup_on_new_interest();
 }
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -178,4 +179,42 @@ fn test_epoll_race() {
         assert_eq!(VAL, 1)
     };
     thread1.join().unwrap();
+}
+
+/// Ensure that a blocked thread gets woken up when new interested are registered with the
+/// epoll it is blocked on.
+fn wakeup_on_new_interest() {
+    // Create an epoll instance.
+    let epfd = unsafe { libc::epoll_create1(0) };
+    assert_ne!(epfd, -1);
+
+    // Create a socketpair instance.
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+
+    // Write to fd[0]
+    let data = "abcde".as_bytes().as_ptr();
+    let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
+    assert_eq!(res, 5);
+
+    // Block a thread on the epoll instance.
+    let t = std::thread::spawn(move || {
+        let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
+        let expected_value = u64::try_from(fds[1]).unwrap();
+        check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)], -1);
+    });
+    // Ensure the thread is blocked.
+    std::thread::yield_now();
+
+    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    let mut ev = libc::epoll_event {
+        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
+        u64: u64::try_from(fds[1]).unwrap(),
+    };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    // This should wake up the thread.
+    t.join().unwrap();
 }

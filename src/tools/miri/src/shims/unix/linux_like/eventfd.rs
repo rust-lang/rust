@@ -216,7 +216,7 @@ fn eventfd_write<'tcx>(
 
             // The state changed; we check and update the status of all supported event
             // types for current file description.
-            ecx.check_and_update_readiness(eventfd)?;
+            ecx.epoll_send_fd_ready_events(eventfd)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
             return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
@@ -311,7 +311,7 @@ fn eventfd_read<'tcx>(
 
         // The state changed; we check and update the status of all supported event
         // types for current file description.
-        ecx.check_and_update_readiness(eventfd)?;
+        ecx.epoll_send_fd_ready_events(eventfd)?;
 
         // Tell userspace how many bytes we put into the buffer.
         return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));

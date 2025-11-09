@@ -70,16 +70,16 @@ fn test_epoll_socketpair() {
     let res = unsafe { libc_utils::write_all(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
 
-    // Register fd[1] with EPOLLIN|EPOLLOUT|EPOLLET|EPOLLRDHUP
+    // Register fd[1] with EPOLLOUT|EPOLLET|EPOLLRDHUP but NOT EPOLLIN
     let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
+        events: (libc::EPOLLOUT | libc::EPOLLET | libc::EPOLLRDHUP) as _,
         u64: u64::try_from(fds[1]).unwrap(),
     };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
-    // Check result from epoll_wait.
-    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
+    // Check result from epoll_wait. EPOLLIN should be masked away.
+    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
     let expected_value = u64::try_from(fds[1]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
@@ -101,8 +101,7 @@ fn test_epoll_socketpair() {
 
     // Check result from epoll_wait.
     // We expect to get a read, write, HUP notification from the close since closing an FD always unblocks reads and writes on its peer.
-    let expected_event =
-        u32::try_from(libc::EPOLLRDHUP | libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLHUP).unwrap();
+    let expected_event = u32::try_from(libc::EPOLLRDHUP | libc::EPOLLOUT | libc::EPOLLHUP).unwrap();
     let expected_value = u64::try_from(fds[1]).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }

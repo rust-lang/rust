@@ -50,6 +50,26 @@ impl<T: ?Sized> FileDescriptionRef<T> {
     }
 }
 
+impl<T: ?Sized> PartialEq for FileDescriptionRef<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl<T: ?Sized> Eq for FileDescriptionRef<T> {}
+
+impl<T: ?Sized> PartialOrd for FileDescriptionRef<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T: ?Sized> Ord for FileDescriptionRef<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id().cmp(&other.id())
+    }
+}
+
 /// Holds a weak reference to the actual file description.
 #[derive(Debug)]
 pub struct WeakFileDescriptionRef<T: ?Sized>(Weak<FdIdWith<T>>);
