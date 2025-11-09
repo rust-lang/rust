@@ -5,13 +5,49 @@ use rustc_span::{ErrorGuaranteed, Span};
 use smallvec::SmallVec;
 
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
-use crate::{Diverges, Expectation, FnCtxt, bug};
+use crate::{Diverges, Expectation, FnCtxt};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct IfExprParts<'tcx> {
     pub cond: &'tcx hir::Expr<'tcx>,
     pub then: &'tcx hir::Expr<'tcx>,
     pub else_branch: Option<&'tcx hir::Expr<'tcx>>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct IfExprWithParts<'tcx> {
+    expr: &'tcx hir::Expr<'tcx>,
+    parts: IfExprParts<'tcx>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct IfChain<'tcx> {
+    guarded_branches: SmallVec<[IfGuardedBranch<'tcx>; 4]>,
+    tail: IfChainTail<'tcx>,
+    error: Option<ErrorGuaranteed>,
+}
+
+impl<'tcx> IfChain<'tcx> {
+    fn last_expr(&self) -> Option<&'tcx hir::Expr<'tcx>> {
+        if let IfChainTail::FinalElse(final_else) = &self.tail {
+            final_else.expr.into()
+        } else {
+            self.guarded_branches.last().map(|l| l.expr_with_parts.expr)
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct IfGuardedBranch<'tcx> {
+    expr_with_parts: IfExprWithParts<'tcx>,
+    cond_diverges: Diverges,
+    body: BranchBody<'tcx>,
+}
+
+#[derive(Clone, Debug)]
+enum IfChainTail<'tcx> {
+    FinalElse(BranchBody<'tcx>),
+    Missing,
 }
 
 #[derive(Clone, Debug)]
@@ -22,37 +58,17 @@ struct BranchBody<'tcx> {
     span: Span,
 }
 
-#[derive(Clone, Debug)]
-struct IfGuardedBranch<'tcx> {
-    if_expr: &'tcx hir::Expr<'tcx>,
-    cond_diverges: Diverges,
-    body: BranchBody<'tcx>,
-}
-
-#[derive(Default, Debug)]
-struct IfGuardedBranches<'tcx> {
-    branches: SmallVec<[IfGuardedBranch<'tcx>; 4]>,
-    cond_error: Option<ErrorGuaranteed>,
-}
-
-#[derive(Clone, Debug)]
-enum IfChainTail<'tcx> {
-    FinalElse(BranchBody<'tcx>),
-    Missing(&'tcx hir::Expr<'tcx>),
+impl<'tcx> Default for IfChainTail<'tcx> {
+    fn default() -> Self {
+        IfChainTail::Missing
+    }
 }
 
 impl<'tcx> IfChainTail<'tcx> {
-    fn expr(&self) -> &'tcx hir::Expr<'tcx> {
-        match &self {
-            IfChainTail::FinalElse(else_branch) => else_branch.expr,
-            IfChainTail::Missing(last_if_expr) => *last_if_expr,
-        }
-    }
-
     fn diverges(&self) -> Diverges {
         match &self {
             IfChainTail::FinalElse(else_branch) => else_branch.diverges,
-            IfChainTail::Missing(_) => Diverges::Maybe,
+            IfChainTail::Missing => Diverges::Maybe,
         }
     }
 }
@@ -70,7 +86,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let initial_diverges = self.diverges.get();
 
-        let (guarded, tail) = self.collect_if_chain(root_if_expr, parts, expected);
+        let chain =
+            self.collect_if_chain(&IfExprWithParts { expr: root_if_expr, parts: *parts }, expected);
 
         let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany<'_> = CoerceMany::new(coerce_to_ty);
@@ -78,19 +95,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tail_defines_return_position_impl_trait =
             self.return_position_impl_trait_from_match_expectation(orig_expected);
 
-        for (idx, branch) in guarded.branches.iter().enumerate() {
+        for (idx, branch) in chain.guarded_branches.iter().enumerate() {
             if idx > 0 {
                 let merged_ty = coerce.merged_ty();
-                self.ensure_if_branch_type(branch.if_expr.hir_id, merged_ty);
+                self.ensure_if_branch_type(branch.expr_with_parts.expr.hir_id, merged_ty);
             }
 
             let branch_body = &branch.body;
-            let next_else_expr =
-                guarded.branches.get(idx + 1).map(|next| next.if_expr).or(tail.expr().into());
-            let opt_prev_branch = if idx > 0 { guarded.branches.get(idx - 1) } else { None };
+            let next_else_expr = chain
+                .guarded_branches
+                .get(idx + 1)
+                .map(|next| next.expr_with_parts.expr)
+                .or(chain.last_expr().into());
+            let opt_prev_branch = if idx > 0 { chain.guarded_branches.get(idx - 1) } else { None };
             let mut branch_cause = if let Some(next_else_expr) = next_else_expr {
                 self.if_cause(
-                    opt_prev_branch.unwrap_or(branch).if_expr.hir_id,
+                    opt_prev_branch.unwrap_or(branch).expr_with_parts.expr.hir_id,
                     next_else_expr,
                     tail_defines_return_position_impl_trait,
                 )
@@ -110,7 +130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        match &tail {
+        match &chain.tail {
             IfChainTail::FinalElse(else_branch) => {
                 let mut else_cause = self.if_cause(
                     expr_id,
@@ -123,33 +143,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     else_branch.expr,
                     else_branch.ty,
                     None,
-                    guarded.branches.last().and_then(|b| b.body.span.into()),
+                    chain.guarded_branches.last().and_then(|b| b.body.span.into()),
                 );
             }
-            IfChainTail::Missing(last_if_expr) => {
-                let hir::ExprKind::If(tail_cond, tail_then, _) = last_if_expr.kind else {
-                    bug!("expected `if` expression, found {:#?}", last_if_expr);
-                };
-                self.if_fallback_coercion(last_if_expr.span, tail_cond, tail_then, &mut coerce);
+            IfChainTail::Missing => {
+                let last_if = chain.guarded_branches.last().map(|l| l.expr_with_parts).unwrap();
+                self.if_fallback_coercion(
+                    last_if.expr.span,
+                    last_if.parts.cond,
+                    last_if.parts.then,
+                    &mut coerce,
+                );
             }
         }
 
-        let mut tail_diverges = tail.diverges();
-        for branch in guarded.branches.iter().rev() {
+        let mut tail_diverges = chain.tail.diverges();
+        for branch in chain.guarded_branches.iter().rev() {
             tail_diverges = branch.cond_diverges | (branch.body.diverges & tail_diverges);
         }
         self.diverges.set(initial_diverges | tail_diverges);
 
         let result_ty = coerce.complete(self);
 
-        let final_ty = if let Some(guar) = guarded.cond_error {
-            Ty::new_error(self.tcx, guar)
-        } else {
-            result_ty
-        };
+        let final_ty =
+            if let Some(guar) = chain.error { Ty::new_error(self.tcx, guar) } else { result_ty };
 
-        for branch in guarded.branches.iter().skip(1) {
-            self.overwrite_if_branch_type(branch.if_expr.hir_id, final_ty);
+        for branch in chain.guarded_branches.iter().skip(1) {
+            self.overwrite_if_branch_type(branch.expr_with_parts.expr.hir_id, final_ty);
         }
         if let Err(guar) = final_ty.error_reported() {
             self.set_tainted_by_errors(guar);
@@ -202,46 +222,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn collect_if_chain(
         &self,
-        mut current_if: &'tcx hir::Expr<'tcx>,
-        parts: &IfExprParts<'tcx>,
+        expr_with_parts: &IfExprWithParts<'tcx>,
         expected: Expectation<'tcx>,
-    ) -> (IfGuardedBranches<'tcx>, IfChainTail<'tcx>) {
-        let mut chain: IfGuardedBranches<'tcx> = IfGuardedBranches::default();
-        let mut current_parts = *parts;
+    ) -> IfChain<'tcx> {
+        let mut chain: IfChain<'tcx> = IfChain::default();
+        let mut current = *expr_with_parts;
 
         loop {
-            let Some(else_expr) =
-                self.collect_if_branch(current_if, &current_parts, expected, &mut chain)
-            else {
-                return (chain, IfChainTail::Missing(current_if));
-            };
+            self.collect_if_branch(&current, expected, &mut chain);
 
-            if let hir::ExprKind::If(cond, then, else_branch) = else_expr.kind {
-                current_if = else_expr;
-                current_parts = IfExprParts { cond, then, else_branch };
-                continue;
+            match current.parts.else_branch {
+                Some(current_else_branch) => {
+                    if let hir::ExprKind::If(cond, then, else_branch) = current_else_branch.kind {
+                        current = IfExprWithParts {
+                            expr: current_else_branch,
+                            parts: IfExprParts { cond, then, else_branch },
+                        };
+                    } else {
+                        chain.tail = IfChainTail::FinalElse(
+                            self.check_branch_body(current_else_branch, expected),
+                        );
+                        return chain;
+                    }
+                }
+                None => return chain,
             }
-
-            return (chain, IfChainTail::FinalElse(self.check_branch_body(else_expr, expected)));
         }
     }
 
     fn collect_if_branch(
         &self,
-        if_expr: &'tcx hir::Expr<'tcx>,
-        parts: &IfExprParts<'tcx>,
+        expr_with_parts: &IfExprWithParts<'tcx>,
         expected: Expectation<'tcx>,
-        chain: &mut IfGuardedBranches<'tcx>,
-    ) -> Option<&'tcx hir::Expr<'tcx>> {
-        let (cond_ty, cond_diverges) = self.check_if_condition(parts.cond, parts.then.span);
+        chain: &mut IfChain<'tcx>,
+    ) {
+        let (cond_ty, cond_diverges) =
+            self.check_if_condition(expr_with_parts.parts.cond, expr_with_parts.parts.then.span);
         if let Err(guar) = cond_ty.error_reported() {
-            chain.cond_error.get_or_insert(guar);
+            chain.error.get_or_insert(guar);
         }
-        let branch_body = self.check_branch_body(parts.then, expected);
+        let branch_body = self.check_branch_body(expr_with_parts.parts.then, expected);
 
-        chain.branches.push(IfGuardedBranch { if_expr, cond_diverges, body: branch_body });
-
-        parts.else_branch
+        chain.guarded_branches.push(IfGuardedBranch {
+            expr_with_parts: *expr_with_parts,
+            cond_diverges,
+            body: branch_body,
+        });
     }
 
     fn ensure_if_branch_type(&self, hir_id: HirId, ty: Ty<'tcx>) {
