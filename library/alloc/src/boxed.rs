@@ -834,7 +834,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
         }
         let layout = Layout::for_value::<T>(src);
         let (ptr, guard) = if layout.size() == 0 {
-            (layout.dangling(), None)
+            (layout.dangling_ptr(), None)
         } else {
             // Safety: layout is non-zero-sized
             let ptr = alloc.allocate(layout)?.cast();
