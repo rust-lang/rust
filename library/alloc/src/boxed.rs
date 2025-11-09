@@ -2241,3 +2241,55 @@ impl<E: Error> Error for Box<E> {
         Error::provide(&**self, request);
     }
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
+    #[inline]
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate(layout)
+    }
+
+    #[inline]
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate_zeroed(layout)
+    }
+
+    #[inline]
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).deallocate(ptr, layout) }
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).shrink(ptr, old_layout, new_layout) }
+    }
+}

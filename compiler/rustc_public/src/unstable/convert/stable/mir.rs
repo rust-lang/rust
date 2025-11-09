@@ -322,12 +322,16 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::mir::NullOp::*;
+        use rustc_middle::mir::RuntimeChecks::*;
         match self {
             OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
                 indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
             ),
-            UbChecks => crate::mir::NullOp::UbChecks,
-            ContractChecks => crate::mir::NullOp::ContractChecks,
+            RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
+                UbChecks => crate::mir::RuntimeChecks::UbChecks,
+                ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+                OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
+            }),
         }
     }
 }

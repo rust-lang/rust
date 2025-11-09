@@ -624,12 +624,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             .bytes();
                         bx.cx().const_usize(val)
                     }
-                    mir::NullOp::UbChecks => {
-                        let val = bx.tcx().sess.ub_checks();
-                        bx.cx().const_bool(val)
-                    }
-                    mir::NullOp::ContractChecks => {
-                        let val = bx.tcx().sess.contract_checks();
+                    mir::NullOp::RuntimeChecks(kind) => {
+                        let val = kind.value(bx.tcx().sess);
                         bx.cx().const_bool(val)
                     }
                 };

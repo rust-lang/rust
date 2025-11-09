@@ -1,0 +1,243 @@
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:73:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::AcqRel, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+   = note: `#[deny(invalid_atomic_ordering)]` on by default
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:75:45
+   |
+LL |     let _ = x.try_update(Ordering::Relaxed, Ordering::AcqRel, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:77:41
+   |
+LL |     let _ = x.update(Ordering::Relaxed, Ordering::AcqRel, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:80:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Acquire, Ordering::AcqRel, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:82:45
+   |
+LL |     let _ = x.try_update(Ordering::Acquire, Ordering::AcqRel, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:84:41
+   |
+LL |     let _ = x.update(Ordering::Acquire, Ordering::AcqRel, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:87:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Release, Ordering::AcqRel, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:89:45
+   |
+LL |     let _ = x.try_update(Ordering::Release, Ordering::AcqRel, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:91:41
+   |
+LL |     let _ = x.update(Ordering::Release, Ordering::AcqRel, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:94:46
+   |
+LL |     let _ = x.fetch_update(Ordering::AcqRel, Ordering::AcqRel, |old| Some(old + 1));
+   |                                              ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:96:44
+   |
+LL |     let _ = x.try_update(Ordering::AcqRel, Ordering::AcqRel, |old| Some(old + 1));
+   |                                            ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:98:40
+   |
+LL |     let _ = x.update(Ordering::AcqRel, Ordering::AcqRel, |old| old + 1);
+   |                                        ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:101:46
+   |
+LL |     let _ = x.fetch_update(Ordering::SeqCst, Ordering::AcqRel, |old| Some(old + 1));
+   |                                              ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:103:44
+   |
+LL |     let _ = x.try_update(Ordering::SeqCst, Ordering::AcqRel, |old| Some(old + 1));
+   |                                            ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:105:40
+   |
+LL |     let _ = x.update(Ordering::SeqCst, Ordering::AcqRel, |old| old + 1);
+   |                                        ^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:110:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Relaxed, Ordering::Release, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:112:45
+   |
+LL |     let _ = x.try_update(Ordering::Relaxed, Ordering::Release, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:114:41
+   |
+LL |     let _ = x.update(Ordering::Relaxed, Ordering::Release, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:117:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Acquire, Ordering::Release, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:119:45
+   |
+LL |     let _ = x.try_update(Ordering::Acquire, Ordering::Release, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:121:41
+   |
+LL |     let _ = x.update(Ordering::Acquire, Ordering::Release, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:124:47
+   |
+LL |     let _ = x.fetch_update(Ordering::Release, Ordering::Release, |old| Some(old + 1));
+   |                                               ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:126:45
+   |
+LL |     let _ = x.try_update(Ordering::Release, Ordering::Release, |old| Some(old + 1));
+   |                                             ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:128:41
+   |
+LL |     let _ = x.update(Ordering::Release, Ordering::Release, |old| old + 1);
+   |                                         ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:131:46
+   |
+LL |     let _ = x.fetch_update(Ordering::AcqRel, Ordering::Release, |old| Some(old + 1));
+   |                                              ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:133:44
+   |
+LL |     let _ = x.try_update(Ordering::AcqRel, Ordering::Release, |old| Some(old + 1));
+   |                                            ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:135:40
+   |
+LL |     let _ = x.update(Ordering::AcqRel, Ordering::Release, |old| old + 1);
+   |                                        ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `fetch_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `fetch_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:138:46
+   |
+LL |     let _ = x.fetch_update(Ordering::SeqCst, Ordering::Release, |old| Some(old + 1));
+   |                                              ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `try_update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `try_update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:140:44
+   |
+LL |     let _ = x.try_update(Ordering::SeqCst, Ordering::Release, |old| Some(old + 1));
+   |                                            ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: `update`'s failure ordering may not be `Release` or `AcqRel`, since a failed `update` does not result in a write
+  --> $DIR/lint-invalid-atomic-ordering-update.rs:142:40
+   |
+LL |     let _ = x.update(Ordering::SeqCst, Ordering::Release, |old| old + 1);
+   |                                        ^^^^^^^^^^^^^^^^^ invalid failure ordering
+   |
+   = help: consider using `Acquire` or `Relaxed` failure ordering instead
+
+error: aborting due to 30 previous errors
+
