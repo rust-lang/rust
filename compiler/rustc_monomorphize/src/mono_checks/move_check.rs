@@ -7,13 +7,12 @@ use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::{Span, Spanned, sym};
-use tracing::{debug, trace};
+use tracing::debug;
 
 use crate::errors::LargeAssignmentsLint;
 
 struct MoveCheckVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
     body: &'tcx mir::Body<'tcx>,
     /// Spans for move size lints already emitted. Helps avoid duplicate lints.
     move_size_spans: Vec<Span>,
@@ -24,7 +23,7 @@ pub(crate) fn check_moves<'tcx>(
     instance: Instance<'tcx>,
     body: &'tcx mir::Body<'tcx>,
 ) {
-    let mut visitor = MoveCheckVisitor { tcx, instance, body, move_size_spans: vec![] };
+    let mut visitor = MoveCheckVisitor { tcx, body, move_size_spans: vec![] };
     for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
         visitor.visit_basic_block_data(bb, data)
     }
@@ -56,12 +55,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        trace!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(value),
-        )
+        value
     }
 
     fn check_operand_move_size(&mut self, operand: &mir::Operand<'tcx>, location: Location) {

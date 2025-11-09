@@ -132,12 +132,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     where
         T: Copy + TypeFoldable<TyCtxt<'tcx>>,
     {
-        debug!("monomorphize: self.instance={:?}", self.instance);
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.cx.tcx(),
-            self.cx.typing_env(),
-            ty::EarlyBinder::bind(value),
-        )
+        value
     }
 }
 
@@ -198,7 +193,7 @@ impl<'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[instrument(level = "debug", skip(cx))]
-pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn lower_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     instance: Instance<'tcx>,
 ) {
@@ -207,7 +202,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
 
-    let mut mir = tcx.instance_mir(instance.def);
+    let mut mir = tcx.build_codegen_mir(instance);
     // Note that the ABI logic has deduced facts about the functions' parameters based on the MIR we
     // got here (`deduce_param_attrs`). That means we can *not* apply arbitrary further MIR
     // transforms as that may invalidate those deduced facts!
@@ -216,12 +211,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     debug!("fn_abi: {:?}", fn_abi);
 
     if tcx.features().ergonomic_clones() {
-        let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
-            tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(mir.clone()),
-        );
-        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, monomorphized_mir));
+        mir = tcx.arena.alloc(optimize_use_clone::<Bx>(cx, mir.clone()));
     }
 
     let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, &mir);

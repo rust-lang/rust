@@ -140,12 +140,12 @@ pub fn type_parameter   () {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "hir_owner, generics_of, type_of, predicates_of"
+    except = "hir_owner, generics_of, type_of, predicates_of, optimized_mir"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "hir_owner, generics_of, type_of, predicates_of"
+    except = "hir_owner, generics_of, type_of, predicates_of, optimized_mir"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn type_parameter<T>() {}

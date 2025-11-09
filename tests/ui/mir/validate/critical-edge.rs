@@ -1,15 +1,14 @@
 // Optimized MIR shouldn't have critical call edges
 //
-//@ build-fail
 //@ edition: 2021
-//@ compile-flags: --crate-type=lib
+//@ compile-flags: -Zvalidate-mir
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
 
 #![feature(custom_mir, core_intrinsics)]
-use core::intrinsics::mir::*;
+use std::intrinsics::mir::*;
 
-#[custom_mir(dialect = "runtime", phase = "optimized")]
+#[custom_mir(dialect = "mono", phase = "optimized")]
 #[inline(always)]
 pub fn f(a: u32) -> u32 {
     mir! {
@@ -30,4 +29,8 @@ pub fn f(a: u32) -> u32 {
             Return()
         }
     }
+}
+
+fn main() {
+    f(5);
 }

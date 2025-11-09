@@ -703,12 +703,19 @@ rustc_queries! {
         }
     }
 
-    /// MIR after our optimization passes have run. This is MIR that is ready
-    /// for codegen. This is also the only query that can fetch non-local MIR, at present.
+    /// Polymorphic MIR after our pre-mono optimization passes have run.
+    /// This is the MIR that crates export.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
         desc { "optimizing MIR for `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
+    }
+
+    /// MIR for a specific Instance ready for codegen. This is `optimized_mir` but monomorphized
+    /// and with extra transforms applied.
+    query build_codegen_mir(key: ty::Instance<'tcx>) -> &'tcx mir::Body<'tcx> {
+        desc { "finalizing codegen MIR for `{}`", tcx.def_path_str_with_args(key.def_id(), key.args) }
+        no_hash
     }
 
     /// Checks for the nearest `#[coverage(off)]` or `#[coverage(on)]` on

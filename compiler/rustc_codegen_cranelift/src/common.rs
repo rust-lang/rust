@@ -346,11 +346,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
-        self.instance.instantiate_mir_and_normalize_erasing_regions(
-            self.tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(value),
-        )
+        value
     }
 
     pub(crate) fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {

@@ -8,6 +8,8 @@
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
+use std::ops::ControlFlow;
+
 use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::check_consts::{self, ConstCx};
@@ -20,10 +22,12 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
+    MirPhase, MonomorphicPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericParamDefKind, Instance, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, Unnormalized,
+};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_span::{DUMMY_SP, Spanned, sym};
@@ -232,6 +236,7 @@ pub fn provide(providers: &mut Providers) {
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
         trivial_const: trivial_const::trivial_const_provider,
+        build_codegen_mir,
         ..providers.queries
     };
 }
@@ -785,8 +790,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
-            // Some cleanup necessary at least for LLVM and potentially other codegen backends.
-            &add_call_guards::CriticalCallEdges,
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,
@@ -842,6 +845,93 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     run_optimization_passes(tcx, &mut body);
 
+    // If the body is polymorphic, we're done. Otherwise, we're going to turn the body into codegen
+    // MIR ahead of time, as an optimization.
+    if tcx.generics_of(did).requires_monomorphization(tcx) {
+        return body;
+    }
+
+    // If the body has impossible predicates, the normalization we need to do to turn this into
+    // post-mono MIR will fail. So we detect that case and return just optimized MIR.
+    let args = ty::GenericArgs::for_item(tcx, did.into(), |param, _| match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            unreachable!(
+                "`requires_monomorphization` check means that we should have no type/const params"
+            )
+        }
+    });
+    if tcx.instantiate_and_check_impossible_predicates((did.to_def_id(), args)) {
+        return body;
+    }
+
+    if body.visit_with(&mut Normalizable { tcx }).is_break() {
+        return body;
+    }
+
+    // Monomorphizing this body won't reveal any new information that is useful for
+    // optimizations, so we just run passes that make the MIR ready for codegen backends.
+    let instance = Instance::mono(tcx, did.to_def_id());
+    body = transform_to_codegen_mir(tcx, instance, body);
+    return body;
+
+    struct Normalizable<'tcx> {
+        tcx: TyCtxt<'tcx>,
+    }
+    impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for Normalizable<'tcx> {
+        type Result = ControlFlow<(), ()>;
+
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+            match self.tcx.try_normalize_erasing_regions(
+                ty::TypingEnv::fully_monomorphized(),
+                Unnormalized::new_wip(t),
+            ) {
+                Ok(_) => ControlFlow::Continue(()),
+                Err(_) => ControlFlow::Break(()),
+            }
+        }
+    }
+}
+
+pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx Body<'tcx> {
+    let body = tcx.instance_mir(instance.def);
+
+    // If we have generic params, assert that we didn't get codegen MIR out of instance_mir
+    if instance.args.non_erasable_generics().next().is_some() {
+        assert!(!matches!(body.phase, MirPhase::Monomorphic(MonomorphicPhase::Codegen)));
+    }
+
+    let body = if !matches!(body.phase, MirPhase::Monomorphic(MonomorphicPhase::Codegen)) {
+        let body = transform_to_codegen_mir(tcx, instance, body.clone());
+        tcx.arena.alloc(body)
+    } else {
+        body
+    };
+
+    body
+}
+
+fn transform_to_codegen_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+    body: Body<'tcx>,
+) -> Body<'tcx> {
+    let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        ty::TypingEnv::fully_monomorphized(),
+        ty::EarlyBinder::bind(body.clone()),
+    );
+    body.phase = MirPhase::Monomorphic(MonomorphicPhase::Initial);
+    body.pass_count = 0;
+    pm::dump_mir_for_phase_change(tcx, &body);
+
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[&add_call_guards::CriticalCallEdges],
+        Some(MirPhase::Monomorphic(MonomorphicPhase::Codegen)),
+        pm::Optimizations::Allowed,
+    );
     body
 }
 
