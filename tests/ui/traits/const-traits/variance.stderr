@@ -1,5 +1,5 @@
 error: ['a: *]
-  --> $DIR/variance.rs:10:21
+  --> $DIR/variance.rs:9:21
    |
 LL | fn foo<'a: 'a>() -> impl const Foo {}
    |                     ^^^^^^^^^^^^^^

@@ -8,8 +8,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Trait {
+const trait Trait {
     type Assoc<U>: [const] Trait
     where
         U: [const] Other;
@@ -17,8 +16,7 @@ trait Trait {
     fn func();
 }
 
-#[const_trait]
-trait Other {}
+const trait Other {}
 
 const fn fails<T: [const] Trait, U: Other>() {
     T::Assoc::<U>::func();

@@ -290,7 +290,7 @@ ast_passes_trait_fn_const =
         *[false] {""}
     }
     .make_impl_const_sugg = ... and declare the impl to be const instead
-    .make_trait_const_sugg = ... and declare the trait to be a `#[const_trait]` instead
+    .make_trait_const_sugg = ... and declare the trait to be const instead
 
 ast_passes_trait_object_single_bound = only a single explicit lifetime bound is permitted
 

@@ -5,8 +5,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait Foo<Rhs: ?Sized = Self> {
+pub const trait Foo<Rhs: ?Sized = Self> {
     /* stuff */
 }
 

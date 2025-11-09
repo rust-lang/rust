@@ -881,28 +881,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
-            && !self.tcx().is_const_trait(trait_def_id)
+            && !tcx.is_const_trait(trait_def_id)
         {
             let (def_span, suggestion, suggestion_pre) =
-                match (trait_def_id.is_local(), self.tcx().sess.is_nightly_build()) {
-                    (true, true) => (
-                        None,
-                        Some(tcx.def_span(trait_def_id).shrink_to_lo()),
-                        if self.tcx().features().const_trait_impl() {
-                            ""
-                        } else {
-                            "enable `#![feature(const_trait_impl)]` in your crate and "
-                        },
-                    ),
-                    (false, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
+                match (trait_def_id.as_local(), tcx.sess.is_nightly_build()) {
+                    (Some(trait_def_id), true) => {
+                        let span = tcx.hir_expect_item(trait_def_id).vis_span;
+                        let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+                        (
+                            None,
+                            Some(span.shrink_to_hi()),
+                            if self.tcx().features().const_trait_impl() {
+                                ""
+                            } else {
+                                "enable `#![feature(const_trait_impl)]` in your crate and "
+                            },
+                        )
+                    }
+                    (None, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
                 };
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
                 def_span,
-                trait_name: self.tcx().def_path_str(trait_def_id),
-                suggestion_pre,
+                trait_name: tcx.def_path_str(trait_def_id),
                 suggestion,
+                suggestion_pre,
             });
         } else {
             match predicate_filter {

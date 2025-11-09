@@ -15,7 +15,7 @@ impl Drop for NotDropImpl {
     fn drop(&mut self) {}
 }
 
-#[const_trait] trait Foo {}
+const trait Foo {}
 impl Foo for () {}
 
 struct Conditional<T: Foo>(T);

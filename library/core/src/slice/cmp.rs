@@ -155,18 +155,16 @@ where
 }
 
 #[doc(hidden)]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd
-trait SlicePartialOrd: Sized {
+const trait SlicePartialOrd: Sized {
     fn partial_compare(left: &[Self], right: &[Self]) -> Option<Ordering>;
 }
 
 #[doc(hidden)]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd chaining methods
-trait SliceChain: Sized {
+const trait SliceChain: Sized {
     fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
     fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
@@ -244,9 +242,8 @@ impl<A: [const] AlwaysApplicableOrd> const SlicePartialOrd for A {
 }
 
 #[rustc_specialization_trait]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-trait AlwaysApplicableOrd: [const] SliceOrd + [const] Ord {}
+const trait AlwaysApplicableOrd: [const] SliceOrd + [const] Ord {}
 
 macro_rules! always_applicable_ord {
     ($([$($p:tt)*] $t:ty,)*) => {
@@ -265,10 +262,9 @@ always_applicable_ord! {
 }
 
 #[doc(hidden)]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's Ord
-trait SliceOrd: Sized {
+const trait SliceOrd: Sized {
     fn compare(left: &[Self], right: &[Self]) -> Ordering;
 }
 
@@ -292,8 +288,7 @@ impl<A: Ord> SliceOrd for A {
 /// * For every `x` and `y` of this type, `Ord(x, y)` must return the same
 ///   value as `Ord::cmp(transmute::<_, u8>(x), transmute::<_, u8>(y))`.
 #[rustc_specialization_trait]
-#[const_trait]
-unsafe trait UnsignedBytewiseOrd: [const] Ord {}
+const unsafe trait UnsignedBytewiseOrd: [const] Ord {}
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 unsafe impl const UnsignedBytewiseOrd for bool {}
