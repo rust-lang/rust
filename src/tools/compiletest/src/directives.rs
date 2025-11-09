@@ -11,7 +11,7 @@ use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 pub(crate) use crate::directives::auxiliary::AuxProps;
 use crate::directives::auxiliary::parse_and_update_aux;
 use crate::directives::directive_names::{
-    KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
+    KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::line::{DirectiveLine, line_directive};
@@ -53,24 +53,16 @@ impl EarlyProps {
         config: &Config,
         file_directives: &FileDirectives<'_>,
     ) -> Self {
-        let testfile = file_directives.path;
         let mut props = EarlyProps::default();
-        let mut poisoned = false;
 
         iter_directives(
             config.mode,
-            &mut poisoned,
             file_directives,
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
-
-        if poisoned {
-            eprintln!("errors encountered during EarlyProps parsing: {}", testfile);
-            panic!("errors encountered during EarlyProps parsing");
-        }
 
         props
     }
@@ -358,12 +350,10 @@ impl TestProps {
             let file_contents = fs::read_to_string(testfile).unwrap();
             let file_directives = FileDirectives::from_file_contents(testfile, &file_contents);
 
-            let mut poisoned = false;
-
             iter_directives(
                 config.mode,
-                &mut poisoned,
                 &file_directives,
+                // (dummy comment to force args into vertical layout)
                 &mut |ln: &DirectiveLine<'_>| {
                     if !ln.applies_to_test_revision(test_revision) {
                         return;
@@ -634,11 +624,6 @@ impl TestProps {
                     );
                 },
             );
-
-            if poisoned {
-                eprintln!("errors encountered during TestProps parsing: {}", testfile);
-                panic!("errors encountered during TestProps parsing");
-            }
         }
 
         if self.should_ice {
@@ -775,6 +760,34 @@ impl TestProps {
     }
 }
 
+pub(crate) fn do_early_directives_check(
+    mode: TestMode,
+    file_directives: &FileDirectives<'_>,
+) -> Result<(), String> {
+    let testfile = file_directives.path;
+
+    for directive_line @ DirectiveLine { line_number, .. } in &file_directives.lines {
+        let CheckDirectiveResult { is_known_directive, trailing_directive } =
+            check_directive(directive_line, mode);
+
+        if !is_known_directive {
+            return Err(format!(
+                "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
+                directive = directive_line.display(),
+            ));
+        }
+
+        if let Some(trailing_directive) = &trailing_directive {
+            return Err(format!(
+                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {testfile}:{line_number}\n\
+                HELP: put the directive on its own line: `//@ {trailing_directive}`"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 pub(crate) struct CheckDirectiveResult<'ln> {
     is_known_directive: bool,
     trailing_directive: Option<&'ln str>,
@@ -786,7 +799,7 @@ fn check_directive<'a>(
 ) -> CheckDirectiveResult<'a> {
     let &DirectiveLine { name: directive_name, .. } = directive_ln;
 
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES.contains(&directive_name)
+    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
         || match mode {
             TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
@@ -799,7 +812,7 @@ fn check_directive<'a>(
     let trailing_directive = directive_ln
         .remark_after_space()
         .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
+        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
     // FIXME(Zalathar): Consider emitting specialized error/help messages for
     // bogus directive names that are similar to real ones, e.g.:
@@ -811,7 +824,6 @@ fn check_directive<'a>(
 
 fn iter_directives(
     mode: TestMode,
-    poisoned: &mut bool,
     file_directives: &FileDirectives<'_>,
     it: &mut dyn FnMut(&DirectiveLine<'_>),
 ) {
@@ -837,36 +849,7 @@ fn iter_directives(
         }
     }
 
-    for directive_line @ &DirectiveLine { line_number, .. } in &file_directives.lines {
-        // Perform unknown directive check on Rust files.
-        if testfile.extension() == Some("rs") {
-            let CheckDirectiveResult { is_known_directive, trailing_directive } =
-                check_directive(directive_line, mode);
-
-            if !is_known_directive {
-                *poisoned = true;
-
-                error!(
-                    "{testfile}:{line_number}: detected unknown compiletest test directive `{}`",
-                    directive_line.display(),
-                );
-
-                return;
-            }
-
-            if let Some(trailing_directive) = &trailing_directive {
-                *poisoned = true;
-
-                error!(
-                    "{testfile}:{line_number}: detected trailing compiletest test directive `{}`",
-                    trailing_directive,
-                );
-                help!("put the trailing directive in its own line: `//@ {}`", trailing_directive);
-
-                return;
-            }
-        }
-
+    for directive_line in &file_directives.lines {
         it(directive_line);
     }
 }
@@ -1304,12 +1287,9 @@ pub(crate) fn make_test_description(
     let mut ignore_message = None;
     let mut should_fail = false;
 
-    let mut local_poisoned = false;
-
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_directives(
         config.mode,
-        &mut local_poisoned,
         file_directives,
         &mut |ln @ &DirectiveLine { line_number, .. }| {
             if !ln.applies_to_test_revision(test_revision) {
@@ -1357,11 +1337,6 @@ pub(crate) fn make_test_description(
             should_fail |= config.parse_name_directive(ln, "should-fail");
         },
     );
-
-    if local_poisoned {
-        eprintln!("errors encountered when trying to make test description: {}", path);
-        panic!("errors encountered when trying to make test description");
-    }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
