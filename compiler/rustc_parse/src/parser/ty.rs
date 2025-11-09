@@ -82,25 +82,24 @@ enum AllowCVariadic {
     No,
 }
 
-/// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
-/// `IDENT<<u8 as Trait>::AssocTy>`.
+/// Determine if the given token can begin a bound assuming it follows Rust 2015 identifier `dyn`.
 ///
-/// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
-/// that `IDENT` is not the ident of a fn trait.
-fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::PathSep || t == &token::Lt || t == &token::Shl
-}
+/// In Rust 2015, `dyn` is a contextual keyword, not a full one.
+fn can_begin_dyn_bound_in_edition_2015(t: Token) -> bool {
+    if t.is_path_start() {
+        // In `dyn::x`, `dyn<X>` and `dyn<<X>::Y>`, `dyn` should (continue to) denote a regular path
+        // segment for backward compatibility. We make an exception for `dyn(X)` which used to be
+        // interpreted as a path with parenthesized generic arguments which can be semantically
+        // well-formed (consider: `use std::ops::Fn as dyn;`). Instead, we treat it as a trait
+        // object type whose first bound is parenthesized.
+        return t != token::PathSep && t != token::Lt && t != token::Shl;
+    }
 
-fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
-    // `!`, `const`, `[`, `async` are deliberately not part of this list to
-    // contain the number of potential regressions esp. in MBE code.
-    // `const` and `[` would regress UI test `macro-dyn-const-2015.rs`.
-    // `!` would regress `dyn!(...)` macro calls in Rust 2015.
-    t.is_path_start()
-        || t.is_lifetime()
-        || t == &TokenKind::Question
-        || t.is_keyword(kw::For)
-        || t == &TokenKind::OpenParen
+    // Contrary to `Parser::can_begin_bound`, `!`, `const`, `[` and `async` are deliberately not
+    // part of this list to contain the number of potential regressions esp. in MBE code.
+    // `const` and `[` would regress UI test `macro-dyn-const-2015.rs` and
+    // `!` would regress `dyn!(...)` macro calls in Rust 2015 for example.
+    t == token::OpenParen || t == token::Question || t.is_lifetime() || t.is_keyword(kw::For)
 }
 
 impl<'a> Parser<'a> {
@@ -969,10 +968,7 @@ impl<'a> Parser<'a> {
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(exp!(Dyn))
             && (self.token_uninterpolated_span().at_least_rust_2018()
-                || self.look_ahead(1, |t| {
-                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::Star)
-                        && !can_continue_type_after_non_fn_ident(t)
-                }))
+                || self.look_ahead(1, |&t| can_begin_dyn_bound_in_edition_2015(t)))
     }
 
     /// Parses a `dyn B0 + ... + Bn` type.
@@ -981,13 +977,11 @@ impl<'a> Parser<'a> {
     fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         self.bump(); // `dyn`
 
-        // We used to parse `*` for `dyn*` here.
-        let syntax = TraitObjectSyntax::Dyn;
-
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
-        Ok(TyKind::TraitObject(bounds, syntax))
+
+        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn))
     }
 
     /// Parses a type starting with a path.
