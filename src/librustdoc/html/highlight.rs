@@ -789,6 +789,9 @@ impl<'a> Iterator for TokenIter<'a> {
     }
 }
 
+/// Used to know if a keyword followed by a `!` should never be treated as a macro.
+const NON_MACRO_KEYWORDS: &[&str] = &["if", "while", "match", "break", "return", "impl"];
+
 /// This iterator comes from the same idea than "Peekable" except that it allows to "peek" more than
 /// just the next item by using `peek_next`. The `peek` method always returns the next item after
 /// the current one whereas `peek_next` will return the next item after the last one peeked.
@@ -1010,6 +1013,19 @@ impl<'src> Classifier<'src> {
         }
     }
 
+    fn new_macro_span(
+        &mut self,
+        text: &'src str,
+        sink: &mut dyn FnMut(Span, Highlight<'src>),
+        before: u32,
+        file_span: Span,
+    ) {
+        self.in_macro = true;
+        let span = new_span(before, text, file_span);
+        sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Macro(span) });
+        sink(span, Highlight::Token { text, class: None });
+    }
+
     /// Single step of highlighting. This will classify `token`, but maybe also a couple of
     /// following ones as well.
     ///
@@ -1216,16 +1232,46 @@ impl<'src> Classifier<'src> {
                 LiteralKind::Float { .. } | LiteralKind::Int { .. } => Class::Number,
             },
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
-            TokenKind::Ident | TokenKind::RawIdent
-                if let Some((TokenKind::Bang, _)) = self.peek_non_trivia() =>
-            {
-                self.in_macro = true;
-                let span = new_span(before, text, file_span);
-                sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Macro(span) });
-                sink(span, Highlight::Token { text, class: None });
+            TokenKind::RawIdent if let Some((TokenKind::Bang, _)) = self.peek_non_trivia() => {
+                self.new_macro_span(text, sink, before, file_span);
                 return;
             }
-            TokenKind::Ident => self.classify_ident(before, text),
+            // Macro non-terminals (meta vars) take precedence.
+            TokenKind::Ident if self.in_macro_nonterminal => {
+                self.in_macro_nonterminal = false;
+                Class::MacroNonTerminal
+            }
+            TokenKind::Ident => {
+                let file_span = self.file_span;
+                let span = || new_span(before, text, file_span);
+
+                match text {
+                    "ref" | "mut" => Class::RefKeyWord,
+                    "false" | "true" => Class::Bool,
+                    "self" | "Self" => Class::Self_(span()),
+                    "Option" | "Result" => Class::PreludeTy(span()),
+                    "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
+                    _ if self.is_weak_keyword(text) || is_keyword(Symbol::intern(text)) => {
+                        // So if it's not a keyword which can be followed by a value (like `if` or
+                        // `return`) and the next non-whitespace token is a `!`, then we consider
+                        // it's a macro.
+                        if !NON_MACRO_KEYWORDS.contains(&text)
+                            && matches!(self.peek_non_trivia(), Some((TokenKind::Bang, _)))
+                        {
+                            self.new_macro_span(text, sink, before, file_span);
+                            return;
+                        }
+                        Class::KeyWord
+                    }
+                    // If it's not a keyword and the next non whitespace token is a `!`, then
+                    // we consider it's a macro.
+                    _ if matches!(self.peek_non_trivia(), Some((TokenKind::Bang, _))) => {
+                        self.new_macro_span(text, sink, before, file_span);
+                        return;
+                    }
+                    _ => Class::Ident(span()),
+                }
+            }
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
                 Class::Ident(new_span(before, text, file_span))
             }
@@ -1243,27 +1289,6 @@ impl<'src> Classifier<'src> {
                 Highlight::Token { text: part, class: Some(class) },
             );
             start += part.len() as u32;
-        }
-    }
-
-    fn classify_ident(&mut self, before: u32, text: &'src str) -> Class {
-        // Macro non-terminals (meta vars) take precedence.
-        if self.in_macro_nonterminal {
-            self.in_macro_nonterminal = false;
-            return Class::MacroNonTerminal;
-        }
-
-        let file_span = self.file_span;
-        let span = || new_span(before, text, file_span);
-
-        match text {
-            "ref" | "mut" => Class::RefKeyWord,
-            "false" | "true" => Class::Bool,
-            "self" | "Self" => Class::Self_(span()),
-            "Option" | "Result" => Class::PreludeTy(span()),
-            "Some" | "None" | "Ok" | "Err" => Class::PreludeVal(span()),
-            _ if self.is_weak_keyword(text) || is_keyword(Symbol::intern(text)) => Class::KeyWord,
-            _ => Class::Ident(span()),
         }
     }
 
