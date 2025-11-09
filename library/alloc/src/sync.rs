@@ -1314,7 +1314,7 @@ impl<T> Arc<[T]> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
     pub fn into_array<const N: usize>(self) -> Option<Arc<[T; N]>> {
