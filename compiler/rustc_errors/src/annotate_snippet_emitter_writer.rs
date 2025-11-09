@@ -749,7 +749,7 @@ fn shrink_file(
 
     let hi_byte = spans.iter().map(|s| s.hi()).max()?;
     let hi_loc = sm.lookup_char_pos(hi_byte);
-    let hi = lo_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
+    let hi = hi_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
 
     let bounding_span = Span::with_root_ctxt(lo, hi);
     let source = sm.span_to_snippet(bounding_span).unwrap_or_default();
