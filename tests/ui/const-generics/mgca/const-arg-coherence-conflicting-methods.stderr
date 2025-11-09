@@ -1,0 +1,29 @@
+error[E0107]: missing generics for struct `A`
+  --> $DIR/const-arg-coherence-conflicting-methods.rs:12:6
+   |
+LL | impl A {
+   |      ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `M`
+  --> $DIR/const-arg-coherence-conflicting-methods.rs:7:12
+   |
+LL | pub struct A<const M: usize> {}
+   |            ^ --------------
+help: add missing generic argument
+   |
+LL | impl A<M> {
+   |       +++
+
+error[E0592]: duplicate definitions with name `fun1`
+  --> $DIR/const-arg-coherence-conflicting-methods.rs:9:5
+   |
+LL |     fn fun1() {}
+   |     ^^^^^^^^^ duplicate definitions for `fun1`
+...
+LL |     fn fun1() {}
+   |     --------- other definition for `fun1`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0592.
+For more information about an error, try `rustc --explain E0107`.
