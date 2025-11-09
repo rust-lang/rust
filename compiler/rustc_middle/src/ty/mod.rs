@@ -1839,7 +1839,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         assert!(
-            matches!(body.phase, MirPhase::Runtime(_)),
+            matches!(body.phase, MirPhase::Runtime(_) | MirPhase::Monomorphic(_)),
             "body: {body:?} instance: {instance:?} {:?}",
             if let ty::InstanceKind::Item(d) = instance { Some(self.def_kind(d)) } else { None },
         );

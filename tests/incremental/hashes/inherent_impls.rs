@@ -466,12 +466,12 @@ impl Foo {
     // -------------------------------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------------------------
     //
     // -------------------------
     // -----------
     // --------------
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------------------------
     //
     // -------------------------
     pub fn add_type_parameter_to_method   (&self) { }
@@ -494,12 +494,12 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="bpass2",
-        except="hir_owner,generics_of,predicates_of,type_of",
+        except="hir_owner,generics_of,predicates_of,type_of,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="hir_owner,generics_of,predicates_of,type_of",
+        except="hir_owner,generics_of,predicates_of,type_of,optimized_mir",
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_type_parameter_to_method<T>(&self) { }
