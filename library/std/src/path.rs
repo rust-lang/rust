@@ -79,7 +79,7 @@ use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-use crate::sys::path::{MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
+use crate::sys::path::{HAS_PREFIXES, MAIN_SEP_STR, is_sep_byte, is_verbatim_sep, parse_prefix};
 use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -643,17 +643,26 @@ impl<'a> Components<'a> {
     // how long is the prefix, if any?
     #[inline]
     fn prefix_len(&self) -> usize {
+        if !HAS_PREFIXES {
+            return 0;
+        }
         self.prefix.as_ref().map(Prefix::len).unwrap_or(0)
     }
 
     #[inline]
     fn prefix_verbatim(&self) -> bool {
+        if !HAS_PREFIXES {
+            return false;
+        }
         self.prefix.as_ref().map(Prefix::is_verbatim).unwrap_or(false)
     }
 
     /// how much of the prefix is left from the point of view of iteration?
     #[inline]
     fn prefix_remaining(&self) -> usize {
+        if !HAS_PREFIXES {
+            return 0;
+        }
         if self.front == State::Prefix { self.prefix_len() } else { 0 }
     }
 
@@ -707,7 +716,7 @@ impl<'a> Components<'a> {
         if self.has_physical_root {
             return true;
         }
-        if let Some(p) = self.prefix {
+        if HAS_PREFIXES && let Some(p) = self.prefix {
             if p.has_implicit_root() {
                 return true;
             }
@@ -720,10 +729,10 @@ impl<'a> Components<'a> {
         if self.has_root() {
             return false;
         }
-        let mut iter = self.path[self.prefix_remaining()..].iter();
-        match (iter.next(), iter.next()) {
-            (Some(&b'.'), None) => true,
-            (Some(&b'.'), Some(&b)) => self.is_sep_byte(b),
+        let slice = &self.path[self.prefix_remaining()..];
+        match slice {
+            [b'.'] => true,
+            [b'.', b, ..] => self.is_sep_byte(*b),
             _ => false,
         }
     }
@@ -732,7 +741,7 @@ impl<'a> Components<'a> {
     // corresponding path component
     unsafe fn parse_single_component<'b>(&self, comp: &'b [u8]) -> Option<Component<'b>> {
         match comp {
-            b"." if self.prefix_verbatim() => Some(Component::CurDir),
+            b"." if HAS_PREFIXES && self.prefix_verbatim() => Some(Component::CurDir),
             b"." => None, // . components are normalized away, except at
             // the beginning of a path, which is treated
             // separately via `include_cur_dir`
@@ -889,35 +898,7 @@ impl<'a> Iterator for Components<'a> {
     fn next(&mut self) -> Option<Component<'a>> {
         while !self.finished() {
             match self.front {
-                State::Prefix if self.prefix_len() > 0 => {
-                    self.front = State::StartDir;
-                    debug_assert!(self.prefix_len() <= self.path.len());
-                    let raw = &self.path[..self.prefix_len()];
-                    self.path = &self.path[self.prefix_len()..];
-                    return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
-                        parsed: self.prefix.unwrap(),
-                    }));
-                }
-                State::Prefix => {
-                    self.front = State::StartDir;
-                }
-                State::StartDir => {
-                    self.front = State::Body;
-                    if self.has_physical_root {
-                        debug_assert!(!self.path.is_empty());
-                        self.path = &self.path[1..];
-                        return Some(Component::RootDir);
-                    } else if let Some(p) = self.prefix {
-                        if p.has_implicit_root() && !p.is_verbatim() {
-                            return Some(Component::RootDir);
-                        }
-                    } else if self.include_cur_dir() {
-                        debug_assert!(!self.path.is_empty());
-                        self.path = &self.path[1..];
-                        return Some(Component::CurDir);
-                    }
-                }
+                // most likely case first
                 State::Body if !self.path.is_empty() => {
                     let (size, comp) = self.parse_next_component();
                     self.path = &self.path[size..];
@@ -927,6 +908,36 @@ impl<'a> Iterator for Components<'a> {
                 }
                 State::Body => {
                     self.front = State::Done;
+                }
+                State::StartDir => {
+                    self.front = State::Body;
+                    if self.has_physical_root {
+                        debug_assert!(!self.path.is_empty());
+                        self.path = &self.path[1..];
+                        return Some(Component::RootDir);
+                    } else if HAS_PREFIXES && let Some(p) = self.prefix {
+                        if p.has_implicit_root() && !p.is_verbatim() {
+                            return Some(Component::RootDir);
+                        }
+                    } else if self.include_cur_dir() {
+                        debug_assert!(!self.path.is_empty());
+                        self.path = &self.path[1..];
+                        return Some(Component::CurDir);
+                    }
+                }
+                _ if const { !HAS_PREFIXES } => unreachable!(),
+                State::Prefix if self.prefix_len() == 0 => {
+                    self.front = State::StartDir;
+                }
+                State::Prefix => {
+                    self.front = State::StartDir;
+                    debug_assert!(self.prefix_len() <= self.path.len());
+                    let raw = &self.path[..self.prefix_len()];
+                    self.path = &self.path[self.prefix_len()..];
+                    return Some(Component::Prefix(PrefixComponent {
+                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
+                        parsed: self.prefix.unwrap(),
+                    }));
                 }
                 State::Done => unreachable!(),
             }
@@ -951,11 +962,11 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                     self.back = State::StartDir;
                 }
                 State::StartDir => {
-                    self.back = State::Prefix;
+                    self.back = if HAS_PREFIXES { State::Prefix } else { State::Done };
                     if self.has_physical_root {
                         self.path = &self.path[..self.path.len() - 1];
                         return Some(Component::RootDir);
-                    } else if let Some(p) = self.prefix {
+                    } else if HAS_PREFIXES && let Some(p) = self.prefix {
                         if p.has_implicit_root() && !p.is_verbatim() {
                             return Some(Component::RootDir);
                         }
@@ -964,6 +975,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                         return Some(Component::CurDir);
                     }
                 }
+                _ if !HAS_PREFIXES => unreachable!(),
                 State::Prefix if self.prefix_len() > 0 => {
                     self.back = State::Done;
                     return Some(Component::Prefix(PrefixComponent {
@@ -3138,7 +3150,9 @@ impl Path {
             path: self.as_u8_slice(),
             prefix,
             has_physical_root: has_physical_root(self.as_u8_slice(), prefix),
-            front: State::Prefix,
+            // use a platform-specific initial state to avoid one turn of
+            // the state-machine when the platform doesn't have a Prefix.
+            front: const { if HAS_PREFIXES { State::Prefix } else { State::StartDir } },
             back: State::Body,
         }
     }
