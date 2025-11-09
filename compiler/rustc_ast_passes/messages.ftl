@@ -68,6 +68,10 @@ ast_passes_c_variadic_bad_extern = `...` is not supported for `extern "{$abi}"` 
     .label = `extern "{$abi}"` because of this
     .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
+ast_passes_c_variadic_bad_naked_extern = `...` is not supported for `extern "{$abi}"` naked functions
+    .label = `extern "{$abi}"` because of this
+    .help = C-variadic function must have a compatible calling convention
+
 ast_passes_c_variadic_must_be_unsafe =
     functions with a C variable argument list must be unsafe
     .suggestion = add the `unsafe` keyword to this definition
