@@ -5,7 +5,7 @@
 
 //@ needs-target-std
 
-use run_make_support::{bare_rustc, path, rfs, rustc_path, rustdoc};
+use run_make_support::{bare_rustc, path, rfs, rustc_path, rustdoc, target};
 
 fn main() {
     // Test 1: Verify that a non-executable test-builder fails gracefully
@@ -25,8 +25,7 @@ fn main() {
 
     // Some targets (for example wasm) cannot execute doctests directly even with a runner,
     // so only exercise the success path when the target can run on the host.
-    let target = std::env::var("TARGET").expect("TARGET must be set");
-    if target.contains("wasm") {
+    if target().contains("wasm") || std::env::var_os("REMOTE_TEST_CLIENT").is_some() {
         return;
     }
 
