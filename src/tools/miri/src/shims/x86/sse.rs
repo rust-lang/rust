@@ -180,29 +180,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 this.write_immediate(*res, dest)?;
             }
-            // Used to implement the _mm_cvtsi32_ss and _mm_cvtsi64_ss functions.
-            // Converts `right` from i32/i64 to f32. Returns a SIMD vector with
-            // the result in the first component and the remaining components
-            // are copied from `left`.
-            // https://www.felixcloutier.com/x86/cvtsi2ss
-            "cvtsi2ss" | "cvtsi642ss" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-
-                let right = this.read_immediate(right)?;
-                let dest0 = this.project_index(&dest, 0)?;
-                let res0 = this.int_to_int_or_float(&right, dest0.layout)?;
-                this.write_immediate(*res0, &dest0)?;
-
-                for i in 1..dest_len {
-                    this.copy_op(&this.project_index(&left, i)?, &this.project_index(&dest, i)?)?;
-                }
-            }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
         interp_ok(EmulateItemResult::NeedsReturn)

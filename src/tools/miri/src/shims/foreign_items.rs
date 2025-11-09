@@ -800,10 +800,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Target-specific shims
             name if name.starts_with("llvm.x86.")
-                && matches!(
-                    this.tcx.sess.target.arch,
-                    Arch::X86 | Arch::X86_64
-                ) =>
+                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64) =>
             {
                 return shims::x86::EvalContextExt::emulate_x86_intrinsic(
                     this, link_name, abi, args, dest,

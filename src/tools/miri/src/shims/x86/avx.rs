@@ -1,14 +1,12 @@
 use rustc_abi::CanonAbi;
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
 use super::{
     FloatBinOp, FloatUnaryOp, bin_op_simd_float_all, conditional_dot_product, convert_float_to_int,
-    horizontal_bin_op, mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked,
-    unary_op_ps,
+    mask_load, mask_store, round_all, test_bits_masked, test_high_bits_masked, unary_op_ps,
 };
 use crate::*;
 
@@ -92,21 +90,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 conditional_dot_product(this, left, right, imm, dest)?;
-            }
-            // Used to implement the _mm256_h{add,sub}_p{s,d} functions.
-            // Horizontally add/subtract adjacent floating point values
-            // in `left` and `right`.
-            "hadd.ps.256" | "hadd.pd.256" | "hsub.ps.256" | "hsub.pd.256" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let which = match unprefixed_name {
-                    "hadd.ps.256" | "hadd.pd.256" => mir::BinOp::Add,
-                    "hsub.ps.256" | "hsub.pd.256" => mir::BinOp::Sub,
-                    _ => unreachable!(),
-                };
-
-                horizontal_bin_op(this, which, /*saturating*/ false, left, right, dest)?;
             }
             // Used to implement the _mm256_cmp_ps function.
             // Performs a comparison operation on each component of `left`
@@ -251,40 +234,31 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Unaligned copy, which is what we want.
                 this.mem_copy(src_ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
             }
-            // Used to implement the _mm256_testz_si256, _mm256_testc_si256 and
-            // _mm256_testnzc_si256 functions.
-            // Tests `op & mask == 0`, `op & mask == mask` or
-            // `op & mask != 0 && op & mask != mask`
-            "ptestz.256" | "ptestc.256" | "ptestnzc.256" => {
+            // Used to implement the _mm256_testnzc_si256 function.
+            // Tests `op & mask != 0 && op & mask != mask`
+            "ptestnzc.256" => {
                 let [op, mask] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (all_zero, masked_set) = test_bits_masked(this, op, mask)?;
-                let res = match unprefixed_name {
-                    "ptestz.256" => all_zero,
-                    "ptestc.256" => masked_set,
-                    "ptestnzc.256" => !all_zero && !masked_set,
-                    _ => unreachable!(),
-                };
+                let res = !all_zero && !masked_set;
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }
             // Used to implement the _mm256_testz_pd, _mm256_testc_pd, _mm256_testnzc_pd
-            // _mm_testz_pd, _mm_testc_pd, _mm_testnzc_pd, _mm256_testz_ps,
-            // _mm256_testc_ps, _mm256_testnzc_ps, _mm_testz_ps, _mm_testc_ps and
+            // _mm_testnzc_pd, _mm256_testz_ps, _mm256_testc_ps, _mm256_testnzc_ps and
             // _mm_testnzc_ps functions.
             // Calculates two booleans:
             // `direct`, which is true when the highest bit of each element of `op & mask` is zero.
             // `negated`, which is true when the highest bit of each element of `!op & mask` is zero.
             // Return `direct` (testz), `negated` (testc) or `!direct & !negated` (testnzc)
-            "vtestz.pd.256" | "vtestc.pd.256" | "vtestnzc.pd.256" | "vtestz.pd" | "vtestc.pd"
-            | "vtestnzc.pd" | "vtestz.ps.256" | "vtestc.ps.256" | "vtestnzc.ps.256"
-            | "vtestz.ps" | "vtestc.ps" | "vtestnzc.ps" => {
+            "vtestz.pd.256" | "vtestc.pd.256" | "vtestnzc.pd.256" | "vtestnzc.pd"
+            | "vtestz.ps.256" | "vtestc.ps.256" | "vtestnzc.ps.256" | "vtestnzc.ps" => {
                 let [op, mask] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (direct, negated) = test_high_bits_masked(this, op, mask)?;
                 let res = match unprefixed_name {
-                    "vtestz.pd.256" | "vtestz.pd" | "vtestz.ps.256" | "vtestz.ps" => direct,
-                    "vtestc.pd.256" | "vtestc.pd" | "vtestc.ps.256" | "vtestc.ps" => negated,
+                    "vtestz.pd.256" | "vtestz.ps.256" => direct,
+                    "vtestc.pd.256" | "vtestc.ps.256" => negated,
                     "vtestnzc.pd.256" | "vtestnzc.pd" | "vtestnzc.ps.256" | "vtestnzc.ps" =>
                         !direct && !negated,
                     _ => unreachable!(),
