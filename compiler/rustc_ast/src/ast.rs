@@ -714,6 +714,15 @@ impl Pat {
         }
     }
 
+    /// Strip off all reference patterns (`&`, `&mut`) and return the inner pattern.
+    pub fn peel_refs(&self) -> &Pat {
+        let mut current = self;
+        while let PatKind::Ref(inner, _) = &current.kind {
+            current = inner;
+        }
+        current
+    }
+
     /// Is this a `..` pattern?
     pub fn is_rest(&self) -> bool {
         matches!(self.kind, PatKind::Rest)
