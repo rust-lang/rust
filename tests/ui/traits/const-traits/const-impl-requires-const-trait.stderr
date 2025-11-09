@@ -8,8 +8,8 @@ LL | impl const A for () {}
    = note: adding a non-const method body in the future would be a breaking change
 help: mark `A` as `const` to allow it to have `const` implementations
    |
-LL | #[const_trait] pub trait A {}
-   | ++++++++++++++
+LL | pub const trait A {}
+   |     +++++
 
 error: aborting due to 1 previous error
 

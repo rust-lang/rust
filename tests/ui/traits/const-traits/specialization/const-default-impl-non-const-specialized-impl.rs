@@ -6,8 +6,7 @@
 //[spec]~^ WARN the feature `specialization` is incomplete
 #![cfg_attr(min_spec, feature(min_specialization))]
 
-#[const_trait]
-trait Value {
+const trait Value {
     fn value() -> u32;
 }
 

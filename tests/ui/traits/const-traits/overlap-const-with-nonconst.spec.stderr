@@ -9,7 +9,7 @@ LL | #![cfg_attr(spec, feature(specialization))]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0119]: conflicting implementations of trait `Foo` for type `(_,)`
-  --> $DIR/overlap-const-with-nonconst.rs:23:1
+  --> $DIR/overlap-const-with-nonconst.rs:21:1
    |
 LL | / impl<T> const Foo for T
 LL | | where

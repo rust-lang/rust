@@ -101,17 +101,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
 }
 
-// FIXME(const_trait_impl): remove this
-// Const traits
-
-pub(crate) struct ConstTraitParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ConstTraitParser {
-    const PATH: &[Symbol] = &[sym::const_trait];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstTrait;
-}
-
 // Specialization
 
 pub(crate) struct SpecializationTraitParser;

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): [const] Foo` is not satisfied
-  --> $DIR/minicore-fn-fail.rs:19:19
+  --> $DIR/minicore-fn-fail.rs:18:19
    |
 LL |     call_indirect(&foo::<()>);
    |     ------------- ^^^^^^^^^^
