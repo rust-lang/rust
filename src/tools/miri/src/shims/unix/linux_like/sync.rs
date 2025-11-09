@@ -1,10 +1,12 @@
-use crate::concurrency::sync::FutexRef;
+use crate::concurrency::sync::{FutexRef, SyncObj};
 use crate::shims::sig::check_min_vararg_count;
 use crate::*;
 
 struct LinuxFutex {
     futex: FutexRef,
 }
+
+impl SyncObj for LinuxFutex {}
 
 /// Implementation of the SYS_futex syscall.
 /// `args` is the arguments *including* the syscall number.

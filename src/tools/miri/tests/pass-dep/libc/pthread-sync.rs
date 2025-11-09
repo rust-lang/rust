@@ -8,18 +8,21 @@ use std::mem::MaybeUninit;
 use std::{mem, ptr, thread};
 
 fn main() {
+    test_mutex();
     test_mutex_libc_init_recursive();
     test_mutex_libc_init_normal();
     test_mutex_libc_init_errorcheck();
-    test_rwlock_libc_static_initializer();
     #[cfg(target_os = "linux")]
     test_mutex_libc_static_initializer_recursive();
+    #[cfg(target_os = "linux")]
+    test_mutex_libc_static_initializer_errorcheck();
 
-    check_mutex();
-    check_rwlock_write();
-    check_rwlock_read_no_deadlock();
-    check_cond();
-    check_condattr();
+    test_cond();
+    test_condattr();
+
+    test_rwlock();
+    test_rwlock_write();
+    test_rwlock_read_no_deadlock();
 }
 
 // We want to only use pthread APIs here for easier testing.
@@ -107,8 +110,7 @@ fn test_mutex_libc_init_errorcheck() {
     }
 }
 
-// Only linux provides PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP,
-// libc for macOS just has the default PTHREAD_MUTEX_INITIALIZER.
+// Only linux provides PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP.
 #[cfg(target_os = "linux")]
 fn test_mutex_libc_static_initializer_recursive() {
     let mutex = std::cell::UnsafeCell::new(libc::PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP);
@@ -126,6 +128,22 @@ fn test_mutex_libc_static_initializer_recursive() {
     }
 }
 
+// Only linux provides PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP.
+#[cfg(target_os = "linux")]
+fn test_mutex_libc_static_initializer_errorcheck() {
+    let mutex = std::cell::UnsafeCell::new(libc::PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP);
+    unsafe {
+        assert_eq!(libc::pthread_mutex_lock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_trylock(mutex.get()), libc::EBUSY);
+        assert_eq!(libc::pthread_mutex_lock(mutex.get()), libc::EDEADLK);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_trylock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
+        assert_eq!(libc::pthread_mutex_unlock(mutex.get()), libc::EPERM);
+        assert_eq!(libc::pthread_mutex_destroy(mutex.get()), 0);
+    }
+}
+
 struct SendPtr<T> {
     ptr: *mut T,
 }
@@ -137,7 +155,7 @@ impl<T> Clone for SendPtr<T> {
     }
 }
 
-fn check_mutex() {
+fn test_mutex() {
     let bomb = AbortOnDrop;
     // Specifically *not* using `Arc` to make sure there is no synchronization apart from the mutex.
     unsafe {
@@ -168,7 +186,7 @@ fn check_mutex() {
     bomb.defuse();
 }
 
-fn check_rwlock_write() {
+fn test_rwlock_write() {
     let bomb = AbortOnDrop;
     unsafe {
         let data = SyncUnsafeCell::new((libc::PTHREAD_RWLOCK_INITIALIZER, 0));
@@ -209,7 +227,7 @@ fn check_rwlock_write() {
     bomb.defuse();
 }
 
-fn check_rwlock_read_no_deadlock() {
+fn test_rwlock_read_no_deadlock() {
     let bomb = AbortOnDrop;
     unsafe {
         let l1 = SyncUnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
@@ -237,12 +255,11 @@ fn check_rwlock_read_no_deadlock() {
     bomb.defuse();
 }
 
-fn check_cond() {
+fn test_cond() {
     let bomb = AbortOnDrop;
     unsafe {
-        let mut cond: MaybeUninit<libc::pthread_cond_t> = MaybeUninit::uninit();
-        assert_eq!(libc::pthread_cond_init(cond.as_mut_ptr(), ptr::null()), 0);
-        let cond = SendPtr { ptr: cond.as_mut_ptr() };
+        let mut cond: libc::pthread_cond_t = libc::PTHREAD_COND_INITIALIZER;
+        let cond = SendPtr { ptr: &mut cond };
 
         let mut mutex: libc::pthread_mutex_t = libc::PTHREAD_MUTEX_INITIALIZER;
         let mutex = SendPtr { ptr: &mut mutex };
@@ -286,7 +303,7 @@ fn check_cond() {
     bomb.defuse();
 }
 
-fn check_condattr() {
+fn test_condattr() {
     unsafe {
         // Just smoke-testing that these functions can be called.
         let mut attr: MaybeUninit<libc::pthread_condattr_t> = MaybeUninit::uninit();
@@ -311,9 +328,7 @@ fn check_condattr() {
     }
 }
 
-// std::sync::RwLock does not even used pthread_rwlock any more.
-// Do some smoke testing of the API surface.
-fn test_rwlock_libc_static_initializer() {
+fn test_rwlock() {
     let rw = std::cell::UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
     unsafe {
         assert_eq!(libc::pthread_rwlock_rdlock(rw.get()), 0);

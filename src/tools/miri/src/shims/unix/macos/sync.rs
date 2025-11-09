@@ -13,15 +13,32 @@
 use std::cell::Cell;
 use std::time::Duration;
 
-use rustc_abi::Size;
+use rustc_abi::{Endian, FieldIdx, Size};
 
-use crate::concurrency::sync::FutexRef;
+use crate::concurrency::sync::{AccessKind, FutexRef, SyncObj};
 use crate::*;
 
 #[derive(Clone)]
 enum MacOsUnfairLock {
-    Poisoned,
     Active { mutex_ref: MutexRef },
+    PermanentlyLocked,
+}
+
+impl SyncObj for MacOsUnfairLock {
+    fn on_access<'tcx>(&self, access_kind: AccessKind) -> InterpResult<'tcx> {
+        if let MacOsUnfairLock::Active { mutex_ref } = self
+            && !mutex_ref.queue_is_empty()
+        {
+            throw_ub_format!(
+                "{access_kind} of `os_unfair_lock` is forbidden while the queue is non-empty"
+            );
+        }
+        interp_ok(())
+    }
+
+    fn delete_on_write(&self) -> bool {
+        true
+    }
 }
 
 pub enum MacOsFutexTimeout<'a, 'tcx> {
@@ -44,6 +61,8 @@ struct MacOsFutex {
     shared: Cell<bool>,
 }
 
+impl SyncObj for MacOsFutex {}
+
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn os_unfair_lock_get_data<'a>(
@@ -53,22 +72,35 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     where
         'tcx: 'a,
     {
+        // `os_unfair_lock_s` wraps a single `u32` field. We use the first byte to store the "init"
+        // flag. Due to macOS always being little endian, that's the least significant byte.
         let this = self.eval_context_mut();
+        assert!(this.tcx.data_layout.endian == Endian::Little);
+
         let lock = this.deref_pointer_as(lock_ptr, this.libc_ty_layout("os_unfair_lock_s"))?;
-        this.lazy_sync_get_data(
+        this.get_immovable_sync_with_static_init(
             &lock,
             Size::ZERO, // offset for init tracking
-            || {
-                // If we get here, due to how we reset things to zero in `os_unfair_lock_unlock`,
-                // this means the lock was moved while locked. This can happen with a `std` lock,
-                // but then any future attempt to unlock will just deadlock. In practice, terrible
-                // things can probably happen if you swap two locked locks, since they'd wake up
-                // from the wrong queue... we just won't catch all UB of this library API then (we
-                // would need to store some unique identifer in-memory for this, instead of a static
-                // LAZY_INIT_COOKIE). This can't be hit via `std::sync::Mutex`.
-                interp_ok(MacOsUnfairLock::Poisoned)
+            /* uninit_val */ 0,
+            /* init_val */ 1,
+            |this| {
+                let field = this.project_field(&lock, FieldIdx::from_u32(0))?;
+                let val = this.read_scalar(&field)?.to_u32()?;
+                if val == 0 {
+                    interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() })
+                } else if val == 1 {
+                    // This is a lock that got copied while it is initialized. We de-initialize
+                    // locks when they get released, so it got copied while locked. Unfortunately
+                    // that is something `std` needs to support (the guard could have been leaked).
+                    // On the plus side, we know nobody was queued for the lock while it got copied;
+                    // that would have been rejected by our `on_access`. So we behave like a
+                    // futex-based lock would in this case: any attempt to acquire the lock will
+                    // just wait forever, since there's nobody to wake us up.
+                    interp_ok(MacOsUnfairLock::PermanentlyLocked)
+                } else {
+                    throw_ub_format!("`os_unfair_lock` was not properly initialized at this location, or it got overwritten");
+                }
             },
-            |_| interp_ok(MacOsUnfairLock::Active { mutex_ref: MutexRef::new() }),
         )
     }
 }
@@ -332,7 +364,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            // A perma-locked lock is definitely not held by us.
             throw_machine_stop!(TerminationInfo::Abort(
                 "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
             ));
@@ -361,7 +393,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            // A perma-locked lock is definitely not held by us.
             throw_machine_stop!(TerminationInfo::Abort(
                 "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
             ));
@@ -383,7 +415,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // The lock is poisoned, who knows who owns it... we'll pretend: someone else.
+            // A perma-locked lock is definitely not held by us.
             return interp_ok(());
         };
         let mutex_ref = mutex_ref.clone();
