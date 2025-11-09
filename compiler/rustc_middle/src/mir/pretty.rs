@@ -1097,15 +1097,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op) => match op {
-                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                    write!(fmt, "ContractChecks()")
-                }
-                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                    write!(fmt, "OverflowChecks()")
-                }
-            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1527,6 +1518,7 @@ pub fn write_allocations<'tcx>(
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
+            ConstValue::RuntimeChecks(_) => None,
             ConstValue::ZeroSized => None,
             ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
@@ -1977,6 +1969,7 @@ fn pretty_print_const_value_tcx<'tcx>(
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
+        (ConstValue::RuntimeChecks(checks), _) => return write!(fmt, "{checks:?}"),
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;

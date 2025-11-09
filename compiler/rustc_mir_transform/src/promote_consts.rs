@@ -449,10 +449,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::NullaryOp(op) => match op {
-                NullOp::RuntimeChecks(_) => {}
-            },
-
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
 
             Rvalue::UnaryOp(op, operand) => {

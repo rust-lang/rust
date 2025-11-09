@@ -444,7 +444,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::WrapUnsafeBinder(..) => {}
         }
 
@@ -604,8 +603,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Ref(..) | RawPtr(..) => return None,
-
-            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
 
             ShallowInitBox(..) => return None,
 

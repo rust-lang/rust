@@ -619,21 +619,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            mir::Rvalue::NullaryOp(ref null_op) => {
-                let val = match null_op {
-                    mir::NullOp::RuntimeChecks(kind) => {
-                        let val = kind.value(bx.tcx().sess);
-                        bx.cx().const_bool(val)
-                    }
-                };
-                let tcx = self.cx.tcx();
-                OperandRef {
-                    val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(null_op.ty(tcx)),
-                    move_annotation: None,
-                }
-            }
-
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
                 let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id, bx.typing_env()));

@@ -203,11 +203,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*result, &dest)?;
             }
 
-            NullaryOp(null_op) => {
-                let val = self.nullary_op(null_op)?;
-                self.write_immediate(*val, &dest)?;
-            }
-
             Aggregate(box ref kind, ref operands) => {
                 self.write_aggregate(kind, operands, &dest)?;
             }

@@ -232,7 +232,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                     )
                 }
             }
-            NullaryOp(null_op) => crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx)),
             UnaryOp(un_op, op) => {
                 crate::mir::Rvalue::UnaryOp(un_op.stable(tables, cx), op.stable(tables, cx))
             }
@@ -312,21 +311,18 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp {
-    type T = crate::mir::NullOp;
+impl<'tcx> Stable<'tcx> for mir::RuntimeChecks {
+    type T = crate::ty::RuntimeChecks;
     fn stable<'cx>(
         &self,
         _: &mut Tables<'cx, BridgeTys>,
         _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        use rustc_middle::mir::NullOp::*;
         use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
-                UbChecks => crate::mir::RuntimeChecks::UbChecks,
-                ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
-                OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
-            }),
+            UbChecks => crate::ty::RuntimeChecks::UbChecks,
+            ContractChecks => crate::ty::RuntimeChecks::ContractChecks,
+            OverflowChecks => crate::ty::RuntimeChecks::OverflowChecks,
         }
     }
 }
@@ -889,6 +885,13 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
             mir::Const::Val(mir::ConstValue::ZeroSized, ty) => {
                 let ty = ty.stable(tables, cx);
                 MirConst::new(ConstantKind::ZeroSized, ty, id)
+            }
+            mir::Const::Val(mir::ConstValue::RuntimeChecks(checks), ty) => {
+                let ty = cx.lift(ty).unwrap();
+                let checks = cx.lift(checks).unwrap();
+                let ty = ty.stable(tables, cx);
+                let kind = ConstantKind::RuntimeChecks(checks.stable(tables, cx));
+                MirConst::new(kind, ty, id)
             }
             mir::Const::Val(val, ty) => {
                 let ty = cx.lift(ty).unwrap();

@@ -1046,8 +1046,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
-
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
                     ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [*ty]);
@@ -2201,7 +2199,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)

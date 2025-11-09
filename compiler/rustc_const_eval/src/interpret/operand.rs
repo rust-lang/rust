@@ -892,6 +892,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
             }
+            mir::ConstValue::RuntimeChecks(checks) => {
+                let val = M::runtime_checks(self, checks)?;
+                Scalar::from_bool(val).into()
+            }
         };
         interp_ok(OpTy { op: Operand::Immediate(imm), layout })
     }

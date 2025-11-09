@@ -314,8 +314,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.consume_operand(location, operand2);
             }
 
-            Rvalue::NullaryOp(_op) => {}
-
             Rvalue::Aggregate(_, operands) => {
                 for operand in operands {
                     self.consume_operand(location, operand);

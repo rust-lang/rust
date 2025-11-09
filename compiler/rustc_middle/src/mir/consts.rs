@@ -70,6 +70,10 @@ pub enum ConstValue {
         /// Offset into `alloc`
         offset: Size,
     },
+
+    /// Special constants whose value depends on the evaluation context. Their value depends on a
+    /// flag on the crate being codegenned.
+    RuntimeChecks(RuntimeChecks),
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -79,7 +83,10 @@ impl ConstValue {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Indirect { .. } | ConstValue::Slice { .. } | ConstValue::ZeroSized => None,
+            ConstValue::Indirect { .. }
+            | ConstValue::Slice { .. }
+            | ConstValue::ZeroSized
+            | ConstValue::RuntimeChecks(_) => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -135,7 +142,7 @@ impl ConstValue {
         tcx: TyCtxt<'tcx>,
     ) -> Option<&'tcx [u8]> {
         let (alloc_id, start, len) = match self {
-            ConstValue::Scalar(_) | ConstValue::ZeroSized => {
+            ConstValue::Scalar(_) | ConstValue::ZeroSized | ConstValue::RuntimeChecks(_) => {
                 bug!("`try_get_slice_bytes` on non-slice constant")
             }
             &ConstValue::Slice { alloc_id, meta } => (alloc_id, 0, meta),
@@ -187,7 +194,9 @@ impl ConstValue {
     /// Can return `true` even if there is no provenance.
     pub fn may_have_provenance(&self, tcx: TyCtxt<'_>, size: Size) -> bool {
         match *self {
-            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
+            ConstValue::ZeroSized
+            | ConstValue::Scalar(Scalar::Int(_))
+            | ConstValue::RuntimeChecks(_) => return false,
             ConstValue::Scalar(Scalar::Ptr(..)) => return true,
             // It's hard to find out the part of the allocation we point to;
             // just conservatively check everything.
@@ -223,6 +232,29 @@ impl ConstValue {
             }
         }
         false
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum RuntimeChecks {
+    /// Returns whether we should perform some UB-checking at runtime.
+    /// See the `ub_checks` intrinsic docs for details.
+    UbChecks,
+    /// Returns whether we should perform contract-checking at runtime.
+    /// See the `contract_checks` intrinsic docs for details.
+    ContractChecks,
+    /// Returns whether we should perform some overflow-checking at runtime.
+    /// See the `overflow_checks` intrinsic docs for details.
+    OverflowChecks,
+}
+
+impl RuntimeChecks {
+    pub fn value(self, sess: &rustc_session::Session) -> bool {
+        match self {
+            Self::UbChecks => sess.ub_checks(),
+            Self::ContractChecks => sess.contract_checks(),
+            Self::OverflowChecks => sess.overflow_checks(),
+        }
     }
 }
 
@@ -519,6 +551,7 @@ impl<'tcx> Const<'tcx> {
                 ConstValue::Slice { .. }
                 | ConstValue::ZeroSized
                 | ConstValue::Scalar(_)
+                | ConstValue::RuntimeChecks(_)
                 | ConstValue::Indirect { .. },
                 _,
             ) => true,

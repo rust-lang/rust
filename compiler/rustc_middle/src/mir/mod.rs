@@ -607,6 +607,9 @@ impl<'tcx> Body<'tcx> {
                 typing_env,
                 crate::ty::EarlyBinder::bind(constant.const_),
             );
+            if let Const::Val(ConstValue::RuntimeChecks(check), _) = mono_literal {
+                return Some(check.value(tcx.sess) as u128);
+            }
             mono_literal.try_eval_bits(tcx, typing_env)
         };
 
@@ -649,9 +652,6 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind)) => {
-                Some((kind.value(tcx.sess) as u128, targets))
-            }
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant)?;
                 Some((bits, targets))

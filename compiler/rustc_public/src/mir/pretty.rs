@@ -386,9 +386,6 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
         }
-        Rvalue::NullaryOp(nul) => {
-            write!(writer, "{nul:?}() \" \"")
-        }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))
         }
