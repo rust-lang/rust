@@ -1,22 +1,19 @@
-use rustc_middle::mir;
 use rustc_middle::mir::coverage::{Mapping, MappingKind, START_BCB};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DesugaringKind, ExpnId, ExpnKind, MacroKind, Span};
 use tracing::instrument;
 
-use crate::coverage::expansion::{self, ExpnTree, SpanWithBcb};
+use crate::coverage::expansion::{ExpnTree, SpanWithBcb};
+use crate::coverage::from_mir::Hole;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::hir_info::ExtractedHirInfo;
-use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir};
-
-mod from_mir;
 
 pub(super) fn extract_refined_covspans<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
+    expn_tree: &ExpnTree,
     mappings: &mut Vec<Mapping>,
 ) {
     if hir_info.is_async_fn {
@@ -31,14 +28,6 @@ pub(super) fn extract_refined_covspans<'tcx>(
     }
 
     let &ExtractedHirInfo { body_span, .. } = hir_info;
-
-    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
-    // Use the raw spans to build a tree of expansions for this function.
-    let expn_tree = expansion::build_expn_tree(
-        raw_spans
-            .into_iter()
-            .map(|RawSpanFromMir { raw_span, bcb }| SpanWithBcb { span: raw_span, bcb }),
-    );
 
     let mut covspans = vec![];
     let mut push_covspan = |covspan: Covspan| {

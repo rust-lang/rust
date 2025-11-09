@@ -1,6 +1,10 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::BasicCoverageBlock;
 use rustc_span::{ExpnId, ExpnKind, Span};
+
+use crate::coverage::from_mir;
+use crate::coverage::graph::CoverageGraph;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SpanWithBcb {
@@ -92,13 +96,17 @@ impl ExpnNode {
     }
 }
 
-/// Given a collection of span/BCB pairs from potentially-different syntax contexts,
+/// Extracts raw span/BCB pairs from potentially-different syntax contexts, and
 /// arranges them into an "expansion tree" based on their expansion call-sites.
-pub(crate) fn build_expn_tree(spans: impl IntoIterator<Item = SpanWithBcb>) -> ExpnTree {
+pub(crate) fn build_expn_tree(mir_body: &mir::Body<'_>, graph: &CoverageGraph) -> ExpnTree {
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+
     let mut nodes = FxIndexMap::default();
     let new_node = |&expn_id: &ExpnId| ExpnNode::new(expn_id);
 
-    for span_with_bcb in spans {
+    for from_mir::RawSpanFromMir { raw_span, bcb } in raw_spans {
+        let span_with_bcb = SpanWithBcb { span: raw_span, bcb };
+
         // Create a node for this span's enclosing expansion, and add the span to it.
         let expn_id = span_with_bcb.span.ctxt().outer_expn();
         let node = nodes.entry(expn_id).or_insert_with_key(new_node);
