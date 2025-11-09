@@ -749,7 +749,7 @@ fn shrink_file(
     let hi_byte = spans.iter().map(|s| s.hi()).max()?;
     let hi_loc = sm.lookup_char_pos(hi_byte);
 
-    if lo_loc.file.name != hi_loc.file.name {
+    if lo_loc.file.stable_id != hi_loc.file.stable_id {
         // this may happen when spans cross file boundaries due to macro expansion.
         return None;
     }
