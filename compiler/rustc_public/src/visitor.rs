@@ -68,7 +68,9 @@ impl Visitable for MirConst {
             super::ty::ConstantKind::Ty(ct) => ct.visit(visitor)?,
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
-            super::ty::ConstantKind::Param(_) | super::ty::ConstantKind::ZeroSized => {}
+            super::ty::ConstantKind::RuntimeChecks(_)
+            | super::ty::ConstantKind::Param(_)
+            | super::ty::ConstantKind::ZeroSized => {}
         }
         self.ty().visit(visitor)
     }

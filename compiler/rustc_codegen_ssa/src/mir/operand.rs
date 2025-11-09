@@ -165,6 +165,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
+            mir::ConstValue::RuntimeChecks(checks) => {
+                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let x = Scalar::from_bool(checks.value(bx.tcx().sess));
+                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                OperandValue::Immediate(llval)
+            }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { alloc_id, meta } => {
                 let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {

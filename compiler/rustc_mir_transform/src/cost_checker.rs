@@ -60,7 +60,7 @@ impl<'b, 'tcx> CostChecker<'b, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
-    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
         // Most costs are in rvalues and terminators, not in statements.
         match statement.kind {
             StatementKind::Intrinsic(ref ndi) => {
@@ -69,31 +69,8 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     NonDivergingIntrinsic::CopyNonOverlapping(..) => CALL_PENALTY,
                 };
             }
-            _ => self.super_statement(statement, location),
-        }
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, _location: Location) {
-        match rvalue {
-            // FIXME: Should we do the same for `OverflowChecks`?
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks), ..)
-                if !self
-                    .tcx
-                    .sess
-                    .opts
-                    .unstable_opts
-                    .inline_mir_preserve_debug
-                    .unwrap_or(self.tcx.sess.ub_checks()) =>
-            {
-                // If this is in optimized MIR it's because it's used later,
-                // so if we don't need UB checks this session, give a bonus
-                // here to offset the cost of the call later.
-                self.bonus += CALL_PENALTY;
-            }
-            // These are essentially constants that didn't end up in an Operand,
-            // so treat them as also being free.
-            Rvalue::NullaryOp(..) => {}
-            _ => self.penalty += INSTR_COST,
+            StatementKind::Assign(..) => self.penalty += INSTR_COST,
+            _ => {}
         }
     }
 

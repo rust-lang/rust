@@ -248,7 +248,6 @@ enum Value<'a, 'tcx> {
     Discriminant(VnIndex),
 
     // Operations.
-    NullaryOp(NullOp),
     UnaryOp(UnOp, VnIndex),
     BinaryOp(BinOp, VnIndex, VnIndex),
     Cast {
@@ -681,7 +680,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
             }
-            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
             UnaryOp(un_op, operand) => {
                 let operand = self.eval_to_const(operand)?;
                 let operand = self.ecx.read_immediate(operand).discard_err()?;
@@ -1034,7 +1032,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 let op = self.simplify_operand(op, location)?;
                 Value::Repeat(op, amount)
             }
-            Rvalue::NullaryOp(op) => Value::NullaryOp(op),
             Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);

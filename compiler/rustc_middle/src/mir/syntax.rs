@@ -1418,9 +1418,6 @@ pub enum Rvalue<'tcx> {
     ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
-    /// Computes a value as described by the operation.
-    NullaryOp(NullOp),
-
     /// Exactly like `BinaryOp`, but less operands.
     ///
     /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
@@ -1559,35 +1556,6 @@ pub enum AggregateKind<'tcx> {
     /// creating a thin pointer. If you're just converting between thin pointers,
     /// you may want an [`Rvalue::Cast`] with [`CastKind::PtrToPtr`] instead.
     RawPtr(Ty<'tcx>, Mutability),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum NullOp {
-    /// Returns whether we should perform some checking at runtime.
-    RuntimeChecks(RuntimeChecks),
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum RuntimeChecks {
-    /// Returns whether we should perform some UB-checking at runtime.
-    /// See the `ub_checks` intrinsic docs for details.
-    UbChecks,
-    /// Returns whether we should perform contract-checking at runtime.
-    /// See the `contract_checks` intrinsic docs for details.
-    ContractChecks,
-    /// Returns whether we should perform some overflow-checking at runtime.
-    /// See the `overflow_checks` intrinsic docs for details.
-    OverflowChecks,
-}
-
-impl RuntimeChecks {
-    pub fn value(self, sess: &rustc_session::Session) -> bool {
-        match self {
-            Self::UbChecks => sess.ub_checks(),
-            Self::ContractChecks => sess.contract_checks(),
-            Self::OverflowChecks => sess.overflow_checks(),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

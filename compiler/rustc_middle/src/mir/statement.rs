@@ -756,7 +756,6 @@ impl<'tcx> Rvalue<'tcx> {
                 _,
             )
             | Rvalue::BinaryOp(_, _)
-            | Rvalue::NullaryOp(_)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
@@ -794,7 +793,6 @@ impl<'tcx> Rvalue<'tcx> {
                 op.ty(tcx, arg_ty)
             }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -854,14 +852,6 @@ impl BorrowKind {
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
             BorrowKind::Fake(_) => hir::Mutability::Not,
-        }
-    }
-}
-
-impl NullOp {
-    pub fn ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self {
-            NullOp::RuntimeChecks(_) => tcx.types.bool,
         }
     }
 }
