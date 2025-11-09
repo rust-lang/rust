@@ -67,15 +67,16 @@ impl Layout {
 
     #[inline]
     const fn is_size_align_valid(size: usize, align: usize) -> bool {
-        let Some(align) = Alignment::new(align) else { return false };
-        if size > Self::max_size_for_align(align) {
-            return false;
-        }
-        true
+        let Some(alignment) = Alignment::new(align) else { return false };
+        Self::is_size_alignment_valid(size, alignment)
+    }
+
+    const fn is_size_alignment_valid(size: usize, alignment: Alignment) -> bool {
+        size <= Self::max_size_for_alignment(alignment)
     }
 
     #[inline(always)]
-    const fn max_size_for_align(align: Alignment) -> usize {
+    const fn max_size_for_alignment(alignment: Alignment) -> usize {
         // (power-of-two implies align != 0.)
 
         // Rounded up size is:
@@ -93,18 +94,28 @@ impl Layout {
 
         // SAFETY: the maximum possible alignment is `isize::MAX + 1`,
         // so the subtraction cannot overflow.
-        unsafe { unchecked_sub(isize::MAX as usize + 1, align.as_usize()) }
+        unsafe { unchecked_sub(isize::MAX as usize + 1, alignment.as_usize()) }
     }
 
-    /// Internal helper constructor to skip revalidating alignment validity.
+    /// Constructs a `Layout` from a given `size` and `alignment`,
+    /// or returns `LayoutError` if any of the following conditions
+    /// are not met:
+    ///
+    /// * `size`, when rounded up to the nearest multiple of `alignment`,
+    ///   must not overflow `isize` (i.e., the rounded value must be
+    ///   less than or equal to `isize::MAX`).
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    const fn from_size_alignment(size: usize, align: Alignment) -> Result<Self, LayoutError> {
-        if size > Self::max_size_for_align(align) {
-            return Err(LayoutError);
+    pub const fn from_size_alignment(
+        size: usize,
+        alignment: Alignment,
+    ) -> Result<Self, LayoutError> {
+        if Layout::is_size_alignment_valid(size, alignment) {
+            // SAFETY: Layout::size invariants checked above.
+            Ok(Layout { size, align: alignment })
+        } else {
+            Err(LayoutError)
         }
-
-        // SAFETY: Layout::size invariants checked above.
-        Ok(Layout { size, align })
     }
 
     /// Creates a layout, bypassing all checks.
@@ -132,6 +143,30 @@ impl Layout {
         unsafe { Layout { size, align: mem::transmute(align) } }
     }
 
+    /// Creates a layout, bypassing all checks.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe as it does not verify the preconditions from
+    /// [`Layout::from_size_alignment`].
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[must_use]
+    #[inline]
+    #[track_caller]
+    pub const unsafe fn from_size_alignment_unchecked(size: usize, alignment: Alignment) -> Self {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "Layout::from_size_alignment_unchecked requires \
+            that the rounded-up allocation size does not exceed isize::MAX",
+            (
+                size: usize = size,
+                alignment: Alignment = alignment,
+            ) => Layout::is_size_alignment_valid(size, alignment)
+        );
+        // SAFETY: the caller is required to uphold the preconditions.
+        Layout { size, align: alignment }
+    }
+
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
@@ -153,6 +188,16 @@ impl Layout {
         self.align.as_usize()
     }
 
+    /// The minimum byte alignment for a memory block of this layout.
+    ///
+    /// The returned alignment is guaranteed to be a power of two.
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[must_use = "this returns the minimum alignment, without modifying the layout"]
+    #[inline]
+    pub const fn alignment(&self) -> Alignment {
+        self.align
+    }
+
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "alloc_layout_const_new", since = "1.42.0")]
@@ -170,9 +215,9 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn for_value<T: ?Sized>(t: &T) -> Self {
-        let (size, align) = (size_of_val(t), align_of_val(t));
+        let (size, alignment) = (size_of_val(t), Alignment::of_val(t));
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_align_unchecked(size, align) }
+        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
     }
 
     /// Produces layout describing a record that could be used to
@@ -204,11 +249,12 @@ impl Layout {
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
     #[unstable(feature = "layout_for_ptr", issue = "69835")]
     #[must_use]
+    #[inline]
     pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
         // SAFETY: we pass along the prerequisites of these functions to the caller
-        let (size, align) = unsafe { (mem::size_of_val_raw(t), mem::align_of_val_raw(t)) };
+        let (size, alignment) = unsafe { (mem::size_of_val_raw(t), Alignment::of_val_raw(t)) };
         // SAFETY: see rationale in `new` for why this is using the unsafe variant
-        unsafe { Layout::from_size_align_unchecked(size, align) }
+        unsafe { Layout::from_size_alignment_unchecked(size, alignment) }
     }
 
     /// Creates a `NonNull` that is dangling, but well-aligned for this Layout.
@@ -243,11 +289,31 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
     pub const fn align_to(&self, align: usize) -> Result<Self, LayoutError> {
-        if let Some(align) = Alignment::new(align) {
-            Layout::from_size_alignment(self.size, Alignment::max(self.align, align))
+        if let Some(alignment) = Alignment::new(align) {
+            self.adjust_alignment_to(alignment)
         } else {
             Err(LayoutError)
         }
+    }
+
+    /// Creates a layout describing the record that can hold a value
+    /// of the same layout as `self`, but that also is aligned to
+    /// alignment `alignment`.
+    ///
+    /// If `self` already meets the prescribed alignment, then returns
+    /// `self`.
+    ///
+    /// Note that this method does not add any padding to the overall
+    /// size, regardless of whether the returned layout has a different
+    /// alignment. In other words, if `K` has size 16, `K.align_to(32)`
+    /// will *still* have size 16.
+    ///
+    /// Returns an error if the combination of `self.size()` and the given
+    /// `alignment` violates the conditions listed in [`Layout::from_size_alignment`].
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn adjust_alignment_to(&self, alignment: Alignment) -> Result<Self, LayoutError> {
+        Layout::from_size_alignment(self.size, Alignment::max(self.align, alignment))
     }
 
     /// Returns the amount of padding we must insert after `self`
@@ -267,7 +333,7 @@ impl Layout {
     #[must_use = "this returns the padding needed, without modifying the `Layout`"]
     #[inline]
     pub const fn padding_needed_for(&self, alignment: Alignment) -> usize {
-        let len_rounded_up = self.size_rounded_up_to_custom_align(alignment);
+        let len_rounded_up = self.size_rounded_up_to_custom_alignment(alignment);
         // SAFETY: Cannot overflow because the rounded-up value is never less
         unsafe { unchecked_sub(len_rounded_up, self.size) }
     }
@@ -277,7 +343,7 @@ impl Layout {
     /// This can return at most `Alignment::MAX` (aka `isize::MAX + 1`)
     /// because the original size is at most `isize::MAX`.
     #[inline]
-    const fn size_rounded_up_to_custom_align(&self, align: Alignment) -> usize {
+    const fn size_rounded_up_to_custom_alignment(&self, alignment: Alignment) -> usize {
         // SAFETY:
         // Rounded up value is:
         //   size_rounded_up = (size + align - 1) & !(align - 1);
@@ -297,7 +363,7 @@ impl Layout {
         // (Size 0 Align MAX is already aligned, so stays the same, but things like
         // Size 1 Align MAX or Size isize::MAX Align 2 round up to `isize::MAX + 1`.)
         unsafe {
-            let align_m1 = unchecked_sub(align.as_usize(), 1);
+            let align_m1 = unchecked_sub(alignment.as_usize(), 1);
             unchecked_add(self.size, align_m1) & !align_m1
         }
     }
@@ -317,10 +383,10 @@ impl Layout {
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow isize (i.e., the rounded value must be
         // > less than or equal to `isize::MAX`)
-        let new_size = self.size_rounded_up_to_custom_align(self.align);
+        let new_size = self.size_rounded_up_to_custom_alignment(self.align);
 
         // SAFETY: padded size is guaranteed to not exceed `isize::MAX`.
-        unsafe { Layout::from_size_align_unchecked(new_size, self.align()) }
+        unsafe { Layout::from_size_alignment_unchecked(new_size, self.alignment()) }
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -426,8 +492,8 @@ impl Layout {
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.85.0")]
     #[inline]
     pub const fn extend(&self, next: Self) -> Result<(Self, usize), LayoutError> {
-        let new_align = Alignment::max(self.align, next.align);
-        let offset = self.size_rounded_up_to_custom_align(next.align);
+        let new_alignment = Alignment::max(self.align, next.align);
+        let offset = self.size_rounded_up_to_custom_alignment(next.align);
 
         // SAFETY: `offset` is at most `isize::MAX + 1` (such as from aligning
         // to `Alignment::MAX`) and `next.size` is at most `isize::MAX` (from the
@@ -435,7 +501,7 @@ impl Layout {
         // `isize::MAX + 1 + isize::MAX`, which is `usize::MAX`, and cannot overflow.
         let new_size = unsafe { unchecked_add(offset, next.size) };
 
-        if let Ok(layout) = Layout::from_size_alignment(new_size, new_align) {
+        if let Ok(layout) = Layout::from_size_alignment(new_size, new_alignment) {
             Ok((layout, offset))
         } else {
             Err(LayoutError)
@@ -496,7 +562,7 @@ impl Layout {
 
         #[inline]
         const fn inner(element_layout: Layout, n: usize) -> Result<Layout, LayoutError> {
-            let Layout { size: element_size, align } = element_layout;
+            let Layout { size: element_size, align: alignment } = element_layout;
 
             // We need to check two things about the size:
             //  - That the total size won't overflow a `usize`, and
@@ -504,7 +570,7 @@ impl Layout {
             // By using division we can check them both with a single threshold.
             // That'd usually be a bad idea, but thankfully here the element size
             // and alignment are constants, so the compiler will fold all of it.
-            if element_size != 0 && n > Layout::max_size_for_align(align) / element_size {
+            if element_size != 0 && n > Layout::max_size_for_alignment(alignment) / element_size {
                 return Err(LayoutError);
             }
 
@@ -517,16 +583,8 @@ impl Layout {
             // SAFETY: We just checked above that the `array_size` will not
             // exceed `isize::MAX` even when rounded up to the alignment.
             // And `Alignment` guarantees it's a power of two.
-            unsafe { Ok(Layout::from_size_align_unchecked(array_size, align.as_usize())) }
+            unsafe { Ok(Layout::from_size_alignment_unchecked(array_size, alignment)) }
         }
-    }
-
-    /// Perma-unstable access to `align` as `Alignment` type.
-    #[unstable(issue = "none", feature = "std_internals")]
-    #[doc(hidden)]
-    #[inline]
-    pub const fn alignment(&self) -> Alignment {
-        self.align
     }
 }
 

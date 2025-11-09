@@ -19,7 +19,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unsize};
-use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::mem::{self, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 #[cfg(not(no_global_oom_handling))]
@@ -4206,15 +4206,15 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
     // Because ArcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
+    // satisfy the requirements of Alignment::of_val_raw; this is an implementation
     // detail of the language that must not be relied upon outside of std.
-    unsafe { data_offset_align(Alignment::new_unchecked(align_of_val_raw(ptr))) }
+    unsafe { data_offset_alignment(Alignment::of_val_raw(ptr)) }
 }
 
 #[inline]
-fn data_offset_align(align: Alignment) -> usize {
+fn data_offset_alignment(alignment: Alignment) -> usize {
     let layout = Layout::new::<ArcInner<()>>();
-    layout.size() + layout.padding_needed_for(align)
+    layout.size() + layout.padding_needed_for(alignment)
 }
 
 /// A unique owning pointer to an [`ArcInner`] **that does not imply the contents are initialized,**
@@ -4258,7 +4258,7 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
 
     /// Returns the pointer to be written into to initialize the [`Arc`].
     fn data_ptr(&mut self) -> *mut T {
-        let offset = data_offset_align(self.layout_for_value.alignment());
+        let offset = data_offset_alignment(self.layout_for_value.alignment());
         unsafe { self.ptr.as_ptr().byte_add(offset) as *mut T }
     }
 
