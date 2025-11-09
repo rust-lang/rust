@@ -77,6 +77,36 @@ const RAW_MUT_CAST_C: SyncPtr<i32> = SyncPtr { x : &mut 42 as *mut _ as *const _
 const RAW_MUT_COERCE_C: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 //~^ ERROR mutable borrows of temporaries
 
+// Various cases of dangling references.
+fn dangling() {
+    const fn helper_int2ptr() -> Option<&'static mut i32> { unsafe {
+        // Undefined behaviour (integer as pointer), who doesn't love tests like this.
+        Some(&mut *(42 as *mut i32))
+    } }
+    const INT2PTR: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
+    static INT2PTR_STATIC: Option<&mut i32> = helper_int2ptr(); //~ ERROR encountered a dangling reference
+
+    const fn helper_dangling() -> Option<&'static mut i32> { unsafe {
+        // Undefined behaviour (dangling pointer), who doesn't love tests like this.
+        Some(&mut *(&mut 42 as *mut i32))
+    } }
+    const DANGLING: Option<&mut i32> = helper_dangling(); //~ ERROR dangling reference
+    static DANGLING_STATIC: Option<&mut i32> = helper_dangling(); //~ ERROR dangling reference
+
+}
+
+// Allowed, because there is an explicit static mut.
+static mut BUFFER: i32 = 42;
+const fn ptr_to_buffer() -> Option<&'static mut i32> { unsafe {
+    Some(&mut *std::ptr::addr_of_mut!(BUFFER))
+} }
+const MUT_TO_BUFFER: Option<&mut i32> = ptr_to_buffer();
+
+// These are fine! Just statics pointing to mutable statics, nothing fundamentally wrong with this.
+static MUT_STATIC: Option<&mut i32> = ptr_to_buffer();
+static mut MUT_ARRAY: &mut [u8] = &mut [42];
+static MUTEX: std::sync::Mutex<&mut [u8]> = std::sync::Mutex::new(unsafe { &mut *MUT_ARRAY });
+
 fn main() {
     println!("{}", unsafe { *A });
     unsafe { *B = 4 } // Bad news

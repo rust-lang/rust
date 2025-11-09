@@ -665,7 +665,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
-            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             NullFnPtr { .. } => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NonnullPtrMaybeNull { .. } => const_eval_validation_nonnull_ptr_out_of_range,
@@ -824,7 +823,6 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("maybe", maybe);
             }
             MutableRefToImmutable
-            | MutableRefInConst
             | NonnullPtrMaybeNull
             | NeverVal
             | UnsafeCellInImmutable
