@@ -104,7 +104,7 @@ pub struct ConstAllocator;
 unsafe impl Allocator for ConstAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         match layout.size() {
-            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling_ptr(), 0)),
             _ => unsafe {
                 let ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
                 Ok(NonNull::new_unchecked(ptr as *mut [u8; 0] as *mut [u8]))
