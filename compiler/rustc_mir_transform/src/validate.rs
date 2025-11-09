@@ -45,25 +45,27 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
         let def_id = body.source.def_id();
         let typing_env = body.typing_env(tcx);
-        let can_unwind = if body.phase <= MirPhase::Runtime(RuntimePhase::Initial) {
-            // In this case `AbortUnwindingCalls` haven't yet been executed.
-            true
-        } else if !tcx.def_kind(def_id).is_fn_like() {
-            true
-        } else {
-            let body_ty = tcx.type_of(def_id).skip_binder();
-            let body_abi = match body_ty.kind() {
-                ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
-                ty::Closure(..) => ExternAbi::RustCall,
-                ty::CoroutineClosure(..) => ExternAbi::RustCall,
-                ty::Coroutine(..) => ExternAbi::Rust,
-                // No need to do MIR validation on error bodies
-                ty::Error(_) => return,
-                _ => span_bug!(body.span, "unexpected body ty: {body_ty}"),
-            };
+        let can_unwind =
+            if body.phase <= MirPhase::Runtime(RuntimePhase::Initial) || !def_id.is_local() {
+                // In this case `AbortUnwindingCalls` haven't yet been executed.
+                // Or we are using MIR from another crate with different compilation flags.
+                true
+            } else if !tcx.def_kind(def_id).is_fn_like() {
+                true
+            } else {
+                let body_ty = tcx.type_of(def_id).skip_binder();
+                let body_abi = match body_ty.kind() {
+                    ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
+                    ty::Closure(..) => ExternAbi::RustCall,
+                    ty::CoroutineClosure(..) => ExternAbi::RustCall,
+                    ty::Coroutine(..) => ExternAbi::Rust,
+                    // No need to do MIR validation on error bodies
+                    ty::Error(_) => return,
+                    _ => span_bug!(body.span, "unexpected body ty: {body_ty}"),
+                };
 
-            ty::layout::fn_can_unwind(tcx, Some(def_id), body_abi)
-        };
+                ty::layout::fn_can_unwind(tcx, Some(def_id), body_abi)
+            };
 
         let mut cfg_checker = CfgChecker {
             when: &self.when,
@@ -389,7 +391,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
                     // generation concern, the code generation should be responsible for handling
                     // it.
-                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    if self.body.phase >= MirPhase::Monomorphic(MonomorphicPhase::Codegen)
                         && self.is_critical_call_edge(target, unwind)
                     {
                         self.fail(
@@ -1101,7 +1103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
                 AggregateKind::RawPtr(pointee_ty, mutability) => {
-                    if !matches!(self.body.phase, MirPhase::Runtime(_)) {
+                    if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
                         // It would probably be fine to support this in earlier phases, but at the
                         // time of writing it's only ever introduced from intrinsic lowering, so
                         // earlier things just `bug!` on it.
