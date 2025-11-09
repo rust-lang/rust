@@ -1,19 +1,12 @@
 //@ run-pass
 //@ only-x86_64
+#![feature(c_variadic, c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //
 // Clang and gcc reject defining functions with a non-default calling convention and a variable
 // argument list, so C programs that use multiple c-variadic calling conventions are unlikely
 // to come up. Here we validate that our codegen backends do in fact generate correct code.
-
-extern "sysv64" {
-    fn variadic_sysv64(_: u32, _: ...) -> u32;
-}
-
-extern "win64" {
-    fn variadic_win64(_: u32, _: ...) -> u32;
-}
 
 fn main() {
     unsafe {
@@ -37,9 +30,11 @@ fn main() {
 //     a + b + c
 // }
 // ```
-core::arch::global_asm!(
-    r#"
-{variadic_sysv64}:
+
+#[unsafe(naked)]
+unsafe extern "sysv64" fn variadic_sysv64(_: u32, _: ...) -> u32 {
+    core::arch::naked_asm!(
+        r#"
         sub     rsp, 88
         test    al, al
         je      .LBB0_7
@@ -93,8 +88,14 @@ core::arch::global_asm!(
         add     eax, dword ptr [rcx]
         add     rsp, 88
         ret
+    "#,
+    )
+}
 
-{variadic_win64}:
+#[unsafe(naked)]
+unsafe extern "win64" fn variadic_win64(_: u32, _: ...) -> u32 {
+    core::arch::naked_asm!(
+        r#"
         push    rax
         mov     qword ptr [rsp + 40], r9
         mov     qword ptr [rsp + 24], rdx
@@ -106,6 +107,5 @@ core::arch::global_asm!(
         pop     rcx
         ret
     "#,
-    variadic_win64 = sym variadic_win64,
-    variadic_sysv64 = sym variadic_sysv64,
-);
+    )
+}
