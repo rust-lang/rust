@@ -215,6 +215,11 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
+        ConstValue::RuntimeChecks(checks) => {
+            let int = checks.value(fx.tcx.sess);
+            let int = ScalarInt::try_from_uint(int, Size::from_bits(1)).unwrap();
+            return CValue::const_val(fx, layout, int);
+        }
         ConstValue::Indirect { alloc_id, offset } => CValue::by_ref(
             Pointer::new(pointer_for_allocation(fx, alloc_id))
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
