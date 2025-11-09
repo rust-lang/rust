@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `N` in this scope
+error[E0425]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:3:12
    |
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
@@ -9,13 +9,13 @@ help: you might be missing a type parameter
 LL | struct Foo<N>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |           +++
 
-error[E0412]: cannot find type `NotDefined` in this scope
+error[E0425]: cannot find type `NotDefined` in this scope
   --> $DIR/issue-50480.rs:3:15
    |
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |               ^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `N` in this scope
+error[E0425]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:3:12
    |
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
@@ -26,7 +26,7 @@ help: you might be missing a type parameter
 LL | struct Foo<N>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |           +++
 
-error[E0412]: cannot find type `NotDefined` in this scope
+error[E0425]: cannot find type `NotDefined` in this scope
   --> $DIR/issue-50480.rs:3:15
    |
 LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
@@ -37,7 +37,7 @@ help: you might be missing a type parameter
 LL | struct Foo<NotDefined>(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |           ++++++++++++
 
-error[E0412]: cannot find type `N` in this scope
+error[E0425]: cannot find type `N` in this scope
   --> $DIR/issue-50480.rs:14:18
    |
 LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
@@ -55,7 +55,7 @@ help: you might be missing a type parameter
 LL | struct Bar<T, N>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |             +++
 
-error[E0412]: cannot find type `NotDefined` in this scope
+error[E0425]: cannot find type `NotDefined` in this scope
   --> $DIR/issue-50480.rs:14:21
    |
 LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
@@ -128,5 +128,5 @@ LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
 
 error: aborting due to 13 previous errors
 
-Some errors have detailed explanations: E0204, E0277, E0412.
+Some errors have detailed explanations: E0204, E0277, E0425.
 For more information about an error, try `rustc --explain E0204`.

@@ -607,7 +607,7 @@ E0805: 0805,
 //  E0246, // invalid recursive type
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution
-//         // as E0412
+//         // as E0425
 //  E0249,
 //  E0257,
 //  E0258,

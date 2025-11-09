@@ -110,7 +110,7 @@ LL -     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
 LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:20:79
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
@@ -119,7 +119,7 @@ LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item
 LL | struct K {}
    | -------- similarly named struct `K` defined here
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:31:68
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
@@ -128,7 +128,7 @@ LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
 LL | struct K {}
    | -------- similarly named struct `K` defined here
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:42:76
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
@@ -137,7 +137,7 @@ LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = 
 LL | struct K {}
    | -------- similarly named struct `K` defined here
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:53:65
    |
 LL | struct K {}
@@ -146,7 +146,7 @@ LL | struct K {}
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
    |                                                                 ^ help: a struct with a similar name exists: `K`
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:64:62
    |
 LL | struct K {}
@@ -155,7 +155,7 @@ LL | struct K {}
 LL |     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
    |                                                              ^ help: a struct with a similar name exists: `K`
 
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/equality-bound.rs:75:51
    |
 LL | struct K {}
@@ -175,5 +175,5 @@ LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
 
 error: aborting due to 16 previous errors
 
-Some errors have detailed explanations: E0412, E0433.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

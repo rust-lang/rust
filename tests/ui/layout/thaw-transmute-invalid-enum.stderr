@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Subset` in this scope
+error[E0425]: cannot find type `Subset` in this scope
   --> $DIR/thaw-transmute-invalid-enum.rs:35:41
    |
 LL |     assert::is_transmutable::<Superset, Subset>();
@@ -75,5 +75,5 @@ LL |         a: std::mem::ManuallyDrop<Ox00>,
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0517, E0658, E0740.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0517, E0658, E0740.
+For more information about an error, try `rustc --explain E0425`.

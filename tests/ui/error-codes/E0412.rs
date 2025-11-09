@@ -1,4 +1,4 @@
-impl Something {} //~ ERROR E0412
+impl Something {} //~ ERROR E0425
 
 fn main() {
 }

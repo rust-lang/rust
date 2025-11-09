@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:35:13
    |
 LL |     type A = $FromOutside;
@@ -7,7 +7,7 @@ LL |     type A = $FromOutside;
 LL |     genmod!(FromOutside, Outer);
    |             ^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Outer` in this scope
+error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:35:26
    |
 LL |     struct $Outer;
@@ -16,7 +16,7 @@ LL |     struct $Outer;
 LL |     genmod!(FromOutside, Outer);
    |                          ^^^^^ not found in this scope
 
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:19:18
    |
 LL |         type A = FromOutside;
@@ -27,7 +27,7 @@ LL |     genmod_transparent!();
    |
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `Outer` in this scope
+error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:20:22
    |
 LL |         type Inner = Outer;
@@ -38,7 +38,7 @@ LL |     genmod_transparent!();
    |
    = note: this error originates in the macro `genmod_transparent` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `FromOutside` in this scope
+error[E0425]: cannot find type `FromOutside` in this scope
   --> $DIR/generate-mod.rs:28:18
    |
 LL |         type A = FromOutside;
@@ -49,7 +49,7 @@ LL |     genmod_legacy!();
    |
    = note: this error originates in the macro `genmod_legacy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0412]: cannot find type `Outer` in this scope
+error[E0425]: cannot find type `Outer` in this scope
   --> $DIR/generate-mod.rs:29:22
    |
 LL |         type Inner = Outer;
@@ -62,4 +62,4 @@ LL |     genmod_legacy!();
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

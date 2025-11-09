@@ -7,7 +7,7 @@ LL |     pub(crate) async fn new(
    = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
-error[E0412]: cannot find type `Duration` in this scope
+error[E0425]: cannot find type `Duration` in this scope
   --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:12:19
    |
 LL |         interval: Duration,
@@ -20,5 +20,5 @@ LL + use std::time::Duration;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0670.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0670.
+For more information about an error, try `rustc --explain E0425`.

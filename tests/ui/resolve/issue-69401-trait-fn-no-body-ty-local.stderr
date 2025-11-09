@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `b` in this scope
+error[E0425]: cannot find type `b` in this scope
   --> $DIR/issue-69401-trait-fn-no-body-ty-local.rs:4:53
    |
 LL |     fn fn_with_type_named_same_as_local_in_param(b: b);
@@ -6,4 +6,4 @@ LL |     fn fn_with_type_named_same_as_local_in_param(b: b);
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

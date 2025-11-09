@@ -9,7 +9,7 @@ help: indicate the anonymous lifetimes
 LL | impl<'a, 'b, T, U> MyTrait<'_, '_, T> for U {
    |                            +++++++
 
-error[E0412]: cannot find type `ConnImpl` in this scope
+error[E0425]: cannot find type `ConnImpl` in this scope
   --> $DIR/return-not-existing-pair.rs:5:48
    |
 LL |     async fn foo(&'a self, key: &'b T) -> (&'a ConnImpl, &'b T);
@@ -26,5 +26,5 @@ LL |     async fn foo(_: T) -> (&'a U, &'b T) {}
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0308, E0412, E0726.
+Some errors have detailed explanations: E0308, E0425, E0726.
 For more information about an error, try `rustc --explain E0308`.

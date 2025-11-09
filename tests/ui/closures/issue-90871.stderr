@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `n` in this scope
+error[E0425]: cannot find type `n` in this scope
   --> $DIR/issue-90871.rs:4:22
    |
 LL |     type_ascribe!(2, n([u8; || 1]))
@@ -23,5 +23,5 @@ LL |     type_ascribe!(2, n([u8; (|| 1)()]))
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0308, E0412.
+Some errors have detailed explanations: E0308, E0425.
 For more information about an error, try `rustc --explain E0308`.

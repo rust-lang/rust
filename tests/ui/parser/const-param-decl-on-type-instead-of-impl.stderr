@@ -30,7 +30,7 @@ LL |     path::path::Struct::<const N: usize>()
    |
    = help: you might be missing a crate named `path`
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/const-param-decl-on-type-instead-of-impl.rs:8:15
    |
 LL | fn banana(a: <T<const N: usize>>::BAR) {}
@@ -46,5 +46,5 @@ LL |     let _: () = 42;
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0308, E0412, E0433.
+Some errors have detailed explanations: E0308, E0425, E0433.
 For more information about an error, try `rustc --explain E0308`.

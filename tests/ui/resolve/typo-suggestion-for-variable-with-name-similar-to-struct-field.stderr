@@ -61,7 +61,7 @@ help: a constant with a similar name exists
 LL |         BARR;
    |            +
 
-error[E0412]: cannot find type `Baz` in this scope
+error[E0425]: cannot find type `Baz` in this scope
   --> $DIR/typo-suggestion-for-variable-with-name-similar-to-struct-field.rs:37:18
    |
 LL |         let foo: Baz = "".to_string();
@@ -101,5 +101,4 @@ LL +         ba();
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0425.
-For more information about an error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

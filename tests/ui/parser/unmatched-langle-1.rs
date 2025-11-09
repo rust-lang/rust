@@ -5,5 +5,5 @@ fn main() {
     foo::<<<<Ty<i32>>();
     //~^ ERROR: unmatched angle brackets
     //~| ERROR: cannot find function `foo` in this scope [E0425]
-    //~| ERROR: cannot find type `Ty` in this scope [E0412]
+    //~| ERROR: cannot find type `Ty` in this scope [E0425]
 }

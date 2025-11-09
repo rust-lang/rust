@@ -15,7 +15,7 @@ LL | fn bug<const N: Nat>(&self)
 LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
    |               ^ already used
 
-error[E0412]: cannot find type `Nat` in this scope
+error[E0425]: cannot find type `Nat` in this scope
   --> $DIR/ice-predicates-of-no-entry-found-for-key-119275.rs:6:17
    |
 LL | fn bug<const N: Nat>(&self)
@@ -51,5 +51,5 @@ LL |     for<const N: usize = 3, T = u32> [(); COT::BYTES]:,
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0403, E0412, E0433, E0658.
+Some errors have detailed explanations: E0403, E0425, E0433, E0658.
 For more information about an error, try `rustc --explain E0403`.
