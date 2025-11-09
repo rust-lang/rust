@@ -4,6 +4,7 @@
     "es-check": "^6.2.1",
     "eslint": "^8.57.1",
     "eslint-js": "github:eslint/js",
+    "rollup": "4.52.5",
     "typescript": "^5.8.3"
   }
 }
