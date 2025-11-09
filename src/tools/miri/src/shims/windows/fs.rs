@@ -24,8 +24,9 @@ impl FileDescription for DirHandle {
         interp_ok(self.path.metadata())
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -50,8 +51,9 @@ impl FileDescription for MetadataHandle {
         interp_ok(Ok(self.meta.clone()))
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

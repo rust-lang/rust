@@ -82,8 +82,9 @@ impl FileDescription for AnonSocket {
         }
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_addr: usize,
         _communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -96,7 +97,7 @@ impl FileDescription for AnonSocket {
                 }
             }
             // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.check_and_update_readiness(peer_fd)?;
+            ecx.epoll_send_fd_ready_events(peer_fd)?;
         }
         interp_ok(Ok(()))
     }
@@ -276,7 +277,7 @@ fn anonsocket_write<'tcx>(
         }
         // Notification should be provided for peer fd as it became readable.
         // The kernel does this even if the fd was already readable before, so we follow suit.
-        ecx.check_and_update_readiness(peer_fd)?;
+        ecx.epoll_send_fd_ready_events(peer_fd)?;
 
         return finish.call(ecx, Ok(write_size));
     }
@@ -369,7 +370,7 @@ fn anonsocket_read<'tcx>(
                 ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
             }
             // Notify epoll waiters.
-            ecx.check_and_update_readiness(peer_fd)?;
+            ecx.epoll_send_fd_ready_events(peer_fd)?;
         };
 
         return finish.call(ecx, Ok(read_size));
