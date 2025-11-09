@@ -745,14 +745,20 @@ fn shrink_file(
 ) -> Option<(Span, String, usize)> {
     let lo_byte = spans.iter().map(|s| s.lo()).min()?;
     let lo_loc = sm.lookup_char_pos(lo_byte);
-    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
 
     let hi_byte = spans.iter().map(|s| s.hi()).max()?;
     let hi_loc = sm.lookup_char_pos(hi_byte);
+
+    if lo_loc.file.name != hi_loc.file.name {
+        // this may happen when spans cross file boundaries due to macro expansion.
+        return None;
+    }
+
+    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
     let hi = hi_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
 
     let bounding_span = Span::with_root_ctxt(lo, hi);
-    let source = sm.span_to_snippet(bounding_span).unwrap_or_default();
+    let source = sm.span_to_snippet(bounding_span).ok()?;
     let offset_line = sm.doctest_offset_line(file_name, lo_loc.line);
 
     Some((bounding_span, source, offset_line))
