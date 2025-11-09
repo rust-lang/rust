@@ -65,8 +65,8 @@ use crate::sys_common::{AsInner, IntoInner};
 /// thread::sleep(Duration::from_millis(1000));
 /// ```
 ///
-/// [`thread::Builder::spawn`]: Builder::spawn
-/// [`thread::spawn`]: spawn
+/// [`thread::Builder::spawn`]: super::Builder::spawn
+/// [`thread::spawn`]: super::spawn
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(target_os = "teeos", must_use)]
 pub struct JoinHandle<T>(pub(super) JoinInner<'static, T>);
@@ -143,7 +143,7 @@ impl<T> JoinHandle<T> {
     /// type.
     ///
     /// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
-    /// [`thread::spawn`]: spawn
+    /// [`thread::spawn`]: super::spawn
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(self) -> Result<T> {
         self.0.join()

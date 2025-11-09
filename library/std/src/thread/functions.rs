@@ -517,7 +517,8 @@ impl Drop for PanicGuard {
 /// parked_thread.join().unwrap();
 /// ```
 ///
-/// [`unpark`]: Thread::unpark
+/// [`Thread`]: super::Thread
+/// [`unpark`]: super::Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
 /// [release sequence]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release_sequence
 #[stable(feature = "rust1", since = "1.0.0")]
