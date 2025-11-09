@@ -3065,7 +3065,7 @@ macro_rules! expect_methods_self_kind {
         $(
             #[track_caller]
             pub fn $name(&self) -> $ret_ty {
-                let $pat = &self.kind else { expect_failed(stringify!($ident), self) };
+                let $pat = &self.kind else { expect_failed(stringify!($name), self) };
                 $ret_val
             }
         )*
@@ -3077,7 +3077,7 @@ macro_rules! expect_methods_self {
         $(
             #[track_caller]
             pub fn $name(&self) -> $ret_ty {
-                let $pat = self else { expect_failed(stringify!($ident), self) };
+                let $pat = self else { expect_failed(stringify!($name), self) };
                 $ret_val
             }
         )*
@@ -4789,6 +4789,11 @@ impl<'hir> Node<'hir> {
             Node::ForeignItem(it) => match it.kind {
                 ForeignItemKind::Static(ty, ..) => Some(ty),
                 _ => None,
+            },
+            Node::GenericParam(param) => match param.kind {
+                GenericParamKind::Lifetime { .. } => None,
+                GenericParamKind::Type { default, .. } => default,
+                GenericParamKind::Const { ty, .. } => Some(ty),
             },
             _ => None,
         }

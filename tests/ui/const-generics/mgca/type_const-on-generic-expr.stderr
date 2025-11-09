@@ -1,0 +1,47 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic-expr.rs:5:45
+   |
+LL | const FREE1<T>: usize = std::mem::size_of::<T>();
+   |                                             ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic-expr.rs:8:38
+   |
+LL | const FREE2<const I: usize>: usize = I + 1;
+   |                                      ^ cannot perform const operation using `I`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `I`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic-expr.rs:24:46
+   |
+LL |     const N1<T>: usize = std::mem::size_of::<T>();
+   |                                              ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic-expr.rs:27:39
+   |
+LL |     const N2<const I: usize>: usize = I + 1;
+   |                                       ^ cannot perform const operation using `I`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `I`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic-expr.rs:30:27
+   |
+LL |     const N3: usize = 2 & X;
+   |                           ^ cannot perform const operation using `X`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `X`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 5 previous errors
+
