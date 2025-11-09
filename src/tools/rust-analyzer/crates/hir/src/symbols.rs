@@ -66,22 +66,28 @@ pub struct SymbolCollector<'a> {
     symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<Symbol>,
+    collect_pub_only: bool,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
 /// all symbols that should be indexed for the given module.
 impl<'a> SymbolCollector<'a> {
-    pub fn new(db: &'a dyn HirDatabase) -> Self {
+    pub fn new(db: &'a dyn HirDatabase, collect_pub_only: bool) -> Self {
         SymbolCollector {
             db,
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
+            collect_pub_only,
         }
     }
 
-    pub fn new_module(db: &dyn HirDatabase, module: Module) -> Box<[FileSymbol]> {
-        let mut symbol_collector = SymbolCollector::new(db);
+    pub fn new_module(
+        db: &dyn HirDatabase,
+        module: Module,
+        collect_pub_only: bool,
+    ) -> Box<[FileSymbol]> {
+        let mut symbol_collector = SymbolCollector::new(db, collect_pub_only);
         symbol_collector.collect(module);
         symbol_collector.finish()
     }
@@ -113,7 +119,11 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
-        let push_decl = |this: &mut Self, def, name| {
+        let collect_pub_only = self.collect_pub_only;
+        let push_decl = |this: &mut Self, def: ModuleDefId, name, vis| {
+            if collect_pub_only && vis != Visibility::Public {
+                return;
+            }
             match def {
                 ModuleDefId::ModuleId(id) => this.push_module(id, name),
                 ModuleDefId::FunctionId(id) => {
@@ -175,6 +185,9 @@ impl<'a> SymbolCollector<'a> {
         };
 
         let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId, vis| {
+            if collect_pub_only && vis != Visibility::Public {
+                return;
+            }
             let source = import_child_source_cache
                 .entry(i.use_)
                 .or_insert_with(|| i.use_.child_source(this.db));
@@ -209,6 +222,9 @@ impl<'a> SymbolCollector<'a> {
 
         let push_extern_crate =
             |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId, vis| {
+                if collect_pub_only && vis != Visibility::Public {
+                    return;
+                }
                 let loc = i.lookup(this.db);
                 let source = loc.source(this.db);
                 let rename = source.value.rename().and_then(|rename| rename.name());
@@ -258,7 +274,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def, name)
+            push_decl(self, def, name, vis)
         }
 
         for (name, Item { def, vis, import }) in scope.macros() {
@@ -271,7 +287,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def.into(), name)
+            push_decl(self, ModuleDefId::MacroId(def), name, vis)
         }
 
         for (name, Item { def, vis, import }) in scope.values() {
@@ -283,7 +299,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def, name)
+            push_decl(self, def, name, vis)
         }
 
         for const_id in scope.unnamed_consts() {
@@ -304,6 +320,9 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>, name: Option<Name>) {
+        if self.collect_pub_only {
+            return;
+        }
         let body_id = body_id.into();
         let body = self.db.body(body_id);
 
@@ -330,6 +349,11 @@ impl<'a> SymbolCollector<'a> {
         );
         self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
+                if s.collect_pub_only && s.db.assoc_visibility(assoc_item_id) != Visibility::Public
+                {
+                    continue;
+                }
+
                 s.push_assoc_item(assoc_item_id, name, None)
             }
         })

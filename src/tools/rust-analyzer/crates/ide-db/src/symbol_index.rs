@@ -206,13 +206,13 @@ impl SymbolIndex {
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
             hir::attach_db(db, || {
-                let mut symbol_collector = SymbolCollector::new(db);
+                let mut symbol_collector = SymbolCollector::new(db, true);
 
                 db.source_root_crates(source_root_id.id(db))
                     .iter()
                     .flat_map(|&krate| Crate::from(krate).modules(db))
                     // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
-                    // as the index for a library is not going to really ever change, and we do not want to store each
+                    // as the index for a library is not going to really ever change, and we do not want to store
                     // the module or crate indices for those in salsa unless we need to.
                     .for_each(|module| symbol_collector.collect(module));
 
@@ -237,7 +237,12 @@ impl SymbolIndex {
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
             hir::attach_db(db, || {
-                SymbolIndex::new(SymbolCollector::new_module(db, module.id(db).into()))
+                let module: Module = module.id(db).into();
+                SymbolIndex::new(SymbolCollector::new_module(
+                    db,
+                    module,
+                    !module.krate().origin(db).is_local(),
+                ))
             })
         }
 
@@ -508,7 +513,7 @@ pub(self) use crate::Trait as IsThisJustATrait;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id, false);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
@@ -535,7 +540,7 @@ struct Duplicate;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id, false);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
