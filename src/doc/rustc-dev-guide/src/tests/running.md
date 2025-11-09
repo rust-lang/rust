@@ -8,7 +8,7 @@ subsection after on how to run a subset of tests.
 <div class="warning">
 
 Running plain `./x test` will build the stage 1 compiler and then run the whole
-test suite. This not only include `tests/`, but also `library/`, `compiler/`,
+test suite. This not only includes `tests/`, but also `library/`, `compiler/`,
 `src/tools/` package tests and more.
 
 You usually only want to run a subset of the test suites (or even a smaller set
