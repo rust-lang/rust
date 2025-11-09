@@ -199,14 +199,13 @@ pub fn eval_config_entry(
     sess: &Session,
     cfg_entry: &CfgEntry,
     id: NodeId,
-    features: Option<&Features>,
     emit_lints: ShouldEmit,
 ) -> EvalConfigResult {
     match cfg_entry {
         CfgEntry::All(subs, ..) => {
             let mut all = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, features, emit_lints);
+                let res = eval_config_entry(sess, sub, id, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if !res.as_bool() {
                     all.get_or_insert(res);
@@ -217,7 +216,7 @@ pub fn eval_config_entry(
         CfgEntry::Any(subs, span) => {
             let mut any = None;
             for sub in subs {
-                let res = eval_config_entry(sess, sub, id, features, emit_lints);
+                let res = eval_config_entry(sess, sub, id, emit_lints);
                 // We cannot short-circuit because `eval_config_entry` emits some lints
                 if res.as_bool() {
                     any.get_or_insert(res);
@@ -229,7 +228,7 @@ pub fn eval_config_entry(
             })
         }
         CfgEntry::Not(sub, span) => {
-            if eval_config_entry(sess, sub, id, features, emit_lints).as_bool() {
+            if eval_config_entry(sess, sub, id, emit_lints).as_bool() {
                 EvalConfigResult::False { reason: cfg_entry.clone(), reason_span: *span }
             } else {
                 EvalConfigResult::True

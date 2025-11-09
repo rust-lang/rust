@@ -189,7 +189,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }

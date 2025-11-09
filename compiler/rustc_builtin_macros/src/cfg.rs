@@ -30,7 +30,6 @@ pub(crate) fn expand_cfg(
                 cx.sess,
                 &cfg,
                 cx.current_expansion.lint_node_id,
-                Some(cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints,
             )
             .as_bool();
