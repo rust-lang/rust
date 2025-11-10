@@ -56,10 +56,10 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     generics::{Generics, generics, trait_self_param_idx},
     next_solver::{
-        AliasTy, Binder, BoundExistentialPredicates, Clause, Clauses, Const, DbInterner,
-        EarlyBinder, EarlyParamRegion, ErrorGuaranteed, GenericArg, GenericArgs, ParamConst,
-        ParamEnv, PolyFnSig, Predicate, Region, SolverDefId, TraitPredicate, TraitRef, Ty, Tys,
-        UnevaluatedConst, abi::Safety,
+        AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const,
+        DbInterner, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, GenericArg, GenericArgs,
+        ParamConst, ParamEnv, PolyFnSig, Predicate, Region, SolverDefId, TraitPredicate, TraitRef,
+        Ty, Tys, UnevaluatedConst, abi::Safety,
     },
 };
 
@@ -1651,6 +1651,8 @@ pub(crate) fn trait_environment_query<'db>(
                 clauses.push(pred);
             }
         }
+
+        push_const_arg_has_type_predicates(db, &mut clauses, maybe_parent_generics);
     }
 
     if let Some(trait_id) = def.assoc_trait_container(db) {
@@ -1788,6 +1790,8 @@ where
                 ));
             }
 
+            push_const_arg_has_type_predicates(db, &mut predicates, maybe_parent_generics);
+
             if let Some(sized_trait) = sized_trait {
                 let mut add_sized_clause = |param_idx, param_id, param_data| {
                     let (
@@ -1890,6 +1894,35 @@ where
             *set_is_trait = true;
             predicates.push(TraitRef::identity(interner, def_id.into()).upcast(interner));
         }
+    }
+}
+
+fn push_const_arg_has_type_predicates<'db>(
+    db: &'db dyn HirDatabase,
+    predicates: &mut Vec<Clause<'db>>,
+    generics: &Generics,
+) {
+    let interner = DbInterner::new_with(db, None, None);
+    let const_params_offset = generics.len_parent() + generics.len_lifetimes_self();
+    for (param_index, (param_idx, param_data)) in generics.iter_self_type_or_consts().enumerate() {
+        if !matches!(param_data, TypeOrConstParamData::ConstParamData(_)) {
+            continue;
+        }
+
+        let param_id = ConstParamId::from_unchecked(TypeOrConstParamId {
+            parent: generics.def(),
+            local_id: param_idx,
+        });
+        predicates.push(Clause(
+            ClauseKind::ConstArgHasType(
+                Const::new_param(
+                    interner,
+                    ParamConst { id: param_id, index: (param_index + const_params_offset) as u32 },
+                ),
+                db.const_param_ty_ns(param_id),
+            )
+            .upcast(interner),
+        ));
     }
 }
 
