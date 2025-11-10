@@ -1,10 +1,26 @@
 //@ run-pass
+// We disable tail merging here because it can't preserve debuginfo and thus
+// potentially breaks the backtraces. Also, subtle changes can decide whether
+// tail merging succeeds, so the test might work today but fail tomorrow due to a
+// seemingly completely unrelated change.
+// Unfortunately, LLVM has no "disable" option for this, so we have to set
+// "enable" to 0 instead.
+
+//@ compile-flags:-g -Copt-level=0 -Cllvm-args=-enable-tail-merge=0
+//@ compile-flags:-Cforce-frame-pointers=yes
+//@ compile-flags:-Cstrip=none
 //@ ignore-android FIXME #17520
 //@ needs-subprocess
-//@ ignore-openbsd no support for libbacktrace without filename
-//@ ignore-fuchsia Backtraces not symbolized
-//@ compile-flags:-g
-//@ compile-flags:-Cstrip=none
+//@ ignore-fuchsia Backtrace not symbolized, trace different line alignment
+//@ ignore-ios needs the `.dSYM` files to be moved to the device
+//@ ignore-tvos needs the `.dSYM` files to be moved to the device
+//@ ignore-watchos needs the `.dSYM` files to be moved to the device
+//@ ignore-visionos needs the `.dSYM` files to be moved to the device
+
+// FIXME(#117097): backtrace (possibly unwinding mechanism) seems to be different on at least
+// `i686-mingw` (32-bit windows-gnu)? cc #128911.
+//@ ignore-windows-gnu
+//@ ignore-backends: gcc
 
 use std::alloc::{Layout, handle_alloc_error};
 use std::process::Command;
