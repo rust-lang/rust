@@ -481,7 +481,7 @@ impl CompletionItem {
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
     imports_to_add: SmallVec<[LocatedImport; 1]>,
