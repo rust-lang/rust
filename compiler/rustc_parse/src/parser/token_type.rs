@@ -142,6 +142,7 @@ pub enum TokenType {
     SymNull,
     SymOptions,
     SymOut,
+    SymPin,
     SymPreservesFlags,
     SymPure,
     SymReadonly,
@@ -568,6 +569,7 @@ macro_rules! exp {
     (Null)           => { exp!(@sym, null,            SymNull) };
     (Options)        => { exp!(@sym, options,         SymOptions) };
     (Out)            => { exp!(@sym, out,             SymOut) };
+    (Pin)            => { exp!(@sym, pin,             SymPin) };
     (PreservesFlags) => { exp!(@sym, preserves_flags, SymPreservesFlags) };
     (Pure)           => { exp!(@sym, pure,            SymPure) };
     (Readonly)       => { exp!(@sym, readonly,        SymReadonly) };

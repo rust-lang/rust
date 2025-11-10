@@ -593,7 +593,7 @@ fn resolve_local<'tcx>(
                 is_binding_pat(subpat)
             }
 
-            PatKind::Ref(_, _)
+            PatKind::Ref(_, _, _)
             | PatKind::Binding(hir::BindingMode(hir::ByRef::No, _), ..)
             | PatKind::Missing
             | PatKind::Wild

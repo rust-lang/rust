@@ -2301,10 +2301,10 @@ impl<'a> Parser<'a> {
                         pat.span.shrink_to_hi(),
                         pat.span.shrink_to_lo(),
                     ),
-                    PatKind::Ref(ref inner_pat, _)
+                    PatKind::Ref(ref inner_pat, _, _)
                     // Fix suggestions for multi-reference `self` parameters (e.g. `&&&self`)
                     // cc: https://github.com/rust-lang/rust/pull/146305
-                        if let PatKind::Ref(_, _) = &inner_pat.kind
+                        if let PatKind::Ref(_, _, _) = &inner_pat.kind
                             && let PatKind::Path(_, path) = &pat.peel_refs().kind
                             && let [a, ..] = path.segments.as_slice()
                             && a.ident.name == kw::SelfLower =>
@@ -2312,7 +2312,7 @@ impl<'a> Parser<'a> {
                         let mut inner = inner_pat;
                         let mut span_vec = vec![pat.span];
 
-                        while let PatKind::Ref(ref inner_type, _) = inner.kind {
+                        while let PatKind::Ref(ref inner_type, _, _) = inner.kind {
                             inner = inner_type;
                             span_vec.push(inner.span.shrink_to_lo());
                         }
@@ -2334,10 +2334,10 @@ impl<'a> Parser<'a> {
                         return None;
                     }
                     // Also catches `fn foo(&a)`.
-                    PatKind::Ref(ref inner_pat, mutab)
+                    PatKind::Ref(ref inner_pat, pinned, mutab)
                         if let PatKind::Ident(_, ident, _) = inner_pat.clone().kind =>
                     {
-                        let mutab = mutab.prefix_str();
+                        let mutab = pinned.prefix_str(mutab);
                         (
                             ident,
                             "self: ",

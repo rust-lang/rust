@@ -2610,7 +2610,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let mut current_node = parent_node;
 
                                 while let Node::Pat(parent_pat) = current_node {
-                                    if let hir::PatKind::Ref(_, mutability) = parent_pat.kind {
+                                    if let hir::PatKind::Ref(_, _, mutability) = parent_pat.kind {
                                         ref_muts.push(mutability);
                                         current_node = self.tcx.parent_hir_node(parent_pat.hir_id);
                                     } else {
