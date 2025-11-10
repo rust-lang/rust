@@ -175,18 +175,6 @@ impl RegionTracker {
     pub(crate) fn max_placeholder_universe_reached(self) -> UniverseIndex {
         self.reachable_placeholders.map(|p| p.max_universe.u).unwrap_or(UniverseIndex::ROOT)
     }
-
-    /// Determine if we can name all the placeholders in `other`.
-    pub(crate) fn can_name_all_placeholders(&self, other: Self) -> bool {
-        self.min_max_nameable_universe.can_name(other.max_placeholder_universe_reached())
-    }
-
-    /// If this SCC reaches at least one placeholder, return
-    /// its region vid. If there's more than one, return the one
-    /// with the smallest vid.
-    pub(crate) fn reached_placeholder(&self) -> Option<RegionVid> {
-        self.reachable_placeholders.map(|p| p.min_placeholder)
-    }
 }
 
 impl scc::Annotation for RegionTracker {
@@ -405,7 +393,7 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
         }
 
         if annotation.min_max_nameable_universe.can_name(max_universe.u) {
-            debug!("All placeholders nameable from {scc:?}!");
+            trace!("All placeholders nameable from {scc:?}!");
             continue;
         }
 
