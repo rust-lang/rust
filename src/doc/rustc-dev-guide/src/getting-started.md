@@ -59,8 +59,7 @@ But also, feel free to ask questions even if you can't figure out who to ping.
 
 Another way to find experts for a given part of the compiler is to see who has made recent commits.
 For example, to find people who have recently worked on name resolution since the 1.68.2 release,
-you could run `git shortlog -n 1.68.2..
-compiler/rustc_resolve/`.
+you could run `git shortlog -n 1.68.2.. compiler/rustc_resolve/`.
 Ignore any commits starting with
 "Rollup merge" or commits by `@bors` (see [CI contribution procedures](./contributing.md#ci) for
 more information about these commits).

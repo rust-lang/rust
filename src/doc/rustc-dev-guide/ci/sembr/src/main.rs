@@ -27,7 +27,8 @@ static REGEX_IGNORE: LazyLock<Regex> =
 static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
-static REGEX_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|[^r]\?|;|!)\s+").unwrap());
+static REGEX_SPLIT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^\.]\.|[^r]\?|;|!)\s+").unwrap());
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -183,6 +184,7 @@ ignore E.g. too
 some code. block
 ```
 sentence with *italics* should not be ignored. truly.
+git log main.. compiler
 ";
     let expected = "\
 # some. heading
@@ -203,6 +205,7 @@ some code. block
 ```
 sentence with *italics* should not be ignored.
 truly.
+git log main.. compiler
 ";
     assert_eq!(expected, comply(original));
 }
