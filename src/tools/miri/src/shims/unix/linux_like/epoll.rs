@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, btree_map};
 use std::io;
 use std::time::Duration;
 
@@ -55,8 +55,8 @@ pub struct EpollEventInstance {
 }
 
 impl EpollEventInstance {
-    pub fn new(events: u32, data: u64) -> EpollEventInstance {
-        EpollEventInstance { events, data, clock: Default::default() }
+    pub fn new(data: u64) -> EpollEventInstance {
+        EpollEventInstance { events: 0, data, clock: Default::default() }
     }
 }
 
@@ -69,10 +69,12 @@ impl EpollEventInstance {
 /// see the man page:
 ///
 /// <https://man7.org/linux/man-pages/man2/epoll_ctl.2.html>
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct EpollEventInterest {
     /// The events bitmask retrieved from `epoll_event`.
     events: u32,
+    /// The way the events looked last time we checked (for edge trigger / ET detection).
+    prev_events: u32,
     /// The data retrieved from `epoll_event`.
     /// libc's data field in epoll_event can store integer or pointer,
     /// but only u64 is supported for now.
@@ -345,23 +347,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Add new interest to list.
             let epoll_key = (id, fd);
-            let new_interest = EpollEventInterest { events, data };
-            if op == epoll_ctl_add {
+            let new_interest = if op == epoll_ctl_add {
                 if interest_list.range(range_for_id(id)).next().is_none() {
                     // This is the first time this FD got added to this epoll.
                     // Remember that in the global list so we get notified about FD events.
                     this.machine.epoll_interests.insert(id, FileDescriptionRef::downgrade(&epfd));
                 }
-                if interest_list.insert(epoll_key, new_interest).is_some() {
-                    // We already had interest in this.
-                    return this.set_last_error_and_return_i32(LibcError("EEXIST"));
+                match interest_list.entry(epoll_key) {
+                    btree_map::Entry::Occupied(_) => {
+                        // We already had interest in this.
+                        return this.set_last_error_and_return_i32(LibcError("EEXIST"));
+                    }
+                    btree_map::Entry::Vacant(e) =>
+                        e.insert(EpollEventInterest { events, data, prev_events: 0 }),
                 }
             } else {
                 // Modify the existing interest.
                 let Some(interest) = interest_list.get_mut(&epoll_key) else {
                     return this.set_last_error_and_return_i32(LibcError("ENOENT"));
                 };
-                *interest = new_interest;
+                interest.events = events;
+                // FIXME what about the data?
+                interest
             };
 
             // Deliver events for the new interest.
@@ -369,7 +376,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this,
                 &epfd,
                 fd_ref.as_unix(this).get_epoll_ready_events()?.get_event_bitmask(this),
-                std::iter::once((&epoll_key, &new_interest)),
+                /* force_edge */ false,
+                std::iter::once((&epoll_key, new_interest)),
             )?;
 
             interp_ok(Scalar::from_i32(0))
@@ -387,7 +395,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.machine.epoll_interests.remove(id, epfd.addr());
             }
 
-            // Remove related epoll_interest from ready list.
+            // Remove related event instance from ready list.
             epfd.ready_list.borrow_mut().remove(&epoll_key);
 
             interp_ok(Scalar::from_i32(0))
@@ -519,13 +527,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// For a specific file description, get its ready events and send it to everyone who registered
-    /// interest in this FD. This function should be called whenever an event causes more bytes or
-    /// an EOF to become newly readable from an FD, and whenever more bytes can be written to an FD
-    /// or no more future writes are possible.
+    /// interest in this FD. This function should be called whenever the result of
+    /// `get_epoll_ready_events` would change.
     ///
-    /// This *will* report an event if anyone is subscribed to it, without any further filtering, so
-    /// do not call this function when an FD didn't have anything happen to it!
-    fn epoll_send_fd_ready_events(&mut self, fd_ref: DynFileDescriptionRef) -> InterpResult<'tcx> {
+    /// If `force_edge` is set, edge-triggered interests will be triggered even if the set of
+    /// ready events did not change. This can lead to spurious wakeups. Use with caution!
+    fn epoll_send_fd_ready_events(
+        &mut self,
+        fd_ref: DynFileDescriptionRef,
+        force_edge: bool,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = fd_ref.id();
         // Figure out who is interested in this. We need to clone this list since we can't prove
@@ -546,7 +557,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this,
                 &epoll,
                 event_bitmask,
-                epoll.interest_list.borrow().range(range_for_id(id)),
+                force_edge,
+                epoll.interest_list.borrow_mut().range_mut(range_for_id(id)),
             )?;
         }
 
@@ -560,7 +572,8 @@ fn send_ready_events_to_interests<'tcx, 'a>(
     ecx: &mut MiriInterpCx<'tcx>,
     epoll: &Epoll,
     event_bitmask: u32,
-    interests: impl Iterator<Item = (&'a EpollEventKey, &'a EpollEventInterest)>,
+    force_edge: bool,
+    interests: impl Iterator<Item = (&'a EpollEventKey, &'a mut EpollEventInterest)>,
 ) -> InterpResult<'tcx> {
     let mut wakeup = false;
     for (&event_key, interest) in interests {
@@ -568,20 +581,30 @@ fn send_ready_events_to_interests<'tcx, 'a>(
         // This checks if any of the events specified in epoll_event_interest.events
         // match those in ready_events.
         let flags = interest.events & event_bitmask;
+        let prev = std::mem::replace(&mut interest.prev_events, flags);
         if flags == 0 {
             // Make sure we *remove* any previous item from the ready list, since this
             // is not ready any more.
             ready_list.remove(&event_key);
             continue;
         }
-        // Geenrate a new event instance, with the flags that this one is interested in.
-        let mut new_instance = EpollEventInstance::new(flags, interest.data);
+        // Generate new instance, or update existing one.
+        let instance = match ready_list.entry(event_key) {
+            btree_map::Entry::Occupied(e) => e.into_mut(),
+            btree_map::Entry::Vacant(e) => {
+                if !force_edge && flags == prev & flags {
+                    // Every bit in `flags` was already set in `prev`, and there's currently
+                    // no entry in the ready list for this. So there is nothing new and no
+                    // prior entry to update; just skip it.
+                    continue;
+                }
+                e.insert(EpollEventInstance::new(interest.data))
+            }
+        };
+        instance.events = flags;
         ecx.release_clock(|clock| {
-            new_instance.clock.clone_from(clock);
+            instance.clock.join(clock);
         })?;
-        // Add event to ready list for this epoll instance.
-        // Tests confirm that we have to *overwrite* the old instance for the same key.
-        ready_list.insert(event_key, new_instance);
         wakeup = true;
     }
     if wakeup {
