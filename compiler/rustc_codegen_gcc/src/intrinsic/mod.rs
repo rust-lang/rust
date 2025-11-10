@@ -615,7 +615,47 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         args: &[OperandRef<'tcx, Self::Value>],
         is_cleanup: bool,
     ) -> Self::Value {
-        let fn_ptr = self.get_fn_addr(instance);
+        let func = if let Some(&func) = self.intrinsic_instances.borrow().get(&instance) {
+            func
+        } else {
+            let sym = self.tcx.symbol_name(instance).name;
+
+            let func = if let Some(func) = self.intrinsics.borrow().get(sym) {
+                *func
+            } else {
+                self.linkage.set(FunctionType::Extern);
+                let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+                let fn_ty = fn_abi.gcc_type(self);
+
+                let func = match sym {
+                    "llvm.fma.f16" => {
+                        // fma is not a target builtin, but a normal builtin, so we handle it differently
+                        // here.
+                        self.context.get_builtin_function("fma")
+                    }
+                    _ => llvm::intrinsic(sym, self),
+                };
+
+                self.intrinsics.borrow_mut().insert(sym.to_string(), func);
+
+                self.on_stack_function_params
+                    .borrow_mut()
+                    .insert(func, fn_ty.on_stack_param_indices);
+                #[cfg(feature = "master")]
+                for fn_attr in fn_ty.fn_attributes {
+                    func.add_attribute(fn_attr);
+                }
+
+                crate::attributes::from_fn_attrs(self, func, instance);
+
+                func
+            };
+
+            self.intrinsic_instances.borrow_mut().insert(instance, func);
+
+            func
+        };
+        let fn_ptr = func.get_address(None);
         let fn_ty = fn_ptr.get_type();
 
         let mut llargs = vec![];
