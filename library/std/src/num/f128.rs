@@ -37,6 +37,7 @@ impl f128 {
     ///
     /// assert_eq!(f128::powf(1.0, f128::NAN), 1.0);
     /// assert_eq!(f128::powf(f128::NAN, 0.0), 1.0);
+    /// assert_eq!(f128::powf(0.0, 0.0), 1.0);
     /// # }
     /// ```
     #[inline]

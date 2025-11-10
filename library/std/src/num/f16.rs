@@ -37,6 +37,7 @@ impl f16 {
     ///
     /// assert_eq!(f16::powf(1.0, f16::NAN), 1.0);
     /// assert_eq!(f16::powf(f16::NAN, 0.0), 1.0);
+    /// assert_eq!(f16::powf(0.0, 0.0), 1.0);
     /// # }
     /// ```
     #[inline]
