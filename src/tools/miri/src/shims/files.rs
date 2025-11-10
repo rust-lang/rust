@@ -48,12 +48,6 @@ impl<T: ?Sized> FileDescriptionRef<T> {
     pub fn id(&self) -> FdId {
         self.0.id
     }
-
-    /// Returns the raw address of this file description. Useful for equality comparisons.
-    /// Use `id` instead if this can affect user-visible behavior!
-    pub fn addr(&self) -> usize {
-        Rc::as_ptr(&self.0).addr()
-    }
 }
 
 /// Holds a weak reference to the actual file description.
@@ -75,11 +69,6 @@ impl<T: ?Sized> FileDescriptionRef<T> {
 impl<T: ?Sized> WeakFileDescriptionRef<T> {
     pub fn upgrade(&self) -> Option<FileDescriptionRef<T>> {
         self.0.upgrade().map(FileDescriptionRef)
-    }
-
-    /// Returns the raw address of this file description. Useful for equality comparisons.
-    pub fn addr(&self) -> usize {
-        self.0.as_ptr().addr()
     }
 }
 
@@ -116,13 +105,12 @@ impl<T: FileDescription + 'static> FileDescriptionExt for T {
         communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
-        let addr = self.addr();
         match Rc::into_inner(self.0) {
             Some(fd) => {
                 // There might have been epolls interested in this FD. Remove that.
                 ecx.machine.epoll_interests.remove_epolls(fd.id);
 
-                fd.inner.destroy(addr, communicate_allowed, ecx)
+                fd.inner.destroy(fd.id, communicate_allowed, ecx)
             }
             None => {
                 // Not the last reference.
@@ -200,7 +188,7 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     /// `self_addr` is the address that this file description used to be stored at.
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>>
@@ -379,7 +367,7 @@ impl FileDescription for FileHandle {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

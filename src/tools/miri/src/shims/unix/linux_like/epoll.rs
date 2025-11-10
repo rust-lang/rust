@@ -142,7 +142,7 @@ impl FileDescription for Epoll {
 
     fn destroy<'tcx>(
         mut self,
-        self_addr: usize,
+        self_id: FdId,
         _communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -150,7 +150,7 @@ impl FileDescription for Epoll {
         let mut ids = self.interest_list.get_mut().keys().map(|(id, _num)| *id).collect::<Vec<_>>();
         ids.dedup(); // they come out of the map sorted
         for id in ids {
-            ecx.machine.epoll_interests.remove(id, self_addr);
+            ecx.machine.epoll_interests.remove(id, self_id);
         }
         interp_ok(Ok(()))
     }
@@ -164,37 +164,38 @@ impl UnixFileDescription for Epoll {}
 
 /// The table of all EpollEventInterest.
 /// This tracks, for each file description, which epoll instances have an interest in events
-/// for this file description. The `Vec` is sorted by `addr`!
-pub struct EpollInterestTable(BTreeMap<FdId, Vec<WeakFileDescriptionRef<Epoll>>>);
+/// for this file description. The `FdId` is the ID of the epoll instance, so that we can recognize
+/// it later when it is slated for removal. The vector is sorted by that ID.
+pub struct EpollInterestTable(BTreeMap<FdId, Vec<(FdId, WeakFileDescriptionRef<Epoll>)>>);
 
 impl EpollInterestTable {
     pub(crate) fn new() -> Self {
         EpollInterestTable(BTreeMap::new())
     }
 
-    fn insert(&mut self, id: FdId, epoll: WeakFileDescriptionRef<Epoll>) {
+    fn insert(&mut self, id: FdId, epoll: &FileDescriptionRef<Epoll>) {
         let epolls = self.0.entry(id).or_default();
         let idx = epolls
-            .binary_search_by_key(&epoll.addr(), |e| e.addr())
+            .binary_search_by_key(&epoll.id(), |&(id, _)| id)
             .expect_err("trying to add an epoll that's already in the list");
-        epolls.insert(idx, epoll);
+        epolls.insert(idx, (epoll.id(), FileDescriptionRef::downgrade(epoll)));
     }
 
-    fn remove(&mut self, id: FdId, epoll_addr: usize) {
+    fn remove(&mut self, id: FdId, epoll_id: FdId) {
         let epolls = self.0.entry(id).or_default();
         let idx = epolls
-            .binary_search_by_key(&epoll_addr, |e| e.addr())
+            .binary_search_by_key(&epoll_id, |&(id, _)| id)
             .expect("trying to remove an epoll that's not in the list");
         epolls.remove(idx);
     }
 
-    fn get_epolls(&self, id: FdId) -> Option<&Vec<WeakFileDescriptionRef<Epoll>>> {
-        self.0.get(&id)
+    fn get_epolls(&self, id: FdId) -> Option<impl Iterator<Item = &WeakFileDescriptionRef<Epoll>>> {
+        self.0.get(&id).map(|epolls| epolls.iter().map(|(_id, epoll)| epoll))
     }
 
     pub fn remove_epolls(&mut self, id: FdId) {
         if let Some(epolls) = self.0.remove(&id) {
-            for epoll in epolls.iter().filter_map(|e| e.upgrade()) {
+            for epoll in epolls.iter().filter_map(|(_id, epoll)| epoll.upgrade()) {
                 // This is a still-live epoll with interest in this FD. Remove all
                 // relevent interests.
                 epoll
@@ -348,7 +349,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if interest_list.range(range_for_id(id)).next().is_none() {
                     // This is the first time this FD got added to this epoll.
                     // Remember that in the global list so we get notified about FD events.
-                    this.machine.epoll_interests.insert(id, FileDescriptionRef::downgrade(&epfd));
+                    this.machine.epoll_interests.insert(id, &epfd);
                 }
                 match interest_list.entry(epoll_key) {
                     btree_map::Entry::Occupied(_) => {
@@ -388,7 +389,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If this was the last interest in this FD, remove us from the global list
             // of who is interested in this FD.
             if interest_list.range(range_for_id(id)).next().is_none() {
-                this.machine.epoll_interests.remove(id, epfd.addr());
+                this.machine.epoll_interests.remove(id, epfd.id());
             }
 
             // Remove related event instance from ready list.
@@ -541,7 +542,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         };
         let epolls = epolls
-            .iter()
             .map(|weak| {
                 weak.upgrade()
                     .expect("someone forgot to remove the garbage from `machine.epoll_interests`")

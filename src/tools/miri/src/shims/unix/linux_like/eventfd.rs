@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::*;
@@ -39,7 +39,7 @@ impl FileDescription for EventFd {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {

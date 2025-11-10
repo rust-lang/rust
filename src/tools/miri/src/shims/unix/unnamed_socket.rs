@@ -9,7 +9,7 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{
-    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+    EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
@@ -84,7 +84,7 @@ impl FileDescription for AnonSocket {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
