@@ -9,7 +9,7 @@ use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
@@ -1040,6 +1040,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
             && name.as_str().starts_with("llvm.")
         {
+            assert!(!instance.args.has_infer());
+            assert!(!instance.args.has_escaping_bound_vars());
+
             let result_layout =
                 self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
 
