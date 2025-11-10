@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-6.rs:16:17
+  --> $DIR/missing-lifetime-in-assoc-type-6.rs:17:17
    |
 LL | impl<'a> Trait for &'_ S {
    |     ---- there is a named lifetime specified on the impl block you could use
