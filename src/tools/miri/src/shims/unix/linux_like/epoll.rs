@@ -164,7 +164,7 @@ impl UnixFileDescription for Epoll {}
 
 /// The table of all EpollEventInterest.
 /// This tracks, for each file description, which epoll instances have an interest in events
-/// for this file description.
+/// for this file description. The `Vec` is sorted by `addr`!
 pub struct EpollInterestTable(BTreeMap<FdId, Vec<WeakFileDescriptionRef<Epoll>>>);
 
 impl EpollInterestTable {
@@ -174,15 +174,16 @@ impl EpollInterestTable {
 
     fn insert(&mut self, id: FdId, epoll: WeakFileDescriptionRef<Epoll>) {
         let epolls = self.0.entry(id).or_default();
-        epolls.push(epoll);
+        let idx = epolls
+            .binary_search_by_key(&epoll.addr(), |e| e.addr())
+            .expect_err("trying to add an epoll that's already in the list");
+        epolls.insert(idx, epoll);
     }
 
     fn remove(&mut self, id: FdId, epoll_addr: usize) {
         let epolls = self.0.entry(id).or_default();
-        // FIXME: linear scan. Keep the list sorted so we can do binary search?
         let idx = epolls
-            .iter()
-            .position(|old_ref| old_ref.addr() == epoll_addr)
+            .binary_search_by_key(&epoll_addr, |e| e.addr())
             .expect("trying to remove an epoll that's not in the list");
         epolls.remove(idx);
     }
