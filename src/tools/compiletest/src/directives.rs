@@ -1437,6 +1437,8 @@ impl EditionRange {
 fn split_flags(flags: &str) -> Vec<String> {
     // Individual flags can be single-quoted to preserve spaces; see
     // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
+    // FIXME(#147955): Replace this ad-hoc quoting with an escape/quote system that
+    // is closer to what actual shells do, so that it's more flexible and familiar.
     flags
         .split('\'')
         .enumerate()

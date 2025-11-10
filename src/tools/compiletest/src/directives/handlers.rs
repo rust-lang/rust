@@ -81,6 +81,8 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
         handler(COMPILE_FLAGS, |config, ln, props| {
             if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                 let flags = split_flags(&flags);
+                // FIXME(#147955): Extract and unify this with other handlers that
+                // check compiler flags, e.g. MINICORE_COMPILE_FLAGS.
                 for (i, flag) in flags.iter().enumerate() {
                     if flag == "--edition" || flag.starts_with("--edition=") {
                         panic!("you must use `//@ edition` to configure the edition");
@@ -327,6 +329,8 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
         handler(MINICORE_COMPILE_FLAGS, |config, ln, props| {
             if let Some(flags) = config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS) {
                 let flags = split_flags(&flags);
+                // FIXME(#147955): Extract and unify this with other handlers that
+                // check compiler flags, e.g. COMPILE_FLAGS.
                 for flag in &flags {
                     if flag == "--edition" || flag.starts_with("--edition=") {
                         panic!("you must use `//@ edition` to configure the edition");
