@@ -194,23 +194,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
-    ) -> Option<()> {
+    ) {
         let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
         let scc = self.regioncx.constraint_sccs().scc(lower_bound);
-        let placeholder: ty::PlaceholderRegion = self.regioncx.placeholder_representative(scc)?;
-        let placeholder_id = placeholder.bound.kind.get_id()?.as_local()?;
-        let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id);
-        let generics_impl =
-            self.infcx.tcx.parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id)).generics()?;
+        let Some(gat_hir_id) = self
+            .regioncx
+            .placeholder_representative(scc)
+            .and_then(|placeholder| placeholder.bound.kind.get_id())
+            .and_then(|id| id.as_local())
+            .map(|local| self.infcx.tcx.local_def_id_to_hir_id(local))
+        else {
+            return;
+        };
 
         // Look for the where-bound which introduces the placeholder.
         // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
         // and `T: for<'a> Trait`<'a>.
         let mut hrtb_bounds = vec![];
 
-        for pred in generics_impl.predicates {
+        // FIXME(amandasystems) we can probably flatten this.
+        for pred in self
+            .infcx
+            .tcx
+            .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
+            .generics()
+            .map(|gen_impl| gen_impl.predicates)
+            .into_iter()
+            .flatten()
+        {
             let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
                 pred.kind
             else {
@@ -271,7 +284,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
-        Some(())
     }
 
     /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.

@@ -230,7 +230,7 @@ pub(super) fn region_definitions<'tcx>(
     // Add external names from universal regions in fun function definitions.
     // FIXME: this two-step method is annoying, but I don't know how to avoid it.
     for (external_name, variable) in universal_regions.named_universal_regions_iter() {
-        debug!("region {:?} has external name {:?}", variable, external_name);
+        trace!("region {:?} has external name {:?}", variable, external_name);
         definitions[variable].external_name = Some(external_name);
     }
     (Frozen::freeze(definitions), has_placeholders)
@@ -373,7 +373,7 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
         let Some(PlaceholderReachability { min_placeholder, max_placeholder, max_universe }) =
             annotation.reachable_placeholders
         else {
-            debug!("No placeholders reached from {scc:?}");
+            trace!("No placeholders reached from {scc:?}");
             continue;
         };
 
