@@ -33101,7 +33101,7 @@ pub fn _mm_mask_cmp_epi64_mask<const IMM3: _MM_CMPINT_ENUM>(
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_reduce_add_epi32(a: __m512i) -> i32 {
-    unsafe { simd_reduce_add_unordered(a.as_i32x16()) }
+    unsafe { simd_reduce_add_ordered(a.as_i32x16(), 0) }
 }
 
 /// Reduce the packed 32-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -33111,7 +33111,7 @@ pub fn _mm512_reduce_add_epi32(a: __m512i) -> i32 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_mask_reduce_add_epi32(k: __mmask16, a: __m512i) -> i32 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i32x16(), i32x16::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i32x16(), i32x16::ZERO), 0) }
 }
 
 /// Reduce the packed 64-bit integers in a by addition. Returns the sum of all elements in a.
@@ -33121,7 +33121,7 @@ pub fn _mm512_mask_reduce_add_epi32(k: __mmask16, a: __m512i) -> i32 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_reduce_add_epi64(a: __m512i) -> i64 {
-    unsafe { simd_reduce_add_unordered(a.as_i64x8()) }
+    unsafe { simd_reduce_add_ordered(a.as_i64x8(), 0) }
 }
 
 /// Reduce the packed 64-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -33131,7 +33131,7 @@ pub fn _mm512_reduce_add_epi64(a: __m512i) -> i64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_mask_reduce_add_epi64(k: __mmask8, a: __m512i) -> i64 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i64x8(), i64x8::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i64x8(), i64x8::ZERO), 0) }
 }
 
 /// Reduce the packed single-precision (32-bit) floating-point elements in a by addition. Returns the sum of all elements in a.
@@ -33197,7 +33197,7 @@ pub fn _mm512_mask_reduce_add_pd(k: __mmask8, a: __m512d) -> f64 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_reduce_mul_epi32(a: __m512i) -> i32 {
-    unsafe { simd_reduce_mul_unordered(a.as_i32x16()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i32x16(), 1) }
 }
 
 /// Reduce the packed 32-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -33208,11 +33208,10 @@ pub fn _mm512_reduce_mul_epi32(a: __m512i) -> i32 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_mask_reduce_mul_epi32(k: __mmask16, a: __m512i) -> i32 {
     unsafe {
-        simd_reduce_mul_unordered(simd_select_bitmask(
-            k,
-            a.as_i32x16(),
-            _mm512_set1_epi32(1).as_i32x16(),
-        ))
+        simd_reduce_mul_ordered(
+            simd_select_bitmask(k, a.as_i32x16(), _mm512_set1_epi32(1).as_i32x16()),
+            1,
+        )
     }
 }
 
@@ -33223,7 +33222,7 @@ pub fn _mm512_mask_reduce_mul_epi32(k: __mmask16, a: __m512i) -> i32 {
 #[target_feature(enable = "avx512f")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_reduce_mul_epi64(a: __m512i) -> i64 {
-    unsafe { simd_reduce_mul_unordered(a.as_i64x8()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i64x8(), 1) }
 }
 
 /// Reduce the packed 64-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -33234,11 +33233,10 @@ pub fn _mm512_reduce_mul_epi64(a: __m512i) -> i64 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm512_mask_reduce_mul_epi64(k: __mmask8, a: __m512i) -> i64 {
     unsafe {
-        simd_reduce_mul_unordered(simd_select_bitmask(
-            k,
-            a.as_i64x8(),
-            _mm512_set1_epi64(1).as_i64x8(),
-        ))
+        simd_reduce_mul_ordered(
+            simd_select_bitmask(k, a.as_i64x8(), _mm512_set1_epi64(1).as_i64x8()),
+            1,
+        )
     }
 }
 

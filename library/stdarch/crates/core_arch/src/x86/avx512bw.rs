@@ -4778,7 +4778,7 @@ pub fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(k1: __mmask16, a: __m128i, b: __m
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_reduce_add_epi16(a: __m256i) -> i16 {
-    unsafe { simd_reduce_add_unordered(a.as_i16x16()) }
+    unsafe { simd_reduce_add_ordered(a.as_i16x16(), 0) }
 }
 
 /// Reduce the packed 16-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -4788,7 +4788,7 @@ pub fn _mm256_reduce_add_epi16(a: __m256i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_mask_reduce_add_epi16(k: __mmask16, a: __m256i) -> i16 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::ZERO), 0) }
 }
 
 /// Reduce the packed 16-bit integers in a by addition. Returns the sum of all elements in a.
@@ -4798,7 +4798,7 @@ pub fn _mm256_mask_reduce_add_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_reduce_add_epi16(a: __m128i) -> i16 {
-    unsafe { simd_reduce_add_unordered(a.as_i16x8()) }
+    unsafe { simd_reduce_add_ordered(a.as_i16x8(), 0) }
 }
 
 /// Reduce the packed 16-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -4808,7 +4808,7 @@ pub fn _mm_reduce_add_epi16(a: __m128i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_reduce_add_epi16(k: __mmask8, a: __m128i) -> i16 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::ZERO), 0) }
 }
 
 /// Reduce the packed 8-bit integers in a by addition. Returns the sum of all elements in a.
@@ -4818,7 +4818,7 @@ pub fn _mm_mask_reduce_add_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_reduce_add_epi8(a: __m256i) -> i8 {
-    unsafe { simd_reduce_add_unordered(a.as_i8x32()) }
+    unsafe { simd_reduce_add_ordered(a.as_i8x32(), 0) }
 }
 
 /// Reduce the packed 8-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -4828,7 +4828,7 @@ pub fn _mm256_reduce_add_epi8(a: __m256i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_mask_reduce_add_epi8(k: __mmask32, a: __m256i) -> i8 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::ZERO), 0) }
 }
 
 /// Reduce the packed 8-bit integers in a by addition. Returns the sum of all elements in a.
@@ -4838,7 +4838,7 @@ pub fn _mm256_mask_reduce_add_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_reduce_add_epi8(a: __m128i) -> i8 {
-    unsafe { simd_reduce_add_unordered(a.as_i8x16()) }
+    unsafe { simd_reduce_add_ordered(a.as_i8x16(), 0) }
 }
 
 /// Reduce the packed 8-bit integers in a by addition using mask k. Returns the sum of all active elements in a.
@@ -4848,7 +4848,7 @@ pub fn _mm_reduce_add_epi8(a: __m128i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_reduce_add_epi8(k: __mmask16, a: __m128i) -> i8 {
-    unsafe { simd_reduce_add_unordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::ZERO)) }
+    unsafe { simd_reduce_add_ordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::ZERO), 0) }
 }
 
 /// Reduce the packed 16-bit integers in a by bitwise AND. Returns the bitwise AND of all elements in a.
@@ -5282,7 +5282,7 @@ pub fn _mm_mask_reduce_min_epu8(k: __mmask16, a: __m128i) -> u8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_reduce_mul_epi16(a: __m256i) -> i16 {
-    unsafe { simd_reduce_mul_unordered(a.as_i16x16()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i16x16(), 1) }
 }
 
 /// Reduce the packed 16-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -5292,7 +5292,7 @@ pub fn _mm256_reduce_mul_epi16(a: __m256i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_mask_reduce_mul_epi16(k: __mmask16, a: __m256i) -> i16 {
-    unsafe { simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(1))) }
+    unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i16x16(), i16x16::splat(1)), 1) }
 }
 
 /// Reduce the packed 16-bit integers in a by multiplication. Returns the product of all elements in a.
@@ -5302,7 +5302,7 @@ pub fn _mm256_mask_reduce_mul_epi16(k: __mmask16, a: __m256i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_reduce_mul_epi16(a: __m128i) -> i16 {
-    unsafe { simd_reduce_mul_unordered(a.as_i16x8()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i16x8(), 1) }
 }
 
 /// Reduce the packed 16-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -5312,7 +5312,7 @@ pub fn _mm_reduce_mul_epi16(a: __m128i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_reduce_mul_epi16(k: __mmask8, a: __m128i) -> i16 {
-    unsafe { simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(1))) }
+    unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i16x8(), i16x8::splat(1)), 1) }
 }
 
 /// Reduce the packed 8-bit integers in a by multiplication. Returns the product of all elements in a.
@@ -5322,7 +5322,7 @@ pub fn _mm_mask_reduce_mul_epi16(k: __mmask8, a: __m128i) -> i16 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_reduce_mul_epi8(a: __m256i) -> i8 {
-    unsafe { simd_reduce_mul_unordered(a.as_i8x32()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i8x32(), 1) }
 }
 
 /// Reduce the packed 8-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -5332,7 +5332,7 @@ pub fn _mm256_reduce_mul_epi8(a: __m256i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm256_mask_reduce_mul_epi8(k: __mmask32, a: __m256i) -> i8 {
-    unsafe { simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(1))) }
+    unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i8x32(), i8x32::splat(1)), 1) }
 }
 
 /// Reduce the packed 8-bit integers in a by multiplication. Returns the product of all elements in a.
@@ -5342,7 +5342,7 @@ pub fn _mm256_mask_reduce_mul_epi8(k: __mmask32, a: __m256i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_reduce_mul_epi8(a: __m128i) -> i8 {
-    unsafe { simd_reduce_mul_unordered(a.as_i8x16()) }
+    unsafe { simd_reduce_mul_ordered(a.as_i8x16(), 1) }
 }
 
 /// Reduce the packed 8-bit integers in a by multiplication using mask k. Returns the product of all active elements in a.
@@ -5352,7 +5352,7 @@ pub fn _mm_reduce_mul_epi8(a: __m128i) -> i8 {
 #[target_feature(enable = "avx512bw,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _mm_mask_reduce_mul_epi8(k: __mmask16, a: __m128i) -> i8 {
-    unsafe { simd_reduce_mul_unordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(1))) }
+    unsafe { simd_reduce_mul_ordered(simd_select_bitmask(k, a.as_i8x16(), i8x16::splat(1)), 1) }
 }
 
 /// Reduce the packed 16-bit integers in a by bitwise OR. Returns the bitwise OR of all elements in a.
