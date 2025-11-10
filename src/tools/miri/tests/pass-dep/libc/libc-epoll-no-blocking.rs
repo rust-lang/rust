@@ -258,6 +258,34 @@ fn test_epoll_eventfd() {
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = u64::try_from(fd).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+
+    // Write to the eventfd again.
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    assert_eq!(res, 8);
+
+    // This does not change the status, so we should get no event.
+    // However, Linux performs a spurious wakeup.
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+
+    // Read from the eventfd.
+    let mut buf = [0u8; 8];
+    let res = unsafe { libc_utils::read_all(fd, buf.as_mut_ptr().cast(), 8) };
+    assert_eq!(res, 8);
+
+    // This consumes the event, so the read status is gone. However, deactivation
+    // does not trigger an event.
+    // Still, we see a spurious wakeup.
+    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+
+    // Write the maximum possible value.
+    let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
+    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
+    assert_eq!(res, 8);
+
+    // This reactivates reads, therefore triggering an event. Writing is no longer possible.
+    let expected_event = u32::try_from(libc::EPOLLIN).unwrap();
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 
 // When read/write happened on one side of the socketpair, only the other side will be notified.
