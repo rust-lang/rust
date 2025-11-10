@@ -3353,7 +3353,10 @@ impl DirBuilder {
             }
         }
 
-        let uncreated_dirs: Box<[_]> = ancestors.take(uncreated_dir_ctr).collect();
+        // collect only the uncreated directories w/o letting the vec resize
+        let mut uncreated_dirs = Vec::with_capacity(uncreated_dir_ctr);
+        uncreated_dirs.extend(ancestors.take(uncreated_dir_ctr));
+
         for uncreated_dir in uncreated_dirs.iter().rev() {
             if let Err(e) = self.inner.mkdir(uncreated_dir) {
                 if !uncreated_dir.is_dir() {
