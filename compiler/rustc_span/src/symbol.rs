@@ -1914,6 +1914,7 @@ symbols! {
         rustc_deallocator,
         rustc_def_path,
         rustc_default_body_unstable,
+        rustc_defer_codegen,
         rustc_delayed_bug_from_inside_query,
         rustc_deny_explicit_impl,
         rustc_deprecated_safe_2024,

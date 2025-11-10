@@ -909,7 +909,7 @@ pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-    #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive)]
+    #[allow_internal_unstable(core_intrinsics, fmt_helpers_for_derive, rustc_attrs)]
     pub macro Debug($item:item) {
         /* compiler built-in */
     }
