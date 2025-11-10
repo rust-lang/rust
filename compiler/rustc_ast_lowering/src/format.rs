@@ -376,6 +376,8 @@ fn expand_format_args<'hir>(
     fmt: &FormatArgs,
     allow_const: bool,
 ) -> hir::ExprKind<'hir> {
+    let macsp = ctx.lower_span(macsp);
+
     // Create a list of all _unique_ (argument, format trait) combinations.
     // E.g. "{0} {0:x} {0} {1}" -> [(0, Display), (0, LowerHex), (1, Display)]
     //
