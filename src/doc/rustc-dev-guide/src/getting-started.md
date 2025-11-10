@@ -8,8 +8,8 @@ how a typical contribution would go.
 
 This documentation is _not_ intended to be comprehensive;
 it is meant to be a quick guide for the most useful things.
-For more information, [see this
-chapter on how to build and run the compiler](./building/how-to-build-and-run.md).
+For more information,
+see [How to build and run the compiler](building/how-to-build-and-run.md).
 
 [internals]: https://internals.rust-lang.org
 [rust-zulip]: https://rust-lang.zulipchat.com
