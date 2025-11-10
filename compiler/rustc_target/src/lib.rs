@@ -9,7 +9,9 @@
 
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(debug_closure_helpers))]
+#![expect(internal_features)]
 #![feature(iter_intersperse)]
+#![feature(rustc_attrs)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

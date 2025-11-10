@@ -715,7 +715,7 @@ impl<'tcx> MiriMachine<'tcx> {
             match target.arch {
                 Arch::Wasm32 | Arch::Wasm64 => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
                 Arch::AArch64 => {
-                    if target.options.vendor.as_ref() == "apple" {
+                    if target.is_like_darwin {
                         // No "definitive" source, but see:
                         // https://www.wwdcnotes.com/notes/wwdc20/10214/
                         // https://github.com/ziglang/zig/issues/11308 etc.
