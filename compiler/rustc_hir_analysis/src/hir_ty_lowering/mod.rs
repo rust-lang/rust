@@ -1487,11 +1487,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match assoc_tag {
                 // Don't attempt to look up inherent associated types when the feature is not
                 // enabled. Theoretically it'd be fine to do so since we feature-gate their
-                // definition site. However, due to current limitations of the implementation
-                // (caused by us performing selection during HIR ty lowering instead of in the
-                // trait solver), IATs can lead to cycle errors (#108491) which mask the
-                // feature-gate error, needlessly confusing users who use IATs by accident
-                // (#113265).
+                // definition site. However, the current implementation of inherent associated
+                // items is somewhat brittle, so let's not run it by default.
                 ty::AssocTag::Type => return Ok(None),
                 ty::AssocTag::Const => {
                     // We also gate the mgca codepath for type-level uses of inherent consts
@@ -1520,9 +1517,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
+        // At the moment, we actually bail out with a hard error if the selection of an inherent
+        // associated item fails (see below). This means we never consider trait associated items
+        // as potential fallback candidates (#142006). To temporarily mask that issue, let's not
+        // select at all if there are no early inherent candidates.
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
         let (applicable_candidates, fulfillment_errors) =
             self.select_inherent_assoc_candidates(span, self_ty, candidates.clone());
 
+        // FIXME(#142006): Don't eagerly error here, there might be applicable trait candidates.
         let InherentAssocCandidate { impl_, assoc_item, scope: def_scope } =
             match &applicable_candidates[..] {
                 &[] => Err(self.report_unresolved_inherent_assoc_item(
@@ -1543,6 +1549,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )),
             }?;
 
+        // FIXME(#142006): Don't eagerly validate here, there might be trait candidates that are
+        // accessible (visible and stable) contrary to the inherent candidate.
         self.check_assoc_item(assoc_item, name, def_scope, block, span);
 
         // FIXME(fmease): Currently creating throwaway `parent_args` to please
