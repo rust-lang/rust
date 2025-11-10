@@ -1215,7 +1215,6 @@ impl LinkCollector<'_, '_> {
             || !did.is_local()
     }
 
-    #[allow(rustc::potential_query_instability)]
     pub(crate) fn resolve_ambiguities(&mut self) {
         let mut ambiguous_links = mem::take(&mut self.ambiguous_links);
         for ((item_id, path_str), info_items) in ambiguous_links.iter_mut() {
