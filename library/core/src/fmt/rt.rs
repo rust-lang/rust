@@ -8,29 +8,8 @@
 
 use super::*;
 use crate::hint::unreachable_unchecked;
+use crate::mem;
 use crate::ptr::NonNull;
-
-#[lang = "format_placeholder"]
-#[derive(Copy, Clone)]
-pub struct Placeholder {
-    pub position: usize,
-    pub flags: u32,
-    pub precision: Count,
-    pub width: Count,
-}
-
-/// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
-/// and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
-#[lang = "format_count"]
-#[derive(Copy, Clone)]
-pub enum Count {
-    /// Specified with a literal number, stores the value
-    Is(u16),
-    /// Specified using `$` and `*` syntaxes, stores the index into `args`
-    Param(usize),
-    /// Not specified
-    Implied,
-}
 
 #[derive(Copy, Clone)]
 enum ArgumentType<'a> {
@@ -56,6 +35,7 @@ enum ArgumentType<'a> {
 ///   precision and width.
 #[lang = "format_argument"]
 #[derive(Copy, Clone)]
+#[repr(align(2))]
 pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
@@ -187,52 +167,33 @@ impl Argument<'_> {
 
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
-#[unstable(feature = "fmt_internals", issue = "none")]
 #[rustc_diagnostic_item = "FmtArgumentsNew"]
 impl<'a> Arguments<'a> {
     #[inline]
-    pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
-        const { assert!(N <= 1) };
-        Arguments { pieces, fmt: None, args: &[] }
+    pub unsafe fn new<const N: usize, const M: usize>(
+        template: &'a [u8; N],
+        args: &'a [rt::Argument<'a>; M],
+    ) -> Arguments<'a> {
+        // SAFETY: ...
+        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
     }
 
-    /// When using the format_args!() macro, this function is used to generate the
-    /// Arguments structure.
-    ///
-    /// This function should _not_ be const, to make sure we don't accept
-    /// format_args!() and panic!() with arguments in const, even when not evaluated:
-    ///
-    /// ```compile_fail,E0015
-    /// const _: () = if false { panic!("a {}", "a") };
-    /// ```
     #[inline]
-    pub fn new_v1<const P: usize, const A: usize>(
-        pieces: &'a [&'static str; P],
-        args: &'a [rt::Argument<'a>; A],
-    ) -> Arguments<'a> {
-        const { assert!(P >= A && P <= A + 1, "invalid args") }
-        Arguments { pieces, fmt: None, args }
+    pub const fn from_str(s: &'static str) -> Arguments<'a> {
+        // SAFETY: This is the "static str" representation of fmt::Arguments.
+        unsafe {
+            Arguments {
+                template: mem::transmute(s.as_ptr()),
+                args: mem::transmute(s.len() << 1 | 1),
+            }
+        }
     }
 
-    /// Specifies nonstandard formatting parameters.
-    ///
-    /// SAFETY: the following invariants must be held:
-    /// 1. The `pieces` slice must be at least as long as `fmt`.
-    /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
-    /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
-    ///
-    /// This function should _not_ be const, to make sure we don't accept
-    /// format_args!() and panic!() with arguments in const, even when not evaluated:
-    ///
-    /// ```compile_fail,E0015
-    /// const _: () = if false { panic!("a {:1}", "a") };
-    /// ```
+    // Same as `from_str`, but not const.
+    // Used by format_args!() expansion when arguments are inlined,
+    // e.g. format_args!("{}", 123), which is not allowed in const.
     #[inline]
-    pub unsafe fn new_v1_formatted(
-        pieces: &'a [&'static str],
-        args: &'a [rt::Argument<'a>],
-        fmt: &'a [rt::Placeholder],
-    ) -> Arguments<'a> {
-        Arguments { pieces, fmt: Some(fmt), args }
+    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
+        Arguments::from_str(s)
     }
 }

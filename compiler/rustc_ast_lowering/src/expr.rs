@@ -13,7 +13,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
@@ -2103,30 +2103,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    fn expr_uint(&mut self, sp: Span, ty: ast::UintTy, value: u128) -> hir::Expr<'hir> {
-        let lit = hir::Lit {
-            span: self.lower_span(sp),
-            node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ty)),
-        };
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::Usize, value as u128)
-    }
-
-    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U32, value as u128)
-    }
-
-    pub(super) fn expr_u16(&mut self, sp: Span, value: u16) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U16, value as u128)
-    }
-
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
         let lit = hir::Lit {
             span: self.lower_span(sp),
             node: ast::LitKind::Str(value, ast::StrStyle::Cooked),
+        };
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_byte_str(&mut self, sp: Span, value: ByteSymbol) -> hir::Expr<'hir> {
+        let lit = hir::Lit {
+            span: self.lower_span(sp),
+            node: ast::LitKind::ByteStr(value, ast::StrStyle::Cooked),
         };
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
@@ -2303,15 +2291,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir hir::Expr<'hir> {
         let b = self.block_expr(expr);
         self.arena.alloc(self.expr_block(b))
-    }
-
-    pub(super) fn expr_array_ref(
-        &mut self,
-        span: Span,
-        elements: &'hir [hir::Expr<'hir>],
-    ) -> hir::Expr<'hir> {
-        let array = self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements)));
-        self.expr_ref(span, array)
     }
 
     pub(super) fn expr_ref(&mut self, span: Span, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {

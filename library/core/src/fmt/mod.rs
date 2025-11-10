@@ -7,7 +7,8 @@ use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
 use crate::marker::{PhantomData, PointeeSized};
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
-use crate::{iter, result, str};
+use crate::ptr::NonNull;
+use crate::{iter, mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -616,15 +617,8 @@ impl<'a> Formatter<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
-    // Format string pieces to print.
-    pieces: &'a [&'static str],
-
-    // Placeholder specs, or `None` if all specs are default (as in "{}{}").
-    fmt: Option<&'a [rt::Placeholder]>,
-
-    // Dynamic arguments for interpolation, to be interleaved with string
-    // pieces. (Every argument is preceded by a string piece.)
-    args: &'a [rt::Argument<'a>],
+    template: NonNull<u8>,
+    args: NonNull<rt::Argument<'a>>,
 }
 
 #[doc(hidden)]
@@ -636,20 +630,49 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
-        let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
+        if let Some(s) = self.as_str() {
+            return s.len();
+        }
+        // Iterate over the template, counting the length of literal pieces.
+        let mut length = 0usize;
+        let mut starts_with_placeholder = false;
+        let mut template = self.template;
+        loop {
+            // SAFETY: We can assume the template is valid.
+            unsafe {
+                let n = template.read();
+                if n == 0 {
+                    // End of template.
+                    break;
+                } else if n < 128 {
+                    // Literal string piece.
+                    length += n as usize;
+                    template = template.add(1 + n as usize);
+                } else {
+                    // Placeholder piece.
+                    if length == 0 {
+                        starts_with_placeholder = true;
+                    }
+                    // Skip remainder of placeholder:
+                    let skip = (n & 1 == 1) as usize * 4
+                        + (n & 2 == 2) as usize * 2
+                        + (n & 4 == 4) as usize * 2
+                        + (n & 8 == 8) as usize * 2;
+                    template = template.add(1 + skip as usize);
+                }
+            }
+        }
 
-        if self.args.is_empty() {
-            pieces_length
-        } else if !self.pieces.is_empty() && self.pieces[0].is_empty() && pieces_length < 16 {
-            // If the format string starts with an argument,
+        if starts_with_placeholder && length < 16 {
+            // If the format string starts with a placeholder,
             // don't preallocate anything, unless length
-            // of pieces is significant.
+            // of literal pieces is significant.
             0
         } else {
-            // There are some arguments, so any additional push
+            // There are some placeholders, so any additional push
             // will reallocate the string. To avoid that,
             // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
+            length.wrapping_mul(2)
         }
     }
 }
@@ -702,10 +725,20 @@ impl<'a> Arguments<'a> {
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
-        match (self.pieces, self.args) {
-            ([], []) => Some(""),
-            ([s], []) => Some(s),
-            _ => None,
+        // SAFETY: During const eval, `self.args` must have come from a usize,
+        // not a pointer, because that's the only way to creat a fmt::Arguments in const.
+        // Outside const eval, transmuting a pointer to a usize is fine.
+        let bits: usize = unsafe { mem::transmute(self.args) };
+        if bits & 1 == 1 {
+            // SAFETY: This fmt::Arguments stores a &'static str.
+            Some(unsafe {
+                str::from_utf8_unchecked(crate::slice::from_raw_parts(
+                    self.template.as_ptr(),
+                    bits >> 1,
+                ))
+            })
+        } else {
+            None
         }
     }
 
@@ -1448,86 +1481,96 @@ pub trait UpperExp: PointeeSized {
 ///
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
-    let mut formatter = Formatter::new(output, FormattingOptions::new());
-    let mut idx = 0;
+pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
+    if let Some(s) = fmt.as_str() {
+        return output.write_str(s);
+    }
 
-    match args.fmt {
-        None => {
-            // We can use default formatting parameters for all arguments.
-            for (i, arg) in args.args.iter().enumerate() {
-                // SAFETY: args.args and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
+    let mut template = fmt.template;
+    let args = fmt.args;
+
+    let mut arg_index = 0;
+
+    // This must match the encoding from `expand_format_args` in
+    // compiler/rustc_ast_lowering/src/format.rs.
+    loop {
+        // SAFETY: We can assume the template is valid.
+        let n = unsafe {
+            let n = template.read();
+            template = template.add(1);
+            n
+        };
+
+        if n == 0 {
+            // End of template.
+            return Ok(());
+        } else if n < 128 {
+            // Literal string piece of length `n`.
+
+            // SAFETY: We can assume the strings in the template are valid.
+            let s = unsafe {
+                let s = crate::str::from_raw_parts(template.as_ptr(), n as usize);
+                template = template.add(n as usize);
+                s
+            };
+            output.write_str(s)?;
+        } else if n == 128 {
+            // Placeholder for next argument with default options.
+            //
+            // Having this as a separate case improves performance for the common case.
+
+            // SAFETY: We can assume the template only refers to arguments that exist.
+            unsafe {
+                args.add(arg_index)
+                    .as_ref()
+                    .fmt(&mut Formatter::new(output, FormattingOptions::new()))?;
+            }
+            arg_index += 1;
+        } else {
+            // Placeholder with custom options.
+
+            let mut opt = FormattingOptions::new();
+
+            // SAFETY: We can assume the template is valid.
+            unsafe {
+                if n & 1 != 0 {
+                    opt.flags = u32::from_le_bytes(template.cast_array().read());
+                    template = template.add(4);
                 }
-
-                // SAFETY: There are no formatting parameters and hence no
-                // count arguments.
+                if n & 2 != 0 {
+                    opt.width = u16::from_le_bytes(template.cast_array().read());
+                    template = template.add(2);
+                }
+                if n & 4 != 0 {
+                    opt.precision = u16::from_le_bytes(template.cast_array().read());
+                    template = template.add(2);
+                }
+                if n & 8 != 0 {
+                    arg_index = usize::from(u16::from_le_bytes(template.cast_array().read()));
+                    template = template.add(2);
+                }
+            }
+            if n & 16 != 0 {
+                // Dynamic width from a usize argument.
+                // SAFETY: We can assume the template only refers to arguments that exist.
                 unsafe {
-                    arg.fmt(&mut formatter)?;
+                    opt.width = args.add(opt.width as usize).as_ref().as_u16().unwrap_unchecked();
                 }
-                idx += 1;
             }
-        }
-        Some(fmt) => {
-            // Every spec has a corresponding argument that is preceded by
-            // a string piece.
-            for (i, arg) in fmt.iter().enumerate() {
-                // SAFETY: fmt and args.pieces come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                let piece = unsafe { args.pieces.get_unchecked(i) };
-                if !piece.is_empty() {
-                    formatter.buf.write_str(*piece)?;
+            if n & 32 != 0 {
+                // Dynamic precision from a usize argument.
+                // SAFETY: We can assume the template only refers to arguments that exist.
+                unsafe {
+                    opt.precision =
+                        args.add(opt.precision as usize).as_ref().as_u16().unwrap_unchecked();
                 }
-                // SAFETY: arg and args.args come from the same Arguments,
-                // which guarantees the indexes are always within bounds.
-                unsafe { run(&mut formatter, arg, args.args) }?;
-                idx += 1;
             }
-        }
-    }
 
-    // There can be only one trailing string piece left.
-    if let Some(piece) = args.pieces.get(idx) {
-        formatter.buf.write_str(*piece)?;
-    }
-
-    Ok(())
-}
-
-unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argument<'_>]) -> Result {
-    let (width, precision) =
-        // SAFETY: arg and args come from the same Arguments,
-        // which guarantees the indexes are always within bounds.
-        unsafe { (getcount(args, &arg.width), getcount(args, &arg.precision)) };
-
-    let options = FormattingOptions { flags: arg.flags, width, precision };
-
-    // Extract the correct argument
-    debug_assert!(arg.position < args.len());
-    // SAFETY: arg and args come from the same Arguments,
-    // which guarantees its index is always within bounds.
-    let value = unsafe { args.get_unchecked(arg.position) };
-
-    // Set all the formatting options.
-    fmt.options = options;
-
-    // Then actually do some printing
-    // SAFETY: this is a placeholder argument.
-    unsafe { value.fmt(fmt) }
-}
-
-unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> u16 {
-    match *cnt {
-        rt::Count::Is(n) => n,
-        rt::Count::Implied => 0,
-        rt::Count::Param(i) => {
-            debug_assert!(i < args.len());
-            // SAFETY: cnt and args come from the same Arguments,
-            // which guarantees this index is always within bounds.
-            unsafe { args.get_unchecked(i).as_u16().unwrap_unchecked() }
+            // SAFETY: We can assume the template only refers to arguments that exist.
+            unsafe {
+                args.add(arg_index).as_ref().fmt(&mut Formatter::new(output, opt))?;
+            }
+            arg_index += 1;
         }
     }
 }

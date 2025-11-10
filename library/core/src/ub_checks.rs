@@ -70,7 +70,7 @@ macro_rules! assert_unsafe_precondition {
                     let msg = concat!("unsafe precondition(s) violated: ", $message,
                         "\n\nThis indicates a bug in the program. \
                         This Undefined Behavior check is optional, and cannot be relied on for safety.");
-                    ::core::panicking::panic_nounwind_fmt(::core::fmt::Arguments::new_const(&[msg]), false);
+                    ::core::panicking::panic_nounwind_fmt(::core::fmt::Arguments::from_str(msg), false);
                 }
             }
 
