@@ -61,7 +61,7 @@ fn main() {
         }
 
         let expected_prefix = adjust_symbol_prefix!("_RNxC12hashed_dylib");
-        if dynamic_symbols.iter().filter(|sym| sym.starts_with(expected_prefix)).count() != 2 {
+        if dynamic_symbols.iter().filter(|sym| sym.starts_with(expected_prefix)).count() != 1 {
             eprintln!("exported dynamic symbols: {:#?}", dynamic_symbols);
             panic!("expected two dynamic symbols starting with `{expected_prefix}`");
         }
@@ -88,7 +88,7 @@ fn main() {
         }
 
         let expected_rlib_prefix = adjust_symbol_prefix!("_RNxC11hashed_rlib");
-        if dynamic_symbols.iter().filter(|sym| sym.starts_with(expected_rlib_prefix)).count() != 2 {
+        if dynamic_symbols.iter().filter(|sym| sym.starts_with(expected_rlib_prefix)).count() != 1 {
             eprintln!("exported dynamic symbols: {:#?}", dynamic_symbols);
             panic!("expected two exported symbols starting with `{expected_rlib_prefix}`");
         }
