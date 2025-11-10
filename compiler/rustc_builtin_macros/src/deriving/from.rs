@@ -1,5 +1,5 @@
 use rustc_ast as ast;
-use rustc_ast::{ItemKind, VariantData};
+use rustc_ast::{ItemKind, Safety, VariantData};
 use rustc_errors::MultiSpan;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
@@ -127,6 +127,8 @@ pub(crate) fn expand_deriving_from(
         associated_types: Vec::new(),
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
+        safety: Safety::Default,
+        document: true,
     };
 
     from_trait_def.expand(cx, mitem, annotatable, push);

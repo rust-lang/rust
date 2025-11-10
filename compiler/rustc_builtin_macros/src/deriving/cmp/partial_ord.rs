@@ -1,4 +1,4 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
+use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -65,6 +65,8 @@ pub(crate) fn expand_deriving_partial_ord(
         associated_types: Vec::new(),
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
+        safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }

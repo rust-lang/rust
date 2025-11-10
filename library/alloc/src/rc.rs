@@ -243,9 +243,9 @@
 
 use core::any::Any;
 use core::cell::{Cell, CloneFromCell};
-#[cfg(not(no_global_oom_handling))]
-use core::clone::CloneToUninit;
 use core::clone::UseCloned;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::{CloneToUninit, TrivialClone};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -2224,7 +2224,8 @@ impl<T> Rc<[T]> {
 
     /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
-    /// Unsafe because the caller must either take ownership or bind `T: Copy`
+    /// Unsafe because the caller must either take ownership, bind `T: Copy` or
+    /// bind `T: TrivialClone`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         unsafe {
@@ -2314,9 +2315,11 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
+impl<T: TrivialClone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
+        // SAFETY: `T` implements `TrivialClone`, so this is sound and equivalent
+        // to the above.
         unsafe { Rc::copy_from_slice(v) }
     }
 }
