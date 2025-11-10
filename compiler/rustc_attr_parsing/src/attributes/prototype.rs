@@ -94,6 +94,7 @@ fn parse_dialect(
         sym::analysis => MirDialect::Analysis,
         sym::built => MirDialect::Built,
         sym::runtime => MirDialect::Runtime,
+        sym::mono => MirDialect::Mono,
 
         _ => {
             cx.adcx().expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
@@ -137,43 +138,28 @@ fn check_custom_mir(
     failed: &mut bool,
 ) {
     let attr_span = cx.attr_span;
+    let Some((phase, phase_span)) = phase else { return };
     let Some((dialect, dialect_span)) = dialect else {
-        if let Some((_, phase_span)) = phase {
-            *failed = true;
-            cx.emit_err(session_diagnostics::CustomMirPhaseRequiresDialect {
-                attr_span,
-                phase_span,
-            });
-        }
+        *failed = true;
+        cx.emit_err(session_diagnostics::CustomMirPhaseRequiresDialect { attr_span, phase_span });
         return;
     };
 
-    match dialect {
-        MirDialect::Analysis => {
-            if let Some((MirPhase::Optimized, phase_span)) = phase {
-                *failed = true;
-                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
-                    dialect,
-                    phase: MirPhase::Optimized,
-                    attr_span,
-                    dialect_span,
-                    phase_span,
-                });
-            }
+    match (dialect, phase) {
+        (MirDialect::Built, _)
+        | (MirDialect::Analysis, MirPhase::Optimized)
+        | (MirDialect::Mono, MirPhase::PostCleanup) => {
+            *failed = true;
+            cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                dialect,
+                phase,
+                attr_span,
+                dialect_span,
+                phase_span,
+            });
         }
-
-        MirDialect::Built => {
-            if let Some((phase, phase_span)) = phase {
-                *failed = true;
-                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
-                    dialect,
-                    phase,
-                    attr_span,
-                    dialect_span,
-                    phase_span,
-                });
-            }
-        }
-        MirDialect::Runtime => {}
+        (MirDialect::Analysis, MirPhase::Initial | MirPhase::PostCleanup)
+        | (MirDialect::Runtime, MirPhase::Initial | MirPhase::PostCleanup | MirPhase::Optimized)
+        | (MirDialect::Mono, MirPhase::Initial | MirPhase::Optimized) => {}
     }
 }

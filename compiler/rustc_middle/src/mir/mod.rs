@@ -98,6 +98,8 @@ impl MirPhase {
             MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
             MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
             MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+            MirPhase::Monomorphic(MonomorphicPhase::Initial) => "mono",
+            MirPhase::Monomorphic(MonomorphicPhase::Codegen) => "mono-codegen",
         }
     }
 
@@ -108,6 +110,7 @@ impl MirPhase {
             MirPhase::Built => (1, 1),
             MirPhase::Analysis(analysis_phase) => (2, 1 + analysis_phase as usize),
             MirPhase::Runtime(runtime_phase) => (3, 1 + runtime_phase as usize),
+            MirPhase::Monomorphic(mono_phase) => (4, 1 + mono_phase as usize),
         }
     }
 }
@@ -434,6 +437,7 @@ impl<'tcx> Body<'tcx> {
                     TypingEnv::post_analysis(tcx, self.source.def_id())
                 }
                 MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+                MirPhase::Monomorphic(_) => TypingEnv::fully_monomorphized(),
             }
         } else {
             match self.phase {
@@ -442,6 +446,7 @@ impl<'tcx> Body<'tcx> {
                     ty::TypingMode::non_body_analysis(),
                 ),
                 MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),
+                MirPhase::Monomorphic(_) => TypingEnv::fully_monomorphized(),
             }
         }
     }
