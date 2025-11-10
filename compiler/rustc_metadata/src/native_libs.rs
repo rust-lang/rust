@@ -67,7 +67,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
     // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
     // defined, as the search path instead of appending the default search paths.
-    if sess.target.vendor == "fortanix"
+    if sess.target.abi == "fortanix"
         || sess.target.os == "linux"
         || sess.target.os == "fuchsia"
         || sess.target.is_like_aix

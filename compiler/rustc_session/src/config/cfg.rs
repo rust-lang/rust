@@ -298,7 +298,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::target_thread_local);
     }
 
-    ins_str!(sym::target_vendor, &sess.target.vendor);
+    ins_sym!(sym::target_vendor, sess.target.vendor_symbol());
 
     // If the user wants a test runner, then add the test cfg.
     if sess.is_test_crate() {
@@ -456,7 +456,7 @@ impl CheckCfg {
                     );
                     values_target_os.insert(Symbol::intern(&target.options.os));
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
-                    values_target_vendor.insert(Symbol::intern(&target.options.vendor));
+                    values_target_vendor.insert(target.vendor_symbol());
                 }
             }
         }
