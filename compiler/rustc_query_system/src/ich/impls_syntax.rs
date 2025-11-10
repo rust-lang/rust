@@ -2,6 +2,8 @@
 //! from various crates in no particular order.
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+#[cfg(debug_assertions)]
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, HashIgnoredAttrId};
 use rustc_span::SourceFile;
 use smallvec::SmallVec;
@@ -38,6 +40,15 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     fn hash_attr_id(&mut self, _id: &HashIgnoredAttrId, _hasher: &mut StableHasher) {
         /* we don't hash HashIgnoredAttrId, we ignore them */
+    }
+
+    #[cfg(debug_assertions)]
+    fn set_current_owner_node_defid(&mut self, local_def_id: Option<LocalDefId>) {
+        if local_def_id.is_some() && self.current_owner_node_did.is_some() {
+            panic!("already in owner node");
+        }
+
+        self.current_owner_node_did = local_def_id;
     }
 }
 
