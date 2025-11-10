@@ -145,6 +145,13 @@ pub enum ForceCollect {
     No,
 }
 
+/// Whether to accept `const { ... }` as a shorthand for `const _: () = const { ... }`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ConstBlockItemsAllowed {
+    Yes,
+    No,
+}
+
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
 #[macro_export]
 macro_rules! maybe_recover_from_interpolated_ty_qpath {

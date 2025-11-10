@@ -22,7 +22,7 @@ use rustc_hir::limit::Limit;
 use rustc_hir::{Stability, find_attr};
 use rustc_lint_defs::RegisteredTools;
 use rustc_parse::MACRO_ARGUMENTS;
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::parser::{ConstBlockItemsAllowed, ForceCollect, Parser};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -1472,7 +1472,7 @@ pub(crate) fn stream_pretty_printing_compatibility_hack(
             let mut parser = Parser::new(psess, stream.clone(), None);
             // No need to collect tokens for this simple check.
             parser
-                .parse_item(ForceCollect::No)
+                .parse_item(ForceCollect::No, ConstBlockItemsAllowed::No)
                 .expect("failed to reparse item")
                 .expect("an actual item")
         }

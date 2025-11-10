@@ -13,7 +13,7 @@ use rustc_expand::base::{
 };
 use rustc_expand::module::DirOwnership;
 use rustc_parse::lexer::StripTokens;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{ConstBlockItemsAllowed, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_session::parse::ParseSess;
@@ -168,7 +168,7 @@ pub(crate) fn expand_include<'cx>(
             ));
             let mut ret = SmallVec::new();
             loop {
-                match p.parse_item(ForceCollect::No) {
+                match p.parse_item(ForceCollect::No, ConstBlockItemsAllowed::No) {
                     Err(err) => {
                         err.emit();
                         break;
