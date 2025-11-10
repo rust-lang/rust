@@ -52,5 +52,29 @@ LL | |     }
    |
    = note: you might not need `mut` at all
 
-error: aborting due to 4 previous errors
+error: `if _ { .. } else { .. }` is an expression
+  --> tests/ui/let_if_seq.rs:144:5
+   |
+LL | /     let foo;
+LL | |
+LL | |     if bar() {
+LL | |         foo = 42;
+LL | |     } else {
+LL | |         foo = 0;
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let foo = if bar() { 42 } else { 0 };`
+
+error: `if _ { .. } else { .. }` is an expression
+  --> tests/ui/let_if_seq.rs:163:5
+   |
+LL | /     let foo;
+LL | |
+LL | |     if mac!(bar) {
+LL | |         foo = mac!(10, 4);
+LL | |     } else {
+LL | |         foo = 0;
+LL | |     }
+   | |_____^ help: it is more idiomatic to write: `let foo = if mac!(bar) { mac!(10, 4) } else { 0 };`
+
+error: aborting due to 6 previous errors
 

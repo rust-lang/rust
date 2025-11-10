@@ -139,3 +139,34 @@ fn main() {
     }
     println!("{}", val.get());
 }
+
+fn issue16062(bar: fn() -> bool) {
+    let foo;
+    //~^ useless_let_if_seq
+    if bar() {
+        foo = 42;
+    } else {
+        foo = 0;
+    }
+}
+
+fn issue16064(bar: fn() -> bool) {
+    macro_rules! mac {
+        ($e:expr) => {
+            $e()
+        };
+        ($base:expr, $lit:expr) => {
+            $lit * $base + 2
+        };
+    }
+
+    let foo;
+    //~^ useless_let_if_seq
+    if mac!(bar) {
+        foo = mac!(10, 4);
+    } else {
+        foo = 0;
+    }
+
+    let bar = 1;
+}
