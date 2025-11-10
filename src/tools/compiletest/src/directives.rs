@@ -11,7 +11,7 @@ use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 pub(crate) use crate::directives::auxiliary::AuxProps;
 use crate::directives::auxiliary::parse_and_update_aux;
 use crate::directives::directive_names::{
-    KNOWN_DIRECTIVE_NAMES, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
+    KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
 use crate::directives::line::{DirectiveLine, line_directive};
@@ -53,24 +53,16 @@ impl EarlyProps {
         config: &Config,
         file_directives: &FileDirectives<'_>,
     ) -> Self {
-        let testfile = file_directives.path;
         let mut props = EarlyProps::default();
-        let mut poisoned = false;
 
         iter_directives(
             config.mode,
-            &mut poisoned,
             file_directives,
             // (dummy comment to force args into vertical layout)
             &mut |ln: &DirectiveLine<'_>| {
                 config.parse_and_update_revisions(ln, &mut props.revisions);
             },
         );
-
-        if poisoned {
-            eprintln!("errors encountered during EarlyProps parsing: {}", testfile);
-            panic!("errors encountered during EarlyProps parsing");
-        }
 
         props
     }
@@ -200,9 +192,9 @@ pub(crate) struct TestProps {
     pub no_auto_check_cfg: bool,
     /// Build and use `minicore` as `core` stub for `no_core` tests in cross-compilation scenarios
     /// that don't otherwise want/need `-Z build-std`.
-    pub add_core_stubs: bool,
+    pub add_minicore: bool,
     /// Add these flags to the build of `minicore`.
-    pub core_stubs_compile_flags: Vec<String>,
+    pub minicore_compile_flags: Vec<String>,
     /// Whether line annotatins are required for the given error kind.
     pub dont_require_annotations: HashSet<ErrorKind>,
     /// Whether pretty printers should be disabled in gdb.
@@ -254,8 +246,8 @@ mod directives {
     pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     pub const FILECHECK_FLAGS: &'static str = "filecheck-flags";
     pub const NO_AUTO_CHECK_CFG: &'static str = "no-auto-check-cfg";
-    pub const ADD_CORE_STUBS: &'static str = "add-core-stubs";
-    pub const CORE_STUBS_COMPILE_FLAGS: &'static str = "core-stubs-compile-flags";
+    pub const ADD_MINICORE: &'static str = "add-minicore";
+    pub const MINICORE_COMPILE_FLAGS: &'static str = "minicore-compile-flags";
     pub const DISABLE_GDB_PRETTY_PRINTERS: &'static str = "disable-gdb-pretty-printers";
     pub const COMPARE_OUTPUT_BY_LINES: &'static str = "compare-output-by-lines";
 }
@@ -311,8 +303,8 @@ impl TestProps {
             llvm_cov_flags: vec![],
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
-            add_core_stubs: false,
-            core_stubs_compile_flags: vec![],
+            add_minicore: false,
+            minicore_compile_flags: vec![],
             dont_require_annotations: Default::default(),
             disable_gdb_pretty_printers: false,
             compare_output_by_lines: false,
@@ -358,12 +350,10 @@ impl TestProps {
             let file_contents = fs::read_to_string(testfile).unwrap();
             let file_directives = FileDirectives::from_file_contents(testfile, &file_contents);
 
-            let mut poisoned = false;
-
             iter_directives(
                 config.mode,
-                &mut poisoned,
                 &file_directives,
+                // (dummy comment to force args into vertical layout)
                 &mut |ln: &DirectiveLine<'_>| {
                     if !ln.applies_to_test_revision(test_revision) {
                         return;
@@ -601,10 +591,10 @@ impl TestProps {
 
                     config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
 
-                    self.update_add_core_stubs(ln, config);
+                    self.update_add_minicore(ln, config);
 
                     if let Some(flags) =
-                        config.parse_name_value_directive(ln, CORE_STUBS_COMPILE_FLAGS)
+                        config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS)
                     {
                         let flags = split_flags(&flags);
                         for flag in &flags {
@@ -612,7 +602,7 @@ impl TestProps {
                                 panic!("you must use `//@ edition` to configure the edition");
                             }
                         }
-                        self.core_stubs_compile_flags.extend(flags);
+                        self.minicore_compile_flags.extend(flags);
                     }
 
                     if let Some(err_kind) =
@@ -634,11 +624,6 @@ impl TestProps {
                     );
                 },
             );
-
-            if poisoned {
-                eprintln!("errors encountered during TestProps parsing: {}", testfile);
-                panic!("errors encountered during TestProps parsing");
-            }
         }
 
         if self.should_ice {
@@ -753,12 +738,12 @@ impl TestProps {
         self.pass_mode
     }
 
-    fn update_add_core_stubs(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
-        let add_core_stubs = config.parse_name_directive(ln, directives::ADD_CORE_STUBS);
-        if add_core_stubs {
+    fn update_add_minicore(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
+        let add_minicore = config.parse_name_directive(ln, directives::ADD_MINICORE);
+        if add_minicore {
             if !matches!(config.mode, TestMode::Ui | TestMode::Codegen | TestMode::Assembly) {
                 panic!(
-                    "`add-core-stubs` is currently only supported for ui, codegen and assembly test modes"
+                    "`add-minicore` is currently only supported for ui, codegen and assembly test modes"
                 );
             }
 
@@ -767,12 +752,40 @@ impl TestProps {
             if self.local_pass_mode().is_some_and(|pm| pm == PassMode::Run) {
                 // `minicore` can only be used with non-run modes, because it's `core` prelude stubs
                 // and can't run.
-                panic!("`add-core-stubs` cannot be used to run the test binary");
+                panic!("`add-minicore` cannot be used to run the test binary");
             }
 
-            self.add_core_stubs = add_core_stubs;
+            self.add_minicore = add_minicore;
         }
     }
+}
+
+pub(crate) fn do_early_directives_check(
+    mode: TestMode,
+    file_directives: &FileDirectives<'_>,
+) -> Result<(), String> {
+    let testfile = file_directives.path;
+
+    for directive_line @ DirectiveLine { line_number, .. } in &file_directives.lines {
+        let CheckDirectiveResult { is_known_directive, trailing_directive } =
+            check_directive(directive_line, mode);
+
+        if !is_known_directive {
+            return Err(format!(
+                "ERROR: unknown compiletest directive `{directive}` at {testfile}:{line_number}",
+                directive = directive_line.display(),
+            ));
+        }
+
+        if let Some(trailing_directive) = &trailing_directive {
+            return Err(format!(
+                "ERROR: detected trailing compiletest directive `{trailing_directive}` at {testfile}:{line_number}\n\
+                HELP: put the directive on its own line: `//@ {trailing_directive}`"
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 pub(crate) struct CheckDirectiveResult<'ln> {
@@ -786,7 +799,7 @@ fn check_directive<'a>(
 ) -> CheckDirectiveResult<'a> {
     let &DirectiveLine { name: directive_name, .. } = directive_ln;
 
-    let is_known_directive = KNOWN_DIRECTIVE_NAMES.contains(&directive_name)
+    let is_known_directive = KNOWN_DIRECTIVE_NAMES_SET.contains(&directive_name)
         || match mode {
             TestMode::Rustdoc => KNOWN_HTMLDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
             TestMode::RustdocJson => KNOWN_JSONDOCCK_DIRECTIVE_NAMES.contains(&directive_name),
@@ -799,7 +812,7 @@ fn check_directive<'a>(
     let trailing_directive = directive_ln
         .remark_after_space()
         .map(|remark| remark.trim_start().split(' ').next().unwrap())
-        .filter(|token| KNOWN_DIRECTIVE_NAMES.contains(token));
+        .filter(|token| KNOWN_DIRECTIVE_NAMES_SET.contains(token));
 
     // FIXME(Zalathar): Consider emitting specialized error/help messages for
     // bogus directive names that are similar to real ones, e.g.:
@@ -811,7 +824,6 @@ fn check_directive<'a>(
 
 fn iter_directives(
     mode: TestMode,
-    poisoned: &mut bool,
     file_directives: &FileDirectives<'_>,
     it: &mut dyn FnMut(&DirectiveLine<'_>),
 ) {
@@ -837,36 +849,7 @@ fn iter_directives(
         }
     }
 
-    for directive_line @ &DirectiveLine { line_number, .. } in &file_directives.lines {
-        // Perform unknown directive check on Rust files.
-        if testfile.extension() == Some("rs") {
-            let CheckDirectiveResult { is_known_directive, trailing_directive } =
-                check_directive(directive_line, mode);
-
-            if !is_known_directive {
-                *poisoned = true;
-
-                error!(
-                    "{testfile}:{line_number}: detected unknown compiletest test directive `{}`",
-                    directive_line.display(),
-                );
-
-                return;
-            }
-
-            if let Some(trailing_directive) = &trailing_directive {
-                *poisoned = true;
-
-                error!(
-                    "{testfile}:{line_number}: detected trailing compiletest test directive `{}`",
-                    trailing_directive,
-                );
-                help!("put the trailing directive in its own line: `//@ {}`", trailing_directive);
-
-                return;
-            }
-        }
-
+    for directive_line in &file_directives.lines {
         it(directive_line);
     }
 }
@@ -1304,12 +1287,9 @@ pub(crate) fn make_test_description(
     let mut ignore_message = None;
     let mut should_fail = false;
 
-    let mut local_poisoned = false;
-
     // Scan through the test file to handle `ignore-*`, `only-*`, and `needs-*` directives.
     iter_directives(
         config.mode,
-        &mut local_poisoned,
         file_directives,
         &mut |ln @ &DirectiveLine { line_number, .. }| {
             if !ln.applies_to_test_revision(test_revision) {
@@ -1357,11 +1337,6 @@ pub(crate) fn make_test_description(
             should_fail |= config.parse_name_directive(ln, "should-fail");
         },
     );
-
-    if local_poisoned {
-        eprintln!("errors encountered when trying to make test description: {}", path);
-        panic!("errors encountered when trying to make test description");
-    }
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.

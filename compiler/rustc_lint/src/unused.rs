@@ -1032,19 +1032,22 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(box ast::ConstItem { expr: Some(expr), .. })
-        | Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind
-        {
-            self.check_unused_delims_expr(
-                cx,
-                expr,
-                UnusedDelimsCtx::AssignedValue,
-                false,
-                None,
-                None,
-                false,
-            );
-        }
+        let expr = if let Const(box ast::ConstItem { rhs: Some(rhs), .. }) = &item.kind {
+            rhs.expr()
+        } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
+            expr
+        } else {
+            return;
+        };
+        self.check_unused_delims_expr(
+            cx,
+            expr,
+            UnusedDelimsCtx::AssignedValue,
+            false,
+            None,
+            None,
+            false,
+        );
     }
 }
 

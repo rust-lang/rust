@@ -43,7 +43,7 @@ impl TestCx<'_> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
+        let proc_res = self.compose_and_run_compiler(rustc, None);
         (proc_res, output_path)
     }
 }

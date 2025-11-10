@@ -638,7 +638,7 @@ checkouts for you.
 
 Some commits contain large reformatting changes that don't otherwise change functionality. They can
 be instructed to be ignored by `git blame` through
-[`.git-blame-ignore-revs`](https://github.com/rust-lang/rust/blob/master/.git-blame-ignore-revs):
+[`.git-blame-ignore-revs`](https://github.com/rust-lang/rust/blob/HEAD/.git-blame-ignore-revs):
 
 1. Configure `git blame` to use `.git-blame-ignore-revs` as the list of commits to ignore: `git
    config blame.ignorerevsfile .git-blame-ignore-revs`

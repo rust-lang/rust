@@ -57,7 +57,9 @@ impl MiriEnv {
             .arg("--")
             .args(&["miri", "setup", "--print-sysroot"])
             .args(target_flag);
-        cmd.set_quiet(quiet);
+        if quiet {
+            cmd = cmd.arg("--quiet");
+        }
         let output = cmd.read()?;
         self.sh.set_var("MIRI_SYSROOT", &output);
         Ok(output.into())
@@ -112,8 +114,8 @@ impl Command {
             Command::Check { features, flags } => Self::check(features, flags),
             Command::Test { bless, target, coverage, features, flags } =>
                 Self::test(bless, target, coverage, features, flags),
-            Command::Run { dep, verbose, target, edition, features, flags } =>
-                Self::run(dep, verbose, target, edition, features, flags),
+            Command::Run { dep, quiet, target, edition, features, flags } =>
+                Self::run(dep, quiet, target, edition, features, flags),
             Command::Doc { features, flags } => Self::doc(features, flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { features, flags } => Self::clippy(features, flags),
@@ -458,7 +460,7 @@ impl Command {
 
     fn run(
         dep: bool,
-        verbose: bool,
+        quiet: bool,
         target: Option<String>,
         edition: Option<String>,
         features: Vec<String>,
@@ -468,7 +470,7 @@ impl Command {
 
         // Preparation: get a sysroot, and get the miri binary.
         let miri_sysroot =
-            e.build_miri_sysroot(/* quiet */ !verbose, target.as_deref(), &features)?;
+            e.build_miri_sysroot(/* quiet */ quiet, target.as_deref(), &features)?;
         let miri_bin = e
             .build_get_binary(".", &features)
             .context("failed to get filename of miri executable")?;
@@ -492,7 +494,7 @@ impl Command {
         // Compute flags.
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
-        let quiet_flag = if verbose { None } else { Some("--quiet") };
+        let quiet_flag = if quiet { Some("--quiet") } else { None };
 
         // Run Miri.
         // The basic command that executes the Miri driver.
@@ -506,7 +508,7 @@ impl Command {
         } else {
             cmd!(e.sh, "{miri_bin}")
         };
-        cmd.set_quiet(!verbose);
+        cmd.set_quiet(quiet);
         // Add Miri flags
         let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
         // For `--dep` we also need to set the target in the env var.

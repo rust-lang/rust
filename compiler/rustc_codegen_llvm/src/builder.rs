@@ -16,7 +16,6 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -27,7 +26,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -752,7 +751,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             OperandValue::Ref(place.val)
         };
 
-        OperandRef { val, layout: place.layout }
+        OperandRef { val, layout: place.layout, move_annotation: None }
     }
 
     fn write_operand_repeatedly(
@@ -840,11 +839,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // operation. But it's not clear how to do that with LLVM.)
                 // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
                 // <https://github.com/llvm/llvm-project/issues/64521>.
-                const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
-                    &["aarch64", "arm", "riscv32", "riscv64"];
-
-                let use_nontemporal =
-                    WELL_BEHAVED_NONTEMPORAL_ARCHS.contains(&&*self.cx.tcx.sess.target.arch);
+                let use_nontemporal = matches!(
+                    self.cx.tcx.sess.target.arch,
+                    Arch::AArch64 | Arch::Arm | Arch::RiscV32 | Arch::RiscV64
+                );
                 if use_nontemporal {
                     // According to LLVM [1] building a nontemporal store must
                     // *always* point to a metadata value of the integer 1.
@@ -1458,10 +1456,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         match &fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
-            PassMode::Direct(_) | PassMode::Pair { .. } => self.ret(call),
-            mode @ PassMode::Cast { .. } => {
-                bug!("Encountered `PassMode::{mode:?}` during codegen")
-            }
+            PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => self.ret(call),
         }
     }
 
@@ -1803,7 +1798,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::CFI)
             {
                 return;
             }
@@ -1861,7 +1856,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
             {
                 return None;
             }

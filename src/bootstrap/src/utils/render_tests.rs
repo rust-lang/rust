@@ -306,6 +306,14 @@ impl<'a> Renderer<'a> {
         );
     }
 
+    fn render_report(&self, report: &Report) {
+        let &Report { total_time, compilation_time } = report;
+        // Should match `write_merged_doctest_times` in `library/test/src/formatters/pretty.rs`.
+        println!(
+            "all doctests ran in {total_time:.2}s; merged doctests compilation took {compilation_time:.2}s"
+        );
+    }
+
     fn render_message(&mut self, message: Message) {
         match message {
             Message::Suite(SuiteMessage::Started { test_count }) => {
@@ -322,6 +330,9 @@ impl<'a> Renderer<'a> {
             }
             Message::Suite(SuiteMessage::Failed(outcome)) => {
                 self.render_suite_outcome(Outcome::Failed, &outcome);
+            }
+            Message::Report(report) => {
+                self.render_report(&report);
             }
             Message::Bench(outcome) => {
                 // The formatting for benchmarks doesn't replicate 1:1 the formatting libtest
@@ -435,6 +446,7 @@ enum Message {
     Suite(SuiteMessage),
     Test(TestMessage),
     Bench(BenchOutcome),
+    Report(Report),
 }
 
 #[derive(serde_derive::Deserialize)]
@@ -480,4 +492,11 @@ struct TestOutcome {
     exec_time: Option<f64>,
     stdout: Option<String>,
     message: Option<String>,
+}
+
+/// Emitted when running doctests.
+#[derive(serde_derive::Deserialize)]
+struct Report {
+    total_time: f64,
+    compilation_time: f64,
 }

@@ -48,6 +48,7 @@ use crate::errors::{
     NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
     TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
+use crate::op::contains_let_in_chain;
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, GatherLocalsVisitor, Needs,
     TupleArgumentsFlag, cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct,
@@ -76,6 +77,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             false
         };
+
+        // Special case: range expressions are desugared to struct literals in HIR,
+        // so they would normally return `Unambiguous` precedence in expr.precedence.
+        // we should return `Range` precedence for correct parenthesization in suggestions.
+        if is_range_literal(expr) {
+            return ExprPrecedence::Range;
+        }
+
         expr.precedence(&has_attr)
     }
 
@@ -1274,6 +1283,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adjust_err: impl FnOnce(&mut Diag<'_>),
     ) {
         if lhs.is_syntactic_place_expr() {
+            return;
+        }
+
+        // Skip suggestion if LHS contains a let-chain at this would likely be spurious
+        // cc: https://github.com/rust-lang/rust/issues/147664
+        if contains_let_in_chain(lhs) {
             return;
         }
 

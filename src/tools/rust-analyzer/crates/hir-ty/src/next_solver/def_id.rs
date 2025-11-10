@@ -154,6 +154,29 @@ impl From<DefWithBodyId> for SolverDefId {
     }
 }
 
+impl TryFrom<SolverDefId> for DefWithBodyId {
+    type Error = ();
+
+    #[inline]
+    fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+        let id = match value {
+            SolverDefId::ConstId(id) => id.into(),
+            SolverDefId::FunctionId(id) => id.into(),
+            SolverDefId::StaticId(id) => id.into(),
+            SolverDefId::EnumVariantId(id) | SolverDefId::Ctor(Ctor::Enum(id)) => id.into(),
+            SolverDefId::InternedOpaqueTyId(_)
+            | SolverDefId::TraitId(_)
+            | SolverDefId::TypeAliasId(_)
+            | SolverDefId::ImplId(_)
+            | SolverDefId::InternedClosureId(_)
+            | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::Ctor(Ctor::Struct(_))
+            | SolverDefId::AdtId(_) => return Err(()),
+        };
+        Ok(id)
+    }
+}
+
 impl TryFrom<SolverDefId> for GenericDefId {
     type Error = ();
 

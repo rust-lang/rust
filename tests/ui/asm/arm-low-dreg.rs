@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ compile-flags: --target=armv7-unknown-linux-gnueabihf
 //@ needs-llvm-components: arm

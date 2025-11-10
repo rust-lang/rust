@@ -1,8 +1,13 @@
 error[E0277]: the trait bound `S: [const] Foo` is not satisfied
-  --> $DIR/super-traits-fail.rs:17:20
+  --> $DIR/super-traits-fail.rs:15:20
    |
 LL | impl const Bar for S {}
    |                    ^
+   |
+help: make the `impl` of trait `Foo` `const`
+   |
+LL | impl const Foo for S {
+   |      +++++
 
 error: aborting due to 1 previous error
 

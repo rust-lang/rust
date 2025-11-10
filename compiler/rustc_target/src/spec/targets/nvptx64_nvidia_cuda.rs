@@ -1,11 +1,11 @@
 use crate::spec::{
-    LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetMetadata,
-    TargetOptions,
+    Arch, LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     Target {
-        arch: "nvptx64".into(),
+        arch: Arch::Nvptx64,
         data_layout: "e-p6:32:32-i64:64-i128:128-i256:256-v16:16-v32:32-n16:32:64".into(),
         llvm_target: "nvptx64-nvidia-cuda".into(),
         metadata: TargetMetadata {
@@ -41,6 +41,9 @@ pub(crate) fn target() -> Target {
 
             // Let the `ptx-linker` to handle LLVM lowering into MC / assembly.
             obj_is_bitcode: true,
+
+            // Clearly a GPU
+            is_like_gpu: true,
 
             // Convenient and predicable naming scheme.
             dll_prefix: "".into(),

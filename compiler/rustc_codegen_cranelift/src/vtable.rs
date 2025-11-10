@@ -84,5 +84,5 @@ pub(crate) fn get_vtable<'tcx>(
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, "vtable");
     }
-    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
+    fx.bcx.ins().symbol_value(fx.pointer_type, local_data_id)
 }

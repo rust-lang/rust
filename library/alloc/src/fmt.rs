@@ -602,7 +602,7 @@ pub use core::fmt::{DebugAsHex, FormattingOptions, Sign};
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
-#[unstable(feature = "debug_closure_helpers", issue = "117729")]
+#[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
 pub use core::fmt::{FromFn, from_fn};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};

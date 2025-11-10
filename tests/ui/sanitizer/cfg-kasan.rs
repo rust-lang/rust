@@ -1,7 +1,7 @@
 // Verifies that when compiling with -Zsanitizer=kernel-address,
 // the `#[cfg(sanitize = "address")]` attribute is configured.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 //@ compile-flags: -Zsanitizer=kernel-address
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64

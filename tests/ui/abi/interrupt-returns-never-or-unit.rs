@@ -5,7 +5,7 @@ but it makes sense to allow them to return ! because they could indeed be diverg
 
 This test uses `cfg` because it is not testing whether these ABIs work on the platform.
 */
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x64 i686 riscv32 riscv64 avr msp430
 //@ build-pass
 //

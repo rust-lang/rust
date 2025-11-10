@@ -7,6 +7,7 @@
 use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
+use rustc_target::spec::Arch;
 use tracing::debug;
 
 use crate::context::CodegenCx;
@@ -35,7 +36,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         llfn
     } else {
         let instance_def_id = instance.def_id();
-        let llfn = if tcx.sess.target.arch == "x86"
+        let llfn = if tcx.sess.target.arch == Arch::X86
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
             // When calling functions in generated import libraries, MSVC needs

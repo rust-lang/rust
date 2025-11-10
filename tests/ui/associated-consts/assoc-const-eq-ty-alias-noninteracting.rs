@@ -5,16 +5,19 @@
 
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args, unsized_const_params)]
+#![allow(incomplete_features)]
 
 trait Trait: SuperTrait {
     type N;
     type Q;
 
+    #[type_const]
     const N: usize;
 }
 
 trait SuperTrait {
+    #[type_const]
     const Q: &'static str;
 }
 

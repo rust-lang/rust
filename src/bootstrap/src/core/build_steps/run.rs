@@ -374,7 +374,6 @@ impl Step for UnicodeTableGenerator {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
-        cmd.arg(builder.src.join("library/coretests/tests/unicode/test_data.rs"));
         cmd.run(builder);
     }
 }

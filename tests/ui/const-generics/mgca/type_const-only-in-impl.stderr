@@ -1,0 +1,10 @@
+error: use of trait associated const without `#[type_const]`
+  --> $DIR/type_const-only-in-impl.rs:15:43
+   |
+LL | fn accept_bad_tr<const N: usize, T: BadTr<NUM = { N }>>(_x: &T) {}
+   |                                           ^^^^^^^^^^^
+   |
+   = note: the declaration in the trait must be marked with `#[type_const]`
+
+error: aborting due to 1 previous error
+

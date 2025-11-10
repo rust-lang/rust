@@ -4,7 +4,7 @@
 //@ needs-llvm-components: x86
 //@ build-pass
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core, x87_target_feature)]
 #![no_core]
 

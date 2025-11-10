@@ -12,8 +12,6 @@ help: ALLOC was allocated here:
    |
 LL |         let mut b = Box::new(0u64);
    |                     ^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `miri_start` at tests/genmc/fail/atomics/atomic_ptr_invalid_provenance.rs:LL:CC
 
 note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
 

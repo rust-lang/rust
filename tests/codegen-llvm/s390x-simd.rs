@@ -1,12 +1,12 @@
 //! test that s390x vector types are passed using `PassMode::Direct`
 //! see also https://github.com/rust-lang/rust/issues/135744
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target s390x-unknown-linux-gnu -Copt-level=3
 //@ needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
 #![feature(no_core, asm_experimental_arch)]
-#![feature(s390x_target_feature, simd_ffi, intrinsics, repr_simd)]
+#![feature(simd_ffi, intrinsics, repr_simd)]
 #![no_core]
 
 extern crate minicore;

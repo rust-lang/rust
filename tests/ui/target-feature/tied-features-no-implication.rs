@@ -4,9 +4,9 @@
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 // FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
-//@ core-stubs-compile-flags: -C target-feature=-pacg,-paca
+//@ minicore-compile-flags: -C target-feature=-pacg,-paca
 
 #![feature(no_core)]
 #![no_core]
@@ -30,4 +30,4 @@ fn foo() {}
 #[cfg(target_feature = "pacg")]
 pub unsafe fn foo() {} //[pacg]~ ERROR the name `foo` is defined multiple times
 
-//[paca]~? ERROR the target features paca, pacg must all be either enabled or disabled together
+//~? ERROR the target features paca, pacg must all be either enabled or disabled together

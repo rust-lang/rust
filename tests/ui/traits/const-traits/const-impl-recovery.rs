@@ -1,12 +1,10 @@
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Foo {}
+const trait Foo {}
 
 const impl Foo for i32 {} //~ ERROR: expected identifier, found keyword
 
-#[const_trait]
-trait Bar {}
+const trait Bar {}
 
 const impl<T: Foo> Bar for T {} //~ ERROR: expected identifier, found keyword
 

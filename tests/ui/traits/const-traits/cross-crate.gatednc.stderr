@@ -3,6 +3,12 @@ error[E0277]: the trait bound `cross_crate::NonConst: [const] cross_crate::MyTra
    |
 LL |     NonConst.func();
    |              ^^^^
+   |
+note: trait `MyTrait` is implemented but not `const`
+  --> $DIR/auxiliary/cross-crate.rs:11:1
+   |
+LL | impl MyTrait for NonConst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

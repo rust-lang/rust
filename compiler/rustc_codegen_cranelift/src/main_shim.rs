@@ -93,7 +93,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_sigpipe = bcx.ins().iconst(types::I8, sigpipe as i64);
 
-            let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
+            let main_func_ref = m.declare_func_in_func(main_func_id, bcx.func);
 
             let result = if ignore_lang_start_wrapper {
                 // ignoring #[lang = "start"] as we are running in the jit
@@ -123,7 +123,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let report_sig = get_function_sig(tcx, m.target_config().default_call_conv, report);
                 let report_func_id =
                     m.declare_function(report_name, Linkage::Import, &report_sig).unwrap();
-                let report_func_ref = m.declare_func_in_func(report_func_id, &mut bcx.func);
+                let report_func_ref = m.declare_func_in_func(report_func_id, bcx.func);
 
                 // FIXME do proper abi handling instead of expecting the pass mode to be identical
                 // for returns and arguments.
@@ -148,7 +148,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
-                let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
+                let func_ref = m.declare_func_in_func(start_func_id, bcx.func);
                 let call_inst =
                     bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv, arg_sigpipe]);
                 bcx.inst_results(call_inst)[0]

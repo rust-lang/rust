@@ -1,0 +1,27 @@
+error: the constant `5` is not of type `isize`
+  --> $DIR/type_const-mismatched-types.rs:9:1
+   |
+LL | const FREE2: isize = FREE;
+   | ^^^^^^^^^^^^^^^^^^ expected `isize`, found `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/type_const-mismatched-types.rs:5:19
+   |
+LL | const FREE: u32 = 5_usize;
+   |                   ^^^^^^^ expected `u32`, found `usize`
+   |
+help: change the type of the numeric literal from `usize` to `u32`
+   |
+LL - const FREE: u32 = 5_usize;
+LL + const FREE: u32 = 5_u32;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/type_const-mismatched-types.rs:19:22
+   |
+LL |     const N: usize = false;
+   |                      ^^^^^ expected `usize`, found `bool`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

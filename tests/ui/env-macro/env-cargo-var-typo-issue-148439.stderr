@@ -1,0 +1,58 @@
+error: environment variable `CARGO_PACKAGE_VERSION` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:7:13
+   |
+LL |     let _ = env!("CARGO_PACKAGE_VERSION");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: there is a similar Cargo environment variable: `CARGO_PKG_VERSION`
+
+error: environment variable `CARGO_PACKAGE_NAME` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:13:13
+   |
+LL |     let _ = env!("CARGO_PACKAGE_NAME");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: there is a similar Cargo environment variable: `CARGO_PKG_NAME`
+
+error: environment variable `CARGO_PACKAGE_AUTHORS` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:19:13
+   |
+LL |     let _ = env!("CARGO_PACKAGE_AUTHORS");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: there is a similar Cargo environment variable: `CARGO_PKG_AUTHORS`
+
+error: environment variable `CARGO_MANIFEST_DIRECTORY` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:25:13
+   |
+LL |     let _ = env!("CARGO_MANIFEST_DIRECTORY");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: there is a similar Cargo environment variable: `CARGO_MANIFEST_DIR`
+
+error: environment variable `CARGO_PKG_VERSIO` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:31:13
+   |
+LL |     let _ = env!("CARGO_PKG_VERSIO");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: there is a similar Cargo environment variable: `CARGO_PKG_VERSION`
+
+error: environment variable `MY_CUSTOM_VAR` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:38:13
+   |
+LL |     let _ = env!("MY_CUSTOM_VAR");
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `std::env::var("MY_CUSTOM_VAR")` to read the variable at run time
+
+error: environment variable `CARGO_SOMETHING_TOTALLY_UNKNOWN` not defined at compile time
+  --> $DIR/env-cargo-var-typo-issue-148439.rs:45:13
+   |
+LL |     let _ = env!("CARGO_SOMETHING_TOTALLY_UNKNOWN");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: Cargo sets build script variables at run time. Use `std::env::var("CARGO_SOMETHING_TOTALLY_UNKNOWN")` instead
+
+error: aborting due to 7 previous errors
+

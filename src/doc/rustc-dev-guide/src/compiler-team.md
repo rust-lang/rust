@@ -29,7 +29,7 @@ check out [triagebot.toml's assign section][map].
 It contains a listing of the various parts of the compiler and a list of people
 who are reviewers of each part.
 
-[map]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+[map]: https://github.com/rust-lang/rust/blob/HEAD/triagebot.toml
 
 ## Rust compiler meeting
 

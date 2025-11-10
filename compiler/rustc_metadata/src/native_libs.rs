@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
+use rustc_target::spec::{Arch, BinaryFormat, LinkSelfContainedComponents};
 
 use crate::errors;
 
@@ -71,7 +71,7 @@ pub fn walk_native_lib_search_dirs<R>(
         || sess.target.os == "linux"
         || sess.target.os == "fuchsia"
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.opts.unstable_opts.sanitizer.is_empty()
+        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
@@ -189,7 +189,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }
@@ -393,7 +393,7 @@ impl<'tcx> Collector<'tcx> {
         // This logic is similar to `AbiMap::canonize_abi` (in rustc_target/src/spec/abi_map.rs) but
         // we need more detail than those adjustments, and we can't support all ABIs that are
         // generally supported.
-        let calling_convention = if self.tcx.sess.target.arch == "x86" {
+        let calling_convention = if self.tcx.sess.target.arch == Arch::X86 {
             match abi {
                 ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
                 ExternAbi::Stdcall { .. } => {

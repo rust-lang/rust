@@ -403,6 +403,28 @@ impl<'hir> PathSegment<'hir> {
     }
 }
 
+#[derive(Clone, Copy, Debug, HashStable_Generic)]
+pub enum ConstItemRhs<'hir> {
+    Body(BodyId),
+    TypeConst(&'hir ConstArg<'hir>),
+}
+
+impl<'hir> ConstItemRhs<'hir> {
+    pub fn hir_id(&self) -> HirId {
+        match self {
+            ConstItemRhs::Body(body_id) => body_id.hir_id,
+            ConstItemRhs::TypeConst(ct_arg) => ct_arg.hir_id,
+        }
+    }
+
+    pub fn span<'tcx>(&self, tcx: impl crate::intravisit::HirTyCtxt<'tcx>) -> Span {
+        match self {
+            ConstItemRhs::Body(body_id) => tcx.hir_body(*body_id).value.span,
+            ConstItemRhs::TypeConst(ct_arg) => ct_arg.span(),
+        }
+    }
+}
+
 /// A constant that enters the type system, used for arguments to const generics (e.g. array lengths).
 ///
 /// These are distinct from [`AnonConst`] as anon consts in the type system are not allowed
@@ -474,6 +496,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
         match self.kind {
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
+            ConstArgKind::Error(span, _) => span,
             ConstArgKind::Infer(span, _) => span,
         }
     }
@@ -490,6 +513,8 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
+    /// Error const
+    Error(Span, ErrorGuaranteed),
     /// This variant is not always used to represent inference consts, sometimes
     /// [`GenericArg::Infer`] is used instead.
     Infer(Span, Unambig),
@@ -3040,7 +3065,7 @@ macro_rules! expect_methods_self_kind {
         $(
             #[track_caller]
             pub fn $name(&self) -> $ret_ty {
-                let $pat = &self.kind else { expect_failed(stringify!($ident), self) };
+                let $pat = &self.kind else { expect_failed(stringify!($name), self) };
                 $ret_val
             }
         )*
@@ -3052,7 +3077,7 @@ macro_rules! expect_methods_self {
         $(
             #[track_caller]
             pub fn $name(&self) -> $ret_ty {
-                let $pat = self else { expect_failed(stringify!($ident), self) };
+                let $pat = self else { expect_failed(stringify!($name), self) };
                 $ret_val
             }
         )*
@@ -3076,8 +3101,8 @@ impl<'hir> TraitItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, Option<BodyId>),
-            TraitItemKind::Const(ty, body), (ty, *body);
+        expect_const, (&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
+            TraitItemKind::Const(ty, rhs), (ty, *rhs);
 
         expect_fn, (&FnSig<'hir>, &TraitFn<'hir>),
             TraitItemKind::Fn(ty, trfn), (ty, trfn);
@@ -3101,7 +3126,7 @@ pub enum TraitFn<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(&'hir Ty<'hir>, Option<BodyId>),
+    Const(&'hir Ty<'hir>, Option<ConstItemRhs<'hir>>),
     /// An associated function with an optional body.
     Fn(FnSig<'hir>, TraitFn<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
@@ -3170,9 +3195,9 @@ impl<'hir> ImplItem<'hir> {
     }
 
     expect_methods_self_kind! {
-        expect_const, (&'hir Ty<'hir>, BodyId), ImplItemKind::Const(ty, body), (ty, *body);
-        expect_fn,    (&FnSig<'hir>, BodyId),   ImplItemKind::Fn(ty, body),    (ty, *body);
-        expect_type,  &'hir Ty<'hir>,           ImplItemKind::Type(ty),        ty;
+        expect_const, (&'hir Ty<'hir>, ConstItemRhs<'hir>), ImplItemKind::Const(ty, rhs), (ty, *rhs);
+        expect_fn,    (&FnSig<'hir>, BodyId),               ImplItemKind::Fn(ty, body),   (ty, *body);
+        expect_type,  &'hir Ty<'hir>,                       ImplItemKind::Type(ty),       ty;
     }
 }
 
@@ -3181,7 +3206,7 @@ impl<'hir> ImplItem<'hir> {
 pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
-    Const(&'hir Ty<'hir>, BodyId),
+    Const(&'hir Ty<'hir>, ConstItemRhs<'hir>),
     /// An associated function implementation with the given signature and body.
     Fn(FnSig<'hir>, BodyId),
     /// An associated type.
@@ -4110,8 +4135,8 @@ impl<'hir> Item<'hir> {
         expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId),
             ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
 
-        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
-            ItemKind::Const(ident, generics, ty, body), (*ident, generics, ty, *body);
+        expect_const, (Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, ConstItemRhs<'hir>),
+            ItemKind::Const(ident, generics, ty, rhs), (*ident, generics, ty, *rhs);
 
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
@@ -4282,7 +4307,7 @@ pub enum ItemKind<'hir> {
     /// A `static` item.
     Static(Mutability, Ident, &'hir Ty<'hir>, BodyId),
     /// A `const` item.
-    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, BodyId),
+    Const(Ident, &'hir Generics<'hir>, &'hir Ty<'hir>, ConstItemRhs<'hir>),
     /// A function declaration.
     Fn {
         sig: FnSig<'hir>,
@@ -4520,17 +4545,18 @@ impl<'hir> OwnerNode<'hir> {
             OwnerNode::Item(Item {
                 kind:
                     ItemKind::Static(_, _, _, body)
-                    | ItemKind::Const(_, _, _, body)
+                    | ItemKind::Const(.., ConstItemRhs::Body(body))
                     | ItemKind::Fn { body, .. },
                 ..
             })
             | OwnerNode::TraitItem(TraitItem {
                 kind:
-                    TraitItemKind::Fn(_, TraitFn::Provided(body)) | TraitItemKind::Const(_, Some(body)),
+                    TraitItemKind::Fn(_, TraitFn::Provided(body))
+                    | TraitItemKind::Const(_, Some(ConstItemRhs::Body(body))),
                 ..
             })
             | OwnerNode::ImplItem(ImplItem {
-                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, body),
+                kind: ImplItemKind::Fn(_, body) | ImplItemKind::Const(_, ConstItemRhs::Body(body)),
                 ..
             }) => Some(*body),
             _ => None,
@@ -4764,6 +4790,11 @@ impl<'hir> Node<'hir> {
                 ForeignItemKind::Static(ty, ..) => Some(ty),
                 _ => None,
             },
+            Node::GenericParam(param) => match param.kind {
+                GenericParamKind::Lifetime { .. } => None,
+                GenericParamKind::Type { default, .. } => default,
+                GenericParamKind::Const { ty, .. } => Some(ty),
+            },
             _ => None,
         }
     }
@@ -4781,7 +4812,7 @@ impl<'hir> Node<'hir> {
             Node::Item(Item {
                 owner_id,
                 kind:
-                    ItemKind::Const(_, _, _, body)
+                    ItemKind::Const(.., ConstItemRhs::Body(body))
                     | ItemKind::Static(.., body)
                     | ItemKind::Fn { body, .. },
                 ..
@@ -4789,12 +4820,13 @@ impl<'hir> Node<'hir> {
             | Node::TraitItem(TraitItem {
                 owner_id,
                 kind:
-                    TraitItemKind::Const(_, Some(body)) | TraitItemKind::Fn(_, TraitFn::Provided(body)),
+                    TraitItemKind::Const(.., Some(ConstItemRhs::Body(body)))
+                    | TraitItemKind::Fn(_, TraitFn::Provided(body)),
                 ..
             })
             | Node::ImplItem(ImplItem {
                 owner_id,
-                kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
+                kind: ImplItemKind::Const(.., ConstItemRhs::Body(body)) | ImplItemKind::Fn(_, body),
                 ..
             }) => Some((owner_id.def_id, *body)),
 

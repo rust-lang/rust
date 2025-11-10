@@ -12,8 +12,8 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{
-    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, Item, ItemKind,
-    Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason,
+    self as hir, AmbigArg, ConstStability, DefaultBodyStability, FieldDef, HirId, Item, ItemKind,
+    Path, Stability, StabilityLevel, StableSince, TraitRef, Ty, TyKind, UnstableReason, UsePath,
     VERSION_PLACEHOLDER, Variant, find_attr,
 };
 use rustc_middle::hir::nested_filter;
@@ -737,6 +737,35 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             hir::BoundConstness::Never => {}
         }
         intravisit::walk_poly_trait_ref(self, t);
+    }
+
+    fn visit_use(&mut self, path: &'tcx UsePath<'tcx>, hir_id: HirId) {
+        let res = path.res;
+
+        // A use item can import something from two namespaces at the same time.
+        // For deprecation/stability we don't want to warn twice.
+        // This specifically happens with constructors for unit/tuple structs.
+        if let Some(ty_ns_res) = res.type_ns
+            && let Some(value_ns_res) = res.value_ns
+            && let Some(type_ns_did) = ty_ns_res.opt_def_id()
+            && let Some(value_ns_did) = value_ns_res.opt_def_id()
+            && let DefKind::Ctor(.., _) = self.tcx.def_kind(value_ns_did)
+            && self.tcx.parent(value_ns_did) == type_ns_did
+        {
+            // Only visit the value namespace path when we've detected a duplicate,
+            // not the type namespace path.
+            let UsePath { segments, res: _, span } = *path;
+            self.visit_path(&Path { segments, res: value_ns_res, span }, hir_id);
+
+            // Though, visit the macro namespace if it exists,
+            // regardless of the checks above relating to constructors.
+            if let Some(res) = res.macro_ns {
+                self.visit_path(&Path { segments, res, span }, hir_id);
+            }
+        } else {
+            // if there's no duplicate, just walk as normal
+            intravisit::walk_use(self, path, hir_id)
+        }
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {

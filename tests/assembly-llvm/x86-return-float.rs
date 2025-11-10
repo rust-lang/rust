@@ -7,7 +7,7 @@
 //@ compile-flags: -Copt-level=2
 //@ filecheck-flags: --implicit-check-not fld --implicit-check-not fst
 //@ revisions: linux win
-//@ add-core-stubs
+//@ add-minicore
 //@[linux] needs-llvm-components: x86
 //@[win] needs-llvm-components: x86
 //@[linux] compile-flags: --target i686-unknown-linux-gnu

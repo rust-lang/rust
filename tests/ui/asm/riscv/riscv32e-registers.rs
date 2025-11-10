@@ -1,6 +1,6 @@
 // Test that loads into registers x16..=x31 are never generated for riscv32{e,em,emc} targets
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ build-fail
 //@ revisions: riscv32e riscv32em riscv32emc
 //

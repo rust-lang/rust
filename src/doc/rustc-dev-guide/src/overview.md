@@ -63,10 +63,10 @@ Parsing is organized by semantic construct. Separate
 directory. The source file name follows the construct name. For example, the
 following files are found in the `parser`:
 
-- [`expr.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/expr.rs)
-- [`pat.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/pat.rs)
-- [`ty.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/ty.rs)
-- [`stmt.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_parse/src/parser/stmt.rs)
+- [`expr.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/expr.rs)
+- [`pat.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/pat.rs)
+- [`ty.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/ty.rs)
+- [`stmt.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_parse/src/parser/stmt.rs)
 
 This naming scheme is used across many compiler stages. You will find either a
 file or directory with the same name across the parsing, lowering, type
@@ -164,7 +164,7 @@ the final binary.
 [parse_mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_mod
 [parse_nonterminal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html#method.parse_nonterminal
 [parser]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
-[rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_parse/src/parser
+[rustc_parse_parser_dir]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_parse/src/parser
 [String interning]: https://en.wikipedia.org/wiki/String_interning
 [thir]: ./thir.md
 

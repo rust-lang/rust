@@ -55,7 +55,7 @@ pub fn scalar_to_genmc_scalar<'tcx>(
         rustc_const_eval::interpret::Scalar::Int(scalar_int) => {
             // FIXME(genmc): Add u128 support once GenMC supports it.
             let value: u64 = scalar_int.to_uint(scalar_int.size()).try_into().unwrap();
-            GenmcScalar { value, extra: 0, is_init: true }
+            GenmcScalar { value, provenance: 0, is_init: true }
         }
         rustc_const_eval::interpret::Scalar::Ptr(pointer, size) => {
             // FIXME(genmc,borrow tracking): Borrow tracking information is lost.
@@ -69,7 +69,7 @@ pub fn scalar_to_genmc_scalar<'tcx>(
             let base_addr = ecx.addr_from_alloc_id(alloc_id, None)?;
             // Add the base_addr alloc_id pair to the map.
             genmc_ctx.exec_state.genmc_shared_allocs_map.borrow_mut().insert(base_addr, alloc_id);
-            GenmcScalar { value: addr.bytes(), extra: base_addr, is_init: true }
+            GenmcScalar { value: addr.bytes(), provenance: base_addr, is_init: true }
         }
     })
 }
@@ -84,16 +84,17 @@ pub fn genmc_scalar_to_scalar<'tcx>(
     scalar: GenmcScalar,
     size: Size,
 ) -> InterpResult<'tcx, Scalar> {
-    // If `extra` is zero, we have a regular integer.
-    if scalar.extra == 0 {
+    // If `provenance` is zero, we have a regular integer.
+    if scalar.provenance == 0 {
         // NOTE: GenMC always returns 64 bit values, and the upper bits are not yet truncated.
         // FIXME(genmc): GenMC should be doing the truncation, not Miri.
         let (value_scalar_int, _got_truncated) = ScalarInt::truncate_from_uint(scalar.value, size);
         return interp_ok(Scalar::from(value_scalar_int));
     }
-    // `extra` is non-zero, we have a pointer.
-    // When we get a pointer from GenMC, then we must have sent it to GenMC before in the same execution (since the reads-from relation is always respected).
-    let alloc_id = genmc_ctx.exec_state.genmc_shared_allocs_map.borrow()[&scalar.extra];
+    // `provenance` is non-zero, we have a pointer.
+    // When we get a pointer from GenMC, then we must have sent it to GenMC before in the same
+    // execution (since the reads-from relation is always respected).
+    let alloc_id = genmc_ctx.exec_state.genmc_shared_allocs_map.borrow()[&scalar.provenance];
     // FIXME(genmc,borrow tracking): Borrow tracking not yet supported.
     let provenance = machine::Provenance::Concrete { alloc_id, tag: BorTag::default() };
     let ptr = interpret::Pointer::new(provenance, Size::from_bytes(scalar.value));

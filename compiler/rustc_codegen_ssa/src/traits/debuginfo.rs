@@ -64,7 +64,7 @@ pub trait DebugInfoCodegenMethods<'tcx>: BackendTypes {
     ) -> Self::DIVariable;
 }
 
-pub trait DebugInfoBuilderMethods: BackendTypes {
+pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
@@ -95,4 +95,18 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
     fn clear_dbg_loc(&mut self);
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
     fn set_var_name(&mut self, value: Self::Value, name: &str);
+
+    /// Hook to allow move/copy operations to be annotated for profiling.
+    ///
+    /// The `instance` parameter should be the monomorphized instance of the
+    /// `compiler_move` or `compiler_copy` function with the actual type and size.
+    ///
+    /// Default implementation does no annotation (just executes the closure).
+    fn with_move_annotation<R>(
+        &mut self,
+        _instance: Instance<'tcx>,
+        f: impl FnOnce(&mut Self) -> R,
+    ) -> R {
+        f(self)
+    }
 }

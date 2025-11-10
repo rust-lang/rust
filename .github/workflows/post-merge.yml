@@ -1,4 +1,4 @@
-# Workflow that runs after a merge to master, analyses changes in test executions
+# Workflow that runs after a merge to the default branch, analyses changes in test executions
 # and posts the result to the merged PR.
 
 name: Post merge analysis

@@ -86,6 +86,7 @@ pub use crate::{
     file_structure::{FileStructureConfig, StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
     goto_definition::GotoDefinitionConfig,
+    goto_implementation::GotoImplementationConfig,
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
         HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
@@ -106,7 +107,7 @@ pub use crate::{
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
     references::{FindAllRefsConfig, ReferenceSearchResult},
-    rename::RenameError,
+    rename::{RenameConfig, RenameError},
     runnables::{Runnable, RunnableKind, TestId, UpdateTest},
     signature_help::SignatureHelp,
     static_index::{
@@ -537,9 +538,10 @@ impl Analysis {
     /// Returns the impls from the symbol at `position`.
     pub fn goto_implementation(
         &self,
+        config: &GotoImplementationConfig,
         position: FilePosition,
     ) -> Cancellable<Option<RangeInfo<Vec<NavigationTarget>>>> {
-        self.with_db(|db| goto_implementation::goto_implementation(db, position))
+        self.with_db(|db| goto_implementation::goto_implementation(db, config, position))
     }
 
     /// Returns the type definitions for the symbol at `position`.
@@ -830,8 +832,9 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
+        config: &RenameConfig,
     ) -> Cancellable<Result<SourceChange, RenameError>> {
-        self.with_db(|db| rename::rename(db, position, new_name))
+        self.with_db(|db| rename::rename(db, position, new_name, config))
     }
 
     pub fn prepare_rename(
