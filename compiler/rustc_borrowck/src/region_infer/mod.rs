@@ -499,7 +499,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         scc_a: ConstraintSccIndex,
         scc_b: ConstraintSccIndex,
     ) -> bool {
-        self.scc_annotations[scc_a].can_name_all_placeholders(self.scc_annotations[scc_b])
+        self.scc_annotations[scc_a]
+            .max_nameable_universe()
+            .can_name(self.scc_annotations[scc_b].max_placeholder_universe_reached())
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -611,10 +613,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // It doesn't matter *what* universe because the promoted `T` will
         // always be in the root universe.
-        if let Some(min_placeholder) = self.scc_annotations[r_scc].reached_placeholder() {
-            debug!(
-                "encountered placeholder in higher universe: {min_placeholder:?}, requiring 'static"
-            );
+        if !self.scc_annotations[r_scc].max_placeholder_universe_reached().is_root() {
+            debug!("encountered placeholder in higher universe, requiring 'static");
             let static_r = self.universal_regions().fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
