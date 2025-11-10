@@ -564,10 +564,14 @@ fn send_ready_events_to_interests<'tcx, 'a>(
 ) -> InterpResult<'tcx> {
     let mut wakeup = false;
     for (&event_key, interest) in interests {
+        let mut ready_list = epoll.ready_list.borrow_mut();
         // This checks if any of the events specified in epoll_event_interest.events
         // match those in ready_events.
         let flags = interest.events & event_bitmask;
         if flags == 0 {
+            // Make sure we *remove* any previous item from the ready list, since this
+            // is not ready any more.
+            ready_list.remove(&event_key);
             continue;
         }
         // Geenrate a new event instance, with the flags that this one is interested in.
@@ -577,7 +581,6 @@ fn send_ready_events_to_interests<'tcx, 'a>(
         })?;
         // Add event to ready list for this epoll instance.
         // Tests confirm that we have to *overwrite* the old instance for the same key.
-        let mut ready_list = epoll.ready_list.borrow_mut();
         ready_list.insert(event_key, new_instance);
         wakeup = true;
     }
