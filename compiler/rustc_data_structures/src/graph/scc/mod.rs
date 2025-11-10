@@ -27,26 +27,18 @@ mod tests;
 /// the max/min element of the SCC, or all of the above.
 ///
 /// Concretely, the both merge operations must commute, e.g. where `merge`
-/// is `merge_scc` and `merge_reached`: `a.merge(b) == b.merge(a)`
+/// is `update_scc` and `update_reached`: `a.merge(b) == b.merge(a)`
 ///
 /// In general, what you want is probably always min/max according
 /// to some ordering, potentially with side constraints (min x such
 /// that P holds).
 pub trait Annotation: Debug + Copy {
     /// Merge two existing annotations into one during
-    /// path compression.o
-    fn merge_scc(self, other: Self) -> Self;
+    /// path compression.
+    fn update_scc(&mut self, other: &Self);
 
     /// Merge a successor into this annotation.
-    fn merge_reached(self, other: Self) -> Self;
-
-    fn update_scc(&mut self, other: Self) {
-        *self = self.merge_scc(other)
-    }
-
-    fn update_reachable(&mut self, other: Self) {
-        *self = self.merge_reached(other)
-    }
+    fn update_reachable(&mut self, other: &Self);
 }
 
 /// An accumulator for annotations.
@@ -70,12 +62,8 @@ impl<N: Idx, S: Idx + Ord> Annotations<N> for NoAnnotations<S> {
 
 /// The empty annotation, which does nothing.
 impl Annotation for () {
-    fn merge_reached(self, _other: Self) -> Self {
-        ()
-    }
-    fn merge_scc(self, _other: Self) -> Self {
-        ()
-    }
+    fn update_reachable(&mut self, _other: &Self) {}
+    fn update_scc(&mut self, _other: &Self) {}
 }
 
 /// Strongly connected components (SCC) of a graph. The type `N` is
@@ -614,7 +602,7 @@ where
                             *min_depth = successor_min_depth;
                             *min_cycle_root = successor_node;
                         }
-                        current_component_annotation.update_scc(successor_annotation);
+                        current_component_annotation.update_scc(&successor_annotation);
                     }
                     // The starting node `node` is succeeded by a fully identified SCC
                     // which is now added to the set under `scc_index`.
@@ -629,7 +617,7 @@ where
                         // the `successors_stack` for later.
                         trace!(?node, ?successor_scc_index);
                         successors_stack.push(successor_scc_index);
-                        current_component_annotation.update_reachable(successor_annotation);
+                        current_component_annotation.update_reachable(&successor_annotation);
                     }
                     // `node` has no more (direct) successors; search recursively.
                     None => {
