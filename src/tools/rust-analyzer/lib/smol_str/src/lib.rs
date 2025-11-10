@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![debugger_visualizer(gdb_script_file = "gdb_smolstr_printer.py")]
 
 extern crate alloc;
 
