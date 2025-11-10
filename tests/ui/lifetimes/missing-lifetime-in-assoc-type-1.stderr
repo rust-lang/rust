@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-1.rs:9:17
+  --> $DIR/missing-lifetime-in-assoc-type-1.rs:10:17
    |
 LL | impl<'a> IntoIterator for &S {
    |     ---- there is a named lifetime specified on the impl block you could use

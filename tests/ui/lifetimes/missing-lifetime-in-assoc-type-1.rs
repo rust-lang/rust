@@ -6,6 +6,7 @@ impl<'a> IntoIterator for &S {
     //~| NOTE there is a named lifetime specified on the impl block you could use
     //~| NOTE unconstrained lifetime parameter
     //~| HELP consider using the named lifetime here instead of an implicit lifetime
+    //~| HELP make use of the lifetime parameter `'a` in the `self` type
     type Item = &T;
     //~^ ERROR missing lifetime in associated type
     //~| HELP consider using the lifetime from the impl block
