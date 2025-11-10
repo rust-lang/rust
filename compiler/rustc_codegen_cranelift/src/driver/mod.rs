@@ -38,16 +38,12 @@ fn predefine_mono_items<'tcx>(
                         .codegen_instance_attrs(instance.def)
                         .flags
                         .contains(CodegenFnAttrFlags::NAKED);
-                    module
-                        .declare_function(
-                            name,
-                            // Naked functions are defined in a separate object
-                            // file from the codegen unit rustc expects them to
-                            // be defined in.
-                            if is_naked { Linkage::Import } else { linkage },
-                            &sig,
-                        )
-                        .unwrap();
+                    if is_naked {
+                        // Naked functions are defined in a separate object
+                        // file, so they can be declared on the fly.
+                        continue;
+                    }
+                    module.declare_function(name, linkage, &sig).unwrap();
                 }
                 MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }

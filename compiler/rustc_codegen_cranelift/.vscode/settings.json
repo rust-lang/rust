@@ -20,13 +20,13 @@
             "crates": [
                 {
                     "root_module": "./example/mini_core.rs",
-                    "edition": "2015",
+                    "edition": "2024",
                     "deps": [],
                     "cfg": [],
                 },
                 {
                     "root_module": "./example/mini_core_hello_world.rs",
-                    "edition": "2015",
+                    "edition": "2024",
                     "deps": [
                         {
                             "crate": 0,
@@ -37,7 +37,7 @@
                 },
                 {
                     "root_module": "./example/std_example.rs",
-                    "edition": "2015",
+                    "edition": "2024",
                     "deps": [],
                     "cfg": [],
                 },

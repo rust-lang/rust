@@ -39,6 +39,12 @@ dynamically linked executables.
 # /opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/bin/qemu-hexagon -L /opt/clang+llvm-18.1.0-cross-hexagon-unknown-linux-musl/x86_64-linux-gnu/target/hexagon-unknown-linux-musl/usr/ ./hello
 ```
 
+## Linking
+
+This target selects `rust-lld` by default.  Another option to use is
+[eld](https://github.com/qualcomm/eld), which is also provided with
+the opensource hexagon toolchain and the Hexagon SDK.
+
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this
 target.

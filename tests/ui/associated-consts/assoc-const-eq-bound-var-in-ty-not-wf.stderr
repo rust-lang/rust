@@ -1,11 +1,11 @@
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:12:13
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
    |
 LL |         K = { () }
    |             ^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:12:13
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:21:13
    |
 LL |         K = { () }
    |             ^^^^^^
@@ -13,7 +13,7 @@ LL |         K = { () }
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `Project` is not general enough
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:10:13
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:19:13
    |
 LL |       _: impl Trait<
    |  _____________^

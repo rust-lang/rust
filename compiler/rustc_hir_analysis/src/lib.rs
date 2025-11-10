@@ -87,13 +87,16 @@ mod variance;
 
 pub use errors::NoVariantNamed;
 use rustc_abi::{CVariadicStatus, ExternAbi};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::lints::DelayedLint;
-use rustc_hir::{self as hir};
-use rustc_middle::middle;
+use rustc_hir::{
+    find_attr, {self as hir},
+};
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_middle::ty::{Const, Ty, TyCtxt};
+use rustc_middle::{middle, ty};
 use rustc_session::parse::feature_err;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
@@ -223,7 +226,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 tcx.ensure_ok().eval_static_initializer(item_def_id);
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
-            DefKind::Const if !tcx.generics_of(item_def_id).own_requires_monomorphization() => {
+            DefKind::Const
+                if !tcx.generics_of(item_def_id).own_requires_monomorphization()
+                    && !find_attr!(tcx.get_all_attrs(item_def_id), AttributeKind::TypeConst(_)) =>
+            {
                 // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
                 //                             seems to be fine for now. Revisit this!
                 let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());

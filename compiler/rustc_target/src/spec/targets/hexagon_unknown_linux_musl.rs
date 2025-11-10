@@ -8,6 +8,7 @@ pub(crate) fn target() -> Target {
     base.features = "-small-data,+hvx-length128b".into();
 
     base.has_rpath = true;
+    base.linker = Some("rust-lld".into());
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
     base.c_enum_min_bits = Some(8);

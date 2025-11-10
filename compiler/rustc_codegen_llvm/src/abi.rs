@@ -253,7 +253,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 );
                 bx.lifetime_end(llscratch, scratch_size);
             }
-            _ => {
+            PassMode::Pair(..) | PassMode::Direct { .. } => {
                 OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);
             }
         }

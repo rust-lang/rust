@@ -209,12 +209,7 @@ pub(super) fn to_casted_value<'tcx>(
     cast_target_to_abi_params(cast)
         .into_iter()
         .map(|(offset, param)| {
-            let val = ptr.offset_i64(fx, offset.bytes() as i64).load(
-                fx,
-                param.value_type,
-                MemFlags::new(),
-            );
-            val
+            ptr.offset_i64(fx, offset.bytes() as i64).load(fx, param.value_type, MemFlags::new())
         })
         .collect()
 }

@@ -1,8 +1,8 @@
 //! Set and unset common attributes on LLVM values.
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
@@ -98,10 +98,10 @@ fn patchable_function_entry_attrs<'ll>(
 pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
-    no_sanitize: SanitizerSet,
+    sanitizer_fn_attr: SanitizerFnAttrs,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = tcx.sess.sanitizers() - no_sanitize;
+    let enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -130,6 +130,18 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::SAFESTACK) {
         attrs.push(llvm::AttributeKind::SanitizeSafeStack.create_attr(cx.llcx));
+    }
+    if tcx.sess.sanitizers().contains(SanitizerSet::REALTIME) {
+        match sanitizer_fn_attr.rtsan_setting {
+            RtsanSetting::Nonblocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeNonblocking.create_attr(cx.llcx))
+            }
+            RtsanSetting::Blocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeBlocking.create_attr(cx.llcx))
+            }
+            // caller is the default, so no llvm attribute
+            RtsanSetting::Caller => (),
+        }
     }
     attrs
 }
@@ -411,7 +423,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
-        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.no_sanitize));
+        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) =

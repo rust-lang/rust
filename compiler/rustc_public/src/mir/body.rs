@@ -642,8 +642,7 @@ impl Rvalue {
                     .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
             }
             Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => Ok(Ty::usize_ty()),
-            Rvalue::NullaryOp(NullOp::ContractChecks, _)
-            | Rvalue::NullaryOp(NullOp::UbChecks, _) => Ok(Ty::bool_ty()),
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
                 AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => Ok(Ty::new_tuple(
@@ -1024,10 +1023,18 @@ pub enum CastKind {
 pub enum NullOp {
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
+    /// Codegen conditions for runtime checks.
+    RuntimeChecks(RuntimeChecks),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum RuntimeChecks {
     /// cfg!(ub_checks), but at codegen time
     UbChecks,
     /// cfg!(contract_checks), but at codegen time
     ContractChecks,
+    /// cfg!(overflow_checks), but at codegen time
+    OverflowChecks,
 }
 
 impl Operand {

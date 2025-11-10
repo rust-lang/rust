@@ -1252,6 +1252,9 @@ fn add_sanitizer_libraries(
     if sanitizer.contains(SanitizerSet::SAFESTACK) {
         link_sanitizer_runtime(sess, flavor, linker, "safestack");
     }
+    if sanitizer.contains(SanitizerSet::REALTIME) {
+        link_sanitizer_runtime(sess, flavor, linker, "rtsan");
+    }
 }
 
 fn link_sanitizer_runtime(
@@ -3033,7 +3036,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }

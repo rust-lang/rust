@@ -2327,6 +2327,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
     }
 
+    fn lower_const_item_rhs(
+        &mut self,
+        attrs: &[hir::Attribute],
+        rhs: Option<&ConstItemRhs>,
+        span: Span,
+    ) -> hir::ConstItemRhs<'hir> {
+        match rhs {
+            Some(ConstItemRhs::TypeConst(anon)) => {
+                hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg(anon))
+            }
+            None if attr::contains_name(attrs, sym::type_const) => {
+                let const_arg = ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Error(
+                        DUMMY_SP,
+                        self.dcx().span_delayed_bug(DUMMY_SP, "no block"),
+                    ),
+                };
+                hir::ConstItemRhs::TypeConst(self.arena.alloc(const_arg))
+            }
+            Some(ConstItemRhs::Body(body)) => {
+                hir::ConstItemRhs::Body(self.lower_const_body(span, Some(body)))
+            }
+            None => hir::ConstItemRhs::Body(self.lower_const_body(span, None)),
+        }
+    }
+
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_anon_const`].
     fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {

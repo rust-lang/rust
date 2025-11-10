@@ -88,6 +88,7 @@ declare_lint_pass! {
         RENAMED_AND_REMOVED_LINTS,
         REPR_C_ENUMS_LARGER_THAN_INT,
         REPR_TRANSPARENT_NON_ZST_FIELDS,
+        RTSAN_NONBLOCKING_ASYNC,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
@@ -2331,6 +2332,37 @@ declare_lint! {
     pub INLINE_NO_SANITIZE,
     Warn,
     r#"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"#,
+}
+
+declare_lint! {
+    /// The `rtsan_nonblocking_async` lint detects incompatible use of
+    /// [`#[sanitize(realtime = "nonblocking")]`][sanitize] on async functions.
+    ///
+    /// [sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// #![feature(sanitize)]
+    ///
+    /// #[sanitize(realtime = "nonblocking")]
+    /// async fn x() {}
+    ///
+    /// fn main() {
+    ///     x();
+    /// }
+    #[cfg_attr(bootstrap, doc = "```")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The sanitizer only considers the async function body nonblocking. The executor, which runs on
+    /// every `.await` point can run non-realtime code, without the sanitizer catching it.
+    pub RTSAN_NONBLOCKING_ASYNC,
+    Warn,
+    r#"detects incompatible uses of `#[sanitize(realtime = "nonblocking")]` on async functions"#,
 }
 
 declare_lint! {

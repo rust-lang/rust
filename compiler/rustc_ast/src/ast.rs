@@ -714,6 +714,15 @@ impl Pat {
         }
     }
 
+    /// Strip off all reference patterns (`&`, `&mut`) and return the inner pattern.
+    pub fn peel_refs(&self) -> &Pat {
+        let mut current = self;
+        while let PatKind::Ref(inner, _) = &current.kind {
+            current = inner;
+        }
+        current
+    }
+
     /// Is this a `..` pattern?
     pub fn is_rest(&self) -> bool {
         matches!(self.kind, PatKind::Rest)
@@ -3759,8 +3768,27 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub expr: Option<Box<Expr>>,
+    pub rhs: Option<ConstItemRhs>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum ConstItemRhs {
+    TypeConst(AnonConst),
+    Body(Box<Expr>),
+}
+
+impl ConstItemRhs {
+    pub fn span(&self) -> Span {
+        self.expr().span
+    }
+
+    pub fn expr(&self) -> &Expr {
+        match self {
+            ConstItemRhs::TypeConst(anon_const) => &anon_const.value,
+            ConstItemRhs::Body(expr) => expr,
+        }
+    }
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.

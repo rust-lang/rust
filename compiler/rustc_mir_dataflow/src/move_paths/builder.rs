@@ -451,10 +451,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(
-                NullOp::OffsetOf(..) | NullOp::UbChecks | NullOp::ContractChecks,
-                _,
-            ) => {}
+            | Rvalue::NullaryOp(NullOp::OffsetOf(..) | NullOp::RuntimeChecks(_), _) => {}
         }
     }
 

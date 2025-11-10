@@ -4,11 +4,10 @@ error: expected `;` or `]`, found `3`
 LL |     let x: [isize 3];
    |                   ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
-LL |     let x: [isize ;3];
-   |                   +
+LL |     let x: [isize; 3];
+   |                  +
 
 error: aborting due to 1 previous error
 

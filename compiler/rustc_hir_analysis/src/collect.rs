@@ -96,6 +96,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         rendered_precise_capturing_args,
         const_param_default,
         anon_const_kind,
+        const_of_item,
         ..*providers
     };
 }
@@ -890,15 +891,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     };
 
     let attrs = tcx.get_all_attrs(def_id);
-    // Only regular traits can be const.
-    // FIXME(const_trait_impl): remove this
-    let constness = if constness == hir::Constness::Const
-        || !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_))
-    {
-        hir::Constness::Const
-    } else {
-        hir::Constness::NotConst
-    };
 
     let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
@@ -1264,6 +1256,21 @@ pub fn suggest_impl_trait<'tcx>(
             format_as_assoc,
         ),
         (
+            infcx.tcx.lang_items().async_fn_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_mut_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_once_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
             infcx.tcx.lang_items().fn_trait(),
             infcx.tcx.lang_items().fn_once_output(),
             format_as_parenthesized,
@@ -1366,22 +1373,27 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
-    let (local_trait_span, suggestion_pre) =
-        match (trait_def_id.is_local(), tcx.sess.is_nightly_build()) {
-            (true, true) => (
-                Some(tcx.def_span(trait_def_id).shrink_to_lo()),
+    let (suggestion, suggestion_pre) = match (trait_def_id.as_local(), tcx.sess.is_nightly_build())
+    {
+        (Some(trait_def_id), true) => {
+            let span = tcx.hir_expect_item(trait_def_id).vis_span;
+            let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+            (
+                Some(span.shrink_to_hi()),
                 if tcx.features().const_trait_impl() {
                     ""
                 } else {
                     "enable `#![feature(const_trait_impl)]` in your crate and "
                 },
-            ),
-            (false, _) | (_, false) => (None, ""),
-        };
+            )
+        }
+        (None, _) | (_, false) => (None, ""),
+    };
     tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
-        local_trait_span,
+        suggestion,
         suggestion_pre,
         marking: (),
         adding: (),
@@ -1562,6 +1574,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     let const_arg_id = tcx.parent_hir_id(hir_id);
     match tcx.hir_node(const_arg_id) {
         hir::Node::ConstArg(_) => {
+            let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
             } else if tcx.features().min_generic_const_args() {
@@ -1569,7 +1582,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             } else if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Repeat(_, repeat_count),
                 ..
-            }) = tcx.hir_node(tcx.parent_hir_id(const_arg_id))
+            }) = parent_hir_node
                 && repeat_count.hir_id == const_arg_id
             {
                 ty::AnonConstKind::RepeatExprCount
@@ -1578,5 +1591,44 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             }
         }
         _ => ty::AnonConstKind::NonTypeSystem,
+    }
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn const_of_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
+        hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(.., ct), ..
+        }) => ct.expect("no default value for trait assoc const"),
+        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
+        _ => {
+            span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")
+        }
+    };
+    let ct_arg = match ct_rhs {
+        hir::ConstItemRhs::TypeConst(ct_arg) => ct_arg,
+        hir::ConstItemRhs::Body(_) => {
+            let e = tcx.dcx().span_delayed_bug(
+                tcx.def_span(def_id),
+                "cannot call const_of_item on a non-type_const",
+            );
+            return ty::EarlyBinder::bind(Const::new_error(tcx, e));
+        }
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    let ct = icx
+        .lowerer()
+        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+    if let Err(e) = icx.check_tainted_by_errors()
+        && !ct.references_error()
+    {
+        ty::EarlyBinder::bind(Const::new_error(tcx, e))
+    } else {
+        ty::EarlyBinder::bind(ct)
     }
 }

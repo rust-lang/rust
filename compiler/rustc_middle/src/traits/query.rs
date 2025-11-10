@@ -66,7 +66,7 @@ pub mod type_op {
 }
 
 pub type CanonicalAliasGoal<'tcx> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
+    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTerm<'tcx>>>;
 
 pub type CanonicalMethodAutoderefStepsGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, MethodAutoderefSteps<'tcx>>>;
@@ -192,11 +192,11 @@ pub struct MethodAutoderefBadTy<'tcx> {
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
 }
 
-/// Result of the `normalize_canonicalized_{{,inherent_}projection,free}_ty` queries.
+/// Result of the `normalize_canonicalized_{{,inherent_}projection,free}` queries.
 #[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct NormalizationResult<'tcx> {
     /// Result of the normalization.
-    pub normalized_ty: Ty<'tcx>,
+    pub normalized_term: ty::Term<'tcx>,
 }
 
 /// Outlives bounds are relationships between generic parameters,

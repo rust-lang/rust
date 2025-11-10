@@ -32,7 +32,6 @@ impl AttributeKind {
             ConstContinue(..) => No,
             ConstStability { .. } => Yes,
             ConstStabilityIndirect => No,
-            ConstTrait(..) => No,
             Coroutine(..) => No,
             Coverage(..) => No,
             CrateName { .. } => No,

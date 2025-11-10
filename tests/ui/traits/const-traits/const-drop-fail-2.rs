@@ -13,8 +13,7 @@ impl Drop for NonTrivialDrop {
     }
 }
 
-#[const_trait]
-trait A { fn a() { } }
+const trait A { fn a() { } }
 
 impl A for NonTrivialDrop {}
 

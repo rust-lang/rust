@@ -7,8 +7,8 @@ pub(crate) fn target() -> Target {
         llvm_target: "riscv64-unknown-linux-gnu".into(),
         metadata: TargetMetadata {
             description: Some("RISC-V Linux (kernel 6.8.0, glibc 2.39)".into()),
-            tier: Some(3),
-            host_tools: Some(true),
+            tier: Some(2),
+            host_tools: Some(false),
             std: Some(true),
         },
         pointer_width: 64,
