@@ -9,7 +9,7 @@ use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{
-    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+    EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
@@ -18,7 +18,7 @@ use crate::*;
 /// The maximum capacity of the socketpair buffer in bytes.
 /// This number is arbitrary as the value can always
 /// be configured in the real system.
-const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 212992;
+const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 0x34000;
 
 #[derive(Debug, PartialEq)]
 enum AnonSocketType {
@@ -84,7 +84,7 @@ impl FileDescription for AnonSocket {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -97,7 +97,7 @@ impl FileDescription for AnonSocket {
                 }
             }
             // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.epoll_send_fd_ready_events(peer_fd)?;
+            ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ false)?;
         }
         interp_ok(Ok(()))
     }
@@ -275,9 +275,11 @@ fn anonsocket_write<'tcx>(
         for thread_id in waiting_threads {
             ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
         }
-        // Notification should be provided for peer fd as it became readable.
-        // The kernel does this even if the fd was already readable before, so we follow suit.
-        ecx.epoll_send_fd_ready_events(peer_fd)?;
+        // Notify epoll waiters: we might be no longer writable, peer might now be readable.
+        // The notification to the peer seems to be always sent on Linux, even if the
+        // FD was readable before.
+        ecx.epoll_send_fd_ready_events(self_ref, /* force_edge */ false)?;
+        ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ true)?;
 
         return finish.call(ecx, Ok(write_size));
     }
@@ -351,6 +353,7 @@ fn anonsocket_read<'tcx>(
         // Do full read / partial read based on the space available.
         // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
         let read_size = ecx.read_from_host(&mut readbuf.buf, len, ptr)?.unwrap();
+        let readbuf_now_empty = readbuf.buf.is_empty();
 
         // Need to drop before others can access the readbuf again.
         drop(readbuf);
@@ -369,9 +372,14 @@ fn anonsocket_read<'tcx>(
             for thread_id in waiting_threads {
                 ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
             }
-            // Notify epoll waiters.
-            ecx.epoll_send_fd_ready_events(peer_fd)?;
+            // Notify epoll waiters: peer is now writable.
+            // Linux seems to always notify the peer if the read buffer is now empty.
+            // (Linux also does that if this was a "big" read, but to avoid some arbitrary
+            // threshold, we do not match that.)
+            ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ readbuf_now_empty)?;
         };
+        // Notify epoll waiters: we might be no longer readable.
+        ecx.epoll_send_fd_ready_events(self_ref, /* force_edge */ false)?;
 
         return finish.call(ecx, Ok(read_size));
     }

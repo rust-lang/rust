@@ -6,7 +6,7 @@ use std::time::SystemTime;
 
 use bitflags::bitflags;
 
-use crate::shims::files::{FileDescription, FileHandle};
+use crate::shims::files::{FdId, FileDescription, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
 
@@ -26,7 +26,7 @@ impl FileDescription for DirHandle {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -53,7 +53,7 @@ impl FileDescription for MetadataHandle {
 
     fn destroy<'tcx>(
         self,
-        _self_addr: usize,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
