@@ -260,7 +260,7 @@ impl SocketAddr {
         {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {
-            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+            AddressKind::Abstract(ByteStr::new(&path[1..len]))
         } else {
             // the value returned by getsockname(2) and similar on QNX7.1 and
             // QNX8 does not count the NUL byte terminator of the path string,
