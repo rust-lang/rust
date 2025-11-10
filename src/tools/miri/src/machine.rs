@@ -1357,7 +1357,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &InterpCx<'tcx, Self>,
         r: mir::RuntimeChecks,
     ) -> InterpResult<'tcx, bool> {
-        interp_ok(r.value(&ecx.tcx.sess))
+        interp_ok(r.value(ecx.tcx.sess))
     }
 
     #[inline(always)]
