@@ -32,6 +32,7 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::TgtOffloadEntry;
 use crate::context::CodegenCx;
+use crate::declare::declare_raw_fn;
 use crate::errors::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
 };
@@ -641,11 +642,41 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         args: &[OperandRef<'tcx, Self::Value>],
         is_cleanup: bool,
     ) -> Self::Value {
-        let fn_ptr = self.get_fn_addr(instance);
+        let tcx = self.tcx();
+
         // FIXME remove usage of fn_abi
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         assert!(!fn_abi.ret.is_indirect());
-        let fn_ty = self.fn_decl_backend_type(fn_abi);
+        let fn_ty = fn_abi.llvm_type(self);
+
+        let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
+            llfn
+        } else {
+            let sym = tcx.symbol_name(instance).name;
+
+            // FIXME use get_intrinsic
+            let llfn = if let Some(llfn) = self.get_declared_value(sym) {
+                llfn
+            } else {
+                // Function addresses in Rust are never significant, allowing functions to
+                // be merged.
+                let llfn = declare_raw_fn(
+                    self,
+                    sym,
+                    fn_abi.llvm_cconv(self),
+                    llvm::UnnamedAddr::Global,
+                    llvm::Visibility::Default,
+                    fn_ty,
+                );
+                fn_abi.apply_attrs_llfn(self, llfn, Some(instance));
+
+                llfn
+            };
+
+            self.intrinsic_instances.borrow_mut().insert(instance, llfn);
+
+            llfn
+        };
 
         let mut llargs = vec![];
 

@@ -314,7 +314,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.block.get_function()
     }
 
-    fn function_call(
+    pub fn function_call(
         &mut self,
         func: Function<'gcc>,
         args: &[RValue<'gcc>],
