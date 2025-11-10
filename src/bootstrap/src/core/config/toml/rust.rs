@@ -33,6 +33,7 @@ define_config! {
         channel: Option<String> = "channel",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
+        rustflags: Option<Vec<String>> = "rustflags",
         strip: Option<bool> = "strip",
         frame_pointers: Option<bool> = "frame-pointers",
         stack_protector: Option<String> = "stack-protector",
@@ -375,6 +376,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
         bootstrap_override_lld_legacy: _,
+        rustflags: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
