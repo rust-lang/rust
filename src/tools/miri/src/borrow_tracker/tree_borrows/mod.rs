@@ -239,18 +239,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(new_prov);
             }
         };
+        let new_prov = Provenance::Concrete { alloc_id, tag: new_tag };
 
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
-
-        let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return interp_ok(place.ptr().provenance), // TODO: handle retagging wildcard pointers
-            ProvenanceExtra::Concrete(tag) => tag,
-        };
 
         trace!(
             "reborrow: reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             new_tag,
-            orig_tag,
+            parent_prov,
             place.layout.ty,
             interpret::Pointer::new(alloc_id, base_offset),
             ptr_size.bytes()
@@ -281,7 +277,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
             // There's not actually any bytes here where accesses could even be tracked.
             // Just produce the new provenance, nothing else to do.
-            return interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }));
+            return interp_ok(Some(new_prov));
         }
 
         let protected = new_perm.protector.is_some();
@@ -367,11 +363,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         }
-
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
             base_offset,
-            orig_tag,
+            parent_prov,
             new_tag,
             inside_perms,
             new_perm.outside_perm,
@@ -380,7 +375,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
         drop(tree_borrows);
 
-        interp_ok(Some(Provenance::Concrete { alloc_id, tag: new_tag }))
+        interp_ok(Some(new_prov))
     }
 
     fn tb_retag_place(
