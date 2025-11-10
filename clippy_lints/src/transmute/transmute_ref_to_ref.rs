@@ -1,6 +1,6 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::{std_or_core, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
@@ -29,7 +29,8 @@ pub(super) fn check<'tcx>(
 
             let postfix = if from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
-            let snippet = snippet(cx, arg.span, "..");
+            let mut applicability = Applicability::MachineApplicable;
+            let (snippet, _) = snippet_with_context(cx, arg.span, e.span.ctxt(), "..", &mut applicability);
 
             span_lint_and_sugg(
                 cx,
