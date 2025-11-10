@@ -32,7 +32,7 @@ compiler. What actually happens when you invoke bootstrap is:
    checks (for example, verifying toolchains and paths), and then prepares to build the
    stage 1 compiler and libraries using the prebuilt stage 0 compiler.
 3. The stage 0 compiler and standard library, downloaded earlier, are used to build the
-   stage 1 compiler, which links against the beta standard library. The newly built stage 1
+   stage 1 compiler, which links against the stage 0 standard library. The newly built stage 1
    compiler is then used to build the stage 1 standard library. After that, the stage 1
    compiler is used once more to produce the stage 2 compiler, which links against the
    stage 1 standard library.
