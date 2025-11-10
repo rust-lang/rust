@@ -16,7 +16,7 @@ fi
 channel=$(cat "$(ciCheckoutPath)/src/ci/channel")
 case "${channel}" in
     nightly)
-        channel_branch="master"
+        channel_branch="main"
         ;;
     beta)
         channel_branch="beta"
