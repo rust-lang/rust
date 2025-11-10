@@ -3,7 +3,7 @@
 //! current compilation environment.
 
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AttrStyle, CRATE_NODE_ID, token};
+use rustc_ast::{AttrStyle, token};
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::parser::MetaItemOrLitParser;
 use rustc_attr_parsing::{
@@ -30,7 +30,6 @@ pub(crate) fn expand_cfg(
                 cx.sess,
                 &cfg,
                 cx.current_expansion.lint_node_id,
-                Some(cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints,
             )
             .as_bool();
@@ -57,7 +56,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         AttrPath { segments: vec![Ident::from_str("cfg")].into_boxed_slice(), span },
         ParsedDescription::Macro,
         span,
-        CRATE_NODE_ID,
+        cx.current_expansion.lint_node_id,
         Some(cx.ecfg.features),
         ShouldEmit::ErrorsAndLints,
         &meta,

@@ -481,7 +481,9 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ConstArgKind::Path(..), ConstArgKind::Anon(..))
             | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
             | (ConstArgKind::Infer(..), _)
-            | (_, ConstArgKind::Infer(..)) => false,
+            | (_, ConstArgKind::Infer(..))
+            | (ConstArgKind::Error(..), _)
+            | (_, ConstArgKind::Error(..)) => false,
         }
     }
 
@@ -1330,7 +1332,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         match &const_arg.kind {
             ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
-            ConstArgKind::Infer(..) => {},
+            ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
         }
     }
 

@@ -1,13 +1,13 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait] trait Foo {
+const trait Foo {
     type Assoc<T>: [const] Bar
     where
         T: [const] Bar;
 }
 
-#[const_trait] trait Bar {}
+const trait Bar {}
 struct N<T>(T);
 impl<T> Bar for N<T> where T: Bar {}
 struct C<T>(T);

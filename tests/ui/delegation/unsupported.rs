@@ -48,8 +48,7 @@ mod recursive {
 }
 
 mod effects {
-    #[const_trait]
-    trait Trait {
+    const trait Trait {
         fn foo();
     }
 

@@ -1,0 +1,16 @@
+error: implementation of `#[type_const]` const must be marked with `#[type_const]`
+  --> $DIR/type_const-only-in-trait.rs:12:5
+   |
+LL |     const NUM: usize = 42;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: trait declaration of const is marked with `#[type_const]`
+  --> $DIR/type_const-only-in-trait.rs:5:5
+   |
+LL |     #[type_const]
+   |     ^^^^^^^^^^^^^
+LL |     const NUM: usize;
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

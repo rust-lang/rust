@@ -1,5 +1,6 @@
 use rustc_target::spec::Arch;
 
+use crate::compiler_builtins::CMP_RESULT_TY;
 use crate::prelude::*;
 
 pub(crate) fn f16_to_f32(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
@@ -74,15 +75,11 @@ pub(crate) fn fcmp(fx: &mut FunctionCx<'_, '_, '_>, cc: FloatCC, lhs: Value, rhs
             let res = fx.lib_call(
                 name,
                 vec![AbiParam::new(types::F128), AbiParam::new(types::F128)],
-                // FIXME(rust-lang/compiler-builtins#919): This should be `I64` on non-AArch64
-                // architectures, but switching it before compiler-builtins is fixed causes test
-                // failures.
-                vec![AbiParam::new(types::I32)],
+                vec![AbiParam::new(CMP_RESULT_TY)],
                 &[lhs, rhs],
             )[0];
-            let zero = fx.bcx.ins().iconst(types::I32, 0);
-            let res = fx.bcx.ins().icmp(int_cc, res, zero);
-            res
+            let zero = fx.bcx.ins().iconst(CMP_RESULT_TY, 0);
+            fx.bcx.ins().icmp(int_cc, res, zero)
         }
         _ => unreachable!("{ty:?}"),
     }

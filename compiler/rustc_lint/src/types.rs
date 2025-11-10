@@ -1022,7 +1022,8 @@ declare_lint! {
     ///
     /// - Passing `Ordering::Release` or `Ordering::AcqRel` as the failure
     ///   ordering for any of `AtomicType::compare_exchange`,
-    ///   `AtomicType::compare_exchange_weak`, or `AtomicType::fetch_update`.
+    ///   `AtomicType::compare_exchange_weak`, `AtomicType::update`, or
+    ///   `AtomicType::try_update`.
     INVALID_ATOMIC_ORDERING,
     Deny,
     "usage of invalid atomic ordering in atomic operations and memory fences"
@@ -1118,13 +1119,19 @@ impl InvalidAtomicOrdering {
         let Some((method, args)) = Self::inherent_atomic_method_call(
             cx,
             expr,
-            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+            &[
+                sym::update,
+                sym::try_update,
+                sym::fetch_update,
+                sym::compare_exchange,
+                sym::compare_exchange_weak,
+            ],
         ) else {
             return;
         };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[1],
+            sym::update | sym::try_update | sym::fetch_update => &args[1],
             sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };

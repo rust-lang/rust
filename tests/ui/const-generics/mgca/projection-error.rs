@@ -7,6 +7,7 @@
 
 
 pub trait Tr<A> {
+    #[type_const]
     const SIZE: usize;
 }
 

@@ -17,8 +17,7 @@ use crate::num::NonZero;
 /// - Neither `Self` nor `Rhs` have provenance, so integer comparisons are correct.
 /// - `<Self as PartialEq<Rhs>>::{eq,ne}` are equivalent to comparing the bytes.
 #[rustc_specialization_trait]
-#[const_trait] // FIXME(const_trait_impl): Migrate to `const unsafe trait` once #146122 is fixed.
-pub(crate) unsafe trait BytewiseEq<Rhs = Self>:
+pub(crate) const unsafe trait BytewiseEq<Rhs = Self>:
     [const] PartialEq<Rhs> + Sized
 {
 }

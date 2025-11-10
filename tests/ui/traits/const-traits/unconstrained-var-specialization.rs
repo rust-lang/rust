@@ -7,8 +7,7 @@
 // In the default impl below, `A` is constrained by the projection predicate, and if the host effect
 // predicate for `const Foo` doesn't resolve vars, then specialization will fail.
 
-#[const_trait]
-trait Foo {}
+const trait Foo {}
 
 pub trait Iterator {
     type Item;

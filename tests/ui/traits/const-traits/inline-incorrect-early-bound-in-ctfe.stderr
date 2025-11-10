@@ -23,9 +23,8 @@ LL |     fn foo(self);
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider making trait `Trait` const
    |
-LL + #[const_trait]
-LL | trait Trait {
-   |
+LL | const trait Trait {
+   | +++++
 
 error: aborting due to 2 previous errors
 

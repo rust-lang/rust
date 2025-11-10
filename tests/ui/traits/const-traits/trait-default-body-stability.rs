@@ -39,8 +39,7 @@ impl const FromResidual for T {
 
 #[stable(feature = "foo", since = "1.0")]
 #[rustc_const_unstable(feature = "const_tr", issue = "none")]
-#[const_trait]
-pub trait Tr {
+pub const trait Tr {
     #[stable(feature = "foo", since = "1.0")]
     fn bar() -> T {
         T?
