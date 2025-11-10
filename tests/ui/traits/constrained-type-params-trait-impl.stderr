@@ -34,6 +34,14 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<T, U> Foo<T> for [isize; 1] {
    |         ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `U`, or make use of it
+   |
+LL - impl<T, U> Foo<T> for [isize; 1] {
+LL + impl<T> Foo<T> for [isize; 1] {
+   |
+LL | impl<T, U> Foo<T> for [isize<U>; 1] {
+   |                             +++
 
 error[E0119]: conflicting implementations of trait `Bar`
   --> $DIR/constrained-type-params-trait-impl.rs:48:1
@@ -51,24 +59,53 @@ error[E0207]: the type parameter `U` is not constrained by the impl trait, self 
    |
 LL | impl<T, U> Bar for T {
    |         ^ unconstrained type parameter
+   |
+help: make use of the type parameter `U` in the `self` type
+   |
+LL | impl<T, U> Bar for T<U> {
+   |                     +++
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/constrained-type-params-trait-impl.rs:48:9
    |
 LL | impl<T, U> Bar for T
    |         ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `U`, or make use of it
+   |
+LL - impl<T, U> Bar for T
+LL + impl<T> Bar for T
+   |
+LL | impl<T, U> Bar for T<U>
+   |                     +++
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/constrained-type-params-trait-impl.rs:57:9
    |
 LL | impl<T, U, V> Foo<T> for T
    |         ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `U`, or make use of it
+   |
+LL - impl<T, U, V> Foo<T> for T
+LL + impl<T, V> Foo<T> for T
+   |
+LL | impl<T, U, V> Foo<T> for T<U>
+   |                           +++
 
 error[E0207]: the type parameter `V` is not constrained by the impl trait, self type, or predicates
   --> $DIR/constrained-type-params-trait-impl.rs:57:12
    |
 LL | impl<T, U, V> Foo<T> for T
    |            ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `V`, or make use of it
+   |
+LL - impl<T, U, V> Foo<T> for T
+LL + impl<T, U> Foo<T> for T
+   |
+LL | impl<T, U, V> Foo<T> for T<V>
+   |                           +++
 
 error: aborting due to 9 previous errors
 

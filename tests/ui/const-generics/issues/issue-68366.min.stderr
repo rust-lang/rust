@@ -27,6 +27,13 @@ LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the unused type parameter `N`, or make use of it
+   |
+LL - impl <const N: usize> Collatz<{Some(N)}> {}
+LL + impl  Collatz<{Some(N)}> {}
+   |
+LL | impl <const N: usize> Collatz<{Some(N)}, N> {}
+   |                                        +++
 
 error[E0207]: the const parameter `N` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-68366.rs:19:6
@@ -36,6 +43,13 @@ LL | impl<const N: usize> Foo {}
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the unused type parameter `N`, or make use of it
+   |
+LL - impl<const N: usize> Foo {}
+LL + impl Foo {}
+   |
+LL | impl<const N: usize> Foo<N> {}
+   |                         +++
 
 error: aborting due to 4 previous errors
 

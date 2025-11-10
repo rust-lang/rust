@@ -37,6 +37,13 @@ LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the unused type parameter `NUM`, or make use of it
+   |
+LL - impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+LL + impl<'a> std::ops::Add<&'a Foo> for Foo
+   |
+LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo<NUM>
+   |                                                          +++++
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
