@@ -2045,6 +2045,7 @@ type StaticCow<T> = Cow<'static, T>;
 /// construction, all its fields logically belong to `Target` and available from `Target`
 /// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
+#[rustc_lint_opt_ty]
 pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
@@ -2063,7 +2064,10 @@ pub struct TargetOptions {
     /// However, parts of the backend do check this field for specific values to enable special behavior.
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: StaticCow<str>,
+    #[rustc_lint_opt_deny_field_access(
+        "use `Target::is_like_*` instead of this field; see https://github.com/rust-lang/rust/issues/100343 for rationale"
+    )]
+    vendor: StaticCow<str>,
 
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
@@ -3322,6 +3326,10 @@ impl Target {
         } else {
             Align::MAX
         }
+    }
+
+    pub fn vendor_symbol(&self) -> Symbol {
+        Symbol::intern(&self.vendor)
     }
 }
 

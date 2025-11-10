@@ -1,16 +1,19 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+    Arch, Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
 pub(crate) fn target() -> Target {
-    let mut base = base::solaris::opts();
+    let mut base = TargetOptions {
+        cpu: "x86-64".into(),
+        plt_by_default: false,
+        vendor: "pc".into(),
+        max_atomic_width: Some(64),
+        stack_probes: StackProbeType::Inline,
+        supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD,
+        ..base::solaris::opts()
+    };
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64"]);
-    base.cpu = "x86-64".into();
-    base.plt_by_default = false;
-    base.vendor = "pc".into();
-    base.max_atomic_width = Some(64);
-    base.stack_probes = StackProbeType::Inline;
-    base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
 
     Target {
         llvm_target: "x86_64-pc-solaris".into(),
