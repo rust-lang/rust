@@ -9,7 +9,7 @@ use rustc_ast as ast;
 use rustc_attr_parsing::{ShouldEmit, validate_attr};
 use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBuilder};
 use rustc_codegen_ssa::back::link::link_binary;
-use rustc_codegen_ssa::target_features::{self, cfg_target_feature};
+use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
@@ -364,20 +364,16 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
-        let (target_features, unstable_target_features) = cfg_target_feature(sess, |feature| {
-            // This is a standin for the list of features a backend is expected to enable.
-            // It would be better to parse target.features instead and handle implied features,
-            // but target.features is a list of LLVM target features, not Rust target features.
-            // The dummy backend doesn't know the mapping between LLVM and Rust target features.
-            sess.target.abi_required_features().required.contains(&feature)
-        });
-
-        // To report warnings about unknown features
-        target_features::flag_to_backend_features::<0>(
+        let (target_features, unstable_target_features) = cfg_target_feature::<0>(
             sess,
-            true,
-            |_| Default::default(),
-            |_, _| {},
+            |_feature| Default::default(),
+            |feature| {
+                // This is a standin for the list of features a backend is expected to enable.
+                // It would be better to parse target.features instead and handle implied features,
+                // but target.features is a list of LLVM target features, not Rust target features.
+                // The dummy backend doesn't know the mapping between LLVM and Rust target features.
+                sess.target.abi_required_features().required.contains(&feature)
+            },
         );
 
         TargetConfig {

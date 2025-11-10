@@ -1,6 +1,5 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Z merge-functions=disabled
-//@ add-core-stubs
 
 //@ revisions: windows-gnu
 //@[windows-gnu] compile-flags: --target x86_64-pc-windows-gnu

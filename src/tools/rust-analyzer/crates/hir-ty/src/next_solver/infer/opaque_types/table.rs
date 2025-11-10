@@ -122,14 +122,6 @@ impl<'db> OpaqueTypeStorage<'db> {
     }
 }
 
-impl<'db> Drop for OpaqueTypeStorage<'db> {
-    fn drop(&mut self) {
-        if !self.opaque_types.is_empty() {
-            panic!("{:?}", self.opaque_types)
-        }
-    }
-}
-
 pub(crate) struct OpaqueTypeTable<'a, 'db> {
     storage: &'a mut OpaqueTypeStorage<'db>,
 

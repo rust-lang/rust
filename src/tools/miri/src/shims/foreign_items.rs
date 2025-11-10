@@ -15,6 +15,7 @@ use rustc_middle::{mir, ty};
 use rustc_session::config::OomStrategy;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
@@ -102,7 +103,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         match this.tcx.sess.target.os.as_ref() {
             os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
-            "wasi" => shims::wasi::foreign_items::is_dyn_sym(name),
             "windows" => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
@@ -349,6 +349,21 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
                     MiriMemoryKind::Miri.into(),
                 )?;
+            }
+            "miri_track_alloc" => {
+                let [ptr] = this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr, 0).map_err_kind(|_e| {
+                    err_machine_stop!(TerminationInfo::Abort(format!(
+                        "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
+                    )))
+                })?;
+                if this.machine.tracked_alloc_ids.insert(alloc_id) {
+                    let info = this.get_alloc_info(alloc_id);
+                    this.emit_diagnostic(NonHaltingDiagnostic::TrackingAlloc(
+                        alloc_id, info.size, info.align,
+                    ));
+                }
             }
             "miri_start_unwind" => {
                 let [payload] =
@@ -785,20 +800,21 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Target-specific shims
             name if name.starts_with("llvm.x86.")
-                && (this.tcx.sess.target.arch == "x86"
-                    || this.tcx.sess.target.arch == "x86_64") =>
+                && matches!(this.tcx.sess.target.arch, Arch::X86 | Arch::X86_64) =>
             {
                 return shims::x86::EvalContextExt::emulate_x86_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
-            name if name.starts_with("llvm.aarch64.") && this.tcx.sess.target.arch == "aarch64" => {
+            name if name.starts_with("llvm.aarch64.")
+                && this.tcx.sess.target.arch == Arch::AArch64 =>
+            {
                 return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
             // FIXME: Move this to an `arm` submodule.
-            "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
+            "llvm.arm.hint" if this.tcx.sess.target.arch == Arch::Arm => {
                 let [arg] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
                 // Note that different arguments might have different target feature requirements.
@@ -829,10 +845,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return match this.tcx.sess.target.os.as_ref() {
                     _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
-                            this, link_name, abi, args, dest,
-                        ),
-                    "wasi" =>
-                        shims::wasi::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
                     "windows" =>

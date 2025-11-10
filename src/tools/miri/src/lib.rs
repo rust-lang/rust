@@ -139,7 +139,7 @@ pub use crate::diagnostics::{
     EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
 };
 pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
-pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
+pub use crate::helpers::{EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AlignmentCheck, AllocExtra, BacktraceStyle, DynMachineCallback, FloatRoundingErrorMode,
@@ -165,6 +165,7 @@ pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 /// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
 /// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
+    "-Zcodegen-backend=dummy",
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",

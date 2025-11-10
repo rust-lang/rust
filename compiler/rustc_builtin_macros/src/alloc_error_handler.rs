@@ -43,7 +43,7 @@ pub(crate) fn expand(
 
     // Generate anonymous constant serving as container for the allocator methods.
     let const_ty = ecx.ty(sig_span, TyKind::Tup(ThinVec::new()));
-    let const_body = ecx.expr_block(ecx.block(span, stmts));
+    let const_body = ast::ConstItemRhs::Body(ecx.expr_block(ecx.block(span, stmts)));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
         Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))

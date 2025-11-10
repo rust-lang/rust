@@ -258,10 +258,11 @@ fn parse_config(args: Vec<String>) -> Config {
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
     // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
-    let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
+    let cdb = debuggers::discover_cdb(matches.opt_str("cdb"), &target);
+    let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
     // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
-    let (gdb, gdb_version) =
-        debuggers::analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    let gdb = debuggers::discover_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    let gdb_version = gdb.as_deref().and_then(debuggers::query_gdb_version);
     // FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
     let lldb_version =
         matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
@@ -868,6 +869,12 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     let file_contents =
         fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
     let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
+
+    if let Err(message) = directives::do_early_directives_check(cx.config.mode, &file_directives) {
+        // FIXME(Zalathar): Overhaul compiletest error handling so that we
+        // don't have to resort to ad-hoc panics everywhere.
+        panic!("directives check failed:\n{message}");
+    }
     let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
 
     // Normally we create one structure per revision, with two exceptions:

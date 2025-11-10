@@ -1,4 +1,4 @@
-// Test covering RFC 3631 features.
+// Basic tests covering RFC 3631 features.
 
 #![crate_name = "foo"]
 #![feature(doc_cfg)]

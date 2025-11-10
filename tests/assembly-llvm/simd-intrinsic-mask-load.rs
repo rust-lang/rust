@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86-avx2 x86-avx512
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx2] compile-flags: -C target-feature=+avx2
@@ -9,7 +9,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, repr_simd, intrinsics, adt_const_params)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
@@ -35,7 +35,7 @@ pub struct f64x4([f64; 4]);
 pub struct m64x4([i64; 4]);
 
 #[rustc_intrinsic]
-unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
+unsafe fn simd_masked_load<M, P, T, const ALIGN: SimdAlign>(mask: M, pointer: P, values: T) -> T;
 
 // CHECK-LABEL: load_i8x16
 #[no_mangle]
@@ -56,7 +56,11 @@ pub unsafe extern "C" fn load_i8x16(mask: m8x16, pointer: *const i8) -> i8x16 {
     // x86-avx512-NOT: vpsllw
     // x86-avx512: vpmovb2m k1, xmm0
     // x86-avx512-NEXT: vmovdqu8 xmm0 {k1} {z}, xmmword ptr [rdi]
-    simd_masked_load(mask, pointer, i8x16([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+    simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+        mask,
+        pointer,
+        i8x16([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    )
 }
 
 // CHECK-LABEL: load_f32x8
@@ -68,7 +72,29 @@ pub unsafe extern "C" fn load_f32x8(mask: m32x8, pointer: *const f32) -> f32x8 {
     // x86-avx512-NOT: vpslld
     // x86-avx512: vpmovd2m k1, ymm0
     // x86-avx512-NEXT: vmovups ymm0 {k1} {z}, ymmword ptr [rdi]
-    simd_masked_load(mask, pointer, f32x8([0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32]))
+    simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+        mask,
+        pointer,
+        f32x8([0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32]),
+    )
+}
+
+// CHECK-LABEL: load_f32x8_aligned
+#[no_mangle]
+pub unsafe extern "C" fn load_f32x8_aligned(mask: m32x8, pointer: *const f32) -> f32x8 {
+    // x86-avx2-NOT: vpslld
+    // x86-avx2: vmaskmovps ymm0, ymm0, ymmword ptr [rdi]
+    //
+    // x86-avx512-NOT: vpslld
+    // x86-avx512: vpmovd2m k1, ymm0
+    // x86-avx512-NEXT: vmovaps ymm0 {k1} {z}, ymmword ptr [rdi]
+    //
+    // this aligned version should generate `movaps` instead of `movups`
+    simd_masked_load::<_, _, _, { SimdAlign::Vector }>(
+        mask,
+        pointer,
+        f32x8([0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32, 0_f32]),
+    )
 }
 
 // CHECK-LABEL: load_f64x4
@@ -79,5 +105,9 @@ pub unsafe extern "C" fn load_f64x4(mask: m64x4, pointer: *const f64) -> f64x4 {
     //
     // x86-avx512-NOT: vpsllq
     // x86-avx512: vpmovq2m k1, ymm0
-    simd_masked_load(mask, pointer, f64x4([0_f64, 0_f64, 0_f64, 0_f64]))
+    simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+        mask,
+        pointer,
+        f64x4([0_f64, 0_f64, 0_f64, 0_f64]),
+    )
 }

@@ -5,16 +5,16 @@
 //! intrinsics via stable wrapper functions. Use these instead.
 //!
 //! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
-//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
-//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
-//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
-//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
 //! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
 //! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
-//! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
+//! <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
 //! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
 //! wg-const-eval.
 //!
@@ -2587,6 +2587,24 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 #[rustc_intrinsic]
 pub const fn ub_checks() -> bool {
     cfg!(ub_checks)
+}
+
+/// Returns whether we should perform some overflow-checking at runtime. This eventually evaluates to
+/// `cfg!(overflow_checks)`, but behaves different from `cfg!` when mixing crates built with different
+/// flags: if the crate has overflow checks enabled or carries the `#[rustc_inherit_overflow_checks]`
+/// attribute, evaluation is delayed until monomorphization (or until the call gets inlined into
+/// a crate that does not delay evaluation further); otherwise it can happen any time.
+///
+/// The common case here is a user program built with overflow_checks linked against the distributed
+/// sysroot which is built without overflow_checks but with `#[rustc_inherit_overflow_checks]`.
+/// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
+/// `#[inline]`), gating assertions on `overflow_checks()` rather than `cfg!(overflow_checks)` means that
+/// assertions are enabled whenever the *user crate* has overflow checks enabled. However if the
+/// user has overflow checks disabled, the checks will still get optimized out.
+#[inline(always)]
+#[rustc_intrinsic]
+pub const fn overflow_checks() -> bool {
+    cfg!(debug_assertions)
 }
 
 /// Allocates a block of memory at compile time.

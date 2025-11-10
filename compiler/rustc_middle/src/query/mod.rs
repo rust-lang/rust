@@ -42,7 +42,7 @@
 //!   Only valid for queries returning `Result<_, ErrorGuaranteed>`.
 //!
 //! For the up-to-date list, see the `QueryModifiers` struct in
-//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/query.rs)
+//! [`rustc_macros/src/query.rs`](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_macros/src/query.rs)
 //! and for more details in incremental compilation, see the
 //! [Query modifiers in incremental compilation](https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation-in-detail.html#query-modifiers) section of the rustc-dev-guide.
 //!
@@ -97,7 +97,7 @@ use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::spec::{PanicStrategy, SanitizerSet};
+use rustc_target::spec::PanicStrategy;
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 pub use self::keys::{AsLocalKey, Key, LocalCrate};
@@ -105,7 +105,7 @@ pub use self::plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsur
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
+use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::deduced_param_attrs::DeducedParamAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -293,6 +293,19 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the const of the RHS of a (free or assoc) const item, if it is a `#[type_const]`.
+    ///
+    /// When a const item is used in a type-level expression, like in equality for an assoc const
+    /// projection, this allows us to retrieve the typesystem-appropriate representation of the
+    /// const value.
+    ///
+    /// This query will ICE if given a const that is not marked with `#[type_const]`.
+    query const_of_item(def_id: DefId) -> ty::EarlyBinder<'tcx, ty::Const<'tcx>> {
+        desc { |tcx| "computing the type-level value for `{}`", tcx.def_path_str(def_id)  }
+        cache_on_disk_if { def_id.is_local() }
+        separate_provide_extern
+    }
+
     /// Returns the *type* of the definition given by `DefId`.
     ///
     /// For type aliases (whether eager or lazy) and associated types, this returns
@@ -397,7 +410,10 @@ rustc_queries! {
     /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) {
         eval_always
-        desc { "running analysis passes on this crate" }
+        desc { |tcx|
+            "running analysis passes on crate `{}`",
+            tcx.crate_name(LOCAL_CRATE),
+        }
     }
 
     /// This query checks the fulfillment of collected lint expectations.
@@ -1244,7 +1260,10 @@ rustc_queries! {
 
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
-    query mir_borrowck(key: LocalDefId) -> Result<&'tcx mir::DefinitionSiteHiddenTypes<'tcx>, ErrorGuaranteed> {
+    query mir_borrowck(key: LocalDefId) -> Result<
+        &'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+        ErrorGuaranteed
+    > {
         desc { |tcx| "borrow-checking `{}`", tcx.def_path_str(key) }
     }
 
@@ -2411,7 +2430,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_projection_ty(
+    query normalize_canonicalized_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
@@ -2439,7 +2458,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_inherent_projection_ty(
+    query normalize_canonicalized_inherent_projection(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
@@ -2729,8 +2748,8 @@ rustc_queries! {
     /// `#[sanitize(xyz = "on")]` on this def and any enclosing defs, up to the
     /// crate root.
     ///
-    /// Returns the set of sanitizers that is explicitly disabled for this def.
-    query disabled_sanitizers_for(key: LocalDefId) -> SanitizerSet {
+    /// Returns the sanitizer settings for this def.
+    query sanitizer_settings_for(key: LocalDefId) -> SanitizerFnAttrs {
         desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
         feedable
     }

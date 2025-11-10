@@ -1,5 +1,5 @@
 //@ revisions: elfv1-be aix
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu

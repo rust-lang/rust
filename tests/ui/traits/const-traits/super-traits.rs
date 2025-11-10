@@ -2,13 +2,11 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn a(&self);
 }
 
-#[const_trait]
-trait Bar: [const] Foo {}
+const trait Bar: [const] Foo {}
 
 struct S;
 impl const Foo for S {

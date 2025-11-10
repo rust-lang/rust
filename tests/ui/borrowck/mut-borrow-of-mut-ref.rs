@@ -2,22 +2,24 @@
 #![crate_type = "rlib"]
 
 pub fn f(b: &mut i32) {
-    //~^ ERROR cannot borrow
-    //~| NOTE not mutable
-    //~| NOTE the binding is already a mutable borrow
+    //~^ ERROR: cannot borrow
+    //~| NOTE: not mutable
+    //~| NOTE: the binding is already a mutable borrow
+    //~| HELP: consider making the binding mutable if you need to reborrow multiple times
     h(&mut b);
-    //~^ NOTE cannot borrow as mutable
-    //~| HELP try removing `&mut` here
+    //~^ NOTE: cannot borrow as mutable
+    //~| HELP: if there is only one mutable reborrow, remove the `&mut`
     g(&mut &mut b);
-    //~^ NOTE cannot borrow as mutable
-    //~| HELP try removing `&mut` here
+    //~^ NOTE: cannot borrow as mutable
+    //~| HELP: if there is only one mutable reborrow, remove the `&mut`
 }
 
-pub fn g(b: &mut i32) { //~ NOTE the binding is already a mutable borrow
+pub fn g(b: &mut i32) { //~ NOTE: the binding is already a mutable borrow
+    //~^ HELP: consider making the binding mutable if you need to reborrow multiple times
     h(&mut &mut b);
-    //~^ ERROR cannot borrow
-    //~| NOTE cannot borrow as mutable
-    //~| HELP try removing `&mut` here
+    //~^ ERROR: cannot borrow
+    //~| NOTE: cannot borrow as mutable
+    //~| HELP: if there is only one mutable reborrow, remove the `&mut`
 }
 
 pub fn h(_: &mut i32) {}

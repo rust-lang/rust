@@ -25,4 +25,43 @@ fn main() {
         .target("aarch64-unknown-none-softfloat")
         .arg("-Zfixed-x18")
         .run();
+
+    rustdoc()
+        .input("c.rs")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("-Zfixed-x18")
+        .arg("--test")
+        .run();
+
+    rustdoc()
+        .input("c.rs")
+        .edition("2024")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("-Zfixed-x18")
+        .arg("--test")
+        .run();
+
+    // rustdoc --test detects ABI mismatch
+    rustdoc()
+        .input("c.rs")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("--test")
+        .run_fail()
+        .assert_stderr_contains("mixing `-Zfixed-x18` will cause an ABI mismatch");
+
+    // rustdoc --test -Cunsafe-allow-abi-mismatch=... ignores the mismatch
+    rustdoc()
+        .input("c.rs")
+        .crate_type("rlib")
+        .extern_("d", "libd.rmeta")
+        .target("aarch64-unknown-none-softfloat")
+        .arg("--test")
+        .arg("-Cunsafe-allow-abi-mismatch=fixed-x18")
+        .run();
 }

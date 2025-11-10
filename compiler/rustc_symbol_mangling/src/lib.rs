@@ -88,11 +88,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;
@@ -228,7 +224,7 @@ fn compute_symbol_name<'tcx>(
         // However, we don't have the wasm import module map there yet.
         tcx.is_foreign_item(def_id)
             && tcx.sess.target.is_like_wasm
-            && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
+            && tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id.into())
     };
 
     if !wasm_import_module_exception_force_mangling {

@@ -16,8 +16,6 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a read access
    |
 LL |     let _val = unsafe { *xraw }; // invalidate xref
    |                         ^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/stacked_borrows/load_invalid_mut.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

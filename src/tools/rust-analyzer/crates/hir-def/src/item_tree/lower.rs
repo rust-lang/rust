@@ -370,18 +370,13 @@ impl<'a> Ctx<'a> {
         });
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path, explicitness) if path.segments().is_empty() => {
-                match (path.kind, explicitness) {
-                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
-                        RawVisibilityId::PRIV_EXPLICIT
-                    }
-                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
-                        RawVisibilityId::PRIV_IMPLICIT
-                    }
-                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
-                    _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
-                }
+            RawVisibility::PubSelf(VisibilityExplicitness::Explicit) => {
+                RawVisibilityId::PRIV_EXPLICIT
             }
+            RawVisibility::PubSelf(VisibilityExplicitness::Implicit) => {
+                RawVisibilityId::PRIV_IMPLICIT
+            }
+            RawVisibility::PubCrate => RawVisibilityId::PUB_CRATE,
             _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
         }
     }
@@ -466,10 +461,7 @@ pub(crate) fn lower_use_tree(
 }
 
 fn private_vis() -> RawVisibility {
-    RawVisibility::Module(
-        Interned::new(ModPath::from_kind(PathKind::SELF)),
-        VisibilityExplicitness::Implicit,
-    )
+    RawVisibility::PubSelf(VisibilityExplicitness::Implicit)
 }
 
 pub(crate) fn visibility_from_ast(
@@ -486,9 +478,11 @@ pub(crate) fn visibility_from_ast(
                 Some(path) => path,
             }
         }
-        ast::VisibilityKind::PubCrate => ModPath::from_kind(PathKind::Crate),
+        ast::VisibilityKind::PubCrate => return RawVisibility::PubCrate,
         ast::VisibilityKind::PubSuper => ModPath::from_kind(PathKind::Super(1)),
-        ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::SELF),
+        ast::VisibilityKind::PubSelf => {
+            return RawVisibility::PubSelf(VisibilityExplicitness::Explicit);
+        }
         ast::VisibilityKind::Pub => return RawVisibility::Public,
     };
     RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)

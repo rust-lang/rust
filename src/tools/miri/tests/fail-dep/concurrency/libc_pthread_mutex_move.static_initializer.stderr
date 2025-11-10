@@ -1,4 +1,4 @@
-error: Undefined Behavior: `pthread_mutex_t` can't be moved after first use
+error: Undefined Behavior: `pthread_mutex_t` was not properly initialized at this location, or it got overwritten
   --> tests/fail-dep/concurrency/libc_pthread_mutex_move.rs:LL:CC
    |
 LL |         libc::pthread_mutex_unlock(&mut m2 as *mut _);

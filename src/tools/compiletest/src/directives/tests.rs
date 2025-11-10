@@ -3,8 +3,8 @@ use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
-    AuxProps, DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives,
-    extract_llvm_version, extract_version_range, iter_directives, line_directive, parse_edition,
+    self, AuxProps, DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives,
+    extract_llvm_version, extract_version_range, line_directive, parse_edition,
     parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
@@ -767,7 +767,10 @@ fn threads_support() {
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    iter_directives(TestMode::Ui, poisoned, &file_directives, &mut |_| {});
+    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
+    if result.is_err() {
+        *poisoned = true;
+    }
 }
 
 #[test]

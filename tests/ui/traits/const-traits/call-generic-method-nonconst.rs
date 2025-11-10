@@ -3,8 +3,7 @@
 
 struct S;
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn eq(&self, _: &Self) -> bool;
 }
 

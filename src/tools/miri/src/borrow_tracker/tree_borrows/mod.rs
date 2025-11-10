@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, Ty};
 
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
 use crate::concurrency::data_race::NaReadType;
 use crate::*;
 
@@ -366,7 +366,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Also inform the data race model (but only if any bytes are actually affected).
                 if range_in_alloc.size.bytes() > 0 {
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
-                        data_race.read(
+                        data_race.read_non_atomic(
                             alloc_id,
                             range_in_alloc,
                             NaReadType::Retag,

@@ -32,7 +32,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -323,7 +323,7 @@ impl Session {
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
-        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
+        self.sanitizers().contains(SanitizerSet::CFI)
     }
 
     pub fn is_sanitizer_cfi_canonical_jump_tables_disabled(&self) -> bool {
@@ -347,7 +347,7 @@ impl Session {
     }
 
     pub fn is_sanitizer_kcfi_enabled(&self) -> bool {
-        self.opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI)
+        self.sanitizers().contains(SanitizerSet::KCFI)
     }
 
     pub fn is_split_lto_unit_enabled(&self) -> bool {
@@ -527,7 +527,7 @@ impl Session {
         // AddressSanitizer and KernelAddressSanitizer uses lifetimes to detect use after scope bugs.
         // MemorySanitizer uses lifetimes to detect use of uninitialized stack variables.
         // HWAddressSanitizer will use lifetimes to detect use after scope bugs in the future.
-        || self.opts.unstable_opts.sanitizer.intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
+        || self.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS | SanitizerSet::MEMORY | SanitizerSet::HWADDRESS)
     }
 
     pub fn diagnostic_width(&self) -> usize {
@@ -922,6 +922,10 @@ impl Session {
             min
         }
     }
+
+    pub fn sanitizers(&self) -> SanitizerSet {
+        return self.opts.unstable_opts.sanitizer | self.target.options.default_sanitizers;
+    }
 }
 
 // JUSTIFICATION: part of session construction
@@ -950,10 +954,8 @@ fn default_emitter(
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => {
-            let short = kind.short();
-
-            if let HumanReadableErrorType::AnnotateSnippet = kind {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+            HumanReadableErrorType::AnnotateSnippet { short, unicode } => {
                 let emitter =
                     AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
                         .sm(source_map)
@@ -962,11 +964,7 @@ fn default_emitter(
                         .macro_backtrace(macro_backtrace)
                         .track_diagnostics(track_diagnostics)
                         .terminal_url(terminal_url)
-                        .theme(if let HumanReadableErrorType::Unicode = kind {
-                            OutputTheme::Unicode
-                        } else {
-                            OutputTheme::Ascii
-                        })
+                        .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                         .ignored_directories_in_source_blocks(
                             sopts
                                 .unstable_opts
@@ -974,7 +972,8 @@ fn default_emitter(
                                 .clone(),
                         );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
-            } else {
+            }
+            HumanReadableErrorType::Default { short } => {
                 let emitter = HumanEmitter::new(stderr_destination(color_config), translator)
                     .sm(source_map)
                     .short_message(short)
@@ -982,17 +981,13 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
+                    .theme(OutputTheme::Ascii)
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             }
-        }
+        },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => Box::new(
             JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),
@@ -1112,7 +1107,7 @@ pub fn build_session(
         _ => CtfeBacktrace::Disabled,
     });
 
-    let asm_arch = if target.allow_asm { InlineAsmArch::from_str(&target.arch).ok() } else { None };
+    let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
     let target_filesearch =
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
@@ -1202,7 +1197,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     let mut unsupported_sanitizers = sess.opts.unstable_opts.sanitizer - supported_sanitizers;
     // Niche: if `fixed-x18`, or effectively switching on `reserved-x18` flag, is enabled
     // we should allow Shadow Call Stack sanitizer.
-    if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == "aarch64" {
+    if sess.opts.unstable_opts.fixed_x18 && sess.target.arch == Arch::AArch64 {
         unsupported_sanitizers -= SanitizerSet::SHADOWCALLSTACK;
     }
     match unsupported_sanitizers.into_iter().count() {
@@ -1313,7 +1308,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
+    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
         sess.dcx().emit_err(errors::BranchProtectionRequiresAArch64);
     }
 
@@ -1357,13 +1352,13 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
-        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+        if !matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
             sess.dcx().emit_err(errors::FunctionReturnRequiresX86OrX8664);
         }
     }
 
     if sess.opts.unstable_opts.indirect_branch_cs_prefix {
-        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+        if !matches!(sess.target.arch, Arch::X86 | Arch::X86_64) {
             sess.dcx().emit_err(errors::IndirectBranchCsPrefixRequiresX86OrX8664);
         }
     }
@@ -1372,12 +1367,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         if regparm > 3 {
             sess.dcx().emit_err(errors::UnsupportedRegparm { regparm });
         }
-        if sess.target.arch != "x86" {
+        if sess.target.arch != Arch::X86 {
             sess.dcx().emit_err(errors::UnsupportedRegparmArch);
         }
     }
     if sess.opts.unstable_opts.reg_struct_return {
-        if sess.target.arch != "x86" {
+        if sess.target.arch != Arch::X86 {
             sess.dcx().emit_err(errors::UnsupportedRegStructReturnArch);
         }
     }
@@ -1399,7 +1394,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if sess.opts.cg.soft_float {
-        if sess.target.arch == "arm" {
+        if sess.target.arch == Arch::Arm {
             sess.dcx().emit_warn(errors::SoftFloatDeprecated);
         } else {
             // All `use_softfp` does is the equivalent of `-mfloat-abi` in GCC/clang, which only exists on ARM targets.
@@ -1499,18 +1494,18 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let translator =
         Translator::with_fallback_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable { kind, color_config } => {
-            let short = kind.short();
-            Box::new(
-                HumanEmitter::new(stderr_destination(color_config), translator)
-                    .theme(if let HumanReadableErrorType::Unicode = kind {
-                        OutputTheme::Unicode
-                    } else {
-                        OutputTheme::Ascii
-                    })
+        config::ErrorOutputType::HumanReadable { kind, color_config } => match kind {
+            HumanReadableErrorType::AnnotateSnippet { short, unicode } => Box::new(
+                AnnotateSnippetEmitter::new(stderr_destination(color_config), translator)
+                    .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
                     .short_message(short),
-            )
-        }
+            ),
+            HumanReadableErrorType::Default { short } => Box::new(
+                HumanEmitter::new(stderr_destination(color_config), translator)
+                    .theme(OutputTheme::Ascii)
+                    .short_message(short),
+            ),
+        },
         config::ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             Box::new(JsonEmitter::new(
                 Box::new(io::BufWriter::new(io::stderr())),

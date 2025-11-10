@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
@@ -10,7 +9,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -119,7 +117,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> Result<&DefinitionSiteHiddenTypes<'_>, ErrorGuaranteed> {
+) -> Result<&FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
@@ -130,7 +128,7 @@ fn mir_borrowck(
         Err(guar)
     } else if input_body.should_skip() {
         debug!("Skipping borrowck because of injected body");
-        let opaque_types = DefinitionSiteHiddenTypes(Default::default());
+        let opaque_types = Default::default();
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);

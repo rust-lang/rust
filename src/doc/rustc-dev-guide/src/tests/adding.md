@@ -39,7 +39,7 @@ to work with that stand the test of time (i.e. if a test fails or need to be
 modified several years later, how can we make it easier for them?).
 
 [compiletest]: compiletest.md
-[`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui/
+[`tests/ui`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui/
 
 ## UI test walkthrough
 

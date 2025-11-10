@@ -883,7 +883,8 @@ fn link_natively(
                     if is_msvc_link_exe && (code < 1000 || code > 9999) {
                         let is_vs_installed = find_msvc_tools::find_vs_version().is_ok();
                         let has_linker =
-                            find_msvc_tools::find_tool(&sess.target.arch, "link.exe").is_some();
+                            find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
+                                .is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
 
@@ -1226,7 +1227,7 @@ fn add_sanitizer_libraries(
         return;
     }
 
-    let sanitizer = sess.opts.unstable_opts.sanitizer;
+    let sanitizer = sess.sanitizers();
     if sanitizer.contains(SanitizerSet::ADDRESS) {
         link_sanitizer_runtime(sess, flavor, linker, "asan");
     }
@@ -1250,6 +1251,9 @@ fn add_sanitizer_libraries(
     }
     if sanitizer.contains(SanitizerSet::SAFESTACK) {
         link_sanitizer_runtime(sess, flavor, linker, "safestack");
+    }
+    if sanitizer.contains(SanitizerSet::REALTIME) {
+        link_sanitizer_runtime(sess, flavor, linker, "rtsan");
     }
 }
 
@@ -2496,11 +2500,7 @@ fn add_order_independent_options(
         && crate_type == CrateType::Executable
         && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
     {
-        let prefix = if sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::ADDRESS) {
-            "asan/"
-        } else {
-            ""
-        };
+        let prefix = if sess.sanitizers().contains(SanitizerSet::ADDRESS) { "asan/" } else { "" };
         cmd.link_arg(format!("--dynamic-linker={prefix}ld.so.1"));
     }
 
@@ -3036,7 +3036,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }

@@ -60,6 +60,14 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
         SetThreadPriority(thread, thread_priority_above_normal);
     }
 
+    #[cfg(feature = "dhat")]
+    {
+        if let Some(dhat_output_file) = config.dhat_output_file() {
+            *crate::DHAT_PROFILER.lock().unwrap() =
+                Some(dhat::Profiler::builder().file_name(&dhat_output_file).build());
+        }
+    }
+
     GlobalState::new(connection.sender, config).run(connection.receiver)
 }
 
@@ -1023,9 +1031,9 @@ impl GlobalState {
                 package_id,
             } => {
                 let snap = self.snapshot();
-                let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                let diagnostics = crate::diagnostics::flycheck_to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
-                    &diagnostic,
+                    diagnostic,
                     &workspace_root,
                     &snap,
                 );

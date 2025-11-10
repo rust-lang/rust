@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target csky-unknown-linux-gnuabiv2
 //@ needs-llvm-components: csky
 

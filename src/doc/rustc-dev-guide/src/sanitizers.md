@@ -45,7 +45,7 @@ implementation:
    [marked][sanitizer-attribute] with appropriate LLVM attribute:
    `SanitizeAddress`, `SanitizeHWAddress`, `SanitizeMemory`, or
    `SanitizeThread`. By default all functions are instrumented, but this
-   behaviour can be changed with `#[sanitize(xyz = "on|off")]`.
+   behaviour can be changed with `#[sanitize(xyz = "on|off|<other>")]`.
 
 *  The decision whether to perform instrumentation or not is possible only at a
    function granularity. In the cases were those decision differ between
@@ -85,8 +85,8 @@ sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
 be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.
 
-[test-cg]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
-[test-ui]: https://github.com/rust-lang/rust/tree/master/tests/ui/sanitizer
+[test-cg]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-llvm
+[test-ui]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui/sanitizer
 
 ## Enabling sanitizer on a new target
 

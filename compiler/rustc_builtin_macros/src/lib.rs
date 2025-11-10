@@ -5,8 +5,6 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
@@ -14,7 +12,6 @@
 #![feature(iter_order_by)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
-#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

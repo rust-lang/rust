@@ -16,7 +16,7 @@ use rustc_session::{Session, config};
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{Arch, SanitizerSet};
 use smallvec::SmallVec;
 
 use crate::attributes::{self, llfn_attrs_from_instance};
@@ -96,7 +96,7 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
                 }
             }
         }
-    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+    } else if cx.tcx.sess.sanitizers().contains(SanitizerSet::MEMORY) {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
         // memory sanitizer's behavior.
 
@@ -253,7 +253,7 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 );
                 bx.lifetime_end(llscratch, scratch_size);
             }
-            _ => {
+            PassMode::Pair(..) | PassMode::Direct { .. } => {
                 OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);
             }
         }
@@ -528,6 +528,28 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ii = apply(b);
                     if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
+                        let primitive_b = scalar_b.primitive();
+                        let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b
+                            && let ty::Ref(_, pointee_ty, _) = *arg.layout.ty.kind()
+                            && let ty::Slice(element_ty) = *pointee_ty.kind()
+                            && let elem_size = cx.layout_of(element_ty).size
+                            && elem_size != rustc_abi::Size::ZERO
+                        {
+                            // Ideally the layout calculations would have set the range,
+                            // but that's complicated due to cycles, so in the mean time
+                            // we calculate and apply it here.
+                            debug_assert!(scalar_b.is_always_valid(cx));
+                            let isize_max = int.signed_max() as u64;
+                            rustc_abi::Scalar::Initialized {
+                                value: primitive_b,
+                                valid_range: rustc_abi::WrappingRange {
+                                    start: 0,
+                                    end: u128::from(isize_max / elem_size.bytes()),
+                                },
+                            }
+                        } else {
+                            scalar_b
+                        };
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
                 }
@@ -676,16 +698,11 @@ pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm:
         // possible to declare an `extern "custom"` block, so the backend still needs a calling
         // convention for declaring foreign functions.
         CanonAbi::Custom => llvm::CCallConv,
-        CanonAbi::GpuKernel => {
-            let arch = sess.target.arch.as_ref();
-            if arch == "amdgpu" {
-                llvm::AmdgpuKernel
-            } else if arch == "nvptx64" {
-                llvm::PtxKernel
-            } else {
-                panic!("Architecture {arch} does not support GpuKernel calling convention");
-            }
-        }
+        CanonAbi::GpuKernel => match &sess.target.arch {
+            Arch::AmdGpu => llvm::AmdgpuKernel,
+            Arch::Nvptx64 => llvm::PtxKernel,
+            arch => panic!("Architecture {arch} does not support GpuKernel calling convention"),
+        },
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
             InterruptKind::Avr => llvm::AvrInterrupt,
             InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,

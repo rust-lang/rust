@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions:x86-linux x86-darwin
 
 //@[x86-linux] compile-flags: --target i686-unknown-linux-gnu

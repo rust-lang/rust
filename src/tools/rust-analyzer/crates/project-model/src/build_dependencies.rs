@@ -86,6 +86,7 @@ impl WorkspaceBuildScripts {
             config,
             &allowed_features,
             workspace.manifest_path(),
+            workspace.target_directory().as_ref(),
             current_dir,
             sysroot,
             toolchain,
@@ -106,8 +107,9 @@ impl WorkspaceBuildScripts {
         let (_guard, cmd) = Self::build_command(
             config,
             &Default::default(),
-            // This is not gonna be used anyways, so just construct a dummy here
+            // These are not gonna be used anyways, so just construct a dummy here
             &ManifestPath::try_from(working_directory.clone()).unwrap(),
+            working_directory.as_ref(),
             working_directory,
             &Sysroot::empty(),
             None,
@@ -430,6 +432,7 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
         manifest_path: &ManifestPath,
+        target_dir: &Utf8Path,
         current_dir: &AbsPath,
         sysroot: &Sysroot,
         toolchain: Option<&semver::Version>,
@@ -450,8 +453,9 @@ impl WorkspaceBuildScripts {
                 cmd.arg("--manifest-path");
                 cmd.arg(manifest_path);
 
-                if let Some(target_dir) = &config.target_dir {
-                    cmd.arg("--target-dir").arg(target_dir);
+                if let Some(target_dir) = config.target_dir_config.target_dir(Some(target_dir)) {
+                    cmd.arg("--target-dir");
+                    cmd.arg(target_dir.as_ref());
                 }
 
                 if let Some(target) = &config.target {

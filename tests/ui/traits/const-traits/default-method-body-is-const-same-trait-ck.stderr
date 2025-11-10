@@ -1,8 +1,13 @@
 error[E0277]: the trait bound `(): [const] Tr` is not satisfied
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:9:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()
    |            ^
+   |
+help: make the `impl` of trait `Tr` `const`
+   |
+LL | impl const Tr for () {}
+   |      +++++
 
 error: aborting due to 1 previous error
 

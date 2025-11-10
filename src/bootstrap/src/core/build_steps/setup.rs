@@ -587,7 +587,7 @@ Select which editor you would like to set up [default: None]: ";
                 "631c837b0e98ae35fd48b0e5f743b1ca60adadf2d0a2b23566ba25df372cf1a9",
                 "080955765db84bb6cbf178879f489c4e2369397626a6ecb3debedb94a9d0b3ce",
                 "f501475c6654187091c924ae26187fa5791d74d4a8ab3fb61fbbe4c0275aade1",
-                "e260553b71e4773c30a63c4b23b42b279fc73e72f95b775c47b7b7c511c51595",
+                "54bc48fe1996177f5eef86d7231b33978e6d8b737cb0a899e622b7e975c95308",
             ],
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",

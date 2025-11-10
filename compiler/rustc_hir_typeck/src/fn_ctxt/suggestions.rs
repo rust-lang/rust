@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect::<Vec<String>>();
 
-        if all_matching_bounds_strs.len() == 0 {
+        if all_matching_bounds_strs.is_empty() {
             return;
         }
 
@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_ty = *inner_expected_ty;
                 }
                 (hir::ExprKind::Block(blk, _), _, _) => {
-                    self.suggest_block_to_brackets(diag, *blk, expr_ty, expected_ty);
+                    self.suggest_block_to_brackets(diag, blk, expr_ty, expected_ty);
                     break true;
                 }
                 _ => break false,
@@ -1463,7 +1463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let span = expr
                 .span
-                .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+                .find_ancestor_not_from_extern_macro(self.tcx.sess.source_map())
                 .unwrap_or(expr.span);
 
             let mut sugg = if self.precedence(expr) >= ExprPrecedence::Unambiguous {
@@ -2144,7 +2144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let span = expr
             .span
-            .find_ancestor_not_from_extern_macro(&self.tcx.sess.source_map())
+            .find_ancestor_not_from_extern_macro(self.tcx.sess.source_map())
             .unwrap_or(expr.span);
         err.span_suggestion_verbose(span.shrink_to_hi(), msg, sugg, Applicability::HasPlaceholders);
         true
@@ -2257,7 +2257,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let src_map = tcx.sess.source_map();
             let suggestion = if src_map.is_multiline(expr.span) {
-                let indentation = src_map.indentation_before(span).unwrap_or_else(String::new);
+                let indentation = src_map.indentation_before(span).unwrap_or_default();
                 format!("\n{indentation}/* {suggestion} */")
             } else {
                 // If the entire expr is on a single line
@@ -2289,7 +2289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Check if `expr` is contained in array of two elements
         if let hir::Node::Expr(array_expr) = self.tcx.parent_hir_node(expr.hir_id)
             && let hir::ExprKind::Array(elements) = array_expr.kind
-            && let [first, second] = &elements[..]
+            && let [first, second] = elements
             && second.hir_id == expr.hir_id
         {
             // Span between the two elements of the array

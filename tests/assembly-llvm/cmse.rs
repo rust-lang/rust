@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: hard soft
 //@ assembly-output: emit-asm
 //@ [hard] compile-flags: --target thumbv8m.main-none-eabihf --crate-type lib -Copt-level=1

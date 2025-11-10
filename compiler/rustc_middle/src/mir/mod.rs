@@ -649,7 +649,9 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind), _) => {
+                Some((kind.value(tcx.sess) as u128, targets))
+            }
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant)?;
                 Some((bits, targets))

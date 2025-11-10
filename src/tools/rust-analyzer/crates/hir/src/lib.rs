@@ -5136,10 +5136,7 @@ impl<'db> Type<'db> {
             AliasTy::new(interner, alias.id.into(), args),
         );
 
-        // FIXME(next-solver): This needs to be `PostAnalysis`, but this currently causes errors due to our incorrect
-        // handling of opaques. `non_body_analysis()` will also cause errors (from not revealing opaques inside their
-        // defining places), so we choose between two bad options.
-        let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         let ty = structurally_normalize_ty(&infcx, projection, self.env.clone());
         if ty.is_ty_error() { None } else { Some(self.derived(ty)) }
     }
@@ -5758,8 +5755,7 @@ impl<'db> Type<'db> {
 
     pub fn drop_glue(&self, db: &'db dyn HirDatabase) -> DropGlue {
         let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
-        // FIXME: This should be `PostAnalysis` I believe.
-        let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         hir_ty::drop::has_drop_glue(&infcx, self.ty, self.env.clone())
     }
 }

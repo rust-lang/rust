@@ -19,7 +19,7 @@ fn main() {
         .crate_type("lib")
         .emit("obj=foo.o")
         .panic("abort")
-        .edition("2021")
+        .edition("2024")
         .arg("-Zvalidate-mir")
         .arg("-Cforce-unwind-tables=no")
         .run();

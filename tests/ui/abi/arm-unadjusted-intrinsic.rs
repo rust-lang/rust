@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ revisions: arm
 //@[arm] compile-flags: --target arm-unknown-linux-gnueabi

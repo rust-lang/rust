@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: powerpc powerpc_altivec powerpc_vsx powerpc64 powerpc64_vsx
 //@ assembly-output: emit-asm
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu

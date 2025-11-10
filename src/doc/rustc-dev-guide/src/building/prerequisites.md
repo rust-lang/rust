@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-See [the `rust-lang/rust` INSTALL](https://github.com/rust-lang/rust/blob/master/INSTALL.md#dependencies).
+See [the `rust-lang/rust` INSTALL](https://github.com/rust-lang/rust/blob/HEAD/INSTALL.md#dependencies).
 
 ## Hardware
 

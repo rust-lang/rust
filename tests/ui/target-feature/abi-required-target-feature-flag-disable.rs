@@ -17,7 +17,7 @@
 // Remove some LLVM warnings that only show up sometimes.
 //@ normalize-stderr: "\n[^\n]*(target-abi|lp64f)[^\n]*" -> ""
 //@ ignore-backends: gcc
-//@ add-core-stubs
+//@ add-minicore
 
 #![feature(no_core)]
 #![no_core]

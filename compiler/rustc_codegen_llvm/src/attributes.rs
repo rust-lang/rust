@@ -1,13 +1,13 @@
 //! Set and unset common attributes on LLVM values.
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr, RtsanSetting};
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
+use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
@@ -54,7 +54,7 @@ pub(crate) fn inline_attr<'ll, 'tcx>(
             Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
         }
         InlineAttr::Never => {
-            if tcx.sess.target.arch != "amdgpu" {
+            if tcx.sess.target.arch != Arch::AmdGpu {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
             } else {
                 None
@@ -98,10 +98,10 @@ fn patchable_function_entry_attrs<'ll>(
 pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     cx: &SimpleCx<'ll>,
     tcx: TyCtxt<'tcx>,
-    no_sanitize: SanitizerSet,
+    sanitizer_fn_attr: SanitizerFnAttrs,
 ) -> SmallVec<[&'ll Attribute; 4]> {
     let mut attrs = SmallVec::new();
-    let enabled = tcx.sess.opts.unstable_opts.sanitizer - no_sanitize;
+    let enabled = tcx.sess.sanitizers() - sanitizer_fn_attr.disabled;
     if enabled.contains(SanitizerSet::ADDRESS) || enabled.contains(SanitizerSet::KERNELADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
     }
@@ -130,6 +130,18 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
     }
     if enabled.contains(SanitizerSet::SAFESTACK) {
         attrs.push(llvm::AttributeKind::SanitizeSafeStack.create_attr(cx.llcx));
+    }
+    if tcx.sess.sanitizers().contains(SanitizerSet::REALTIME) {
+        match sanitizer_fn_attr.rtsan_setting {
+            RtsanSetting::Nonblocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeNonblocking.create_attr(cx.llcx))
+            }
+            RtsanSetting::Blocking => {
+                attrs.push(llvm::AttributeKind::SanitizeRealtimeBlocking.create_attr(cx.llcx))
+            }
+            // caller is the default, so no llvm attribute
+            RtsanSetting::Caller => (),
+        }
     }
     attrs
 }
@@ -229,7 +241,7 @@ fn instrument_function_attr<'ll>(
 }
 
 fn nojumptables_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
-    if !sess.opts.unstable_opts.no_jump_tables {
+    if sess.opts.cg.jump_tables {
         return None;
     }
 
@@ -240,13 +252,7 @@ fn probestack_attr<'ll, 'tcx>(cx: &SimpleCx<'ll>, tcx: TyCtxt<'tcx>) -> Option<&
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
     // stack overflow anyway so we don't really need stack probes regardless.
-    if tcx
-        .sess
-        .opts
-        .unstable_opts
-        .sanitizer
-        .intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD)
-    {
+    if tcx.sess.sanitizers().intersects(SanitizerSet::ADDRESS | SanitizerSet::THREAD) {
         return None;
     }
 
@@ -287,7 +293,7 @@ fn stackprotector_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll A
 }
 
 fn backchain_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
-    if sess.target.arch != "s390x" {
+    if sess.target.arch != Arch::S390x {
         return None;
     }
 
@@ -417,13 +423,13 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
-        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.no_sanitize));
+        to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
 
         // For non-naked functions, set branch protection attributes on aarch64.
         if let Some(BranchProtection { bti, pac_ret, gcs }) =
             sess.opts.unstable_opts.branch_protection
         {
-            assert!(sess.target.arch == "aarch64");
+            assert!(sess.target.arch == Arch::AArch64);
             if bti {
                 to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
             }

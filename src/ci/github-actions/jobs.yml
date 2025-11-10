@@ -162,7 +162,7 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
 
-# Main CI jobs that have to be green to merge a commit into master.
+# Main CI jobs that have to be green to merge a commit into the default branch.
 #
 # These jobs automatically inherit envs.auto, to avoid repeating it in each job
 # definition.
@@ -401,6 +401,31 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-20
+      DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
+    <<: *job-linux-4c
+
+  # The x86_64-gnu-llvm-21 job is split into multiple jobs to run tests in parallel.
+  # x86_64-gnu-llvm-21-1 skips tests that run in x86_64-gnu-llvm-21-{2,3}.
+  - name: x86_64-gnu-llvm-21-1
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-21
+      DOCKER_SCRIPT: stage_2_test_set2.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-21-{1,3}
+  - name: x86_64-gnu-llvm-21-2
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-21
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-21-{1,2}
+  - name: x86_64-gnu-llvm-21-3
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-21
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 

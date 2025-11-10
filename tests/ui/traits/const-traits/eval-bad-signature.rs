@@ -2,8 +2,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Value {
+const trait Value {
     fn value() -> u32;
 }
 

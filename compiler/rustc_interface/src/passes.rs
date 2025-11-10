@@ -929,6 +929,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let crate_types = collect_crate_types(
         sess,
         &compiler.codegen_backend.supported_crate_types(sess),
+        compiler.codegen_backend.name(),
         &pre_configured_attrs,
     );
     let stable_crate_id = StableCrateId::new(

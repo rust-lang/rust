@@ -6,8 +6,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_try)]
 
-#[const_trait]
-pub trait MyTrait {
+pub const trait MyTrait {
     fn method(&self) -> Option<()>;
 }
 
