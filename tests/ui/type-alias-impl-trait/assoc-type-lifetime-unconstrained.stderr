@@ -3,6 +3,11 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, I> UnwrapItemsExt for I {
    |      ^^ unconstrained lifetime parameter
+   |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a, I> UnwrapItemsExt for I<'a> {
+   |                                 ++++
 
 error[E0792]: expected generic lifetime parameter, found `'_`
   --> $DIR/assoc-type-lifetime-unconstrained.rs:22:9

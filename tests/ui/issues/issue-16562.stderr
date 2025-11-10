@@ -3,6 +3,14 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T, M: MatrixShape> Collection for Col<M, usize> {
    |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `T`, or make use of it
+   |
+LL - impl<T, M: MatrixShape> Collection for Col<M, usize> {
+LL + impl<M: MatrixShape> Collection for Col<M, usize> {
+   |
+LL | impl<T, M: MatrixShape> Collection for Col<M, usize, T> {
+   |                                                    +++
 
 error: aborting due to 1 previous error
 

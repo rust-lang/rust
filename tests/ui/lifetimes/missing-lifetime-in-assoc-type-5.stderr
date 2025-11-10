@@ -25,6 +25,10 @@ help: consider using the named lifetime here instead of an implicit lifetime
 LL - impl<'a> IntoIterator for &'_ S {
 LL + impl<'a> IntoIterator for &'a S {
    |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a> IntoIterator for &'_ S<'a> {
+   |                                ++++
 
 error: aborting due to 2 previous errors
 
