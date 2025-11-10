@@ -149,7 +149,9 @@ pull request, continuing the work on the feature.
 ### Writing tests
 
 Issues that have been resolved but do not have a regression test are marked with the `E-needs-test` label.
-Writing unit tests is a low-risk, lower-priority task that offers new contributors a great opportunity to familiarize themselves with the testing infrastructure and contribution workflow.
+Writing unit tests is a low-risk,
+lower-priority task that offers new contributors a great opportunity to familiarize themselves
+with the testing infrastructure and contribution workflow.
 
 ### Contributing to std (standard library)
 
