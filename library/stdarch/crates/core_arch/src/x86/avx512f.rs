@@ -56076,7 +56076,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortest_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56086,7 +56086,7 @@ mod tests {
         assert_eq!(all_ones, 1);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortestc_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56094,7 +56094,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortestz_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56102,7 +56102,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kshiftli_mask16() {
         let a: __mmask16 = 0b1001011011000011;
         let r = _kshiftli_mask16::<3>(a);
@@ -56122,7 +56122,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kshiftri_mask16() {
         let a: __mmask16 = 0b1010100100111100;
         let r = _kshiftri_mask16::<3>(a);
@@ -57383,7 +57383,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_maskz_set1_epi32() {
         let a: i32 = 11;
         let r = _mm256_maskz_set1_epi32(0, a);
@@ -57404,7 +57404,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_maskz_set1_epi32() {
         let a: i32 = 11;
         let r = _mm_maskz_set1_epi32(0, a);

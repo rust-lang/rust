@@ -3052,8 +3052,9 @@ mod tests {
         assert_eq_m128(r, _mm_set1_ps(0.0));
     }
 
-    #[simd_test(enable = "sse")]
-    unsafe fn test_MM_SHUFFLE() {
+    #[test]
+    #[allow(non_snake_case)]
+    fn test_MM_SHUFFLE() {
         assert_eq!(_MM_SHUFFLE(0, 1, 1, 3), 0b00_01_01_11);
         assert_eq!(_MM_SHUFFLE(3, 1, 1, 0), 0b11_01_01_00);
         assert_eq!(_MM_SHUFFLE(1, 2, 2, 1), 0b01_10_10_01);
