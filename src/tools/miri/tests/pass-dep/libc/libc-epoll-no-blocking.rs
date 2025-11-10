@@ -105,6 +105,7 @@ fn test_epoll_socketpair() {
 
 // This test first registers a file description with a flag that does not lead to notification,
 // then EPOLL_CTL_MOD to add another flag that will lead to notification.
+// Also check that the new data value set via MOD is applied properly.
 fn test_epoll_ctl_mod() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -115,28 +116,49 @@ fn test_epoll_ctl_mod() {
     let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
     assert_eq!(res, 0);
 
-    // Register fd[1] with EPOLLIN|EPOLLET.
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLIN | libc::EPOLLET) as _,
-        u64: u64::try_from(fds[1]).unwrap(),
-    };
+    // Register fd[1] with EPOLLIN|EPOLLET, and data of "0".
+    let mut ev = libc::epoll_event { events: (libc::EPOLLIN | libc::EPOLLET) as _, u64: 0 };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
     // Check result from epoll_wait. No notification would be returned.
     check_epoll_wait::<8>(epfd, &[]);
 
-    // Use EPOLL_CTL_MOD to change to EPOLLOUT flag.
-    let mut ev = libc::epoll_event {
-        events: (libc::EPOLLOUT | libc::EPOLLET) as _,
-        u64: u64::try_from(fds[1]).unwrap(),
-    };
+    // Use EPOLL_CTL_MOD to change to EPOLLOUT flag and data.
+    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 1 };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
     assert_eq!(res, 0);
 
-    // Check result from epoll_wait. EPOLLOUT notification is expected.
+    // Check result from epoll_wait. EPOLLOUT notification and new data is expected.
     let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
-    let expected_value = u64::try_from(fds[1]).unwrap();
+    let expected_value = 1;
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+
+    // Write to fds[1] and read from fds[0] to make the notification ready again
+    // (relying on there always being an event when the buffer gets emptied).
+    let data = "abc".as_bytes();
+    let res = unsafe { libc_utils::write_all(fds[1], data.as_ptr().cast(), data.len()) };
+    assert_eq!(res, 3);
+    let mut buf = [0u8; 3];
+    let res = unsafe { libc_utils::read_all(fds[0], buf.as_mut_ptr().cast(), buf.len()) };
+    assert_eq!(res, 3);
+
+    // Now that the event is already ready, change the "data" value.
+    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 2 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    // Receive event, with latest data value.
+    let expected_event = u32::try_from(libc::EPOLLOUT).unwrap();
+    let expected_value = 2;
+    check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
+
+    // Do another update that changes nothing.
+    let mut ev = libc::epoll_event { events: (libc::EPOLLOUT | libc::EPOLLET) as _, u64: 2 };
+    let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_MOD, fds[1], &mut ev) };
+    assert_eq!(res, 0);
+
+    // This re-triggers the event, even if it's the same flags as before.
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 }
 

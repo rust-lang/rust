@@ -44,7 +44,7 @@ fn range_for_id(id: FdId) -> std::ops::RangeInclusive<EpollEventKey> {
 }
 
 /// EpollEventInstance contains information that will be returned by epoll_wait.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct EpollEventInstance {
     /// Bitmask of event types that happened to the file description.
     events: u32,
@@ -52,12 +52,6 @@ pub struct EpollEventInstance {
     data: u64,
     /// The release clock associated with this event.
     clock: VClock,
-}
-
-impl EpollEventInstance {
-    pub fn new(data: u64) -> EpollEventInstance {
-        EpollEventInstance { events: 0, data, clock: Default::default() }
-    }
 }
 
 /// EpollEventInterest registers the file description information to an epoll
@@ -345,8 +339,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            // Add new interest to list.
+            // Add new interest to list. Experiments show that we need to reset all state
+            // on `EPOLL_CTL_MOD`, including the edge tracking.
             let epoll_key = (id, fd);
+            let new_interest = EpollEventInterest { events, data, prev_events: 0 };
             let new_interest = if op == epoll_ctl_add {
                 if interest_list.range(range_for_id(id)).next().is_none() {
                     // This is the first time this FD got added to this epoll.
@@ -358,25 +354,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // We already had interest in this.
                         return this.set_last_error_and_return_i32(LibcError("EEXIST"));
                     }
-                    btree_map::Entry::Vacant(e) =>
-                        e.insert(EpollEventInterest { events, data, prev_events: 0 }),
+                    btree_map::Entry::Vacant(e) => e.insert(new_interest),
                 }
             } else {
                 // Modify the existing interest.
                 let Some(interest) = interest_list.get_mut(&epoll_key) else {
                     return this.set_last_error_and_return_i32(LibcError("ENOENT"));
                 };
-                interest.events = events;
-                // FIXME what about the data?
+                *interest = new_interest;
                 interest
             };
 
             // Deliver events for the new interest.
+            let force_edge = true; // makes no difference since we reset `prev_events`
             send_ready_events_to_interests(
                 this,
                 &epfd,
                 fd_ref.as_unix(this).get_epoll_ready_events()?.get_event_bitmask(this),
-                /* force_edge */ false,
+                force_edge,
                 std::iter::once((&epoll_key, new_interest)),
             )?;
 
@@ -588,7 +583,8 @@ fn send_ready_events_to_interests<'tcx, 'a>(
             ready_list.remove(&event_key);
             continue;
         }
-        // Generate new instance, or update existing one.
+        // Generate new instance, or update existing one. It is crucial that whe we are done,
+        // if an interest exists in the ready list, then it matches the latest events and data!
         let instance = match ready_list.entry(event_key) {
             btree_map::Entry::Occupied(e) => e.into_mut(),
             btree_map::Entry::Vacant(e) => {
@@ -598,10 +594,11 @@ fn send_ready_events_to_interests<'tcx, 'a>(
                     // prior entry to update; just skip it.
                     continue;
                 }
-                e.insert(EpollEventInstance::new(interest.data))
+                e.insert(EpollEventInstance::default())
             }
         };
         instance.events = flags;
+        instance.data = interest.data;
         ecx.release_clock(|clock| {
             instance.clock.join(clock);
         })?;
