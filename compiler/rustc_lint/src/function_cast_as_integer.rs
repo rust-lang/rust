@@ -39,6 +39,9 @@ impl<'tcx> LateLintPass<'tcx> for FunctionCastsAsInteger {
         let hir::ExprKind::Cast(cast_from_expr, cast_to_expr) = expr.kind else { return };
         let cast_to_ty = cx.typeck_results().expr_ty(expr);
         // Casting to a function (pointer?), so all good.
+        //
+        // Normally, only casts to integers is possible, but if it ever changed, this condition
+        // will likely need to be updated.
         if matches!(cast_to_ty.kind(), ty::FnDef(..) | ty::FnPtr(..) | ty::RawPtr(..)) {
             return;
         }
