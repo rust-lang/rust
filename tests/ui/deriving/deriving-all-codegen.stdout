@@ -84,7 +84,7 @@ impl ::core::cmp::Ord for Empty {
     }
 }
 
-// A basic struct. Note: because this derives `Copy`, it gets the simple
+// A basic struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 struct Point {
     x: u32,
@@ -171,7 +171,7 @@ impl ::core::cmp::Ord for Point {
     }
 }
 
-// A basic packed struct. Note: because this derives `Copy`, it gets the simple
+// A basic packed struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 #[repr(packed)]
 struct PackedPoint {
@@ -409,7 +409,7 @@ impl ::core::cmp::Ord for SingleField {
     }
 }
 
-// A large struct. Note: because this derives `Copy`, it gets the simple
+// A large struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 struct Big {
     b1: u32,
@@ -676,7 +676,7 @@ impl ::core::cmp::PartialOrd for Reorder {
     }
 }
 
-// A struct that doesn't impl `Copy`, which means it gets the non-simple
+// A struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 struct NonCopy(u32);
 #[automatically_derived]
@@ -687,7 +687,7 @@ impl ::core::clone::Clone for NonCopy {
     }
 }
 
-// A packed struct that doesn't impl `Copy`, which means it gets the non-simple
+// A packed struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[repr(packed)]
 struct PackedNonCopy(u32);
@@ -699,7 +699,7 @@ impl ::core::clone::Clone for PackedNonCopy {
     }
 }
 
-// A struct that impls `Copy` manually, which means it gets the non-simple
+// A struct that impls `Copy` manually, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 struct ManualCopy(u32);
 #[automatically_derived]
@@ -712,7 +712,7 @@ impl ::core::clone::Clone for ManualCopy {
 impl Copy for ManualCopy {}
 
 // A packed struct that impls `Copy` manually, which means it gets the
-// non-simple `clone` implemention that clones the fields individually.
+// non-trivial `clone` implemention that clones the fields individually.
 #[repr(packed)]
 struct PackedManualCopy(u32);
 #[automatically_derived]
@@ -1791,3 +1791,62 @@ impl ::core::clone::Clone for Union {
 }
 #[automatically_derived]
 impl ::core::marker::Copy for Union { }
+
+struct FooCopyClone(i32);
+#[automatically_derived]
+impl ::core::marker::Copy for FooCopyClone { }
+#[automatically_derived]
+#[doc(hidden)]
+unsafe impl ::core::clone::TrivialClone for FooCopyClone { }
+#[automatically_derived]
+impl ::core::clone::Clone for FooCopyClone {
+    #[inline]
+    fn clone(&self) -> FooCopyClone {
+        let _: ::core::clone::AssertParamIsClone<i32>;
+        *self
+    }
+}
+
+struct FooCloneCopy(i32);
+#[automatically_derived]
+#[doc(hidden)]
+unsafe impl ::core::clone::TrivialClone for FooCloneCopy { }
+#[automatically_derived]
+impl ::core::clone::Clone for FooCloneCopy {
+    #[inline]
+    fn clone(&self) -> FooCloneCopy {
+        let _: ::core::clone::AssertParamIsClone<i32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for FooCloneCopy { }
+
+struct FooCopyAndClone(i32);
+#[automatically_derived]
+#[doc(hidden)]
+unsafe impl ::core::clone::TrivialClone for FooCopyAndClone { }
+#[automatically_derived]
+impl ::core::clone::Clone for FooCopyAndClone {
+    #[inline]
+    fn clone(&self) -> FooCopyAndClone {
+        let _: ::core::clone::AssertParamIsClone<i32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for FooCopyAndClone { }
+
+// FIXME(#124794): the previous three structs all have a trivial `Copy`-aware
+// `clone`. But this one doesn't because when the `clone` is generated the
+// `derive(Copy)` hasn't yet been seen.
+struct FooCloneAndCopy(i32);
+#[automatically_derived]
+impl ::core::marker::Copy for FooCloneAndCopy { }
+#[automatically_derived]
+impl ::core::clone::Clone for FooCloneAndCopy {
+    #[inline]
+    fn clone(&self) -> FooCloneAndCopy {
+        FooCloneAndCopy(::core::clone::Clone::clone(&self.0))
+    }
+}
