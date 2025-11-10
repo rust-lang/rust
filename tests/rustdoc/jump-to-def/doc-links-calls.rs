@@ -2,7 +2,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'src/foo/jump-to-def-doc-links-calls.rs.html'
+//@ has 'src/foo/doc-links-calls.rs.html'
 
 //@ has - '//a[@href="../../foo/struct.Bar.html"]' 'Bar'
 pub struct Bar;
