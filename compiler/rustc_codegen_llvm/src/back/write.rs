@@ -25,7 +25,9 @@ use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
 use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
-use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{
+    Arch, CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel,
+};
 use tracing::{debug, trace};
 
 use crate::back::lto::ThinBuffer;
@@ -41,7 +43,7 @@ use crate::errors::{
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::llvm_type_ptr;
-use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
@@ -107,7 +109,7 @@ pub(crate) fn create_informational_target_machine(
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, false, only_base_features);
+    let features = llvm_util::global_llvm_features(sess, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
 }
@@ -206,7 +208,7 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+    let float_abi = if sess.target.arch == Arch::Arm && sess.opts.cg.soft_float {
         llvm::FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
@@ -451,7 +453,7 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
+    let msg = msg.trim_prefix("error: ").to_string();
     cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
 }
 
@@ -631,6 +633,7 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
+            sanitize_realtime: config.sanitizer.contains(SanitizerSet::REALTIME),
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
             sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
             sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
@@ -642,6 +645,74 @@ pub(crate) unsafe fn llvm_optimize(
     } else {
         None
     };
+
+    fn handle_offload<'ll>(cx: &'ll SimpleCx<'_>, old_fn: &llvm::Value) {
+        let old_fn_ty = cx.get_type_of_global(old_fn);
+        let old_param_types = cx.func_params_types(old_fn_ty);
+        let old_param_count = old_param_types.len();
+        if old_param_count == 0 {
+            return;
+        }
+
+        let first_param = llvm::get_param(old_fn, 0);
+        let c_name = llvm::get_value_name(first_param);
+        let first_arg_name = str::from_utf8(&c_name).unwrap();
+        // We might call llvm_optimize (and thus this code) multiple times on the same IR,
+        // but we shouldn't add this helper ptr multiple times.
+        // FIXME(offload): This could break if the user calls his first argument `dyn_ptr`.
+        if first_arg_name == "dyn_ptr" {
+            return;
+        }
+
+        // Create the new parameter list, with ptr as the first argument
+        let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
+        new_param_types.push(cx.type_ptr());
+        new_param_types.extend(old_param_types);
+
+        // Create the new function type
+        let ret_ty = unsafe { llvm::LLVMGetReturnType(old_fn_ty) };
+        let new_fn_ty = cx.type_func(&new_param_types, ret_ty);
+
+        // Create the new function, with a temporary .offload name to avoid a name collision.
+        let old_fn_name = String::from_utf8(llvm::get_value_name(old_fn)).unwrap();
+        let new_fn_name = format!("{}.offload", &old_fn_name);
+        let new_fn = cx.add_func(&new_fn_name, new_fn_ty);
+        let a0 = llvm::get_param(new_fn, 0);
+        llvm::set_value_name(a0, CString::new("dyn_ptr").unwrap().as_bytes());
+
+        // Here we map the old arguments to the new arguments, with an offset of 1 to make sure
+        // that we don't use the newly added `%dyn_ptr`.
+        unsafe {
+            llvm::LLVMRustOffloadMapper(cx.llmod(), old_fn, new_fn);
+        }
+
+        llvm::set_linkage(new_fn, llvm::get_linkage(old_fn));
+        llvm::set_visibility(new_fn, llvm::get_visibility(old_fn));
+
+        // Replace all uses of old_fn with new_fn (RAUW)
+        unsafe {
+            llvm::LLVMReplaceAllUsesWith(old_fn, new_fn);
+        }
+        let name = llvm::get_value_name(old_fn);
+        unsafe {
+            llvm::LLVMDeleteFunction(old_fn);
+        }
+        // Now we can re-use the old name, without name collision.
+        llvm::set_value_name(new_fn, &name);
+    }
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
+        // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
+        // introducing a proper offload intrinsic to solve this limitation.
+        for num in 0..9 {
+            let name = format!("kernel_{num}");
+            if let Some(kernel) = cx.get_function(&name) {
+                handle_offload(&cx, kernel);
+            }
+        }
+    }
 
     let mut llvm_profiler = cgcx
         .prof

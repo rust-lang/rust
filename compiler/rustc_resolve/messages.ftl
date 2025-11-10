@@ -11,9 +11,9 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
-resolve_anonymous_lifetime_non_gat_report_error =
-    in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+resolve_anonymous_lifetime_non_gat_report_error = missing lifetime in associated type
     .label = this lifetime must come from the implemented type
+    .note = in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
 
 resolve_arguments_macro_use_not_allowed = arguments to `macro_use` are not allowed here
 
@@ -175,10 +175,16 @@ resolve_generic_params_from_outer_item =
     } from outer item
     .refer_to_type_directly = refer to the type directly here instead
     .suggestion = try introducing a local generic parameter here
+    .note = nested items are independent from their parent item for everything except for privacy and name resolution
 
 resolve_generic_params_from_outer_item_const = a `const` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_const_param = const parameter from outer item
+
+resolve_generic_params_from_outer_item_inner_item = {$is_self ->
+        [true] `Self`
+        *[false] generic parameter
+    } used in this inner {$descr}
 
 resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
 

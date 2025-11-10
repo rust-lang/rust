@@ -163,6 +163,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::overflow_checks
         | sym::powf16
         | sym::powf32
         | sym::powf64
@@ -643,7 +644,7 @@ pub(crate) fn check_intrinsic_type(
         sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
         sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
-        sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
+        sym::ub_checks | sym::overflow_checks => (0, 0, Vec::new(), tcx.types.bool),
 
         sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
@@ -695,8 +696,8 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![param(0), param(0), param(0)], param(0))
         }
         sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
-        sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
-        sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
+        sym::simd_masked_load => (3, 1, vec![param(0), param(1), param(2)], param(2)),
+        sym::simd_masked_store => (3, 1, vec![param(0), param(1), param(2)], tcx.types.unit),
         sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
         sym::simd_insert | sym::simd_insert_dyn => {
             (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0))

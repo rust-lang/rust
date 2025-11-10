@@ -4,7 +4,19 @@ error[E0015]: cannot call non-const associated function `<Dim3 as Dim>::dim` in 
 LL |     let array: [usize; Dim3::dim()]
    |                        ^^^^^^^^^^^
    |
+note: associated function `dim` is not const because trait `Dim` is not const
+  --> $DIR/issue-39559-2.rs:1:1
+   |
+LL | trait Dim {
+   | ^^^^^^^^^ this trait is not const
+LL |     fn dim() -> usize;
+   |     ------------------ this associated function is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable const traits
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `Dim` const
+   |
+LL | const trait Dim {
+   | +++++
 
 error[E0015]: cannot call non-const associated function `<Dim3 as Dim>::dim` in constants
   --> $DIR/issue-39559-2.rs:16:15
@@ -12,7 +24,19 @@ error[E0015]: cannot call non-const associated function `<Dim3 as Dim>::dim` in 
 LL |         = [0; Dim3::dim()];
    |               ^^^^^^^^^^^
    |
+note: associated function `dim` is not const because trait `Dim` is not const
+  --> $DIR/issue-39559-2.rs:1:1
+   |
+LL | trait Dim {
+   | ^^^^^^^^^ this trait is not const
+LL |     fn dim() -> usize;
+   |     ------------------ this associated function is not const
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable const traits
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `Dim` const
+   |
+LL | const trait Dim {
+   | +++++
 
 error: aborting due to 2 previous errors
 

@@ -1,6 +1,6 @@
 use rustc_abi::{ArmCall, CanonAbi, ExternAbi, InterruptKind, X86Call};
 
-use crate::spec::Target;
+use crate::spec::{Arch, Target};
 
 /// Mapping for ExternAbi to CanonAbi according to a Target
 ///
@@ -8,7 +8,7 @@ use crate::spec::Target;
 /// encapsulating arch-specific ABI lowering details to make them more testable.
 #[derive(Clone, Debug)]
 pub struct AbiMap {
-    arch: Arch,
+    arch: ArchKind,
     os: OsKind,
 }
 
@@ -47,18 +47,21 @@ impl AbiMap {
     /// create an AbiMap according to arbitrary fields on the [Target]
     pub fn from_target(target: &Target) -> Self {
         // the purpose of this little exercise is to force listing what affects these mappings
-        let arch = match &*target.arch {
-            "aarch64" => Arch::Aarch64,
-            "amdgpu" => Arch::Amdgpu,
-            "arm" if target.llvm_target.starts_with("thumbv8m") => Arch::Arm(ArmVer::ThumbV8M),
-            "arm" => Arch::Arm(ArmVer::Other),
-            "avr" => Arch::Avr,
-            "msp430" => Arch::Msp430,
-            "nvptx64" => Arch::Nvptx,
-            "riscv32" | "riscv64" => Arch::Riscv,
-            "x86" => Arch::X86,
-            "x86_64" => Arch::X86_64,
-            _ => Arch::Other,
+        let arch = match target.arch {
+            Arch::AArch64 => ArchKind::Aarch64,
+            Arch::AmdGpu => ArchKind::Amdgpu,
+            Arch::Arm => ArchKind::Arm(if target.llvm_target.starts_with("thumbv8m") {
+                ArmVer::ThumbV8M
+            } else {
+                ArmVer::Other
+            }),
+            Arch::Avr => ArchKind::Avr,
+            Arch::Msp430 => ArchKind::Msp430,
+            Arch::Nvptx64 => ArchKind::Nvptx,
+            Arch::RiscV32 | Arch::RiscV64 => ArchKind::Riscv,
+            Arch::X86 => ArchKind::X86,
+            Arch::X86_64 => ArchKind::X86_64,
+            _ => ArchKind::Other,
         };
 
         let os = if target.is_like_windows {
@@ -87,10 +90,12 @@ impl AbiMap {
 
             (ExternAbi::Custom, _) => CanonAbi::Custom,
 
-            (ExternAbi::System { .. }, Arch::X86) if os == OsKind::Windows && !has_c_varargs => {
+            (ExternAbi::System { .. }, ArchKind::X86)
+                if os == OsKind::Windows && !has_c_varargs =>
+            {
                 CanonAbi::X86(X86Call::Stdcall)
             }
-            (ExternAbi::System { .. }, Arch::Arm(..)) if self.os == OsKind::VEXos => {
+            (ExternAbi::System { .. }, ArchKind::Arm(..)) if self.os == OsKind::VEXos => {
                 // Calls to VEXos APIs do not use VFP registers.
                 CanonAbi::Arm(ArmCall::Aapcs)
             }
@@ -101,19 +106,19 @@ impl AbiMap {
             // always and forever
             (ExternAbi::RustInvalid, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::EfiApi, Arch::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
-            (ExternAbi::EfiApi, Arch::X86_64) => CanonAbi::X86(X86Call::Win64),
-            (ExternAbi::EfiApi, Arch::Aarch64 | Arch::Riscv | Arch::X86) => CanonAbi::C,
+            (ExternAbi::EfiApi, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
+            (ExternAbi::EfiApi, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
+            (ExternAbi::EfiApi, ArchKind::Aarch64 | ArchKind::Riscv | ArchKind::X86) => CanonAbi::C,
             (ExternAbi::EfiApi, _) => return AbiMapping::Invalid,
 
             /* arm */
-            (ExternAbi::Aapcs { .. }, Arch::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
+            (ExternAbi::Aapcs { .. }, ArchKind::Arm(..)) => CanonAbi::Arm(ArmCall::Aapcs),
             (ExternAbi::Aapcs { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::CmseNonSecureCall, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureCall, ArchKind::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureCall)
             }
-            (ExternAbi::CmseNonSecureEntry, Arch::Arm(ArmVer::ThumbV8M)) => {
+            (ExternAbi::CmseNonSecureEntry, ArchKind::Arm(ArmVer::ThumbV8M)) => {
                 CanonAbi::Arm(ArmCall::CCmseNonSecureEntry)
             }
             (ExternAbi::CmseNonSecureCall | ExternAbi::CmseNonSecureEntry, ..) => {
@@ -121,53 +126,53 @@ impl AbiMap {
             }
 
             /* gpu */
-            (ExternAbi::PtxKernel, Arch::Nvptx) => CanonAbi::GpuKernel,
-            (ExternAbi::GpuKernel, Arch::Amdgpu | Arch::Nvptx) => CanonAbi::GpuKernel,
+            (ExternAbi::PtxKernel, ArchKind::Nvptx) => CanonAbi::GpuKernel,
+            (ExternAbi::GpuKernel, ArchKind::Amdgpu | ArchKind::Nvptx) => CanonAbi::GpuKernel,
             (ExternAbi::PtxKernel | ExternAbi::GpuKernel, _) => return AbiMapping::Invalid,
 
             /* x86 */
-            (ExternAbi::Cdecl { .. }, Arch::X86) => CanonAbi::C,
+            (ExternAbi::Cdecl { .. }, ArchKind::X86) => CanonAbi::C,
             (ExternAbi::Cdecl { .. }, _) => return AbiMapping::Deprecated(CanonAbi::C),
 
-            (ExternAbi::Fastcall { .. }, Arch::X86) => CanonAbi::X86(X86Call::Fastcall),
+            (ExternAbi::Fastcall { .. }, ArchKind::X86) => CanonAbi::X86(X86Call::Fastcall),
             (ExternAbi::Fastcall { .. }, _) if os == OsKind::Windows => {
                 return AbiMapping::Deprecated(CanonAbi::C);
             }
             (ExternAbi::Fastcall { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::Stdcall { .. }, Arch::X86) => CanonAbi::X86(X86Call::Stdcall),
+            (ExternAbi::Stdcall { .. }, ArchKind::X86) => CanonAbi::X86(X86Call::Stdcall),
             (ExternAbi::Stdcall { .. }, _) if os == OsKind::Windows => {
                 return AbiMapping::Deprecated(CanonAbi::C);
             }
             (ExternAbi::Stdcall { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::Thiscall { .. }, Arch::X86) => CanonAbi::X86(X86Call::Thiscall),
+            (ExternAbi::Thiscall { .. }, ArchKind::X86) => CanonAbi::X86(X86Call::Thiscall),
             (ExternAbi::Thiscall { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::Vectorcall { .. }, Arch::X86 | Arch::X86_64) => {
+            (ExternAbi::Vectorcall { .. }, ArchKind::X86 | ArchKind::X86_64) => {
                 CanonAbi::X86(X86Call::Vectorcall)
             }
             (ExternAbi::Vectorcall { .. }, _) => return AbiMapping::Invalid,
 
-            (ExternAbi::SysV64 { .. }, Arch::X86_64) => CanonAbi::X86(X86Call::SysV64),
-            (ExternAbi::Win64 { .. }, Arch::X86_64) => CanonAbi::X86(X86Call::Win64),
+            (ExternAbi::SysV64 { .. }, ArchKind::X86_64) => CanonAbi::X86(X86Call::SysV64),
+            (ExternAbi::Win64 { .. }, ArchKind::X86_64) => CanonAbi::X86(X86Call::Win64),
             (ExternAbi::SysV64 { .. } | ExternAbi::Win64 { .. }, _) => return AbiMapping::Invalid,
 
             /* interrupts */
-            (ExternAbi::AvrInterrupt, Arch::Avr) => CanonAbi::Interrupt(InterruptKind::Avr),
-            (ExternAbi::AvrNonBlockingInterrupt, Arch::Avr) => {
+            (ExternAbi::AvrInterrupt, ArchKind::Avr) => CanonAbi::Interrupt(InterruptKind::Avr),
+            (ExternAbi::AvrNonBlockingInterrupt, ArchKind::Avr) => {
                 CanonAbi::Interrupt(InterruptKind::AvrNonBlocking)
             }
-            (ExternAbi::Msp430Interrupt, Arch::Msp430) => {
+            (ExternAbi::Msp430Interrupt, ArchKind::Msp430) => {
                 CanonAbi::Interrupt(InterruptKind::Msp430)
             }
-            (ExternAbi::RiscvInterruptM, Arch::Riscv) => {
+            (ExternAbi::RiscvInterruptM, ArchKind::Riscv) => {
                 CanonAbi::Interrupt(InterruptKind::RiscvMachine)
             }
-            (ExternAbi::RiscvInterruptS, Arch::Riscv) => {
+            (ExternAbi::RiscvInterruptS, ArchKind::Riscv) => {
                 CanonAbi::Interrupt(InterruptKind::RiscvSupervisor)
             }
-            (ExternAbi::X86Interrupt, Arch::X86 | Arch::X86_64) => {
+            (ExternAbi::X86Interrupt, ArchKind::X86 | ArchKind::X86_64) => {
                 CanonAbi::Interrupt(InterruptKind::X86)
             }
             (
@@ -186,7 +191,7 @@ impl AbiMap {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-enum Arch {
+enum ArchKind {
     Aarch64,
     Amdgpu,
     Arm(ArmVer),

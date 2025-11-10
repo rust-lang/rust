@@ -1211,7 +1211,7 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
         expect![[r#"
             29..33 'self': &'? Self
             54..58 'self': &'? Self
-            98..100 '{}': ()
+            98..100 '{}': impl Trait<u64>
             110..111 'x': impl Trait<u64>
             130..131 'y': &'? impl Trait<u64>
             151..268 '{     ...2(); }': ()
@@ -1373,11 +1373,11 @@ fn test() {
         expect![[r#"
             49..53 'self': &'? mut Self
             101..105 'self': &'? Self
-            184..195 '{ loop {} }': ({unknown}, {unknown})
+            184..195 '{ loop {} }': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
             186..193 'loop {}': !
             191..193 '{}': ()
             206..207 't': T
-            268..279 '{ loop {} }': ({unknown}, {unknown})
+            268..279 '{ loop {} }': (impl Iterator<Item = impl Trait<T>>, impl Trait<T>)
             270..277 'loop {}': !
             275..277 '{}': ()
             291..413 '{     ...o(); }': ()
@@ -1419,7 +1419,7 @@ fn foo<const C: u8, T>() -> (impl FnOnce(&str, T), impl Trait<u8>) {
 }
 "#,
         expect![[r#"
-            134..165 '{     ...(C)) }': (impl FnOnce(&'? str, T), Bar<u8>)
+            134..165 '{     ...(C)) }': (impl FnOnce(&'? str, T), impl Trait<u8>)
             140..163 '(|inpu...ar(C))': (impl FnOnce(&'? str, T), Bar<u8>)
             141..154 '|input, t| {}': impl FnOnce(&'? str, T)
             142..147 'input': &'? str
@@ -1441,7 +1441,7 @@ fn return_pos_impl_trait_in_projection() {
 trait Future { type Output; }
 impl Future for () { type Output = i32; }
 type Foo<F> = (<F as Future>::Output, F);
-fn foo<X>() -> Foo<impl Future<Output = ()>> {
+fn foo<X>() -> Foo<impl Future<Output = i32>> {
     (0, ())
 }
 "#,

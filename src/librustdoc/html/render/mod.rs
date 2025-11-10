@@ -74,8 +74,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
-    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    Ending, HrefError, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
+    print_constness_with_space, print_default_space, print_generic_bounds, print_generics,
+    print_impl, print_path, print_type, print_where_clause, visibility_print_with_space,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -1044,8 +1045,8 @@ fn assoc_const(
             vis = visibility_print_with_space(it, cx),
             href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
-            generics = generics.print(cx),
-            ty = ty.print(cx),
+            generics = print_generics(generics, cx),
+            ty = print_type(ty, cx),
         )?;
         if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
             // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
@@ -1083,14 +1084,14 @@ fn assoc_type(
             vis = visibility_print_with_space(it, cx),
             href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
-            generics = generics.print(cx),
+            generics = print_generics(generics, cx),
         )?;
         if !bounds.is_empty() {
             write!(w, ": {}", print_generic_bounds(bounds, cx))?;
         }
         // Render the default before the where-clause which aligns with the new recommended style. See #89122.
         if let Some(default) = default {
-            write!(w, " = {}", default.print(cx))?;
+            write!(w, " = {}", print_type(default, cx))?;
         }
         write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline).maybe_display())
     })
@@ -1128,7 +1129,7 @@ fn assoc_method(
         let href = assoc_href_attr(meth, link, cx).maybe_display();
 
         // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", g.print(cx)).len();
+        let generics_len = format!("{:#}", print_generics(g, cx)).len();
         let mut header_len = "fn ".len()
             + vis.len()
             + defaultness.len()
@@ -1155,8 +1156,8 @@ fn assoc_method(
             "{indent}{vis}{defaultness}{constness}{asyncness}{safety}{abi}fn \
             <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
             indent = indent_str,
-            generics = g.print(cx),
-            decl = d.full_print(header_len, indent, cx),
+            generics = print_generics(g, cx),
+            decl = full_print_fn_decl(d, header_len, indent, cx),
             where_clause = print_where_clause(g, cx, indent, end_newline).maybe_display(),
         )
     })
@@ -1441,8 +1442,10 @@ fn render_assoc_items_inner(
                 Cow::Borrowed("implementations-list"),
             ),
             AssocItemRender::DerefFor { trait_, type_, .. } => {
-                let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                let id = cx.derive_id(small_url_encode(format!(
+                    "deref-methods-{:#}",
+                    print_type(type_, cx)
+                )));
                 // the `impls.get` above only looks at the outermost type,
                 // and the Deref impl may only be implemented for certain
                 // values of generic parameters.
@@ -1466,8 +1469,8 @@ fn render_assoc_items_inner(
                                 fmt::from_fn(|f| write!(
                                     f,
                                     "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
-                                    trait_ = trait_.print(cx),
-                                    type_ = type_.print(cx),
+                                    trait_ = print_path(trait_, cx),
+                                    type_ = print_type(type_, cx),
                                 )),
                                 &id,
                             )
@@ -1645,7 +1648,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
             write!(
                 f,
                 " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-                ty = Escape(&format!("{:#}", ty.print(cx))),
+                ty = Escape(&format!("{:#}", print_type(ty, cx))),
             )
         })
     })
@@ -1683,7 +1686,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                 f,
                 "<h3>Notable traits for <code>{}</code></h3>\
                 <pre><code>",
-                impl_.for_.print(cx)
+                print_type(&impl_.for_, cx),
             )?;
             true
         } else {
@@ -1691,7 +1694,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         };
 
         for (impl_, trait_did) in notable_impls {
-            write!(f, "<div class=\"where\">{}</div>", impl_.print(false, cx))?;
+            write!(f, "<div class=\"where\">{}</div>", print_impl(impl_, false, cx))?;
             for it in &impl_.items {
                 let clean::AssocTypeItem(tydef, ..) = &it.kind else {
                     continue;
@@ -1724,7 +1727,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     })
     .to_string();
 
-    (format!("{:#}", ty.print(cx)), out)
+    (format!("{:#}", print_type(ty, cx)), out)
 }
 
 fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
@@ -2284,7 +2287,7 @@ fn render_impl_summary(
         )?;
 
         if let Some(use_absolute) = use_absolute {
-            write!(w, "{}", inner_impl.print(use_absolute, cx))?;
+            write!(w, "{}", print_impl(inner_impl, use_absolute, cx))?;
             if show_def_docs {
                 for it in &inner_impl.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = it.kind {
@@ -2305,7 +2308,7 @@ fn render_impl_summary(
                 }
             }
         } else {
-            write!(w, "{}", inner_impl.print(false, cx))?;
+            write!(w, "{}", print_impl(inner_impl, false, cx))?;
         }
         w.write_str("</h3>")?;
 
@@ -2423,7 +2426,10 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
         clean::ItemKind::ImplItem(ref i) if i.trait_.is_some() => {
             // Alternative format produces no URLs,
             // so this parameter does nothing.
-            Some((format!("{:#}", i.for_.print(cx)), get_id_for_impl(cx.tcx(), item.item_id)))
+            Some((
+                format!("{:#}", print_type(&i.for_, cx)),
+                get_id_for_impl(cx.tcx(), item.item_id),
+            ))
         }
         _ => None,
     }

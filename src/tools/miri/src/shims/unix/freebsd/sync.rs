@@ -4,12 +4,14 @@ use core::time::Duration;
 
 use rustc_abi::FieldIdx;
 
-use crate::concurrency::sync::FutexRef;
+use crate::concurrency::sync::{FutexRef, SyncObj};
 use crate::*;
 
 pub struct FreeBsdFutex {
     futex: FutexRef,
 }
+
+impl SyncObj for FreeBsdFutex {}
 
 /// Extended variant of the `timespec` struct.
 pub struct UmtxTime {

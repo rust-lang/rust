@@ -1,3 +1,11 @@
+Version 1.91.1 (2025-11-10)
+===========================
+
+<a id="1.91.1"></a>
+
+- [Enable file locking support in illumos](https://github.com/rust-lang/rust/pull/148322). This fixes Cargo not locking the build directory on illumos.
+- [Fix `wasm_import_module` attribute cross-crate](https://github.com/rust-lang/rust/pull/148363). This fixes linker errors on WASM targets.
+
 Version 1.91.0 (2025-10-30)
 ==========================
 

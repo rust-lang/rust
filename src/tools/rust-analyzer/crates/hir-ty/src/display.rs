@@ -2078,9 +2078,10 @@ pub fn write_visibility<'db>(
             if vis_id == module_id {
                 // pub(self) or omitted
                 Ok(())
-            } else if root_module_id == vis_id {
+            } else if root_module_id == vis_id && !root_module_id.is_within_block() {
                 write!(f, "pub(crate) ")
-            } else if module_id.containing_module(f.db) == Some(vis_id) {
+            } else if module_id.containing_module(f.db) == Some(vis_id) && !vis_id.is_block_module()
+            {
                 write!(f, "pub(super) ")
             } else {
                 write!(f, "pub(in ...) ")

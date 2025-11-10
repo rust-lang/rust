@@ -1,7 +1,6 @@
 //! See [`CargoWorkspace`].
 
-use std::ops;
-use std::str::from_utf8;
+use std::{borrow::Cow, ops, str::from_utf8};
 
 use anyhow::Context;
 use base_db::Env;
@@ -95,6 +94,29 @@ impl Default for CargoFeatures {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum TargetDirectoryConfig {
+    #[default]
+    None,
+    UseSubdirectory,
+    Directory(Utf8PathBuf),
+}
+
+impl TargetDirectoryConfig {
+    pub fn target_dir<'a>(
+        &'a self,
+        ws_target_dir: Option<&'a Utf8Path>,
+    ) -> Option<Cow<'a, Utf8Path>> {
+        match self {
+            TargetDirectoryConfig::None => None,
+            TargetDirectoryConfig::UseSubdirectory => {
+                Some(Cow::Owned(ws_target_dir?.join("rust-analyzer")))
+            }
+            TargetDirectoryConfig::Directory(dir) => Some(Cow::Borrowed(dir)),
+        }
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
     /// Whether to pass `--all-targets` to cargo invocations.
@@ -121,7 +143,7 @@ pub struct CargoConfig {
     pub extra_env: FxHashMap<String, Option<String>>,
     pub invocation_strategy: InvocationStrategy,
     /// Optional path to use instead of `target` when building
-    pub target_dir: Option<Utf8PathBuf>,
+    pub target_dir_config: TargetDirectoryConfig,
     /// Gate `#[test]` behind `#[cfg(test)]`
     pub set_test: bool,
     /// Load the project without any dependencies
@@ -715,21 +737,15 @@ impl FetchMetadata {
         }
     }
 
-    pub(crate) fn no_deps_metadata(&self) -> Option<&cargo_metadata::Metadata> {
-        self.no_deps_result.as_ref().ok()
-    }
-
     /// Executes the metadata-fetching command.
     ///
     /// A successful result may still contain a metadata error if the full fetch failed,
     /// but the fallback `--no-deps` pre-fetch succeeded during command construction.
     pub(crate) fn exec(
         self,
-        target_dir: &Utf8Path,
         locked: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        _ = target_dir;
         let Self {
             mut command,
             manifest_path: _,

@@ -47,15 +47,16 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
-    Default,
-    Unicode,
-    AnnotateSnippet,
-    Short,
+    Default { short: bool },
+    AnnotateSnippet { short: bool, unicode: bool },
 }
 
 impl HumanReadableErrorType {
     pub fn short(&self) -> bool {
-        *self == HumanReadableErrorType::Short
+        match self {
+            HumanReadableErrorType::Default { short }
+            | HumanReadableErrorType::AnnotateSnippet { short, .. } => *short,
+        }
     }
 }
 
@@ -2155,6 +2156,7 @@ impl HumanEmitter {
 
             let line_start = sm.lookup_char_pos(parts[0].original_span.lo()).line;
             let mut lines = complete.lines();
+            let lines_len = lines.clone().count();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
                 let line_end = sm.lookup_char_pos(parts[0].original_span.hi()).line;
@@ -2195,6 +2197,7 @@ impl HumanEmitter {
                 if highlight_parts.len() == 1
                     && line.trim().starts_with("#[")
                     && line.trim().ends_with(']')
+                    && lines_len == 1
                 {
                     is_item_attribute = true;
                 }

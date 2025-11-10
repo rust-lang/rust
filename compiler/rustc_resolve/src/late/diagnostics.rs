@@ -1125,6 +1125,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         }
                     }
                 }
+
+                self.suggest_ident_hidden_by_hygiene(err, path, span);
             } else if err_code == E0412 {
                 if let Some(correct) = Self::likely_rust_type(path) {
                     err.span_suggestion(
@@ -1133,6 +1135,28 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         correct,
                         Applicability::MaybeIncorrect,
                     );
+                }
+            }
+        }
+    }
+
+    fn suggest_ident_hidden_by_hygiene(&self, err: &mut Diag<'_>, path: &[Segment], span: Span) {
+        let [segment] = path else { return };
+
+        let ident = segment.ident;
+        let callsite_span = span.source_callsite();
+        for rib in self.ribs[ValueNS].iter().rev() {
+            for (binding_ident, _) in &rib.bindings {
+                if binding_ident.name == ident.name
+                    && !binding_ident.span.eq_ctxt(span)
+                    && !binding_ident.span.from_expansion()
+                    && binding_ident.span.lo() < callsite_span.lo()
+                {
+                    err.span_help(
+                        binding_ident.span,
+                        "an identifier with the same name exists, but is not accessible due to macro hygiene",
+                    );
+                    return;
                 }
             }
         }
@@ -2608,7 +2632,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let (span, text) = match path.segments.first() {
                 Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
                     // a special case for #117894
-                    let name = name.strip_prefix('_').unwrap_or(name);
+                    let name = name.trim_prefix('_');
                     (ident_span, format!("let {name}"))
                 }
                 _ => (ident_span.shrink_to_lo(), "let ".to_string()),

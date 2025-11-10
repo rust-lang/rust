@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::aix::opts();
@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 64,
         data_layout: "E-m:a-Fi64-i64:64-i128:128-n32:64-S128-v256:256:256-v512:512:512".into(),
-        arch: "powerpc64".into(),
+        arch: Arch::PowerPC64,
         options: base,
     }
 }

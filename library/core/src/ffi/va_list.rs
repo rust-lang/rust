@@ -299,3 +299,15 @@ impl<'f> Drop for VaListImpl<'f> {
         // This works for now, since `va_end` is a no-op on all current LLVM targets.
     }
 }
+
+// Checks (via an assert in `compiler/rustc_ty_utils/src/abi.rs`) that the C ABI for the current
+// target correctly implements `rustc_pass_indirectly_in_non_rustic_abis`.
+const _: () = {
+    #[repr(C)]
+    #[rustc_pass_indirectly_in_non_rustic_abis]
+    struct Type(usize);
+
+    const extern "C" fn c(_: Type) {}
+
+    c(Type(0))
+};

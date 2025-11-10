@@ -587,7 +587,11 @@ pub fn _mm256_dp_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vhaddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
-    unsafe { vhaddpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
+        let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontal addition of adjacent pairs in the two packed vectors
@@ -602,7 +606,11 @@ pub fn _mm256_hadd_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vhaddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
-    unsafe { vhaddps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontal subtraction of adjacent pairs in the two packed vectors
@@ -616,7 +624,11 @@ pub fn _mm256_hadd_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vhsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
-    unsafe { vhsubpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 4, 2, 6]);
+        let odd = simd_shuffle!(a, b, [1, 5, 3, 7]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Horizontal subtraction of adjacent pairs in the two packed vectors
@@ -631,7 +643,11 @@ pub fn _mm256_hsub_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vhsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_hsub_ps(a: __m256, b: __m256) -> __m256 {
-    unsafe { vhsubps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 8, 10, 4, 6, 12, 14]);
+        let odd = simd_shuffle!(a, b, [1, 3, 9, 11, 5, 7, 13, 15]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Computes the bitwise XOR of packed double-precision (64-bit) floating-point
@@ -1218,7 +1234,10 @@ pub fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { vperm2f128ps256(a, b, IMM8 as i8) }
+    _mm256_castsi256_ps(_mm256_permute2f128_si256::<IMM8>(
+        _mm256_castps_si256(a),
+        _mm256_castps_si256(b),
+    ))
 }
 
 /// Shuffles 256 bits (composed of 4 packed double-precision (64-bit)
@@ -1232,7 +1251,10 @@ pub fn _mm256_permute2f128_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { vperm2f128pd256(a, b, IMM8 as i8) }
+    _mm256_castsi256_pd(_mm256_permute2f128_si256::<IMM8>(
+        _mm256_castpd_si256(a),
+        _mm256_castpd_si256(b),
+    ))
 }
 
 /// Shuffles 128-bits (composed of integer data) selected by `imm8`
@@ -1246,7 +1268,35 @@ pub fn _mm256_permute2f128_pd<const IMM8: i32>(a: __m256d, b: __m256d) -> __m256
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_permute2f128_si256<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
-    unsafe { transmute(vperm2f128si256(a.as_i32x8(), b.as_i32x8(), IMM8 as i8)) }
+    const fn idx(imm8: i32, pos: u32) -> u32 {
+        let part = if pos < 2 {
+            imm8 & 0xf
+        } else {
+            (imm8 & 0xf0) >> 4
+        };
+        2 * (part as u32 & 0b11) + (pos & 1)
+    }
+    const fn idx0(imm8: i32, pos: u32) -> u32 {
+        let part = if pos < 2 {
+            imm8 & 0xf
+        } else {
+            (imm8 & 0xf0) >> 4
+        };
+        if part & 0b1000 != 0 { 4 } else { pos }
+    }
+    unsafe {
+        let r = simd_shuffle!(
+            a.as_i64x4(),
+            b.as_i64x4(),
+            [idx(IMM8, 0), idx(IMM8, 1), idx(IMM8, 2), idx(IMM8, 3)]
+        );
+        let r: i64x4 = simd_shuffle!(
+            r,
+            i64x4::ZERO,
+            [idx0(IMM8, 0), idx0(IMM8, 1), idx0(IMM8, 2), idx0(IMM8, 3)]
+        );
+        r.as_m256i()
+    }
 }
 
 /// Broadcasts a single-precision (32-bit) floating-point element from memory
@@ -1783,6 +1833,7 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vmovntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntdq", ",{a}"),
         p = in(reg) mem_addr,
@@ -1811,6 +1862,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -1840,6 +1892,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntps", ",{a}"),
         p = in(reg) mem_addr,
@@ -1933,7 +1986,10 @@ pub fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
-    unsafe { ptestz256(a.as_i64x4(), b.as_i64x4()) }
+    unsafe {
+        let r = simd_and(a.as_i64x4(), b.as_i64x4());
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
@@ -1947,7 +2003,10 @@ pub fn _mm256_testz_si256(a: __m256i, b: __m256i) -> i32 {
 #[cfg_attr(test, assert_instr(vptest))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_testc_si256(a: __m256i, b: __m256i) -> i32 {
-    unsafe { ptestc256(a.as_i64x4(), b.as_i64x4()) }
+    unsafe {
+        let r = simd_and(simd_xor(a.as_i64x4(), i64x4::splat(!0)), b.as_i64x4());
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
@@ -2031,7 +2090,10 @@ pub fn _mm256_testnzc_pd(a: __m256d, b: __m256d) -> i32 {
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
-    unsafe { vtestzpd(a, b) }
+    unsafe {
+        let r: i64x2 = simd_lt(transmute(_mm_and_pd(a, b)), i64x2::ZERO);
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
@@ -2048,7 +2110,10 @@ pub fn _mm_testz_pd(a: __m128d, b: __m128d) -> i32 {
 #[cfg_attr(test, assert_instr(vtestpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testc_pd(a: __m128d, b: __m128d) -> i32 {
-    unsafe { vtestcpd(a, b) }
+    unsafe {
+        let r: i64x2 = simd_lt(transmute(_mm_andnot_pd(a, b)), i64x2::ZERO);
+        (0i64 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing double-precision (64-bit)
@@ -2135,7 +2200,10 @@ pub fn _mm256_testnzc_ps(a: __m256, b: __m256) -> i32 {
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
-    unsafe { vtestzps(a, b) }
+    unsafe {
+        let r: i32x4 = simd_lt(transmute(_mm_and_ps(a, b)), i32x4::ZERO);
+        (0i32 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
@@ -2152,7 +2220,10 @@ pub fn _mm_testz_ps(a: __m128, b: __m128) -> i32 {
 #[cfg_attr(test, assert_instr(vtestps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_testc_ps(a: __m128, b: __m128) -> i32 {
-    unsafe { vtestcps(a, b) }
+    unsafe {
+        let r: i32x4 = simd_lt(transmute(_mm_andnot_ps(a, b)), i32x4::ZERO);
+        (0i32 == simd_reduce_or(r)) as i32
+    }
 }
 
 /// Computes the bitwise AND of 128 bits (representing single-precision (32-bit)
@@ -3044,14 +3115,6 @@ unsafe extern "C" {
     fn roundps256(a: __m256, b: i32) -> __m256;
     #[link_name = "llvm.x86.avx.dp.ps.256"]
     fn vdpps(a: __m256, b: __m256, imm8: i8) -> __m256;
-    #[link_name = "llvm.x86.avx.hadd.pd.256"]
-    fn vhaddpd(a: __m256d, b: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.avx.hadd.ps.256"]
-    fn vhaddps(a: __m256, b: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.hsub.pd.256"]
-    fn vhsubpd(a: __m256d, b: __m256d) -> __m256d;
-    #[link_name = "llvm.x86.avx.hsub.ps.256"]
-    fn vhsubps(a: __m256, b: __m256) -> __m256;
     #[link_name = "llvm.x86.sse2.cmp.pd"]
     fn vcmppd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.avx.cmp.pd.256"]
@@ -3084,12 +3147,6 @@ unsafe extern "C" {
     fn vpermilpd256(a: __m256d, b: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.vpermilvar.pd"]
     fn vpermilpd(a: __m128d, b: i64x2) -> __m128d;
-    #[link_name = "llvm.x86.avx.vperm2f128.ps.256"]
-    fn vperm2f128ps256(a: __m256, b: __m256, imm8: i8) -> __m256;
-    #[link_name = "llvm.x86.avx.vperm2f128.pd.256"]
-    fn vperm2f128pd256(a: __m256d, b: __m256d, imm8: i8) -> __m256d;
-    #[link_name = "llvm.x86.avx.vperm2f128.si.256"]
-    fn vperm2f128si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8;
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]
@@ -3112,10 +3169,6 @@ unsafe extern "C" {
     fn vrcpps(a: __m256) -> __m256;
     #[link_name = "llvm.x86.avx.rsqrt.ps.256"]
     fn vrsqrtps(a: __m256) -> __m256;
-    #[link_name = "llvm.x86.avx.ptestz.256"]
-    fn ptestz256(a: i64x4, b: i64x4) -> i32;
-    #[link_name = "llvm.x86.avx.ptestc.256"]
-    fn ptestc256(a: i64x4, b: i64x4) -> i32;
     #[link_name = "llvm.x86.avx.ptestnzc.256"]
     fn ptestnzc256(a: i64x4, b: i64x4) -> i32;
     #[link_name = "llvm.x86.avx.vtestz.pd.256"]
@@ -3124,10 +3177,6 @@ unsafe extern "C" {
     fn vtestcpd256(a: __m256d, b: __m256d) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.pd.256"]
     fn vtestnzcpd256(a: __m256d, b: __m256d) -> i32;
-    #[link_name = "llvm.x86.avx.vtestz.pd"]
-    fn vtestzpd(a: __m128d, b: __m128d) -> i32;
-    #[link_name = "llvm.x86.avx.vtestc.pd"]
-    fn vtestcpd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.pd"]
     fn vtestnzcpd(a: __m128d, b: __m128d) -> i32;
     #[link_name = "llvm.x86.avx.vtestz.ps.256"]
@@ -3136,10 +3185,6 @@ unsafe extern "C" {
     fn vtestcps256(a: __m256, b: __m256) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.ps.256"]
     fn vtestnzcps256(a: __m256, b: __m256) -> i32;
-    #[link_name = "llvm.x86.avx.vtestz.ps"]
-    fn vtestzps(a: __m128, b: __m128) -> i32;
-    #[link_name = "llvm.x86.avx.vtestc.ps"]
-    fn vtestcps(a: __m128, b: __m128) -> i32;
     #[link_name = "llvm.x86.avx.vtestnzc.ps"]
     fn vtestnzcps(a: __m128, b: __m128) -> i32;
     #[link_name = "llvm.x86.avx.min.ps.256"]
@@ -4249,6 +4294,7 @@ mod tests {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
         _mm256_stream_si256(ptr::addr_of_mut!(r), a);
+        _mm_sfence();
         assert_eq_m256i(r, a);
     }
 
@@ -4263,6 +4309,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 4] };
 
         _mm256_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m256d(a, i));
         }
@@ -4279,6 +4326,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 8] };
 
         _mm256_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m256(a, i));
         }

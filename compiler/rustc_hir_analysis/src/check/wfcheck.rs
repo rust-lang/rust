@@ -6,10 +6,11 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{AmbigArg, ItemKind};
+use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
@@ -925,11 +926,11 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
 #[instrument(level = "debug", skip(tcx))]
 pub(crate) fn check_associated_item(
     tcx: TyCtxt<'_>,
-    item_id: LocalDefId,
+    def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let loc = Some(WellFormedLoc::Ty(item_id));
-    enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
-        let item = tcx.associated_item(item_id);
+    let loc = Some(WellFormedLoc::Ty(def_id));
+    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+        let item = tcx.associated_item(def_id);
 
         // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
         // other `Foo` impls are incoherent.
@@ -942,27 +943,36 @@ pub(crate) fn check_associated_item(
             }
         };
 
-        let span = tcx.def_span(item_id);
+        let span = tcx.def_span(def_id);
 
         match item.kind {
             ty::AssocKind::Const { .. } => {
-                let ty = tcx.type_of(item.def_id).instantiate_identity();
-                let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
-                check_sized_if_body(
-                    wfcx,
-                    item.def_id.expect_local(),
-                    ty,
-                    Some(span),
-                    ObligationCauseCode::SizedConstOrStatic,
-                );
+
+                let has_value = item.defaultness(tcx).has_value();
+                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                    check_type_const(wfcx, def_id, ty, has_value)?;
+                }
+
+                if has_value {
+                    let code = ObligationCauseCode::SizedConstOrStatic;
+                    wfcx.register_bound(
+                        ObligationCause::new(span, def_id, code),
+                        wfcx.param_env,
+                        ty,
+                        tcx.require_lang_item(LangItem::Sized, span),
+                    );
+                }
+
                 Ok(())
             }
             ty::AssocKind::Fn { .. } => {
-                let sig = tcx.fn_sig(item.def_id).instantiate_identity();
+                let sig = tcx.fn_sig(def_id).instantiate_identity();
                 let hir_sig =
-                    tcx.hir_node_by_def_id(item_id).fn_sig().expect("bad signature for method");
-                check_fn_or_method(wfcx, sig, hir_sig.decl, item_id);
+                    tcx.hir_node_by_def_id(def_id).fn_sig().expect("bad signature for method");
+                check_fn_or_method(wfcx, sig, hir_sig.decl, def_id);
                 check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type { .. } => {
@@ -970,8 +980,8 @@ pub(crate) fn check_associated_item(
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {
-                    let ty = tcx.type_of(item.def_id).instantiate_identity();
-                    let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
+                    let ty = tcx.type_of(def_id).instantiate_identity();
+                    let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
                 Ok(())
@@ -1222,28 +1232,36 @@ pub(crate) fn check_static_item<'tcx>(
     })
 }
 
-pub(crate) fn check_const_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
-    enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-        let ty = tcx.type_of(def_id).instantiate_identity();
-        let ty_span = tcx.ty_span(def_id);
-        let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
+#[instrument(level = "debug", skip(wfcx))]
+pub(super) fn check_type_const<'tcx>(
+    wfcx: &WfCheckingCtxt<'_, 'tcx>,
+    def_id: LocalDefId,
+    item_ty: Ty<'tcx>,
+    has_value: bool,
+) -> Result<(), ErrorGuaranteed> {
+    let tcx = wfcx.tcx();
+    let span = tcx.def_span(def_id);
 
-        wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
-        wfcx.register_bound(
-            traits::ObligationCause::new(
-                ty_span,
-                wfcx.body_def_id,
-                ObligationCauseCode::SizedConstOrStatic,
-            ),
+    wfcx.register_bound(
+        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+        wfcx.param_env,
+        item_ty,
+        tcx.require_lang_item(LangItem::ConstParamTy, span),
+    );
+
+    if has_value {
+        let raw_ct = tcx.const_of_item(def_id).instantiate_identity();
+        let norm_ct = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), raw_ct);
+        wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(def_id)), norm_ct.into());
+
+        wfcx.register_obligation(Obligation::new(
+            tcx,
+            ObligationCause::new(span, def_id, ObligationCauseCode::WellFormed(None)),
             wfcx.param_env,
-            ty,
-            tcx.require_lang_item(LangItem::Sized, ty_span),
-        );
-
-        check_where_clauses(wfcx, def_id);
-
-        Ok(())
-    })
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(norm_ct, item_ty)),
+        ));
+    }
+    Ok(())
 }
 
 #[instrument(level = "debug", skip(tcx, impl_))]
@@ -1583,33 +1601,16 @@ fn check_fn_or_method<'tcx>(
     }
 
     // If the function has a body, additionally require that the return type is sized.
-    check_sized_if_body(
-        wfcx,
-        def_id,
-        sig.output(),
-        match hir_decl.output {
-            hir::FnRetTy::Return(ty) => Some(ty.span),
-            hir::FnRetTy::DefaultReturn(_) => None,
-        },
-        ObligationCauseCode::SizedReturnType,
-    );
-}
-
-fn check_sized_if_body<'tcx>(
-    wfcx: &WfCheckingCtxt<'_, 'tcx>,
-    def_id: LocalDefId,
-    ty: Ty<'tcx>,
-    maybe_span: Option<Span>,
-    code: ObligationCauseCode<'tcx>,
-) {
-    let tcx = wfcx.tcx();
     if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
-        let span = maybe_span.unwrap_or(body.value.span);
+        let span = match hir_decl.output {
+            hir::FnRetTy::Return(ty) => ty.span,
+            hir::FnRetTy::DefaultReturn(_) => body.value.span,
+        };
 
         wfcx.register_bound(
-            ObligationCause::new(span, def_id, code),
+            ObligationCause::new(span, def_id, ObligationCauseCode::SizedReturnType),
             wfcx.param_env,
-            ty,
+            sig.output(),
             tcx.require_lang_item(LangItem::Sized, span),
         );
     }

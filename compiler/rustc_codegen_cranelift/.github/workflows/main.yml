@@ -56,7 +56,7 @@ jobs:
           - os: ubuntu-24.04-arm
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
-          - os: macos-13
+          - os: macos-15-intel
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
           - os: macos-latest
@@ -187,7 +187,7 @@ jobs:
           - os: ubuntu-24.04-arm
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
-          - os: macos-13
+          - os: macos-15-intel
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
           - os: macos-latest
@@ -231,7 +231,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     needs: [rustfmt, test, bench, dist]
 
     permissions:

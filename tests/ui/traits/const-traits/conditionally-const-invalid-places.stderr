@@ -1,77 +1,77 @@
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:7:26
+  --> $DIR/conditionally-const-invalid-places.rs:6:26
    |
 LL | fn non_const_function<T: [const] Trait>() {}
    |                          ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:7:4
+  --> $DIR/conditionally-const-invalid-places.rs:6:4
    |
 LL | fn non_const_function<T: [const] Trait>() {}
    |    ^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:9:18
+  --> $DIR/conditionally-const-invalid-places.rs:8:18
    |
 LL | struct Struct<T: [const] Trait> { field: T }
    |                  ^^^^^^^
    |
 note: structs cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:9:1
+  --> $DIR/conditionally-const-invalid-places.rs:8:1
    |
 LL | struct Struct<T: [const] Trait> { field: T }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:10:23
+  --> $DIR/conditionally-const-invalid-places.rs:9:23
    |
 LL | struct TupleStruct<T: [const] Trait>(T);
    |                       ^^^^^^^
    |
 note: structs cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:10:1
+  --> $DIR/conditionally-const-invalid-places.rs:9:1
    |
 LL | struct TupleStruct<T: [const] Trait>(T);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:11:22
+  --> $DIR/conditionally-const-invalid-places.rs:10:22
    |
 LL | struct UnitStruct<T: [const] Trait>;
    |                      ^^^^^^^
    |
 note: structs cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:11:1
+  --> $DIR/conditionally-const-invalid-places.rs:10:1
    |
 LL | struct UnitStruct<T: [const] Trait>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:14:14
+  --> $DIR/conditionally-const-invalid-places.rs:13:14
    |
 LL | enum Enum<T: [const] Trait> { Variant(T) }
    |              ^^^^^^^
    |
 note: enums cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:14:1
+  --> $DIR/conditionally-const-invalid-places.rs:13:1
    |
 LL | enum Enum<T: [const] Trait> { Variant(T) }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:16:16
+  --> $DIR/conditionally-const-invalid-places.rs:15:16
    |
 LL | union Union<T: [const] Trait> { field: T }
    |                ^^^^^^^
    |
 note: unions cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:16:1
+  --> $DIR/conditionally-const-invalid-places.rs:15:1
    |
 LL | union Union<T: [const] Trait> { field: T }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:19:14
+  --> $DIR/conditionally-const-invalid-places.rs:18:14
    |
 LL | type Type<T: [const] Trait> = T;
    |              ^^^^^^^
@@ -79,7 +79,7 @@ LL | type Type<T: [const] Trait> = T;
    = note: this item cannot have `[const]` trait bounds
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:21:19
+  --> $DIR/conditionally-const-invalid-places.rs:20:19
    |
 LL | const CONSTANT<T: [const] Trait>: () = ();
    |                   ^^^^^^^
@@ -87,43 +87,43 @@ LL | const CONSTANT<T: [const] Trait>: () = ();
    = note: this item cannot have `[const]` trait bounds
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:25:18
+  --> $DIR/conditionally-const-invalid-places.rs:24:18
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                  ^^^^^^^
    |
 note: associated types in non-`const` traits cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:25:5
+  --> $DIR/conditionally-const-invalid-places.rs:24:5
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:25:34
+  --> $DIR/conditionally-const-invalid-places.rs:24:34
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                                  ^^^^^^^
    |
 note: associated types in non-`const` traits cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:25:5
+  --> $DIR/conditionally-const-invalid-places.rs:24:5
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:28:30
+  --> $DIR/conditionally-const-invalid-places.rs:27:30
    |
 LL |     fn non_const_function<T: [const] Trait>();
    |                              ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:28:8
+  --> $DIR/conditionally-const-invalid-places.rs:27:8
    |
 LL |     fn non_const_function<T: [const] Trait>();
    |        ^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:29:23
+  --> $DIR/conditionally-const-invalid-places.rs:28:23
    |
 LL |     const CONSTANT<T: [const] Trait>: ();
    |                       ^^^^^^^
@@ -131,31 +131,31 @@ LL |     const CONSTANT<T: [const] Trait>: ();
    = note: this item cannot have `[const]` trait bounds
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:34:18
+  --> $DIR/conditionally-const-invalid-places.rs:33:18
    |
 LL |     type Type<T: [const] Trait> = ();
    |                  ^^^^^^^
    |
 note: associated types in non-const impls cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:34:5
+  --> $DIR/conditionally-const-invalid-places.rs:33:5
    |
 LL |     type Type<T: [const] Trait> = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:36:30
+  --> $DIR/conditionally-const-invalid-places.rs:35:30
    |
 LL |     fn non_const_function<T: [const] Trait>() {}
    |                              ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:36:8
+  --> $DIR/conditionally-const-invalid-places.rs:35:8
    |
 LL |     fn non_const_function<T: [const] Trait>() {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:37:23
+  --> $DIR/conditionally-const-invalid-places.rs:36:23
    |
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                       ^^^^^^^
@@ -163,31 +163,31 @@ LL |     const CONSTANT<T: [const] Trait>: () = ();
    = note: this item cannot have `[const]` trait bounds
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:44:18
+  --> $DIR/conditionally-const-invalid-places.rs:43:18
    |
 LL |     type Type<T: [const] Trait> = ();
    |                  ^^^^^^^
    |
 note: inherent associated types cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:44:5
+  --> $DIR/conditionally-const-invalid-places.rs:43:5
    |
 LL |     type Type<T: [const] Trait> = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:46:30
+  --> $DIR/conditionally-const-invalid-places.rs:45:30
    |
 LL |     fn non_const_function<T: [const] Trait>() {}
    |                              ^^^^^^^
    |
 note: this function is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:46:8
+  --> $DIR/conditionally-const-invalid-places.rs:45:8
    |
 LL |     fn non_const_function<T: [const] Trait>() {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:47:23
+  --> $DIR/conditionally-const-invalid-places.rs:46:23
    |
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                       ^^^^^^^
@@ -195,55 +195,55 @@ LL |     const CONSTANT<T: [const] Trait>: () = ();
    = note: this item cannot have `[const]` trait bounds
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:52:15
+  --> $DIR/conditionally-const-invalid-places.rs:51:15
    |
 LL | trait Child0: [const] Trait {}
    |               ^^^^^^^
    |
 note: this trait is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:52:1
+  --> $DIR/conditionally-const-invalid-places.rs:51:1
    |
 LL | trait Child0: [const] Trait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:53:26
+  --> $DIR/conditionally-const-invalid-places.rs:52:26
    |
 LL | trait Child1 where Self: [const] Trait {}
    |                          ^^^^^^^
    |
 note: this trait is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:53:1
+  --> $DIR/conditionally-const-invalid-places.rs:52:1
    |
 LL | trait Child1 where Self: [const] Trait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:56:9
+  --> $DIR/conditionally-const-invalid-places.rs:55:9
    |
 LL | impl<T: [const] Trait> Trait for T {}
    |         ^^^^^^^
    |
 note: this impl is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:56:1
+  --> $DIR/conditionally-const-invalid-places.rs:55:1
    |
 LL | impl<T: [const] Trait> Trait for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` is not allowed here
-  --> $DIR/conditionally-const-invalid-places.rs:59:9
+  --> $DIR/conditionally-const-invalid-places.rs:58:9
    |
 LL | impl<T: [const] Trait> Struct<T> {}
    |         ^^^^^^^
    |
 note: inherent impls cannot have `[const]` trait bounds
-  --> $DIR/conditionally-const-invalid-places.rs:59:1
+  --> $DIR/conditionally-const-invalid-places.rs:58:1
    |
 LL | impl<T: [const] Trait> Struct<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: generic const items are experimental
-  --> $DIR/conditionally-const-invalid-places.rs:21:15
+  --> $DIR/conditionally-const-invalid-places.rs:20:15
    |
 LL | const CONSTANT<T: [const] Trait>: () = ();
    |               ^^^^^^^^^^^^^^^^^^
@@ -253,7 +253,7 @@ LL | const CONSTANT<T: [const] Trait>: () = ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
-  --> $DIR/conditionally-const-invalid-places.rs:29:19
+  --> $DIR/conditionally-const-invalid-places.rs:28:19
    |
 LL |     const CONSTANT<T: [const] Trait>: ();
    |                   ^^^^^^^^^^^^^^^^^^
@@ -263,7 +263,7 @@ LL |     const CONSTANT<T: [const] Trait>: ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
-  --> $DIR/conditionally-const-invalid-places.rs:37:19
+  --> $DIR/conditionally-const-invalid-places.rs:36:19
    |
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                   ^^^^^^^^^^^^^^^^^^
@@ -273,7 +273,7 @@ LL |     const CONSTANT<T: [const] Trait>: () = ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
-  --> $DIR/conditionally-const-invalid-places.rs:47:19
+  --> $DIR/conditionally-const-invalid-places.rs:46:19
    |
 LL |     const CONSTANT<T: [const] Trait>: () = ();
    |                   ^^^^^^^^^^^^^^^^^^
@@ -283,7 +283,7 @@ LL |     const CONSTANT<T: [const] Trait>: () = ();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/conditionally-const-invalid-places.rs:11:19
+  --> $DIR/conditionally-const-invalid-places.rs:10:19
    |
 LL | struct UnitStruct<T: [const] Trait>;
    |                   ^ unused type parameter
@@ -291,7 +291,7 @@ LL | struct UnitStruct<T: [const] Trait>;
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0740]: field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
-  --> $DIR/conditionally-const-invalid-places.rs:16:33
+  --> $DIR/conditionally-const-invalid-places.rs:15:33
    |
 LL | union Union<T: [const] Trait> { field: T }
    |                                 ^^^^^^^^
@@ -303,19 +303,19 @@ LL | union Union<T: [const] Trait> { field: std::mem::ManuallyDrop<T> }
    |                                        +++++++++++++++++++++++ +
 
 error[E0275]: overflow evaluating the requirement `(): Trait`
-  --> $DIR/conditionally-const-invalid-places.rs:34:35
+  --> $DIR/conditionally-const-invalid-places.rs:33:35
    |
 LL |     type Type<T: [const] Trait> = ();
    |                                   ^^
    |
 note: required by a bound in `NonConstTrait::Type`
-  --> $DIR/conditionally-const-invalid-places.rs:25:34
+  --> $DIR/conditionally-const-invalid-places.rs:24:34
    |
 LL |     type Type<T: [const] Trait>: [const] Trait;
    |                                  ^^^^^^^^^^^^^ required by this bound in `NonConstTrait::Type`
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/conditionally-const-invalid-places.rs:44:5
+  --> $DIR/conditionally-const-invalid-places.rs:43:5
    |
 LL |     type Type<T: [const] Trait> = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

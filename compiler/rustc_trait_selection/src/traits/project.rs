@@ -546,7 +546,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
         tcx.type_of(alias_term.def_id).instantiate(tcx, args).into()
     } else {
-        get_associated_const_value(selcx, alias_term.to_term(tcx).expect_const(), param_env).into()
+        tcx.const_of_item(alias_term.def_id).instantiate(tcx, args).into()
     };
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
@@ -2034,14 +2034,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let term = if obligation.predicate.kind(tcx).is_type() {
         tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
     } else {
-        ty::EarlyBinder::bind(
-            get_associated_const_value(
-                selcx,
-                obligation.predicate.to_term(tcx).expect_const(),
-                param_env,
-            )
-            .into(),
-        )
+        tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
     };
 
     let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
@@ -2132,16 +2125,4 @@ impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
             )
         })
     }
-}
-
-fn get_associated_const_value<'tcx>(
-    selcx: &mut SelectionContext<'_, 'tcx>,
-    alias_ct: ty::Const<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> ty::Const<'tcx> {
-    // FIXME(mgca): We shouldn't be invoking ctfe here, instead const items should be aliases to type
-    // system consts that we can retrieve with some `query const_arg_of_alias` query. Evaluating the
-    // constant is "close enough" to getting the actual rhs of the const item for now even if it might
-    // lead to some cycles
-    super::evaluate_const(selcx.infcx, alias_ct, param_env)
 }

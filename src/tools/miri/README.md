@@ -220,7 +220,6 @@ degree documented below):
   - `solaris` / `illumos`: maintained by @devnexen. Supports the entire test suite.
   - `freebsd`: maintained by @YohDeadfall and @LorrensP-2158466. Supports the entire test suite.
   - `android`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
-  - `wasi`: **maintainer wanted**. Support very incomplete, but a basic "hello world" works.
 - For targets on other operating systems, Miri might fail before even reaching the `main` function.
 
 However, even for targets that we do support, the degree of support for accessing platform APIs

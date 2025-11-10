@@ -52,7 +52,7 @@ pub use self::iter::Iter;
 
 mod iter;
 
-use self::spec_extend::SpecExtend;
+use self::spec_extend::{SpecExtend, SpecExtendFront};
 
 mod spec_extend;
 
@@ -175,6 +175,21 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // SAFETY: Because of the precondition, it's guaranteed that there is space
         // in the logical array after the last element.
         unsafe { self.buffer_write(self.to_physical_idx(self.len), element) };
+        // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
+        self.len += 1;
+    }
+
+    /// Prepends an element to the buffer.
+    ///
+    /// # Safety
+    ///
+    /// May only be called if `deque.len() < deque.capacity()`
+    #[inline]
+    unsafe fn push_front_unchecked(&mut self, element: T) {
+        self.head = self.wrap_sub(self.head, 1);
+        // SAFETY: Because of the precondition, it's guaranteed that there is space
+        // in the logical array before the first element (where self.head is now).
+        unsafe { self.buffer_write(self.head, element) };
         // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
         self.len += 1;
     }
@@ -501,6 +516,35 @@ impl<T, A: Allocator> VecDeque<T, A> {
             unsafe {
                 ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(dst), left.len());
                 ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
+            }
+        }
+    }
+
+    /// Copies all values from `src` to `dst` in reversed order, wrapping around if needed.
+    /// Assumes capacity is sufficient.
+    /// Equivalent to calling [`VecDeque::copy_slice`] with a [reversed](https://doc.rust-lang.org/std/primitive.slice.html#method.reverse) slice.
+    #[inline]
+    unsafe fn copy_slice_reversed(&mut self, dst: usize, src: &[T]) {
+        /// # Safety
+        ///
+        /// See [`ptr::copy_nonoverlapping`].
+        unsafe fn copy_nonoverlapping_reversed<T>(src: *const T, dst: *mut T, count: usize) {
+            for i in 0..count {
+                unsafe { ptr::copy_nonoverlapping(src.add(count - 1 - i), dst.add(i), 1) };
+            }
+        }
+
+        debug_assert!(src.len() <= self.capacity());
+        let head_room = self.capacity() - dst;
+        if src.len() <= head_room {
+            unsafe {
+                copy_nonoverlapping_reversed(src.as_ptr(), self.ptr().add(dst), src.len());
+            }
+        } else {
+            let (left, right) = src.split_at(src.len() - head_room);
+            unsafe {
+                copy_nonoverlapping_reversed(right.as_ptr(), self.ptr().add(dst), right.len());
+                copy_nonoverlapping_reversed(left.as_ptr(), self.ptr(), left.len());
             }
         }
     }
@@ -1997,7 +2041,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -2007,7 +2050,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [1, 2, 3, 4]);
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
@@ -2020,7 +2063,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -2030,10 +2072,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [0, 1, 2, 3]);
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
-        let first = self.back_mut()?;
-        if predicate(first) { self.pop_back() } else { None }
+        let last = self.back_mut()?;
+        if predicate(last) { self.pop_back() } else { None }
     }
 
     /// Prepends an element to the deque.
@@ -2120,6 +2162,73 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let len = self.len;
         self.len += 1;
         unsafe { self.buffer_write(self.to_physical_idx(len), value) }
+    }
+
+    /// Prepends all contents of the iterator to the front of the deque.
+    /// The order of the contents is preserved.
+    ///
+    /// To get behavior like [`append`][VecDeque::append] where elements are moved
+    /// from the other collection to this one, use `self.prepend(other.drain(..))`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// deque.prepend([1, 2, 3]);
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Move values between collections like [`append`][VecDeque::append] does but prepend to the front:
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque1 = VecDeque::from([4, 5, 6]);
+    /// let mut deque2 = VecDeque::from([1, 2, 3]);
+    /// deque1.prepend(deque2.drain(..));
+    /// assert_eq!(deque1, [1, 2, 3, 4, 5, 6]);
+    /// assert!(deque2.is_empty());
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    #[track_caller]
+    pub fn prepend<I: IntoIterator<Item = T, IntoIter: DoubleEndedIterator>>(&mut self, other: I) {
+        self.extend_front(other.into_iter().rev())
+    }
+
+    /// Prepends all contents of the iterator to the front of the deque,
+    /// as if [`push_front`][VecDeque::push_front] was called repeatedly with
+    /// the values yielded by the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// deque.extend_front([3, 2, 1]);
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// This behaves like [`push_front`][VecDeque::push_front] was called repeatedly:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// for v in [3, 2, 1] {
+    ///     deque.push_front(v);
+    /// }
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    #[track_caller]
+    pub fn extend_front<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        <Self as SpecExtendFront<T, I::IntoIter>>::spec_extend_front(self, iter.into_iter());
     }
 
     #[inline]

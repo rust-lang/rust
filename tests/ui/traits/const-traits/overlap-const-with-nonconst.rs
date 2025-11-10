@@ -5,12 +5,10 @@
 //[spec]~^ WARN the feature `specialization` is incomplete
 #![cfg_attr(min_spec, feature(min_specialization))]
 
-#[const_trait]
-trait Bar {}
+const trait Bar {}
 impl<T> const Bar for T {}
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn method(&self);
 }
 impl<T> const Foo for T

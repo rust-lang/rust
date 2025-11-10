@@ -18,7 +18,7 @@ fn check() {
         // move pthread_cond_t
         let mut cond2 = cond;
 
-        libc::pthread_cond_destroy(cond2.as_mut_ptr()); //~[init] ERROR: can't be moved after first use
+        libc::pthread_cond_destroy(cond2.as_mut_ptr()); //~[init] ERROR: not properly initialized
     }
 }
 
@@ -32,6 +32,6 @@ fn check() {
         // move pthread_cond_t
         let mut cond2 = cond;
 
-        libc::pthread_cond_destroy(&mut cond2 as *mut _); //~[static_initializer] ERROR: can't be moved after first use
+        libc::pthread_cond_destroy(&mut cond2 as *mut _); //~[static_initializer] ERROR: not properly initialized
     }
 }

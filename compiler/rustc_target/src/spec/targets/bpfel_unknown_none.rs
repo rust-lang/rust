@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Target, TargetMetadata, base};
+use crate::spec::{Arch, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
         },
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
         pointer_width: 64,
-        arch: "bpf".into(),
+        arch: Arch::Bpf,
         options: base::bpf::opts(Endian::Little),
     }
 }

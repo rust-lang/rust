@@ -135,6 +135,11 @@ mod private_slice_index {
     impl Sealed for range::RangeFrom<usize> {}
 
     impl Sealed for ops::IndexRange {}
+
+    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+    impl Sealed for crate::index::Last {}
+    #[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+    impl<T> Sealed for crate::index::Clamp<T> where T: Sealed {}
 }
 
 /// A helper trait used for indexing operations.
@@ -154,9 +159,8 @@ mod private_slice_index {
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
-#[const_trait] // FIXME(const_trait_impl): Migrate to `const unsafe trait` once #146122 is fixed.
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
-pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
+pub const unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     type Output: ?Sized;

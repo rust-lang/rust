@@ -1101,8 +1101,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 let t = with_no_trimmed_paths!(format!("{}", t));
                 match op {
                     NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::UbChecks => write!(fmt, "UbChecks()"),
-                    NullOp::ContractChecks => write!(fmt, "ContractChecks()"),
+                    NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
+                    NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
+                        write!(fmt, "ContractChecks()")
+                    }
+                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                        write!(fmt, "OverflowChecks()")
+                    }
                 }
             }
             ThreadLocalRef(did) => ty::tls::with(|tcx| {

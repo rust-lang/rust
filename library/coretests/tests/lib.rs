@@ -85,6 +85,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(new_range_api)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(numfmt)]
@@ -97,9 +98,11 @@
 #![feature(ptr_metadata)]
 #![feature(result_option_map_or_default)]
 #![feature(slice_from_ptr_range)]
+#![feature(slice_index_methods)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_split_once)]
+#![feature(sliceindex_wrappers)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
@@ -113,7 +116,6 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(uint_bit_width)]
-#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
@@ -178,6 +180,7 @@ mod fmt;
 mod future;
 mod hash;
 mod hint;
+mod index;
 mod intrinsics;
 mod io;
 mod iter;

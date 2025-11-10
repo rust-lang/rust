@@ -11,38 +11,41 @@ diff --git a/coretests/tests/slice.rs b/coretests/tests/slice.rs
 index 8402833..84592e0 100644
 --- a/coretests/tests/slice.rs
 +++ b/coretests/tests/slice.rs
-@@ -1809,6 +1809,7 @@ fn sort_unstable() {
-     }
- }
+@@ -1619,7 +1619,7 @@ fn brute_force_rotate_test_1() {
  
-+/*
  #[test]
  #[cfg(not(target_arch = "wasm32"))]
- #[cfg_attr(miri, ignore)] // Miri is too slow
-@@ -1914,6 +1915,7 @@ fn select_nth_unstable() {
-     v.select_nth_unstable(0);
-     assert!(v == [0xDEADBEEF]);
- }
-+*/
+-#[cfg_attr(miri, ignore)] // Miri is too slow
++#[ignore] // Miri is too slow
+ fn select_nth_unstable() {
+     use core::cmp::Ordering::{Equal, Greater, Less};
  
- #[test]
- #[should_panic(expected = "index 0 greater than length of slice")]
-@@ -2462,6 +2462,7 @@ take_tests! {
- #[cfg(not(miri))] // unused in Miri
+@@ -2303,14 +2303,14 @@ split_off_tests! {
  const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
  
-+/*
  // can't be a constant due to const mutability rules
- #[cfg(not(miri))] // unused in Miri
+-#[cfg(not(miri))] // unused in Miri
++#[cfg(any())] // unused in Miri
  macro_rules! empty_max_mut {
-@@ -2485,6 +2486,7 @@ take_tests! {
-     (split_off_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
-     (split_off_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+     () => {
+         &mut [(); usize::MAX] as _
+     };
  }
-+*/
  
- #[test]
- fn test_slice_from_ptr_range() {
+-#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
++#[cfg(any())] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+ split_off_tests! {
+     slice: &[(); usize::MAX], method: split_off,
+     (split_off_in_bounds_max_range_to, (..usize::MAX), Some(EMPTY_MAX), &[(); 0]),
+@@ -2318,7 +2318,7 @@ split_off_tests! {
+     (split_off_in_bounds_max_range_from, (usize::MAX..), Some(&[] as _), EMPTY_MAX),
+ }
+ 
+-#[cfg(not(miri))] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
++#[cfg(any())] // Comparing usize::MAX many elements takes forever in Miri (and in rustc without optimizations)
+ split_off_tests! {
+     slice: &mut [(); usize::MAX], method: split_off_mut,
+     (split_off_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
 diff --git a/alloctests/tests/sort/tests.rs b/alloctests/tests/sort/tests.rs
 index d321f8d..8b2040a 100644
 --- a/alloctests/tests/sort/tests.rs

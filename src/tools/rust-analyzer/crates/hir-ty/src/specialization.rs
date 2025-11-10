@@ -20,7 +20,7 @@ use crate::{
 // and indeed I was unable to cause cycles even with erroneous code. However, in r-a we can
 // create a cycle if there is an error in the impl's where clauses. I believe well formed code
 // cannot create a cycle, but a cycle handler is required nevertheless.
-fn specializes_cycle(
+fn specializes_query_cycle(
     _db: &dyn HirDatabase,
     _specializing_impl_def_id: ImplId,
     _parent_impl_def_id: ImplId,
@@ -39,31 +39,14 @@ fn specializes_cycle(
 /// `parent_impl_def_id` is a const impl (conditionally based off of some `[const]`
 /// bounds), then `specializing_impl_def_id` must also be const for the same
 /// set of types.
-#[salsa::tracked(cycle_result = specializes_cycle)]
-pub(crate) fn specializes(
+#[salsa::tracked(cycle_result = specializes_query_cycle)]
+fn specializes_query(
     db: &dyn HirDatabase,
     specializing_impl_def_id: ImplId,
     parent_impl_def_id: ImplId,
 ) -> bool {
-    let module = specializing_impl_def_id.loc(db).container;
-
-    // We check that the specializing impl comes from a crate that has specialization enabled.
-    //
-    // We don't really care if the specialized impl (the parent) is in a crate that has
-    // specialization enabled, since it's not being specialized.
-    //
-    // rustc also checks whether the specializing impls comes from a macro marked
-    // `#[allow_internal_unstable(specialization)]`, but `#[allow_internal_unstable]`
-    // is an internal feature, std is not using it for specialization nor is likely to
-    // ever use it, and we don't have the span information necessary to replicate that.
-    let def_map = crate_def_map(db, module.krate());
-    if !def_map.is_unstable_feature_enabled(&sym::specialization)
-        && !def_map.is_unstable_feature_enabled(&sym::min_specialization)
-    {
-        return false;
-    }
-
-    let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+    let trait_env = db.trait_environment(specializing_impl_def_id.into());
+    let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
 
     let specializing_impl_signature = db.impl_signature(specializing_impl_def_id);
     let parent_impl_signature = db.impl_signature(parent_impl_def_id);
@@ -87,7 +70,7 @@ pub(crate) fn specializes(
 
     // create a parameter environment corresponding to an identity instantiation of the specializing impl,
     // i.e. the most generic instantiation of the specializing impl.
-    let param_env = db.trait_environment(specializing_impl_def_id.into()).env;
+    let param_env = trait_env.env;
 
     // Create an infcx, taking the predicates of the specializing impl as assumptions:
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -147,4 +130,32 @@ pub(crate) fn specializes(
     );
 
     true
+}
+
+// This function is used to avoid creating the query for crates that does not define `#![feature(specialization)]`,
+// as the solver is calling this a lot, and creating the query consumes a lot of memory.
+pub(crate) fn specializes(
+    db: &dyn HirDatabase,
+    specializing_impl_def_id: ImplId,
+    parent_impl_def_id: ImplId,
+) -> bool {
+    let module = specializing_impl_def_id.loc(db).container;
+
+    // We check that the specializing impl comes from a crate that has specialization enabled.
+    //
+    // We don't really care if the specialized impl (the parent) is in a crate that has
+    // specialization enabled, since it's not being specialized.
+    //
+    // rustc also checks whether the specializing impls comes from a macro marked
+    // `#[allow_internal_unstable(specialization)]`, but `#[allow_internal_unstable]`
+    // is an internal feature, std is not using it for specialization nor is likely to
+    // ever use it, and we don't have the span information necessary to replicate that.
+    let def_map = crate_def_map(db, module.krate());
+    if !def_map.is_unstable_feature_enabled(&sym::specialization)
+        && !def_map.is_unstable_feature_enabled(&sym::min_specialization)
+    {
+        return false;
+    }
+
+    specializes_query(db, specializing_impl_def_id, parent_impl_def_id)
 }

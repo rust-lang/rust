@@ -5,9 +5,15 @@ LL | trait TraitA<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         enum Foo<B> {
-   |                  - help: try introducing a local generic parameter here: `A,`
+   |              --- generic parameter used in this inner enum
 LL |             Variance(A)
    |                      ^ use of generic parameter from outer item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+LL |         enum Foo<A, B> {
+   |                  ++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:16:23
@@ -16,9 +22,15 @@ LL | trait TraitB<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         struct Foo<B>(A);
-   |                    -  ^ use of generic parameter from outer item
-   |                    |
-   |                    help: try introducing a local generic parameter here: `A,`
+   |                ---    ^ use of generic parameter from outer item
+   |                |
+   |                generic parameter used in this inner struct
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+LL |         struct Foo<A, B>(A);
+   |                    ++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:23:28
@@ -27,9 +39,15 @@ LL | trait TraitC<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         struct Foo<B> { a: A }
-   |                    -       ^ use of generic parameter from outer item
-   |                    |
-   |                    help: try introducing a local generic parameter here: `A,`
+   |                ---         ^ use of generic parameter from outer item
+   |                |
+   |                generic parameter used in this inner struct
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+LL |         struct Foo<A, B> { a: A }
+   |                    ++
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/resolve-type-param-in-item-in-trait.rs:30:22
@@ -38,9 +56,15 @@ LL | trait TraitD<A> {
    |              - type parameter from outer item
 LL |     fn outer(&self) {
 LL |         fn foo<B>(a: A) { }
-   |                -     ^ use of generic parameter from outer item
-   |                |
-   |                help: try introducing a local generic parameter here: `A,`
+   |            ---       ^ use of generic parameter from outer item
+   |            |
+   |            generic parameter used in this inner function
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
+help: try introducing a local generic parameter here
+   |
+LL |         fn foo<A, B>(a: A) { }
+   |                ++
 
 error: aborting due to 4 previous errors
 

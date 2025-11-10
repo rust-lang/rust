@@ -158,14 +158,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body_id) => body_id
-                .and_then(|body_id| {
+            TraitItemKind::Const(ty, rhs) => rhs
+                .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
                             icx.lowerer(),
                             def_id,
-                            body_id,
+                            rhs.hir_id(),
                             ty.span,
+                            rhs.span(tcx),
                             item.ident,
                             "associated constant",
                         )
@@ -183,13 +184,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, body_id) => {
+            ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        rhs.hir_id(),
                         ty.span,
+                        rhs.span(tcx),
                         item.ident,
                         "associated constant",
                     )
@@ -212,8 +214,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        body_id.hir_id,
                         ty.span,
+                        tcx.hir_body(body_id).value.span,
                         ident,
                         "static variable",
                     )
@@ -229,13 +232,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     }
                 }
             }
-            ItemKind::Const(ident, _, ty, body_id) => {
+            ItemKind::Const(ident, _, ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        rhs.hir_id(),
                         ty.span,
+                        rhs.span(tcx),
                         ident,
                         "constant",
                     )
@@ -425,13 +429,14 @@ pub(super) fn type_of_opaque_hir_typeck(
 fn infer_placeholder_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
-    body_id: hir::BodyId,
-    span: Span,
+    hir_id: HirId,
+    ty_span: Span,
+    body_span: Span,
     item_ident: Ident,
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
+    let ty = tcx.typeck(def_id).node_type(hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -439,10 +444,10 @@ fn infer_placeholder_type<'tcx>(
     // us to improve in typeck so we do that now.
     let guar = cx
         .dcx()
-        .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
+        .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
-                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
@@ -452,14 +457,14 @@ fn infer_placeholder_type<'tcx>(
 
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
-                        span,
+                        ty_span,
                         format!("provide a type for the {kind}"),
                         format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
@@ -473,7 +478,7 @@ fn infer_placeholder_type<'tcx>(
             }
             // If we didn't find any infer tys, then just fallback to `span`.
             if visitor.spans.is_empty() {
-                visitor.spans.push(span);
+                visitor.spans.push(ty_span);
             }
             let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
@@ -482,20 +487,20 @@ fn infer_placeholder_type<'tcx>(
             // same span. If this happens, we will fall through to this arm, so
             // we need to suppress the suggestion since it's invalid. Ideally we
             // would suppress the duplicated error too, but that's really hard.
-            if span.is_empty() && span.from_expansion() {
+            if ty_span.is_empty() && ty_span.from_expansion() {
                 // An approximately better primary message + no suggestion...
                 diag.primary_message("missing type for item");
             } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion_verbose(
-                        span,
+                        ty_span,
                         "replace this with a fully-specified type",
                         ty,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }

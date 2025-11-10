@@ -1,3 +1,5 @@
+use rustc_abi::TyAbiInterface;
+
 use crate::callconv::{ArgAbi, FnAbi};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
@@ -8,7 +10,14 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
         arg.make_indirect();
     } else {
@@ -16,7 +25,10 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }
@@ -25,6 +37,6 @@ pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(arg);
+        classify_arg(cx, arg);
     }
 }

@@ -10,9 +10,9 @@ use hir::Symbol;
 use ide::{
     AnnotationConfig, AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
     CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
-    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
-    Snippet, SnippetScope, SourceRootId,
+    GotoImplementationConfig, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
+    InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
+    MemoryLayoutHoverRenderKind, RenameConfig, Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
     MiniCore, SnippetCap,
@@ -23,7 +23,7 @@ use itertools::{Either, Itertools};
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
-    ProjectManifest, RustLibSource,
+    ProjectManifest, RustLibSource, TargetDirectoryConfig,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -97,6 +97,9 @@ config_data! {
         /// the workspace root, and globs are not supported. You may also need to add the folders to
         /// Code's `files.watcherExclude`.
         files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+
+        /// If this is `true`, when "Goto Implementations" and in "Implementations" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.
+        gotoImplementations_filterAdjacentDerives: bool = false,
 
         /// Highlight related return values while the cursor is on any `match`, `if`, or match arm
         /// arrow (`=>`).
@@ -377,6 +380,12 @@ config_data! {
 
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
+
+        /// The path where to save memory profiling output.
+        ///
+        /// **Note:** Memory profiling is not enabled by default in rust-analyzer builds, you need to build
+        /// from source for it.
+        profiling_memoryProfile: Option<Utf8PathBuf> = None,
 
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = false,
@@ -1413,6 +1422,7 @@ pub struct LensConfig {
 
     // annotations
     pub location: AnnotationLocation,
+    pub filter_adjacent_derive_implementations: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1469,6 +1479,7 @@ impl LensConfig {
             annotate_enum_variant_references: self.enum_variant_refs,
             location: self.location.into(),
             minicore,
+            filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
         }
     }
 }
@@ -1702,6 +1713,14 @@ impl Config {
                 ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
             prefer_self_ty: *self.assist_preferSelf(source_root),
+        }
+    }
+
+    pub fn rename(&self, source_root: Option<SourceRootId>) -> RenameConfig {
+        RenameConfig {
+            prefer_no_std: self.imports_preferNoStd(source_root).to_owned(),
+            prefer_prelude: self.imports_preferPrelude(source_root).to_owned(),
+            prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
         }
     }
 
@@ -2157,6 +2176,11 @@ impl Config {
         Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(path)))
     }
 
+    pub fn dhat_output_file(&self) -> Option<AbsPathBuf> {
+        let path = self.profiling_memoryProfile().clone()?;
+        Some(AbsPathBuf::try_from(path).unwrap_or_else(|path| self.root_path.join(path)))
+    }
+
     pub fn ignored_proc_macros(
         &self,
         source_root: Option<SourceRootId>,
@@ -2277,7 +2301,7 @@ impl Config {
             run_build_script_command: self.cargo_buildScripts_overrideCommand(source_root).clone(),
             extra_args: self.cargo_extraArgs(source_root).clone(),
             extra_env: self.cargo_extraEnv(source_root).clone(),
-            target_dir: self.target_dir_from_config(source_root),
+            target_dir_config: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
         }
@@ -2365,7 +2389,7 @@ impl Config {
             extra_args: self.extra_args(source_root).clone(),
             extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             extra_env: self.extra_env(source_root).clone(),
-            target_dir: self.target_dir_from_config(source_root),
+            target_dir_config: self.target_dir_from_config(source_root),
             set_test: true,
         }
     }
@@ -2423,7 +2447,7 @@ impl Config {
                     extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
-                    target_dir: self.target_dir_from_config(source_root),
+                    target_dir_config: self.target_dir_from_config(source_root),
                     set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
@@ -2431,17 +2455,12 @@ impl Config {
         }
     }
 
-    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
-        self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
-            TargetDirectory::UseSubdirectory(true) => {
-                let env_var = env::var("CARGO_TARGET_DIR").ok();
-                let mut path = Utf8PathBuf::from(env_var.as_deref().unwrap_or("target"));
-                path.push("rust-analyzer");
-                Some(path)
-            }
-            TargetDirectory::UseSubdirectory(false) => None,
-            TargetDirectory::Directory(dir) => Some(dir.clone()),
-        })
+    fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> TargetDirectoryConfig {
+        match &self.cargo_targetDir(source_root) {
+            Some(TargetDirectory::UseSubdirectory(true)) => TargetDirectoryConfig::UseSubdirectory,
+            Some(TargetDirectory::UseSubdirectory(false)) | None => TargetDirectoryConfig::None,
+            Some(TargetDirectory::Directory(dir)) => TargetDirectoryConfig::Directory(dir.clone()),
+        }
     }
 
     pub fn check_on_save(&self, source_root: Option<SourceRootId>) -> bool {
@@ -2495,6 +2514,15 @@ impl Config {
             refs_trait: *self.lens_enable() && *self.lens_references_trait_enable(),
             enum_variant_refs: *self.lens_enable() && *self.lens_references_enumVariant_enable(),
             location: *self.lens_location(),
+            filter_adjacent_derive_implementations: *self
+                .gotoImplementations_filterAdjacentDerives(),
+        }
+    }
+
+    pub fn goto_implementation(&self) -> GotoImplementationConfig {
+        GotoImplementationConfig {
+            filter_adjacent_derive_implementations: *self
+                .gotoImplementations_filterAdjacentDerives(),
         }
     }
 
@@ -3958,7 +3986,7 @@ fn doc_comment_to_string(doc: &[&str]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{borrow::Cow, fs};
 
     use test_utils::{ensure_file_contents, project_root};
 
@@ -4093,9 +4121,13 @@ mod tests {
 
         (config, _, _) = config.apply_change(change);
         assert_eq!(config.cargo_targetDir(None), &None);
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir.is_none())
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config: TargetDirectoryConfig::None, .. },
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -4111,11 +4143,16 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
-        let target =
+        let ws_target_dir =
             Utf8PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned()));
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(target.join("rust-analyzer")))
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config, .. },
+                ..
+            } if target_dir_config.target_dir(Some(&ws_target_dir)).map(Cow::into_owned)
+                == Some(ws_target_dir.join("rust-analyzer"))
+        ));
     }
 
     #[test]
@@ -4134,8 +4171,13 @@ mod tests {
             config.cargo_targetDir(None),
             &Some(TargetDirectory::Directory(Utf8PathBuf::from("other_folder")))
         );
-        assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("other_folder")))
-        );
+        assert!(matches!(
+            config.flycheck(None),
+            FlycheckConfig::CargoCommand {
+                options: CargoOptions { target_dir_config, .. },
+                ..
+            } if target_dir_config.target_dir(None).map(Cow::into_owned)
+                == Some(Utf8PathBuf::from("other_folder"))
+        ));
     }
 }

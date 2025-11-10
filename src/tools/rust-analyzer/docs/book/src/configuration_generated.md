@@ -635,6 +635,13 @@ Default: `"client"`
 Controls file watching implementation.
 
 
+## rust-analyzer.gotoImplementations.filterAdjacentDerives {#gotoImplementations.filterAdjacentDerives}
+
+Default: `false`
+
+If this is `true`, when "Goto Implementations" and in "Implementations" lens, are triggered on a `struct` or `enum` or `union`, we filter out trait implementations that originate from `derive`s above the type.
+
+
 ## rust-analyzer.highlightRelated.branchExitPoints.enable {#highlightRelated.branchExitPoints.enable}
 
 Default: `true`
@@ -1287,6 +1294,16 @@ This config takes a map of crate names with the exported proc-macro names to ign
 Default: `null`
 
 Internal config, path to proc-macro server executable.
+
+
+## rust-analyzer.profiling.memoryProfile {#profiling.memoryProfile}
+
+Default: `null`
+
+The path where to save memory profiling output.
+
+**Note:** Memory profiling is not enabled by default in rust-analyzer builds, you need to build
+from source for it.
 
 
 ## rust-analyzer.references.excludeImports {#references.excludeImports}

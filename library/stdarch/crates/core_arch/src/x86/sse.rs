@@ -882,7 +882,7 @@ pub fn _mm_cvtss_f32(a: __m128) -> f32 {
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
-    unsafe { cvtsi2ss(a, b) }
+    unsafe { simd_insert!(a, 0, b as f32) }
 }
 
 /// Alias for [`_mm_cvtsi32_ss`](fn._mm_cvtsi32_ss.html).
@@ -1445,8 +1445,8 @@ pub fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sfence() {
-    sfence()
+pub fn _mm_sfence() {
+    unsafe { sfence() }
 }
 
 /// Gets the unsigned 32-bit value of the MXCSR control and status register.
@@ -1887,6 +1887,8 @@ pub const _MM_HINT_ET1: i32 = 6;
 /// * Prefetching may also fail if there are not enough memory-subsystem
 ///   resources (e.g., request buffers).
 ///
+/// Note: this intrinsic is safe to use even though it takes a raw pointer argument. In general, this
+/// cannot change the behavior of the program, including not trapping on invalid pointers.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_prefetch)
 #[inline]
@@ -1897,11 +1899,13 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[cfg_attr(test, assert_instr(prefetchnta, STRATEGY = _MM_HINT_NTA))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
+pub fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     static_assert_uimm_bits!(STRATEGY, 3);
     // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
     // `locality` and `rw` are based on our `STRATEGY`.
-    prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
+    unsafe {
+        prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
+    }
 }
 
 /// Returns vector of type __m128 with indeterminate elements.with indetermination elements.
@@ -1989,8 +1993,6 @@ unsafe extern "C" {
     fn cvtss2si(a: __m128) -> i32;
     #[link_name = "llvm.x86.sse.cvttss2si"]
     fn cvttss2si(a: __m128) -> i32;
-    #[link_name = "llvm.x86.sse.cvtsi2ss"]
-    fn cvtsi2ss(a: __m128, b: i32) -> __m128;
     #[link_name = "llvm.x86.sse.sfence"]
     fn sfence();
     #[link_name = "llvm.x86.sse.stmxcsr"]
@@ -2024,6 +2026,7 @@ unsafe extern "C" {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntps", ",{a}"),
         p = in(reg) mem_addr,
@@ -3331,6 +3334,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 4] };
 
         _mm_stream_ps(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..4 {
             assert_eq!(mem.data[i], get_m128(a, i));
         }

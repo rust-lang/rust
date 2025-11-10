@@ -11,7 +11,6 @@
 )]
 #![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
-#![cfg_attr(target_arch = "s390x", feature(stdarch_s390x_feature_detection))]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg_attr(
@@ -320,8 +319,11 @@ fn powerpc_linux() {
 }
 
 #[test]
-#[cfg(all(target_arch = "powerpc64", any(target_os = "linux", target_os = "freebsd"),))]
-fn powerpc64_linux_or_freebsd() {
+#[cfg(all(
+    target_arch = "powerpc64",
+    any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"),
+))]
+fn powerpc64_linux_or_bsd() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));

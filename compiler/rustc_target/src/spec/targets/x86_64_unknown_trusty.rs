@@ -1,8 +1,8 @@
 // Trusty OS target for X86_64.
 
 use crate::spec::{
-    LinkSelfContainedDefault, PanicStrategy, RelroLevel, StackProbeType, Target, TargetMetadata,
-    TargetOptions,
+    Arch, LinkSelfContainedDefault, PanicStrategy, RelroLevel, StackProbeType, Target,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: "x86_64".into(),
+        arch: Arch::X86_64,
         options: TargetOptions {
             executables: true,
             max_atomic_width: Some(64),

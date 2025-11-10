@@ -1,8 +1,8 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::{ConstContext, LangItem};
-use rustc_errors::Diag;
 use rustc_errors::codes::*;
+use rustc_errors::{Applicability, Diag, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -11,8 +11,8 @@ use rustc_middle::mir::CallSource;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef, Ty,
-    suggest_constraining_type_param,
+    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgsRef, Param, TraitRef,
+    Ty, suggest_constraining_type_param,
 };
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
@@ -352,18 +352,69 @@ fn build_error_for_const_call<'tcx>(
                 non_or_conditionally,
             })
         }
-        _ => ccx.dcx().create_err(errors::NonConstFnCall {
-            span,
-            def_descr: ccx.tcx.def_descr(callee),
-            def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
-            kind: ccx.const_kind(),
-            non_or_conditionally,
-        }),
+        _ => {
+            let def_descr = ccx.tcx.def_descr(callee);
+            let mut err = ccx.dcx().create_err(errors::NonConstFnCall {
+                span,
+                def_descr,
+                def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
+                kind: ccx.const_kind(),
+                non_or_conditionally,
+            });
+            if let Some(item) = ccx.tcx.opt_associated_item(callee) {
+                if let AssocContainer::Trait = item.container
+                    && let parent = item.container_id(ccx.tcx)
+                    && !ccx.tcx.is_const_trait(parent)
+                {
+                    let assoc_span = ccx.tcx.def_span(callee);
+                    let assoc_name = ccx.tcx.item_name(callee);
+                    let mut span: MultiSpan = ccx.tcx.def_span(parent).into();
+                    span.push_span_label(assoc_span, format!("this {def_descr} is not const"));
+                    let trait_descr = ccx.tcx.def_descr(parent);
+                    let trait_span = ccx.tcx.def_span(parent);
+                    let trait_name = ccx.tcx.item_name(parent);
+                    span.push_span_label(trait_span, format!("this {trait_descr} is not const"));
+                    err.span_note(
+                        span,
+                        format!(
+                            "{def_descr} `{assoc_name}` is not const because {trait_descr} \
+                            `{trait_name}` is not const",
+                        ),
+                    );
+                    if let Some(parent) = parent.as_local()
+                        && ccx.tcx.sess.is_nightly_build()
+                    {
+                        if !ccx.tcx.features().const_trait_impl() {
+                            err.help(
+                                "add `#![feature(const_trait_impl)]` to the crate attributes to \
+                                 enable const traits",
+                            );
+                        }
+                        let span = ccx.tcx.hir_expect_item(parent).vis_span;
+                        let span = ccx.tcx.sess.source_map().span_extend_while_whitespace(span);
+                        err.span_suggestion_verbose(
+                            span.shrink_to_hi(),
+                            format!("consider making trait `{trait_name}` const"),
+                            "const ".to_owned(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else if !ccx.tcx.sess.is_nightly_build() {
+                        err.help("const traits are not yet supported on stable Rust");
+                    }
+                }
+            } else if ccx.tcx.constness(callee) != hir::Constness::Const {
+                let name = ccx.tcx.item_name(callee);
+                err.span_note(
+                    ccx.tcx.def_span(callee),
+                    format!("{def_descr} `{name}` is not const"),
+                );
+            }
+            err
+        }
     };
 
     err.note(format!(
-        "calls in {}s are limited to constant functions, \
-             tuple structs and tuple variants",
+        "calls in {}s are limited to constant functions, tuple structs and tuple variants",
         ccx.const_kind(),
     ));
 
