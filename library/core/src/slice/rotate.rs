@@ -1,5 +1,5 @@
 use crate::mem::{MaybeUninit, SizedTypeProperties};
-use crate::ptr;
+use crate::{cmp, ptr};
 
 type BufType = [usize; 32];
 
@@ -11,6 +11,7 @@ type BufType = [usize; 32];
 ///
 /// The specified range must be valid for reading and writing.
 #[inline]
+#[rustc_allow_const_fn_unstable(const_trait_impl, const_cmp)]
 pub(super) const unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize) {
     if T::IS_ZST {
         return;
@@ -21,8 +22,7 @@ pub(super) const unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize)
     }
     // `T` is not a zero-sized type, so it's okay to divide by its size.
     if !cfg!(feature = "optimize_for_size")
-        // FIXME(const-hack): Use cmp::min when available in const
-        && const_min(left, right) <= size_of::<BufType>() / size_of::<T>()
+        && cmp::min(left, right) <= size_of::<BufType>() / size_of::<T>()
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_memmove(left, mid, right) };
@@ -269,9 +269,4 @@ const unsafe fn ptr_rotate_swap<T>(mut left: usize, mut mid: *mut T, mut right: 
             return;
         }
     }
-}
-
-// FIXME(const-hack): Use cmp::min when available in const
-const fn const_min(left: usize, right: usize) -> usize {
-    if right < left { right } else { left }
 }
