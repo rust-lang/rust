@@ -312,10 +312,7 @@ pub struct Config {
     /// Path to the `src/tools/coverage-dump/` bootstrap tool executable.
     pub coverage_dump_path: Option<Utf8PathBuf>,
 
-    /// Path to the Python 3 executable to use for LLDB and htmldocck.
-    ///
-    /// FIXME: the `lldb` setup currently requires I believe Python 3.10 **exactly**, it can't even
-    /// be Python 3.11 or 3.9...
+    /// Path to the Python 3 executable to use for htmldocck and some run-make tests.
     pub python: String,
 
     /// Path to the `src/tools/jsondocck/` bootstrap tool executable.
@@ -541,6 +538,9 @@ pub struct Config {
     /// FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
     pub gdb_version: Option<u32>,
 
+    /// Path to or name of the LLDB executable to use for debuginfo tests.
+    pub lldb: Option<Utf8PathBuf>,
+
     /// Version of LLDB.
     ///
     /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
@@ -586,11 +586,6 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this also influences adb in gdb code paths in a strange way.
     pub adb_device_status: bool,
-
-    /// Path containing LLDB's Python module.
-    ///
-    /// FIXME: `PYTHONPATH` takes precedence over this flag...? See `runtest::run_lldb`.
-    pub lldb_python_dir: Option<String>,
 
     /// Verbose dump a lot of info.
     ///
