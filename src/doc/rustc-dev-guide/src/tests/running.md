@@ -267,7 +267,7 @@ On the remote machine, run the `remote-test-server` with the `--bind
 0.0.0.0:12345` flag (and optionally `--verbose` flag).
 Output should look like this:
 
-```text
+```console
 $ ./remote-test-server --verbose --bind 0.0.0.0:12345
 starting test server
 listening on 0.0.0.0:12345!
@@ -282,7 +282,7 @@ restrictive IP address when binding.
 You can test if the `remote-test-server` is working by connecting to it and sending `ping\n`.
 It should reply `pong`:
 
-```text
+```console
 $ nc $REMOTE_IP 12345
 ping
 pong
