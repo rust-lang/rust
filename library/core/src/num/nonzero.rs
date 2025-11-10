@@ -1777,6 +1777,30 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
             // SAFETY: `self.get()` can't be zero
             unsafe { NonZero::new_unchecked(self.get().cast_signed()) }
         }
+
+        /// Returns the minimum number of bits required to represent `self`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(uint_bit_width)]
+        ///
+        /// # use core::num::NonZero;
+        /// #
+        /// # fn main() { test().unwrap(); }
+        /// # fn test() -> Option<()> {
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b111)?.bit_width(), 3);")]
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1110)?.bit_width(), 4);")]
+        /// # Some(())
+        /// # }
+        /// ```
+        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn bit_width(self) -> u32 {
+            Self::BITS - self.leading_zeros()
+        }
     };
 
     // Associated items for signed nonzero types only.
