@@ -137,6 +137,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
     let mut new_content = content.clone();
     let mut new_n = 0;
     let mut in_code_block = false;
+    let mut in_html_div = false;
     let mut skip_next = false;
     for (n, line) in content.iter().enumerate() {
         if skip_next {
@@ -148,6 +149,17 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         }
         if line.trim_start().starts_with("```") {
             in_code_block = !in_code_block;
+            continue;
+        }
+        if line.trim_start().starts_with("<div") {
+            in_html_div = true;
+            continue;
+        }
+        if line.trim_start().starts_with("</div") {
+            in_html_div = false;
+            continue;
+        }
+        if in_html_div {
             continue;
         }
         if ignore(line, in_code_block) || REGEX_SPLIT.is_match(line) {
@@ -215,9 +227,15 @@ fn test_prettify() {
     let original = "\
 do not split
 short sentences
+<div class='warning'>
+a bit of text inside
+</div>
 ";
     let expected = "\
 do not split short sentences
+<div class='warning'>
+a bit of text inside
+</div>
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
 }

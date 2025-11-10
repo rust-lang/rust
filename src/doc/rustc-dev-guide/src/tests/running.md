@@ -127,7 +127,8 @@ therefore, while the tests **usually** work fine with stage 1, there are some li
 ./x test --stage 2
 ```
 
-<div class="warning"> You almost never need to do this;
+<div class="warning">
+You almost never need to do this;
 CI will run these tests for you.
 </div>
 
