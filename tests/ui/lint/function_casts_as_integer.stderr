@@ -1,5 +1,5 @@
 error: direct cast of function item into an integer
-  --> $DIR/function_casts_as_integer.rs:9:17
+  --> $DIR/function_casts_as_integer.rs:15:17
    |
 LL |     let x = foo as usize;
    |                 ^^^^^^^^
@@ -15,7 +15,7 @@ LL |     let x = foo as *const () as usize;
    |                 ++++++++++++
 
 error: direct cast of function item into an integer
-  --> $DIR/function_casts_as_integer.rs:10:25
+  --> $DIR/function_casts_as_integer.rs:16:25
    |
 LL |     let x = String::len as usize;
    |                         ^^^^^^^^
@@ -25,5 +25,27 @@ help: first cast to a pointer `as *const ()`
 LL |     let x = String::len as *const () as usize;
    |                         ++++++++++++
 
-error: aborting due to 2 previous errors
+error: direct cast of function item into an integer
+  --> $DIR/function_casts_as_integer.rs:17:29
+   |
+LL |     let x = MyEnum::Variant as usize;
+   |                             ^^^^^^^^
+   |
+help: first cast to a pointer `as *const ()`
+   |
+LL |     let x = MyEnum::Variant as *const () as usize;
+   |                             ++++++++++++
+
+error: direct cast of function item into an integer
+  --> $DIR/function_casts_as_integer.rs:18:22
+   |
+LL |     let x = MyStruct as usize;
+   |                      ^^^^^^^^
+   |
+help: first cast to a pointer `as *const ()`
+   |
+LL |     let x = MyStruct as *const () as usize;
+   |                      ++++++++++++
+
+error: aborting due to 4 previous errors
 
