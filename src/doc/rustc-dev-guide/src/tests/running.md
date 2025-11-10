@@ -253,8 +253,8 @@ send test programs to `remote-test-server` running on the remote machine.
 `remote-test-server` provides *unauthenticated remote code
 execution* so be careful where it is used.
 
-To do this, first build `remote-test-server` for the remote machine, e.g. for
-RISC-V
+To do this, first build `remote-test-server` for the remote machine
+(using RISC-V as an example):
 
 ```text
 ./x build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
@@ -264,11 +264,11 @@ The binary will be created at `./build/host/stage2-tools/$TARGET_ARCH/release/re
 Copy this over to the remote machine.
 
 On the remote machine, run the `remote-test-server` with the `--bind
-0.0.0.0:12345` flag (and optionally `-v` for verbose output).
+0.0.0.0:12345` flag (and optionally `--verbose` flag).
 Output should look like this:
 
 ```text
-$ ./remote-test-server -v --bind 0.0.0.0:12345
+$ ./remote-test-server --verbose --bind 0.0.0.0:12345
 starting test server
 listening on 0.0.0.0:12345!
 ```
