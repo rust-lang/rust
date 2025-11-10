@@ -1,6 +1,6 @@
 //! Look up accessible paths for items.
 
-use std::ops::ControlFlow;
+use std::{convert::Infallible, ops::ControlFlow};
 
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Complete, Crate, FindPathConfig, HasCrate,
@@ -9,6 +9,7 @@ use hir::{
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 use syntax::{
     AstNode, SyntaxNode,
     ast::{self, HasName, make},
@@ -416,7 +417,7 @@ fn path_applicable_imports(
             NameToImport::Exact(first_qsegment.as_str().to_owned(), true),
             AssocSearchMode::Exclude,
         )
-        .filter_map(|(item, do_not_complete)| {
+        .flat_map(|(item, do_not_complete)| {
             // we found imports for `first_qsegment`, now we need to filter these imports by whether
             // they result in resolving the rest of the path successfully
             validate_resolvable(
@@ -446,10 +447,10 @@ fn validate_resolvable(
     resolved_qualifier: ItemInNs,
     unresolved_qualifier: &[Name],
     complete_in_flyimport: CompleteInFlyimport,
-) -> Option<LocatedImport> {
+) -> SmallVec<[LocatedImport; 1]> {
     let _p = tracing::info_span!("ImportAssets::import_for_item").entered();
 
-    let qualifier = {
+    let qualifier = (|| {
         let mut adjusted_resolved_qualifier = resolved_qualifier;
         if !unresolved_qualifier.is_empty() {
             match resolved_qualifier {
@@ -464,69 +465,80 @@ fn validate_resolvable(
         }
 
         match adjusted_resolved_qualifier {
-            ItemInNs::Types(def) => def,
-            _ => return None,
+            ItemInNs::Types(def) => Some(def),
+            _ => None,
         }
-    };
-    let import_path_candidate = mod_path(resolved_qualifier)?;
+    })();
+    let Some(qualifier) = qualifier else { return SmallVec::new() };
+    let Some(import_path_candidate) = mod_path(resolved_qualifier) else { return SmallVec::new() };
+    let mut result = SmallVec::new();
     let ty = match qualifier {
         ModuleDef::Module(module) => {
-            return items_locator::items_with_name_in_module(
+            items_locator::items_with_name_in_module::<Infallible>(
                 db,
                 module,
                 candidate.clone(),
                 AssocSearchMode::Exclude,
-                |it| match scope_filter(it) {
-                    true => ControlFlow::Break(it),
-                    false => ControlFlow::Continue(()),
+                |item| {
+                    if scope_filter(item) {
+                        result.push(LocatedImport::new(
+                            import_path_candidate.clone(),
+                            resolved_qualifier,
+                            item,
+                            complete_in_flyimport,
+                        ));
+                    }
+                    ControlFlow::Continue(())
                 },
-            )
-            .map(|item| {
-                LocatedImport::new(
-                    import_path_candidate,
-                    resolved_qualifier,
-                    item,
-                    complete_in_flyimport,
-                )
-            });
+            );
+            return result;
         }
         // FIXME
-        ModuleDef::Trait(_) => return None,
+        ModuleDef::Trait(_) => return SmallVec::new(),
         ModuleDef::TypeAlias(alias) => alias.ty(db),
         ModuleDef::BuiltinType(builtin) => builtin.ty(db),
         ModuleDef::Adt(adt) => adt.ty(db),
-        _ => return None,
+        _ => return SmallVec::new(),
     };
-    ty.iterate_path_candidates(db, scope, &FxHashSet::default(), None, None, |assoc| {
-        // FIXME: Support extra trait imports
-        if assoc.container_or_implemented_trait(db).is_some() {
-            return None;
-        }
-        let name = assoc.name(db)?;
-        let is_match = match candidate {
-            NameToImport::Prefix(text, true) => name.as_str().starts_with(text),
-            NameToImport::Prefix(text, false) => {
-                name.as_str().chars().zip(text.chars()).all(|(name_char, candidate_char)| {
-                    name_char.eq_ignore_ascii_case(&candidate_char)
-                })
+    ty.iterate_path_candidates::<Infallible>(
+        db,
+        scope,
+        &FxHashSet::default(),
+        None,
+        None,
+        |assoc| {
+            // FIXME: Support extra trait imports
+            if assoc.container_or_implemented_trait(db).is_some() {
+                return None;
             }
-            NameToImport::Exact(text, true) => name.as_str() == text,
-            NameToImport::Exact(text, false) => name.as_str().eq_ignore_ascii_case(text),
-            NameToImport::Fuzzy(text, true) => text.chars().all(|c| name.as_str().contains(c)),
-            NameToImport::Fuzzy(text, false) => text
-                .chars()
-                .all(|c| name.as_str().chars().any(|name_char| name_char.eq_ignore_ascii_case(&c))),
-        };
-        if !is_match {
-            return None;
-        }
-        Some(LocatedImport::new(
-            import_path_candidate.clone(),
-            resolved_qualifier,
-            assoc_to_item(assoc),
-            complete_in_flyimport,
-        ))
-    })
+            let name = assoc.name(db)?;
+            let is_match = match candidate {
+                NameToImport::Prefix(text, true) => name.as_str().starts_with(text),
+                NameToImport::Prefix(text, false) => {
+                    name.as_str().chars().zip(text.chars()).all(|(name_char, candidate_char)| {
+                        name_char.eq_ignore_ascii_case(&candidate_char)
+                    })
+                }
+                NameToImport::Exact(text, true) => name.as_str() == text,
+                NameToImport::Exact(text, false) => name.as_str().eq_ignore_ascii_case(text),
+                NameToImport::Fuzzy(text, true) => text.chars().all(|c| name.as_str().contains(c)),
+                NameToImport::Fuzzy(text, false) => text.chars().all(|c| {
+                    name.as_str().chars().any(|name_char| name_char.eq_ignore_ascii_case(&c))
+                }),
+            };
+            if !is_match {
+                return None;
+            }
+            result.push(LocatedImport::new(
+                import_path_candidate.clone(),
+                resolved_qualifier,
+                assoc_to_item(assoc),
+                complete_in_flyimport,
+            ));
+            None
+        },
+    );
+    result
 }
 
 pub fn item_for_path_search(db: &RootDatabase, item: ItemInNs) -> Option<ItemInNs> {

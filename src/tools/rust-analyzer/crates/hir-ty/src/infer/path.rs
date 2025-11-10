@@ -310,9 +310,10 @@ impl<'db> InferenceContext<'_, 'db> {
         let mut not_visible = None;
         let res = method_resolution::iterate_method_candidates(
             &canonical_ty,
-            self.db,
-            self.table.trait_env.clone(),
-            self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+            &mut self.table,
+            Self::get_traits_in_scope(&self.resolver, &self.traits_in_scope)
+                .as_ref()
+                .left_or_else(|&it| it),
             VisibleFromModule::Filter(self.resolver.module()),
             Some(name),
             method_resolution::LookupMode::Path,

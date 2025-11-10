@@ -622,6 +622,15 @@ where
     let lit = &lit[start_offset..lit.len() - end_offset];
     let suffix = match suffix {
         "" | "_" => None,
+        // ill-suffixed literals
+        _ if !matches!(kind, LitKind::Integer | LitKind::Float | LitKind::Err(_)) => {
+            return Literal {
+                span,
+                symbol: Symbol::intern(text),
+                kind: LitKind::Err(()),
+                suffix: None,
+            };
+        }
         suffix => Some(Symbol::intern(suffix)),
     };
 

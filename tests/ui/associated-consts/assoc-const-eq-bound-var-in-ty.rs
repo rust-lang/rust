@@ -3,9 +3,18 @@
 //
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(
+    associated_const_equality,
+    min_generic_const_args,
+    adt_const_params,
+    unsized_const_params,
+)]
+#![allow(incomplete_features)]
 
-trait Trait<T> {
+use std::marker::ConstParamTy_;
+
+trait Trait<T: ConstParamTy_> {
+    #[type_const]
     const K: T;
 }
 

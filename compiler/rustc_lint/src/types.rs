@@ -10,7 +10,7 @@ use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
-mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
+mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
 
 use crate::lints::{
@@ -25,7 +25,6 @@ use crate::lints::{
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
-
 use literal::{int_ty_range, lint_literal, uint_ty_range};
 
 declare_lint! {
@@ -1023,7 +1022,8 @@ declare_lint! {
     ///
     /// - Passing `Ordering::Release` or `Ordering::AcqRel` as the failure
     ///   ordering for any of `AtomicType::compare_exchange`,
-    ///   `AtomicType::compare_exchange_weak`, or `AtomicType::fetch_update`.
+    ///   `AtomicType::compare_exchange_weak`, `AtomicType::update`, or
+    ///   `AtomicType::try_update`.
     INVALID_ATOMIC_ORDERING,
     Deny,
     "usage of invalid atomic ordering in atomic operations and memory fences"
@@ -1119,13 +1119,19 @@ impl InvalidAtomicOrdering {
         let Some((method, args)) = Self::inherent_atomic_method_call(
             cx,
             expr,
-            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+            &[
+                sym::update,
+                sym::try_update,
+                sym::fetch_update,
+                sym::compare_exchange,
+                sym::compare_exchange_weak,
+            ],
         ) else {
             return;
         };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[1],
+            sym::update | sym::try_update | sym::fetch_update => &args[1],
             sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };

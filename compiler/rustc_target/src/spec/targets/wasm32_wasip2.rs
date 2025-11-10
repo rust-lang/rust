@@ -17,7 +17,7 @@
 //! <https://github.com/WebAssembly/component-model>.
 
 use crate::spec::{
-    LinkSelfContainedDefault, RelocModel, Target, TargetMetadata, base, crt_objects,
+    Arch, LinkSelfContainedDefault, RelocModel, Target, TargetMetadata, base, crt_objects,
 };
 
 pub(crate) fn target() -> Target {
@@ -69,7 +69,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),
-        arch: "wasm32".into(),
+        arch: Arch::Wasm32,
         options,
     }
 }

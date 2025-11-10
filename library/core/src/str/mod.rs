@@ -1953,6 +1953,7 @@ impl str {
     ///
     /// ```
     /// assert_eq!("cfg".rsplit_once('='), None);
+    /// assert_eq!("cfg=".rsplit_once('='), Some(("cfg", "")));
     /// assert_eq!("cfg=foo".rsplit_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
     /// ```

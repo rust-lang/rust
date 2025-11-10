@@ -60,26 +60,6 @@ struct PackedTuple<T, U> {
 #[allow(improper_ctypes)]
 #[rustfmt::skip]
 unsafe extern "unadjusted" {
-    #[link_name = "llvm.smax.v16i8"] fn vmxb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
-    #[link_name = "llvm.smax.v8i16"] fn vmxh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
-    #[link_name = "llvm.smax.v4i32"] fn vmxf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
-    #[link_name = "llvm.smax.v2i64"] fn vmxg(a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long;
-
-    #[link_name = "llvm.umax.v16i8"] fn vmxlb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
-    #[link_name = "llvm.umax.v8i16"] fn vmxlh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
-    #[link_name = "llvm.umax.v4i32"] fn vmxlf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
-    #[link_name = "llvm.umax.v2i64"] fn vmxlg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
-
-    #[link_name = "llvm.smin.v16i8"] fn vmnb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
-    #[link_name = "llvm.smin.v8i16"] fn vmnh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
-    #[link_name = "llvm.smin.v4i32"] fn vmnf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
-    #[link_name = "llvm.smin.v2i64"] fn vmng(a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long;
-
-    #[link_name = "llvm.umin.v16i8"] fn vmnlb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
-    #[link_name = "llvm.umin.v8i16"] fn vmnlh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
-    #[link_name = "llvm.umin.v4i32"] fn vmnlf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
-    #[link_name = "llvm.umin.v2i64"] fn vmnlg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
-
     #[link_name = "llvm.nearbyint.v4f32"] fn nearbyint_v4f32(a: vector_float) -> vector_float;
     #[link_name = "llvm.nearbyint.v2f64"] fn nearbyint_v2f64(a: vector_double) -> vector_double;
 
@@ -683,17 +663,40 @@ mod sealed {
         unsafe fn vec_max(self, b: Other) -> Self::Result;
     }
 
-    test_impl! { vec_vmxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmxb, vmxb] }
-    test_impl! { vec_vmxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmxh, vmxh] }
-    test_impl! { vec_vmxsf (a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [vmxf, vmxf] }
-    test_impl! { vec_vmxsg (a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long [vmxg, vmxg] }
+    macro_rules! impl_max {
+        ($name:ident, $a:ty, $instr:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($instr))]
+            pub unsafe fn $name(a: $a, b: $a) -> $a {
+                simd_select(simd_ge::<_, $a>(a, b), a, b)
+            }
 
-    test_impl! { vec_vmxslb (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [vmxlb, vmxlb] }
-    test_impl! { vec_vmxslh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [vmxlh, vmxlh] }
-    test_impl! { vec_vmxslf (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vmxlf, vmxlf] }
-    test_impl! { vec_vmxslg (a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [vmxlg, vmxlg] }
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl VectorMax<Self> for $a {
+                type Result = Self;
 
-    impl_vec_trait! { [VectorMax vec_max] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_max(self, other: Self) -> Self {
+                    $name(self, other)
+                }
+            }
+        };
+    }
+
+    mod impl_max {
+        use super::*;
+
+        impl_max!(vec_vmxsc, vector_signed_char, vmxb);
+        impl_max!(vec_vmxslc, vector_unsigned_char, vmxlb);
+        impl_max!(vec_vmxsh, vector_signed_short, vmxh);
+        impl_max!(vec_vmxslh, vector_unsigned_short, vmxlh);
+        impl_max!(vec_vmxsf, vector_signed_int, vmxf);
+        impl_max!(vec_vmxslf, vector_unsigned_int, vmxlf);
+        impl_max!(vec_vmxsg, vector_signed_long_long, vmxg);
+        impl_max!(vec_vmxslg, vector_unsigned_long_long, vmxlg);
+    }
 
     test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, "vector-enhancements-1" vfmaxsb ] }
     test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, "vector-enhancements-1" vfmaxdb] }
@@ -707,17 +710,40 @@ mod sealed {
         unsafe fn vec_min(self, b: Other) -> Self::Result;
     }
 
-    test_impl! { vec_vmnsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmnb, vmnb] }
-    test_impl! { vec_vmnsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmnh, vmnh] }
-    test_impl! { vec_vmnsf (a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [vmnf, vmnf] }
-    test_impl! { vec_vmnsg (a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long [vmng, vmng] }
+    macro_rules! impl_min {
+        ($name:ident, $a:ty, $instr:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($instr))]
+            pub unsafe fn $name(a: $a, b: $a) -> $a {
+                simd_select(simd_le::<_, $a>(a, b), a, b)
+            }
 
-    test_impl! { vec_vmnslb (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [vmnlb, vmnlb] }
-    test_impl! { vec_vmnslh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [vmnlh, vmnlh] }
-    test_impl! { vec_vmnslf (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vmnlf, vmnlf] }
-    test_impl! { vec_vmnslg (a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [vmnlg, vmnlg] }
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl VectorMin<Self> for $a {
+                type Result = Self;
 
-    impl_vec_trait! { [VectorMin vec_min] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_min(self, other: Self) -> Self {
+                    $name(self, other)
+                }
+            }
+        };
+    }
+
+    mod impl_min {
+        use super::*;
+
+        impl_min!(vec_vmnsc, vector_signed_char, vmnb);
+        impl_min!(vec_vmnslc, vector_unsigned_char, vmnlb);
+        impl_min!(vec_vmnsh, vector_signed_short, vmnh);
+        impl_min!(vec_vmnslh, vector_unsigned_short, vmnlh);
+        impl_min!(vec_vmnsf, vector_signed_int, vmnf);
+        impl_min!(vec_vmnslf, vector_unsigned_int, vmnlf);
+        impl_min!(vec_vmnsg, vector_signed_long_long, vmng);
+        impl_min!(vec_vmnslg, vector_unsigned_long_long, vmnlg);
+    }
 
     test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, "vector-enhancements-1" vfminsb]  }
     test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, "vector-enhancements-1" vfmindb]  }
@@ -2368,17 +2394,13 @@ mod sealed {
         unsafe fn vec_packsu(self, b: Other) -> Self::Result;
     }
 
-    unsafe fn simd_smax<T: Copy>(a: T, b: T) -> T {
-        simd_select::<T, T>(simd_gt::<T, T>(a, b), a, b)
-    }
-
     #[inline]
     #[target_feature(enable = "vector")]
     #[cfg_attr(test, assert_instr(vpklsh))]
     unsafe fn vpacksuh(a: vector_signed_short, b: vector_signed_short) -> vector_unsigned_char {
         vpklsh(
-            simd_smax(a, vector_signed_short([0; 8])),
-            simd_smax(b, vector_signed_short([0; 8])),
+            vec_max(a, vector_signed_short([0; 8])),
+            vec_max(b, vector_signed_short([0; 8])),
         )
     }
     #[inline]
@@ -2386,8 +2408,8 @@ mod sealed {
     #[cfg_attr(test, assert_instr(vpklsf))]
     unsafe fn vpacksuf(a: vector_signed_int, b: vector_signed_int) -> vector_unsigned_short {
         vpklsf(
-            simd_smax(a, vector_signed_int([0; 4])),
-            simd_smax(b, vector_signed_int([0; 4])),
+            vec_max(a, vector_signed_int([0; 4])),
+            vec_max(b, vector_signed_int([0; 4])),
         )
     }
     #[inline]
@@ -2398,8 +2420,8 @@ mod sealed {
         b: vector_signed_long_long,
     ) -> vector_unsigned_int {
         vpklsg(
-            simd_smax(a, vector_signed_long_long([0; 2])),
-            simd_smax(b, vector_signed_long_long([0; 2])),
+            vec_max(a, vector_signed_long_long([0; 2])),
+            vec_max(b, vector_signed_long_long([0; 2])),
         )
     }
 

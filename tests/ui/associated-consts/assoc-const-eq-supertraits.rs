@@ -3,11 +3,20 @@
 
 //@ check-pass
 
-#![feature(associated_const_equality)]
+#![feature(
+    associated_const_equality,
+    min_generic_const_args,
+    adt_const_params,
+    unsized_const_params,
+)]
+#![allow(incomplete_features)]
+
+use std::marker::ConstParamTy_;
 
 trait Trait: SuperTrait {}
 trait SuperTrait: SuperSuperTrait<i32> {}
-trait SuperSuperTrait<T> {
+trait SuperSuperTrait<T: ConstParamTy_> {
+    #[type_const]
     const K: T;
 }
 

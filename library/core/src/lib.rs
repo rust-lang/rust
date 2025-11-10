@@ -121,7 +121,6 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
-#![feature(slice_as_array)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
 #![feature(str_split_inclusive_remainder)]
@@ -282,6 +281,8 @@ pub mod num;
 pub mod hint;
 pub mod intrinsics;
 pub mod mem;
+#[unstable(feature = "profiling_marker_api", issue = "148197")]
+pub mod profiling;
 pub mod ptr;
 #[unstable(feature = "ub_checks", issue = "none")]
 pub mod ub_checks;
@@ -294,6 +295,7 @@ pub mod cmp;
 pub mod convert;
 pub mod default;
 pub mod error;
+pub mod index;
 pub mod marker;
 pub mod ops;
 

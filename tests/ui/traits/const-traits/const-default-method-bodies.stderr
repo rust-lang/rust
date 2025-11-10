@@ -1,8 +1,13 @@
 error[E0277]: the trait bound `NonConstImpl: [const] ConstDefaultFn` is not satisfied
-  --> $DIR/const-default-method-bodies.rs:25:18
+  --> $DIR/const-default-method-bodies.rs:24:18
    |
 LL |     NonConstImpl.a();
    |                  ^
+   |
+help: make the `impl` of trait `ConstDefaultFn` `const`
+   |
+LL | impl const ConstDefaultFn for NonConstImpl {
+   |      +++++
 
 error: aborting due to 1 previous error
 

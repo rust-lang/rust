@@ -12,8 +12,7 @@ impl<const N: usize> Foo<N> {
     }
 }
 
-#[const_trait]
-trait Add42 {
+const trait Add42 {
     fn add(a: usize) -> usize;
 }
 

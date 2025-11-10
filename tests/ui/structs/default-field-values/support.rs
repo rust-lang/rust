@@ -27,7 +27,7 @@ pub enum Bar {
     }
 }
 
-#[const_trait] pub trait ConstDefault {
+pub const trait ConstDefault {
     fn value() -> Self;
 }
 

@@ -5,7 +5,7 @@ use rustc_abi::{Align, AlignFromBytesError};
 
 use super::crt_objects::CrtObjects;
 use super::{
-    BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
+    Arch, BinaryFormat, CodeModel, DebuginfoKind, FloatAbi, FramePointer, LinkArgsCli,
     LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFlavorCli, LldFlavor,
     MergeFunctions, PanicStrategy, RelocModel, RelroLevel, RustcAbi, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProbeType, StaticCow, SymbolVisibility, Target,
@@ -147,6 +147,7 @@ impl Target {
         forward!(is_like_darwin);
         forward!(is_like_solaris);
         forward!(is_like_windows);
+        forward!(is_like_gpu);
         forward!(is_like_msvc);
         forward!(is_like_wasm);
         forward!(is_like_android);
@@ -212,6 +213,11 @@ impl Target {
         if let Some(supported_sanitizers) = json.supported_sanitizers {
             base.supported_sanitizers =
                 supported_sanitizers.into_iter().fold(SanitizerSet::empty(), |a, b| a | b);
+        }
+
+        if let Some(default_sanitizers) = json.default_sanitizers {
+            base.default_sanitizers =
+                default_sanitizers.into_iter().fold(SanitizerSet::empty(), |a, b| a | b);
         }
 
         forward!(generate_arange_section);
@@ -337,6 +343,7 @@ impl ToJson for Target {
         target_option_val!(is_like_darwin);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
+        target_option_val!(is_like_gpu);
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(is_like_android);
@@ -392,6 +399,7 @@ impl ToJson for Target {
         target_option_val!(split_debuginfo);
         target_option_val!(supported_split_debuginfo);
         target_option_val!(supported_sanitizers);
+        target_option_val!(default_sanitizers);
         target_option_val!(c_enum_min_bits);
         target_option_val!(generate_arange_section);
         target_option_val!(supports_stack_protector);
@@ -486,7 +494,7 @@ struct TargetSpecJson {
     llvm_target: StaticCow<str>,
     target_pointer_width: u16,
     data_layout: StaticCow<str>,
-    arch: StaticCow<str>,
+    arch: Arch,
 
     metadata: Option<TargetSpecJsonMetadata>,
 
@@ -556,6 +564,7 @@ struct TargetSpecJson {
     is_like_darwin: Option<bool>,
     is_like_solaris: Option<bool>,
     is_like_windows: Option<bool>,
+    is_like_gpu: Option<bool>,
     is_like_msvc: Option<bool>,
     is_like_wasm: Option<bool>,
     is_like_android: Option<bool>,
@@ -612,6 +621,7 @@ struct TargetSpecJson {
     split_debuginfo: Option<SplitDebuginfo>,
     supported_split_debuginfo: Option<StaticCow<[SplitDebuginfo]>>,
     supported_sanitizers: Option<Vec<SanitizerSet>>,
+    default_sanitizers: Option<Vec<SanitizerSet>>,
     generate_arange_section: Option<bool>,
     supports_stack_protector: Option<bool>,
     small_data_threshold_support: Option<SmallDataThresholdSupport>,

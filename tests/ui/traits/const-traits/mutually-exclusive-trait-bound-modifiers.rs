@@ -17,7 +17,6 @@ fn const_negative<T: const !Trait>() {}
 //~^ ERROR `const` trait not allowed with `!` trait polarity modifier
 //~| ERROR negative bounds are not supported
 
-#[const_trait]
-trait Trait {}
+const trait Trait {}
 
 fn main() {}

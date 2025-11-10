@@ -14,12 +14,10 @@ fn main() {
         libc::os_unfair_lock_assert_not_owner(lock.get());
     }
 
-    // `os_unfair_lock`s can be moved and leaked.
-    // In the real implementation, even moving it while locked is possible
-    // (and "forks" the lock, i.e. old and new location have independent wait queues).
-    // We only test the somewhat sane case of moving while unlocked that `std` plans to rely on.
+    // `os_unfair_lock`s can be moved, and even acquired again then.
     let lock = lock;
-    let locked = unsafe { libc::os_unfair_lock_trylock(lock.get()) };
-    assert!(locked);
-    let _lock = lock;
+    assert!(unsafe { libc::os_unfair_lock_trylock(lock.get()) });
+    // We can even move it while locked, but then we cannot acquire it any more.
+    let lock = lock;
+    assert!(!unsafe { libc::os_unfair_lock_trylock(lock.get()) });
 }

@@ -77,6 +77,9 @@ fn prepare_lto(
     // should have default visibility.
     symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
 
+    // LTO seems to discard this otherwise under certain circumstances.
+    symbols_below_threshold.push(c"rust_eh_personality".to_owned());
+
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
     // from the archive.
@@ -613,7 +616,8 @@ pub(crate) fn run_pass_manager(
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage);
     }
 
-    if enable_gpu && !thin {
+    // Here we only handle the GPU host (=cpu) code.
+    if enable_gpu && !thin && !cgcx.target_is_like_gpu {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
         crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);

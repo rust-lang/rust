@@ -18,8 +18,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
@@ -28,7 +26,6 @@
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to

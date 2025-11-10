@@ -19,8 +19,7 @@ pub struct S<T>(T);
 //@ has - '//pre[@class="rust item-decl"]/code/a[@class="trait"]' 'Fn'
 //@ !has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' '[const]'
 //@ has - '//pre[@class="rust item-decl"]/code/span[@class="where"]' ': Fn'
-#[const_trait]
-pub trait Tr<T> {
+pub const trait Tr<T> {
     //@ !has - '//section[@id="method.a"]/h4[@class="code-header"]' '[const]'
     //@ has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     //@ !has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '[const]'

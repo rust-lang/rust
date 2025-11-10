@@ -150,9 +150,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ProcMacroDerive { .. }) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
-                &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
-                    self.check_type_const(hir_id, attr_span, target)
-                }
                 Attribute::Parsed(
                     AttributeKind::Stability {
                         span: attr_span,
@@ -212,7 +209,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
                     self.check_custom_mir(dialect, phase, attr_span)
                 }
-                &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, span: attr_span}) => {
+                &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, rtsan: _, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
                 Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
@@ -235,7 +232,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Marker(..)
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
-                    | AttributeKind::ConstTrait(..)
                     | AttributeKind::DenyExplicitImpl(..)
                     | AttributeKind::DoNotImplementViaObject(..)
                     | AttributeKind::SpecializationTrait(..)
@@ -243,6 +239,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ParenSugar(..)
                     | AttributeKind::AllowIncoherentImpl(..)
                     | AttributeKind::Confusables { .. }
+                    | AttributeKind::TypeConst{..}
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     // handled below this loop and elsewhere
@@ -284,6 +281,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcCoherenceIsCore(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
+                    | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
                     | AttributeKind::PinV2(..),
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
@@ -1770,6 +1768,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 target: target.to_string(),
             });
         }
+        // Error on `#[repr(transparent)]` in combination with
+        // `#[rustc_pass_indirectly_in_non_rustic_abis]`
+        if is_transparent
+            && let Some(&pass_indirectly_span) =
+                find_attr!(attrs, AttributeKind::RustcPassIndirectlyInNonRusticAbis(span) => span)
+        {
+            self.dcx().emit_err(errors::TransparentIncompatible {
+                hint_spans: vec![span, pass_indirectly_span],
+                target: target.to_string(),
+            });
+        }
         if is_explicit_rust && (int_reprs > 0 || is_c || is_simd) {
             let hint_spans = hint_spans.clone().collect();
             self.dcx().emit_err(errors::ReprConflicting { hint_spans });
@@ -2100,23 +2109,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
-        }
-    }
-
-    fn check_type_const(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let tcx = self.tcx;
-        if target == Target::AssocConst
-            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
-            && self.tcx.def_kind(parent) == DefKind::Trait
-        {
-            return;
-        } else {
-            self.dcx()
-                .struct_span_err(
-                    attr_span,
-                    "`#[type_const]` must only be applied to trait associated constants",
-                )
-                .emit();
         }
     }
 

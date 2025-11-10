@@ -3,6 +3,7 @@ use rustc_ast::expand::allocator::SpecialAllocatorMethod;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use crate::*;
 
@@ -19,14 +20,41 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `library/std/src/sys/alloc/mod.rs` (where this is called `MIN_ALIGN`) and should
         // be kept in sync.
         let os = this.tcx.sess.target.os.as_ref();
-        let max_fundamental_align = match this.tcx.sess.target.arch.as_ref() {
-            "riscv32" if matches!(os, "espidf" | "zkvm") => 4,
-            "xtensa" if matches!(os, "espidf") => 4,
-            "x86" | "arm" | "m68k" | "csky" | "loongarch32" | "mips" | "mips32r6" | "powerpc"
-            | "powerpc64" | "sparc" | "wasm32" | "hexagon" | "riscv32" | "xtensa" => 8,
-            "x86_64" | "aarch64" | "arm64ec" | "loongarch64" | "mips64" | "mips64r6" | "s390x"
-            | "sparc64" | "riscv64" | "wasm64" => 16,
-            arch => bug!("unsupported target architecture for malloc: `{}`", arch),
+        let max_fundamental_align = match &this.tcx.sess.target.arch {
+            Arch::RiscV32 if matches!(os, "espidf" | "zkvm") => 4,
+            Arch::Xtensa if matches!(os, "espidf") => 4,
+            Arch::X86
+            | Arch::Arm
+            | Arch::M68k
+            | Arch::CSky
+            | Arch::LoongArch32
+            | Arch::Mips
+            | Arch::Mips32r6
+            | Arch::PowerPC
+            | Arch::PowerPC64
+            | Arch::Sparc
+            | Arch::Wasm32
+            | Arch::Hexagon
+            | Arch::RiscV32
+            | Arch::Xtensa => 8,
+            Arch::X86_64
+            | Arch::AArch64
+            | Arch::Arm64EC
+            | Arch::LoongArch64
+            | Arch::Mips64
+            | Arch::Mips64r6
+            | Arch::S390x
+            | Arch::Sparc64
+            | Arch::RiscV64
+            | Arch::Wasm64 => 16,
+            arch @ (Arch::AmdGpu
+            | Arch::Avr
+            | Arch::Bpf
+            | Arch::Msp430
+            | Arch::Nvptx64
+            | Arch::PowerPC64LE
+            | Arch::SpirV
+            | Arch::Unknown(_)) => bug!("unsupported target architecture for malloc: `{arch}`"),
         };
         // The C standard only requires sufficient alignment for any *type* with size less than or
         // equal to the size requested. Types one can define in standard C seem to never have an alignment

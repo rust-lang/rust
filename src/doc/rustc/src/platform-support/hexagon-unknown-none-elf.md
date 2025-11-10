@@ -25,6 +25,13 @@ Functions marked `extern "C"` use the [Hexagon architecture calling convention](
 
 This target generates PIC ELF binaries.
 
+## Linking
+
+This target selects `rust-lld` by default.  Another option to use is
+[eld](https://github.com/qualcomm/eld), which is also provided with
+[the opensource hexagon toolchain](https://github.com/quic/toolchain_for_hexagon)
+and the Hexagon SDK.
+
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`

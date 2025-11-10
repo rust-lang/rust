@@ -3,8 +3,7 @@
 #![crate_name = "foo"]
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait Tr {
+pub const trait Tr {
     fn f();
 }
 

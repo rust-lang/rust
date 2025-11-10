@@ -128,6 +128,9 @@ class StdSliceProvider(printer_base):
             self._data_ptr + index for index in xrange(self._length)
         )
 
+    def num_children(self):
+        return self._length
+
     @staticmethod
     def display_hint():
         return "array"
@@ -148,6 +151,9 @@ class StdVecProvider(printer_base):
         return _enumerate_array_elements(
             self._data_ptr + index for index in xrange(self._length)
         )
+
+    def num_children(self):
+        return self._length
 
     @staticmethod
     def display_hint():
@@ -176,6 +182,9 @@ class StdVecDequeProvider(printer_base):
             (self._data_ptr + ((self._head + index) % self._cap))
             for index in xrange(self._size)
         )
+
+    def num_children(self):
+        return self._size
 
     @staticmethod
     def display_hint():
@@ -252,15 +261,15 @@ class StdNonZeroNumberProvider(printer_base):
     def __init__(self, valobj):
         fields = valobj.type.fields()
         assert len(fields) == 1
-        field = list(fields)[0]
+        field = fields[0]
 
-        inner_valobj = valobj[field.name]
+        inner_valobj = valobj[field]
 
         inner_fields = inner_valobj.type.fields()
         assert len(inner_fields) == 1
-        inner_field = list(inner_fields)[0]
+        inner_field = inner_fields[0]
 
-        self._value = str(inner_valobj[inner_field.name])
+        self._value = inner_valobj[inner_field]
 
     def to_string(self):
         return self._value
@@ -477,6 +486,12 @@ class StdHashMapProvider(printer_base):
                 yield "val{}".format(index), element[FIRST_FIELD]
             else:
                 yield "[{}]".format(index), element[ZERO_FIELD]
+
+    def num_children(self):
+        result = self._size
+        if self._show_values:
+            result *= 2
+        return result
 
     def display_hint(self):
         return "map" if self._show_values else "array"

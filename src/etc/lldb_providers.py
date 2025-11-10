@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
 import sys
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Generator
 
 from lldb import (
     SBData,
@@ -13,7 +13,7 @@ from lldb import (
 )
 
 if TYPE_CHECKING:
-    from lldb import SBValue, SBType, SBTypeStaticField
+    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget
 
 # from lldb.formatters import Logger
 
@@ -133,19 +133,18 @@ class EmptySyntheticProvider:
         return False
 
 
-def get_template_args(type_name: str) -> list[str]:
+def get_template_args(type_name: str) -> Generator[str, None, None]:
     """
     Takes a type name `T<A, tuple$<B, C>, D>` and returns a list of its generic args
     `["A", "tuple$<B, C>", "D"]`.
 
     String-based replacement for LLDB's `SBType.template_args`, as LLDB is currently unable to
     populate this field for targets with PDB debug info. Also useful for manually altering the type
-    name of generics (e.g. `Vec<ref$<str$>` -> `Vec<&str>`).
+    name of generics (e.g. `Vec<ref$<str$> >` -> `Vec<&str>`).
 
     Each element of the returned list can be looked up for its `SBType` value via
     `SBTarget.FindFirstType()`
     """
-    params = []
     level = 0
     start = 0
     for i, c in enumerate(type_name):
@@ -156,11 +155,55 @@ def get_template_args(type_name: str) -> list[str]:
         elif c == ">":
             level -= 1
             if level == 0:
-                params.append(type_name[start:i].strip())
+                yield type_name[start:i].strip()
         elif c == "," and level == 1:
-            params.append(type_name[start:i].strip())
+            yield type_name[start:i].strip()
             start = i + 1
-    return params
+
+
+MSVC_PTR_PREFIX: List[str] = ["ref$<", "ref_mut$<", "ptr_const$<", "ptr_mut$<"]
+
+
+def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
+    """
+    RECURSIVE when arrays or references are nested (e.g. `ref$<ref$<u8> >`, `array$<ref$<u8> >`)
+
+    Takes the template arg's name (likely from `get_template_args`) and finds/creates its
+    corresponding SBType.
+
+    For non-reference/pointer/array types this is identical to calling
+    `target.FindFirstType(arg_name)`
+
+    LLDB internally interprets refs, pointers, and arrays C-style (`&u8` -> `u8 *`,
+    `*const u8` -> `u8 *`, `[u8; 5]` -> `u8 [5]`). Looking up these names still doesn't work in the
+    current version of LLDB, so instead the types are generated via `base_type.GetPointerType()` and
+    `base_type.GetArrayType()`, which bypass the PDB file and ask clang directly for the type node.
+    """
+    result = target.FindFirstType(arg_name)
+
+    if result.IsValid():
+        return result
+
+    for prefix in MSVC_PTR_PREFIX:
+        if arg_name.startswith(prefix):
+            arg_name = arg_name[len(prefix) : -1].strip()
+
+            result = resolve_msvc_template_arg(arg_name, target)
+            return result.GetPointerType()
+
+    if arg_name.startswith("array$<"):
+        arg_name = arg_name[7:-1].strip()
+
+        template_args = get_template_args(arg_name)
+
+        element_name = next(template_args)
+        length = next(template_args)
+
+        result = resolve_msvc_template_arg(element_name, target)
+
+        return result.GetArrayType(int(length))
+
+    return result
 
 
 def SizeSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -815,6 +858,7 @@ class StdVecSyntheticProvider:
         # logger = Logger.Logger()
         # logger >> "[StdVecSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
+        self.element_type = None
         self.update()
 
     def num_children(self) -> int:
@@ -848,8 +892,9 @@ class StdVecSyntheticProvider:
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
         if not self.element_type.IsValid():
-            element_name = get_template_args(self.valobj.GetTypeName())[0]
-            self.element_type = self.valobj.target.FindFirstType(element_name)
+            arg_name = next(get_template_args(self.valobj.GetTypeName()))
+
+            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
 
         self.element_type_size = self.element_type.GetByteSize()
 
@@ -925,6 +970,7 @@ class StdVecDequeSyntheticProvider:
         # logger = Logger.Logger()
         # logger >> "[StdVecDequeSyntheticProvider] for " + str(valobj.GetName())
         self.valobj = valobj
+        self.element_type = None
         self.update()
 
     def num_children(self) -> int:
@@ -961,6 +1007,12 @@ class StdVecDequeSyntheticProvider:
         )
 
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+
+        if not self.element_type.IsValid():
+            arg_name = next(get_template_args(self.valobj.GetTypeName()))
+
+            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
+
         self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
@@ -1088,6 +1140,7 @@ class StdHashMapSyntheticProvider:
         element = self.data_ptr.CreateValueFromAddress(
             "[%s]" % index, address, self.pair_type
         )
+
         if self.show_values:
             return element
         else:
@@ -1107,14 +1160,12 @@ class StdHashMapSyntheticProvider:
 
         self.size = inner_table.GetChildMemberWithName("items").GetValueAsUnsigned()
 
-        template_args = table.type.template_args
+        self.pair_type = table.GetType().GetTemplateArgumentType(0)
 
-        if template_args is None:
-            type_name = table.GetTypeName()
-            args = get_template_args(type_name)
-            self.pair_type = self.valobj.target.FindFirstType(args[0])
-        else:
-            self.pair_type = template_args[0]
+        if not self.pair_type.IsValid():
+            arg_name = next(get_template_args(table.GetTypeName()))
+
+            self.pair_type = resolve_msvc_template_arg(arg_name, self.valobj.target)
 
         if self.pair_type.IsTypedefType():
             self.pair_type = self.pair_type.GetTypedefedType()

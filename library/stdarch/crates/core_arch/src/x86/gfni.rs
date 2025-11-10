@@ -745,7 +745,6 @@ mod tests {
     #![allow(overflowing_literals)]
 
     use core::hint::black_box;
-    use core::intrinsics::size_of;
     use stdarch_test::simd_test;
 
     use crate::core_arch::x86::*;
@@ -881,26 +880,20 @@ mod tests {
     }
 
     #[target_feature(enable = "sse2")]
-    #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
     unsafe fn load_m128i_word<T>(data: &[T], word_index: usize) -> __m128i {
-        let byte_offset = word_index * 16 / size_of::<T>();
-        let pointer = data.as_ptr().add(byte_offset) as *const __m128i;
+        let pointer = data.as_ptr().byte_add(word_index * 16) as *const __m128i;
         _mm_loadu_si128(black_box(pointer))
     }
 
     #[target_feature(enable = "avx")]
-    #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
     unsafe fn load_m256i_word<T>(data: &[T], word_index: usize) -> __m256i {
-        let byte_offset = word_index * 32 / size_of::<T>();
-        let pointer = data.as_ptr().add(byte_offset) as *const __m256i;
+        let pointer = data.as_ptr().byte_add(word_index * 32) as *const __m256i;
         _mm256_loadu_si256(black_box(pointer))
     }
 
     #[target_feature(enable = "avx512f")]
-    #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
     unsafe fn load_m512i_word<T>(data: &[T], word_index: usize) -> __m512i {
-        let byte_offset = word_index * 64 / size_of::<T>();
-        let pointer = data.as_ptr().add(byte_offset) as *const _;
+        let pointer = data.as_ptr().byte_add(word_index * 64) as *const __m512i;
         _mm512_loadu_si512(black_box(pointer))
     }
 

@@ -1,0 +1,26 @@
+error: the constant `N` is not of type `u32`
+  --> $DIR/mismatched-types-with-generic-in-ace.rs:14:29
+   |
+LL | fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}
+   |                             ^^^^^^^^^^^^^^^^ expected `u32`, found `u64`
+   |
+note: required by a const generic parameter in `Foo::ASSOC`
+  --> $DIR/mismatched-types-with-generic-in-ace.rs:6:17
+   |
+LL |     const ASSOC<const N: u32>: u32;
+   |                 ^^^^^^^^^^^^ required by this const generic parameter in `Foo::ASSOC`
+
+error: the constant `10` is not of type `u32`
+  --> $DIR/mismatched-types-with-generic-in-ace.rs:18:5
+   |
+LL |     bar::<10_u64, ()>();
+   |     ^^^^^^^^^^^^^^^^^^^ expected `u32`, found `u64`
+   |
+note: required by a const generic parameter in `Foo::ASSOC`
+  --> $DIR/mismatched-types-with-generic-in-ace.rs:6:17
+   |
+LL |     const ASSOC<const N: u32>: u32;
+   |                 ^^^^^^^^^^^^ required by this const generic parameter in `Foo::ASSOC`
+
+error: aborting due to 2 previous errors
+

@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::{Symbol, sym};
 
-use crate::spec::{FloatAbi, RustcAbi, Target};
+use crate::spec::{Arch, FloatAbi, RustcAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 /// These exist globally and are not in the target-specific lists below.
@@ -844,20 +844,20 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("message-security-assist-extension8", Unstable(sym::s390x_target_feature), &["message-security-assist-extension3"]),
     ("message-security-assist-extension9", Unstable(sym::s390x_target_feature), &["message-security-assist-extension3", "message-security-assist-extension4"]),
     ("message-security-assist-extension12", Unstable(sym::s390x_target_feature), &[]),
-    ("miscellaneous-extensions-2", Unstable(sym::s390x_target_feature), &[]),
-    ("miscellaneous-extensions-3", Unstable(sym::s390x_target_feature), &[]),
-    ("miscellaneous-extensions-4", Unstable(sym::s390x_target_feature), &[]),
-    ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("miscellaneous-extensions-2", Stable, &[]),
+    ("miscellaneous-extensions-3", Stable, &[]),
+    ("miscellaneous-extensions-4", Stable, &[]),
+    ("nnp-assist", Stable, &["vector"]),
     ("soft-float", Forbidden { reason: "currently unsupported ABI-configuration feature" }, &[]),
     ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
-    ("vector", Unstable(sym::s390x_target_feature), &[]),
-    ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
-    ("vector-enhancements-2", Unstable(sym::s390x_target_feature), &["vector-enhancements-1"]),
-    ("vector-enhancements-3", Unstable(sym::s390x_target_feature), &["vector-enhancements-2"]),
-    ("vector-packed-decimal", Unstable(sym::s390x_target_feature), &["vector"]),
-    ("vector-packed-decimal-enhancement", Unstable(sym::s390x_target_feature), &["vector-packed-decimal"]),
-    ("vector-packed-decimal-enhancement-2", Unstable(sym::s390x_target_feature), &["vector-packed-decimal-enhancement"]),
-    ("vector-packed-decimal-enhancement-3", Unstable(sym::s390x_target_feature), &["vector-packed-decimal-enhancement-2"]),
+    ("vector", Stable, &[]),
+    ("vector-enhancements-1", Stable, &["vector"]),
+    ("vector-enhancements-2", Stable, &["vector-enhancements-1"]),
+    ("vector-enhancements-3", Stable, &["vector-enhancements-2"]),
+    ("vector-packed-decimal", Stable, &["vector"]),
+    ("vector-packed-decimal-enhancement", Stable, &["vector-packed-decimal"]),
+    ("vector-packed-decimal-enhancement-2", Stable, &["vector-packed-decimal-enhancement"]),
+    ("vector-packed-decimal-enhancement-3", Stable, &["vector-packed-decimal-enhancement-2"]),
     // tidy-alphabetical-end
 ];
 
@@ -955,50 +955,64 @@ pub struct FeatureConstraints {
 
 impl Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
-        match &*self.arch {
-            "arm" => ARM_FEATURES,
-            "aarch64" | "arm64ec" => AARCH64_FEATURES,
-            "x86" | "x86_64" => X86_FEATURES,
-            "hexagon" => HEXAGON_FEATURES,
-            "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES,
-            "nvptx64" => NVPTX_FEATURES,
-            "powerpc" | "powerpc64" => POWERPC_FEATURES,
-            "riscv32" | "riscv64" => RISCV_FEATURES,
-            "wasm32" | "wasm64" => WASM_FEATURES,
-            "bpf" => BPF_FEATURES,
-            "csky" => CSKY_FEATURES,
-            "loongarch32" | "loongarch64" => LOONGARCH_FEATURES,
-            "s390x" => IBMZ_FEATURES,
-            "sparc" | "sparc64" => SPARC_FEATURES,
-            "m68k" => M68K_FEATURES,
-            _ => &[],
+        match &self.arch {
+            Arch::Arm => ARM_FEATURES,
+            Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES,
+            Arch::X86 | Arch::X86_64 => X86_FEATURES,
+            Arch::Hexagon => HEXAGON_FEATURES,
+            Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => MIPS_FEATURES,
+            Arch::Nvptx64 => NVPTX_FEATURES,
+            Arch::PowerPC | Arch::PowerPC64 => POWERPC_FEATURES,
+            Arch::RiscV32 | Arch::RiscV64 => RISCV_FEATURES,
+            Arch::Wasm32 | Arch::Wasm64 => WASM_FEATURES,
+            Arch::Bpf => BPF_FEATURES,
+            Arch::CSky => CSKY_FEATURES,
+            Arch::LoongArch32 | Arch::LoongArch64 => LOONGARCH_FEATURES,
+            Arch::S390x => IBMZ_FEATURES,
+            Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES,
+            Arch::M68k => M68K_FEATURES,
+            Arch::AmdGpu
+            | Arch::Avr
+            | Arch::Msp430
+            | Arch::PowerPC64LE
+            | Arch::SpirV
+            | Arch::Xtensa
+            | Arch::Unknown(_) => &[],
         }
     }
 
     pub fn features_for_correct_vector_abi(&self) -> &'static [(u64, &'static str)] {
-        match &*self.arch {
-            "x86" | "x86_64" => X86_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "aarch64" | "arm64ec" => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "arm" => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "powerpc" | "powerpc64" => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "loongarch32" | "loongarch64" => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "riscv32" | "riscv64" => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "wasm32" | "wasm64" => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "s390x" => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "nvptx64" | "bpf" | "m68k" => &[], // no vector ABI
-            "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
+        match &self.arch {
+            Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::AArch64 | Arch::Arm64EC => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::Arm => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::PowerPC | Arch::PowerPC64 => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::LoongArch32 | Arch::LoongArch64 => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::RiscV32 | Arch::RiscV64 => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::Wasm32 | Arch::Wasm64 => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::S390x => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::Sparc | Arch::Sparc64 => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::Hexagon => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
+                MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI
+            }
+            Arch::Nvptx64 | Arch::Bpf | Arch::M68k => &[], // no vector ABI
+            Arch::CSky => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
-            _ => &[],
+            Arch::AmdGpu
+            | Arch::Avr
+            | Arch::Msp430
+            | Arch::PowerPC64LE
+            | Arch::SpirV
+            | Arch::Xtensa
+            | Arch::Unknown(_) => &[],
         }
     }
 
     pub fn tied_target_features(&self) -> &'static [&'static [&'static str]] {
-        match &*self.arch {
-            "aarch64" | "arm64ec" => AARCH64_TIED_FEATURES,
+        match &self.arch {
+            Arch::AArch64 | Arch::Arm64EC => AARCH64_TIED_FEATURES,
             _ => &[],
         }
     }
@@ -1038,8 +1052,8 @@ impl Target {
         // defined by target features. When that is the case, those target features must be
         // "forbidden" in the list above to ensure that there is a consistent answer to the
         // questions "which ABI is used".
-        match &*self.arch {
-            "x86" => {
+        match &self.arch {
+            Arch::X86 => {
                 // We use our own ABI indicator here; LLVM does not have anything native.
                 // Every case should require or forbid `soft-float`!
                 match self.rustc_abi {
@@ -1064,7 +1078,7 @@ impl Target {
                     }
                 }
             }
-            "x86_64" => {
+            Arch::X86_64 => {
                 // We use our own ABI indicator here; LLVM does not have anything native.
                 // Every case should require or forbid `soft-float`!
                 match self.rustc_abi {
@@ -1085,7 +1099,7 @@ impl Target {
                     Some(r) => panic!("invalid Rust ABI for x86_64: {r:?}"),
                 }
             }
-            "arm" => {
+            Arch::Arm => {
                 // On ARM, ABI handling is reasonably sane; we use `llvm_floatabi` to indicate
                 // to LLVM which ABI we are going for.
                 match self.llvm_floatabi.unwrap() {
@@ -1102,7 +1116,7 @@ impl Target {
                     }
                 }
             }
-            "aarch64" | "arm64ec" => {
+            Arch::AArch64 | Arch::Arm64EC => {
                 // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
                 // the use of soft-float, so all we can do here is some crude hacks.
                 match &*self.abi {
@@ -1121,7 +1135,7 @@ impl Target {
                     }
                 }
             }
-            "riscv32" | "riscv64" => {
+            Arch::RiscV32 | Arch::RiscV64 => {
                 // RISC-V handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
                 match &*self.llvm_abiname {
@@ -1155,7 +1169,7 @@ impl Target {
                     _ => unreachable!(),
                 }
             }
-            "loongarch32" | "loongarch64" => {
+            Arch::LoongArch32 | Arch::LoongArch64 => {
                 // LoongArch handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
                 match &*self.llvm_abiname {
@@ -1177,7 +1191,7 @@ impl Target {
                     _ => unreachable!(),
                 }
             }
-            "s390x" => {
+            Arch::S390x => {
                 // We don't currently support a softfloat target on this architecture.
                 // As usual, we have to reject swapping the `soft-float` target feature.
                 // The "vector" target feature does not affect the ABI for floats

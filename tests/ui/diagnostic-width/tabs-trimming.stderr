@@ -1,20 +1,20 @@
 error[E0408]: variable `v` is not bound in all patterns
   --> $DIR/tabs-trimming.rs:9:16
    |
-LL | ...                     v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
-   |                         -       ^   ^ pattern doesn't bind `v`
-   |                         |       |
-   |                         |       pattern doesn't bind `v`
-   |                         variable not in all patterns
+LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
+   |       -       ^   ^ pattern doesn't bind `v`
+   |       |       |
+   |       |       pattern doesn't bind `v`
+   |       variable not in all patterns
 
 error[E0381]: used binding `v` is possibly-uninitialized
   --> $DIR/tabs-trimming.rs:9:67
    |
-LL | ...                     v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
-   |                         -                                                          ^ `v` used here but it is possibly-uninitialized
-   |                         |
-   |                         binding initialized here in some conditions
-   |                         binding declared here but left uninitialized
+LL | ...   v @ 1 | 2 | 3 => panic!("You gave me too little money {}", v), // Long text here: TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT...
+   |       -                                                          ^ `v` used here but it is possibly-uninitialized
+   |       |
+   |       binding initialized here in some conditions
+   |       binding declared here but left uninitialized
 
 error: aborting due to 2 previous errors
 

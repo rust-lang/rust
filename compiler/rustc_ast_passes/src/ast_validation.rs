@@ -48,7 +48,7 @@ enum SelfSemantic {
 }
 
 enum TraitOrTraitImpl {
-    Trait { span: Span, constness: Const },
+    Trait { vis: Span, constness: Const },
     TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref_span: Span },
 }
 
@@ -109,10 +109,10 @@ impl<'a> AstValidator<'a> {
         self.outer_trait_or_trait_impl = old;
     }
 
-    fn with_in_trait(&mut self, span: Span, constness: Const, f: impl FnOnce(&mut Self)) {
+    fn with_in_trait(&mut self, vis: Span, constness: Const, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(
             &mut self.outer_trait_or_trait_impl,
-            Some(TraitOrTraitImpl::Trait { span, constness }),
+            Some(TraitOrTraitImpl::Trait { vis, constness }),
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
@@ -265,10 +265,12 @@ impl<'a> AstValidator<'a> {
             None
         };
 
+        let map = self.sess.source_map();
+
         let make_trait_const_sugg = if const_trait_impl
-            && let TraitOrTraitImpl::Trait { span, constness: ast::Const::No } = parent
+            && let &TraitOrTraitImpl::Trait { vis, constness: ast::Const::No } = parent
         {
-            Some(span.shrink_to_lo())
+            Some(map.span_extend_while_whitespace(vis).shrink_to_hi())
         } else {
             None
         };
@@ -279,7 +281,7 @@ impl<'a> AstValidator<'a> {
             in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
             const_context_label: parent_constness,
             remove_const_sugg: (
-                self.sess.source_map().span_extend_while_whitespace(span),
+                map.span_extend_while_whitespace(span),
                 match parent_constness {
                     Some(_) => rustc_errors::Applicability::MachineApplicable,
                     None => rustc_errors::Applicability::MaybeIncorrect,
@@ -1165,13 +1167,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 ..
             }) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                // FIXME(const_trait_impl) remove this
-                let alt_const_trait_span =
-                    attr::find_by_name(&item.attrs, sym::const_trait).map(|attr| attr.span);
-                let constness = match (*constness, alt_const_trait_span) {
-                    (Const::Yes(span), _) | (Const::No, Some(span)) => Const::Yes(span),
-                    (Const::No, None) => Const::No,
-                };
                 if *is_auto == IsAuto::Yes {
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, ident.span);
@@ -1188,7 +1183,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_generics(generics);
                     walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
-                self.with_in_trait(item.span, constness, |this| {
+                self.with_in_trait(item.vis.span, *constness, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
             }
@@ -1239,9 +1234,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 });
             }
-            ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, rhs, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
-                if expr.is_none() {
+                if rhs.is_none() {
                     self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1581,7 +1576,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if let AssocCtxt::Impl { .. } = ctxt {
             match &item.kind {
-                AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
+                AssocItemKind::Const(box ConstItem { rhs: None, .. }) => {
                     self.dcx().emit_err(errors::AssocConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),

@@ -366,19 +366,7 @@ where
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
                 ty::AliasTermKind::ProjectionConst => {
-                    // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
-                    // this should instead return that.
-                    if cx.features().associated_const_equality() {
-                        panic!("associated const projection is not supported yet")
-                    } else {
-                        ty::EarlyBinder::bind(
-                            Const::new_error_with_message(
-                                cx,
-                                "associated const projection is not supported yet",
-                            )
-                            .into(),
-                        )
-                    }
+                    cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };

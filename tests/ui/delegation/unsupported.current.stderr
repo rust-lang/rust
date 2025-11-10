@@ -46,7 +46,7 @@ LL |     reuse to_reuse1::foo;
    |                      ^^^
 
 error[E0283]: type annotations needed
-  --> $DIR/unsupported.rs:56:18
+  --> $DIR/unsupported.rs:55:18
    |
 LL |     reuse Trait::foo;
    |                  ^^^ cannot infer type

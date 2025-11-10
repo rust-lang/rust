@@ -22,9 +22,13 @@ ENV PATH=$PATH:/x-tools/riscv64-unknown-linux-gnu/bin
 
 ENV CC_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
     AR_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
-    CXX_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++
+    CXX_riscv64gc_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++ \
+    CC_riscv64a23_unknown_linux_gnu=riscv64-unknown-linux-gnu-gcc \
+    AR_riscv64a23_unknown_linux_gnu=riscv64-unknown-linux-gnu-ar \
+    CXX_riscv64a23_unknown_linux_gnu=riscv64-unknown-linux-gnu-g++
 
 ENV HOSTS=riscv64gc-unknown-linux-gnu
+ENV TARGETS=riscv64gc-unknown-linux-gnu,riscv64a23-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-profiler --disable-docs
-ENV SCRIPT python3 ../x.py dist --target $HOSTS --host $HOSTS
+ENV SCRIPT python3 ../x.py dist --target $TARGETS --host $HOSTS

@@ -16,7 +16,7 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
-use toolchain::{NO_RUSTUP_AUTO_INSTALL_ENV, Tool};
+use toolchain::Tool;
 use tracing::instrument;
 use tracing::{debug, error, info};
 use triomphe::Arc;
@@ -295,11 +295,6 @@ impl ProjectWorkspace {
             &sysroot,
             *no_deps,
         );
-        let target_dir = config
-            .target_dir
-            .clone()
-            .or_else(|| fetch_metadata.no_deps_metadata().map(|m| m.target_directory.clone()))
-            .unwrap_or_else(|| workspace_dir.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
         // toolchain and sysroot
@@ -345,7 +340,7 @@ impl ProjectWorkspace {
                         },
                         &sysroot,
                         *no_deps,
-                    ).exec(&target_dir, true, progress) {
+                    ).exec(true, progress) {
                         Ok((meta, _error)) => {
                             let workspace = CargoWorkspace::new(
                                 meta,
@@ -374,16 +369,16 @@ impl ProjectWorkspace {
                 })
             });
 
-            let cargo_metadata = s.spawn(|| fetch_metadata.exec(&target_dir, false, progress));
+            let cargo_metadata = s.spawn(|| fetch_metadata.exec(false, progress));
             let loaded_sysroot = s.spawn(|| {
                 sysroot.load_workspace(
                     &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                         config,
+                        workspace_dir,
                         &targets,
                         toolchain.clone(),
                     )),
                     config.no_deps,
-                    &target_dir,
                     progress,
                 )
             });
@@ -463,12 +458,6 @@ impl ProjectWorkspace {
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
             .unwrap_or_default();
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
-        let project_root = project_json.project_root();
-        let target_dir = config
-            .target_dir
-            .clone()
-            .or_else(|| cargo_target_dir(project_json.manifest()?, &config.extra_env, &sysroot))
-            .unwrap_or_else(|| project_root.join("target").into());
 
         // We spawn a bunch of processes to query various information about the workspace's
         // toolchain and sysroot
@@ -486,18 +475,17 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::Json(*sysroot_project),
                         config.no_deps,
-                        &target_dir,
                         progress,
                     )
                 } else {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
+                            project_json.project_root(),
                             &targets,
                             toolchain.clone(),
                         )),
                         config.no_deps,
-                        &target_dir,
                         progress,
                     )
                 }
@@ -545,20 +533,15 @@ impl ProjectWorkspace {
             .unwrap_or_default();
         let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
         let target_data = target_data::get(query_config, None, &config.extra_env);
-        let target_dir = config
-            .target_dir
-            .clone()
-            .or_else(|| cargo_target_dir(detached_file, &config.extra_env, &sysroot))
-            .unwrap_or_else(|| dir.join("target").into());
 
         let loaded_sysroot = sysroot.load_workspace(
             &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                 config,
+                dir,
                 &targets,
                 toolchain.clone(),
             )),
             config.no_deps,
-            &target_dir,
             &|_| (),
         );
         if let Some(loaded_sysroot) = loaded_sysroot {
@@ -579,21 +562,15 @@ impl ProjectWorkspace {
             &sysroot,
             config.no_deps,
         );
-        let target_dir = config
-            .target_dir
-            .clone()
-            .or_else(|| fetch_metadata.no_deps_metadata().map(|m| m.target_directory.clone()))
-            .unwrap_or_else(|| dir.join("target").into());
-        let cargo_script =
-            fetch_metadata.exec(&target_dir, false, &|_| ()).ok().map(|(ws, error)| {
-                let cargo_config_extra_env =
-                    cargo_config_env(detached_file, &config_file, &config.extra_env);
-                (
-                    CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
-                    WorkspaceBuildScripts::default(),
-                    error.map(Arc::new),
-                )
-            });
+        let cargo_script = fetch_metadata.exec(false, &|_| ()).ok().map(|(ws, error)| {
+            let cargo_config_extra_env =
+                cargo_config_env(detached_file, &config_file, &config.extra_env);
+            (
+                CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
+                WorkspaceBuildScripts::default(),
+                error.map(Arc::new),
+            )
+        });
 
         Ok(ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {
@@ -1890,37 +1867,32 @@ fn add_dep_inner(graph: &mut CrateGraphBuilder, from: CrateBuilderId, dep: Depen
 
 fn sysroot_metadata_config(
     config: &CargoConfig,
+    current_dir: &AbsPath,
     targets: &[String],
     toolchain_version: Option<Version>,
 ) -> CargoMetadataConfig {
+    // We run `cargo metadata` on sysroot with sysroot dir as a working directory, but still pass
+    // the `targets` from the cargo config evaluated from the workspace's `current_dir`.
+    // So, we need to *canonicalize* those *might-be-relative-paths-to-custom-target-json-files*.
+    //
+    // See https://github.com/rust-lang/cargo/blob/f7acf448fc127df9a77c52cc2bba027790ac4931/src/cargo/core/compiler/compile_kind.rs#L171-L192
+    let targets = targets
+        .iter()
+        .map(|target| {
+            if target.ends_with(".json") {
+                current_dir.join(target).to_string()
+            } else {
+                target.to_owned()
+            }
+        })
+        .collect();
+
     CargoMetadataConfig {
         features: Default::default(),
-        targets: targets.to_vec(),
+        targets,
         extra_args: Default::default(),
         extra_env: config.extra_env.clone(),
         toolchain_version,
         kind: "sysroot",
     }
-}
-
-fn cargo_target_dir(
-    manifest: &ManifestPath,
-    extra_env: &FxHashMap<String, Option<String>>,
-    sysroot: &Sysroot,
-) -> Option<Utf8PathBuf> {
-    let cargo = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
-    let mut meta = cargo_metadata::MetadataCommand::new();
-    meta.env(NO_RUSTUP_AUTO_INSTALL_ENV.0, NO_RUSTUP_AUTO_INSTALL_ENV.1);
-    meta.cargo_path(cargo.get_program());
-    meta.manifest_path(manifest);
-    // `--no-deps` doesn't (over)write lockfiles as it doesn't do any package resolve.
-    // So we can use it to get `target_directory` before copying lockfiles
-    meta.no_deps();
-    let mut other_options = vec![];
-    if manifest.is_rust_manifest() {
-        meta.env("RUSTC_BOOTSTRAP", "1");
-        other_options.push("-Zscript".to_owned());
-    }
-    meta.other_options(other_options);
-    meta.exec().map(|m| m.target_directory).ok()
 }

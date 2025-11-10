@@ -2,13 +2,11 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait A where Self::Assoc: const B {
+const trait A where Self::Assoc: const B {
     type Assoc;
 }
 
-#[const_trait]
-trait B {}
+const trait B {}
 
 fn needs_b<T: const B>() {}
 

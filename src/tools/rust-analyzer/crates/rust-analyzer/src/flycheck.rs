@@ -13,6 +13,7 @@ use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
+use project_model::TargetDirectoryConfig;
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
@@ -46,7 +47,7 @@ pub(crate) struct CargoOptions {
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
     pub(crate) extra_env: FxHashMap<String, Option<String>>,
-    pub(crate) target_dir: Option<Utf8PathBuf>,
+    pub(crate) target_dir_config: TargetDirectoryConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -58,7 +59,7 @@ pub(crate) enum Target {
 }
 
 impl CargoOptions {
-    pub(crate) fn apply_on_command(&self, cmd: &mut Command) {
+    pub(crate) fn apply_on_command(&self, cmd: &mut Command, ws_target_dir: Option<&Utf8Path>) {
         for target in &self.target_tuples {
             cmd.args(["--target", target.as_str()]);
         }
@@ -82,8 +83,8 @@ impl CargoOptions {
                 cmd.arg(self.features.join(" "));
             }
         }
-        if let Some(target_dir) = &self.target_dir {
-            cmd.arg("--target-dir").arg(target_dir);
+        if let Some(target_dir) = self.target_dir_config.target_dir(ws_target_dir) {
+            cmd.arg("--target-dir").arg(target_dir.as_ref());
         }
     }
 }
@@ -158,6 +159,7 @@ impl FlycheckHandle {
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
+        ws_target_dir: Option<Utf8PathBuf>,
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(
             id,
@@ -167,6 +169,7 @@ impl FlycheckHandle {
             sysroot_root,
             workspace_root,
             manifest_path,
+            ws_target_dir,
         );
         let (sender, receiver) = unbounded::<StateChange>();
         let thread =
@@ -314,6 +317,7 @@ struct FlycheckActor {
     sender: Sender<FlycheckMessage>,
     config: FlycheckConfig,
     manifest_path: Option<AbsPathBuf>,
+    ws_target_dir: Option<Utf8PathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
     root: Arc<AbsPathBuf>,
@@ -355,6 +359,7 @@ impl FlycheckActor {
         sysroot_root: Option<AbsPathBuf>,
         workspace_root: AbsPathBuf,
         manifest_path: Option<AbsPathBuf>,
+        ws_target_dir: Option<Utf8PathBuf>,
     ) -> FlycheckActor {
         tracing::info!(%id, ?workspace_root, "Spawning flycheck");
         FlycheckActor {
@@ -366,6 +371,7 @@ impl FlycheckActor {
             root: Arc::new(workspace_root),
             scope: FlycheckScope::Workspace,
             manifest_path,
+            ws_target_dir,
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
@@ -428,15 +434,32 @@ impl FlycheckActor {
                         CargoCheckParser,
                         sender,
                         match &self.config {
-                            FlycheckConfig::CargoCommand { options, .. } => Some(
-                                options
-                                    .target_dir
-                                    .as_deref()
-                                    .unwrap_or(
-                                        Utf8Path::new("target").join("rust-analyzer").as_path(),
-                                    )
-                                    .join(format!("flycheck{}", self.id)),
-                            ),
+                            FlycheckConfig::CargoCommand { options, .. } => {
+                                let ws_target_dir =
+                                    self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path);
+                                let target_dir =
+                                    options.target_dir_config.target_dir(ws_target_dir);
+
+                                // If `"rust-analyzer.cargo.targetDir": null`, we should use
+                                // workspace's target dir instead of hard-coded fallback.
+                                let target_dir = target_dir.as_deref().or(ws_target_dir);
+
+                                Some(
+                                    // As `CommandHandle::spawn`'s working directory is
+                                    // rust-analyzer's working directory, which might be different
+                                    // from the flycheck's working directory, we should canonicalize
+                                    // the output directory, otherwise we might write it into the
+                                    // wrong target dir.
+                                    // If `target_dir` is an absolute path, it will replace
+                                    // `self.root` and that's an intended behavior.
+                                    self.root
+                                        .join(target_dir.unwrap_or(
+                                            Utf8Path::new("target").join("rust-analyzer").as_path(),
+                                        ))
+                                        .join(format!("flycheck{}", self.id))
+                                        .into(),
+                                )
+                            }
                             _ => None,
                         },
                     ) {
@@ -672,7 +695,10 @@ impl FlycheckActor {
 
                 cmd.arg("--keep-going");
 
-                options.apply_on_command(&mut cmd);
+                options.apply_on_command(
+                    &mut cmd,
+                    self.ws_target_dir.as_ref().map(Utf8PathBuf::as_path),
+                );
                 cmd.args(&options.extra_args);
                 Some(cmd)
             }

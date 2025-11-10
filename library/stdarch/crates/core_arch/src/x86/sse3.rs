@@ -51,7 +51,11 @@ pub fn _mm_addsub_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(haddpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
-    unsafe { haddpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2]);
+        let odd = simd_shuffle!(a, b, [1, 3]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontally adds adjacent pairs of single-precision (32-bit)
@@ -63,7 +67,11 @@ pub fn _mm_hadd_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(haddps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hadd_ps(a: __m128, b: __m128) -> __m128 {
-    unsafe { haddps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 4, 6]);
+        let odd = simd_shuffle!(a, b, [1, 3, 5, 7]);
+        simd_add(even, odd)
+    }
 }
 
 /// Horizontally subtract adjacent pairs of double-precision (64-bit)
@@ -75,7 +83,11 @@ pub fn _mm_hadd_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(hsubpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
-    unsafe { hsubpd(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2]);
+        let odd = simd_shuffle!(a, b, [1, 3]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Horizontally adds adjacent pairs of single-precision (32-bit)
@@ -87,7 +99,11 @@ pub fn _mm_hsub_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(hsubps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_hsub_ps(a: __m128, b: __m128) -> __m128 {
-    unsafe { hsubps(a, b) }
+    unsafe {
+        let even = simd_shuffle!(a, b, [0, 2, 4, 6]);
+        let odd = simd_shuffle!(a, b, [1, 3, 5, 7]);
+        simd_sub(even, odd)
+    }
 }
 
 /// Loads 128-bits of integer data from unaligned memory.
@@ -153,14 +169,6 @@ pub fn _mm_moveldup_ps(a: __m128) -> __m128 {
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.x86.sse3.hadd.pd"]
-    fn haddpd(a: __m128d, b: __m128d) -> __m128d;
-    #[link_name = "llvm.x86.sse3.hadd.ps"]
-    fn haddps(a: __m128, b: __m128) -> __m128;
-    #[link_name = "llvm.x86.sse3.hsub.pd"]
-    fn hsubpd(a: __m128d, b: __m128d) -> __m128d;
-    #[link_name = "llvm.x86.sse3.hsub.ps"]
-    fn hsubps(a: __m128, b: __m128) -> __m128;
     #[link_name = "llvm.x86.sse3.ldu.dq"]
     fn lddqu(mem_addr: *const i8) -> i8x16;
 }
