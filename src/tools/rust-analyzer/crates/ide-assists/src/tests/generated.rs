@@ -183,9 +183,9 @@ fn main() {
 "#####,
         r#####"
 fn main() {
-    'l: loop {
-        break 'l;
-        continue 'l;
+    ${1:'l}: loop {
+        break ${2:'l};
+        continue ${0:'l};
     }
 }
 "#####,
