@@ -386,7 +386,7 @@ On the [wasm32-wasip1 target support page] a minimum version is specified that y
 Some cmake commands that take a while and give a lot of very concerning c++ warnings...
 Then, in `bootstrap.toml`, point to the sysroot like so:
 
-```
+```toml
 [target.wasm32-wasip1]
 wasi-root = "<wasi-sdk location>/build/sysroot/install/share/wasi-sysroot"
 ```
