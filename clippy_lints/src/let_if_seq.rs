@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::snippet;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::visitors::is_local_used;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -117,14 +117,16 @@ fn check_block_inner<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'tcx>, 
         // FIXME: this should not suggest `mut` if we can detect that the variable is not
         // use mutably after the `if`
 
+        let mut applicability = Applicability::HasPlaceholders;
+        let (cond_snip, _) = snippet_with_context(cx, cond.span, if_.span.ctxt(), "_", &mut applicability);
+        let (value_snip, _) = snippet_with_context(cx, value.span, if_.span.ctxt(), "<value>", &mut applicability);
+        let (default_snip, _) =
+            snippet_with_context(cx, default.span, if_.span.ctxt(), "<default>", &mut applicability);
         let sug = format!(
-            "let {mutability}{name} = if {cond} {{{then} {value} }} else {{{else} {default} }};",
+            "let {mutability}{name} = if {cond_snip} {{{then} {value_snip} }} else {{{else} {default_snip} }};",
             name=ident.name,
-            cond=snippet(cx, cond.span, "_"),
             then=if then.stmts.len() > 1 { " ..;" } else { "" },
             else=if default_multi_stmts { " ..;" } else { "" },
-            value=snippet(cx, value.span, "<value>"),
-            default=snippet(cx, default.span, "<default>"),
         );
         span_lint_hir_and_then(
             cx,
@@ -133,12 +135,7 @@ fn check_block_inner<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx hir::Stmt<'tcx>, 
             span,
             "`if _ { .. } else { .. }` is an expression",
             |diag| {
-                diag.span_suggestion(
-                    span,
-                    "it is more idiomatic to write",
-                    sug,
-                    Applicability::HasPlaceholders,
-                );
+                diag.span_suggestion(span, "it is more idiomatic to write", sug, applicability);
                 if !mutability.is_empty() {
                     diag.note("you might not need `mut` at all");
                 }
