@@ -76,12 +76,10 @@ pub(crate) struct PlaceholderReachability {
 
 impl PlaceholderReachability {
     /// Merge the reachable placeholders of two graph components.
-    fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
-        PlaceholderReachability {
-            max_universe: self.max_universe.max(other.max_universe),
-            min_placeholder: self.min_placeholder.min(other.min_placeholder),
-            max_placeholder: self.max_placeholder.max(other.max_placeholder),
-        }
+    fn merge(&mut self, other: &PlaceholderReachability) {
+        self.max_universe = self.max_universe.max(other.max_universe);
+        self.min_placeholder = self.min_placeholder.min(other.min_placeholder);
+        self.max_placeholder = self.max_placeholder.max(other.max_placeholder);
     }
 }
 
@@ -192,34 +190,26 @@ impl RegionTracker {
 }
 
 impl scc::Annotation for RegionTracker {
-    fn merge_scc(self, other: Self) -> Self {
+    fn update_scc(&mut self, other: &Self) {
         trace!("{:?} << {:?}", self.representative, other.representative);
-        Self {
-            representative: self.representative.min(other.representative),
-            is_placeholder: self.is_placeholder.max(other.is_placeholder),
-            ..self.merge_reached(other)
-        }
+        self.representative = self.representative.min(other.representative);
+        self.is_placeholder = self.is_placeholder.max(other.is_placeholder);
+        self.update_reachable(other); // SCC membership implies reachability.
     }
 
     #[inline(always)]
-    fn merge_reached(self, other: Self) -> Self {
-        Self {
-            worst_existential: self
-                .worst_existential
-                .xor(other.worst_existential)
-                .or_else(|| self.worst_existential.min(other.worst_existential)),
-            min_max_nameable_universe: self
-                .min_max_nameable_universe
-                .min(other.min_max_nameable_universe),
-            reachable_placeholders: match (
-                self.reachable_placeholders,
-                other.reachable_placeholders,
-            ) {
-                (None, x) | (x, None) => x,
-                (Some(ours), Some(theirs)) => Some(ours.merge(theirs)),
-            },
-            ..self
-        }
+    fn update_reachable(&mut self, other: &Self) {
+        self.worst_existential = self
+            .worst_existential
+            .xor(other.worst_existential)
+            .or_else(|| self.worst_existential.min(other.worst_existential));
+        self.min_max_nameable_universe =
+            self.min_max_nameable_universe.min(other.min_max_nameable_universe);
+        match (self.reachable_placeholders.as_mut(), other.reachable_placeholders.as_ref()) {
+            (None, None) | (Some(_), None) => (),
+            (None, Some(theirs)) => self.reachable_placeholders = Some(*theirs),
+            (Some(ours), Some(theirs)) => ours.merge(theirs),
+        };
     }
 }
 
@@ -461,13 +451,12 @@ pub(crate) fn rewrite_placeholder_outlives<'tcx>(
             //   inference since `p` isn't empty)
             // - another placeholder (will flag an error above, but will reach here).
             //
-            // To avoid adding the invalid constraint "'p: 'static` due to `'p` being
+            // To avoid adding the invalid constraint "`'p: 'static` due to `'p` being
             // unnameable from the SCC represented by `'p`", we nope out early here
             // at no risk of soundness issues since at this point all paths lead
             // to an error.
             continue;
         }
-
         // This SCC outlives a placeholder it can't name and must outlive 'static.
 
         // FIXME: if we can extract a useful blame span here, future error
