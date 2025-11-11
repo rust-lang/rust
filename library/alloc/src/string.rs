@@ -265,18 +265,11 @@ use crate::vec::{self, Vec};
 /// You can look at these with the [`as_ptr`], [`len`], and [`capacity`]
 /// methods:
 ///
-// FIXME Update this when vec_into_raw_parts is stabilized
 /// ```
-/// use std::mem;
-///
 /// let story = String::from("Once upon a time...");
 ///
-/// // Prevent automatically dropping the String's data
-/// let mut story = mem::ManuallyDrop::new(story);
-///
-/// let ptr = story.as_mut_ptr();
-/// let len = story.len();
-/// let capacity = story.capacity();
+/// // Deconstruct the String into parts.
+/// let (ptr, len, capacity) = story.into_raw_parts();
 ///
 /// // story has nineteen bytes
 /// assert_eq!(19, len);
@@ -932,7 +925,6 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_into_raw_parts)]
     /// let s = String::from("hello");
     ///
     /// let (ptr, len, cap) = s.into_raw_parts();
@@ -941,7 +933,7 @@ impl String {
     /// assert_eq!(rebuilt, "hello");
     /// ```
     #[must_use = "losing the pointer will leak memory"]
-    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    #[stable(feature = "vec_into_raw_parts", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
     }
@@ -970,19 +962,12 @@ impl String {
     ///
     /// # Examples
     ///
-    // FIXME Update this when vec_into_raw_parts is stabilized
     /// ```
-    /// use std::mem;
-    ///
     /// unsafe {
     ///     let s = String::from("hello");
     ///
-    ///     // Prevent automatically dropping the String's data
-    ///     let mut s = mem::ManuallyDrop::new(s);
-    ///
-    ///     let ptr = s.as_mut_ptr();
-    ///     let len = s.len();
-    ///     let capacity = s.capacity();
+    ///     // Deconstruct the String into parts.
+    ///     let (ptr, len, capacity) = s.into_raw_parts();
     ///
     ///     let s = String::from_raw_parts(ptr, len, capacity);
     ///

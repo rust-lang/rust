@@ -769,13 +769,9 @@ pub const fn forget<T: ?Sized>(_: T);
 /// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
 /// // this has all the same caveats. Besides the information provided above, also consult the
 /// // [`from_raw_parts`] documentation.
+/// let (ptr, len, capacity) = v_clone.into_raw_parts();
 /// let v_from_raw = unsafe {
-// FIXME Update this when vec_into_raw_parts is stabilized
-///     // Ensure the original vector is not dropped.
-///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
-///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
-///                         v_clone.len(),
-///                         v_clone.capacity())
+///     Vec::from_raw_parts(ptr.cast::<*mut Option<&i32>>(), len, capacity)
 /// };
 /// ```
 ///
