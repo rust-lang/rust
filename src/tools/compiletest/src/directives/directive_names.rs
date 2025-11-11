@@ -268,6 +268,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "run-pass",
     "run-rustfix",
     "rustc-env",
+    "rustfix-dont-test-fixed",
     "rustfix-only-machine-applicable",
     "should-fail",
     "should-ice",
