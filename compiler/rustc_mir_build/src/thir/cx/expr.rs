@@ -337,7 +337,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results.expr_ty(expr);
         let (temp_lifetime, backwards_incompatible) =
-            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
@@ -502,9 +502,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             expr: Some(arg),
                             safety_mode: BlockSafety::Safe,
                         });
-                        let (temp_lifetime, backwards_incompatible) = self
-                            .rvalue_scopes
-                            .temporary_scope(self.region_scope_tree, arg_expr.hir_id.local_id);
+                        let (temp_lifetime, backwards_incompatible) =
+                            self.region_scope_tree.temporary_scope(arg_expr.hir_id.local_id);
                         arg = self.thir.exprs.push(Expr {
                             temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
                             ty: arg_ty,
@@ -996,9 +995,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     }
                 } else {
                     let block_ty = self.typeck_results.node_type(body.hir_id);
-                    let (temp_lifetime, backwards_incompatible) = self
-                        .rvalue_scopes
-                        .temporary_scope(self.region_scope_tree, body.hir_id.local_id);
+                    let (temp_lifetime, backwards_incompatible) =
+                        self.region_scope_tree.temporary_scope(body.hir_id.local_id);
                     let block = self.mirror_block(body);
                     let body = self.thir.exprs.push(Expr {
                         ty: block_ty,
@@ -1143,7 +1141,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         overloaded_callee: Option<Ty<'tcx>>,
     ) -> Expr<'tcx> {
         let (temp_lifetime, backwards_incompatible) =
-            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let (ty, user_ty) = match overloaded_callee {
             Some(fn_def) => (fn_def, None),
             None => {
@@ -1237,9 +1235,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Static { .. }, id) => {
                 // this is &raw for extern static or static mut, and & for other statics
                 let ty = self.tcx.static_ptr_ty(id, self.typing_env);
-                let (temp_lifetime, backwards_incompatible) = self
-                    .rvalue_scopes
-                    .temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+                let (temp_lifetime, backwards_incompatible) =
+                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
@@ -1321,7 +1318,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         // construct the complete expression `foo()` for the overloaded call,
         // which will yield the &T type
         let (temp_lifetime, backwards_incompatible) =
-            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
+            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let fun = self.method_callee(expr, span, overloaded_callee);
         let fun = self.thir.exprs.push(fun);
         let fun_ty = self.thir[fun].ty;
@@ -1341,9 +1338,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
         closure_expr: &'tcx hir::Expr<'tcx>,
         place: HirPlace<'tcx>,
     ) -> Expr<'tcx> {
-        let (temp_lifetime, backwards_incompatible) = self
-            .rvalue_scopes
-            .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
+        let (temp_lifetime, backwards_incompatible) =
+            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
         // The result of capture analysis in `rustc_hir_typeck/src/upvar.rs` represents a captured path
@@ -1405,9 +1401,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
         let captured_place_expr =
             self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
-        let (temp_lifetime, backwards_incompatible) = self
-            .rvalue_scopes
-            .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
+        let (temp_lifetime, backwards_incompatible) =
+            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,

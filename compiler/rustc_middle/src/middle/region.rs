@@ -11,7 +11,7 @@ use std::fmt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
-use rustc_hir::{HirId, HirIdMap, Node};
+use rustc_hir::{HirId, ItemLocalMap, Node};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
@@ -221,27 +221,17 @@ pub struct ScopeTree {
     /// variable is declared.
     var_map: FxIndexMap<hir::ItemLocalId, Scope>,
 
-    /// Identifies expressions which, if captured into a temporary, ought to
-    /// have a temporary whose lifetime extends to the end of the enclosing *block*,
-    /// and not the enclosing *statement*. Expressions that are not present in this
-    /// table are not rvalue candidates. The set of rvalue candidates is computed
-    /// during type check based on a traversal of the AST.
-    pub rvalue_candidates: HirIdMap<RvalueCandidate>,
+    /// Tracks expressions with extended temporary scopes, based on the syntactic rules for
+    /// temporary lifetime extension. Further details may be found in
+    /// `rustc_hir_analysis::check::region` and in the [Reference].
+    ///
+    /// [Reference]: https://doc.rust-lang.org/nightly/reference/destructors.html#temporary-lifetime-extension
+    extended_temp_scopes: ItemLocalMap<Option<Scope>>,
 
     /// Backwards incompatible scoping that will be introduced in future editions.
     /// This information is used later for linting to identify locals and
     /// temporary values that will receive backwards-incompatible drop orders.
     pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
-}
-
-/// See the `rvalue_candidates` field for more information on rvalue
-/// candidates in general.
-/// The `lifetime` field is None to indicate that certain expressions escape
-/// into 'static and should have no local cleanup scope.
-#[derive(Debug, Copy, Clone, HashStable)]
-pub struct RvalueCandidate {
-    pub target: hir::ItemLocalId,
-    pub lifetime: Option<Scope>,
 }
 
 impl ScopeTree {
@@ -260,12 +250,13 @@ impl ScopeTree {
         self.var_map.insert(var, lifetime);
     }
 
-    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate: RvalueCandidate) {
-        debug!("record_rvalue_candidate(var={var:?}, candidate={candidate:?})");
-        if let Some(lifetime) = &candidate.lifetime {
-            assert!(var.local_id != lifetime.local_id)
+    /// Make an association between a sub-expression and an extended lifetime
+    pub fn record_extended_temp_scope(&mut self, var: hir::ItemLocalId, lifetime: Option<Scope>) {
+        debug!(?var, ?lifetime);
+        if let Some(lifetime) = lifetime {
+            assert!(var != lifetime.local_id);
         }
-        self.rvalue_candidates.insert(var, candidate);
+        self.extended_temp_scopes.insert(var, lifetime);
     }
 
     /// Returns the narrowest scope that encloses `id`, if any.
@@ -336,5 +327,21 @@ impl ScopeTree {
         }
 
         span_bug!(ty::tls::with(|tcx| inner.span(tcx, self)), "no enclosing temporary scope")
+    }
+
+    /// Returns the scope when the temp created by `expr_id` will be cleaned up.
+    /// It also emits a lint on potential backwards incompatible change to the temporary scope
+    /// which is *for now* always shortening.
+    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> (Option<Scope>, Option<Scope>) {
+        // Check for a designated extended temporary scope.
+        if let Some(&s) = self.extended_temp_scopes.get(&expr_id) {
+            debug!("temporary_scope({expr_id:?}) = {s:?} [custom]");
+            return (s, None);
+        }
+
+        // Otherwise, locate the innermost terminating scope.
+        let (scope, backward_incompatible) =
+            self.default_temporary_scope(Scope { local_id: expr_id, data: ScopeData::Node });
+        (Some(scope), backward_incompatible)
     }
 }

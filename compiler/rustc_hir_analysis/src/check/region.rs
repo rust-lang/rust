@@ -516,12 +516,10 @@ fn resolve_local<'tcx>(
 
         if let Some(pat) = pat {
             if is_binding_pat(pat) {
-                visitor.scope_tree.record_rvalue_candidate(
-                    expr.hir_id,
-                    RvalueCandidate {
-                        target: expr.hir_id.local_id,
-                        lifetime: visitor.cx.var_parent,
-                    },
+                record_subexpr_extended_temp_scopes(
+                    &mut visitor.scope_tree,
+                    expr,
+                    visitor.cx.var_parent,
                 );
             }
         }
@@ -604,7 +602,7 @@ fn resolve_local<'tcx>(
         }
     }
 
-    /// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
+    /// If `expr` matches the `E&` grammar, then records an extended temporary scope as appropriate:
     ///
     /// ```text
     ///     E& = & ET
@@ -627,10 +625,7 @@ fn resolve_local<'tcx>(
         match expr.kind {
             hir::ExprKind::AddrOf(_, _, subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                visitor.scope_tree.record_rvalue_candidate(
-                    subexpr.hir_id,
-                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
-                );
+                record_subexpr_extended_temp_scopes(&mut visitor.scope_tree, subexpr, blk_id);
             }
             hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
@@ -683,6 +678,53 @@ fn resolve_local<'tcx>(
                 }
             }
             _ => {}
+        }
+    }
+}
+
+/// Applied to an expression `expr` if `expr` -- or something owned or partially owned by
+/// `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
+/// case, the "temporary lifetime" of `expr` is extended to be the block enclosing the `let`
+/// statement.
+///
+/// More formally, if `expr` matches the grammar `ET`, record the temporary scope of the matching
+/// `<rvalue>` as `lifetime`:
+///
+/// ```text
+///     ET = *ET
+///        | ET[...]
+///        | ET.f
+///        | (ET)
+///        | <rvalue>
+/// ```
+///
+/// Note: ET is intended to match "rvalues or places based on rvalues".
+fn record_subexpr_extended_temp_scopes(
+    scope_tree: &mut ScopeTree,
+    mut expr: &hir::Expr<'_>,
+    lifetime: Option<Scope>,
+) {
+    debug!(?expr, ?lifetime);
+
+    loop {
+        // Note: give all the expressions matching `ET` with the
+        // extended temporary lifetime, not just the innermost rvalue,
+        // because in MIR building if we must compile e.g., `*rvalue()`
+        // into a temporary, we request the temporary scope of the
+        // outer expression.
+
+        scope_tree.record_extended_temp_scope(expr.hir_id.local_id, lifetime);
+
+        match expr.kind {
+            hir::ExprKind::AddrOf(_, _, subexpr)
+            | hir::ExprKind::Unary(hir::UnOp::Deref, subexpr)
+            | hir::ExprKind::Field(subexpr, _)
+            | hir::ExprKind::Index(subexpr, _, _) => {
+                expr = subexpr;
+            }
+            _ => {
+                return;
+            }
         }
     }
 }
