@@ -171,7 +171,7 @@ pub fn asm_const_to_str<'tcx>(
 }
 
 pub fn is_mingw_gnu_toolchain(target: &Target) -> bool {
-    target.vendor == "pc" && target.os == "windows" && target.env == "gnu" && target.abi.is_empty()
+    target.os == "windows" && target.env == "gnu" && target.abi.is_empty()
 }
 
 pub fn i686_decorated_name(

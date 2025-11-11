@@ -1819,7 +1819,7 @@ fn self_contained_components(
                 LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
-                        && sess.target.vendor != "uwp"
+                        && sess.target.abi != "uwp"
                         && detect_self_contained_mingw(sess, linker)
                 }
             }
