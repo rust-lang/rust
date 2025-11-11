@@ -576,4 +576,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`llvm.enzyme` now works with `download-ci-llvm=true`.",
     },
+    ChangeInfo {
+        change_id: 148636,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.python` option is now respected on macOS (previously ignored and forced to be /usr/bin/python3).",
+    },
 ];

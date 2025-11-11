@@ -55,10 +55,10 @@ macro_rules! late_lint_methods {
 /// Each `check` method checks a single syntax node, and should not
 /// invoke methods recursively (unlike `Visitor`). By default they
 /// do nothing.
-//
+///
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
-
+//
 macro_rules! declare_late_lint_pass {
     ([], [$($(#[$attr:meta])* fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
         pub trait LateLintPass<'tcx>: LintPass {

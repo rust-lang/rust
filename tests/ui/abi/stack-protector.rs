@@ -6,6 +6,8 @@
 //@ compile-flags: -g
 //@ ignore-backends: gcc
 
+#![allow(function_casts_as_integer)]
+
 use std::env;
 use std::process::{Command, ExitStatus};
 

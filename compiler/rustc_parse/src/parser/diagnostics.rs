@@ -45,6 +45,7 @@ use crate::errors::{
 };
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
+use crate::parser::item::IsDotDotDot;
 use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
@@ -2284,7 +2285,7 @@ impl<'a> Parser<'a> {
             let maybe_emit_anon_params_note = |this: &mut Self, err: &mut Diag<'_>| {
                 let ed = this.token.span.with_neighbor(this.prev_token.span).edition();
                 if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
-                    && (fn_parse_mode.req_name)(ed)
+                    && (fn_parse_mode.req_name)(ed, IsDotDotDot::No)
                 {
                     err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
                 }
