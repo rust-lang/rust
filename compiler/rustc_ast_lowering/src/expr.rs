@@ -1771,8 +1771,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let pat = self.lower_pat(pat);
         let for_span =
             self.mark_span_with_reason(DesugaringKind::ForLoop, self.lower_span(e.span), None);
-        let head_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
-        let pat_span = self.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
+        let for_ctxt = for_span.ctxt();
+
+        // Try to point both the head and pat spans to their position in the for loop
+        // rather than inside a macro.
+        let head_span =
+            head.span.find_ancestor_in_same_ctxt(e.span).unwrap_or(head.span).with_ctxt(for_ctxt);
+        let pat_span =
+            pat.span.find_ancestor_in_same_ctxt(e.span).unwrap_or(pat.span).with_ctxt(for_ctxt);
 
         let loop_hir_id = self.lower_node_id(e.id);
         let label = self.lower_label(opt_label, e.id, loop_hir_id);
