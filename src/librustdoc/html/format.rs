@@ -349,13 +349,23 @@ pub(crate) enum HrefError {
     UnnamableItem,
 }
 
+/// Type representing information of an `href` attribute.
+pub(crate) struct HrefInfo {
+    /// URL to the item page.
+    pub(crate) url: String,
+    /// Kind of the item (used to generate the `title` attribute).
+    pub(crate) kind: ItemType,
+    /// Rust path to the item (used to generate the `title` attribute).
+    pub(crate) rust_path: Vec<Symbol>,
+}
+
 /// This function is to get the external macro path because they are not in the cache used in
 /// `href_with_root_path`.
 fn generate_macro_def_id_path(
     def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let crate_name = tcx.crate_name(def_id.krate);
     let cache = cx.cache();
@@ -384,9 +394,11 @@ fn generate_macro_def_id_path(
         return Err(HrefError::NotInExternalCache);
     }
 
-    let fqp = path.clone();
-    if let Some(last) = path.last_mut() {
-        *last = Symbol::intern(&format!("{}.{last}.html", item_type.as_str()));
+    // FIXME: Try to use `iter().chain().once()` instead.
+    let mut prev = None;
+    if let Some(last) = path.pop() {
+        path.push(Symbol::intern(&format!("{}.{last}.html", item_type.as_str())));
+        prev = Some(last);
     }
 
     let url = match cache.extern_locations[&def_id.krate] {
@@ -407,18 +419,20 @@ fn generate_macro_def_id_path(
             return Err(HrefError::NotInExternalCache);
         }
     };
-    Ok((url, item_type, fqp))
+    if let Some(prev) = prev {
+        path.pop();
+        path.push(prev);
+    }
+    Ok(HrefInfo { url, kind: item_type, rust_path: path })
 }
 
-/// If the function succeeded, it will return the full URL to the item, its type and a `Vec`
-/// representing its `use` path.
 fn generate_item_def_id_path(
     mut def_id: DefId,
     original_def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
     original_def_kind: DefKind,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> Result<HrefInfo, HrefError> {
     use rustc_middle::traits::ObligationCause;
     use rustc_trait_selection::infer::TyCtxtInferExt;
     use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
@@ -454,7 +468,7 @@ fn generate_item_def_id_path(
         let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
         url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
     };
-    Ok((url_parts, shortty, fqp))
+    Ok(HrefInfo { url: url_parts, kind: shortty, rust_path: fqp })
 }
 
 /// Checks if the given defid refers to an item that is unnamable, such as one defined in a const block.
@@ -529,7 +543,7 @@ pub(crate) fn href_with_root_path(
     original_did: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+) -> Result<HrefInfo, HrefError> {
     let tcx = cx.tcx();
     let def_kind = tcx.def_kind(original_did);
     let did = match def_kind {
@@ -595,14 +609,14 @@ pub(crate) fn href_with_root_path(
             }
         }
     };
-    let url_parts = make_href(root_path, shortty, url_parts, fqp, is_remote);
-    Ok((url_parts, shortty, fqp.clone()))
+    Ok(HrefInfo {
+        url: make_href(root_path, shortty, url_parts, fqp, is_remote),
+        kind: shortty,
+        rust_path: fqp.clone(),
+    })
 }
 
-pub(crate) fn href(
-    did: DefId,
-    cx: &Context<'_>,
-) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
+pub(crate) fn href(did: DefId, cx: &Context<'_>) -> Result<HrefInfo, HrefError> {
     href_with_root_path(did, cx, None)
 }
 
@@ -689,12 +703,12 @@ fn resolved_path(
     } else {
         let path = fmt::from_fn(|f| {
             if use_absolute {
-                if let Ok((_, _, fqp)) = href(did, cx) {
+                if let Ok(HrefInfo { rust_path, .. }) = href(did, cx) {
                     write!(
                         f,
                         "{path}::{anchor}",
-                        path = join_path_syms(&fqp[..fqp.len() - 1]),
-                        anchor = print_anchor(did, *fqp.last().unwrap(), cx)
+                        path = join_path_syms(&rust_path[..rust_path.len() - 1]),
+                        anchor = print_anchor(did, *rust_path.last().unwrap(), cx)
                     )
                 } else {
                     write!(f, "{}", last.name)
@@ -823,12 +837,11 @@ fn print_higher_ranked_params_with_space(
 
 pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
-        let parts = href(did, cx);
-        if let Ok((url, short_ty, fqp)) = parts {
+        if let Ok(HrefInfo { url, kind, rust_path }) = href(did, cx) {
             write!(
                 f,
-                r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
-                path = join_path_syms(fqp),
+                r#"<a class="{kind}" href="{url}" title="{kind} {path}">{text}</a>"#,
+                path = join_path_syms(rust_path),
                 text = EscapeBodyText(text.as_str()),
             )
         } else {
@@ -1055,14 +1068,14 @@ fn print_qpath_data(qpath_data: &clean::QPathData, cx: &Context<'_>) -> impl Dis
                 None => self_type.def_id(cx.cache()).and_then(|did| href(did, cx).ok()),
             };
 
-            if let Some((url, _, path)) = parent_href {
+            if let Some(HrefInfo { url, rust_path, .. }) = parent_href {
                 write!(
                     f,
                     "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
                                 title=\"type {path}::{name}\">{name}</a>",
                     shortty = ItemType::AssocType,
                     name = assoc.name,
-                    path = join_path_syms(path),
+                    path = join_path_syms(rust_path),
                 )
             } else {
                 write!(f, "{}", assoc.name)

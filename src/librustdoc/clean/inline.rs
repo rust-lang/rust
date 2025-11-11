@@ -227,7 +227,7 @@ pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> 
     tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
-/// Get the path to an item in a URL sense: we use it to generate the URL to the actual item.
+/// Get the public Rust path to an item. This is used to generate the URL to the item's page.
 ///
 /// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
 /// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.

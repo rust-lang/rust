@@ -74,7 +74,7 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
+    Ending, HrefError, HrefInfo, PrintWithSpace, full_print_fn_decl, href, print_abi_with_space,
     print_constness_with_space, print_default_space, print_generic_bounds, print_generics,
     print_impl, print_path, print_type, print_where_clause, visibility_print_with_space,
 };
@@ -982,7 +982,7 @@ fn assoc_href_attr(
             };
 
             match href(did.expect_def_id(), cx) {
-                Ok((url, ..)) => Href::Url(url, item_type),
+                Ok(HrefInfo { url, .. }) => Href::Url(url, item_type),
                 // The link is broken since it points to an external crate that wasn't documented.
                 // Do not create any link in such case. This is better than falling back to a
                 // dummy anchor like `#{item_type}.{name}` representing the `id` of *this* impl item
