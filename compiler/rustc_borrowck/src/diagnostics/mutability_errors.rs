@@ -213,7 +213,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             AccessKind::Mutate => {
                 err = self.cannot_assign(span, &(item_msg + &reason));
                 act = "assign";
-                acted_on = "written";
+                acted_on = "written to";
                 span
             }
             AccessKind::MutableBorrow => {
@@ -518,8 +518,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         err.span_label(
                             span,
                             format!(
-                                "`{name}` is a `{pointer_sigil}` {pointer_desc}, \
-                                 so the data it refers to cannot be {acted_on}",
+                                "`{name}` is a `{pointer_sigil}` {pointer_desc}, so it cannot be \
+                                 {acted_on}",
                             ),
                         );
 
@@ -542,7 +542,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.expected_fn_found_fn_mut_call(&mut err, span, act);
             }
 
-            PlaceRef { local: _, projection: [.., ProjectionElem::Deref] } => {
+            PlaceRef { local, projection: [.., ProjectionElem::Deref] } => {
                 err.span_label(span, format!("cannot {act}"));
 
                 match opt_source {
@@ -559,11 +559,36 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ));
                         self.suggest_map_index_mut_alternatives(ty, &mut err, span);
                     }
-                    _ => (),
+                    _ => {
+                        let local = &self.body.local_decls[local];
+                        match local.local_info() {
+                            LocalInfo::StaticRef { def_id, .. } => {
+                                let span = self.infcx.tcx.def_span(def_id);
+                                err.span_label(span, format!("this `static` cannot be {acted_on}"));
+                            }
+                            LocalInfo::ConstRef { def_id } => {
+                                let span = self.infcx.tcx.def_span(def_id);
+                                err.span_label(span, format!("this `const` cannot be {acted_on}"));
+                            }
+                            LocalInfo::BlockTailTemp(_) | LocalInfo::Boring
+                                if !local.source_info.span.overlaps(span) =>
+                            {
+                                err.span_label(
+                                    local.source_info.span,
+                                    format!("this cannot be {acted_on}"),
+                                );
+                            }
+                            _ => {}
+                        }
+                    }
                 }
             }
 
-            _ => {
+            PlaceRef { local, .. } => {
+                let local = &self.body.local_decls[local];
+                if !local.source_info.span.overlaps(span) {
+                    err.span_label(local.source_info.span, format!("this cannot be {acted_on}"));
+                }
                 err.span_label(span, format!("cannot {act}"));
             }
         }

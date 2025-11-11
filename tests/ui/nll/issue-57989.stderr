@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-57989.rs:5:5
    |
 LL |     *x = 0;
-   |     ^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^ `x` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
