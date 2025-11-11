@@ -1682,7 +1682,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         ret.expect("LLVM does not have support for catchret")
     }
 
-    fn check_call<'b>(
+    pub(crate) fn check_call<'b>(
         &mut self,
         typ: &str,
         fn_ty: &'ll Type,

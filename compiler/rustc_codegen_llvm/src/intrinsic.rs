@@ -1,5 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
+use std::ffi::c_uint;
+use std::ptr;
 
 use rustc_abi::{
     Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
@@ -675,7 +677,20 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
         }
 
-        let llret = self.call(fn_ty, None, None, fn_ptr, &llargs, None, None);
+        debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
+        let args = self.check_call("call", fn_ty, fn_ptr, &llargs);
+        let llret = unsafe {
+            llvm::LLVMBuildCallWithOperandBundles(
+                self.llbuilder,
+                fn_ty,
+                fn_ptr,
+                args.as_ptr() as *const &llvm::Value,
+                args.len() as c_uint,
+                ptr::dangling(),
+                0,
+                c"".as_ptr(),
+            )
+        };
         if is_cleanup {
             self.apply_attrs_to_cleanup_callsite(llret);
         }
