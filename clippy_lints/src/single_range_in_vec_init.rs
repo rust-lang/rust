@@ -1,14 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_no_std_crate, sym};
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, StructTailExpr};
+use rustc_hir::{Expr, ExprKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::DesugaringKind;
 use std::fmt::{self, Display, Formatter};
 
 declare_clippy_lint! {
@@ -86,19 +87,21 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let ExprKind::Struct(&qpath, [start, end], StructTailExpr::None) = inner_expr.kind else {
+        let ExprKind::Struct(_, [start, end], StructTailExpr::None) = inner_expr.kind else {
             return;
         };
 
-        if cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
+        if inner_expr.span.is_desugaring(DesugaringKind::RangeExpr)
             && let ty = cx.typeck_results().expr_ty(start.expr)
             && let Some(snippet) = span.get_source_text(cx)
             // `is_from_proc_macro` will skip any `vec![]`. Let's not!
             && snippet.starts_with(suggested_type.starts_with())
             && snippet.ends_with(suggested_type.ends_with())
-            && let Some(start_snippet) = start.span.get_source_text(cx)
-            && let Some(end_snippet) = end.span.get_source_text(cx)
         {
+            let mut applicability = Applicability::MachineApplicable;
+            let (start_snippet, _) = snippet_with_context(cx, start.expr.span, span.ctxt(), "..", &mut applicability);
+            let (end_snippet, _) = snippet_with_context(cx, end.expr.span, span.ctxt(), "..", &mut applicability);
+
             let should_emit_every_value = if let Some(step_def_id) = cx.tcx.get_diagnostic_item(sym::range_step)
                 && implements_trait(cx, ty, step_def_id, &[])
             {
@@ -129,7 +132,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                                 span,
                                 "if you wanted a `Vec` that contains the entire range, try",
                                 format!("({start_snippet}..{end_snippet}).collect::<std::vec::Vec<{ty}>>()"),
-                                Applicability::MaybeIncorrect,
+                                applicability,
                             );
                         }
 
@@ -138,7 +141,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                                 inner_expr.span,
                                 format!("if you wanted {suggested_type} of len {end_snippet}, try"),
                                 format!("{start_snippet}; {end_snippet}"),
-                                Applicability::MaybeIncorrect,
+                                applicability,
                             );
                         }
                     },
