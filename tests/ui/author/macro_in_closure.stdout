@@ -34,7 +34,7 @@ if let StmtKind::Let(local) = stmt.kind
     && block2.stmts.is_empty()
     && let Some(trailing_expr1) = block2.expr
     && let ExprKind::Call(func2, args2) = trailing_expr1.kind
-    && paths::CORE_FMT_RT_NEW.matches_path(cx, func2) // Add the path to `clippy_utils::paths` if needed
+    && paths::CORE_FMT_ARGUMENTS_NEW.matches_path(cx, func2) // Add the path to `clippy_utils::paths` if needed
     && args2.len() == 2
     && let ExprKind::Lit(ref lit) = args2[0].kind
     && let LitKind::ByteStr(ref vec) = lit.node
