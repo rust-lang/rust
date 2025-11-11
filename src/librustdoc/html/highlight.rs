@@ -21,6 +21,7 @@ use super::format;
 use crate::clean::PrimitiveType;
 use crate::display::Joined as _;
 use crate::html::escape::EscapeBodyText;
+use crate::html::format::HrefInfo;
 use crate::html::macro_expansion::ExpandedCode;
 use crate::html::render::span_map::{DUMMY_SP, Span};
 use crate::html::render::{Context, LinkFromSrc};
@@ -1357,7 +1358,7 @@ fn generate_link_to_def(
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
-                            .map(|(url, _, _)| url)
+                            .map(|HrefInfo { url, .. }| url)
                     }
                     LinkFromSrc::Primitive(prim) => format::href_with_root_path(
                         PrimitiveType::primitive_locations(context.tcx())[prim],
@@ -1365,11 +1366,11 @@ fn generate_link_to_def(
                         Some(href_context.root_path),
                     )
                     .ok()
-                    .map(|(url, _, _)| url),
+                    .map(|HrefInfo { url, .. }| url),
                     LinkFromSrc::Doc(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
-                            .map(|(doc_link, _, _)| doc_link)
+                            .map(|HrefInfo { url, .. }| url)
                     }
                 }
             })
