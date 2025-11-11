@@ -881,28 +881,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
-            && !self.tcx().is_const_trait(trait_def_id)
+            && !tcx.is_const_trait(trait_def_id)
         {
             let (def_span, suggestion, suggestion_pre) =
-                match (trait_def_id.is_local(), self.tcx().sess.is_nightly_build()) {
-                    (true, true) => (
-                        None,
-                        Some(tcx.def_span(trait_def_id).shrink_to_lo()),
-                        if self.tcx().features().const_trait_impl() {
-                            ""
-                        } else {
-                            "enable `#![feature(const_trait_impl)]` in your crate and "
-                        },
-                    ),
-                    (false, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
+                match (trait_def_id.as_local(), tcx.sess.is_nightly_build()) {
+                    (Some(trait_def_id), true) => {
+                        let span = tcx.hir_expect_item(trait_def_id).vis_span;
+                        let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+                        (
+                            None,
+                            Some(span.shrink_to_hi()),
+                            if self.tcx().features().const_trait_impl() {
+                                ""
+                            } else {
+                                "enable `#![feature(const_trait_impl)]` in your crate and "
+                            },
+                        )
+                    }
+                    (None, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
                 };
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
                 def_span,
-                trait_name: self.tcx().def_path_str(trait_def_id),
-                suggestion_pre,
+                trait_name: tcx.def_path_str(trait_def_id),
                 suggestion,
+                suggestion_pre,
             });
         } else {
             match predicate_filter {
@@ -1482,11 +1487,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match assoc_tag {
                 // Don't attempt to look up inherent associated types when the feature is not
                 // enabled. Theoretically it'd be fine to do so since we feature-gate their
-                // definition site. However, due to current limitations of the implementation
-                // (caused by us performing selection during HIR ty lowering instead of in the
-                // trait solver), IATs can lead to cycle errors (#108491) which mask the
-                // feature-gate error, needlessly confusing users who use IATs by accident
-                // (#113265).
+                // definition site. However, the current implementation of inherent associated
+                // items is somewhat brittle, so let's not run it by default.
                 ty::AssocTag::Type => return Ok(None),
                 ty::AssocTag::Const => {
                     // We also gate the mgca codepath for type-level uses of inherent consts
@@ -1515,9 +1517,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
+        // At the moment, we actually bail out with a hard error if the selection of an inherent
+        // associated item fails (see below). This means we never consider trait associated items
+        // as potential fallback candidates (#142006). To temporarily mask that issue, let's not
+        // select at all if there are no early inherent candidates.
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
         let (applicable_candidates, fulfillment_errors) =
             self.select_inherent_assoc_candidates(span, self_ty, candidates.clone());
 
+        // FIXME(#142006): Don't eagerly error here, there might be applicable trait candidates.
         let InherentAssocCandidate { impl_, assoc_item, scope: def_scope } =
             match &applicable_candidates[..] {
                 &[] => Err(self.report_unresolved_inherent_assoc_item(
@@ -1538,6 +1549,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )),
             }?;
 
+        // FIXME(#142006): Don't eagerly validate here, there might be trait candidates that are
+        // accessible (visible and stable) contrary to the inherent candidate.
         self.check_assoc_item(assoc_item, name, def_scope, block, span);
 
         // FIXME(fmease): Currently creating throwaway `parent_args` to please

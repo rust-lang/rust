@@ -500,13 +500,8 @@ pub(crate) struct ConstImplForNonConstTrait {
     #[label]
     pub trait_ref_span: Span,
     pub trait_name: String,
-    #[suggestion(
-        applicability = "machine-applicable",
-        // FIXME(const_trait_impl) fix this suggestion
-        code = "#[const_trait] ",
-        style = "verbose"
-    )]
-    pub local_trait_span: Option<Span>,
+    #[suggestion(applicability = "machine-applicable", code = "const ", style = "verbose")]
+    pub suggestion: Option<Span>,
     pub suggestion_pre: &'static str,
     #[note]
     pub marking: (),
@@ -523,14 +518,9 @@ pub(crate) struct ConstBoundForNonConstTrait {
     pub modifier: &'static str,
     #[note]
     pub def_span: Option<Span>,
-    pub suggestion_pre: &'static str,
-    #[suggestion(
-        applicability = "machine-applicable",
-        // FIXME(const_trait_impl) fix this suggestion
-        code = "#[const_trait] ",
-        style = "verbose"
-    )]
+    #[suggestion(applicability = "machine-applicable", code = "const ", style = "verbose")]
     pub suggestion: Option<Span>,
+    pub suggestion_pre: &'static str,
     pub trait_name: String,
 }
 

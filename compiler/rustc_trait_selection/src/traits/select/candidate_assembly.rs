@@ -67,7 +67,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             let lang_item = tcx.as_lang_item(def_id);
             match lang_item {
-                Some(LangItem::Copy | LangItem::Clone) => {
+                Some(LangItem::Copy | LangItem::Clone | LangItem::TrivialClone) => {
                     debug!(obligation_self_ty = ?obligation.predicate.skip_binder().self_ty());
 
                     // User-defined copy impls are permitted, but only for

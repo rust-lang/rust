@@ -57,6 +57,10 @@ impl InitOnceRef {
     pub fn begin(&self) {
         self.0.borrow_mut().begin();
     }
+
+    pub fn queue_is_empty(&self) -> bool {
+        self.0.borrow().waiters.is_empty()
+    }
 }
 
 impl VisitProvenance for InitOnceRef {

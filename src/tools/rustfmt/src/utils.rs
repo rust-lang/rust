@@ -133,6 +133,19 @@ pub(crate) fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
+pub(crate) fn format_pinnedness_and_mutability(
+    pinnedness: ast::Pinnedness,
+    mutability: ast::Mutability,
+) -> (&'static str, &'static str) {
+    match (pinnedness, mutability) {
+        (ast::Pinnedness::Pinned, ast::Mutability::Mut) => ("pin ", "mut "),
+        (ast::Pinnedness::Pinned, ast::Mutability::Not) => ("pin ", "const "),
+        (ast::Pinnedness::Not, ast::Mutability::Mut) => ("", "mut "),
+        (ast::Pinnedness::Not, ast::Mutability::Not) => ("", ""),
+    }
+}
+
+#[inline]
 pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static, str> {
     match ext {
         ast::Extern::None => Cow::from(""),

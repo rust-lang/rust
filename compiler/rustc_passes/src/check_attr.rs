@@ -150,9 +150,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::ProcMacroDerive { .. }) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
-                &Attribute::Parsed(AttributeKind::TypeConst(attr_span)) => {
-                    self.check_type_const(hir_id, attr_span, target)
-                }
                 Attribute::Parsed(
                     AttributeKind::Stability {
                         span: attr_span,
@@ -235,7 +232,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Marker(..)
                     | AttributeKind::SkipDuringMethodDispatch { .. }
                     | AttributeKind::Coinductive(..)
-                    | AttributeKind::ConstTrait(..)
                     | AttributeKind::DenyExplicitImpl(..)
                     | AttributeKind::DoNotImplementViaObject(..)
                     | AttributeKind::SpecializationTrait(..)
@@ -243,6 +239,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ParenSugar(..)
                     | AttributeKind::AllowIncoherentImpl(..)
                     | AttributeKind::Confusables { .. }
+                    | AttributeKind::TypeConst{..}
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     // handled below this loop and elsewhere
@@ -2112,16 +2109,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
-        }
-    }
-
-    fn check_type_const(&self, _hir_id: HirId, attr_span: Span, target: Target) {
-        if matches!(target, Target::AssocConst | Target::Const) {
-            return;
-        } else {
-            self.dcx()
-                .struct_span_err(attr_span, "`#[type_const]` must only be applied to const items")
-                .emit();
         }
     }
 

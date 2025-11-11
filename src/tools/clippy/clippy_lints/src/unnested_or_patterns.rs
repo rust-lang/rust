@@ -7,7 +7,7 @@ use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
-use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::Applicability;
@@ -151,8 +151,8 @@ fn insert_necessary_parens(pat: &mut Box<Pat>) {
             walk_pat(self, pat);
             let target = match &mut pat.kind {
                 // `i @ a | b`, `box a | b`, and `& mut? a | b`.
-                Ident(.., Some(p)) | Box(p) | Ref(p, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
-                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p, // `&(mut x)`
+                Ident(.., Some(p)) | Box(p) | Ref(p, _, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
+                Ref(p, Pinnedness::Not, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p, // `&(mut x)`
                 _ => return,
             };
             target.kind = Paren(Box::new(take_pat(target)));
@@ -241,7 +241,8 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.
-        | Ref(_, Mutability::Not)
+        // FIXME(pin_ergonomics): handle pinned patterns
+        | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
@@ -254,10 +255,10 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
             |k| always_pat!(k, Box(p) => *p),
         ),
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
-        Ref(target, Mutability::Mut) => extend_with_matching(
+        Ref(target, _, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
-            |k| matches!(k, Ref(_, Mutability::Mut)),
-            |k| always_pat!(k, Ref(p, _) => *p),
+            |k| matches!(k, Ref(_, _, Mutability::Mut)),
+            |k| always_pat!(k, Ref(p, _, _) => *p),
         ),
         // Transform `b @ p0 | ... b @ p1` into `b @ (p0 | p1)`.
         Ident(b1, i1, Some(target)) => extend_with_matching(

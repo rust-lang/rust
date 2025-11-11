@@ -176,77 +176,85 @@ def start_watchdog():
     watchdog_thread.start()
 
 
+def get_env_arg(name):
+    value = os.environ.get(name)
+    if value is None:
+        print("must set %s" % name)
+        sys.exit(1)
+    return value
+
+
 ####################################################################################################
 # ~main
 ####################################################################################################
 
 
-if len(sys.argv) != 3:
-    print("usage: python lldb_batchmode.py target-path script-path")
-    sys.exit(1)
+def main():
+    target_path = get_env_arg("LLDB_BATCHMODE_TARGET_PATH")
+    script_path = get_env_arg("LLDB_BATCHMODE_SCRIPT_PATH")
 
-target_path = sys.argv[1]
-script_path = sys.argv[2]
+    print("LLDB batch-mode script")
+    print("----------------------")
+    print("Debugger commands script is '%s'." % script_path)
+    print("Target executable is '%s'." % target_path)
+    print("Current working directory is '%s'" % os.getcwd())
 
-print("LLDB batch-mode script")
-print("----------------------")
-print("Debugger commands script is '%s'." % script_path)
-print("Target executable is '%s'." % target_path)
-print("Current working directory is '%s'" % os.getcwd())
+    # Start the timeout watchdog
+    start_watchdog()
 
-# Start the timeout watchdog
-start_watchdog()
+    # Create a new debugger instance
+    debugger = lldb.SBDebugger.Create()
 
-# Create a new debugger instance
-debugger = lldb.SBDebugger.Create()
+    # When we step or continue, don't return from the function until the process
+    # stops. We do this by setting the async mode to false.
+    debugger.SetAsync(False)
 
-# When we step or continue, don't return from the function until the process
-# stops. We do this by setting the async mode to false.
-debugger.SetAsync(False)
+    # Create a target from a file and arch
+    print("Creating a target for '%s'" % target_path)
+    target_error = lldb.SBError()
+    target = debugger.CreateTarget(target_path, None, None, True, target_error)
 
-# Create a target from a file and arch
-print("Creating a target for '%s'" % target_path)
-target_error = lldb.SBError()
-target = debugger.CreateTarget(target_path, None, None, True, target_error)
+    if not target:
+        print(
+            "Could not create debugging target '"
+            + target_path
+            + "': "
+            + str(target_error)
+            + ". Aborting.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-if not target:
-    print(
-        "Could not create debugging target '"
-        + target_path
-        + "': "
-        + str(target_error)
-        + ". Aborting.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+    # Register the breakpoint callback for every breakpoint
+    start_breakpoint_listener(target)
+
+    command_interpreter = debugger.GetCommandInterpreter()
+
+    try:
+        script_file = open(script_path, "r")
+
+        for line in script_file:
+            command = line.strip()
+            if (
+                command == "run"
+                or command == "r"
+                or re.match(r"^process\s+launch.*", command)
+            ):
+                # Before starting to run the program, let the thread sleep a bit, so all
+                # breakpoint added events can be processed
+                time.sleep(0.5)
+            if command != "":
+                execute_command(command_interpreter, command)
+
+    except IOError as e:
+        print("Could not read debugging script '%s'." % script_path, file=sys.stderr)
+        print(e, file=sys.stderr)
+        print("Aborting.", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        debugger.Terminate()
+        script_file.close()
 
 
-# Register the breakpoint callback for every breakpoint
-start_breakpoint_listener(target)
-
-command_interpreter = debugger.GetCommandInterpreter()
-
-try:
-    script_file = open(script_path, "r")
-
-    for line in script_file:
-        command = line.strip()
-        if (
-            command == "run"
-            or command == "r"
-            or re.match(r"^process\s+launch.*", command)
-        ):
-            # Before starting to run the program, let the thread sleep a bit, so all
-            # breakpoint added events can be processed
-            time.sleep(0.5)
-        if command != "":
-            execute_command(command_interpreter, command)
-
-except IOError as e:
-    print("Could not read debugging script '%s'." % script_path, file=sys.stderr)
-    print(e, file=sys.stderr)
-    print("Aborting.", file=sys.stderr)
-    sys.exit(1)
-finally:
-    debugger.Terminate()
-    script_file.close()
+if __name__ == "__main__":
+    main()

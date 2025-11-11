@@ -10,11 +10,9 @@
 #[rustc_specialization_trait]
 trait Specialize {}
 
-#[const_trait]
-trait Foo {}
+const trait Foo {}
 
-#[const_trait]
-trait Bar {
+const trait Bar {
     fn bar();
 }
 
@@ -33,8 +31,7 @@ where
     fn bar() {}
 }
 
-#[const_trait]
-trait Baz {
+const trait Baz {
     fn baz();
 }
 

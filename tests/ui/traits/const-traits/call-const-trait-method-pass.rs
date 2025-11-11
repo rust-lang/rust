@@ -20,8 +20,7 @@ impl const PartialEq for Int {
     }
 }
 
-#[const_trait]
-pub trait Plus {
+pub const trait Plus {
     fn plus(self, rhs: Self) -> Self;
 }
 

@@ -1286,12 +1286,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> Diag<'a> {
-        let param = obligation.cause.body_id;
-        let hir::GenericParamKind::Const { ty: &hir::Ty { span, .. }, .. } =
-            self.tcx.hir_node_by_def_id(param).expect_generic_param().kind
-        else {
-            bug!()
-        };
+        let def_id = obligation.cause.body_id;
+        let span = self.tcx.ty_span(def_id);
 
         let mut file = None;
         let ty_str = self.tcx.short_string(ty, &mut file);

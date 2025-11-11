@@ -1,7 +1,7 @@
 use std::cmp::{Ordering, PartialOrd};
 use std::fmt;
 
-use crate::AccessKind;
+use crate::borrow_tracker::AccessKind;
 use crate::borrow_tracker::tree_borrows::diagnostics::TransitionError;
 use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
 

@@ -993,7 +993,7 @@ Sanitizers produce symbolized stacktraces when llvm-symbolizer binary is in `PAT
 [clang-kcfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html#fsanitize-kcfi
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
-[clan-rtsan]: https://clang.llvm.org/docs/RealtimeSanitizer.html
+[clang-rtsan]: https://clang.llvm.org/docs/RealtimeSanitizer.html
 [clang-safestack]: https://clang.llvm.org/docs/SafeStack.html
 [clang-scs]: https://clang.llvm.org/docs/ShadowCallStack.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html

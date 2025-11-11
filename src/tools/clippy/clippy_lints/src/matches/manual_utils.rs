@@ -254,7 +254,7 @@ pub(super) fn try_parse_pattern<'tcx>(
     ) -> Option<OptionPat<'tcx>> {
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
-            PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
+            PatKind::Ref(pat, _, _) => f(cx, pat, ref_count + 1, ctxt),
             PatKind::Expr(PatExpr {
                 kind: PatExprKind::Path(qpath),
                 hir_id,

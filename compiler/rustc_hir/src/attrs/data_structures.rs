@@ -194,6 +194,18 @@ pub enum CfgEntry {
     Version(Option<RustcVersion>, Span),
 }
 
+impl CfgEntry {
+    pub fn span(&self) -> Span {
+        let (CfgEntry::All(_, span)
+        | CfgEntry::Any(_, span)
+        | CfgEntry::Not(_, span)
+        | CfgEntry::Bool(_, span)
+        | CfgEntry::NameValue { span, .. }
+        | CfgEntry::Version(_, span)) = self;
+        *span
+    }
+}
+
 /// Possible values for the `#[linkage]` attribute, allowing to specify the
 /// linkage type for a `MonoItem`.
 ///
@@ -498,9 +510,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
-
-    /// Represents `#[const_trait]`.
-    ConstTrait(Span),
 
     /// Represents `#[coroutine]`.
     Coroutine(Span),

@@ -793,9 +793,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Deref({pat})");
                 self.pat(pat);
             },
-            PatKind::Ref(pat, muta) => {
+            PatKind::Ref(pat, pinn, muta) => {
                 bind!(self, pat);
-                kind!("Ref({pat}, Mutability::{muta:?})");
+                kind!("Ref({pat}, Pinning::{pinn:?}, Mutability::{muta:?})");
                 self.pat(pat);
             },
             PatKind::Guard(pat, cond) => {

@@ -5,8 +5,7 @@
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "unstable", issue = "none")]
-#[const_trait]
-pub trait MyTrait {
+pub const trait MyTrait {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn func();
 }

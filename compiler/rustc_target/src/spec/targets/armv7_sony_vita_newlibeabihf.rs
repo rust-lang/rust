@@ -7,7 +7,6 @@ use crate::spec::{
 /// A base target for PlayStation Vita devices using the VITASDK toolchain (using newlib).
 ///
 /// Requires the VITASDK toolchain on the host system.
-
 pub(crate) fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),

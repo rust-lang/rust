@@ -3,10 +3,10 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait] trait Bar {}
+const trait Bar {}
 impl const Bar for () {}
 
-#[const_trait] trait TildeConst {
+const trait TildeConst {
     fn foo<T>() where T: [const] Bar;
 }
 impl TildeConst for () {
@@ -14,7 +14,7 @@ impl TildeConst for () {
 }
 
 
-#[const_trait] trait AlwaysConst {
+const trait AlwaysConst {
     fn foo<T>() where T: const Bar;
 }
 impl AlwaysConst for i32 {

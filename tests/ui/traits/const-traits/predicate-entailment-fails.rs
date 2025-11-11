@@ -1,11 +1,11 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait] trait Bar {}
+const trait Bar {}
 impl const Bar for () {}
 
 
-#[const_trait] trait TildeConst {
+const trait TildeConst {
     type Bar<T> where T: [const] Bar;
 
     fn foo<T>() where T: [const] Bar;
@@ -19,7 +19,7 @@ impl TildeConst for () {
 }
 
 
-#[const_trait] trait NeverConst {
+const trait NeverConst {
     type Bar<T> where T: Bar;
 
     fn foo<T>() where T: Bar;

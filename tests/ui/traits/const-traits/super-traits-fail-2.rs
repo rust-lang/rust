@@ -2,19 +2,20 @@
 #![feature(const_trait_impl)]
 //@ revisions: yy yn ny nn
 
-#[cfg_attr(any(yy, yn), const_trait)]
-trait Foo {
-    fn a(&self);
-}
+#[cfg(any(yy, yn))] const trait Foo { fn a(&self); }
+#[cfg(any(ny, nn))] trait Foo { fn a(&self); }
 
-#[cfg_attr(any(yy, ny), const_trait)]
-trait Bar: [const] Foo {}
-//[ny,nn]~^ ERROR: `[const]` can only be applied to `const` traits
-//[ny,nn]~| ERROR: `[const]` can only be applied to `const` traits
-//[ny,nn]~| ERROR: `[const]` can only be applied to `const` traits
+#[cfg(any(yy, ny))] const trait Bar: [const] Foo {}
+//[ny]~^ ERROR: `[const]` can only be applied to `const` traits
 //[ny]~| ERROR: `[const]` can only be applied to `const` traits
 //[ny]~| ERROR: `[const]` can only be applied to `const` traits
-//[yn,nn]~^^^^^^ ERROR: `[const]` is not allowed here
+//[ny]~| ERROR: `[const]` can only be applied to `const` traits
+//[ny]~| ERROR: `[const]` can only be applied to `const` traits
+#[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+//[yn,nn]~^ ERROR: `[const]` is not allowed here
+//[nn]~^^ ERROR: `[const]` can only be applied to `const` traits
+//[nn]~| ERROR: `[const]` can only be applied to `const` traits
+//[nn]~| ERROR: `[const]` can only be applied to `const` traits
 
 const fn foo<T: Bar>(x: &T) {
     x.a();
