@@ -4,7 +4,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'src/foo/jump-to-def-assoc-items.rs.html'
+//@ has 'src/foo/assoc-items.rs.html'
 
 pub trait Trait {
     type T;
