@@ -511,6 +511,46 @@ impl SystemTime {
     #[stable(feature = "assoc_unix_epoch", since = "1.28.0")]
     pub const UNIX_EPOCH: SystemTime = UNIX_EPOCH;
 
+    /// Represents the maximum value representable by [`SystemTime`] on this platform.
+    ///
+    /// This value differs a lot between platforms, but it is always the case
+    /// that any positive addition to [`SystemTime::MAX`] will fail.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(time_systemtime_limits)]
+    /// use std::time::{Duration, SystemTime};
+    ///
+    /// // Adding zero will change nothing.
+    /// assert_eq!(SystemTime::MAX.checked_add(Duration::ZERO), Some(SystemTime::MAX));
+    ///
+    /// // But adding just 1ns will already fail.
+    /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(0, 1)), None);
+    /// ```
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = SystemTime(time::SystemTime::MAX);
+
+    /// Represents the minimum value representable by [`SystemTime`] on this platform.
+    ///
+    /// This value differs a lot between platforms, but it is always the case
+    /// that any positive subtraction from [`SystemTime::MIN`] will fail.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(time_systemtime_limits)]
+    /// use std::time::{Duration, SystemTime};
+    ///
+    /// // Subtracting zero will change nothing.
+    /// assert_eq!(SystemTime::MIN.checked_sub(Duration::ZERO), Some(SystemTime::MIN));
+    ///
+    /// // But subtracting just 1ns will already fail.
+    /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(0, 1)), None);
+    /// ```
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = SystemTime(time::SystemTime::MIN);
+
     /// Returns the system time corresponding to "now".
     ///
     /// # Examples
