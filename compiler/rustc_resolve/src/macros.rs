@@ -561,7 +561,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             path,
             kind,
             parent_scope,
-            true,
             force,
             deleg_impl,
             invoc_in_mod_inert_attr.map(|def_id| (def_id, node_id)),
@@ -714,7 +713,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             path,
             MacroKind::Derive,
             parent_scope,
-            true,
             force,
             None,
             None,
@@ -728,7 +726,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ast_path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
-        trace: bool,
         force: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
@@ -767,16 +764,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 PathResult::Module(..) => unreachable!(),
             };
 
-            if trace {
-                self.multi_segment_macro_resolutions.borrow_mut(&self).push((
-                    path,
-                    path_span,
-                    kind,
-                    *parent_scope,
-                    res.ok(),
-                    ns,
-                ));
-            }
+            self.multi_segment_macro_resolutions.borrow_mut(&self).push((
+                path,
+                path_span,
+                kind,
+                *parent_scope,
+                res.ok(),
+                ns,
+            ));
 
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
@@ -794,15 +789,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return Err(Determinacy::Undetermined);
             }
 
-            if trace {
-                self.single_segment_macro_resolutions.borrow_mut(&self).push((
-                    path[0].ident,
-                    kind,
-                    *parent_scope,
-                    binding.ok(),
-                    suggestion_span,
-                ));
-            }
+            self.single_segment_macro_resolutions.borrow_mut(&self).push((
+                path[0].ident,
+                kind,
+                *parent_scope,
+                binding.ok(),
+                suggestion_span,
+            ));
 
             let res = binding.map(|binding| binding.res());
             self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
