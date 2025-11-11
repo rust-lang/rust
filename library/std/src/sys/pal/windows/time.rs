@@ -64,6 +64,22 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = SystemTime {
+        t: c::FILETIME {
+            dwLowDateTime: (i64::MAX & 0xFFFFFFFF) as u32,
+            dwHighDateTime: (i64::MAX >> 32) as u32,
+        },
+    };
+
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = SystemTime {
+        t: c::FILETIME {
+            dwLowDateTime: (i64::MIN & 0xFFFFFFFF) as u32,
+            dwHighDateTime: (i64::MIN >> 32) as u32,
+        },
+    };
+
     pub fn now() -> SystemTime {
         unsafe {
             let mut t: SystemTime = mem::zeroed();
