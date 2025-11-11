@@ -21,7 +21,7 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use itertools::{Either, Itertools};
-use rustc_abi::{CanonAbi, ExternAbi, InterruptKind};
+use rustc_abi::{CVariadicStatus, CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -35,6 +35,7 @@ use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
+use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use thin_vec::thin_vec;
@@ -661,7 +662,7 @@ impl<'a> AstValidator<'a> {
     /// C-variadics must be:
     /// - Non-const
     /// - Either foreign, or free and `unsafe extern "C"` semantically
-    fn check_c_variadic_type(&self, fk: FnKind<'a>) {
+    fn check_c_variadic_type(&self, fk: FnKind<'a>, attrs: &'a AttrVec) {
         // `...` is already rejected when it is not the final parameter.
         let variadic_param = match fk.decl().inputs.last() {
             Some(param) if matches!(param.ty.kind, TyKind::CVarArgs) => param,
@@ -693,36 +694,92 @@ impl<'a> AstValidator<'a> {
 
         match fn_ctxt {
             FnCtxt::Foreign => return,
-            FnCtxt::Free | FnCtxt::Assoc(_) => match sig.header.ext {
-                Extern::Implicit(_) => {
-                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
-                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
-                            span: variadic_param.span,
-                            unsafe_span: sig.safety_span(),
-                        });
+            FnCtxt::Free | FnCtxt::Assoc(_) => {
+                match sig.header.ext {
+                    Extern::Implicit(_) => {
+                        if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                            self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                                span: variadic_param.span,
+                                unsafe_span: sig.safety_span(),
+                            });
+                        }
+                    }
+                    Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
+                        // Just bail if the ABI is not even recognized.
+                        let Ok(abi) = ExternAbi::from_str(symbol_unescaped.as_str()) else {
+                            return;
+                        };
+
+                        self.check_c_variadic_abi(abi, attrs, variadic_param.span, sig);
+
+                        if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                            self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                                span: variadic_param.span,
+                                unsafe_span: sig.safety_span(),
+                            });
+                        }
+                    }
+                    Extern::None => {
+                        let err = errors::CVariadicNoExtern { span: variadic_param.span };
+                        self.dcx().emit_err(err);
                     }
                 }
-                Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
-                    if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
-                        self.dcx().emit_err(errors::CVariadicBadExtern {
-                            span: variadic_param.span,
-                            abi: symbol_unescaped,
-                            extern_span: sig.extern_span(),
-                        });
+            }
+        }
+    }
+
+    fn check_c_variadic_abi(
+        &self,
+        abi: ExternAbi,
+        attrs: &'a AttrVec,
+        dotdotdot_span: Span,
+        sig: &FnSig,
+    ) {
+        // For naked functions we accept any ABI that is accepted on c-variadic
+        // foreign functions, if the c_variadic_naked_functions feature is enabled.
+        if attr::contains_name(attrs, sym::naked) {
+            match abi.supports_c_variadic() {
+                CVariadicStatus::Stable if let ExternAbi::C { .. } = abi => {
+                    // With `c_variadic` naked c-variadic `extern "C"` functions are allowed.
+                }
+                CVariadicStatus::Stable => {
+                    // For e.g. aapcs or sysv64 `c_variadic_naked_functions` must also be enabled.
+                    if !self.features.enabled(sym::c_variadic_naked_functions) {
+                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
+                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
+                            .emit();
+                    }
+                }
+                CVariadicStatus::Unstable { feature } => {
+                    // Some ABIs need additional features.
+                    if !self.features.enabled(sym::c_variadic_naked_functions) {
+                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
+                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
+                            .emit();
                     }
 
-                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
-                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
-                            span: variadic_param.span,
-                            unsafe_span: sig.safety_span(),
-                        });
+                    if !self.features.enabled(feature) {
+                        let msg = format!(
+                            "C-variadic functions with the {abi} calling convention are unstable"
+                        );
+                        feature_err(&self.sess, feature, sig.span, msg).emit();
                     }
                 }
-                Extern::None => {
-                    let err = errors::CVariadicNoExtern { span: variadic_param.span };
-                    self.dcx().emit_err(err);
+                CVariadicStatus::NotSupported => {
+                    // Some ABIs, e.g. `extern "Rust"`, never support c-variadic functions.
+                    self.dcx().emit_err(errors::CVariadicBadNakedExtern {
+                        span: dotdotdot_span,
+                        abi: abi.as_str(),
+                        extern_span: sig.extern_span(),
+                    });
                 }
-            },
+            }
+        } else if !matches!(abi, ExternAbi::C { .. }) {
+            self.dcx().emit_err(errors::CVariadicBadExtern {
+                span: dotdotdot_span,
+                abi: abi.as_str(),
+                extern_span: sig.extern_span(),
+            });
         }
     }
 
@@ -1106,7 +1163,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
 
                 let kind = FnKind::Fn(FnCtxt::Free, &item.vis, &*func);
-                self.visit_fn(kind, item.span, item.id);
+                self.visit_fn(kind, &item.attrs, item.span, item.id);
             }
             ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 let old_item = mem::replace(&mut self.extern_mod_span, Some(item.span));
@@ -1473,7 +1530,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_param_bound(self, bound)
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'a>, span: Span, id: NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'a>, attrs: &AttrVec, span: Span, id: NodeId) {
         // Only associated `fn`s can have `self` parameters.
         let self_semantic = match fk.ctxt() {
             Some(FnCtxt::Assoc(_)) => SelfSemantic::Yes,
@@ -1492,7 +1549,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_extern_fn_signature(abi, ctxt, &fun.ident, &fun.sig);
         }
 
-        self.check_c_variadic_type(fk);
+        self.check_c_variadic_type(fk, attrs);
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
@@ -1643,7 +1700,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, &func.ident);
                 let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.vis, &*func);
-                self.visit_fn(kind, item.span, item.id);
+                self.visit_fn(kind, &item.attrs, item.span, item.id);
             }
             AssocItemKind::Type(_) => {
                 let disallowed = (!parent_is_const).then(|| match self.outer_trait_or_trait_impl {
