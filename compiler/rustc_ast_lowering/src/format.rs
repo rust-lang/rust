@@ -393,13 +393,19 @@ fn expand_format_args<'hir>(
                     bytecode.extend_from_slice(&flags.to_le_bytes());
                     if let Some(val) = &o.width {
                         let (indirect, val) = make_count(val, &mut argmap);
-                        bytecode[i] |= 1 << 1 | (indirect as u8) << 4;
-                        bytecode.extend_from_slice(&val.to_le_bytes());
+                        // Only encode if nonzero; zero is the default.
+                        if indirect || val != 0 {
+                            bytecode[i] |= 1 << 1 | (indirect as u8) << 4;
+                            bytecode.extend_from_slice(&val.to_le_bytes());
+                        }
                     }
                     if let Some(val) = &o.precision {
                         let (indirect, val) = make_count(val, &mut argmap);
-                        bytecode[i] |= 1 << 2 | (indirect as u8) << 5;
-                        bytecode.extend_from_slice(&val.to_le_bytes());
+                        // Only encode if nonzero; zero is the default.
+                        if indirect || val != 0 {
+                            bytecode[i] |= 1 << 2 | (indirect as u8) << 5;
+                            bytecode.extend_from_slice(&val.to_le_bytes());
+                        }
                     }
                 }
                 if implicit_arg_index != position {
