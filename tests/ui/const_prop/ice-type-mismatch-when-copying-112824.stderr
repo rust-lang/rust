@@ -9,7 +9,7 @@ help: consider introducing lifetime `'a` here
 LL | pub struct Opcode2<'a>(&'a S);
    |                   ++++
 
-error[E0412]: cannot find type `S` in this scope
+error[E0425]: cannot find type `S` in this scope
   --> $DIR/ice-type-mismatch-when-copying-112824.rs:5:24
    |
 LL | pub struct Opcode2(&'a S);
@@ -22,5 +22,5 @@ LL | pub struct Opcode2<S>(&'a S);
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0261, E0412.
+Some errors have detailed explanations: E0261, E0425.
 For more information about an error, try `rustc --explain E0261`.

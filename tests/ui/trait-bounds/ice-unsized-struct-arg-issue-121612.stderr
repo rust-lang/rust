@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Idx` in this scope
+error[E0425]: cannot find type `Idx` in this scope
   --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:30
    |
 LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
    |                              ^^^ not found in this scope
 
-error[E0412]: cannot find type `Idx` in this scope
+error[E0425]: cannot find type `Idx` in this scope
   --> $DIR/ice-unsized-struct-arg-issue-121612.rs:5:38
    |
 LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
@@ -53,5 +53,5 @@ LL | struct MySlice<T: FnOnce(&T, Idx) -> Idx>(bool, T);
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0412.
+Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

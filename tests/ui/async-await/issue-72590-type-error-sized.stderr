@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `Nonexistent` in this scope
+error[E0425]: cannot find type `Nonexistent` in this scope
   --> $DIR/issue-72590-type-error-sized.rs:6:10
    |
 LL |     foo: Nonexistent,
    |          ^^^^^^^^^^^ not found in this scope
 
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/issue-72590-type-error-sized.rs:11:11
    |
 LL |     test: Missing
@@ -30,5 +30,5 @@ LL |     async fn frob(&self) {}
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0277, E0412.
+Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

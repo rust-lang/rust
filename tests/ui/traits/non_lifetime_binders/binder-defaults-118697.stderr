@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `A` in this scope
+error[E0425]: cannot find type `A` in this scope
   --> $DIR/binder-defaults-118697.rs:4:22
    |
 LL | type T = dyn for<V = A(&())> Fn(());
@@ -18,4 +18,4 @@ LL | type T = dyn for<V = A(&())> Fn(());
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

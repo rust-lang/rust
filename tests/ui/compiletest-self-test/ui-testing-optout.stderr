@@ -1,10 +1,10 @@
-error[E0412]: cannot find type `B` in this scope
+error[E0425]: cannot find type `B` in this scope
  --> $DIR/ui-testing-optout.rs:4:10
   |
 4 | type A = B;
   |          ^ not found in this scope
 
-error[E0412]: cannot find type `D` in this scope
+error[E0425]: cannot find type `D` in this scope
  --> $DIR/ui-testing-optout.rs:7:10
   |
 4 | type A = B;
@@ -13,7 +13,7 @@ error[E0412]: cannot find type `D` in this scope
 7 | type C = D;
   |          ^ help: a type alias with a similar name exists: `A`
 
-error[E0412]: cannot find type `F` in this scope
+error[E0425]: cannot find type `F` in this scope
   --> $DIR/ui-testing-optout.rs:92:10
    |
  4 | type A = B;
@@ -24,4 +24,4 @@ error[E0412]: cannot find type `F` in this scope
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

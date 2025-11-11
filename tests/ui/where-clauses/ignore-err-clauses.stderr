@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `UUU` in this scope
+error[E0425]: cannot find type `UUU` in this scope
   --> $DIR/ignore-err-clauses.rs:6:5
    |
 LL |     UUU: Copy,
@@ -29,5 +29,5 @@ note: calling this operator moves the left-hand side
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0382, E0412.
+Some errors have detailed explanations: E0382, E0425.
 For more information about an error, try `rustc --explain E0382`.

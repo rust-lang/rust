@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `V` in this scope
+error[E0425]: cannot find type `V` in this scope
   --> $DIR/binder-defaults-112547.rs:10:4
    |
 LL | }> V: IntoIterator
@@ -37,4 +37,4 @@ LL | | }> V: IntoIterator
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0412`.
+For more information about this error, try `rustc --explain E0425`.

@@ -11,7 +11,7 @@ fn get<T>() -> T {
 }
 
 fn main() {
-    let thing = get::<Thing>();//~ERROR cannot find type `Thing` in this scope [E0412]
+    let thing = get::<Thing>();//~ERROR cannot find type `Thing` in this scope [E0425]
     let wrapper = Wrapper(thing);
     Trait::method(&wrapper);
 }

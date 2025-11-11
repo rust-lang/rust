@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Missing` in this scope
+error[E0425]: cannot find type `Missing` in this scope
   --> $DIR/malformed-unsized-type-in-union.rs:3:34
    |
 LL | union W { s: dyn Iterator<Item = Missing> }
@@ -18,5 +18,5 @@ LL | union W { s: std::mem::ManuallyDrop<dyn Iterator<Item = Missing>> }
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0412, E0740.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0740.
+For more information about an error, try `rustc --explain E0425`.

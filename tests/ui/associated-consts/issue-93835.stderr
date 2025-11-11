@@ -4,7 +4,7 @@ error[E0425]: cannot find value `p` in this scope
 LL |     type_ascribe!(p, a<p:p<e=6>>);
    |                   ^ not found in this scope
 
-error[E0412]: cannot find type `a` in this scope
+error[E0425]: cannot find type `a` in this scope
   --> $DIR/issue-93835.rs:4:22
    |
 LL |     type_ascribe!(p, a<p:p<e=6>>);
@@ -39,5 +39,5 @@ LL |     type_ascribe!(p, a<p:p<e=6>>);
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0405, E0412, E0425, E0658.
+Some errors have detailed explanations: E0405, E0425, E0658.
 For more information about an error, try `rustc --explain E0405`.

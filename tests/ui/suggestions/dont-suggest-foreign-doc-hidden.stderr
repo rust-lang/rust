@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0425]: cannot find type `Foo` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:10:16
    |
 LL | pub fn test(_: Foo) {}
@@ -9,13 +9,13 @@ help: consider importing this struct
 LL + use local::Foo;
    |
 
-error[E0412]: cannot find type `Bar` in this scope
+error[E0425]: cannot find type `Bar` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:13:17
    |
 LL | pub fn test2(_: Bar) {}
    |                 ^^^ not found in this scope
 
-error[E0412]: cannot find type `Baz` in this scope
+error[E0425]: cannot find type `Baz` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:16:17
    |
 LL | pub fn test3(_: Baz) {}
@@ -26,7 +26,7 @@ help: consider importing this struct
 LL + use hidden_struct::Baz;
    |
 
-error[E0412]: cannot find type `Quux` in this scope
+error[E0425]: cannot find type `Quux` in this scope
   --> $DIR/dont-suggest-foreign-doc-hidden.rs:19:17
    |
 LL | pub fn test4(_: Quux) {}
@@ -61,5 +61,5 @@ LL | fn test5<T: hidden_struct::Marker>() {}
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0277, E0412.
+Some errors have detailed explanations: E0277, E0425.
 For more information about an error, try `rustc --explain E0277`.

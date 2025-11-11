@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `N` in this scope
+error[E0425]: cannot find type `N` in this scope
   --> $DIR/invalid-const-arguments.rs:5:16
    |
 LL | struct A<const N: u8>;
@@ -17,7 +17,7 @@ help: you might be missing a type parameter
 LL | impl<N> Foo for A<N> {}
    |     +++
 
-error[E0412]: cannot find type `T` in this scope
+error[E0425]: cannot find type `T` in this scope
   --> $DIR/invalid-const-arguments.rs:14:32
    |
 LL | struct A<const N: u8>;
@@ -72,5 +72,5 @@ LL | impl<const N: u8> Foo for C<N, { T }> {}
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0412, E0747.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0747.
+For more information about an error, try `rustc --explain E0425`.
