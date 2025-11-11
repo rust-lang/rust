@@ -2075,7 +2075,9 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--target-rustcflags").arg(flag);
         }
 
-        cmd.arg("--python").arg(builder.python());
+        cmd.arg("--python").arg(
+            builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
+        );
 
         // FIXME(#148099): Currently we set these Android-related flags in all
         // modes, even though they should only be needed in "debuginfo" mode,
@@ -3359,7 +3361,9 @@ impl Step for BootstrapPy {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut check_bootstrap = command(builder.python());
+        let mut check_bootstrap = command(
+            builder.config.python.as_ref().expect("python is required for running bootstrap tests"),
+        );
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             // Forward command-line args after `--` to unittest, for filtering etc.
