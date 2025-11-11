@@ -8,7 +8,7 @@ fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
     //~| ERROR unexpected `self` parameter in function
     //~| ERROR unexpected `self` parameter in function
     //~| ERROR unexpected `self` parameter in function
-    self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
+    self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
     //~^ ERROR unexpected `self` parameter in function
     //~| ERROR unexpected `self` parameter in function
     //~| ERROR unexpected `self` parameter in function
