@@ -1531,9 +1531,8 @@ mod prim_usize {}
 /// `&mut T` references can be freely coerced into `&T` references with the same referent type, and
 /// references with longer lifetimes can be freely coerced into references with shorter ones.
 ///
-/// Reference equality by address, instead of comparing the values pointed to, is accomplished via
-/// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while
-/// [`PartialEq`] compares values.
+/// [`PartialEq`] will compare referenced values. It is possible to compare the reference address
+/// using reference-pointer coercion and raw pointer equality via [`ptr::eq`].
 ///
 /// ```
 /// use std::ptr;
