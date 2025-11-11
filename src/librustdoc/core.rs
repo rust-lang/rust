@@ -416,14 +416,6 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    // Process all of the crate attributes, extracting plugin metadata along
-    // with the passes which we are supposed to run.
-    for attr in krate.module.attrs.lists(sym::doc) {
-        if attr.is_word() && attr.has_name(sym::document_private_items) {
-            ctxt.render_options.document_private = true;
-        }
-    }
-
     info!("Executing passes");
 
     let mut visited = FxHashMap::default();
