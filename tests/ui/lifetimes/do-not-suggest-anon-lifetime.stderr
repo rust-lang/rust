@@ -14,10 +14,6 @@ note: ...that is required by this bound
    |
 LL |     ) -> impl Future<Output = Result<Self::Response, Self::Error>> + Send + '_;
    |                                                                             ^^
-help: consider adding an explicit lifetime bound
-   |
-LL |     ) -> impl Future<Output = Result<Self::Response, Self::Error>> where S: anon {
-   |                                                                    +++++++++++++
 
 error: aborting due to 1 previous error
 
