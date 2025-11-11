@@ -2318,10 +2318,12 @@ pub enum ConstContext {
     /// - Array length expressions
     /// - Enum discriminants
     /// - Const generics
-    ///
-    /// For the most part, other contexts are treated just like a regular `const`, so they are
-    /// lumped into the same category.
-    Const { inline: bool },
+    Const {
+        /// For backwards compatibility `const` items allow
+        /// calls to `const fn` to get promoted.
+        /// We forbid that in comptime fns and inline consts.
+        allow_const_fn_promotion: bool,
+    },
 }
 
 impl ConstContext {

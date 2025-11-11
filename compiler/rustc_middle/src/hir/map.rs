@@ -314,13 +314,15 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
         let def_id = def_id.into();
         let ccx = match self.hir_body_owner_kind(def_id) {
-            BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
+            BodyOwnerKind::Const { inline } => {
+                ConstContext::Const { allow_const_fn_promotion: !inline }
+            }
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
                 if self.constness(def_id) == rustc_hir::Constness::Comptime {
-                    ConstContext::Const { inline: true }
+                    ConstContext::Const { allow_const_fn_promotion: false }
                 } else {
                     ConstContext::ConstFn
                 }

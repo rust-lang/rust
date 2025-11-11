@@ -667,7 +667,10 @@ impl<'tcx> Validator<'_, 'tcx> {
         // backwards compatibility reason to allow more promotion inside of them.
         let promote_all_fn = matches!(
             self.const_kind,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { inline: false })
+            Some(
+                hir::ConstContext::Static(_)
+                    | hir::ConstContext::Const { allow_const_fn_promotion: true }
+            )
         );
         if !promote_all_fn {
             return Err(Unpromotable);
