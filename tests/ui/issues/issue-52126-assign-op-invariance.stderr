@@ -4,13 +4,18 @@ error[E0597]: `line` does not live long enough
 LL |     for line in vec!["123456789".to_string(), "12345678".to_string()] {
    |         ---- binding `line` declared here
 LL |         let v: Vec<&str> = line.split_whitespace().collect();
-   |                            ^^^^ borrowed value does not live long enough
+   |             -              ^^^^ borrowed value does not live long enough
+   |             |
+   |             variable `v` declared here
 ...
 LL |         acc += cnt2;
    |         --- borrow later used here
 ...
 LL |     }
    |     - `line` dropped here while still borrowed
+   |
+   = note: `v` is a collection that stores borrowed references, but `line` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
 
 error: aborting due to 1 previous error
 
