@@ -12,6 +12,9 @@ LL |     let mut x = 1;
 error[E0596]: cannot borrow immutable static item `static_x` as mutable
   --> $DIR/borrowck-access-permissions.rs:16:19
    |
+LL | static static_x: i32 = 1;
+   | -------------------- this `static` cannot be borrowed as mutable
+...
 LL |         let _y1 = &mut static_x;
    |                   ^^^^^^^^^^^^^ cannot borrow as mutable
 
@@ -30,7 +33,7 @@ error[E0596]: cannot borrow `*ref_x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-access-permissions.rs:36:19
    |
 LL |         let _y1 = &mut *ref_x;
-   |                   ^^^^^^^^^^^ `ref_x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                   ^^^^^^^^^^^ `ref_x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -41,7 +44,7 @@ error[E0596]: cannot borrow `*ptr_x` as mutable, as it is behind a `*const` poin
   --> $DIR/borrowck-access-permissions.rs:46:23
    |
 LL |             let _y1 = &mut *ptr_x;
-   |                       ^^^^^^^^^^^ `ptr_x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
+   |                       ^^^^^^^^^^^ `ptr_x` is a `*const` pointer, so it cannot be borrowed as mutable
    |
 help: consider changing this binding's type
    |
@@ -53,7 +56,7 @@ error[E0596]: cannot borrow `*foo_ref.f` as mutable, as it is behind a `&` refer
   --> $DIR/borrowck-access-permissions.rs:59:18
    |
 LL |         let _y = &mut *foo_ref.f;
-   |                  ^^^^^^^^^^^^^^^ `foo_ref` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                  ^^^^^^^^^^^^^^^ `foo_ref` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

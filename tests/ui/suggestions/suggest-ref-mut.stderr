@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:9:9
    |
 LL |         self.0 = 32;
-   |         ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
+   |         ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -13,7 +13,7 @@ error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:17:5
    |
 LL |     *foo = 32;
-   |     ^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -24,7 +24,7 @@ error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:21:9
    |
 LL |         *bar = 32;
-   |         ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
+   |         ^^^^^^^^^ `bar` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -35,7 +35,7 @@ error[E0594]: cannot assign to `*quo`, which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:25:22
    |
 LL |         ref quo => { *quo = 32; },
-   |                      ^^^^^^^^^ `quo` is a `&` reference, so the data it refers to cannot be written
+   |                      ^^^^^^^^^ `quo` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |

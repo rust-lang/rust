@@ -10,7 +10,7 @@ fn main() {
         //~^ NOTE this iterator yields `&` references
         *v -= 1;
         //~^ ERROR cannot assign to `*v`, which is behind a `&` reference
-        //~| NOTE `v` is a `&` reference, so the data it refers to cannot be written
+        //~| NOTE `v` is a `&` reference, so it cannot be written to
     }
 }
 
