@@ -12,10 +12,10 @@ use crate::{error, fmt};
 /// # Examples
 ///
 /// ```
-/// # #![feature(oneshot_channel)]
-/// # use std::sync::oneshot;
-/// # use std::thread;
-/// #
+/// #![feature(oneshot_channel)]
+/// use std::sync::oneshot;
+/// use std::thread;
+///
 /// let (sender, receiver) = oneshot::channel();
 ///
 /// // Spawn off an expensive computation.
@@ -50,10 +50,10 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// # Examples
 ///
 /// ```
-/// # #![feature(oneshot_channel)]
-/// # use std::sync::oneshot;
-/// # use std::thread;
-/// #
+/// #![feature(oneshot_channel)]
+/// use std::sync::oneshot;
+/// use std::thread;
+///
 /// let (sender, receiver) = oneshot::channel();
 ///
 /// thread::spawn(move || {
@@ -66,11 +66,11 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// `Sender` cannot be sent between threads if it is sending non-`Send` types.
 ///
 /// ```compile_fail
-/// # #![feature(oneshot_channel)]
-/// # use std::sync::oneshot;
-/// # use std::thread;
-/// # use std::ptr;
-/// #
+/// #![feature(oneshot_channel)]
+/// use std::sync::oneshot;
+/// use std::thread;
+/// use std::ptr;
+///
 /// let (sender, receiver) = oneshot::channel();
 ///
 /// struct NotSend(*mut ());
@@ -86,11 +86,9 @@ pub struct Sender<T> {
     inner: mpmc::Sender<T>,
 }
 
-/// # Safety
-///
-/// Since the only methods in which synchronization must occur take full ownership of the
-/// [`Sender`], it is perfectly safe to share a `&Sender` between threads (as it is effectively
-/// useless without ownership).
+// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
+// [`Sender`], it is perfectly safe to share a `&Sender` between threads (as it is effectively
+// useless without ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Sender<T> {}
 
@@ -103,10 +101,10 @@ impl<T> Sender<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(oneshot_channel)]
-    /// # use std::sync::oneshot;
-    /// # use std::thread;
-    /// #
+    /// #![feature(oneshot_channel)]
+    /// use std::sync::oneshot;
+    /// use std::thread;
+    ///
     /// let (tx, rx) = oneshot::channel();
     ///
     /// thread::spawn(move || {
@@ -126,7 +124,7 @@ impl<T> Sender<T> {
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 impl<T> fmt::Debug for Sender<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Sender { .. }")
+        f.debug_struct("Sender").finish_non_exhaustive()
     }
 }
 
@@ -139,11 +137,11 @@ impl<T> fmt::Debug for Sender<T> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(oneshot_channel)]
-/// # use std::sync::oneshot;
-/// # use std::thread;
-/// # use std::time::Duration;
-/// #
+/// #![feature(oneshot_channel)]
+/// use std::sync::oneshot;
+/// use std::thread;
+/// use std::time::Duration;
+///
 /// let (sender, receiver) = oneshot::channel();
 ///
 /// thread::spawn(move || {
@@ -178,11 +176,9 @@ pub struct Receiver<T> {
     inner: mpmc::Receiver<T>,
 }
 
-/// # Safety
-///
-/// Since the only methods in which synchronization must occur take full ownership of the
-/// [`Receiver`], it is perfectly safe to share a `&Receiver` between threads (as it is unable to
-/// receive any values without ownership).
+// SAFETY: Since the only methods in which synchronization must occur take full ownership of the
+// [`Receiver`], it is perfectly safe to share a `&Receiver` between threads (as it is unable to
+// receive any values without ownership).
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 unsafe impl<T> Sync for Receiver<T> {}
 
@@ -194,11 +190,11 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(oneshot_channel)]
-    /// # use std::sync::oneshot;
-    /// # use std::thread;
-    /// # use std::time::Duration;
-    /// #
+    /// #![feature(oneshot_channel)]
+    /// use std::sync::oneshot;
+    /// use std::thread;
+    /// use std::time::Duration;
+    ///
     /// let (tx, rx) = oneshot::channel();
     ///
     /// thread::spawn(move || {
@@ -221,11 +217,11 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(oneshot_channel)]
-    /// # use std::sync::oneshot;
-    /// # use std::thread;
-    /// # use std::time::Duration;
-    /// #
+    /// #![feature(oneshot_channel)]
+    /// use std::sync::oneshot;
+    /// use std::thread;
+    /// use std::time::Duration;
+    ///
     /// let (sender, mut receiver) = oneshot::channel();
     ///
     /// thread::spawn(move || {
@@ -264,11 +260,11 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(oneshot_channel)]
-    /// # use std::sync::oneshot;
-    /// # use std::thread;
-    /// # use std::time::Duration;
-    /// #
+    /// #![feature(oneshot_channel)]
+    /// use std::sync::oneshot;
+    /// use std::thread;
+    /// use std::time::Duration;
+    ///
     /// let (sender, receiver) = oneshot::channel();
     ///
     /// thread::spawn(move || {
@@ -297,11 +293,11 @@ impl<T> Receiver<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(oneshot_channel)]
-    /// # use std::sync::oneshot;
-    /// # use std::thread;
-    /// # use std::time::{Duration, Instant};
-    /// #
+    /// #![feature(oneshot_channel)]
+    /// use std::sync::oneshot;
+    /// use std::thread;
+    /// use std::time::{Duration, Instant};
+    ///
     /// let (sender, receiver) = oneshot::channel();
     ///
     /// thread::spawn(move || {
@@ -328,7 +324,7 @@ impl<T> Receiver<T> {
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 impl<T> fmt::Debug for Receiver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Receiver { .. }")
+        f.debug_struct("Receiver").finish_non_exhaustive()
     }
 }
 
@@ -360,11 +356,11 @@ pub enum TryRecvError<T> {
 /// Usage of this error is similar to [`TryRecvError`].
 ///
 /// ```
-/// # #![feature(oneshot_channel)]
-/// # use std::sync::oneshot::{self, RecvTimeoutError};
-/// # use std::thread;
-/// # use std::time::Duration;
-/// #
+/// #![feature(oneshot_channel)]
+/// use std::sync::oneshot::{self, RecvTimeoutError};
+/// use std::thread;
+/// use std::time::Duration;
+///
 /// let (sender, receiver) = oneshot::channel();
 ///
 /// thread::spawn(move || {
@@ -399,7 +395,7 @@ pub enum RecvTimeoutError<T> {
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 impl<T> fmt::Debug for TryRecvError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "TryRecvError(..)".fmt(f)
+        f.debug_tuple("TryRecvError").finish_non_exhaustive()
     }
 }
 
@@ -407,8 +403,8 @@ impl<T> fmt::Debug for TryRecvError<T> {
 impl<T> fmt::Display for TryRecvError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            TryRecvError::Empty(..) => "receiving on an empty channel".fmt(f),
-            TryRecvError::Disconnected => "receiving on a closed channel".fmt(f),
+            TryRecvError::Empty(..) => "receiving on an empty oneshot channel".fmt(f),
+            TryRecvError::Disconnected => "receiving on a closed oneshot channel".fmt(f),
         }
     }
 }
@@ -433,7 +429,7 @@ impl<T> From<RecvError> for TryRecvError<T> {
 #[unstable(feature = "oneshot_channel", issue = "143674")]
 impl<T> fmt::Debug for RecvTimeoutError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "RecvTimeoutError(..)".fmt(f)
+        f.debug_tuple("RecvTimeoutError").finish_non_exhaustive()
     }
 }
 
@@ -441,8 +437,8 @@ impl<T> fmt::Debug for RecvTimeoutError<T> {
 impl<T> fmt::Display for RecvTimeoutError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            RecvTimeoutError::Timeout(..) => "timed out waiting on channel".fmt(f),
-            RecvTimeoutError::Disconnected => "receiving on a closed channel".fmt(f),
+            RecvTimeoutError::Timeout(..) => "timed out waiting on oneshot channel".fmt(f),
+            RecvTimeoutError::Disconnected => "receiving on a closed oneshot channel".fmt(f),
         }
     }
 }
