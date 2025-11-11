@@ -166,6 +166,34 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ty::AnonConstKind::NonTypeSystem => None,
             }
         }
+        Node::ConstArg(_) => {
+            let parent_did = tcx.parent(def_id.to_def_id());
+            debug!(?parent_did);
+
+            if let Node::GenericParam(hir::GenericParam {
+                def_id: param_id,
+                kind: hir::GenericParamKind::Const { .. },
+                ..
+            }) = tcx.parent_hir_node(hir_id)
+            {
+                let generics = tcx.generics_of(parent_did);
+                let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
+                let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
+                let param_def_id_to_index =
+                    own_params.iter().map(|param| (param.def_id, param.index)).collect();
+
+                return ty::Generics {
+                    parent: generics.parent,
+                    parent_count: generics.parent_count,
+                    own_params,
+                    param_def_id_to_index,
+                    has_self: generics.has_self,
+                    has_late_bound_regions: generics.has_late_bound_regions,
+                };
+            }
+
+            Some(parent_did)
+        }
         Node::ConstBlock(_)
         | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))

@@ -1,0 +1,27 @@
+error: generic parameters with a default must be trailing
+  --> $DIR/const-arg-unresolved.rs:5:19
+   |
+LL | struct Both<const is_123: u32 = 3, T> {
+   |                   ^^^^^^
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/const-arg-unresolved.rs:6:8
+   |
+LL | struct Both<const is_123: u32 = 3, T> {
+   |                                    - similarly named type parameter `T` defined here
+LL |     a: A<{ B::<1>::M }>,
+   |        ^ help: a type parameter with a similar name exists: `T`
+
+error[E0433]: failed to resolve: use of undeclared type `B`
+  --> $DIR/const-arg-unresolved.rs:6:12
+   |
+LL |     a: A<{ B::<1>::M }>,
+   |            ^
+   |            |
+   |            use of undeclared type `B`
+   |            help: a type parameter with a similar name exists: `T`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0412, E0433.
+For more information about an error, try `rustc --explain E0412`.
