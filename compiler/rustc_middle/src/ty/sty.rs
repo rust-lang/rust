@@ -1535,12 +1535,10 @@ impl<'tcx> Ty<'tcx> {
             let ty::Coroutine(def_id, args) = ty.kind() else { return cor_ty };
             cor_ty = ty;
             f(ty);
-            if tcx.is_async_drop_in_place_coroutine(*def_id) {
-                ty = args.first().unwrap().expect_ty();
-                continue;
-            } else {
+            if !tcx.is_async_drop_in_place_coroutine(*def_id) {
                 return cor_ty;
             }
+            ty = args.first().unwrap().expect_ty();
         }
     }
 
