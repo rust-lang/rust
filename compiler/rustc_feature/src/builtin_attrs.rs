@@ -1118,6 +1118,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: &[r#""...""#]), DuplicatesOk,
         EncodeCrossCrate::Yes,
     ),
+        rustc_attr!(
+        rustc_offload_kernel, Normal,
+        template!(Word), DuplicatesOk,
+        EncodeCrossCrate::Yes,
+    ),
     // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
     // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
     // or unstable code directly because `sym::cfg_(attr_)trace` are not valid identifiers, they

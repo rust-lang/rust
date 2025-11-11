@@ -1967,6 +1967,7 @@ symbols! {
         rustc_objc_class,
         rustc_objc_selector,
         rustc_object_lifetime_default,
+        rustc_offload_kernel,
         rustc_on_unimplemented,
         rustc_outlives,
         rustc_paren_sugar,
