@@ -1704,7 +1704,7 @@ impl HumanEmitter {
             }
             // print out the span location and spacer before we print the annotated source
             // to do this, we need to know if this span will be primary
-            let is_primary = primary_lo.file.name == annotated_file.file.name;
+            let is_primary = primary_lo.file.stable_id == annotated_file.file.stable_id;
             if is_primary {
                 let loc = primary_lo.clone();
                 if !self.short_message {
@@ -3108,7 +3108,7 @@ impl FileWithAnnotatedLines {
         ) {
             for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
-                if slot.file.name == file.name {
+                if slot.file.stable_id == file.stable_id {
                     // See if we already have a line for it
                     for line_slot in &mut slot.lines {
                         if line_slot.line_index == line_index {
