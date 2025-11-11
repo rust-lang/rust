@@ -34,7 +34,7 @@ fn bar() ({
             ((::alloc::fmt::format as
                     for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::from_str
                         as
-                        fn(&'static str) -> Arguments<'_> {core::fmt::rt::<impl Arguments<'_>>::from_str})(("test"
+                        fn(&'static str) -> Arguments<'_> {Arguments::<'_>::from_str})(("test"
                         as &str)) as Arguments<'_>)) as String)
         } as String)) as String);
 } as ())

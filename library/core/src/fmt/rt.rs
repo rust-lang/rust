@@ -8,7 +8,6 @@
 
 use super::*;
 use crate::hint::unreachable_unchecked;
-use crate::mem;
 use crate::ptr::NonNull;
 
 #[derive(Copy, Clone)]
@@ -35,7 +34,7 @@ enum ArgumentType<'a> {
 ///   precision and width.
 #[lang = "format_argument"]
 #[derive(Copy, Clone)]
-#[repr(align(2))]
+#[repr(align(2))] // To ensure pointers to this always have their lowest bit cleared.
 pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
@@ -162,38 +161,5 @@ impl Argument<'_> {
             ArgumentType::Count(count) => Some(count),
             ArgumentType::Placeholder { .. } => None,
         }
-    }
-}
-
-/// Used by the format_args!() macro to create a fmt::Arguments object.
-#[doc(hidden)]
-#[rustc_diagnostic_item = "FmtArgumentsNew"]
-impl<'a> Arguments<'a> {
-    #[inline]
-    pub unsafe fn new<const N: usize, const M: usize>(
-        template: &'a [u8; N],
-        args: &'a [rt::Argument<'a>; M],
-    ) -> Arguments<'a> {
-        // SAFETY: ...
-        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
-    }
-
-    #[inline]
-    pub const fn from_str(s: &'static str) -> Arguments<'a> {
-        // SAFETY: This is the "static str" representation of fmt::Arguments.
-        unsafe {
-            Arguments {
-                template: mem::transmute(s.as_ptr()),
-                args: mem::transmute(s.len() << 1 | 1),
-            }
-        }
-    }
-
-    // Same as `from_str`, but not const.
-    // Used by format_args!() expansion when arguments are inlined,
-    // e.g. format_args!("{}", 123), which is not allowed in const.
-    #[inline]
-    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
-        Arguments::from_str(s)
     }
 }

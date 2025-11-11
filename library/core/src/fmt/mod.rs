@@ -605,12 +605,143 @@ impl<'a> Formatter<'a> {
 /// ```
 ///
 /// [`format()`]: ../../std/fmt/fn.format.html
+//
+// Internal representation:
+//
+// fmt::Arguments is represented in one of two ways:
+//
+// 1) String literal representation (e.g. format_args!("hello"))
+//             ┌────────────────────────────────┐
+//   template: │           *const u8            │ ─▷ "hello"
+//             ├──────────────────────────────┬─┤
+//   args:     │             len              │1│ (lowest bit is 1; field contains `len << 1 | 1`)
+//             └──────────────────────────────┴─┘
+//   In this representation, there are no placeholders and `fmt::Arguments::as_str()` returns Some.
+//   The pointer points to the start of a static `str`. The length is given by `args as usize >> 1`.
+//   (The length of a `&str` is isize::MAX at most, so it always fits in a usize minus one bit.)
+//
+//   `fmt::Arguments::from_str()` constructs this representation from a `&'static str`.
+//
+// 2) Placeholders representation (e.g. format_args!("hello {name}\n"))
+//             ┌────────────────────────────────┐
+//   template: │           *const u8            │ ─▷ b"\x06hello \x80\x01\n\x00"
+//             ├────────────────────────────────┤
+//   args:     │     &'a [Argument<'a>; _]     0│ (lower bit is 0 due to alignment of Argument type)
+//             └────────────────────────────────┘
+//   In this representation, the template is a byte sequence encoding both the literal string pieces
+//   and the placeholders (including their options/flags).
+//
+//   The `args` pointer points to an array of `fmt::Argument<'a>` values, of sufficient length to
+//   match the placeholders in the template.
+//
+//   `fmt::Arguments::new()` constructs this representation from a template byte slice and a slice
+//   of arguments. This function is unsafe, as the template is assumed to be valid and the args
+//   slice is assumed to have elements matching the template.
+//
+//   The template byte sequence is the concatenation of parts of the following types:
+//
+//   - Literal string piece (1-127 bytes):
+//         ┌───┬────────────────────────────┐
+//         │len│    `len` bytes (utf-8)     │ (e.g. b"\x06hello ")
+//         └───┴────────────────────────────┘
+//         Pieces that must be formatted verbatim (e.g. "hello " and "\n" in "hello {name}\n")
+//         are represented as a single byte containing their length followed directly by the bytes
+//         of the string.
+//
+//         Pieces can be 127 bytes at most. Longer pieces are split into multiple pieces (at utf-8
+//         boundaries).
+//
+//   - Placeholder:
+//         ┌──────────┬┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┐
+//         │0b10______│       flags       ┊   width   ┊ precision ┊ arg_index ┊ (e.g. b"\x82\x05\0")
+//         └────││││││┴┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┘
+//              ││││││        32 bit          16 bit      16 bit      16 bit
+//              │││││└─ flags present
+//              ││││└─ width present
+//              │││└─ precision present
+//              ││└─ arg_index present
+//              │└─ width indirect
+//              └─ precision indirect
+//
+//         Fully default placeholder, without any options:
+//         ┌──────────┐
+//         │0b10000000│ (b"\x80")
+//         └──────────┘
+//
+//         Placeholders (e.g. `{name}` in "hello {name}") are represented as a byte with the highest
+//         bit set, followed by zero or more fields depending on the flags set in the first byte.
+//
+//         The fields are stored as little endian.
+//
+//         The `flags` fields corresponds to the `flags` field of `FormattingOptions`.
+//         See doc comment of `FormattingOptions::flags` for details.
+//
+//         The `width` and `precision` fields correspond to their respective fields in
+//         `FormattingOptions`. However, if their "indirect" flag is set, the field contains the
+//         index in the `args` array where the dynamic width or precision is stored, rather than the
+//         value directly.
+//
+//         The `arg_index` field is the index into the `args` array for the argument to be
+//         formatted.
+//
+//         If omitted, the flags, width and precision of the default FormattingOptions::new() are
+//         used.
+//
+//         If the `arg_index` is omitted, the next argument in the `args` array is used (starting
+//         at 0).
+//
+//   - End:
+//         ┌───┐
+//         │ 0 │ ("\0")
+//         └───┘
+//         A single zero byte marks the end of the template.
+//
+//         (Note that a zero byte may also occur naturally as part of the string pieces or flags,
+//         width, precision and arg_index fields above. That is, the template byte sequence ends
+//         with a 0 byte, but isn't terminated by the first 0 byte.)
+//
 #[lang = "format_arguments"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     template: NonNull<u8>,
     args: NonNull<rt::Argument<'a>>,
+}
+
+/// Used by the format_args!() macro to create a fmt::Arguments object.
+#[doc(hidden)]
+#[rustc_diagnostic_item = "FmtArgumentsNew"]
+#[unstable(feature = "fmt_internals", issue = "none")]
+impl<'a> Arguments<'a> {
+    // SAFETY: The caller must ensure that the provided template and args encode a valid
+    // fmt::Arguments, as documented above.
+    #[inline]
+    pub unsafe fn new<const N: usize, const M: usize>(
+        template: &'a [u8; N],
+        args: &'a [rt::Argument<'a>; M],
+    ) -> Arguments<'a> {
+        // SAFETY: Responsibility of the caller.
+        unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
+    }
+
+    #[inline]
+    pub const fn from_str(s: &'static str) -> Arguments<'a> {
+        // SAFETY: This is the "static str" representation of fmt::Arguments; see above.
+        unsafe {
+            Arguments {
+                template: mem::transmute(s.as_ptr()),
+                args: mem::transmute(s.len() << 1 | 1),
+            }
+        }
+    }
+
+    // Same as `from_str`, but not const.
+    // Used by format_args!() expansion when arguments are inlined,
+    // e.g. format_args!("{}", 123), which is not allowed in const.
+    #[inline]
+    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
+        Arguments::from_str(s)
+    }
 }
 
 #[doc(hidden)]
@@ -646,10 +777,10 @@ impl<'a> Arguments<'a> {
                         starts_with_placeholder = true;
                     }
                     // Skip remainder of placeholder:
-                    let skip = (n & 1 == 1) as usize * 4
-                        + (n & 2 == 2) as usize * 2
-                        + (n & 4 == 4) as usize * 2
-                        + (n & 8 == 8) as usize * 2;
+                    let skip = (n & 1 != 0) as usize * 4 // flags (32 bit)
+                        + (n & 2 != 0) as usize * 2  // width     (16 bit)
+                        + (n & 4 != 0) as usize * 2  // precision (16 bit)
+                        + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
                     template = template.add(1 + skip as usize);
                 }
             }
@@ -718,11 +849,13 @@ impl<'a> Arguments<'a> {
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
         // SAFETY: During const eval, `self.args` must have come from a usize,
-        // not a pointer, because that's the only way to creat a fmt::Arguments in const.
+        // not a pointer, because that's the only way to create a fmt::Arguments in const.
+        // (I.e. only fmt::Arguments::from_str is const, fmt::Arguments::new is not.)
+        //
         // Outside const eval, transmuting a pointer to a usize is fine.
         let bits: usize = unsafe { mem::transmute(self.args) };
         if bits & 1 == 1 {
-            // SAFETY: This fmt::Arguments stores a &'static str.
+            // SAFETY: This fmt::Arguments stores a &'static str. See encoding documentation above.
             Some(unsafe {
                 str::from_utf8_unchecked(crate::slice::from_raw_parts(
                     self.template.as_ptr(),

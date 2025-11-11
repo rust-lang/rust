@@ -144,7 +144,7 @@
           StorageLive(_23);
           _23 = &_15;
           _22 = &(*_23);
-          _11 = core::fmt::rt::<impl Arguments<'_>>::new::<7, 2>(move _20, move _22) -> [return: bb5, unwind unreachable];
+          _11 = Arguments::<'_>::new::<7, 2>(move _20, move _22) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {

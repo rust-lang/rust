@@ -314,6 +314,8 @@ fn expand_format_args<'hir>(
         &fmt.template[..]
     };
 
+    // See library/core/src/fmt/mod.rs for the format string encoding format.
+
     for (i, piece) in template.iter().enumerate() {
         match piece {
             &FormatArgsPiece::Literal(sym) => {
@@ -347,6 +349,7 @@ fn expand_format_args<'hir>(
                     return hir::ExprKind::Call(from_str, args);
                 }
 
+                // Encode the literal in chunks of up to 127 bytes, split at utf-8 boundaries.
                 while !s.is_empty() {
                     let len = s.floor_char_boundary(127);
                     bytecode.push(len as u8);
@@ -357,6 +360,7 @@ fn expand_format_args<'hir>(
                 incomplete_lit.clear();
             }
             FormatArgsPiece::Placeholder(p) => {
+                // Push the start byte and remember its index so we can set the option bits later.
                 let i = bytecode.len();
                 bytecode.push(0x80);
 
@@ -370,7 +374,7 @@ fn expand_format_args<'hir>(
                     )
                     .0 as u64;
 
-                // This needs to match the constants in library/core/src/fmt/rt.rs.
+                // This needs to match the constants in library/core/src/fmt/mod.rs.
                 let o = &p.format_options;
                 let align = match o.alignment {
                     Some(FormatAlignment::Left) => 0,
@@ -378,6 +382,7 @@ fn expand_format_args<'hir>(
                     Some(FormatAlignment::Center) => 2,
                     None => 3,
                 };
+                let default_flags = 0x6000_0020;
                 let flags: u32 = o.fill.unwrap_or(' ') as u32
                     | ((o.sign == Some(FormatSign::Plus)) as u32) << 21
                     | ((o.sign == Some(FormatSign::Minus)) as u32) << 22
@@ -388,7 +393,7 @@ fn expand_format_args<'hir>(
                     | (o.width.is_some() as u32) << 27
                     | (o.precision.is_some() as u32) << 28
                     | align << 29;
-                if flags != 0x6000_0020 {
+                if flags != default_flags {
                     bytecode[i] |= 1;
                     bytecode.extend_from_slice(&flags.to_le_bytes());
                     if let Some(val) = &o.width {
