@@ -1,7 +1,7 @@
 //@ check-pass
 // This test checks that the compiler does not propagate 'd: 'c when propagating region errors
 // for the closure argument. If it did, this would fail to compile, eventhough it's a valid program.
-// It should only propagate 'd: 'c.
+// It should only propagate 'd: 'b.
 // PR #148329 explains this in detail.
 
 #[derive(Clone, Copy)]
