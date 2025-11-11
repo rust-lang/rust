@@ -27,6 +27,12 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = Duration::ZERO;
+
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = Duration::MAX;
+
     pub fn now() -> SystemTime {
         panic!("time not implemented on this platform")
     }
