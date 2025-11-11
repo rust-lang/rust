@@ -1,4 +1,7 @@
 //@ run-pass
+
+#![allow(function_casts_as_integer)]
+
 fn func(){}
 
 const STR: &'static str = "hello";
