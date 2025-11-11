@@ -1004,6 +1004,9 @@ parse_use_if_else = use an `if-else` expression instead
 parse_use_let_not_auto = write `let` instead of `auto` to introduce a new variable
 parse_use_let_not_var = write `let` instead of `var` to introduce a new variable
 
+parse_varargs_without_pattern = missing pattern for `...` argument
+    .suggestion = name the argument, or use `_` to continue ignoring it
+
 parse_visibility_not_followed_by_item = visibility `{$vis}` is not followed by an item
     .label = the visibility
     .help = you likely meant to define an item, e.g., `{$vis} fn foo() {"{}"}`
