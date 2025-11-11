@@ -15,9 +15,9 @@ use crate::{fmt, ops, slice, str};
 //   actually reference libstd or liballoc in intra-doc links. so, the best we can do is remove the
 //   links to `CString` and `String` for now until a solution is developed
 
-/// The `&CStr` type represents a borrowed C string.
+/// A dynamically-sized view of a C string.
 ///
-/// Type `&CStr` represents a reference to a borrowed nul-terminated
+/// The type `&CStr` represents a reference to a borrowed nul-terminated
 /// array of bytes. It can be constructed safely from a <code>&[[u8]]</code>
 /// slice, or unsafely from a raw `*const c_char`. It can be expressed as a
 /// literal in the form `c"Hello world"`.
