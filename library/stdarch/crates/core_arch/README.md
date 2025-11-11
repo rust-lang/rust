@@ -3,7 +3,7 @@
 
 The `core::arch` module implements architecture-dependent intrinsics (e.g. SIMD).
 
-# Usage 
+# Usage
 
 `core::arch` is available as part of `libcore` and it is re-exported by
 `libstd`. Prefer using it via `core::arch` or `std::arch` than via this crate.
@@ -17,7 +17,7 @@ are:
   you need to re-compile it for a non-standard target, please prefer using
   `xargo` and re-compiling `libcore`/`libstd` as appropriate instead of using
   this crate.
-  
+
 * using some features that might not be available even behind unstable Rust
   features. We try to keep these to a minimum. If you need to use some of these
   features, please open an issue so that we can expose them in nightly Rust and
@@ -34,7 +34,7 @@ are:
 * [How to get started][contrib]
 * [How to help implement intrinsics][help-implement]
 
-[contrib]: https://github.com/rust-lang/stdarch/blob/master/CONTRIBUTING.md
+[contrib]: https://github.com/rust-lang/stdarch/blob/HEAD/CONTRIBUTING.md
 [help-implement]: https://github.com/rust-lang/stdarch/issues/40
 [i686]: https://rust-lang.github.io/stdarch/i686/core_arch/
 [x86_64]: https://rust-lang.github.io/stdarch/x86_64/core_arch/

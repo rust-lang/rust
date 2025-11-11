@@ -16,7 +16,7 @@ jobs:
       # https://rust-lang.zulipchat.com/#narrow/channel/208962-t-libs.2Fstdarch/topic/Subtree.20sync.20automation/with/528461782
       zulip-stream-id: 208962
       zulip-bot-email:  "stdarch-ci-bot@rust-lang.zulipchat.com"
-      pr-base-branch: master
+      pr-base-branch: main
       branch-name: rustc-pull
     secrets:
       zulip-api-token: ${{ secrets.ZULIP_API_TOKEN }}
