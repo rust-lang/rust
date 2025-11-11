@@ -39,6 +39,12 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = SystemTime(Duration::MAX);
+
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
+
     pub fn now() -> SystemTime {
         SystemTime(current_time(wasi::CLOCKID_REALTIME))
     }
