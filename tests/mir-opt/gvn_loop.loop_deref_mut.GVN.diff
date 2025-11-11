@@ -58,9 +58,8 @@
       }
   
       bb3: {
--         StorageLive(_7);
+          StorageLive(_7);
 -         _7 = copy (((*_2) as V0).0: i32);
-+         nop;
 +         _7 = copy (((*_3) as V0).0: i32);
           StorageLive(_9);
           goto -> bb4;
@@ -85,8 +84,7 @@
           StorageDead(_13);
           StorageDead(_11);
           StorageDead(_9);
--         StorageDead(_7);
-+         nop;
+          StorageDead(_7);
           StorageDead(_5);
           StorageDead(_2);
           return;
