@@ -289,7 +289,7 @@ pub struct FormattingOptions {
     /// ```text
     ///   31  30  29  28  27  26  25  24  23  22  21  20                              0
     /// ┌───┬───────┬───┬───┬───┬───┬───┬───┬───┬───┬──────────────────────────────────┐
-    /// │ 1 │ align │ p │ w │ X?│ x?│'0'│ # │ - │ + │               fill               │
+    /// │ 0 │ align │ p │ w │ X?│ x?│'0'│ # │ - │ + │               fill               │
     /// └───┴───────┴───┴───┴───┴───┴───┴───┴───┴───┴──────────────────────────────────┘
     ///   │     │     │   │  └─┬───────────────────┘ └─┬──────────────────────────────┘
     ///   │     │     │   │    │                       └─ The fill character (21 bits char).
@@ -300,10 +300,7 @@ pub struct FormattingOptions {
     ///   │     ├─ 1: Align right. (>)
     ///   │     ├─ 2: Align center. (^)
     ///   │     └─ 3: Alignment not set. (default)
-    ///   └─ Always set.
-    ///      This makes it possible to distinguish formatting flags from
-    ///      a &str size when stored in (the upper bits of) the same field.
-    ///      (fmt::Arguments will make use of this property in the future.)
+    ///   └─ Always zero.
     /// ```
     // Note: This could use a special niche type with range 0x8000_0000..=0xfdd0ffff.
     // It's unclear if that's useful, though.
@@ -329,7 +326,6 @@ mod flags {
     pub(super) const ALIGN_RIGHT: u32 = 1 << 29;
     pub(super) const ALIGN_CENTER: u32 = 2 << 29;
     pub(super) const ALIGN_UNKNOWN: u32 = 3 << 29;
-    pub(super) const ALWAYS_SET: u32 = 1 << 31;
 }
 
 impl FormattingOptions {
@@ -345,11 +341,7 @@ impl FormattingOptions {
     /// - no [`DebugAsHex`] output mode.
     #[unstable(feature = "formatting_options", issue = "118117")]
     pub const fn new() -> Self {
-        Self {
-            flags: ' ' as u32 | flags::ALIGN_UNKNOWN | flags::ALWAYS_SET,
-            width: 0,
-            precision: 0,
-        }
+        Self { flags: ' ' as u32 | flags::ALIGN_UNKNOWN, width: 0, precision: 0 }
     }
 
     /// Sets or removes the sign (the `+` or the `-` flag).

@@ -387,9 +387,8 @@ fn expand_format_args<'hir>(
                     | ((o.debug_hex == Some(FormatDebugHex::Upper)) as u32) << 26
                     | (o.width.is_some() as u32) << 27
                     | (o.precision.is_some() as u32) << 28
-                    | align << 29
-                    | 1 << 31;
-                if flags != 0xE000_0020 {
+                    | align << 29;
+                if flags != 0x6000_0020 {
                     bytecode[i] |= 1;
                     bytecode.extend_from_slice(&flags.to_le_bytes());
                     if let Some(val) = &o.width {
