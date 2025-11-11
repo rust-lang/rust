@@ -2,7 +2,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'src/foo/jump-to-non-local-method.rs.html'
+//@ has 'src/foo/non-local-method.rs.html'
 
 //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html"]' 'std::sync::atomic::AtomicIsize'
 use std::sync::atomic::AtomicIsize;

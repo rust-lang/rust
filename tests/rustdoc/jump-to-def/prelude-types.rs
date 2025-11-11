@@ -4,7 +4,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'src/foo/jump-to-def-prelude-types.rs.html'
+//@ has 'src/foo/prelude-types.rs.html'
 // FIXME: would be nice to be able to check both the class and the href at the same time so
 // we could check the text as well...
 //@ has - '//a[@class="prelude-ty"]/@href' '{{channel}}/core/result/enum.Result.html'

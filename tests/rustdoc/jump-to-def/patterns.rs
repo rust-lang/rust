@@ -4,7 +4,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'src/foo/jump-to-def-pats.rs.html'
+//@ has 'src/foo/patterns.rs.html'
 
 use std::fmt;
 
