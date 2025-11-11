@@ -5,7 +5,6 @@ use rustc_span::{BytePos, DesugaringKind, ExpnId, ExpnKind, MacroKind, Span};
 use tracing::instrument;
 
 use crate::coverage::expansion::{ExpnTree, SpanWithBcb};
-use crate::coverage::from_mir::Hole;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::hir_info::ExtractedHirInfo;
 
@@ -98,14 +97,8 @@ pub(super) fn extract_refined_covspans<'tcx>(
     covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
-    let mut holes = hir_info
-        .hole_spans
-        .iter()
-        .copied()
-        // Discard any holes that aren't directly visible within the body span.
-        .filter(|&hole_span| body_span.contains(hole_span) && body_span.eq_ctxt(hole_span))
-        .map(|span| Hole { span })
-        .collect::<Vec<_>>();
+    let mut holes = node.hole_spans.iter().copied().map(|span| Hole { span }).collect::<Vec<_>>();
+
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
@@ -285,4 +278,20 @@ fn ensure_non_empty_span(source_map: &SourceMap, span: Span) -> Option<Span> {
             }
         })
         .ok()?
+}
+
+#[derive(Debug)]
+struct Hole {
+    span: Span,
+}
+
+impl Hole {
+    fn merge_if_overlapping_or_adjacent(&mut self, other: &mut Self) -> bool {
+        if !self.span.overlaps_or_adjacent(other.span) {
+            return false;
+        }
+
+        self.span = self.span.to(other.span);
+        true
+    }
 }

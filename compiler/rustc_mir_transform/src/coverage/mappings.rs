@@ -24,7 +24,7 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> ExtractedMappings {
-    let expn_tree = expansion::build_expn_tree(mir_body, graph);
+    let expn_tree = expansion::build_expn_tree(mir_body, hir_info, graph);
 
     let mut mappings = vec![];
 
