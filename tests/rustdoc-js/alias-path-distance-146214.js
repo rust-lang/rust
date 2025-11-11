@@ -16,4 +16,17 @@ const EXPECTED = [
             { 'path': 'alias_path_distance::Foo', 'name': 'baz' },
         ],
     },
+    {
+        'query': 'Foo::zzzz',
+        'others': [
+            { 'path': 'alias_path_distance::Foo', 'name': 'baz' },
+        ],
+    },
+    {
+        'query': 'zzzz',
+        'others': [
+            { 'path': 'alias_path_distance::Foo', 'name': 'baz' },
+            { 'path': 'alias_path_distance::Bar', 'name': 'baz' },
+        ],
+    },
 ];
