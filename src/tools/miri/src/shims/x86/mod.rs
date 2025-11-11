@@ -13,6 +13,7 @@ use crate::*;
 mod aesni;
 mod avx;
 mod avx2;
+mod avx512;
 mod bmi;
 mod gfni;
 mod sha;
@@ -149,6 +150,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("avx512.") => {
+                return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }

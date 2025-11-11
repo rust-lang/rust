@@ -1353,8 +1353,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn runtime_checks(ecx: &InterpCx<'tcx, Self>, r: mir::RuntimeChecks) -> InterpResult<'tcx, bool> {
-        interp_ok(r.value(&ecx.tcx.sess))
+    fn runtime_checks(
+        ecx: &InterpCx<'tcx, Self>,
+        r: mir::RuntimeChecks,
+    ) -> InterpResult<'tcx, bool> {
+        interp_ok(r.value(ecx.tcx.sess))
     }
 
     #[inline(always)]
