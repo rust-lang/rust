@@ -119,7 +119,7 @@ error[E0594]: cannot assign to `*_x0`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:26:5
    |
 LL |     *_x0 = U;
-   |     ^^^^^^^^ `_x0` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^ `_x0` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -130,7 +130,7 @@ error[E0594]: cannot assign to `*_x2`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:27:5
    |
 LL |     *_x2 = U;
-   |     ^^^^^^^^ `_x2` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^ `_x2` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |

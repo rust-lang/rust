@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `sm.x` as mutable, as it is behind a `&` reference
   --> $DIR/accidentally-cloning-ref-borrow-error.rs:32:9
    |
 LL |     foo(&mut sm.x);
-   |         ^^^^^^^^^ `sm` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^^^^^^^^^ `sm` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: `Str` doesn't implement `Clone`, so this call clones the reference `&Str`
   --> $DIR/accidentally-cloning-ref-borrow-error.rs:31:21
