@@ -51,11 +51,8 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{
-    Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
-};
+use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -66,15 +63,12 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
-use rustc_middle::ty::print::{
-    PrintError, PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths,
-};
+use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
-use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -216,201 +210,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) -> bool {
-        // FIXME(estebank): unify with `report_similar_impl_candidates`. The message is similar,
-        // even if the logic needed to detect the case is very different.
-        use hir::def_id::CrateNum;
-        use rustc_hir::definitions::DisambiguatedDefPathData;
-        use ty::GenericArg;
-        use ty::print::Printer;
-
-        struct ConflictingPathPrinter<'tcx> {
-            tcx: TyCtxt<'tcx>,
-            segments: Vec<Symbol>,
-        }
-
-        impl<'tcx> Printer<'tcx> for ConflictingPathPrinter<'tcx> {
-            fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-
-            fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
-            }
-
-            fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
-            }
-
-            fn print_dyn_existential(
-                &mut self,
-                _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<(), PrintError> {
-                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
-            }
-
-            fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
-            }
-
-            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
-                self.segments = vec![self.tcx.crate_name(cnum)];
-                Ok(())
-            }
-
-            fn print_path_with_qualified(
-                &mut self,
-                _self_ty: Ty<'tcx>,
-                _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<(), PrintError> {
-                Err(fmt::Error)
-            }
-
-            fn print_path_with_impl(
-                &mut self,
-                _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _self_ty: Ty<'tcx>,
-                _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<(), PrintError> {
-                Err(fmt::Error)
-            }
-
-            fn print_path_with_simple(
-                &mut self,
-                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<(), PrintError> {
-                print_prefix(self)?;
-                self.segments.push(disambiguated_data.as_sym(true));
-                Ok(())
-            }
-
-            fn print_path_with_generic_args(
-                &mut self,
-                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _args: &[GenericArg<'tcx>],
-            ) -> Result<(), PrintError> {
-                print_prefix(self)
-            }
-        }
-
-        let report_path_match = |err: &mut Diag<'_>, did1: DefId, did2: DefId, ty: &str| -> bool {
-            // Only report definitions from different crates. If both definitions
-            // are from a local module we could have false positives, e.g.
-            // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
-            if did1.krate != did2.krate {
-                let abs_path = |def_id| {
-                    let mut p = ConflictingPathPrinter { tcx: self.tcx, segments: vec![] };
-                    p.print_def_path(def_id, &[]).map(|_| p.segments)
-                };
-
-                // We compare strings because DefPath can be different for imported and
-                // non-imported crates.
-                let expected_str = self.tcx.def_path_str(did1);
-                let found_str = self.tcx.def_path_str(did2);
-                let Ok(expected_abs) = abs_path(did1) else { return false };
-                let Ok(found_abs) = abs_path(did2) else { return false };
-                let same_path = expected_str == found_str || expected_abs == found_abs;
-                if same_path {
-                    // We want to use as unique a type path as possible. If both types are "locally
-                    // known" by the same name, we use the "absolute path" which uses the original
-                    // crate name instead.
-                    let (expected, found) = if expected_str == found_str {
-                        (join_path_syms(&expected_abs), join_path_syms(&found_abs))
-                    } else {
-                        (expected_str, found_str)
-                    };
-
-                    // We've displayed "expected `a::b`, found `a::b`". We add context to
-                    // differentiate the different cases where that might happen.
-                    let expected_crate_name = self.tcx.crate_name(did1.krate);
-                    let found_crate_name = self.tcx.crate_name(did2.krate);
-                    let same_crate = expected_crate_name == found_crate_name;
-                    let expected_sp = self.tcx.def_span(did1);
-                    let found_sp = self.tcx.def_span(did2);
-
-                    let both_direct_dependencies = if !did1.is_local()
-                        && !did2.is_local()
-                        && let Some(data1) = self.tcx.extern_crate(did1.krate)
-                        && let Some(data2) = self.tcx.extern_crate(did2.krate)
-                        && data1.dependency_of == LOCAL_CRATE
-                        && data2.dependency_of == LOCAL_CRATE
-                    {
-                        // If both crates are directly depended on, we don't want to mention that
-                        // in the final message, as it is redundant wording.
-                        // We skip the case of semver trick, where one version of the local crate
-                        // depends on another version of itself by checking that both crates at play
-                        // are not the current one.
-                        true
-                    } else {
-                        false
-                    };
-
-                    let mut span: MultiSpan = vec![expected_sp, found_sp].into();
-                    span.push_span_label(
-                        self.tcx.def_span(did1),
-                        format!("this is the expected {ty} `{expected}`"),
-                    );
-                    span.push_span_label(
-                        self.tcx.def_span(did2),
-                        format!("this is the found {ty} `{found}`"),
-                    );
-                    for def_id in [did1, did2] {
-                        let crate_name = self.tcx.crate_name(def_id.krate);
-                        if !def_id.is_local()
-                            && let Some(data) = self.tcx.extern_crate(def_id.krate)
-                        {
-                            let descr = if same_crate {
-                                "one version of".to_string()
-                            } else {
-                                format!("one {ty} comes from")
-                            };
-                            let dependency = if both_direct_dependencies {
-                                if let rustc_session::cstore::ExternCrateSource::Extern(def_id) =
-                                    data.src
-                                    && let Some(name) = self.tcx.opt_item_name(def_id)
-                                {
-                                    format!(", which is renamed locally to `{name}`")
-                                } else {
-                                    String::new()
-                                }
-                            } else if data.dependency_of == LOCAL_CRATE {
-                                ", as a direct dependency of the current crate".to_string()
-                            } else {
-                                let dep = self.tcx.crate_name(data.dependency_of);
-                                format!(", as a dependency of crate `{dep}`")
-                            };
-                            span.push_span_label(
-                                data.span,
-                                format!("{descr} crate `{crate_name}` used here{dependency}"),
-                            );
-                        }
-                    }
-                    let msg = if (did1.is_local() || did2.is_local()) && same_crate {
-                        format!(
-                            "the crate `{expected_crate_name}` is compiled multiple times, \
-                             possibly with different configurations",
-                        )
-                    } else if same_crate {
-                        format!(
-                            "two different versions of crate `{expected_crate_name}` are being \
-                             used; two types coming from two different versions of the same crate \
-                             are different types even if they look the same",
-                        )
-                    } else {
-                        format!(
-                            "two types coming from two different crates are different types even \
-                             if they look the same",
-                        )
-                    };
-                    err.span_note(span, msg);
-                    if same_crate {
-                        err.help("you can use `cargo tree` to explore your dependency tree");
-                    }
-                    return true;
-                }
-            }
-            false
-        };
         match terr {
             TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
@@ -418,11 +217,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
-                    return report_path_match(err, exp_adt.did(), found_adt.did(), "type");
+                    return self.check_same_definition_different_crate(
+                        err,
+                        exp_adt.did(),
+                        [found_adt.did()].into_iter(),
+                        |did| vec![self.tcx.def_span(did)],
+                        "type",
+                    );
                 }
             }
             TypeError::Traits(ref exp_found) => {
-                return report_path_match(err, exp_found.expected, exp_found.found, "trait");
+                return self.check_same_definition_different_crate(
+                    err,
+                    exp_found.expected,
+                    [exp_found.found].into_iter(),
+                    |did| vec![self.tcx.def_span(did)],
+                    "trait",
+                );
             }
             _ => (), // FIXME(#22750) handle traits and stuff
         }
