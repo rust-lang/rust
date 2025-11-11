@@ -261,6 +261,7 @@ impl ToJson for Target {
             ($attr:ident) => {{ target_option_val!($attr, (stringify!($attr)).replace("_", "-")) }};
             ($attr:ident, $json_name:expr) => {{
                 let name = $json_name;
+                #[allow(rustc::bad_opt_access)]
                 if default.$attr != target.$attr {
                     d.insert(name.into(), target.$attr.to_json());
                 }

@@ -83,7 +83,7 @@ pub(crate) fn get_linker<'a>(
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
-    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.vendor == "uwp" {
+    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.abi == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
@@ -134,7 +134,7 @@ pub(crate) fn get_linker<'a>(
 
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
+    assert!(cmd.get_args().is_empty() || sess.target.abi == "uwp");
     match flavor {
         LinkerFlavor::Unix(Cc::No) if sess.target.os == "l4re" => {
             Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
