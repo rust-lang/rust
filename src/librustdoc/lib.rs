@@ -61,11 +61,6 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate test;
 
-// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-// about jemalloc.
-#[cfg(feature = "jemalloc")]
-extern crate tikv_jemalloc_sys as jemalloc_sys;
-
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::path::Path;
@@ -77,6 +72,10 @@ use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
 use rustc_session::{EarlyDiagCtxt, getopts};
+/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
+/// and https://github.com/rust-lang/rust/pull/146627 for why we need this `use` statement.
+#[cfg(feature = "jemalloc")]
+use tikv_jemalloc_sys as _;
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
@@ -124,37 +123,6 @@ mod visit_ast;
 mod visit_lib;
 
 pub fn main() {
-    // See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-    // about jemalloc.
-    #[cfg(feature = "jemalloc")]
-    {
-        use std::os::raw::{c_int, c_void};
-
-        #[used]
-        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
-        #[used]
-        static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-            jemalloc_sys::posix_memalign;
-        #[used]
-        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
-        #[used]
-        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
-        #[used]
-        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
-        #[used]
-        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
-
-        #[cfg(target_os = "macos")]
-        {
-            unsafe extern "C" {
-                fn _rjem_je_zone_register();
-            }
-
-            #[used]
-            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
-        }
-    }
-
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     rustc_driver::install_ice_hook(
