@@ -530,10 +530,7 @@ impl<'a> AsyncPipe<'a> {
 
 impl<'a> Drop for AsyncPipe<'a> {
     fn drop(&mut self) {
-        match self.state {
-            State::Reading => {}
-            _ => return,
-        }
+        let State::Reading = self.state else { return };
 
         // If we have a pending read operation, then we have to make sure that
         // it's *done* before we actually drop this type. The kernel requires

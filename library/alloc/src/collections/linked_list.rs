@@ -1646,9 +1646,8 @@ impl<'a, T> CursorMut<'a, T> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_after(&mut self, list: LinkedList<T>) {
         unsafe {
-            let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
-                Some(parts) => parts,
-                _ => return,
+            let Some((splice_head, splice_tail, splice_len)) = list.detach_all_nodes() else {
+                return;
             };
             let node_next = match self.current {
                 None => self.list.head,

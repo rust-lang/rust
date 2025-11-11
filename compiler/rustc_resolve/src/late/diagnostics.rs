@@ -1512,81 +1512,74 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     fn restrict_assoc_type_in_where_clause(&self, span: Span, err: &mut Diag<'_>) -> bool {
         // Detect that we are actually in a `where` predicate.
-        let (bounded_ty, bounds, where_span) = if let Some(ast::WherePredicate {
+        let Some(ast::WherePredicate {
             kind:
                 ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                     bounded_ty,
                     bound_generic_params,
                     bounds,
                 }),
-            span,
+            span: where_span,
             ..
         }) = self.diag_metadata.current_where_predicate
-        {
-            if !bound_generic_params.is_empty() {
-                return false;
-            }
-            (bounded_ty, bounds, span)
-        } else {
+        else {
             return false;
         };
+        if !bound_generic_params.is_empty() {
+            return false;
+        }
 
         // Confirm that the target is an associated type.
-        let (ty, _, path) = if let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind {
-            // use this to verify that ident is a type param.
-            let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else {
-                return false;
-            };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
-            ) {
-                return false;
-            }
-            (&qself.ty, qself.position, path)
-        } else {
+        let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind else { return false };
+        let ty = &qself.ty;
+        // use this to verify that ident is a type param.
+        let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else { return false };
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
+        ) {
             return false;
-        };
+        }
 
         let peeled_ty = ty.peel_refs();
-        if let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind {
-            // Confirm that the `SelfTy` is a type parameter.
-            let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
+        let ast::TyKind::Path(None, type_param_path) = &peeled_ty.kind else { return false };
+        // Confirm that the `SelfTy` is a type parameter.
+        let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
+            return false;
+        };
+        if !matches!(
+            partial_res.full_res(),
+            Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
+        ) {
+            return false;
+        }
+        let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
+            (&type_param_path.segments[..], &bounds[..])
+        else {
+            return false;
+        };
+        if poly_trait_ref.modifiers != ast::TraitBoundModifiers::NONE {
+            return false;
+        }
+        let [ast::PathSegment { ident, args: None, .. }] =
+            &poly_trait_ref.trait_ref.path.segments[..]
+        else {
+            return false;
+        };
+        if ident.span == span {
+            let Some(new_where_bound_predicate) =
+                mk_where_bound_predicate(path, poly_trait_ref, ty)
+            else {
                 return false;
             };
-            if !matches!(
-                partial_res.full_res(),
-                Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
-            ) {
-                return false;
-            }
-            if let (
-                [ast::PathSegment { args: None, .. }],
-                [ast::GenericBound::Trait(poly_trait_ref)],
-            ) = (&type_param_path.segments[..], &bounds[..])
-                && poly_trait_ref.modifiers == ast::TraitBoundModifiers::NONE
-            {
-                if let [ast::PathSegment { ident, args: None, .. }] =
-                    &poly_trait_ref.trait_ref.path.segments[..]
-                {
-                    if ident.span == span {
-                        let Some(new_where_bound_predicate) =
-                            mk_where_bound_predicate(path, poly_trait_ref, ty)
-                        else {
-                            return false;
-                        };
-                        err.span_suggestion_verbose(
-                            *where_span,
-                            format!("constrain the associated type to `{ident}`"),
-                            where_bound_predicate_to_string(&new_where_bound_predicate),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    return true;
-                }
-            }
+            err.span_suggestion_verbose(
+                *where_span,
+                format!("constrain the associated type to `{ident}`"),
+                where_bound_predicate_to_string(&new_where_bound_predicate),
+                Applicability::MaybeIncorrect,
+            );
         }
-        false
+        true
     }
 
     /// Check if the source is call expression and the first argument is `self`. If true,
