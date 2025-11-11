@@ -1,5 +1,6 @@
 //! Code for dealing with `--print` requests.
 
+use std::fmt;
 use std::sync::LazyLock;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -8,35 +9,7 @@ use crate::EarlyDiagCtxt;
 use crate::config::{
     CodegenOptions, OutFileName, UnstableOptions, nightly_options, split_out_file_name,
 };
-
-const PRINT_KINDS: &[(&str, PrintKind)] = &[
-    // tidy-alphabetical-start
-    ("all-target-specs-json", PrintKind::AllTargetSpecsJson),
-    ("calling-conventions", PrintKind::CallingConventions),
-    ("cfg", PrintKind::Cfg),
-    ("check-cfg", PrintKind::CheckCfg),
-    ("code-models", PrintKind::CodeModels),
-    ("crate-name", PrintKind::CrateName),
-    ("crate-root-lint-levels", PrintKind::CrateRootLintLevels),
-    ("deployment-target", PrintKind::DeploymentTarget),
-    ("file-names", PrintKind::FileNames),
-    ("host-tuple", PrintKind::HostTuple),
-    ("link-args", PrintKind::LinkArgs),
-    ("native-static-libs", PrintKind::NativeStaticLibs),
-    ("relocation-models", PrintKind::RelocationModels),
-    ("split-debuginfo", PrintKind::SplitDebuginfo),
-    ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
-    ("supported-crate-types", PrintKind::SupportedCrateTypes),
-    ("sysroot", PrintKind::Sysroot),
-    ("target-cpus", PrintKind::TargetCPUs),
-    ("target-features", PrintKind::TargetFeatures),
-    ("target-libdir", PrintKind::TargetLibdir),
-    ("target-list", PrintKind::TargetList),
-    ("target-spec-json", PrintKind::TargetSpecJson),
-    ("target-spec-json-schema", PrintKind::TargetSpecJsonSchema),
-    ("tls-models", PrintKind::TlsModels),
-    // tidy-alphabetical-end
-];
+use crate::macros::AllVariants;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct PrintRequest {
@@ -45,6 +18,7 @@ pub struct PrintRequest {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(AllVariants)]
 pub enum PrintKind {
     // tidy-alphabetical-start
     AllTargetSpecsJson,
@@ -74,11 +48,94 @@ pub enum PrintKind {
     // tidy-alphabetical-end
 }
 
+impl PrintKind {
+    /// FIXME: rust-analyzer doesn't support `#![feature(macro_derive)]` yet
+    /// (<https://github.com/rust-lang/rust-analyzer/issues/21043>), which breaks autocomplete.
+    /// Work around that by aliasing the trait constant to a regular constant.
+    const ALL_VARIANTS: &[Self] = <Self as AllVariants>::ALL_VARIANTS;
+
+    fn name(self) -> &'static str {
+        use PrintKind::*;
+        match self {
+            // tidy-alphabetical-start
+            AllTargetSpecsJson => "all-target-specs-json",
+            CallingConventions => "calling-conventions",
+            Cfg => "cfg",
+            CheckCfg => "check-cfg",
+            CodeModels => "code-models",
+            CrateName => "crate-name",
+            CrateRootLintLevels => "crate-root-lint-levels",
+            DeploymentTarget => "deployment-target",
+            FileNames => "file-names",
+            HostTuple => "host-tuple",
+            LinkArgs => "link-args",
+            NativeStaticLibs => "native-static-libs",
+            RelocationModels => "relocation-models",
+            SplitDebuginfo => "split-debuginfo",
+            StackProtectorStrategies => "stack-protector-strategies",
+            SupportedCrateTypes => "supported-crate-types",
+            Sysroot => "sysroot",
+            TargetCPUs => "target-cpus",
+            TargetFeatures => "target-features",
+            TargetLibdir => "target-libdir",
+            TargetList => "target-list",
+            TargetSpecJson => "target-spec-json",
+            TargetSpecJsonSchema => "target-spec-json-schema",
+            TlsModels => "tls-models",
+            // tidy-alphabetical-end
+        }
+    }
+
+    fn is_stable(self) -> bool {
+        use PrintKind::*;
+        match self {
+            // Stable values:
+            CallingConventions
+            | Cfg
+            | CodeModels
+            | CrateName
+            | DeploymentTarget
+            | FileNames
+            | HostTuple
+            | LinkArgs
+            | NativeStaticLibs
+            | RelocationModels
+            | SplitDebuginfo
+            | StackProtectorStrategies
+            | Sysroot
+            | TargetCPUs
+            | TargetFeatures
+            | TargetLibdir
+            | TargetList
+            | TlsModels => true,
+
+            // Unstable values:
+            AllTargetSpecsJson => false,
+            CheckCfg => false,
+            CrateRootLintLevels => false,
+            SupportedCrateTypes => false,
+            TargetSpecJson => false,
+            TargetSpecJsonSchema => false,
+        }
+    }
+
+    fn from_str(s: &str) -> Option<Self> {
+        Self::ALL_VARIANTS.iter().find(|kind| kind.name() == s).copied()
+    }
+}
+
+impl fmt::Display for PrintKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.name().fmt(f)
+    }
+}
+
 pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
+    let print_kinds =
+        PrintKind::ALL_VARIANTS.iter().map(|kind| kind.name()).collect::<Vec<_>>().join("|");
     format!(
         "Compiler information to print on stdout (or to a file)\n\
-        INFO may be one of <{}>.",
-        PRINT_KINDS.iter().map(|(name, _)| format!("{name}")).collect::<Vec<_>>().join("|")
+        INFO may be one of <{print_kinds}>.",
     )
 });
 
@@ -107,11 +164,9 @@ pub(crate) fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        let kind = if let Some((print_name, print_kind)) =
-            PRINT_KINDS.iter().find(|&&(name, _)| name == req)
-        {
-            check_print_request_stability(early_dcx, unstable_opts, (print_name, *print_kind));
-            *print_kind
+        let kind = if let Some(print_kind) = PrintKind::from_str(req) {
+            check_print_request_stability(early_dcx, unstable_opts, print_kind);
+            print_kind
         } else {
             let is_nightly = nightly_options::match_is_nightly_build(matches);
             emit_unknown_print_request_help(early_dcx, req, is_nightly)
@@ -136,41 +191,23 @@ pub(crate) fn collect_print_requests(
 fn check_print_request_stability(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    (print_name, print_kind): (&str, PrintKind),
+    print_kind: PrintKind,
 ) {
-    if !is_print_request_stable(print_kind) && !unstable_opts.unstable_options {
+    if !print_kind.is_stable() && !unstable_opts.unstable_options {
         early_dcx.early_fatal(format!(
-            "the `-Z unstable-options` flag must also be passed to enable the `{print_name}` \
-                print option"
+            "the `-Z unstable-options` flag must also be passed to enable the `{print_kind}` print option"
         ));
     }
 }
 
-fn is_print_request_stable(print_kind: PrintKind) -> bool {
-    match print_kind {
-        PrintKind::AllTargetSpecsJson
-        | PrintKind::CheckCfg
-        | PrintKind::CrateRootLintLevels
-        | PrintKind::SupportedCrateTypes
-        | PrintKind::TargetSpecJson
-        | PrintKind::TargetSpecJsonSchema => false,
-        _ => true,
-    }
-}
-
 fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nightly: bool) -> ! {
-    let prints = PRINT_KINDS
+    let prints = PrintKind::ALL_VARIANTS
         .iter()
-        .filter_map(|(name, kind)| {
-            // If we're not on nightly, we don't want to print unstable options
-            if !is_nightly && !is_print_request_stable(*kind) {
-                None
-            } else {
-                Some(format!("`{name}`"))
-            }
-        })
-        .collect::<Vec<_>>();
-    let prints = prints.join(", ");
+        // If we're not on nightly, we don't want to print unstable options
+        .filter(|kind| is_nightly || kind.is_stable())
+        .map(|kind| format!("`{kind}`"))
+        .collect::<Vec<_>>()
+        .join(", ");
 
     let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
     #[allow(rustc::diagnostic_outside_of_impl)]
