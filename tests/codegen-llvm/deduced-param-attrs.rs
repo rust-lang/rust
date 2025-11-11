@@ -99,6 +99,7 @@ pub static A1: fn(BigCell) = shared_borrow;
 // The parameter can be mutated through a raw const borrow.
 //
 // CHECK-LABEL: ; deduced_param_attrs::raw_const_borrow
+// CHECK-NEXT:  ;
 // CHECK-NOT:   readonly
 // CHECK-NEXT:  %a)
 #[inline(never)]
