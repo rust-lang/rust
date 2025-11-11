@@ -46240,11 +46240,22 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_ternarylogic_epi32() {
-        let a = _mm512_set1_epi32(1 << 2);
-        let b = _mm512_set1_epi32(1 << 1);
-        let c = _mm512_set1_epi32(1 << 0);
-        let r = _mm512_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm512_set1_epi32(0);
+        let a = _mm512_set4_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm512_set4_epi32(0b010, 0b011, 0b001, 0b101);
+        let c = _mm512_set4_epi32(0b001, 0b000, 0b001, 0b101);
+
+        // Identity of A.
+        let r = _mm512_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m512i(r, a);
+
+        // Bitwise or.
+        let r = _mm512_ternarylogic_epi32::<0b1111_1110>(a, b, c);
+        let e = _mm512_set4_epi32(0b111, 0b111, 0b001, 0b101);
+        assert_eq_m512i(r, e);
+
+        // Majority.
+        let r = _mm512_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm512_set4_epi32(0b000, 0b010, 0b001, 0b101);
         assert_eq_m512i(r, e);
     }
 
@@ -46274,11 +46285,24 @@ mod tests {
 
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_ternarylogic_epi32() {
-        let a = _mm256_set1_epi32(1 << 2);
-        let b = _mm256_set1_epi32(1 << 1);
-        let c = _mm256_set1_epi32(1 << 0);
-        let r = _mm256_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm256_set1_epi32(0);
+        let _mm256_set4_epi32 = |a, b, c, d| _mm256_setr_epi32(a, b, c, d, a, b, c, d);
+
+        let a = _mm256_set4_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm256_set4_epi32(0b010, 0b011, 0b001, 0b101);
+        let c = _mm256_set4_epi32(0b001, 0b000, 0b001, 0b101);
+
+        // Identity of A.
+        let r = _mm256_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m256i(r, a);
+
+        // Bitwise or.
+        let r = _mm256_ternarylogic_epi32::<0b1111_1110>(a, b, c);
+        let e = _mm256_set4_epi32(0b111, 0b111, 0b001, 0b101);
+        assert_eq_m256i(r, e);
+
+        // Majority.
+        let r = _mm256_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm256_set4_epi32(0b000, 0b010, 0b001, 0b101);
         assert_eq_m256i(r, e);
     }
 
@@ -46308,11 +46332,22 @@ mod tests {
 
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_ternarylogic_epi32() {
-        let a = _mm_set1_epi32(1 << 2);
-        let b = _mm_set1_epi32(1 << 1);
-        let c = _mm_set1_epi32(1 << 0);
-        let r = _mm_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm_set1_epi32(0);
+        let a = _mm_setr_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm_setr_epi32(0b010, 0b011, 0b001, 0b101);
+        let c = _mm_setr_epi32(0b001, 0b000, 0b001, 0b101);
+
+        // Identity of A.
+        let r = _mm_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m128i(r, a);
+
+        // Bitwise or.
+        let r = _mm_ternarylogic_epi32::<0b1111_1110>(a, b, c);
+        let e = _mm_setr_epi32(0b111, 0b111, 0b001, 0b101);
+        assert_eq_m128i(r, e);
+
+        // Majority.
+        let r = _mm_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm_setr_epi32(0b000, 0b010, 0b001, 0b101);
         assert_eq_m128i(r, e);
     }
 
