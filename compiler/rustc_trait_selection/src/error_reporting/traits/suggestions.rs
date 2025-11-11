@@ -1886,12 +1886,56 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ty::Dynamic(_, _) = trait_pred.self_ty().skip_binder().kind() else {
             return false;
         };
+        if let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
+        | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
+        | Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(fn_sig, _), .. }) =
+            self.tcx.hir_node_by_def_id(obligation.cause.body_id)
+            && let hir::FnRetTy::Return(ty) = fn_sig.decl.output
+            && let hir::TyKind::Path(qpath) = ty.kind
+            && let hir::QPath::Resolved(None, path) = qpath
+            && let Res::Def(DefKind::TyAlias, def_id) = path.res
+        {
+            // Do not suggest
+            // type T = dyn Trait;
+            // fn foo() -> impl T { .. }
+            err.span_note(self.tcx.def_span(def_id), "this type alias is unsized");
+            err.multipart_suggestion(
+                format!(
+                    "consider boxing the return type, and wrapping all of the returned values in \
+                    `Box::new`",
+                ),
+                vec![
+                    (ty.span.shrink_to_lo(), "Box<".to_string()),
+                    (ty.span.shrink_to_hi(), ">".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+            return false;
+        }
 
         err.code(E0746);
         err.primary_message("return type cannot be a trait object without pointer indirection");
         err.children.clear();
 
-        let span = obligation.cause.span;
+        let mut span = obligation.cause.span;
+        if let DefKind::Closure = self.tcx.def_kind(obligation.cause.body_id)
+            && let parent = self.tcx.parent(obligation.cause.body_id.into())
+            && let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(parent)
+            && self.tcx.asyncness(parent).is_async()
+            && let Some(parent) = parent.as_local()
+            && let Node::Item(hir::Item { kind: hir::ItemKind::Fn { sig: fn_sig, .. }, .. })
+            | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(fn_sig, _), .. })
+            | Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(fn_sig, _), ..
+            }) = self.tcx.hir_node_by_def_id(parent)
+        {
+            // Do not suggest (#147894)
+            // async fn foo() -> dyn Display impl { .. }
+            // and
+            // async fn foo() -> dyn Display Box<dyn { .. }>
+            span = fn_sig.decl.output.span();
+            err.span(span);
+        }
         let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();

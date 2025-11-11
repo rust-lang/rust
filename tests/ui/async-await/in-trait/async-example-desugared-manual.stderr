@@ -2,7 +2,7 @@ warning: impl trait in impl method signature does not match trait method signatu
   --> $DIR/async-example-desugared-manual.rs:22:22
    |
 LL |     async fn foo(&self) -> i32;
-   |     --------------------------- return type from trait method defined here
+   |                            --- return type from trait method defined here
 ...
 LL |     fn foo(&self) -> MyFuture {
    |                      ^^^^^^^^

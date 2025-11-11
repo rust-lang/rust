@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Foo: Qux` is not satisfied in `impl Future<Output
   --> $DIR/issue-64130-3-other.rs:25:12
    |
 LL | async fn bar() {
-   | -------------- within this `impl Future<Output = ()>`
+   |               - within this `impl Future<Output = ()>`
 ...
 LL |     is_qux(bar());
    |            ^^^^^ unsatisfied trait bound
