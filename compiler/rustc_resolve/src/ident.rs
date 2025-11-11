@@ -458,14 +458,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let mut result = Err(Determinacy::Determined);
                         for derive in parent_scope.derives {
                             let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
-                            match this.reborrow().resolve_macro_path(
+                            match this.reborrow().resolve_derive_macro_path(
                                 derive,
-                                MacroKind::Derive,
                                 parent_scope,
-                                true,
                                 force,
                                 ignore_import,
-                                None,
                             ) {
                                 Ok((Some(ext), _)) => {
                                     if ext.helper_attrs.contains(&ident.name) {

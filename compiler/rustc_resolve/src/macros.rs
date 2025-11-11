@@ -395,13 +395,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         for (i, resolution) in entry.resolutions.iter_mut().enumerate() {
             if resolution.exts.is_none() {
                 resolution.exts = Some(
-                    match self.cm().resolve_macro_path(
+                    match self.cm().resolve_derive_macro_path(
                         &resolution.path,
-                        MacroKind::Derive,
                         &parent_scope,
-                        true,
                         force,
-                        None,
                         None,
                     ) {
                         Ok((Some(ext), _)) => {
@@ -706,26 +703,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         Ok((ext, res))
     }
 
-    pub(crate) fn resolve_macro_path<'r>(
+    pub(crate) fn resolve_derive_macro_path<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         path: &ast::Path,
-        kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
-        trace: bool,
         force: bool,
         ignore_import: Option<Import<'ra>>,
-        suggestion_span: Option<Span>,
     ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
-            kind,
+            MacroKind::Derive,
             parent_scope,
-            trace,
+            true,
             force,
             None,
             None,
             ignore_import,
-            suggestion_span,
+            None,
         )
     }
 
