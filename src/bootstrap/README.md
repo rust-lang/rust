@@ -28,14 +28,14 @@ compiler. What actually happens when you invoke bootstrap is:
    `x.py` cross-platform) is run. This script is responsible for downloading the stage0
    compiler/Cargo binaries, and it then compiles the build system itself (this folder).
    Finally, it then invokes the actual `bootstrap` binary build system.
-2. In Rust, `bootstrap` will slurp up all configuration, perform a number of
-   sanity checks (whether compilers exist, for example), and then start building the
-   stage0 artifacts.
-3. The stage0 `cargo`, downloaded earlier, is used to build the standard library
-   and the compiler, and then these binaries are then copied to the `stage1`
-   directory. That compiler is then used to generate the stage1 artifacts which
-   are then copied to the stage2 directory, and then finally, the stage2
-   artifacts are generated using that compiler.
+2. In Rust, the bootstrap binary reads all configuration, performs a number of sanity
+   checks (for example, verifying toolchains and paths), and then prepares to build the
+   stage 1 compiler and libraries using the prebuilt stage 0 compiler.
+3. The stage 0 compiler and standard library, downloaded earlier, are used to build the
+   stage 1 compiler, which links against the stage 0 standard library. The newly built stage 1
+   compiler is then used to build the stage 1 standard library. After that, the stage 1
+   compiler is used once more to produce the stage 2 compiler, which links against the
+   stage 1 standard library.
 
 The goal of each stage is to (a) leverage Cargo as much as possible and failing
 that (b) leverage Rust as much as possible!
@@ -167,7 +167,6 @@ build/
     # no extra build output in these directories.
     stage1/
     stage2/
-    stage3/
 ```
 
 ## Extending bootstrap
@@ -177,8 +176,9 @@ When you use bootstrap, you'll call it through the entry point script
 `bootstrap` has a difficult problem: it is written in Rust, but yet it is run
 before the Rust compiler is built! To work around this, there are two components
 of bootstrap: the main one written in rust, and `bootstrap.py`. `bootstrap.py`
-is what gets run by entry point script. It takes care of downloading the `stage0`
-compiler, which will then build the bootstrap binary written in Rust.
+is what gets run by entry point script. It takes care of downloading the prebuilt
+stage 0 compiler, std and Cargo binaries, which are then used to build the
+bootstrap binary.
 
 Because there are two separate codebases behind `x.py`, they need to
 be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
