@@ -150,6 +150,15 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     // Map change targets to the correct syntax nodes
     let tree_mutator = TreeMutator::new(&root);
     let mut changed_elements = vec![];
+    let mut changed_elements_set = rustc_hash::FxHashSet::default();
+    let mut deduplicate_node = |node_or_token: &mut SyntaxElement| {
+        let SyntaxElement::Node(node) = node_or_token else { return };
+        if changed_elements_set.contains(node) {
+            *node = node.clone_subtree().clone_for_update();
+        } else {
+            changed_elements_set.insert(node.clone());
+        }
+    };
 
     for index in independent_changes {
         match &mut changes[index as usize] {
@@ -178,6 +187,18 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
                 *range = start..=end;
             }
+        }
+
+        match &mut changes[index as usize] {
+            Change::Insert(_, element) | Change::Replace(_, Some(element)) => {
+                deduplicate_node(element);
+            }
+            Change::InsertAll(_, elements)
+            | Change::ReplaceWithMany(_, elements)
+            | Change::ReplaceAll(_, elements) => {
+                elements.iter_mut().for_each(&mut deduplicate_node);
+            }
+            Change::Replace(_, None) => (),
         }
 
         // Collect changed elements
