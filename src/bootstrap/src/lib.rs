@@ -1522,21 +1522,6 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
     }
 
-    /// Path to the python interpreter to use
-    fn python(&self) -> &Path {
-        if self.config.host_target.ends_with("apple-darwin") {
-            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
-            // LLDB plugin's compiled module which only works with the system python
-            // (namely not Homebrew-installed python)
-            Path::new("/usr/bin/python3")
-        } else {
-            self.config
-                .python
-                .as_ref()
-                .expect("python is required for running LLDB or rustdoc tests")
-        }
-    }
-
     /// Temporary directory that extended error information is emitted to.
     fn extended_error_dir(&self) -> PathBuf {
         self.out.join("tmp/extended-error-metadata")
