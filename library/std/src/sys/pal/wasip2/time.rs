@@ -31,6 +31,12 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = SystemTime(Duration::MAX);
+
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
+
     pub fn now() -> SystemTime {
         let now = wasip2::clocks::wall_clock::now();
         SystemTime(Duration::new(now.seconds, now.nanoseconds))
