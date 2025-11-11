@@ -1,0 +1,13 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: test rustdoc
+---
+[Test] test::Rustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Suite(test::tests/rustdoc)
+[Test] test::CrateRustdoc
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::src/tools/rustdoc})
+[Test] test::RustdocBook
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::src/doc/rustdoc})
