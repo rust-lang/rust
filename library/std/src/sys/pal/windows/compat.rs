@@ -155,7 +155,7 @@ macro_rules! compat_fn_with_fallback {
             /// When that is called it attempts to load the requested symbol.
             /// If it succeeds, `PTR` is set to the address of that symbol.
             /// If it fails, then `PTR` is set to `fallback`.
-            static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as *mut _);
+            static PTR: Atomic<*mut c_void> = AtomicPtr::new(load as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _);
 
             unsafe extern "system" fn load($($argname: $argtype),*) -> $rettype {
                 unsafe {
@@ -171,7 +171,7 @@ macro_rules! compat_fn_with_fallback {
                         PTR.store(f.as_ptr(), Ordering::Relaxed);
                         mem::transmute(f)
                     } else {
-                        PTR.store(fallback as *mut _, Ordering::Relaxed);
+                        PTR.store(fallback as unsafe extern "system" fn($($argname: $argtype),*) -> $rettype as *mut _, Ordering::Relaxed);
                         fallback
                     }
                 }
