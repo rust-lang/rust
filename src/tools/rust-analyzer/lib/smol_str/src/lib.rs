@@ -1,5 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 extern crate alloc;
 
@@ -333,6 +333,7 @@ impl AsRef<[u8]> for SmolStr {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl AsRef<std::ffi::OsStr> for SmolStr {
     #[inline(always)]
     fn as_ref(&self) -> &std::ffi::OsStr {
@@ -341,6 +342,7 @@ impl AsRef<std::ffi::OsStr> for SmolStr {
 }
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl AsRef<std::path::Path> for SmolStr {
     #[inline(always)]
     fn as_ref(&self) -> &std::path::Path {
@@ -941,6 +943,7 @@ impl From<SmolStrBuilder> for SmolStr {
 }
 
 #[cfg(feature = "arbitrary")]
+#[cfg_attr(docsrs, doc(cfg(feature = "arbitrary")))]
 impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self, arbitrary::Error> {
         let s = <&str>::arbitrary(u)?;
@@ -949,8 +952,10 @@ impl<'a> arbitrary::Arbitrary<'a> for SmolStr {
 }
 
 #[cfg(feature = "borsh")]
+#[cfg_attr(docsrs, doc(cfg(feature = "borsh")))]
 mod borsh;
 #[cfg(feature = "serde")]
+#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 mod serde;
 
 #[test]
