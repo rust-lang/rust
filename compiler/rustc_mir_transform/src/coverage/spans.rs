@@ -29,14 +29,32 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
+    // If there somehow isn't an expansion tree node corresponding to the
+    // body span, return now and don't create any mappings.
+    let Some(node) = expn_tree.get(body_span.ctxt().outer_expn()) else { return };
+
     let mut covspans = vec![];
-    let mut push_covspan = |covspan: Covspan| {
+
+    for &SpanWithBcb { span, bcb } in &node.spans {
+        covspans.push(Covspan { span, bcb });
+    }
+
+    // For each expansion with its call-site in the body span, try to
+    // distill a corresponding covspan.
+    for &child_expn_id in &node.child_expn_ids {
+        if let Some(covspan) = single_covspan_for_child_expn(tcx, graph, &expn_tree, child_expn_id)
+        {
+            covspans.push(covspan);
+        }
+    }
+
+    covspans.retain(|covspan: &Covspan| {
         let covspan_span = covspan.span;
         // Discard any spans not contained within the function body span.
         // Also discard any spans that fill the entire body, because they tend
         // to represent compiler-inserted code, e.g. implicitly returning `()`.
         if !body_span.contains(covspan_span) || body_span.source_equal(covspan_span) {
-            return;
+            return false;
         }
 
         // Each pushed covspan should have the same context as the body span.
@@ -46,27 +64,11 @@ pub(super) fn extract_refined_covspans<'tcx>(
                 false,
                 "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
             );
-            return;
+            return false;
         }
 
-        covspans.push(covspan);
-    };
-
-    if let Some(node) = expn_tree.get(body_span.ctxt().outer_expn()) {
-        for &SpanWithBcb { span, bcb } in &node.spans {
-            push_covspan(Covspan { span, bcb });
-        }
-
-        // For each expansion with its call-site in the body span, try to
-        // distill a corresponding covspan.
-        for &child_expn_id in &node.child_expn_ids {
-            if let Some(covspan) =
-                single_covspan_for_child_expn(tcx, graph, &expn_tree, child_expn_id)
-            {
-                push_covspan(covspan);
-            }
-        }
-    }
+        true
+    });
 
     // Only proceed if we found at least one usable span.
     if covspans.is_empty() {
