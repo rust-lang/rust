@@ -419,7 +419,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         _location: Location,
@@ -431,13 +431,6 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
                     state.remove(local);
                 }
             }
-            // Deinit makes the local uninitialized.
-            StatementKind::Deinit(box place) => {
-                // A deinit makes a local uninitialized.
-                if let Some(local) = place.as_local() {
-                    state.insert(local);
-                }
-            }
             // Storage{Live,Dead} makes a local uninitialized.
             StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
                 state.insert(local);
@@ -447,7 +440,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
