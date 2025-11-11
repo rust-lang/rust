@@ -35,6 +35,12 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MAX: SystemTime = SystemTime(Duration::MAX);
+
+    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
+
     pub fn now() -> SystemTime {
         let result = blocking_scalar(systime_server(), GetUtcTimeMs.into())
             .expect("failed to request utc time in ms");
