@@ -100,18 +100,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let return_type = self.type_i32();
         let variadic = false;
         self.linkage.set(FunctionType::Exported);
-        let func = declare_raw_fn(
+        declare_raw_fn(
             self,
             name,
             callconv,
             return_type,
             &[self.type_i32(), const_string],
             variadic,
-        );
-        // NOTE: it is needed to set the current_func here as well, because get_fn() is not called
-        // for the main function.
-        *self.current_func.borrow_mut() = Some(func);
-        func
+        )
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {

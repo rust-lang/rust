@@ -391,9 +391,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
-        let func = get_fn(self, instance);
-        *self.current_func.borrow_mut() = Some(func);
-        func
+        get_fn(self, instance)
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {

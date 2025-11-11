@@ -514,6 +514,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     type CodegenCx = CodegenCx<'gcc, 'tcx>;
 
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
+        *cx.current_func.borrow_mut() = Some(block.get_function());
         Builder::with_cx(cx, block)
     }
 
