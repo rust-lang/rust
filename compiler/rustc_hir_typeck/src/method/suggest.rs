@@ -666,6 +666,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_method_call_annotation(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        mode: Mode,
+        source: SelfSource<'tcx>,
+        expected: Expectation<'tcx>,
+    ) {
+        if let Mode::MethodCall = mode
+            && let SelfSource::MethodCall(cal) = source
+        {
+            self.suggest_await_before_method(
+                err,
+                item_ident,
+                rcvr_ty,
+                cal,
+                span,
+                expected.only_has_type(self),
+            );
+        }
+
+        self.suggest_on_pointer_type(err, source, rcvr_ty, item_ident);
+
+        if let SelfSource::MethodCall(rcvr_expr) = source {
+            self.suggest_fn_call(err, rcvr_expr, rcvr_ty, |output_ty| {
+                let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
+                let probe = self.lookup_probe_for_diagnostic(
+                    item_ident,
+                    output_ty,
+                    call_expr,
+                    ProbeScope::AllTraits,
+                    expected.only_has_type(self),
+                );
+                probe.is_ok()
+            });
+            self.note_internal_mutation_in_method(
+                err,
+                rcvr_expr,
+                expected.to_option(self),
+                rcvr_ty,
+            );
+        }
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -754,40 +800,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             args,
         );
 
-        if let Mode::MethodCall = mode
-            && let SelfSource::MethodCall(cal) = source
-        {
-            self.suggest_await_before_method(
-                &mut err,
-                item_ident,
-                rcvr_ty,
-                cal,
-                span,
-                expected.only_has_type(self),
-            );
-        }
-
-        self.suggest_on_pointer_type(&mut err, source, rcvr_ty, item_ident);
-
-        if let SelfSource::MethodCall(rcvr_expr) = source {
-            self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
-                let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(rcvr_expr.hir_id));
-                let probe = self.lookup_probe_for_diagnostic(
-                    item_ident,
-                    output_ty,
-                    call_expr,
-                    ProbeScope::AllTraits,
-                    expected.only_has_type(self),
-                );
-                probe.is_ok()
-            });
-            self.note_internal_mutation_in_method(
-                &mut err,
-                rcvr_expr,
-                expected.to_option(self),
-                rcvr_ty,
-            );
-        }
+        self.suggest_method_call_annotation(
+            &mut err, span, rcvr_ty, item_ident, mode, source, expected,
+        );
 
         let mut custom_span_label = false;
         let mut static_candidates = no_match_data.static_candidates.clone();
