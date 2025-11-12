@@ -25,6 +25,7 @@ use rustc_span::{ErrorGuaranteed, kw};
 
 use crate::constrained_generic_params as cgp;
 use crate::errors::UnconstrainedGenericParameter;
+use crate::hir::def::Res;
 
 mod min_specialization;
 
@@ -253,8 +254,7 @@ pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
     res
 }
 
-/// A HIR visitor that checks if a specific generic parameter (by its `DefId`)
-/// is used within a given HIR tree.
+/// Use a Visitor to find usages of the type or lifetime parameter
 struct ParamUsageVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     /// The `DefId` of the generic parameter we are looking for.
@@ -270,10 +270,8 @@ impl<'tcx> Visitor<'tcx> for ParamUsageVisitor<'tcx> {
         self.tcx
     }
 
-    /// We use `ControlFlow` to stop visiting as soon as we find what we're looking for.
     type Result = ControlFlow<()>;
 
-    /// This is the primary method for finding usages of type or const parameters.
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
         if let Some(res_def_id) = path.res.opt_def_id() {
             if res_def_id == self.param_def_id {
@@ -318,12 +316,25 @@ fn suggest_to_remove_or_use_generic(
         return;
     };
 
-    // search if the parameter is used in the impl body
-    let mut visitor = ParamUsageVisitor {
-        tcx, // Pass the TyCtxt
-        param_def_id: param.def_id,
-        found: false,
+    // get the struct_def_id from the self type
+    let Some(struct_def_id) = (|| {
+        let ty = hir_impl.self_ty;
+        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+            && let Res::Def(_, def_id) = path.res
+        {
+            Some(def_id)
+        } else {
+            None
+        }
+    })() else {
+        return;
     };
+    let generics = tcx.generics_of(struct_def_id);
+    // println!("number of struct generics: {}", generics.own_params.len());
+    // println!("number of impl generics: {}", hir_impl.generics.params.len());
+
+    // search if the parameter is used in the impl body
+    let mut visitor = ParamUsageVisitor { tcx, param_def_id: param.def_id, found: false };
 
     for item_ref in hir_impl.items {
         let _ = visitor.visit_impl_item_ref(item_ref);
