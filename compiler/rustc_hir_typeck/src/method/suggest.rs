@@ -1050,7 +1050,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn report_no_match_method_error(
         &self,
-        mut span: Span,
+        span: Span,
         rcvr_ty: Ty<'tcx>,
         item_ident: Ident,
         expr_id: hir::HirId,
@@ -1062,13 +1062,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_missing_method: bool,
         within_macro_span: Option<Span>,
     ) -> ErrorGuaranteed {
-        let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
+
+        if let Err(guar) = rcvr_ty.error_reported() {
+            return guar;
+        }
+
+        // We could pass the file for long types into these two, but it isn't strictly necessary
+        // given how targeted they are.
+        if let Err(guar) =
+            self.report_failed_method_call_on_range_end(tcx, rcvr_ty, source, span, item_ident)
+        {
+            return guar;
+        }
+
         let mut ty_file = None;
+        let mode = no_match_data.mode;
         let is_method = mode == Mode::MethodCall;
-        let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
-        let similar_candidate = no_match_data.similar_candidate;
         let item_kind = if is_method {
             "method"
         } else if rcvr_ty.is_enum() {
@@ -1082,13 +1093,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        // We could pass the file for long types into these two, but it isn't strictly necessary
-        // given how targeted they are.
-        if let Err(guar) =
-            self.report_failed_method_call_on_range_end(tcx, rcvr_ty, source, span, item_ident)
-        {
-            return guar;
-        }
         if let Err(guar) = self.report_failed_method_call_on_numerical_infer_var(
             tcx,
             rcvr_ty,
@@ -1100,8 +1104,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) {
             return guar;
         }
-        span = item_ident.span;
 
+        let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
@@ -1120,9 +1124,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 unsatisfied_predicates,
             )
         };
-        if rcvr_ty.references_error() {
-            err.downgrade_to_delayed_bug();
-        }
 
         self.set_label_for_method_error(
             &mut err,
@@ -1130,19 +1131,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty,
             item_ident,
             expr_id,
-            span,
+            item_ident.span,
             sugg_span,
             within_macro_span,
             args,
         );
 
         self.suggest_method_call_annotation(
-            &mut err, span, rcvr_ty, item_ident, mode, source, expected,
+            &mut err,
+            item_ident.span,
+            rcvr_ty,
+            item_ident,
+            mode,
+            source,
+            expected,
         );
 
         let static_candidates = self.suggest_static_method_candidates(
             &mut err,
-            span,
+            item_ident.span,
             rcvr_ty,
             item_ident,
             source,
@@ -1159,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             bound_spans,
         )) = self.suggest_unsatisfied_ty_or_trait(
             &mut err,
-            span,
+            item_ident.span,
             rcvr_ty,
             item_ident,
             item_kind,
@@ -1171,9 +1178,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return err.emit();
         };
 
+        let similar_candidate = no_match_data.similar_candidate;
         let should_label_not_found = self.suggest_surround_method_call(
             &mut err,
-            span,
+            item_ident.span,
             rcvr_ty,
             item_ident,
             source,
@@ -1182,7 +1190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.find_possible_candidates_for_method(
             &mut err,
-            span,
+            item_ident.span,
             rcvr_ty,
             item_ident,
             item_kind,
@@ -1201,7 +1209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.suggest_traits_to_import(
                 &mut err,
-                span,
+                item_ident.span,
                 rcvr_ty,
                 item_ident,
                 args.map(|args| args.len() + 1),
@@ -1218,14 +1226,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut err,
             rcvr_ty,
             item_ident,
-            span,
+            item_ident.span,
             source,
             unsatisfied_predicates,
         );
 
         self.suggest_confusable_or_similarly_named_method(
             &mut err,
-            span,
+            item_ident.span,
             rcvr_ty,
             item_ident,
             mode,
