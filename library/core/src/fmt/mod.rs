@@ -641,17 +641,19 @@ impl<'a> Formatter<'a> {
 //   The template byte sequence is the concatenation of parts of the following types:
 //
 //   - Literal string piece (1-127 bytes):
+//         Pieces that must be formatted verbatim (e.g. "hello " and "\n" in "hello {name}\n")
+//         are represented as a single byte containing their length followed directly by the bytes
+//         of the string:
 //         ┌───┬────────────────────────────┐
 //         │len│    `len` bytes (utf-8)     │ (e.g. b"\x06hello ")
 //         └───┴────────────────────────────┘
-//         Pieces that must be formatted verbatim (e.g. "hello " and "\n" in "hello {name}\n")
-//         are represented as a single byte containing their length followed directly by the bytes
-//         of the string.
 //
-//         Pieces can be 127 bytes at most. Longer pieces are split into multiple pieces (at utf-8
-//         boundaries).
+//         These strings can be 127 bytes at most, such that the `len` byte always has the highest
+//         bit cleared. Longer pieces are split into multiple pieces (at utf-8 boundaries).
 //
 //   - Placeholder:
+//         Placeholders (e.g. `{name}` in "hello {name}") are represented as a byte with the highest
+//         bit set, followed by zero or more fields depending on the flags set in the first byte:
 //         ┌──────────┬┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┐
 //         │0b10______│       flags       ┊   width   ┊ precision ┊ arg_index ┊ (e.g. b"\x82\x05\0")
 //         └────││││││┴┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┘
@@ -663,13 +665,13 @@ impl<'a> Formatter<'a> {
 //              │└─ width indirect
 //              └─ precision indirect
 //
-//         Fully default placeholder, without any options:
+//         All fields other than the first byte are optional and only present when
+//         their corresponding flag is set in the first byte.
+//
+//         So, a fully default placeholder without any options is just a single byte:
 //         ┌──────────┐
 //         │0b10000000│ (b"\x80")
 //         └──────────┘
-//
-//         Placeholders (e.g. `{name}` in "hello {name}") are represented as a byte with the highest
-//         bit set, followed by zero or more fields depending on the flags set in the first byte.
 //
 //         The fields are stored as little endian.
 //
@@ -691,10 +693,10 @@ impl<'a> Formatter<'a> {
 //         at 0).
 //
 //   - End:
+//         A single zero byte marks the end of the template:
 //         ┌───┐
 //         │ 0 │ ("\0")
 //         └───┘
-//         A single zero byte marks the end of the template.
 //
 //         (Note that a zero byte may also occur naturally as part of the string pieces or flags,
 //         width, precision and arg_index fields above. That is, the template byte sequence ends
@@ -1615,6 +1617,8 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
     let args = fmt.args;
 
     let mut arg_index = 0;
+
+    // See comment on `fmt::Arguments` for the details of how the template is encoded.
 
     // This must match the encoding from `expand_format_args` in
     // compiler/rustc_ast_lowering/src/format.rs.
