@@ -1,3 +1,4 @@
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::relate::{
     self, Relate, RelateResult, TypeRelation, structurally_relate_tys,
 };
@@ -34,6 +35,19 @@ impl<'tcx> MatchAgainstFreshVars<'tcx> {
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstFreshVars<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        _: Ty<'tcx>,
+        _: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        relate::relate_args_invariantly(self, a_args, b_args)?;
+        Ok(a_ty)
     }
 
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(

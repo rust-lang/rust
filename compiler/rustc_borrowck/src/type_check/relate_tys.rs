@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::relate::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
@@ -9,7 +10,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
+use rustc_middle::ty::relate::combine::{combine_ty_args, super_combine_consts, super_combine_tys};
 use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
@@ -301,6 +302,19 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
 impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.type_checker.infcx.tcx
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        b_ty: Ty<'tcx>,
+        def_id: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let variances = self.cx().variances_of(def_id);
+        combine_ty_args(self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
     }
 
     #[instrument(skip(self, info), level = "trace", ret)]
