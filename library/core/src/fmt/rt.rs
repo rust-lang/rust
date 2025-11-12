@@ -34,7 +34,7 @@ enum ArgumentType<'a> {
 ///   precision and width.
 #[lang = "format_argument"]
 #[derive(Copy, Clone)]
-#[repr(align(2))] // To ensure pointers to this always have their lowest bit cleared.
+#[repr(align(2))] // To ensure pointers to this struct always have their lowest bit cleared.
 pub struct Argument<'a> {
     ty: ArgumentType<'a>,
 }
