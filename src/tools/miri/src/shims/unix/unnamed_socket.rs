@@ -7,6 +7,8 @@ use std::collections::VecDeque;
 use std::io;
 use std::io::ErrorKind;
 
+use rustc_target::spec::Os;
+
 use crate::concurrency::VClock;
 use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
@@ -448,7 +450,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Interpret the flag. Every flag we recognize is "subtracted" from `flags`, so
         // if there is anything left at the end, that's an unsupported flag.
-        if this.tcx.sess.target.os == "linux" {
+        if this.tcx.sess.target.os == Os::Linux {
             // SOCK_NONBLOCK only exists on Linux.
             let sock_nonblock = this.eval_libc_i32("SOCK_NONBLOCK");
             let sock_cloexec = this.eval_libc_i32("SOCK_CLOEXEC");

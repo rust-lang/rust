@@ -17,14 +17,14 @@
 //! <https://github.com/WebAssembly/component-model>.
 
 use crate::spec::{
-    Arch, LinkSelfContainedDefault, RelocModel, Target, TargetMetadata, base, crt_objects,
+    Arch, Env, LinkSelfContainedDefault, Os, RelocModel, Target, TargetMetadata, base, crt_objects,
 };
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
-    options.os = "wasi".into();
-    options.env = "p2".into();
+    options.os = Os::Wasi;
+    options.env = Env::P2;
     options.linker = Some("wasm-component-ld".into());
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();

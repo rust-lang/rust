@@ -46,9 +46,9 @@ use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
-    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo,
+    Abi, BinaryFormat, Cc, Env, LinkOutputKind, LinkSelfContainedComponents,
+    LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
+    RelroLevel, SanitizerSet, SplitDebuginfo,
 };
 use tracing::{debug, info, warn};
 
@@ -1407,11 +1407,9 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
         Some(LinkerFlavorCli::Llbc) => Some(LinkerFlavor::Llbc),
         Some(LinkerFlavorCli::Ptx) => Some(LinkerFlavor::Ptx),
         // The linker flavors that corresponds to targets needs logic that keeps the base LinkerFlavor
-        _ => sess
-            .opts
-            .cg
-            .linker_flavor
-            .map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor)),
+        linker_flavor => {
+            linker_flavor.map(|flavor| sess.target.linker_flavor.with_cli_hints(flavor))
+        }
     };
     if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), linker_flavor, features) {
         return ret;
@@ -1819,7 +1817,7 @@ fn self_contained_components(
                 LinkSelfContainedDefault::InferredForMusl => sess.crt_static(Some(crate_type)),
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
-                        && sess.target.abi != "uwp"
+                        && sess.target.abi != Abi::Uwp
                         && detect_self_contained_mingw(sess, linker)
                 }
             }
@@ -1845,7 +1843,7 @@ fn add_pre_link_objects(
     let empty = Default::default();
     let objects = if self_contained {
         &opts.pre_link_objects_self_contained
-    } else if !(sess.target.os == "fuchsia" && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))) {
+    } else if !(sess.target.os == Os::Fuchsia && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))) {
         &opts.pre_link_objects
     } else {
         &empty
@@ -2496,7 +2494,7 @@ fn add_order_independent_options(
 
     let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
 
-    if sess.target.os == "fuchsia"
+    if sess.target.os == Os::Fuchsia
         && crate_type == CrateType::Executable
         && !matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
     {
@@ -2515,7 +2513,7 @@ fn add_order_independent_options(
         cmd.no_crt_objects();
     }
 
-    if sess.target.os == "emscripten" {
+    if sess.target.os == Os::Emscripten {
         cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
         } else if sess.panic_strategy().unwinds() {
@@ -3070,8 +3068,8 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 
     // `sess.target.arch` (`target_arch`) is not detailed enough.
     let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
-    let target_os = &*sess.target.os;
-    let target_env = &*sess.target.env;
+    let target_os = &sess.target.os;
+    let target_env = &sess.target.env;
 
     // The architecture name to forward to the linker.
     //
@@ -3123,12 +3121,12 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // > - xros-simulator
         // > - driverkit
         let platform_name = match (target_os, target_env) {
-            (os, "") => os,
-            ("ios", "macabi") => "mac-catalyst",
-            ("ios", "sim") => "ios-simulator",
-            ("tvos", "sim") => "tvos-simulator",
-            ("watchos", "sim") => "watchos-simulator",
-            ("visionos", "sim") => "visionos-simulator",
+            (os, Env::Unspecified) => os.desc(),
+            (Os::IOs, Env::MacAbi) => "mac-catalyst",
+            (Os::IOs, Env::Sim) => "ios-simulator",
+            (Os::TvOs, Env::Sim) => "tvos-simulator",
+            (Os::WatchOs, Env::Sim) => "watchos-simulator",
+            (Os::VisionOs, Env::Sim) => "visionos-simulator",
             _ => bug!("invalid OS/env combination for Apple target: {target_os}, {target_env}"),
         };
 
@@ -3192,7 +3190,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // fairly safely use `-target`. See also the following, where it is
         // made explicit that the recommendation by LLVM developers is to use
         // `-target`: <https://github.com/llvm/llvm-project/issues/88271>
-        if target_os == "macos" {
+        if *target_os == Os::MacOs {
             // `-arch` communicates the architecture.
             //
             // CC forwards the `-arch` to the linker, so we use the same value

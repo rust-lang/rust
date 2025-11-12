@@ -1,8 +1,8 @@
-use crate::spec::{Cc, LinkerFlavor, TargetOptions, cvs};
+use crate::spec::{Cc, LinkerFlavor, Os, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "solaris".into(),
+        os: Os::Solaris,
         dynamic_linking: true,
         has_rpath: true,
         families: cvs!["unix"],

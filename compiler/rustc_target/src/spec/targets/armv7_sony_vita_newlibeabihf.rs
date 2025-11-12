@@ -1,7 +1,8 @@
 use rustc_abi::Endian;
 
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, RelocModel, Target, TargetMetadata,
+    TargetOptions, cvs,
 };
 
 /// A base target for PlayStation Vita devices using the VITASDK toolchain (using newlib).
@@ -28,12 +29,12 @@ pub(crate) fn target() -> Target {
         arch: Arch::Arm,
 
         options: TargetOptions {
-            os: "vita".into(),
+            os: Os::Vita,
             endian: Endian::Little,
             c_int_width: 32,
-            env: "newlib".into(),
+            env: Env::Newlib,
             vendor: "sony".into(),
-            abi: "eabihf".into(),
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             no_default_libraries: false,

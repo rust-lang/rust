@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{Arch, BinaryFormat, LinkSelfContainedComponents};
+use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents, Os};
 
 use crate::errors;
 
@@ -67,9 +67,9 @@ pub fn walk_native_lib_search_dirs<R>(
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
     // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
     // defined, as the search path instead of appending the default search paths.
-    if sess.target.abi == "fortanix"
-        || sess.target.os == "linux"
-        || sess.target.os == "fuchsia"
+    if sess.target.abi == Abi::Fortanix
+        || sess.target.os == Os::Linux
+        || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
         || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
     {
@@ -79,7 +79,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.env == "macabi"
+        && sess.target.env == Env::MacAbi
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
