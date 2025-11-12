@@ -1,4 +1,5 @@
 codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z autodiff=Enable
+codegen_llvm_autodiff_without_lto = using the autodiff feature requires setting `lto="fat"` in your Cargo.toml
 
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
 
