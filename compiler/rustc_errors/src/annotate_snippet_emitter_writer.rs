@@ -350,22 +350,27 @@ impl AnnotateSnippetEmitter {
                                 "all spans must be disjoint",
                             );
 
+                            let lo = subst.parts.iter().map(|part| part.span.lo()).min()?;
+                            let lo_file = sm.lookup_source_file(lo);
+                            let hi = subst.parts.iter().map(|part| part.span.hi()).max()?;
+                            let hi_file = sm.lookup_source_file(hi);
+
+                            // The different spans might belong to different contexts, if so ignore suggestion.
+                            if lo_file.stable_id != hi_file.stable_id {
+                                return None;
+                            }
+
+                            // We can't splice anything if the source is unavailable.
+                            if !sm.ensure_source_file_source_present(&lo_file) {
+                                return None;
+                            }
+
                             // Account for cases where we are suggesting the same code that's already
                             // there. This shouldn't happen often, but in some cases for multipart
                             // suggestions it's much easier to handle it here than in the origin.
                             subst.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
-                            let item_span = subst.parts.first()?;
-                            let file = sm.lookup_source_file(item_span.span.lo());
-                            if should_show_source_code(
-                                &self.ignored_directories_in_source_blocks,
-                                sm,
-                                &file,
-                            ) {
-                                Some(subst)
-                            } else {
-                                None
-                            }
+                            if subst.parts.is_empty() { None } else { Some(subst) }
                         })
                         .collect::<Vec<_>>();
 
