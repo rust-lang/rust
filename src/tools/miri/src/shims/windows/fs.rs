@@ -5,8 +5,9 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 use bitflags::bitflags;
+use rustc_target::spec::Os;
 
-use crate::shims::files::{FileDescription, FileHandle};
+use crate::shims::files::{FdId, FileDescription, FileHandle};
 use crate::shims::windows::handle::{EvalContextExt as _, Handle};
 use crate::*;
 
@@ -24,8 +25,9 @@ impl FileDescription for DirHandle {
         interp_ok(self.path.metadata())
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -50,8 +52,9 @@ impl FileDescription for MetadataHandle {
         interp_ok(Ok(self.meta.clone()))
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -164,7 +167,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use CreationDisposition::*;
 
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "CreateFileW");
+        this.assert_target_os(Os::Windows, "CreateFileW");
         this.check_no_isolation("`CreateFileW`")?;
 
         // This function appears to always set the error to 0. This is important for some flag
@@ -309,7 +312,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "GetFileInformationByHandle");
+        this.assert_target_os(Os::Windows, "GetFileInformationByHandle");
         this.check_no_isolation("`GetFileInformationByHandle`")?;
 
         let file = this.read_handle(file, "GetFileInformationByHandle")?;
@@ -379,7 +382,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
         let this = self.eval_context_mut();
-        this.assert_target_os("windows", "DeleteFileW");
+        this.assert_target_os(Os::Windows, "DeleteFileW");
         this.check_no_isolation("`DeleteFileW`")?;
 
         let file_name = this.read_path_from_wide_str(this.read_pointer(file_name)?)?;

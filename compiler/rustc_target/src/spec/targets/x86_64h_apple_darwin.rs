@@ -1,8 +1,8 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (mut opts, llvm_target, arch) = base("macos", Arch::X86_64h, TargetEnv::Normal);
+    let (mut opts, llvm_target, arch) = base(Os::MacOs, Arch::X86_64h, TargetEnv::Normal);
     opts.max_atomic_width = Some(128);
     opts.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;

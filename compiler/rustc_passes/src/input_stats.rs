@@ -3,7 +3,7 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_ast::visit::BoundKind;
-use rustc_ast::{self as ast, NodeId, visit as ast_visit};
+use rustc_ast::{self as ast, AttrVec, NodeId, visit as ast_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
@@ -709,7 +709,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_where_predicate(self, p)
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, _: Span, _: NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'v>, _: &AttrVec, _: Span, _: NodeId) {
         self.record("FnDecl", None, fk.decl());
         ast_visit::walk_fn(self, fk)
     }

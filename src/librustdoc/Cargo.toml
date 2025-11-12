@@ -24,6 +24,7 @@ smallvec = "1.8.1"
 stringdex = "=0.0.2"
 tempfile = "3"
 threadpool = "1.8.1"
+tikv-jemalloc-sys = { version = "0.6.1", optional = true, features = ['override_allocator_on_supported_platforms'] }
 tracing = "0.1"
 tracing-tree = "0.3.0"
 unicode-segmentation = "1.9"
@@ -42,7 +43,7 @@ minifier = { version = "0.3.2", default-features = false }
 expect-test = "1.4.0"
 
 [features]
-jemalloc = []
+jemalloc = ["dep:tikv-jemalloc-sys"]
 
 [package.metadata.rust-analyzer]
 rustc_private = true

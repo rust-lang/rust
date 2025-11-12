@@ -239,10 +239,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::sanitizer_cfi_normalize_integers);
     }
 
-    ins_str!(sym::target_abi, &sess.target.abi);
+    ins_sym!(sym::target_abi, sess.target.abi.desc_symbol());
     ins_sym!(sym::target_arch, sess.target.arch.desc_symbol());
     ins_str!(sym::target_endian, sess.target.endian.as_str());
-    ins_str!(sym::target_env, &sess.target.env);
+    ins_sym!(sym::target_env, sess.target.env.desc_symbol());
 
     for family in sess.target.families.as_ref() {
         ins_str!(sym::target_family, family);
@@ -291,7 +291,7 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         }
     }
 
-    ins_str!(sym::target_os, &sess.target.os);
+    ins_sym!(sym::target_os, sess.target.os.desc_symbol());
     ins_sym!(sym::target_pointer_width, sym::integer(sess.target.pointer_width));
 
     if sess.opts.unstable_opts.has_thread_local.unwrap_or(sess.target.has_thread_local) {
@@ -447,14 +447,14 @@ impl CheckCfg {
                 };
 
                 for target in Target::builtins().chain(iter::once(current_target.clone())) {
-                    values_target_abi.insert(Symbol::intern(&target.options.abi));
+                    values_target_abi.insert(target.options.abi.desc_symbol());
                     values_target_arch.insert(target.arch.desc_symbol());
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
-                    values_target_env.insert(Symbol::intern(&target.options.env));
+                    values_target_env.insert(target.options.env.desc_symbol());
                     values_target_family.extend(
                         target.options.families.iter().map(|family| Symbol::intern(family)),
                     );
-                    values_target_os.insert(Symbol::intern(&target.options.os));
+                    values_target_os.insert(target.options.os.desc_symbol());
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
                     values_target_vendor.insert(target.vendor_symbol());
                 }

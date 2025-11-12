@@ -15,7 +15,7 @@ use rustc_middle::{mir, ty};
 use rustc_session::config::OomStrategy;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Os, Arch};
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
@@ -101,9 +101,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn is_dyn_sym(&self, name: &str) -> bool {
         let this = self.eval_context_ref();
-        match this.tcx.sess.target.os.as_ref() {
+        match &this.tcx.sess.target.os {
             os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
-            "windows" => shims::windows::foreign_items::is_dyn_sym(name),
+            Os::Windows => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
     }
@@ -842,12 +842,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
 
                 // Platform-specific shims
-                return match this.tcx.sess.target.os.as_ref() {
+                return match &this.tcx.sess.target.os {
                     _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),
-                    "windows" =>
+                    Os::Windows =>
                         shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),

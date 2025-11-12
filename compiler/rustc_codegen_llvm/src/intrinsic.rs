@@ -18,6 +18,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
+use rustc_target::spec::Os;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -681,7 +682,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
     } else if wants_wasm_eh(bx.sess()) {
         codegen_wasm_try(bx, try_func, data, catch_func, dest);
-    } else if bx.sess().target.os == "emscripten" {
+    } else if bx.sess().target.os == Os::Emscripten {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func, dest);

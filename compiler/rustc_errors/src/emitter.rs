@@ -3466,14 +3466,9 @@ impl Drop for Buffy {
 
 pub fn stderr_destination(color: ColorConfig) -> Destination {
     let buffer_writer = std::io::stderr();
-    let choice = color.to_color_choice();
     // We need to resolve `ColorChoice::Auto` before `Box`ing since
     // `ColorChoice::Auto` on `dyn Write` will always resolve to `Never`
-    let choice = if matches!(choice, ColorChoice::Auto) {
-        AutoStream::choice(&buffer_writer)
-    } else {
-        choice
-    };
+    let choice = get_stderr_color_choice(color, &buffer_writer);
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer
     // anything.
@@ -3486,6 +3481,11 @@ pub fn stderr_destination(color: ColorConfig) -> Destination {
         let buffer = Vec::new();
         AutoStream::new(Box::new(Buffy { buffer_writer, buffer }), choice)
     }
+}
+
+pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> ColorChoice {
+    let choice = color.to_color_choice();
+    if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
 }
 
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.

@@ -2,8 +2,8 @@
 //! aspects from their respective base targets
 
 use crate::spec::{
-    Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel,
-    add_link_args, crt_objects, cvs,
+    Cc, Env, LinkSelfContainedDefault, LinkerFlavor, Os, PanicStrategy, RelocModel, TargetOptions,
+    TlsModel, add_link_args, crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -57,8 +57,8 @@ pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         is_like_wasm: true,
         families: cvs!["wasm", "unix"],
-        os: "linux".into(),
-        env: "musl".into(),
+        os: Os::Linux,
+        env: Env::Musl,
 
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but

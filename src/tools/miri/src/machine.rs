@@ -31,7 +31,7 @@ use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::cpu_affinity::{self, CpuAffinityMask};
@@ -739,7 +739,7 @@ impl<'tcx> MiriMachine<'tcx> {
         );
         let threads = ThreadManager::new(config);
         let mut thread_cpu_affinity = FxHashMap::default();
-        if matches!(&*tcx.sess.target.os, "linux" | "freebsd" | "android") {
+        if matches!(&tcx.sess.target.os, Os::Linux | Os::FreeBsd | Os::Android) {
             thread_cpu_affinity
                 .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
@@ -1353,8 +1353,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
-    fn runtime_checks(ecx: &InterpCx<'tcx, Self>, r: mir::RuntimeChecks) -> InterpResult<'tcx, bool> {
-        interp_ok(r.value(&ecx.tcx.sess))
+    fn runtime_checks(
+        ecx: &InterpCx<'tcx, Self>,
+        r: mir::RuntimeChecks,
+    ) -> InterpResult<'tcx, bool> {
+        interp_ok(r.value(ecx.tcx.sess))
     }
 
     #[inline(always)]

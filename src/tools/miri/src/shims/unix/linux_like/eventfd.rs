@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
 use crate::*;
@@ -37,8 +37,9 @@ impl FileDescription for EventFd {
         "event"
     }
 
-    fn close<'tcx>(
+    fn destroy<'tcx>(
         self,
+        _self_id: FdId,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -216,7 +217,10 @@ fn eventfd_write<'tcx>(
 
             // The state changed; we check and update the status of all supported event
             // types for current file description.
-            ecx.check_and_update_readiness(eventfd)?;
+            // Linux seems to cause spurious wakeups here, and Tokio seems to rely on that
+            // (see <https://github.com/rust-lang/miri/pull/4676#discussion_r2510528994>
+            // and also <https://www.illumos.org/issues/16700>).
+            ecx.epoll_send_fd_ready_events(eventfd, /* force_edge */ true)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
             return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
@@ -311,7 +315,8 @@ fn eventfd_read<'tcx>(
 
         // The state changed; we check and update the status of all supported event
         // types for current file description.
-        ecx.check_and_update_readiness(eventfd)?;
+        // Linux seems to always emit do notifications here, even if we were already writable.
+        ecx.epoll_send_fd_ready_events(eventfd, /* force_edge */ true)?;
 
         // Tell userspace how many bytes we put into the buffer.
         return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
