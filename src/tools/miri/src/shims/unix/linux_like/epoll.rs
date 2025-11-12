@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{BTreeMap, btree_map};
+use std::collections::BTreeMap;
 use std::io;
 use std::time::Duration;
 
@@ -17,19 +17,13 @@ type EpollEventKey = (FdId, FdNum);
 /// An `Epoll` file descriptor connects file handles and epoll events
 #[derive(Debug, Default)]
 struct Epoll {
-    /// A map of EpollEventInterests registered under this epoll instance.
-    /// Each entry is differentiated using FdId and file descriptor value.
+    /// A map of EpollEventInterests registered under this epoll instance. Each entry is
+    /// differentiated using FdId and file descriptor value. Note that we do not have a separate
+    /// "ready" list; instead, a boolean flag in this list tracks which subset is ready. This makes
+    /// `epoll_wait` less efficient, but also requires less bookkeeping.
     interest_list: RefCell<BTreeMap<EpollEventKey, EpollEventInterest>>,
-    /// A map of EpollEventInstance that will be returned when `epoll_wait` is called.
-    /// Similar to interest_list, the entry is also differentiated using FdId
-    /// and file descriptor value.
-    /// We keep this separate from `interest_list` for two reasons: there might be many
-    /// interests but only a few of them ready (so with a separate list it is more efficient
-    /// to find a ready event), and having separate `RefCell` lets us mutate the `interest_list`
-    /// while unblocking threads which might mutate the `ready_list`.
-    ready_list: RefCell<BTreeMap<EpollEventKey, EpollEventInstance>>,
     /// A list of thread ids blocked on this epoll instance.
-    blocked_tid: RefCell<Vec<ThreadId>>,
+    blocked: RefCell<Vec<ThreadId>>,
 }
 
 impl VisitProvenance for Epoll {
@@ -43,33 +37,18 @@ fn range_for_id(id: FdId) -> std::ops::RangeInclusive<EpollEventKey> {
     (id, 0)..=(id, i32::MAX)
 }
 
-/// EpollEventInstance contains information that will be returned by epoll_wait.
-#[derive(Debug, Default)]
-pub struct EpollEventInstance {
-    /// Bitmask of event types that happened to the file description.
-    events: u32,
-    /// User-defined data associated with the interest that triggered this instance.
-    data: u64,
-    /// The release clock associated with this event.
-    clock: VClock,
-}
-
-/// EpollEventInterest registers the file description information to an epoll
-/// instance during a successful `epoll_ctl` call. It also stores additional
-/// information needed to check and update readiness state for `epoll_wait`.
-///
-/// `events` and `data` field matches the `epoll_event` struct defined
-/// by the epoll_ctl man page. For more information
-/// see the man page:
-///
-/// <https://man7.org/linux/man-pages/man2/epoll_ctl.2.html>
+/// Tracks the events that this epoll is interested in for a given file descriptor.
 #[derive(Debug)]
 pub struct EpollEventInterest {
-    /// The events bitmask retrieved from `epoll_event`.
-    events: u32,
-    /// The way the events looked last time we checked (for edge trigger / ET detection).
-    prev_events: u32,
-    /// The data retrieved from `epoll_event`.
+    /// The events bitmask the epoll is interested in.
+    relevant_events: u32,
+    /// The currently active events for this file descriptor.
+    active_events: u32,
+    /// Whether this interest is in the "ready" set.
+    ready: bool,
+    /// The vector clock for wakeups.
+    clock: VClock,
+    /// User-defined data associated with this interest.
     /// libc's data field in epoll_event can store integer or pointer,
     /// but only u64 is supported for now.
     /// <https://man7.org/linux/man-pages/man3/epoll_event.3type.html>
@@ -78,7 +57,7 @@ pub struct EpollEventInterest {
 
 /// EpollReadyEvents reflects the readiness of a file description.
 #[derive(Debug)]
-pub struct EpollReadyEvents {
+pub struct EpollEvents {
     /// The associated file is available for read(2) operations, in the sense that a read will not block.
     /// (I.e., returning EOF is considered "ready".)
     pub epollin: bool,
@@ -97,9 +76,9 @@ pub struct EpollReadyEvents {
     pub epollerr: bool,
 }
 
-impl EpollReadyEvents {
+impl EpollEvents {
     pub fn new() -> Self {
-        EpollReadyEvents {
+        EpollEvents {
             epollin: false,
             epollout: false,
             epollrdhup: false,
@@ -200,13 +179,6 @@ impl EpollInterestTable {
                 // relevent interests.
                 epoll
                     .interest_list
-                    .borrow_mut()
-                    .extract_if(range_for_id(id), |_, _| true)
-                    // Consume the iterator.
-                    .for_each(|_| ());
-                // Also remove all events from the ready list that refer to this FD.
-                epoll
-                    .ready_list
                     .borrow_mut()
                     .extract_if(range_for_id(id), |_, _| true)
                     // Consume the iterator.
@@ -344,37 +316,43 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Add new interest to list. Experiments show that we need to reset all state
             // on `EPOLL_CTL_MOD`, including the edge tracking.
             let epoll_key = (id, fd);
-            let new_interest = EpollEventInterest { events, data, prev_events: 0 };
-            let new_interest = if op == epoll_ctl_add {
+            if op == epoll_ctl_add {
                 if interest_list.range(range_for_id(id)).next().is_none() {
                     // This is the first time this FD got added to this epoll.
                     // Remember that in the global list so we get notified about FD events.
                     this.machine.epoll_interests.insert(id, &epfd);
                 }
-                match interest_list.entry(epoll_key) {
-                    btree_map::Entry::Occupied(_) => {
-                        // We already had interest in this.
-                        return this.set_last_error_and_return_i32(LibcError("EEXIST"));
-                    }
-                    btree_map::Entry::Vacant(e) => e.insert(new_interest),
+                let new_interest = EpollEventInterest {
+                    relevant_events: events,
+                    data,
+                    active_events: 0,
+                    ready: false,
+                    clock: VClock::default(),
+                };
+                if interest_list.try_insert(epoll_key, new_interest).is_err() {
+                    // We already had interest in this.
+                    return this.set_last_error_and_return_i32(LibcError("EEXIST"));
                 }
             } else {
                 // Modify the existing interest.
                 let Some(interest) = interest_list.get_mut(&epoll_key) else {
                     return this.set_last_error_and_return_i32(LibcError("ENOENT"));
                 };
-                *interest = new_interest;
-                interest
-            };
+                interest.relevant_events = events;
+                interest.data = data;
+            }
 
             // Deliver events for the new interest.
-            let force_edge = true; // makes no difference since we reset `prev_events`
-            send_ready_events_to_interests(
+            update_readiness(
                 this,
                 &epfd,
-                fd_ref.as_unix(this).get_epoll_ready_events()?.get_event_bitmask(this),
-                force_edge,
-                std::iter::once((&epoll_key, new_interest)),
+                fd_ref.as_unix(this).epoll_active_events()?.get_event_bitmask(this),
+                /* force_edge */ true,
+                move |callback| {
+                    // Need to release the RefCell when this closure returns, so we have to move
+                    // it into the closure, so we have to do a re-lookup here.
+                    callback(interest_list.get_mut(&epoll_key).unwrap())
+                },
             )?;
 
             interp_ok(Scalar::from_i32(0))
@@ -391,9 +369,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if interest_list.range(range_for_id(id)).next().is_none() {
                 this.machine.epoll_interests.remove(id, epfd.id());
             }
-
-            // Remove related event instance from ready list.
-            epfd.ready_list.borrow_mut().remove(&epoll_key);
 
             interp_ok(Scalar::from_i32(0))
         } else {
@@ -466,10 +441,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
-        // We just need to know if the ready list is empty and borrow the thread_ids out.
-        let ready_list_empty = epfd.ready_list.borrow().is_empty();
-        if timeout == 0 || !ready_list_empty {
-            // If the ready list is not empty, or the timeout is 0, we can return immediately.
+        if timeout == 0 || epfd.interest_list.borrow().values().any(|i| i.ready) {
+            // If the timeout is 0 or there is a ready event, we can return immediately.
             return_ready_list(&epfd, dest, &event, this)?;
         } else {
             // Blocking
@@ -486,7 +459,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             };
             // Record this thread as blocked.
-            epfd.blocked_tid.borrow_mut().push(this.active_thread());
+            epfd.blocked.borrow_mut().push(this.active_thread());
             // And block it.
             let dest = dest.clone();
             // We keep a strong ref to the underlying `Epoll` to make sure it sticks around.
@@ -510,7 +483,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             UnblockKind::TimedOut => {
                                 // Remove the current active thread_id from the blocked thread_id list.
                                 epfd
-                                    .blocked_tid.borrow_mut()
+                                    .blocked.borrow_mut()
                                     .retain(|&id| id != this.active_thread());
                                 this.write_int(0, &dest)?;
                                 interp_ok(())
@@ -523,13 +496,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// For a specific file description, get its ready events and send it to everyone who registered
-    /// interest in this FD. This function should be called whenever the result of
-    /// `get_epoll_ready_events` would change.
+    /// For a specific file description, get its currently active events and send it to everyone who
+    /// registered interest in this FD. This function must be called whenever the result of
+    /// `epoll_active_events` might change.
     ///
     /// If `force_edge` is set, edge-triggered interests will be triggered even if the set of
     /// ready events did not change. This can lead to spurious wakeups. Use with caution!
-    fn epoll_send_fd_ready_events(
+    fn update_epoll_active_events(
         &mut self,
         fd_ref: DynFileDescriptionRef,
         force_edge: bool,
@@ -537,7 +510,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let id = fd_ref.id();
         // Figure out who is interested in this. We need to clone this list since we can't prove
-        // that `send_ready_events_to_interest` won't mutate it.
+        // that `send_active_events_to_interest` won't mutate it.
         let Some(epolls) = this.machine.epoll_interests.get_epolls(id) else {
             return interp_ok(());
         };
@@ -547,70 +520,61 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .expect("someone forgot to remove the garbage from `machine.epoll_interests`")
             })
             .collect::<Vec<_>>();
-        let event_bitmask = fd_ref.as_unix(this).get_epoll_ready_events()?.get_event_bitmask(this);
+        let active_events = fd_ref.as_unix(this).epoll_active_events()?.get_event_bitmask(this);
         for epoll in epolls {
-            send_ready_events_to_interests(
-                this,
-                &epoll,
-                event_bitmask,
-                force_edge,
-                epoll.interest_list.borrow_mut().range_mut(range_for_id(id)),
-            )?;
+            update_readiness(this, &epoll, active_events, force_edge, |callback| {
+                for (_key, interest) in epoll.interest_list.borrow_mut().range_mut(range_for_id(id))
+                {
+                    callback(interest)?;
+                }
+                interp_ok(())
+            })?;
         }
 
         interp_ok(())
     }
 }
 
-/// Send the latest ready events for one particular FD (identified by `event_key`) to everyone in
-/// the `interests` list, if they are interested in this kind of event.
-fn send_ready_events_to_interests<'tcx, 'a>(
+/// Call this when the interests denoted by `for_each_interest` have their active event set changed
+/// to `active_events`. The list is provided indirectly via the `for_each_interest` closure, which
+/// will call its argument closure for each relevant interest.
+///
+/// Any `RefCell` should be released by the time `for_each_interest` returns since we will then
+/// be waking up threads which might require access to those `RefCell`.
+fn update_readiness<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     epoll: &Epoll,
-    event_bitmask: u32,
+    active_events: u32,
     force_edge: bool,
-    interests: impl Iterator<Item = (&'a EpollEventKey, &'a mut EpollEventInterest)>,
+    for_each_interest: impl FnOnce(
+        &mut dyn FnMut(&mut EpollEventInterest) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
     let mut wakeup = false;
-    for (&event_key, interest) in interests {
-        let mut ready_list = epoll.ready_list.borrow_mut();
-        // This checks if any of the events specified in epoll_event_interest.events
-        // match those in ready_events.
-        let flags = interest.events & event_bitmask;
-        let prev = std::mem::replace(&mut interest.prev_events, flags);
-        if flags == 0 {
-            // Make sure we *remove* any previous item from the ready list, since this
-            // is not ready any more.
-            ready_list.remove(&event_key);
-            continue;
+    for_each_interest(&mut |interest| {
+        // Update the ready events tracked in this interest.
+        let new_readiness = interest.relevant_events & active_events;
+        let prev_readiness = std::mem::replace(&mut interest.active_events, new_readiness);
+        if new_readiness == 0 {
+            // Un-trigger this, there's nothing left to report here.
+            interest.ready = false;
+        } else if force_edge || new_readiness != prev_readiness & new_readiness {
+            // Either we force an "edge" to be detected, or there's a bit set in `new`
+            // that was not set in `prev`.
+            interest.ready = true;
+            ecx.release_clock(|clock| {
+                interest.clock.join(clock);
+            })?;
+            wakeup = true;
         }
-        // Generate new instance, or update existing one. It is crucial that whe we are done,
-        // if an interest exists in the ready list, then it matches the latest events and data!
-        let instance = match ready_list.entry(event_key) {
-            btree_map::Entry::Occupied(e) => e.into_mut(),
-            btree_map::Entry::Vacant(e) => {
-                if !force_edge && flags == prev & flags {
-                    // Every bit in `flags` was already set in `prev`, and there's currently
-                    // no entry in the ready list for this. So there is nothing new and no
-                    // prior entry to update; just skip it.
-                    continue;
-                }
-                e.insert(EpollEventInstance::default())
-            }
-        };
-        instance.events = flags;
-        instance.data = interest.data;
-        ecx.release_clock(|clock| {
-            instance.clock.join(clock);
-        })?;
-        wakeup = true;
-    }
+        interp_ok(())
+    })?;
     if wakeup {
         // Wake up threads that may have been waiting for events on this epoll.
         // Do this only once for all the interests.
         // Edge-triggered notification only notify one thread even if there are
         // multiple threads blocked on the same epoll.
-        if let Some(thread_id) = epoll.blocked_tid.borrow_mut().pop() {
+        if let Some(thread_id) = epoll.blocked.borrow_mut().pop() {
             ecx.unblock_thread(thread_id, BlockReason::Epoll)?;
         }
     }
@@ -626,24 +590,41 @@ fn return_ready_list<'tcx>(
     events: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx> {
-    let mut ready_list = epfd.ready_list.borrow_mut();
+    let mut interest_list = epfd.interest_list.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
 
-    while let Some(des) = array_iter.next(ecx)? {
-        if let Some((_, epoll_event_instance)) = ready_list.pop_first() {
+    let mut interests = interest_list.iter_mut();
+    while let Some(slot) = array_iter.next(ecx)? {
+        // Search for next ready event that we are intersted in. This is an inefficient linear scan.
+        // We could make it efficient by tracking the set of triggered events in a BTreeSet or so,
+        // but since this is very unlikely to be a bottleneck we prefer cleaner code.
+        for (key, interest) in interests.by_ref() {
+            // Sanity-check to ensure that the info about this event is up-to-date.
+            if cfg!(debug_assertions) {
+                // Ensure this matches the latest readiness of this FD.
+                // We have to do an FD lookup by ID for this. The FdNum might be already closed.
+                let fd = &ecx.machine.fds.fds.values().find(|fd| fd.id() == key.0).unwrap();
+                let current_readiness =
+                    fd.as_unix(ecx).epoll_active_events()?.get_event_bitmask(ecx);
+                assert_eq!(interest.active_events, current_readiness & interest.relevant_events);
+            }
+            // Skip event if it has not been triggered.
+            if !interest.ready {
+                continue;
+            }
+            // Deliver event to caller.
             ecx.write_int_fields_named(
-                &[
-                    ("events", epoll_event_instance.events.into()),
-                    ("u64", epoll_event_instance.data.into()),
-                ],
-                &des.1,
+                &[("events", interest.active_events.into()), ("u64", interest.data.into())],
+                &slot.1,
             )?;
-            // Synchronize waking thread with the event of interest.
-            ecx.acquire_clock(&epoll_event_instance.clock)?;
-
             num_of_events = num_of_events.strict_add(1);
-        } else {
+            // Synchronize waking thread with the event of interest.
+            ecx.acquire_clock(&interest.clock)?;
+            // Mark this interest as no-longer-ready, since it has been delivered (and we only
+            // support ET).
+            interest.ready = false;
+            // Skip out of this loop so that we go to the next slot in the array.
             break;
         }
     }
