@@ -152,9 +152,29 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     let mut changed_elements = vec![];
     let mut changed_elements_set = rustc_hash::FxHashSet::default();
     let mut deduplicate_node = |node_or_token: &mut SyntaxElement| {
-        let SyntaxElement::Node(node) = node_or_token else { return };
+        let node;
+        let node = match node_or_token {
+            SyntaxElement::Token(token) => match token.parent() {
+                None => return,
+                Some(parent) => {
+                    node = parent;
+                    &node
+                }
+            },
+            SyntaxElement::Node(node) => node,
+        };
         if changed_elements_set.contains(node) {
-            *node = node.clone_subtree().clone_for_update();
+            let new_node = node.clone_subtree().clone_for_update();
+            match node_or_token {
+                SyntaxElement::Node(node) => *node = new_node,
+                SyntaxElement::Token(token) => {
+                    *token = new_node
+                        .children_with_tokens()
+                        .filter_map(SyntaxElement::into_token)
+                        .find(|it| it.kind() == token.kind() && it.text() == token.text())
+                        .unwrap();
+                }
+            }
         } else {
             changed_elements_set.insert(node.clone());
         }
