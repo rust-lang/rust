@@ -3105,6 +3105,70 @@ pub fn svmul_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
 pub fn svmul_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
     svmul_s32_z(pg, op1, svdup_n_s32(op2))
 }
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sdiv.nxv4i32")]
+        fn _svdiv_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t) -> svint32_t;
+    }
+    unsafe { _svdiv_s32_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_n_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svdiv_s32_m(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svdiv_s32_m(pg, op1, op2)
+}
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_n_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svdiv_s32_x(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svdiv_s32_m(pg, svsel_s32(pg, op1, svdup_n_s32(0)), op2)
+}
+#[doc = "Divide"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svdiv[_n_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sdiv))]
+pub fn svdiv_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svdiv_s32_z(pg, op1, svdup_n_s32(op2))
+}
 #[doc = "Multiply"]
 #[doc = ""]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svmul[_s64]_m)"]
