@@ -6,8 +6,9 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-MINGW_ARCHIVE_32="i686-14.1.0-release-posix-dwarf-msvcrt-rt_v12-rev0.7z"
-MINGW_ARCHIVE_64="x86_64-14.1.0-release-posix-seh-msvcrt-rt_v12-rev0.7z"
+MINGW_ARCHIVE_32="i686-14.2.0-release-posix-dwarf-msvcrt-rt_v12-rev2.7z"
+MINGW_ARCHIVE_64="x86_64-14.2.0-release-posix-seh-msvcrt-rt_v12-rev2.7z"
+TMP_URL="https://github.com/niXman/mingw-builds-binaries/releases/download/14.2.0-rt_v12-rev2/"
 
 if isWindows && isKnownToBeMingwBuild; then
     case "${CI_JOB_NAME}" in
@@ -40,7 +41,7 @@ if isWindows && isKnownToBeMingwBuild; then
 
     mingw_dir="mingw${bits}"
 
-    curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
+    curl -o mingw.7z "${TMP_URL}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 
