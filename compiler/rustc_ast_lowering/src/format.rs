@@ -89,9 +89,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut was_inlined = vec![false; fmt.arguments.all_args().len()];
         let mut inlined_anything = false;
 
-        let mut i = 0;
-
-        while i < fmt.template.len() {
+        for i in 0..fmt.template.len() {
             if let FormatArgsPiece::Placeholder(placeholder) = &fmt.template[i]
                 && let Ok(arg_index) = placeholder.argument.index
                 && let FormatTrait::Display = placeholder.format_trait
@@ -104,16 +102,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // If this is the first time, this clones the outer FormatArgs.
                 let fmt = fmt.to_mut();
                 // Replace the placeholder with the literal.
-                if literal.is_empty() {
-                    fmt.template.remove(i);
-                } else {
-                    fmt.template[i] = FormatArgsPiece::Literal(literal);
-                    i += 1;
-                }
+                fmt.template[i] = FormatArgsPiece::Literal(literal);
                 was_inlined[arg_index] = true;
                 inlined_anything = true;
-            } else {
-                i += 1;
             }
         }
 
@@ -348,10 +339,6 @@ fn expand_format_args<'hir>(
                     let args = ctx.arena.alloc_from_iter([s]);
                     return hir::ExprKind::Call(from_str, args);
                 }
-
-                // It shouldn't be possible to have an empty literal here. Encoding an empty literal
-                // would result in a single 0 byte, which marks the end of the template byte sequence.
-                debug_assert!(!s.is_empty());
 
                 // Encode the literal in chunks of up to u16::MAX bytes, split at utf-8 boundaries.
                 while !s.is_empty() {
