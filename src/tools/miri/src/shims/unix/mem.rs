@@ -15,6 +15,7 @@
 //! report UB.
 
 use rustc_abi::Size;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -46,7 +47,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // This is a horrible hack, but on MacOS and Solarish the guard page mechanism uses mmap
         // in a way we do not support. We just give it the return value it expects.
         if this.frame_in_std()
-            && matches!(&*this.tcx.sess.target.os, "macos" | "solaris" | "illumos")
+            && matches!(&this.tcx.sess.target.os, Os::MacOs | Os::Solaris | Os::Illumos)
             && (flags & map_fixed) != 0
         {
             return interp_ok(Scalar::from_maybe_pointer(Pointer::without_provenance(addr), this));

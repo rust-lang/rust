@@ -1,13 +1,30 @@
+use std::collections::BTreeSet;
+
 use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
-    self, AuxProps, DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives,
-    extract_llvm_version, extract_version_range, line_directive, parse_edition,
-    parse_normalize_rule,
+    self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
+    line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
+
+/// All directive handlers should have a name that is also in `KNOWN_DIRECTIVE_NAMES_SET`.
+#[test]
+fn handler_names() {
+    let unknown_names = DIRECTIVE_HANDLERS_MAP
+        .keys()
+        .copied()
+        .filter(|name| !KNOWN_DIRECTIVE_NAMES_SET.contains(name))
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive handler names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
 
 fn make_test_description(
     config: &Config,

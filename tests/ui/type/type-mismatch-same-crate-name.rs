@@ -11,24 +11,22 @@
 
 fn main() {
     let foo2 = {extern crate crate_a2 as a; a::Foo};
-        //~^ NOTE one type comes from crate `crate_a2` used here, which is renamed locally to `a`
-        //~| NOTE one trait comes from crate `crate_a2` used here, which is renamed locally to `a`
     let bar2 = {extern crate crate_a2 as a; a::bar()};
     {
         extern crate crate_a1 as a;
-        //~^ NOTE one type comes from crate `crate_a1` used here, which is renamed locally to `a`
-        //~| NOTE one trait comes from crate `crate_a1` used here, which is renamed locally to `a`
         a::try_foo(foo2);
         //~^ ERROR mismatched types
         //~| NOTE expected `main::a::Foo`, found a different `main::a::Foo`
         //~| NOTE arguments to this function are incorrect
-        //~| NOTE two types coming from two different crates are different types even if they look the same
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
         //~| NOTE function defined here
+        //~| HELP you can use `cargo tree` to explore your dependency tree
         a::try_bar(bar2);
         //~^ ERROR mismatched types
         //~| NOTE expected trait `main::a::Bar`, found a different trait `main::a::Bar`
         //~| NOTE arguments to this function are incorrect
-        //~| NOTE two types coming from two different crates are different types even if they look the same
+        //~| NOTE there are multiple different versions of crate `crate_a1` in the dependency graph
         //~| NOTE function defined here
+        //~| HELP you can use `cargo tree` to explore your dependency tree
     }
 }

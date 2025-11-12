@@ -1,4 +1,6 @@
-use crate::spec::{Arch, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{
+    Arch, Env, Os, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -15,8 +17,8 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             families: cvs!["unix"],
-            os: "espidf".into(),
-            env: "newlib".into(),
+            os: Os::EspIdf,
+            env: Env::Newlib,
             vendor: "espressif".into(),
             linker: Some("riscv32-esp-elf-gcc".into()),
             cpu: "generic-rv32".into(),

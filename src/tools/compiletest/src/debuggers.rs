@@ -49,7 +49,7 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
 }
 
 pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
-    config.lldb_python_dir.as_ref()?;
+    config.lldb.as_ref()?;
 
     Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
 }

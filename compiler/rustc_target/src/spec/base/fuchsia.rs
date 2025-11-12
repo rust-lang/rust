@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, TargetOptions, crt_objects, cvs,
+    Cc, FramePointer, LinkOutputKind, LinkerFlavor, Lld, Os, TargetOptions, crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -30,7 +30,7 @@ pub(crate) fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        os: "fuchsia".into(),
+        os: Os::Fuchsia,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         dynamic_linking: true,

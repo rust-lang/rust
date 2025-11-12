@@ -1663,7 +1663,7 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 format = "rustc"
 project-name = "Rust"
 changelog-path = "RELEASES.md"
-changelog-branch = "master"
+changelog-branch = "main"
 
 [shortcut]
 

@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(
         let mut snippet = make_iterator_snippet(cx, arg, &mut applicability);
         // Checks if `pat` is a single reference to a binding (`&x`)
         let is_ref_to_binding =
-            matches!(pat.kind, PatKind::Ref(inner, _) if matches!(inner.kind, PatKind::Binding(..)));
+            matches!(pat.kind, PatKind::Ref(inner, _, _) if matches!(inner.kind, PatKind::Binding(..)));
         // If `pat` is not a binding or a reference to a binding (`x` or `&x`)
         // we need to map it to the binding returned by the function (i.e. `.map(|(x, _)| x)`)
         if !(matches!(pat.kind, PatKind::Binding(..)) || is_ref_to_binding) {

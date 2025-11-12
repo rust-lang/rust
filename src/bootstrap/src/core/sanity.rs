@@ -1,9 +1,10 @@
-//! Sanity checking performed by bootstrap before actually executing anything.
+//! Sanity checking and tool selection performed by bootstrap.
 //!
-//! This module contains the implementation of ensuring that the build
-//! environment looks reasonable before progressing. This will verify that
-//! various programs like git and python exist, along with ensuring that all C
-//! compilers for cross-compiling are found.
+//! This module ensures that the build environment is correctly set up before
+//! executing any build tasks. It verifies required programs exist (like git and
+//! cmake when needed), selects some tools based on the environment (like the
+//! Python interpreter), and validates that C compilers for cross-compiling are
+//! available.
 //!
 //! In theory if we get past this phase it's a bug if a build fails, but in
 //! practice that's likely not true!

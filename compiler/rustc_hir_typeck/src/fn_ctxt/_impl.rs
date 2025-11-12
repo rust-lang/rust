@@ -40,7 +40,7 @@ use tracing::{debug, instrument};
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
@@ -602,13 +602,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         self.normalize(span, field.ty(self.tcx, args))
-    }
-
-    pub(crate) fn resolve_rvalue_scopes(&self, def_id: DefId) {
-        let scope_tree = self.tcx.region_scope_tree(def_id);
-        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, scope_tree, def_id) };
-        let mut typeck_results = self.typeck_results.borrow_mut();
-        typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
     /// Drain all obligations that are stalled on coroutines defined in this body.

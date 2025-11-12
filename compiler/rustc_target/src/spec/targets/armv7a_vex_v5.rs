@@ -1,6 +1,6 @@
 use crate::spec::{
-    Arch, Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./armv7a_vex_v5_linker_script.ld");
@@ -8,10 +8,10 @@ const LINKER_SCRIPT: &str = include_str!("./armv7a_vex_v5_linker_script.ld");
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
         vendor: "vex".into(),
-        env: "v5".into(),
-        os: "vexos".into(),
+        env: Env::V5,
+        os: Os::VexOs,
         cpu: "cortex-a9".into(),
-        abi: "eabihf".into(),
+        abi: Abi::EabiHf,
         is_like_vexos: true,
         llvm_floatabi: Some(FloatAbi::Hard),
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),

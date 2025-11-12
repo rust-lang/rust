@@ -501,7 +501,7 @@ fn handle_segfault(
 
     // Move the instr ptr into the deprotection code.
     #[expect(clippy::as_conversions)]
-    new_regs.set_ip(mempr_off as usize);
+    new_regs.set_ip(mempr_off as *const () as usize);
     // Don't mess up the stack by accident!
     new_regs.set_sp(stack_ptr);
 
@@ -553,7 +553,7 @@ fn handle_segfault(
 
     // Reprotect everything and continue.
     #[expect(clippy::as_conversions)]
-    new_regs.set_ip(mempr_on as usize);
+    new_regs.set_ip(mempr_on as *const () as usize);
     new_regs.set_sp(stack_ptr);
     ptrace::setregs(pid, new_regs).unwrap();
     wait_for_signal(Some(pid), signal::SIGSTOP, InitialCont::Yes)?;

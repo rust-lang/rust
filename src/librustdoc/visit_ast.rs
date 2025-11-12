@@ -243,7 +243,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
-        let document_hidden = self.cx.render_options.document_hidden;
+        let document_hidden = self.cx.document_hidden();
         let use_attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
@@ -351,7 +351,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_def_id: LocalDefId,
         target_def_id: LocalDefId,
     ) -> bool {
-        if self.cx.render_options.document_hidden {
+        if self.cx.document_hidden() {
             return true;
         }
         let tcx = self.cx.tcx;

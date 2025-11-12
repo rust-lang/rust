@@ -8,9 +8,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
-    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeKind,
-    Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, ByRef, Closure, ConstArg, ConstArgKind, Expr,
+    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
+    LifetimeKind, Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
     StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -538,7 +538,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && both(le.as_ref(), re.as_ref(), |a, b| self.eq_pat_expr(a, b))
                     && (li == ri)
             },
-            (PatKind::Ref(le, lm), PatKind::Ref(re, rm)) => lm == rm && self.eq_pat(le, re),
+            (PatKind::Ref(le, lp, lm), PatKind::Ref(re, rp, rm)) => lp == rp && lm == rm && self.eq_pat(le, re),
             (PatKind::Slice(ls, li, le), PatKind::Slice(rs, ri, re)) => {
                 over(ls, rs, |l, r| self.eq_pat(l, r))
                     && over(le, re, |l, r| self.eq_pat(l, r))
@@ -1131,6 +1131,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             PatKind::Missing => unreachable!(),
             PatKind::Binding(BindingMode(by_ref, mutability), _, _, pat) => {
                 std::mem::discriminant(by_ref).hash(&mut self.s);
+                if let ByRef::Yes(pi, mu) = by_ref {
+                    std::mem::discriminant(pi).hash(&mut self.s);
+                    std::mem::discriminant(mu).hash(&mut self.s);
+                }
                 std::mem::discriminant(mutability).hash(&mut self.s);
                 if let Some(pat) = pat {
                     self.hash_pat(pat);
@@ -1152,8 +1156,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 std::mem::discriminant(i).hash(&mut self.s);
             },
-            PatKind::Ref(pat, mu) => {
+            PatKind::Ref(pat, pi, mu) => {
                 self.hash_pat(pat);
+                std::mem::discriminant(pi).hash(&mut self.s);
                 std::mem::discriminant(mu).hash(&mut self.s);
             },
             PatKind::Guard(pat, guard) => {

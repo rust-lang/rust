@@ -50,7 +50,7 @@ where
     }
 
     let remaining_suggs = pats.filter_map(|pat| {
-        if let PatKind::Ref(refp, _) = pat.kind {
+        if let PatKind::Ref(refp, _, _) = pat.kind {
             Some((pat.span, snippet(cx, refp.span, "..").to_string()))
         } else {
             None

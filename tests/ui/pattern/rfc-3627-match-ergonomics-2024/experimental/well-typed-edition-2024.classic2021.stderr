@@ -114,7 +114,9 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/well-typed-edition-2024.rs:111:19
    |
 LL |         let [&mut ref mut x] = &mut [&0];
-   |                   ^^^^^^^^^ cannot borrow as mutable
+   |                   ^^^^^^^^^    --------- this cannot be borrowed as mutable
+   |                   |
+   |                   cannot borrow as mutable
 
 error: aborting due to 8 previous errors
 

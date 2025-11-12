@@ -1,8 +1,8 @@
-use crate::spec::{PanicStrategy, RelroLevel, StackProbeType, TargetOptions};
+use crate::spec::{Os, PanicStrategy, RelroLevel, StackProbeType, TargetOptions};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "helenos".into(),
+        os: Os::HelenOs,
 
         dynamic_linking: true,
         // we need the linker to keep libgcc and friends

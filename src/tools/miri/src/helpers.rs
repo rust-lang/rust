@@ -19,6 +19,7 @@ use rustc_middle::ty::{self, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -234,7 +235,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&self, name: &str) -> Scalar {
-        if self.eval_context_ref().tcx.sess.target.os == "windows" {
+        if self.eval_context_ref().tcx.sess.target.os == Os::Windows {
             panic!(
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
@@ -290,7 +291,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function to get the `TyAndLayout` of a `libc` type
     fn libc_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
-        if this.tcx.sess.target.os == "windows" {
+        if this.tcx.sess.target.os == Os::Windows {
             panic!(
                 "`libc` crate is not reliably available on Windows targets; Miri should not use it there"
             );
@@ -669,7 +670,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function used inside the shims of foreign functions to assert that the target OS
     /// is `target_os`. It panics showing a message with the `name` of the foreign function
     /// if this is not the case.
-    fn assert_target_os(&self, target_os: &str, name: &str) {
+    fn assert_target_os(&self, target_os: Os, name: &str) {
         assert_eq!(
             self.eval_context_ref().tcx.sess.target.os,
             target_os,
@@ -680,9 +681,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Helper function used inside shims of foreign functions to check that the target OS
     /// is one of `target_oses`. It returns an error containing the `name` of the foreign function
     /// in a message if this is not the case.
-    fn check_target_os(&self, target_oses: &[&str], name: Symbol) -> InterpResult<'tcx> {
-        let target_os = self.eval_context_ref().tcx.sess.target.os.as_ref();
-        if !target_oses.contains(&target_os) {
+    fn check_target_os(&self, target_oses: &[Os], name: Symbol) -> InterpResult<'tcx> {
+        let target_os = &self.eval_context_ref().tcx.sess.target.os;
+        if !target_oses.contains(target_os) {
             throw_unsup_format!("`{name}` is not supported on {target_os}");
         }
         interp_ok(())
@@ -918,7 +919,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Always returns a `Vec<u32>` no matter the size of `wchar_t`.
     fn read_wchar_t_str(&self, ptr: Pointer) -> InterpResult<'tcx, Vec<u32>> {
         let this = self.eval_context_ref();
-        let wchar_t = if this.tcx.sess.target.os == "windows" {
+        let wchar_t = if this.tcx.sess.target.os == Os::Windows {
             // We don't have libc on Windows so we have to hard-code the type ourselves.
             this.machine.layouts.u16
         } else {

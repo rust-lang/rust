@@ -79,7 +79,7 @@ Now we generate the device code. Replace the target-cpu with the right code for 
 RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir" cargo +offload build -Zunstable-options -r -v --target amdgcn-amd-amdhsa -Zbuild-std=core
 ```
 
-Now find the <libname>.ll under target/amdgcn-amd-amdhsa folder and copy it to a device.ll file (or adjust the file names below).
+Now find the `<libname>.ll` under target/amdgcn-amd-amdhsa folder and copy it to a device.ll file (or adjust the file names below).
 If you work on an NVIDIA or Intel gpu, please adjust the names acordingly and open an issue to share your results (either if you succeed or fail).
 First we compile our .ll files (good for manual inspections) to .bc files and clean up leftover artifacts. The cleanup is important, otherwise caching might interfere on following runs.
 ```
