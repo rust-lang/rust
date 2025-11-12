@@ -2783,6 +2783,7 @@ impl str {
     #[must_use]
     #[inline]
     pub const unsafe fn as_ascii_unchecked(&self) -> &[ascii::Char] {
+        // FIXME: Add &str support to DisplayWrapper
         assert_unsafe_precondition!(
             check_library_ub,
             "as_ascii_unchecked requires that the string is valid ASCII",

@@ -24,7 +24,8 @@ impl IndexRange {
     pub(crate) const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
-            "IndexRange::new_unchecked requires `start <= end`",
+            "IndexRange::new_unchecked requires `start <= end` \
+            (start:{start}, end:{end})",
             (start: usize = start, end: usize = end) => start <= end,
         );
         IndexRange { start, end }

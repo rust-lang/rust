@@ -65,13 +65,20 @@ macro_rules! assert_unsafe_precondition {
             #[inline]
             #[rustc_nounwind]
             #[track_caller]
+            #[rustc_allow_const_fn_unstable(const_eval_select)]
             const fn precondition_check($($name:$ty),*) {
-                if !$e {
-                    let msg = concat!("unsafe precondition(s) violated: ", $message,
-                        "\n\nThis indicates a bug in the program. \
-                        This Undefined Behavior check is optional, and cannot be relied on for safety.");
-                    ::core::panicking::panic_nounwind_fmt(::core::fmt::Arguments::new_const(&[msg]), false);
-                }
+                if $e { return; }
+                ::core::intrinsics::const_eval_select!(
+                    @capture { $($name: $ty),* }:
+                    if const {
+                        ::core::panicking::panic_nounwind($message);
+                    } else #[allow(unused)] {
+                        $(
+                            let $name = ::core::displaywrapper::DisplayWrapper($name);
+                        )*
+                        ::core::panicking::panic_nounwind_fmt(format_args!($message), false);
+                    }
+                )
             }
 
             if ::core::ub_checks::$kind() {

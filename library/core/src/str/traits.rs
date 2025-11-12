@@ -204,7 +204,8 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
             // `str::get_unchecked` without adding a special function
             // to `SliceIndex` just for this.
             check_library_ub,
-            "str::get_unchecked requires that the range is within the string slice",
+            "str::get_unchecked requires that the range is within the string slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,
@@ -226,7 +227,8 @@ unsafe impl const SliceIndex<str> for ops::Range<usize> {
 
         assert_unsafe_precondition!(
             check_library_ub,
-            "str::get_unchecked_mut requires that the range is within the string slice",
+            "str::get_unchecked_mut requires that the range is within the string slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,
@@ -309,7 +311,8 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
             // `str::get_unchecked` without adding a special function
             // to `SliceIndex` just for this.
             check_library_ub,
-            "str::get_unchecked requires that the range is within the string slice",
+            "str::get_unchecked requires that the range is within the string slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,
@@ -331,7 +334,8 @@ unsafe impl const SliceIndex<str> for range::Range<usize> {
 
         assert_unsafe_precondition!(
             check_library_ub,
-            "str::get_unchecked_mut requires that the range is within the string slice",
+            "str::get_unchecked_mut requires that the range is within the string slice \
+            (range:{start}..{end}, len:{len})",
             (
                 start: usize = self.start,
                 end: usize = self.end,

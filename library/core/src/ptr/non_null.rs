@@ -236,7 +236,7 @@ impl<T: PointeeSized> NonNull<T> {
         unsafe {
             assert_unsafe_precondition!(
                 check_language_ub,
-                "NonNull::new_unchecked requires that the pointer is non-null",
+                "NonNull::new_unchecked requires that the pointer is non-null (ptr:{ptr})",
                 (ptr: *mut () = ptr as *mut ()) => !ptr.is_null()
             );
             NonNull { pointer: ptr as _ }
