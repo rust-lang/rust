@@ -997,6 +997,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_method_not_found_because_of_unsatisfied_bounds(
+        &self,
+        err: &mut Diag<'_>,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        item_kind: &str,
+        bound_spans: SortedMap<Span, Vec<String>>,
+    ) {
+        let mut ty_span = match rcvr_ty.kind() {
+            ty::Param(param_type) => {
+                Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
+            }
+            ty::Adt(def, _) if def.did().is_local() => Some(self.tcx.def_span(def.did())),
+            _ => None,
+        };
+        for (span, mut bounds) in bound_spans {
+            if !self.tcx.sess.source_map().is_span_accessible(span) {
+                continue;
+            }
+            bounds.sort();
+            bounds.dedup();
+            let pre = if Some(span) == ty_span {
+                ty_span.take();
+                format!(
+                    "{item_kind} `{item_ident}` not found for this {} because it ",
+                    rcvr_ty.prefix_string(self.tcx)
+                )
+            } else {
+                String::new()
+            };
+            let msg = match &bounds[..] {
+                [bound] => format!("{pre}doesn't satisfy {bound}"),
+                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
+                [bounds @ .., last] => {
+                    format!("{pre}doesn't satisfy {} or {last}", bounds.join(", "))
+                }
+                [] => unreachable!(),
+            };
+            err.span_label(span, msg);
+        }
+        if let Some(span) = ty_span {
+            err.span_label(
+                span,
+                format!(
+                    "{item_kind} `{item_ident}` not found for this {}",
+                    rcvr_ty.prefix_string(self.tcx)
+                ),
+            );
+        }
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -1100,14 +1151,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &no_match_data,
         );
 
-        let mut ty_span = match rcvr_ty.kind() {
-            ty::Param(param_type) => {
-                Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
-            }
-            ty::Adt(def, _) if def.did().is_local() => Some(tcx.def_span(def.did())),
-            _ => None,
-        };
-
         let Ok((
             restrict_type_params,
             suggested_derive,
@@ -1191,40 +1234,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             similar_candidate,
         );
 
-        for (span, mut bounds) in bound_spans {
-            if !tcx.sess.source_map().is_span_accessible(span) {
-                continue;
-            }
-            bounds.sort();
-            bounds.dedup();
-            let pre = if Some(span) == ty_span {
-                ty_span.take();
-                format!(
-                    "{item_kind} `{item_ident}` not found for this {} because it ",
-                    rcvr_ty.prefix_string(self.tcx)
-                )
-            } else {
-                String::new()
-            };
-            let msg = match &bounds[..] {
-                [bound] => format!("{pre}doesn't satisfy {bound}"),
-                bounds if bounds.len() > 4 => format!("doesn't satisfy {} bounds", bounds.len()),
-                [bounds @ .., last] => {
-                    format!("{pre}doesn't satisfy {} or {last}", bounds.join(", "))
-                }
-                [] => unreachable!(),
-            };
-            err.span_label(span, msg);
-        }
-        if let Some(span) = ty_span {
-            err.span_label(
-                span,
-                format!(
-                    "{item_kind} `{item_ident}` not found for this {}",
-                    rcvr_ty.prefix_string(self.tcx)
-                ),
-            );
-        }
+        self.suggest_method_not_found_because_of_unsatisfied_bounds(
+            &mut err,
+            rcvr_ty,
+            item_ident,
+            item_kind,
+            bound_spans,
+        );
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
         self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
