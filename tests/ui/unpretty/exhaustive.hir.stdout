@@ -394,7 +394,7 @@ mod expressions {
         {
             super let args = (&expr,);
             super let args = [format_argument::new_display(args.0)];
-            unsafe { format_arguments::new(b"\x80\x00", &args) }
+            unsafe { format_arguments::new(b"\xc0\x00", &args) }
         };
     }
 }

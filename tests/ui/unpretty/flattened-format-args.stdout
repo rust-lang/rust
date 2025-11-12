@@ -14,7 +14,7 @@ fn main() {
                 super let args = (&x,);
                 super let args = [format_argument::new_display(args.0)];
                 unsafe {
-                    format_arguments::new(b"\x08a 123 b \x80\x05 xyz\n\x00",
+                    format_arguments::new(b"\x08a 123 b \xc0\x05 xyz\n\x00",
                         &args)
                 }
             });

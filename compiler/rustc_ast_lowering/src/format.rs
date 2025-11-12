@@ -349,10 +349,15 @@ fn expand_format_args<'hir>(
                     return hir::ExprKind::Call(from_str, args);
                 }
 
-                // Encode the literal in chunks of up to 127 bytes, split at utf-8 boundaries.
+                // Encode the literal in chunks of up to u16::MAX bytes, split at utf-8 boundaries.
                 while !s.is_empty() {
-                    let len = s.floor_char_boundary(127);
-                    bytecode.push(len as u8);
+                    let len = s.floor_char_boundary(usize::from(u16::MAX));
+                    if len < 0x80 {
+                        bytecode.push(len as u8);
+                    } else {
+                        bytecode.push(0x80);
+                        bytecode.extend_from_slice(&(len as u16).to_le_bytes());
+                    }
                     bytecode.extend(&s.as_bytes()[..len]);
                     s = &s[len..];
                 }
@@ -362,7 +367,7 @@ fn expand_format_args<'hir>(
             FormatArgsPiece::Placeholder(p) => {
                 // Push the start byte and remember its index so we can set the option bits later.
                 let i = bytecode.len();
-                bytecode.push(0x80);
+                bytecode.push(0xC0);
 
                 let position = argmap
                     .insert_full(

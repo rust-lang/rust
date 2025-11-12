@@ -138,7 +138,7 @@
           StorageDead(_16);
           StorageLive(_20);
           StorageLive(_21);
-          _21 = const b"\x80\x01 \x80\x01\n\x00";
+          _21 = const b"\xc0\x01 \xc0\x01\n\x00";
           _20 = &(*_21);
           StorageLive(_22);
           StorageLive(_23);
@@ -201,6 +201,6 @@
   }
   
   ALLOC0 (size: 7, align: 1) {
-      80 01 20 80 01 0a 00                            │ .. ....
+      c0 01 20 c0 01 0a 00                            │ .. ....
   }
   

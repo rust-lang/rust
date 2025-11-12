@@ -4,6 +4,7 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
+use crate::hint::assert_unchecked;
 use crate::marker::{PhantomData, PointeeSized};
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
@@ -640,22 +641,29 @@ impl<'a> Formatter<'a> {
 //
 //   The template byte sequence is the concatenation of parts of the following types:
 //
-//   - Literal string piece (1-127 bytes):
+//   - Literal string piece:
 //         Pieces that must be formatted verbatim (e.g. "hello " and "\n" in "hello {name}\n")
-//         are represented as a single byte containing their length followed directly by the bytes
-//         of the string:
+//         appear literally in the template byte sequence, prefixed by their length.
+//
+//         For pieces of up to 127 bytes, these are  represented as a single byte containing the
+//         length followed directly by the bytes of the string:
 //         ┌───┬────────────────────────────┐
 //         │len│    `len` bytes (utf-8)     │ (e.g. b"\x06hello ")
 //         └───┴────────────────────────────┘
 //
-//         These strings can be 127 bytes at most, such that the `len` byte always has the highest
-//         bit cleared. Longer pieces are split into multiple pieces (at utf-8 boundaries).
+//         For larger pieces up to u16::MAX bytes, these are  represented as a 0x80 followed by
+//         their length in 16-bit little endian, followed by the bytes of the string:
+//         ┌────┬─────────┬───────────────────────────┐
+//         │0x80│   len   │   `len` bytes (utf-8)     │ (e.g. b"\x80\x00\x01hello … ")
+//         └────┴─────────┴───────────────────────────┘
+//
+//         Longer pieces are split into multiple pieces of max u16::MAX bytes (at utf-8 boundaries).
 //
 //   - Placeholder:
 //         Placeholders (e.g. `{name}` in "hello {name}") are represented as a byte with the highest
-//         bit set, followed by zero or more fields depending on the flags set in the first byte:
+//         two bits set, followed by zero or more fields depending on the flags in the first byte:
 //         ┌──────────┬┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┬┄┄┄┄┄┄┄┄┄┄┄┐
-//         │0b10______│       flags       ┊   width   ┊ precision ┊ arg_index ┊ (e.g. b"\x82\x05\0")
+//         │0b11______│       flags       ┊   width   ┊ precision ┊ arg_index ┊ (e.g. b"\xC2\x05\0")
 //         └────││││││┴┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┴┄┄┄┄┄┄┄┄┄┄┄┘
 //              ││││││        32 bit          16 bit      16 bit      16 bit
 //              │││││└─ flags present
@@ -665,12 +673,12 @@ impl<'a> Formatter<'a> {
 //              │└─ width indirect
 //              └─ precision indirect
 //
-//         All fields other than the first byte are optional and only present when
-//         their corresponding flag is set in the first byte.
+//         All fields other than the first byte are optional and only present when their
+//         corresponding flag is set in the first byte.
 //
 //         So, a fully default placeholder without any options is just a single byte:
 //         ┌──────────┐
-//         │0b10000000│ (b"\x80")
+//         │0b11000000│ (b"\xC0")
 //         └──────────┘
 //
 //         The fields are stored as little endian.
@@ -766,14 +774,21 @@ impl<'a> Arguments<'a> {
             // SAFETY: We can assume the template is valid.
             unsafe {
                 let n = template.read();
+                template = template.add(1);
                 if n == 0 {
                     // End of template.
                     break;
                 } else if n < 128 {
-                    // Literal string piece.
+                    // Short literal string piece.
                     length += n as usize;
-                    template = template.add(1 + n as usize);
+                    template = template.add(n as usize);
+                } else if n == 128 {
+                    // Long literal string piece.
+                    let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
+                    length += len;
+                    template = template.add(2 + len);
                 } else {
+                    assert_unchecked(n >= 0xC0);
                     // Placeholder piece.
                     if length == 0 {
                         starts_with_placeholder = true;
@@ -783,7 +798,7 @@ impl<'a> Arguments<'a> {
                         + (n & 2 != 0) as usize * 2  // width     (16 bit)
                         + (n & 4 != 0) as usize * 2  // precision (16 bit)
                         + (n & 8 != 0) as usize * 2; // arg_index (16 bit)
-                    template = template.add(1 + skip as usize);
+                    template = template.add(skip as usize);
                 }
             }
         }
@@ -1633,7 +1648,7 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
         if n == 0 {
             // End of template.
             return Ok(());
-        } else if n < 128 {
+        } else if n < 0x80 {
             // Literal string piece of length `n`.
 
             // SAFETY: We can assume the strings in the template are valid.
@@ -1643,7 +1658,19 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
                 s
             };
             output.write_str(s)?;
-        } else if n == 128 {
+        } else if n == 0x80 {
+            // Literal string piece with a 16-bit length.
+
+            // SAFETY: We can assume the strings in the template are valid.
+            let s = unsafe {
+                let len = usize::from(u16::from_le_bytes(template.cast_array().read()));
+                template = template.add(2);
+                let s = crate::str::from_raw_parts(template.as_ptr(), len);
+                template = template.add(len);
+                s
+            };
+            output.write_str(s)?;
+        } else if n == 0xC0 {
             // Placeholder for next argument with default options.
             //
             // Having this as a separate case improves performance for the common case.
@@ -1656,6 +1683,9 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
             }
             arg_index += 1;
         } else {
+            // SAFETY: We can assume the template is valid.
+            unsafe { assert_unchecked(n > 0xC0) };
+
             // Placeholder with custom options.
 
             let mut opt = FormattingOptions::new();
