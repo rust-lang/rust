@@ -303,7 +303,7 @@ pub struct FormattingOptions {
     ///   │     └─ 3: Alignment not set. (default)
     ///   └─ Always zero.
     /// ```
-    // Note: This could use a special niche type with range 0x8000_0000..=0xfdd0ffff.
+    // Note: This could use a pattern type with range 0x0000_0000..=0x7dd0ffff.
     // It's unclear if that's useful, though.
     flags: u32,
     /// Width if width flag (bit 27) above is set. Otherwise, always 0.
