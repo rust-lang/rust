@@ -349,6 +349,10 @@ fn expand_format_args<'hir>(
                     return hir::ExprKind::Call(from_str, args);
                 }
 
+                // It shouldn't be possible to have an empty literal here. Encoding an empty literal
+                // would result in a single 0 byte, which marks the end of the template byte sequence.
+                debug_assert!(!s.is_empty());
+
                 // Encode the literal in chunks of up to u16::MAX bytes, split at utf-8 boundaries.
                 while !s.is_empty() {
                     let len = s.floor_char_boundary(usize::from(u16::MAX));
