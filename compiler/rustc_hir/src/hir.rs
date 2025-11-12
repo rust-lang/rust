@@ -4237,18 +4237,21 @@ impl fmt::Display for Safety {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, HashStable_Generic)]
 #[derive(Default)]
 pub enum Constness {
+    /// The function can only be called at compile-time
+    Always,
+    /// The function can be called both at runtime or compile-time
     #[default]
-    Const,
-    NotConst,
-    Comptime,
+    Maybe,
+    /// The function can only be called at runtime
+    Never,
 }
 
 impl fmt::Display for Constness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
-            Self::Comptime => "comptime",
-            Self::Const => "const",
-            Self::NotConst => "non-const",
+            Self::Always => "comptime",
+            Self::Maybe => "const",
+            Self::Never => "non-const",
         })
     }
 }
@@ -4288,7 +4291,7 @@ impl FnHeader {
     }
 
     pub fn is_const(&self) -> bool {
-        matches!(self.constness, Constness::Const)
+        matches!(self.constness, Constness::Maybe)
     }
 
     pub fn is_unsafe(&self) -> bool {

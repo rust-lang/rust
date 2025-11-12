@@ -1540,17 +1540,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mut constness = self.lower_constness(h.constness);
         if let Some(&attr_span) = find_attr!(attrs, AttributeKind::Comptime(span) => span) {
-            match std::mem::replace(&mut constness, rustc_hir::Constness::Comptime) {
-                rustc_hir::Constness::Comptime => {
+            match std::mem::replace(&mut constness, rustc_hir::Constness::Always) {
+                rustc_hir::Constness::Always => {
                     unreachable!("lower_constness cannot produce comptime")
                 }
                 // A function can't be `const` and `comptime` at the same time
-                rustc_hir::Constness::Const => {
+                rustc_hir::Constness::Maybe => {
                     let Const::Yes(span) = h.constness else { unreachable!() };
                     self.dcx().emit_err(ConstComptimeFn { span, attr_span });
                 }
                 // Good
-                rustc_hir::Constness::NotConst => {}
+                rustc_hir::Constness::Never => {}
             }
         }
 
@@ -1616,8 +1616,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
         match c {
-            Const::Yes(_) => hir::Constness::Const,
-            Const::No => hir::Constness::NotConst,
+            Const::Yes(_) => hir::Constness::Maybe,
+            Const::No => hir::Constness::Never,
         }
     }
 
