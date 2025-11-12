@@ -1,3 +1,5 @@
+<!-- date-check: Jul 2025 -->
+
 # Implementing new language features
 
 When you want to implement a new significant feature in the compiler, you need to go through this process to make sure everything goes smoothly.
