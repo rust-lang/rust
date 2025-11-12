@@ -1920,4 +1920,3 @@ float_test! {
         assert_biteq!((flt(-3.2)).mul_add(2.4, neg_inf), neg_inf);
     }
 }
-
