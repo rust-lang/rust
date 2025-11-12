@@ -14,7 +14,7 @@ use crate::shims::files::{
     EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::linux_like::epoll::{EpollReadyEvents, EvalContextExt as _};
+use crate::shims::unix::linux_like::epoll::{EpollEvents, EvalContextExt as _};
 use crate::*;
 
 /// The maximum capacity of the socketpair buffer in bytes.
@@ -99,7 +99,7 @@ impl FileDescription for AnonSocket {
                 }
             }
             // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ false)?;
+            ecx.update_epoll_active_events(peer_fd, /* force_edge */ false)?;
         }
         interp_ok(Ok(()))
     }
@@ -280,8 +280,8 @@ fn anonsocket_write<'tcx>(
         // Notify epoll waiters: we might be no longer writable, peer might now be readable.
         // The notification to the peer seems to be always sent on Linux, even if the
         // FD was readable before.
-        ecx.epoll_send_fd_ready_events(self_ref, /* force_edge */ false)?;
-        ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ true)?;
+        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
+        ecx.update_epoll_active_events(peer_fd, /* force_edge */ true)?;
 
         return finish.call(ecx, Ok(write_size));
     }
@@ -378,10 +378,10 @@ fn anonsocket_read<'tcx>(
             // Linux seems to always notify the peer if the read buffer is now empty.
             // (Linux also does that if this was a "big" read, but to avoid some arbitrary
             // threshold, we do not match that.)
-            ecx.epoll_send_fd_ready_events(peer_fd, /* force_edge */ readbuf_now_empty)?;
+            ecx.update_epoll_active_events(peer_fd, /* force_edge */ readbuf_now_empty)?;
         };
         // Notify epoll waiters: we might be no longer readable.
-        ecx.epoll_send_fd_ready_events(self_ref, /* force_edge */ false)?;
+        ecx.update_epoll_active_events(self_ref, /* force_edge */ false)?;
 
         return finish.call(ecx, Ok(read_size));
     }
@@ -389,11 +389,11 @@ fn anonsocket_read<'tcx>(
 }
 
 impl UnixFileDescription for AnonSocket {
-    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollEvents> {
         // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
         // If other event flags need to be supported in the future, the check should be added here.
 
-        let mut epoll_ready_events = EpollReadyEvents::new();
+        let mut epoll_ready_events = EpollEvents::new();
 
         // Check if it is readable.
         if let Some(readbuf) = &self.readbuf {

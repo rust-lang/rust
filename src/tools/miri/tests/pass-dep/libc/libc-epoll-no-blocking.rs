@@ -355,6 +355,7 @@ fn test_epoll_socketpair_both_sides() {
 
     // The state of fds[1] does not change (was writable, is writable).
     // However, we force a spurious wakeup as the read buffer just got emptied.
+    // fds[0] lost its readability, but becoming less active is not considered an "edge".
     check_epoll_wait::<8>(epfd, &[(expected_event1, expected_value1)]);
 }
 
