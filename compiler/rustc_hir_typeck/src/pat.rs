@@ -772,8 +772,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if cfg!(debug_assertions)
                     && self.tcx.features().deref_patterns()
                     && !matches!(lt.kind, PatExprKind::Lit { .. })
+
                 {
-                    span_delayed_bug!(
+                    self.tcx.dcx().span_delayed_bug(
                         lt.span,
                         format!("FIXME(deref_patterns): adjust mode unimplemented for {:?}", lt.kind),
                     );
