@@ -428,7 +428,9 @@ fn expand_format_args<'hir>(
     bytecode.push(0);
 
     // Ensure all argument indexes actually fit in 16 bits, as we truncated them to 16 bits before.
-    assert!(argmap.len() <= u16::MAX as usize);
+    if argmap.len() > u16::MAX as usize {
+        ctx.dcx().span_err(macsp, "too many format arguments");
+    }
 
     let arguments = fmt.arguments.all_args();
 
