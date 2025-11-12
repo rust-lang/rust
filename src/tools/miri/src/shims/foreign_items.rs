@@ -15,7 +15,7 @@ use rustc_middle::{mir, ty};
 use rustc_session::config::OomStrategy;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Os, Arch};
+use rustc_target::spec::{Arch, Os};
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
