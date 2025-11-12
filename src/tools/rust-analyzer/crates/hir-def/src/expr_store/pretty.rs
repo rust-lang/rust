@@ -9,7 +9,7 @@ use std::{
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
-use syntax::ast::HasName;
+use syntax::ast::{HasName, RangeOp};
 
 use crate::{
     AdtId, DefWithBodyId, GenericDefId, TypeParamId, VariantId,
@@ -735,8 +735,8 @@ impl Printer<'_> {
                     self.print_expr_in(prec, *lhs);
                 }
                 match range_type {
-                    ast::RangeOp::Exclusive => w!(self, ".."),
-                    ast::RangeOp::Inclusive => w!(self, "..="),
+                    RangeOp::Exclusive => w!(self, ".."),
+                    RangeOp::Inclusive => w!(self, "..="),
                 };
                 if let Some(rhs) = rhs {
                     self.print_expr_in(prec, *rhs);
@@ -937,11 +937,14 @@ impl Printer<'_> {
                 });
                 w!(self, "}}");
             }
-            Pat::Range { start, end } => {
+            Pat::Range { start, end, range_type } => {
                 if let Some(start) = start {
                     self.print_expr_in(prec, *start);
                 }
-                w!(self, "..=");
+                match range_type {
+                    RangeOp::Inclusive => w!(self, "..="),
+                    RangeOp::Exclusive => w!(self, ".."),
+                }
                 if let Some(end) = end {
                     self.print_expr_in(prec, *end);
                 }

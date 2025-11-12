@@ -11,6 +11,7 @@ use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Ty as _};
 use stdx::TupleExt;
+use syntax::ast::RangeOp;
 
 use crate::{
     DeclContext, DeclOrigin, InferenceDiagnostic,
@@ -349,9 +350,51 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_slice_pat(expected, prefix, *slice, suffix, default_bm, decl)
             }
             Pat::Wild => expected,
-            Pat::Range { .. } => {
-                // FIXME: do some checks here.
-                expected
+            Pat::Range { start, end, range_type } => {
+                // FIXME: Expectation
+                let lhs_expectation = Expectation::none();
+                let lhs_ty =
+                    start.map(|start| self.infer_expr(start, &lhs_expectation, ExprIsRead::Yes));
+                let rhs_expectation = lhs_ty.map_or_else(Expectation::none, Expectation::HasType);
+                let rhs_ty = end.map(|end| self.infer_expr(end, &rhs_expectation, ExprIsRead::Yes));
+                let single_arg_adt = |adt, ty: Ty<'db>| {
+                    Ty::new_adt(
+                        self.interner(),
+                        adt,
+                        GenericArgs::new_from_iter(self.interner(), [ty.into()]),
+                    )
+                };
+                match (range_type, lhs_ty, rhs_ty) {
+                    (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
+                        Some(adt) => Ty::new_adt(self.interner(), adt, self.types.empty_args),
+                        None => self.err_ty(),
+                    },
+                    (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
+                        Some(adt) => single_arg_adt(adt, ty),
+                        None => self.err_ty(),
+                    },
+                    (RangeOp::Inclusive, None, Some(ty)) => {
+                        match self.resolve_range_to_inclusive() {
+                            Some(adt) => single_arg_adt(adt, ty),
+                            None => self.err_ty(),
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
+                        Some(adt) => single_arg_adt(adt, ty),
+                        None => self.err_ty(),
+                    },
+                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
+                        match self.resolve_range_inclusive() {
+                            Some(adt) => single_arg_adt(adt, ty),
+                            None => self.err_ty(),
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
+                        Some(adt) => single_arg_adt(adt, ty),
+                        None => self.err_ty(),
+                    },
+                    (RangeOp::Inclusive, _, None) => self.err_ty(),
+                }
             }
             &Pat::Lit(expr) => {
                 // Don't emit type mismatches again, the expression lowering already did that.

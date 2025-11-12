@@ -580,7 +580,7 @@ const fn f(x: i32) -> i32 {
 
     let MatchArm { pat, .. } = mtch_arms[1];
     match body[pat] {
-        Pat::Range { start, end } => {
+        Pat::Range { start, end, range_type: _ } => {
             let hir_start = &body[start.unwrap()];
             let hir_end = &body[end.unwrap()];
 

@@ -189,24 +189,33 @@ fn infer_literal_pattern() {
 fn infer_range_pattern() {
     check_infer_with_mismatches(
         r#"
-        fn test(x: &i32) {
-            if let 1..76 = 2u32 {}
-            if let 1..=76 = 2u32 {}
-        }
+//- minicore: range
+fn test(x..y: &core::ops::Range<u32>) {
+    if let 1..76 = 2u32 {}
+    if let 1..=76 = 2u32 {}
+}
         "#,
         expect![[r#"
-            8..9 'x': &'? i32
-            17..75 '{     ...2 {} }': ()
-            23..45 'if let...u32 {}': ()
-            26..42 'let 1....= 2u32': bool
-            30..35 '1..76': u32
-            38..42 '2u32': u32
-            43..45 '{}': ()
-            50..73 'if let...u32 {}': ()
-            53..70 'let 1....= 2u32': bool
-            57..63 '1..=76': u32
-            66..70 '2u32': u32
-            71..73 '{}': ()
+            8..9 'x': u32
+            8..12 'x..y': Range<u32>
+            11..12 'y': u32
+            38..96 '{     ...2 {} }': ()
+            44..66 'if let...u32 {}': ()
+            47..63 'let 1....= 2u32': bool
+            51..52 '1': i32
+            51..56 '1..76': Range<i32>
+            54..56 '76': i32
+            59..63 '2u32': u32
+            64..66 '{}': ()
+            71..94 'if let...u32 {}': ()
+            74..91 'let 1....= 2u32': bool
+            78..79 '1': i32
+            78..84 '1..=76': RangeInclusive<i32>
+            82..84 '76': i32
+            87..91 '2u32': u32
+            92..94 '{}': ()
+            51..56: expected u32, got Range<i32>
+            78..84: expected u32, got RangeInclusive<i32>
         "#]],
     );
 }

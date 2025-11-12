@@ -661,6 +661,7 @@ pub enum Pat {
     Range {
         start: Option<ExprId>,
         end: Option<ExprId>,
+        range_type: RangeOp,
     },
     Slice {
         prefix: Box<[PatId]>,
