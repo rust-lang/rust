@@ -153,7 +153,7 @@ We have [a chapter](git.md) on how to use Git when contributing to Rust.
 
 ### Keeping your branch up-to-date
 
-The CI in rust-lang/rust applies your patches directly against the current `main`,
+The CI in rust-lang/rust applies your patches directly against current `main`,
 not against the commit your branch is based on.
 This can lead to unexpected failures
 if your branch is outdated, even when there are no explicit merge conflicts.
