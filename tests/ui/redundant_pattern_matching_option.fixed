@@ -195,3 +195,16 @@ fn issue16045() {
         }
     }
 }
+
+fn issue14989() {
+    macro_rules! x {
+        () => {
+            None::<i32>
+        };
+    }
+
+    if x! {}.is_some() {};
+    //~^ redundant_pattern_matching
+    while x! {}.is_some() {}
+    //~^ redundant_pattern_matching
+}
