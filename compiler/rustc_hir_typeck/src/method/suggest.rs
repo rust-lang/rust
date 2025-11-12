@@ -772,6 +772,120 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         static_candidates
     }
 
+    fn suggest_unsatisfied_ty_or_trait(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        item_kind: &str,
+        source: SelfSource<'tcx>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
+        static_candidates: &[CandidateSource],
+    ) -> Result<(bool, bool, bool, bool, SortedMap<Span, Vec<String>>), ()> {
+        let mut restrict_type_params = false;
+        let mut suggested_derive = false;
+        let mut unsatisfied_bounds = false;
+        let mut custom_span_label = !static_candidates.is_empty();
+        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
+        let tcx = self.tcx;
+
+        if item_ident.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
+            let msg = "consider using `len` instead";
+            if let SelfSource::MethodCall(_expr) = source {
+                err.span_suggestion_short(span, msg, "len", Applicability::MachineApplicable);
+            } else {
+                err.span_label(span, msg);
+            }
+            if let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator) {
+                let iterator_trait = self.tcx.def_path_str(iterator_trait);
+                err.note(format!(
+                    "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
+                ));
+            }
+        } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
+        {
+            err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
+            if !span.in_external_macro(self.tcx.sess.source_map()) {
+                err.multipart_suggestion_verbose(
+                    "call `.into_iter()` first",
+                    vec![(span.shrink_to_lo(), format!("into_iter()."))],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            // Report to emit the diagnostic
+            return Err(());
+        } else if !unsatisfied_predicates.is_empty() {
+            if matches!(rcvr_ty.kind(), ty::Param(_)) {
+                // We special case the situation where we are looking for `_` in
+                // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
+                // implementations that have unsatisfied trait bounds to suggest, leading us to claim
+                // things like "we're looking for a trait with method `cmp`, both `Iterator` and `Ord`
+                // have one, in order to implement `Ord` you need to restrict `TypeParam: FnPtr` so
+                // that `impl<T: FnPtr> Ord for T` can apply", which is not what we want. We have a type
+                // parameter, we want to directly say "`Ord::cmp` and `Iterator::cmp` exist, restrict
+                // `TypeParam: Ord` or `TypeParam: Iterator`"". That is done further down when calling
+                // `self.suggest_traits_to_import`, so we ignore the `unsatisfied_predicates`
+                // suggestions.
+            } else {
+                self.handle_unsatisfied_predicates(
+                    err,
+                    rcvr_ty,
+                    item_ident,
+                    item_kind,
+                    span,
+                    unsatisfied_predicates,
+                    &mut restrict_type_params,
+                    &mut suggested_derive,
+                    &mut unsatisfied_bounds,
+                    &mut custom_span_label,
+                    &mut bound_spans,
+                );
+            }
+        } else if let ty::Adt(def, targs) = rcvr_ty.kind()
+            && let SelfSource::MethodCall(rcvr_expr) = source
+        {
+            // This is useful for methods on arbitrary self types that might have a simple
+            // mutability difference, like calling a method on `Pin<&mut Self>` that is on
+            // `Pin<&Self>`.
+            if targs.len() == 1 {
+                let mut item_segment = hir::PathSegment::invalid();
+                item_segment.ident = item_ident;
+                for t in [Ty::new_mut_ref, Ty::new_imm_ref, |_, _, t| t] {
+                    let new_args =
+                        tcx.mk_args_from_iter(targs.iter().map(|arg| match arg.as_type() {
+                            Some(ty) => ty::GenericArg::from(t(
+                                tcx,
+                                tcx.lifetimes.re_erased,
+                                ty.peel_refs(),
+                            )),
+                            _ => arg,
+                        }));
+                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
+                    if let Ok(method) = self.lookup_method_for_diagnostic(
+                        rcvr_ty,
+                        &item_segment,
+                        span,
+                        tcx.parent_hir_node(rcvr_expr.hir_id).expect_expr(),
+                        rcvr_expr,
+                    ) {
+                        err.span_note(
+                            tcx.def_span(method.def_id),
+                            format!("{item_kind} is available for `{rcvr_ty}`"),
+                        );
+                    }
+                }
+            }
+        }
+        Ok((
+            restrict_type_params,
+            suggested_derive,
+            unsatisfied_bounds,
+            custom_span_label,
+            bound_spans,
+        ))
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -874,12 +988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sugg_span,
             &no_match_data,
         );
-        let mut custom_span_label = !static_candidates.is_empty();
 
-        let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
-        let mut restrict_type_params = false;
-        let mut suggested_derive = false;
-        let mut unsatisfied_bounds = false;
         let mut ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
                 Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
@@ -888,92 +997,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         };
 
-        if item_ident.name == sym::count && self.is_slice_ty(rcvr_ty, span) {
-            let msg = "consider using `len` instead";
-            if let SelfSource::MethodCall(_expr) = source {
-                err.span_suggestion_short(span, msg, "len", Applicability::MachineApplicable);
-            } else {
-                err.span_label(span, msg);
-            }
-            if let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator) {
-                let iterator_trait = self.tcx.def_path_str(iterator_trait);
-                err.note(format!(
-                    "`count` is defined on `{iterator_trait}`, which `{rcvr_ty}` does not implement"
-                ));
-            }
-        } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
-        {
-            err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
-            if !span.in_external_macro(self.tcx.sess.source_map()) {
-                err.multipart_suggestion_verbose(
-                    "call `.into_iter()` first",
-                    vec![(span.shrink_to_lo(), format!("into_iter()."))],
-                    Applicability::MaybeIncorrect,
-                );
-            }
+        let Ok((
+            restrict_type_params,
+            suggested_derive,
+            unsatisfied_bounds,
+            custom_span_label,
+            bound_spans,
+        )) = self.suggest_unsatisfied_ty_or_trait(
+            &mut err,
+            span,
+            rcvr_ty,
+            item_ident,
+            item_kind,
+            source,
+            unsatisfied_predicates,
+            &static_candidates,
+        )
+        else {
             return err.emit();
-        } else if !unsatisfied_predicates.is_empty() {
-            if matches!(rcvr_ty.kind(), ty::Param(_)) {
-                // We special case the situation where we are looking for `_` in
-                // `<TypeParam as _>::method` because otherwise the machinery will look for blanket
-                // implementations that have unsatisfied trait bounds to suggest, leading us to claim
-                // things like "we're looking for a trait with method `cmp`, both `Iterator` and `Ord`
-                // have one, in order to implement `Ord` you need to restrict `TypeParam: FnPtr` so
-                // that `impl<T: FnPtr> Ord for T` can apply", which is not what we want. We have a type
-                // parameter, we want to directly say "`Ord::cmp` and `Iterator::cmp` exist, restrict
-                // `TypeParam: Ord` or `TypeParam: Iterator`"". That is done further down when calling
-                // `self.suggest_traits_to_import`, so we ignore the `unsatisfied_predicates`
-                // suggestions.
-            } else {
-                self.handle_unsatisfied_predicates(
-                    &mut err,
-                    rcvr_ty,
-                    item_ident,
-                    item_kind,
-                    span,
-                    unsatisfied_predicates,
-                    &mut restrict_type_params,
-                    &mut suggested_derive,
-                    &mut unsatisfied_bounds,
-                    &mut custom_span_label,
-                    &mut bound_spans,
-                );
-            }
-        } else if let ty::Adt(def, targs) = rcvr_ty.kind()
-            && let SelfSource::MethodCall(rcvr_expr) = source
-        {
-            // This is useful for methods on arbitrary self types that might have a simple
-            // mutability difference, like calling a method on `Pin<&mut Self>` that is on
-            // `Pin<&Self>`.
-            if targs.len() == 1 {
-                let mut item_segment = hir::PathSegment::invalid();
-                item_segment.ident = item_ident;
-                for t in [Ty::new_mut_ref, Ty::new_imm_ref, |_, _, t| t] {
-                    let new_args =
-                        tcx.mk_args_from_iter(targs.iter().map(|arg| match arg.as_type() {
-                            Some(ty) => ty::GenericArg::from(t(
-                                tcx,
-                                tcx.lifetimes.re_erased,
-                                ty.peel_refs(),
-                            )),
-                            _ => arg,
-                        }));
-                    let rcvr_ty = Ty::new_adt(tcx, *def, new_args);
-                    if let Ok(method) = self.lookup_method_for_diagnostic(
-                        rcvr_ty,
-                        &item_segment,
-                        span,
-                        tcx.parent_hir_node(rcvr_expr.hir_id).expect_expr(),
-                        rcvr_expr,
-                    ) {
-                        err.span_note(
-                            tcx.def_span(method.def_id),
-                            format!("{item_kind} is available for `{rcvr_ty}`"),
-                        );
-                    }
-                }
-            }
-        }
+        };
 
         let mut find_candidate_for_method = false;
         let should_label_not_found = match source {
