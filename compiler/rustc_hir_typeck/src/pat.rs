@@ -773,10 +773,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && self.tcx.features().deref_patterns()
                     && !matches!(lt.kind, PatExprKind::Lit { .. })
                 {
-                    span_bug!(
+                    self.dcx().span_delayed_bug(
                         lt.span,
-                        "FIXME(deref_patterns): adjust mode unimplemented for {:?}",
-                        lt.kind
+                        format!("FIXME(deref_patterns): adjust mode unimplemented for {:?}", lt.kind),
                     );
                 }
                 // Call `resolve_vars_if_possible` here for inline const blocks.
