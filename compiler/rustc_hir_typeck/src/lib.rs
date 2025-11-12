@@ -37,7 +37,6 @@ mod op;
 mod opaque_types;
 mod pat;
 mod place_op;
-mod rvalue_scopes;
 mod typeck_root_ctxt;
 mod upvar;
 mod writeback;
@@ -237,9 +236,6 @@ fn typeck_with_inspect<'tcx>(
     // because they don't constrain other type variables.
     fcx.closure_analyze(body);
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-    // Before the coroutine analysis, temporary scopes shall be marked to provide more
-    // precise information on types to be captured.
-    fcx.resolve_rvalue_scopes(def_id.to_def_id());
 
     for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
         let ty = fcx.normalize(span, ty);

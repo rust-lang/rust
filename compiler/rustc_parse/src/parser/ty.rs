@@ -728,10 +728,7 @@ impl<'a> Parser<'a> {
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
         let and_span = self.prev_token.span;
         let mut opt_lifetime = self.check_lifetime().then(|| self.expect_lifetime());
-        let (pinned, mut mutbl) = match self.parse_pin_and_mut() {
-            Some(pin_mut) => pin_mut,
-            None => (Pinnedness::Not, self.parse_mutability()),
-        };
+        let (pinned, mut mutbl) = self.parse_pin_and_mut();
         if self.token.is_lifetime() && mutbl == Mutability::Mut && opt_lifetime.is_none() {
             // A lifetime is invalid here: it would be part of a bare trait bound, which requires
             // it to be followed by a plus, but we disallow plus in the pointee type.
@@ -773,28 +770,17 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses `pin` and `mut` annotations on references.
+    /// Parses `pin` and `mut` annotations on references, patterns, or borrow modifiers.
     ///
-    /// It must be either `pin const` or `pin mut`.
-    pub(crate) fn parse_pin_and_mut(&mut self) -> Option<(Pinnedness, Mutability)> {
-        if self.token.is_ident_named(sym::pin) {
-            let result = self.look_ahead(1, |token| {
-                if token.is_keyword(kw::Const) {
-                    Some((Pinnedness::Pinned, Mutability::Not))
-                } else if token.is_keyword(kw::Mut) {
-                    Some((Pinnedness::Pinned, Mutability::Mut))
-                } else {
-                    None
-                }
-            });
-            if result.is_some() {
-                self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
-                self.bump();
-                self.bump();
-            }
-            result
+    /// It must be either `pin const`, `pin mut`, `mut`, or nothing (immutable).
+    pub(crate) fn parse_pin_and_mut(&mut self) -> (Pinnedness, Mutability) {
+        if self.token.is_ident_named(sym::pin) && self.look_ahead(1, Token::is_mutability) {
+            self.psess.gated_spans.gate(sym::pin_ergonomics, self.token.span);
+            assert!(self.eat_keyword(exp!(Pin)));
+            let mutbl = self.parse_const_or_mut().unwrap();
+            (Pinnedness::Pinned, mutbl)
         } else {
-            None
+            (Pinnedness::Not, self.parse_mutability())
         }
     }
 
@@ -838,7 +824,7 @@ impl<'a> Parser<'a> {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
         let mode = crate::parser::item::FnParseMode {
-            req_name: |_| false,
+            req_name: |_, _| false,
             context: FnContext::Free,
             req_body: false,
         };
@@ -1394,7 +1380,8 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
+        let mode =
+            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
@@ -1485,7 +1472,8 @@ impl<'a> Parser<'a> {
 
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
-        let mode = FnParseMode { req_name: |_| false, context: FnContext::Free, req_body: false };
+        let mode =
+            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
         let inputs: ThinVec<_> =
             self.parse_fn_params(&mode)?.into_iter().map(|input| input.ty).collect();
         let inputs_span = inputs_lo.to(self.prev_token.span);

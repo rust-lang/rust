@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolNam
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{Arch, TlsModel};
+use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
 use crate::back::symbol_export;
@@ -711,7 +711,7 @@ pub(crate) fn extend_exported_symbols<'tcx>(
 ) {
     let (callconv, _) = calling_convention_for_symbol(tcx, symbol);
 
-    if callconv != CanonAbi::GpuKernel || tcx.sess.target.os != "amdhsa" {
+    if callconv != CanonAbi::GpuKernel || tcx.sess.target.os != Os::AmdHsa {
         return;
     }
 

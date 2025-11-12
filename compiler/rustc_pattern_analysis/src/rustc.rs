@@ -462,8 +462,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Deref { subpattern } => {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
-                ctor = match ty.kind() {
-                    ty::Ref(..) => Ref,
+                ctor = match ty.pinned_ref() {
+                    None if ty.is_ref() => Ref,
+                    Some((inner_ty, _)) => {
+                        self.internal_state.has_lowered_deref_pat.set(true);
+                        DerefPattern(RevealedTy(inner_ty))
+                    }
                     _ => span_bug!(
                         pat.span,
                         "pattern has unexpected type: pat: {:?}, ty: {:?}",

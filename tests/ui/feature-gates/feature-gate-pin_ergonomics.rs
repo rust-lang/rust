@@ -47,6 +47,17 @@ fn borrows() {
     foo_const(x);
 }
 
+fn patterns<'a>(
+    &pin mut x: &pin mut i32,
+    //~^ ERROR pinned reference syntax is experimental
+    //~| ERROR pinned reference syntax is experimental
+    &pin const y: &'a pin const i32,
+    //~^ ERROR pinned reference syntax is experimental
+    //~| ERROR pinned reference syntax is experimental
+    ref pin mut z: i32, //~ ERROR pinned reference syntax is experimental
+    ref pin const w: i32, //~ ERROR pinned reference syntax is experimental
+) {}
+
 #[cfg(any())]
 mod not_compiled {
     use std::pin::Pin;
@@ -91,6 +102,17 @@ mod not_compiled {
         foo_const(x);
         foo_const(x);
     }
+
+    fn patterns<'a>(
+        &pin mut x: &pin mut i32,
+        //~^ ERROR pinned reference syntax is experimental
+        //~| ERROR pinned reference syntax is experimental
+        &pin const y: &'a pin const i32,
+        //~^ ERROR pinned reference syntax is experimental
+        //~| ERROR pinned reference syntax is experimental
+        ref pin mut z: i32, //~ ERROR pinned reference syntax is experimental
+        ref pin const w: i32, //~ ERROR pinned reference syntax is experimental
+    ) {}
 }
 
 fn main() {}

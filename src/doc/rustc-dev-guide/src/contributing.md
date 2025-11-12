@@ -28,7 +28,7 @@ conditions that trigger the bug, or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
 
-Opening an issue is as easy as following [thi link][create an issue] and filling out the fields
+Opening an issue is as easy as following [this link][create an issue] and filling out the fields
 in the appropriate provided template.
 
 ## Bug fixes or "normal" code changes

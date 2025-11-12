@@ -779,8 +779,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place),
         );
 
-        // See the comment in `expr_as_temp` and on the `rvalue_scopes` field for why
-        // this can be `None`.
+        // This can be `None` if the expression's temporary scope was extended so that it can be
+        // borrowed by a `const` or `static`. In that case, it's never dropped.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
         }

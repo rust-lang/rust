@@ -7,11 +7,11 @@
 //! the standard library is available, most of it returns an error immediately
 //! (e.g. trying to create a TCP stream or something like that).
 
-use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Os, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
-    options.os = "unknown".into();
+    options.os = Os::Unknown;
 
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::No),

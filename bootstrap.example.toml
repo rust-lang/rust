@@ -320,7 +320,7 @@
 #build.npm = "npm"
 
 # Python interpreter to use for various tasks throughout the build, notably
-# rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
+# rustdoc tests, and some dist bits and pieces.
 #
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"

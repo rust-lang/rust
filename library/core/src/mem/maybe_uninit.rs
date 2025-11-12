@@ -1,4 +1,5 @@
 use crate::any::type_name;
+use crate::clone::TrivialClone;
 use crate::marker::Destruct;
 use crate::mem::ManuallyDrop;
 use crate::{fmt, intrinsics, ptr, slice};
@@ -355,6 +356,11 @@ impl<T: Copy> Clone for MaybeUninit<T> {
         *self
     }
 }
+
+// SAFETY: the clone implementation is a copy, see above.
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for MaybeUninit<T> where MaybeUninit<T>: Clone {}
 
 #[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
 impl<T> fmt::Debug for MaybeUninit<T> {
@@ -1599,8 +1605,12 @@ impl<T: Clone> SpecFill<T> for [MaybeUninit<T>] {
     }
 }
 
-impl<T: Copy> SpecFill<T> for [MaybeUninit<T>] {
+impl<T: TrivialClone> SpecFill<T> for [MaybeUninit<T>] {
     fn spec_fill(&mut self, value: T) {
-        self.fill(MaybeUninit::new(value));
+        // SAFETY: because `T` is `TrivialClone`, this is equivalent to calling
+        // `T::clone` for every element. Notably, `TrivialClone` also implies
+        // that the `clone` implementation will not panic, so we can avoid
+        // initialization guards and such.
+        self.fill_with(|| MaybeUninit::new(unsafe { ptr::read(&value) }));
     }
 }

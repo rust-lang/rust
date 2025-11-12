@@ -1,5 +1,5 @@
 use crate::spec::{
-    Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+    Abi, Arch, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
     base.crt_static_default = true;
-    base.abi = "elfv2".into();
+    base.abi = Abi::ElfV2;
     base.llvm_abiname = "elfv2".into();
 
     Target {

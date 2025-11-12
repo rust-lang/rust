@@ -384,6 +384,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         //   is applied, so they have to be produced by the container's expansion rather
         //   than by individual derives.
         // - Derives in the container need to know whether one of them is a built-in `Copy`.
+        //   (But see the comment mentioning #124794 below.)
         // Temporarily take the data to avoid borrow checker conflicts.
         let mut derive_data = mem::take(&mut self.derive_data);
         let entry = derive_data.entry(expn_id).or_insert_with(|| DeriveData {
@@ -440,7 +441,13 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             .collect();
         self.helper_attrs.insert(expn_id, helper_attrs);
         // Mark this derive as having `Copy` either if it has `Copy` itself or if its parent derive
-        // has `Copy`, to support cases like `#[derive(Clone, Copy)] #[derive(Debug)]`.
+        // has `Copy`, to support `#[derive(Copy, Clone)]`, `#[derive(Clone, Copy)]`, or
+        // `#[derive(Copy)] #[derive(Clone)]`. We do this because the code generated for
+        // `derive(Clone)` changes if `derive(Copy)` is also present.
+        //
+        // FIXME(#124794): unfortunately this doesn't work with `#[derive(Clone)] #[derive(Copy)]`.
+        // When the `Clone` impl is generated the `#[derive(Copy)]` hasn't been processed and
+        // `has_derive_copy` hasn't been set yet.
         if entry.has_derive_copy || self.has_derive_copy(parent_scope.expansion) {
             self.containers_deriving_copy.insert(expn_id);
         }

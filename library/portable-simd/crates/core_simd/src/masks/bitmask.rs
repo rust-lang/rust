@@ -170,7 +170,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(mut self, rhs: Self) -> Self {
         for (l, r) in self.0.as_mut().iter_mut().zip(rhs.0.as_ref().iter()) {
             *l &= r;
@@ -187,7 +186,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(mut self, rhs: Self) -> Self {
         for (l, r) in self.0.as_mut().iter_mut().zip(rhs.0.as_ref().iter()) {
             *l |= r;
@@ -203,7 +201,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         for (l, r) in self.0.as_mut().iter_mut().zip(rhs.0.as_ref().iter()) {
             *l ^= r;
@@ -219,7 +216,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn not(mut self) -> Self::Output {
         for x in self.0.as_mut() {
             *x = !*x;

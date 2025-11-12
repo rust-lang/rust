@@ -81,7 +81,7 @@ pub(super) fn check<'tcx>(
                 }
 
                 match it.kind {
-                    PatKind::Binding(BindingMode(_, Mutability::Mut), _, _, _) | PatKind::Ref(_, Mutability::Mut) => {
+                    PatKind::Binding(BindingMode(_, Mutability::Mut), _, _, _) | PatKind::Ref(_, _, Mutability::Mut) => {
                         to_be_discarded = true;
                         false
                     },

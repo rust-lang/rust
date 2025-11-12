@@ -1,10 +1,10 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, TargetOptions};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "none".into(),
+        os: Os::None,
         endian: Endian::Little,
         c_int_width: 32,
         linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),

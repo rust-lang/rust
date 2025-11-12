@@ -347,7 +347,18 @@ pub(crate) struct CVariadicMustBeUnsafe {
 pub(crate) struct CVariadicBadExtern {
     #[primary_span]
     pub span: Span,
-    pub abi: Symbol,
+    pub abi: &'static str,
+    #[label]
+    pub extern_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_bad_naked_extern)]
+#[help]
+pub(crate) struct CVariadicBadNakedExtern {
+    #[primary_span]
+    pub span: Span,
+    pub abi: &'static str,
     #[label]
     pub extern_span: Span,
 }

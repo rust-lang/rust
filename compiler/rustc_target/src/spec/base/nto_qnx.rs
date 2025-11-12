@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, LinkArgs, LinkerFlavor, Lld, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
+    Cc, LinkArgs, LinkerFlavor, Lld, Os, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -11,7 +11,7 @@ pub(crate) fn opts() -> TargetOptions {
         has_rpath: true,
         has_thread_local: false,
         linker: Some("qcc".into()),
-        os: "nto".into(),
+        os: Os::Nto,
         // We want backtraces to work by default and they rely on unwind tables
         // (regardless of `-C panic` strategy).
         default_uwtable: true,

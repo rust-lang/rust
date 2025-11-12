@@ -1,0 +1,55 @@
+error[E0507]: cannot move out of `arg.field` as enum variant `Some` which is behind a mutable reference
+  --> $DIR/mut-pattern-of-immutable-borrow.rs:6:11
+   |
+LL |     match arg.field {
+   |           ^^^^^^^^^
+LL |         Some(s) => s.push('a'),
+   |              -
+   |              |
+   |              data moved here
+   |              move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     match &arg.field {
+   |           +
+
+error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
+  --> $DIR/mut-pattern-of-immutable-borrow.rs:7:20
+   |
+LL |         Some(s) => s.push('a'),
+   |                    ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |         Some(mut s) => s.push('a'),
+   |              +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/mut-pattern-of-immutable-borrow.rs:12:11
+   |
+LL |     match &arg.field {
+   |           ^^^^^^^^^^
+LL |         Some(mut s) => s.push('a'),
+   |              -----
+   |              |
+   |              data moved here
+   |              move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         Some(ref mut s) => s.push('a'),
+   |              +++
+
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/mut-pattern-of-immutable-borrow.rs:19:14
+   |
+LL |     match &arg.field {
+   |           ---------- this cannot be borrowed as mutable
+LL |         Some(ref mut s) => s.push('a'),
+   |              ^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0507, E0596.
+For more information about an error, try `rustc --explain E0507`.

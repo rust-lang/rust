@@ -5,7 +5,7 @@
 use rustc_abi::{Endian, HasDataLayout, TyAbiInterface};
 
 use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::spec::HasTargetSpec;
+use crate::spec::{Env, HasTargetSpec, Os};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
@@ -106,9 +106,9 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let abi = if cx.target_spec().env == "musl" || cx.target_spec().os == "freebsd" {
+    let abi = if cx.target_spec().env == Env::Musl || cx.target_spec().os == Os::FreeBsd {
         ELFv2
-    } else if cx.target_spec().os == "aix" {
+    } else if cx.target_spec().os == Os::Aix {
         AIX
     } else {
         match cx.data_layout().endian {
