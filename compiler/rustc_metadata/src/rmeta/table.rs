@@ -37,8 +37,8 @@ impl IsDefault for ty::Asyncness {
 impl IsDefault for hir::Constness {
     fn is_default(&self) -> bool {
         match self {
-            rustc_hir::Constness::Const => false,
-            rustc_hir::Constness::NotConst => true,
+            hir::Constness::Maybe | hir::Constness::Always => false,
+            hir::Constness::Never => true,
         }
     }
 }
@@ -198,9 +198,9 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     hir::Constness {
-        ( NotConst )
-        ( Const    )
-        ( Comptime )
+        ( Never )
+        ( Maybe    )
+        ( Always )
     }
 }
 
@@ -342,8 +342,9 @@ impl FixedSizeEncoding for hir::Constness {
     #[inline]
     fn from_bytes(b: &[u8; 1]) -> Self {
         match b[0] {
-            0 => hir::Constness::NotConst,
-            1 => hir::Constness::Const,
+            0 => hir::Constness::Never,
+            1 => hir::Constness::Maybe,
+            2 => hir::Constness::Always,
             _ => unreachable!(),
         }
     }
@@ -352,8 +353,9 @@ impl FixedSizeEncoding for hir::Constness {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = match self {
-            hir::Constness::NotConst => 0,
-            hir::Constness::Const => 1,
+            hir::Constness::Never => 0,
+            hir::Constness::Maybe => 1,
+            hir::Constness::Always => 2,
         }
     }
 }

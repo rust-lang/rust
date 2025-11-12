@@ -1524,10 +1524,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_constness(def_kind) {
                 let constness = self.tcx.constness(def_id);
-                match constness {
-                    hir::Constness::Const => self.tables.constness.set(def_id.index, constness),
-                    hir::Constness::NotConst => {}
-                }
+                self.tables.constness.set(def_id.index, constness);
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
