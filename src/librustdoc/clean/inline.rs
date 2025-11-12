@@ -497,7 +497,7 @@ pub(crate) fn build_impl(
         return;
     }
 
-    let document_hidden = cx.render_options.document_hidden;
+    let document_hidden = cx.document_hidden();
     let (trait_items, generics) = match impl_item {
         Some(impl_) => (
             impl_

@@ -1070,7 +1070,7 @@ fn preprocessed_markdown_links(s: &str) -> Vec<PreprocessedMarkdownLink> {
 impl LinkCollector<'_, '_> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
-        if !self.cx.render_options.document_private
+        if !self.cx.document_private()
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
@@ -2399,7 +2399,7 @@ fn privacy_error(cx: &DocContext<'_>, diag_info: &DiagnosticInfo<'_>, path_str: 
             diag.span_label(sp, "this item is private");
         }
 
-        let note_msg = if cx.render_options.document_private {
+        let note_msg = if cx.document_private() {
             "this link resolves only because you passed `--document-private-items`, but will break without"
         } else {
             "this link will resolve properly if you pass `--document-private-items`"
