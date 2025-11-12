@@ -3413,6 +3413,13 @@ impl Step for Bootstrap {
             .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
 
+        if builder.config.cmd.bless() {
+            // Tell `insta` to automatically bless any failing `.snap` files.
+            // Unlike compiletest blessing, the tests might still report failure.
+            // Does not bless inline snapshots.
+            cargo.env("INSTA_UPDATE", "always");
+        }
+
         run_cargo_test(cargo, &[], &[], None, host, builder);
     }
 

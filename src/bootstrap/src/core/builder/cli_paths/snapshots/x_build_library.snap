@@ -1,0 +1,22 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: build library
+---
+[Build] compile::Std
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({build::library})
+    - Set({build::library/alloc})
+    - Set({build::library/compiler-builtins/compiler-builtins})
+    - Set({build::library/core})
+    - Set({build::library/panic_abort})
+    - Set({build::library/panic_unwind})
+    - Set({build::library/proc_macro})
+    - Set({build::library/rustc-std-workspace-core})
+    - Set({build::library/std})
+    - Set({build::library/std_detect})
+    - Set({build::library/sysroot})
+    - Set({build::library/test})
+    - Set({build::library/unwind})
+[Build] compile::StartupObjects
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({build::library/rtstartup})
