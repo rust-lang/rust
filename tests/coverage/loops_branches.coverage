@@ -16,8 +16,8 @@
    LL|      0|        } else {
    LL|      0|        }
    LL|       |
-   LL|     11|        for i in 0..10 {
-                          ^10
+   LL|     10|        for i in 0..10 {
+                               ^1
    LL|     10|            if true {
    LL|     10|                if false {
    LL|      0|                    while true {}
@@ -43,8 +43,8 @@
    LL|      1|            write!(f, "cool")?;
                                            ^0
    LL|       |        }
-   LL|     11|        for i in 0..10 {
-                          ^10
+   LL|     10|        for i in 0..10 {
+                               ^1
    LL|     10|            if false {
    LL|      0|            } else {
    LL|     10|                if false {
