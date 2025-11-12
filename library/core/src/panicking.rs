@@ -171,6 +171,7 @@ macro_rules! panic_const {
             #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
             #[lang = stringify!($lang)]
             pub const fn $lang() -> ! {
+                // See the comment in `panic(&'static str)` for why we use `Arguments::from_str` here.
                 panic_fmt(fmt::Arguments::from_str($message));
             }
         )+
