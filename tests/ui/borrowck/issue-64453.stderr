@@ -8,7 +8,6 @@ note: function `format` is not const
   --> $SRC_DIR/alloc/src/fmt.rs:LL:COL
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
-   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0507]: cannot move out of static item `settings_dir`
   --> $DIR/issue-64453.rs:13:37
