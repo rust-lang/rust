@@ -906,7 +906,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let const_context = self.tcx.hir_body_const_context(self.body_id);
 
-        if let hir::Constness::Comptime = self.tcx.constness(callee_did) {
+        if let hir::Constness::Always = self.tcx.constness(callee_did) {
             match const_context {
                 Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {}
                 Some(hir::ConstContext::ConstFn) | None => {

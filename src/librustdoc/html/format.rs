@@ -1479,7 +1479,7 @@ pub(crate) fn print_constness_with_space(
     const_stab: Option<ConstStability>,
 ) -> &'static str {
     match c {
-        hir::Constness::Comptime | hir::Constness::Const => match (overall_stab, const_stab) {
+        hir::Constness::Always | hir::Constness::Maybe => match (overall_stab, const_stab) {
             // const stable...
             (_, Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }))
             // ...or when feature(staged_api) is not set...
@@ -1487,8 +1487,8 @@ pub(crate) fn print_constness_with_space(
             // ...or when const unstable, but overall unstable too
             | (None, Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => {
                 match c {
-                    hir::Constness::Comptime => "",
-                    hir::Constness::Const => "const ",
+                    hir::Constness::Always => "",
+                    hir::Constness::Maybe => "const ",
                     _ => unreachable!(),
                 }
             }
@@ -1496,7 +1496,7 @@ pub(crate) fn print_constness_with_space(
             (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",
         },
         // not const
-        hir::Constness::NotConst => "",
+        hir::Constness::Never => "",
     }
 }
 

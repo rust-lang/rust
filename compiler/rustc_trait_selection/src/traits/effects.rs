@@ -435,11 +435,11 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
-                Some(hir::Constness::Comptime) => todo!("FIXME(comptime)"),
+                Some(hir::Constness::Always) => todo!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
-                Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
+                Some(hir::Constness::Never) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
-                Some(hir::Constness::Const) => {
+                Some(hir::Constness::Maybe) => {
                     let drop_def_id = tcx.require_lang_item(LangItem::Drop, obligation.cause.span);
                     let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
                     const_conditions.push(drop_trait_ref);
@@ -532,8 +532,8 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
 
     match tcx.constness(def) {
         // FIXME(comptime)
-        hir::Constness::Comptime => Err(EvaluationFailure::NoSolution),
-        hir::Constness::Const => Ok(tcx
+        hir::Constness::Always => Err(EvaluationFailure::NoSolution),
+        hir::Constness::Maybe => Ok(tcx
             .const_conditions(def)
             .instantiate(tcx, args)
             .into_iter()
@@ -549,7 +549,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
                 )
             })
             .collect()),
-        hir::Constness::NotConst => Err(EvaluationFailure::NoSolution),
+        hir::Constness::Never => Err(EvaluationFailure::NoSolution),
     }
 }
 
@@ -564,7 +564,7 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
             Err(_) => Err(EvaluationFailure::NoSolution),
             Ok(Some(source)) => match source {
                 ImplSource::UserDefined(impl_) => {
-                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Const {
+                    if tcx.impl_trait_header(impl_.impl_def_id).constness != hir::Constness::Maybe {
                         return Err(EvaluationFailure::NoSolution);
                     }
 

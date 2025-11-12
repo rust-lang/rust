@@ -11,10 +11,10 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        Node::Ctor(VariantData::Tuple(..)) => Constness::Const,
+        Node::Ctor(VariantData::Tuple(..)) => Constness::Maybe,
         Node::ForeignItem(item) if let ForeignItemKind::Fn(..) = item.kind => {
             // Foreign functions cannot be evaluated at compile-time.
-            Constness::NotConst
+            Constness::Never
         }
         Node::Expr(e) if let ExprKind::Closure(c) = e.kind => c.constness,
         // FIXME(fee1-dead): extract this one out and rename this query to `fn_constness` so we don't need `is_const_fn` anymore.
@@ -31,10 +31,10 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
             ..
         }) => {
             match sig.header.constness {
-                Constness::Const => Constness::Const,
-                Constness::Comptime => Constness::Comptime,
+                Constness::Maybe => Constness::Maybe,
+                Constness::Always => Constness::Always,
                 // inherent impl could be const
-                Constness::NotConst => tcx.constness(tcx.local_parent(def_id)),
+                Constness::Never => tcx.constness(tcx.local_parent(def_id)),
             }
         }
         Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(..), .. }) => tcx.trait_def(tcx.local_parent(def_id)).constness,

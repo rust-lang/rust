@@ -321,7 +321,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                if self.constness(def_id) == rustc_hir::Constness::Comptime {
+                if self.constness(def_id) == rustc_hir::Constness::Always {
                     ConstContext::Const { allow_const_fn_promotion: false }
                 } else {
                     ConstContext::ConstFn

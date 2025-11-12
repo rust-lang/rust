@@ -460,7 +460,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn generate_header_error(&self) -> hir::FnHeader {
         hir::FnHeader {
             safety: hir::Safety::Safe.into(),
-            constness: hir::Constness::NotConst,
+            constness: hir::Constness::Never,
             asyncness: hir::IsAsync::NotAsync,
             abi: ExternAbi::Rust,
         }

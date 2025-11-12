@@ -539,8 +539,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if matches!(target, Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
-                    Constness::Const | Constness::Comptime => {}
-                    Constness::NotConst => return,
+                    Constness::Maybe | Constness::Always => {}
+                    Constness::Never => return,
                 },
                 ItemLike::ForeignItem => {}
             }

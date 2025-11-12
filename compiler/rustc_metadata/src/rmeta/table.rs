@@ -233,9 +233,9 @@ defaulted_enum! {
 
 defaulted_enum! {
     hir::Constness {
-        ( Const    )
-        ( NotConst )
-        ( Comptime )
+        ( Maybe  )
+        ( Never  )
+        ( Always )
     }
 }
 
