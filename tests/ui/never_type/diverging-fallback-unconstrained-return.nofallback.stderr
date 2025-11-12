@@ -1,5 +1,5 @@
 error: this function depends on never type fallback being `()`
-  --> $DIR/diverging-fallback-unconstrained-return.rs:28:1
+  --> $DIR/diverging-fallback-unconstrained-return.rs:26:1
    |
 LL | fn main() {
    | ^^^^^^^^^
@@ -8,7 +8,7 @@ LL | fn main() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: UnitReturn` will fail
-  --> $DIR/diverging-fallback-unconstrained-return.rs:39:23
+  --> $DIR/diverging-fallback-unconstrained-return.rs:37:23
    |
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
    |                       ^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: this function depends on never type fallback being `()`
-  --> $DIR/diverging-fallback-unconstrained-return.rs:28:1
+  --> $DIR/diverging-fallback-unconstrained-return.rs:26:1
    |
 LL | fn main() {
    | ^^^^^^^^^
@@ -31,7 +31,7 @@ LL | fn main() {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: UnitReturn` will fail
-  --> $DIR/diverging-fallback-unconstrained-return.rs:39:23
+  --> $DIR/diverging-fallback-unconstrained-return.rs:37:23
    |
 LL |     let _ = if true { unconstrained_return() } else { panic!() };
    |                       ^^^^^^^^^^^^^^^^^^^^^^

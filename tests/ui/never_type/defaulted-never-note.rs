@@ -1,13 +1,9 @@
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 //@[nofallback] run-pass
 //@[fallback] check-fail
 
-// We need to opt into the `never_type_fallback` feature
-// to trigger the requirement that this is testing.
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
-
-#![allow(unused)]
-#![expect(dependency_on_unit_never_type_fallback)]
+#![expect(dependency_on_unit_never_type_fallback, unused)]
 
 trait Deserialize: Sized {
     fn deserialize() -> Result<Self, String>;

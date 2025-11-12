@@ -7,10 +7,9 @@
 // awareness.
 //
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 //@[nofallback] check-pass
 //@[fallback] check-fail
-
-#![cfg_attr(fallback, feature(never_type_fallback))]
 
 use std::marker::PhantomData;
 

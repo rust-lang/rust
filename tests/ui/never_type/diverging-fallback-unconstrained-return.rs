@@ -4,12 +4,10 @@
 // in the objc crate, where changing the fallback from `!` to `()`
 // resulted in unsoundness.
 //
-//@[fallback] check-pass
-
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
-#![allow(unit_bindings)]
+#![expect(unit_bindings)]
 
 fn make_unit() {}
 
@@ -36,5 +34,5 @@ fn main() {
     // idea was to change that fallback to `!`, but that would have resulted
     // in this code no longer compiling (or worse, in some cases it injected
     // unsound results).
-    let _ = if true { unconstrained_return() } else { panic!() };
+    let _ = if true { unconstrained_return() } else { panic!() }; //[fallback]~ error: the trait bound `!: UnitReturn` is not satisfied
 }

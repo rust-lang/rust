@@ -1,7 +1,7 @@
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 //@[nofallback] check-pass
 
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
 #![cfg_attr(nofallback, expect(dependency_on_unit_never_type_fallback))]
 
 fn make_unit() {}

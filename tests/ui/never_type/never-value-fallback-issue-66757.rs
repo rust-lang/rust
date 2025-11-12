@@ -5,12 +5,11 @@
 // doesn't fallback to `()` but rather `!`.
 //
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 //@[fallback] run-pass
 //@[nofallback] check-fail
 
 #![feature(never_type)]
-
-#![cfg_attr(fallback, feature(never_type_fallback))]
 
 struct E;
 
