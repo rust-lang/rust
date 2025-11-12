@@ -114,7 +114,7 @@ A `subtree pull` takes all changes since the last `subtree pull`
 from the tool repo and adds these commits to the rustc repo along with a merge commit that moves
 the tool changes into the specified directory in the Rust repository.
 
-It is recommended that you always do a push first and get that merged to the tool `main`/`master` branch.
+It is recommended that you always do a push first and get that merged to the default branch of the tool.
 Then, when you do a pull, the merge works without conflicts.
 While it's definitely possible to resolve conflicts during a pull, you may have to redo the conflict
 resolution if your PR doesn't get merged fast enough and there are new conflicts. Do not try to

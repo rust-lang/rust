@@ -227,7 +227,7 @@ upstream/main`. The fix is to abort the rebase and use the correct branch instea
 
 ```console
 git rebase --abort
-git rebase -i upstream/main
+git rebase --interactive upstream/main
 ```
 
 <details><summary>Click here to see an example of rebasing over the wrong branch</summary>
@@ -388,7 +388,7 @@ Alternatively, you can sacrifice the commit history like this:
 
 ```console
 # squash all the changes into one commit so you only have to worry about conflicts once
-git rebase -i --keep-base main  # and squash all changes along the way
+git rebase --interactive --keep-base main  # and squash all changes along the way
 git rebase main
 # fix all merge conflicts
 git rebase --continue
