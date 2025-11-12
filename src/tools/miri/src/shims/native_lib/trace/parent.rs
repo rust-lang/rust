@@ -500,7 +500,6 @@ fn handle_segfault(
     capstone_disassemble(&instr, addr, cs, acc_events).expect("Failed to disassemble instruction");
 
     // Move the instr ptr into the deprotection code.
-    #[allow(unknown_lints)]
     #[expect(clippy::as_conversions, function_casts_as_integer)]
     new_regs.set_ip(mempr_off as usize);
     // Don't mess up the stack by accident!
