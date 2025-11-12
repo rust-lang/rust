@@ -13,6 +13,11 @@
     allow(aarch64_softfloat_neon)
 )]
 
+#[unstable(feature = "stdarch_aarch64_sve", issue = "99999999")]
+pub mod sve;
+#[unstable(feature = "stdarch_aarch64_sve", issue = "99999999")]
+pub use self::sve::*;
+
 mod mte;
 #[unstable(feature = "stdarch_aarch64_mte", issue = "129010")]
 pub use self::mte::*;
