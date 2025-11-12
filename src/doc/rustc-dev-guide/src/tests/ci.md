@@ -173,6 +173,11 @@ of [`jobs.yml`]:
 - `optional` jobs are executed only when explicitly requested via a try build.
   They are typically used for tier 2 and tier 3 targets.
 
+One reason to do a try build is to do a perf run, as described above, with `@rust-timer queue`.
+This perf build then compares against some commit on main.
+With `@bors try parent=<sha>` you can base your try build and subsequent perf run on a specific commit on `main`,
+to help make the perf comparison as fair as possible.
+
 > **Using `try-job` PR description directives**
 >
 > 1. Identify which set of try-jobs you would like to exercise. You can
