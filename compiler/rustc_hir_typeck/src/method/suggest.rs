@@ -960,6 +960,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_confusable_or_similarly_named_method(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        mode: Mode,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
+        unsatisfied_predicates: &UnsatisfiedPredicates<'tcx>,
+        similar_candidate: Option<ty::AssocItem>,
+    ) {
+        let confusable_suggested = self.confusable_method_name(
+            err,
+            rcvr_ty,
+            item_ident,
+            args.map(|args| {
+                args.iter()
+                    .map(|expr| {
+                        self.node_ty_opt(expr.hir_id).unwrap_or_else(|| self.next_ty_var(expr.span))
+                    })
+                    .collect()
+            }),
+        );
+        if let Some(similar_candidate) = similar_candidate {
+            // Don't emit a suggestion if we found an actual method
+            // that had unsatisfied trait bounds
+            if unsatisfied_predicates.is_empty()
+                // ...or if we already suggested that name because of `rustc_confusable` annotation
+                && Some(similar_candidate.name()) != confusable_suggested
+                // and if we aren't in an expansion.
+                && !span.from_expansion()
+            {
+                self.find_likely_intended_associated_item(err, similar_candidate, span, args, mode);
+            }
+        }
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -1142,36 +1179,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             source,
             unsatisfied_predicates,
         );
-        let confusable_suggested = self.confusable_method_name(
+
+        self.suggest_confusable_or_similarly_named_method(
             &mut err,
+            span,
             rcvr_ty,
             item_ident,
-            args.map(|args| {
-                args.iter()
-                    .map(|expr| {
-                        self.node_ty_opt(expr.hir_id).unwrap_or_else(|| self.next_ty_var(expr.span))
-                    })
-                    .collect()
-            }),
+            mode,
+            args,
+            unsatisfied_predicates,
+            similar_candidate,
         );
-        if let Some(similar_candidate) = similar_candidate {
-            // Don't emit a suggestion if we found an actual method
-            // that had unsatisfied trait bounds
-            if unsatisfied_predicates.is_empty()
-                // ...or if we already suggested that name because of `rustc_confusable` annotation
-                && Some(similar_candidate.name()) != confusable_suggested
-                // and if we aren't in an expansion.
-                && !span.from_expansion()
-            {
-                self.find_likely_intended_associated_item(
-                    &mut err,
-                    similar_candidate,
-                    span,
-                    args,
-                    mode,
-                );
-            }
-        }
 
         for (span, mut bounds) in bound_spans {
             if !tcx.sess.source_map().is_span_accessible(span) {
