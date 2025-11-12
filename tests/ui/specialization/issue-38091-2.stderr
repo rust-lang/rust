@@ -1,5 +1,5 @@
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-38091-2.rs:4:12
+  --> $DIR/issue-38091-2.rs:1:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -8,16 +8,35 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error[E0275]: overflow evaluating the requirement `i32: Check`
+error[E0275]: overflow evaluating the requirement `T: Check`
+  --> $DIR/issue-38091-2.rs:17:1
    |
-note: required for `i32` to implement `Iterate<'_>`
-  --> $DIR/issue-38091-2.rs:11:13
+LL | / impl<'a, T> Check for T
+LL | |
+LL | | where
+LL | |     T: Iterate<'a>,
+LL | |     <T as Iterate<'a>>::Ty: Valid {}
+   | |_________________________________^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_38091_2`)
+note: required for `T` to implement `Iterate<'_>`
+  --> $DIR/issue-38091-2.rs:8:13
    |
 LL | impl<'a, T> Iterate<'a> for T
    |             ^^^^^^^^^^^     ^
 LL | where
 LL |     T: Check,
    |        ----- unsatisfied trait bound introduced here
+note: required for `T` to implement `Check`
+  --> $DIR/issue-38091-2.rs:17:13
+   |
+LL | impl<'a, T> Check for T
+   |             ^^^^^     ^
+...
+LL |     <T as Iterate<'a>>::Ty: Valid {}
+   |                             ----- unsatisfied trait bound introduced here
+   = note: 125 redundant requirements hidden
+   = note: required for `T` to implement `Iterate<'a>`
 
 error: aborting due to 1 previous error; 1 warning emitted
 
