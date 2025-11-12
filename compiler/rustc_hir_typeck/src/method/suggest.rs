@@ -712,6 +712,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn suggest_static_method_candidates(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        source: SelfSource<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
+        sugg_span: Span,
+        no_match_data: &NoMatchData<'tcx>,
+    ) -> Vec<CandidateSource> {
+        let mut static_candidates = no_match_data.static_candidates.clone();
+
+        // `static_candidates` may have same candidates appended by
+        // inherent and extension, which may result in incorrect
+        // diagnostic.
+        static_candidates.dedup();
+
+        if !static_candidates.is_empty() {
+            err.note(
+                "found the following associated functions; to be used as methods, \
+                 functions must have a `self` parameter",
+            );
+            err.span_label(span, "this is an associated function, not a method");
+        }
+        if static_candidates.len() == 1 {
+            self.suggest_associated_call_syntax(
+                err,
+                &static_candidates,
+                rcvr_ty,
+                source,
+                item_ident,
+                args,
+                sugg_span,
+            );
+            self.note_candidates_on_method_error(
+                rcvr_ty,
+                item_ident,
+                source,
+                args,
+                span,
+                err,
+                &mut static_candidates,
+                None,
+            );
+        } else if static_candidates.len() > 1 {
+            self.note_candidates_on_method_error(
+                rcvr_ty,
+                item_ident,
+                source,
+                args,
+                span,
+                err,
+                &mut static_candidates,
+                Some(sugg_span),
+            );
+        }
+        static_candidates
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -804,54 +864,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &mut err, span, rcvr_ty, item_ident, mode, source, expected,
         );
 
-        let mut custom_span_label = false;
-        let mut static_candidates = no_match_data.static_candidates.clone();
-
-        // `static_candidates` may have same candidates appended by
-        // inherent and extension, which may result in incorrect
-        // diagnostic.
-        static_candidates.dedup();
-
-        if !static_candidates.is_empty() {
-            err.note(
-                "found the following associated functions; to be used as methods, \
-                 functions must have a `self` parameter",
-            );
-            err.span_label(span, "this is an associated function, not a method");
-            custom_span_label = true;
-        }
-        if static_candidates.len() == 1 {
-            self.suggest_associated_call_syntax(
-                &mut err,
-                &static_candidates,
-                rcvr_ty,
-                source,
-                item_ident,
-                args,
-                sugg_span,
-            );
-            self.note_candidates_on_method_error(
-                rcvr_ty,
-                item_ident,
-                source,
-                args,
-                span,
-                &mut err,
-                &mut static_candidates,
-                None,
-            );
-        } else if static_candidates.len() > 1 {
-            self.note_candidates_on_method_error(
-                rcvr_ty,
-                item_ident,
-                source,
-                args,
-                span,
-                &mut err,
-                &mut static_candidates,
-                Some(sugg_span),
-            );
-        }
+        let static_candidates = self.suggest_static_method_candidates(
+            &mut err,
+            span,
+            rcvr_ty,
+            item_ident,
+            source,
+            args,
+            sugg_span,
+            &no_match_data,
+        );
+        let mut custom_span_label = !static_candidates.is_empty();
 
         let mut bound_spans: SortedMap<Span, Vec<String>> = Default::default();
         let mut restrict_type_params = false;
