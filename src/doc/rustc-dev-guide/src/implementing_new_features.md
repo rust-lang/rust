@@ -15,7 +15,7 @@ When the change is small, uncontroversial, non-breaking, and does not affect the
 However, if not, more must be done.
 Even for compiler-internal work, it would be a bad idea to push a controversial change without consensus from the rest of the team (both in the "distributed system" sense to make sure you don't break anything you don't know about, and in the social sense to avoid PR fights).
 
-For changes that need the consensus of a team, we us the process of proposing a final comment period (FCP).
+For changes that need the consensus of a team, we use the process of proposing a final comment period (FCP).
 If you're not on the relevant team (and thus don't have @rfcbot permissions), ask someone who is to start one;
 unless they have a concern themselves, they should.
 
