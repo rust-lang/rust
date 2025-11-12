@@ -906,6 +906,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn find_possible_candidates_for_method(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        item_kind: &str,
+        mode: Mode,
+        source: SelfSource<'tcx>,
+        no_match_data: &NoMatchData<'tcx>,
+        expected: Expectation<'tcx>,
+        should_label_not_found: bool,
+        custom_span_label: bool,
+    ) {
+        let mut find_candidate_for_method = false;
+        let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
+
+        if should_label_not_found && !custom_span_label {
+            self.set_not_found_span_label(
+                err,
+                rcvr_ty,
+                item_ident,
+                item_kind,
+                mode,
+                source,
+                span,
+                unsatisfied_predicates,
+                &mut find_candidate_for_method,
+            );
+        }
+        if !find_candidate_for_method {
+            self.lookup_segments_chain_for_no_match_method(
+                err,
+                item_ident,
+                item_kind,
+                source,
+                no_match_data,
+            );
+        }
+
+        // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
+        // can't be called due to `typeof(expr): Clone` not holding.
+        if unsatisfied_predicates.is_empty() {
+            self.suggest_calling_method_on_field(
+                err,
+                source,
+                span,
+                rcvr_ty,
+                item_ident,
+                expected.only_has_type(self),
+            );
+        }
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -1037,7 +1091,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return err.emit();
         };
 
-        let mut find_candidate_for_method = false;
         let should_label_not_found = self.suggest_surround_method_call(
             &mut err,
             span,
@@ -1047,41 +1100,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &similar_candidate,
         );
 
-        if should_label_not_found && !custom_span_label {
-            self.set_not_found_span_label(
-                &mut err,
-                rcvr_ty,
-                item_ident,
-                item_kind,
-                mode,
-                source,
-                span,
-                unsatisfied_predicates,
-                &mut find_candidate_for_method,
-            );
-        }
-        if !find_candidate_for_method {
-            self.lookup_segments_chain_for_no_match_method(
-                &mut err,
-                item_ident,
-                item_kind,
-                source,
-                no_match_data,
-            );
-        }
-
-        // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
-        // can't be called due to `typeof(expr): Clone` not holding.
-        if unsatisfied_predicates.is_empty() {
-            self.suggest_calling_method_on_field(
-                &mut err,
-                source,
-                span,
-                rcvr_ty,
-                item_ident,
-                expected.only_has_type(self),
-            );
-        }
+        self.find_possible_candidates_for_method(
+            &mut err,
+            span,
+            rcvr_ty,
+            item_ident,
+            item_kind,
+            mode,
+            source,
+            no_match_data,
+            expected,
+            should_label_not_found,
+            custom_span_label,
+        );
 
         self.suggest_unwrapping_inner_self(&mut err, source, rcvr_ty, item_ident);
 
