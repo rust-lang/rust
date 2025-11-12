@@ -383,9 +383,7 @@ pub(crate) fn run_global_ctxt(
         show_coverage,
     };
 
-    for cnum in tcx.crates(()) {
-        crate::visit_lib::lib_embargo_visit_item(&mut ctxt, cnum.as_def_id());
-    }
+    ctxt.cache.effective_visibilities.document_hidden = ctxt.render_options.document_hidden;
 
     // Small hack to force the Sized trait to be present.
     //
