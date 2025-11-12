@@ -683,6 +683,7 @@ function preLoadCss(cssUrl) {
                 break;
 
             case "+":
+            case "=":
                 ev.preventDefault();
                 expandAllDocs();
                 break;
@@ -1620,7 +1621,7 @@ function preLoadCss(cssUrl) {
             ["↓", "Move down in search results"],
             ["← / →", "Switch result tab (when results focused)"],
             ["&#9166;", "Go to active search result"],
-            ["+", "Expand all sections"],
+            ["+ / =", "Expand all sections"],
             ["-", "Collapse all sections"],
             // for the sake of brevity, we don't say "inherit impl blocks",
             // although that would be more correct,
