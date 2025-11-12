@@ -8,6 +8,7 @@
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
 //@ failure-status: 101
 
+#![allow(rustdoc::failed_merged_doctest_compilation)]
 #![doc(test(attr(allow(unused_variables), deny(warnings))))]
 
 /// Example

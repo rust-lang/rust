@@ -196,6 +196,17 @@ declare_rustdoc_lint! {
     "detects redundant explicit links in doc comments"
 }
 
+declare_rustdoc_lint! {
+    /// This lint is **warn-by-default**. It warns when merged doctests fail to compile
+    /// when running doctests. This is a `rustdoc` only lint, see the documentation in
+    /// the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#failed_merged_doctest_compilation
+    FAILED_MERGED_DOCTEST_COMPILATION,
+    Warn,
+    "warns when merged doctest fail to compile when running doctests"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -209,6 +220,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
+        FAILED_MERGED_DOCTEST_COMPILATION,
     ]
 });
 
