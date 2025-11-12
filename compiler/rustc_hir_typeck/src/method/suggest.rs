@@ -886,6 +886,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ))
     }
 
+    fn suggest_surround_method_call(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_ident: Ident,
+        source: SelfSource<'tcx>,
+        similar_candidate: &Option<ty::AssocItem>,
+    ) -> bool {
+        match source {
+            // If the method name is the name of a field with a function or closure type,
+            // give a helping note that it has to be called as `(x.f)(...)`.
+            SelfSource::MethodCall(expr) => {
+                !self.suggest_calling_field_as_fn(span, rcvr_ty, expr, item_ident, err)
+                    && similar_candidate.is_none()
+            }
+            _ => true,
+        }
+    }
+
     fn report_no_match_method_error(
         &self,
         mut span: Span,
@@ -1018,15 +1038,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut find_candidate_for_method = false;
-        let should_label_not_found = match source {
-            // If the method name is the name of a field with a function or closure type,
-            // give a helping note that it has to be called as `(x.f)(...)`.
-            SelfSource::MethodCall(expr) => {
-                !self.suggest_calling_field_as_fn(span, rcvr_ty, expr, item_ident, &mut err)
-                    && similar_candidate.is_none()
-            }
-            _ => true,
-        };
+        let should_label_not_found = self.suggest_surround_method_call(
+            &mut err,
+            span,
+            rcvr_ty,
+            item_ident,
+            source,
+            &similar_candidate,
+        );
 
         if should_label_not_found && !custom_span_label {
             self.set_not_found_span_label(
