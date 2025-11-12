@@ -41,7 +41,7 @@ if isWindows && isKnownToBeMingwBuild; then
 
     mingw_dir="mingw${bits}"
 
-    curl -o mingw.7z "${TMP_URL}/${mingw_archive}"
+    curl -Lo mingw.7z "${TMP_URL}/${mingw_archive}"
     7z x -y mingw.7z > /dev/null
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 
