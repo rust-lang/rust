@@ -2,7 +2,7 @@
 //
 // This is a *minimization* of the issue.
 // Note that the original version with the `?` does not fail anymore even with fallback to unit,
-// see `tests/ui/never_type/question_mark_from_never.rs`.
+// see `tests/ui/never_type/fallback_change/question_mark_from_never.rs`.
 //
 //@ revisions: unit never
 //@[never] check-pass
