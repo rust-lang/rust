@@ -216,7 +216,8 @@ The below steps needs to be followed in order to implement a new unstable featur
 1. Write a lot of tests for the new feature, preferably in `tests/ui/$feature_name/`.
    PRs without tests will not be accepted!
 
-1. Get your PR reviewed and land it. You have now successfully implemented a feature in Rust!
+1. Get your PR reviewed and land it.
+   You have now successfully implemented a feature in Rust!
 
 [`GatedSpans`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/parse/struct.GatedSpans.html
 [#81015]: https://github.com/rust-lang/rust/pull/81015

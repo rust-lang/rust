@@ -22,7 +22,8 @@ struct Cli {
     show_diff: bool,
 }
 
-static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
+static REGEX_IGNORE_END: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(\.|\?|;|!|,|\-)$").unwrap());
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
