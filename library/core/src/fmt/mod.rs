@@ -734,7 +734,21 @@ impl<'a> Arguments<'a> {
         unsafe { Arguments { template: mem::transmute(template), args: mem::transmute(args) } }
     }
 
+    // Same as `from_str`, but not const.
+    // Used by format_args!() expansion when arguments are inlined,
+    // e.g. format_args!("{}", 123), which is not allowed in const.
     #[inline]
+    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
+        Arguments::from_str(s)
+    }
+}
+
+impl<'a> Arguments<'a> {
+    /// Create a `fmt::Arguments` object for a single static string.
+    ///
+    /// Formatting this `fmt::Arguments` will just produce the string as-is.
+    #[inline]
+    #[unstable(feature = "fmt_arguments_from_str", issue = "148905")]
     pub const fn from_str(s: &'static str) -> Arguments<'a> {
         // SAFETY: This is the "static str" representation of fmt::Arguments; see above.
         unsafe {
@@ -743,14 +757,6 @@ impl<'a> Arguments<'a> {
                 args: mem::transmute(s.len() << 1 | 1),
             }
         }
-    }
-
-    // Same as `from_str`, but not const.
-    // Used by format_args!() expansion when arguments are inlined,
-    // e.g. format_args!("{}", 123), which is not allowed in const.
-    #[inline]
-    pub fn from_str_nonconst(s: &'static str) -> Arguments<'a> {
-        Arguments::from_str(s)
     }
 }
 
