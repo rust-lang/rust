@@ -22,13 +22,14 @@ struct Cli {
     show_diff: bool,
 }
 
-static REGEX_IGNORE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
 static REGEX_IGNORE_END: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(\.|\?|;|!)$").unwrap());
 static REGEX_IGNORE_LINK_TARGETS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^\[.+\]: ").unwrap());
 static REGEX_SPLIT: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^\.]\.|[^r]\?|;|!)\s+").unwrap());
+    LazyLock::new(|| Regex::new(r"([^\.\d\-\*]\.|[^r]\?|;|!)\s").unwrap());
+// list elements, numbered (1.) or not  (- and *)
+static REGEX_LIST_ENTRY: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^\s*(\d\.|\-|\*)\s+").unwrap());
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -99,7 +100,6 @@ fn ignore(line: &str, in_code_block: bool) -> bool {
         || line.trim_start().starts_with('>')
         || line.starts_with('#')
         || line.trim().is_empty()
-        || REGEX_IGNORE.is_match(line)
         || REGEX_IGNORE_LINK_TARGETS.is_match(line)
 }
 
@@ -120,11 +120,19 @@ fn comply(content: &str) -> String {
             continue;
         }
         if REGEX_SPLIT.is_match(&line) {
-            let indent = line.find(|ch: char| !ch.is_whitespace()).unwrap();
-            let new_lines: Vec<_> = line
-                .split_inclusive(&*REGEX_SPLIT)
-                .map(|portion| format!("{:indent$}{}", "", portion.trim()))
+            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+                regex_match.len()
+            } else {
+                line.find(|ch: char| !ch.is_whitespace()).unwrap()
+            };
+            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+            let mut remaining: Vec<_> = newly_split_lines
+                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
                 .collect();
+            let mut new_lines = Vec::new();
+            new_lines.push(first);
+            new_lines.append(&mut remaining);
             new_content.splice(new_n..=new_n, new_lines.clone());
             new_n += new_lines.len() - 1;
         }
@@ -184,40 +192,45 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
 fn test_sembr() {
     let original = "\
 # some. heading
-must! be; split?  and.   normalizes space
-1. ignore numbered
+must! be; split?
+1. ignore a dot after number. but no further
 ignore | tables
 ignore e.g. and
 ignore i.e. and
 ignore E.g. too
-- ignore. list
-* ignore. list
+- list. entry
+ * list. entry
 ```
 some code. block
 ```
 sentence with *italics* should not be ignored. truly.
 git log main.. compiler
+ foo.   bar.  baz
 ";
     let expected = "\
 # some. heading
 must!
 be;
 split?
-and.
-normalizes space
-1. ignore numbered
+1. ignore a dot after number.
+   but no further
 ignore | tables
 ignore e.g. and
 ignore i.e. and
 ignore E.g. too
-- ignore. list
-* ignore. list
+- list.
+  entry
+ * list.
+   entry
 ```
 some code. block
 ```
 sentence with *italics* should not be ignored.
 truly.
 git log main.. compiler
+ foo.
+   bar.
+  baz
 ";
     assert_eq!(expected, comply(original));
 }
