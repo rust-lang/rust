@@ -364,15 +364,19 @@ pub const trait Residual<O>: Sized {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
     type TryType: [const] Try<Output = O, Residual = Self>;
+}
 
-    /// Here for convenience in the `?` desugaring.
-    /// Probably should not be stabilized, as it should never be overridden.
-    /// (without a `final fn` of some form, cc RFC#3678)
-    #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-    #[lang = "into_try_type"]
-    fn into_try_type(self) -> Self::TryType {
-        FromResidual::from_residual(self)
-    }
+/// Used in `try {}` blocks so the type produced in the `?` desugaring
+/// depends on the residual type `R` and the output type of the block `O`,
+/// but importantly not on the contextual type the way it would be if
+/// we called `<_ as FromResidual>::from_residual(r)` directly.
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+// needs to be `pub` to avoid `private type` errors
+#[expect(unreachable_pub)]
+#[inline] // FIXME: force would be nice, but fails -- see #148915
+#[lang = "into_try_type"]
+pub fn residual_into_try_type<R: Residual<O>, O>(r: R) -> <R as Residual<O>>::TryType {
+    FromResidual::from_residual(r)
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]
