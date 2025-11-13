@@ -16,15 +16,7 @@ LL | #[repr(simd)]
 LL | enum Es {}
    | ------- zero-variant enum
 
-error: cannot use value of type `Es` for inline assembly
-  --> $DIR/invalid-repr-simd-on-enum-148634.rs:13:29
-   |
-LL |         asm!("{}", out(reg) x);
-   |                             ^
-   |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0084, E0517.
 For more information about an error, try `rustc --explain E0084`.

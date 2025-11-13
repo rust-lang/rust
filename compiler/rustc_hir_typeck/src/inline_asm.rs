@@ -7,7 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::asm::{
     InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType, ModifierInfo,
 };
@@ -27,6 +27,7 @@ enum NonAsmTypeReason<'tcx> {
     InvalidElement(DefId, Ty<'tcx>),
     NotSizedPtr(Ty<'tcx>),
     EmptySIMDArray(Ty<'tcx>),
+    Tainted(ErrorGuaranteed),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -94,11 +95,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
             ty::Adt(adt, args) if adt.repr().simd() => {
                 if !adt.is_struct() {
-                    self.fcx.dcx().span_delayed_bug(
+                    let guar = self.fcx.dcx().span_delayed_bug(
                         span,
                         format!("repr(simd) should only be used on structs, got {}", adt.descr()),
                     );
-                    return Err(NonAsmTypeReason::Invalid(ty));
+                    return Err(NonAsmTypeReason::Tainted(guar));
                 }
 
                 let fields = &adt.non_enum_variant().fields;
@@ -241,6 +242,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     NonAsmTypeReason::EmptySIMDArray(ty) => {
                         let msg = format!("use of empty SIMD vector `{ty}`");
                         self.fcx.dcx().struct_span_err(expr.span, msg).emit();
+                    }
+                    NonAsmTypeReason::Tainted(_error_guard) => {
+                        // An error has already been reported.
                     }
                 }
                 return None;

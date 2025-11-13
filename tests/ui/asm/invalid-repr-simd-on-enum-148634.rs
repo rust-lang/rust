@@ -11,6 +11,5 @@ fn main() {
     unsafe {
         let mut x: Es;
         asm!("{}", out(reg) x);
-        //~^ ERROR cannot use value of type `Es` for inline assembly
     }
 }
