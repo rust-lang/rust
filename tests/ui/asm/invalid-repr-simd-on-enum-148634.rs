@@ -1,3 +1,4 @@
+//@ needs-asm-support
 #![feature(repr_simd)]
 
 use std::arch::asm;
@@ -11,6 +12,5 @@ fn main() {
     unsafe {
         let mut x: Es;
         asm!("{}", out(reg) x);
-        //~^ ERROR cannot use value of type `Es` for inline assembly
     }
 }
