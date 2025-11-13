@@ -2,7 +2,7 @@
 //@ assembly-output: emit-asm
 //@ ignore-msvc safestack sanitizer not supported
 //@ ignore-nvptx64 stack protector is not supported
-//@ ignore-wasm32-bare
+//@ ignore-wasm32 safestack sanitizer not supported
 //@ ignore-aarch64
 //@ [all] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -Z stack-protector=strong
