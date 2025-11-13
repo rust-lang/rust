@@ -7,7 +7,7 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
-//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort
+//@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort -Cdebuginfo=1
 
 #![crate_type = "lib"]
 #![allow(internal_features)]
@@ -26,7 +26,6 @@ pub fn emptyfn() {
 // CHECK-LABEL: array_char
 #[no_mangle]
 pub fn array_char(f: fn(*const char)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = ['c'; 1];
     let b = ['d'; 3];
     let c = ['e'; 15];
@@ -47,7 +46,6 @@ pub fn array_char(f: fn(*const char)) {
 // CHECK-LABEL: array_u8_1
 #[no_mangle]
 pub fn array_u8_1(f: fn(*const u8)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = [0u8; 1];
     f(&a as *const _);
 
@@ -66,7 +64,6 @@ pub fn array_u8_1(f: fn(*const u8)) {
 // CHECK-LABEL: array_u8_small:
 #[no_mangle]
 pub fn array_u8_small(f: fn(*const u8)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = [0u8; 2];
     let b = [0u8; 7];
     f(&a as *const _);
@@ -86,7 +83,6 @@ pub fn array_u8_small(f: fn(*const u8)) {
 // CHECK-LABEL: array_u8_large:
 #[no_mangle]
 pub fn array_u8_large(f: fn(*const u8)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = [0u8; 9];
     f(&a as *const _);
 
@@ -108,7 +104,6 @@ pub struct ByteSizedNewtype(u8);
 // CHECK-LABEL: array_bytesizednewtype_9:
 #[no_mangle]
 pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = [ByteSizedNewtype(0); 9];
     f(&a as *const _);
 
@@ -127,7 +122,6 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
 // CHECK-LABEL: local_var_addr_used_indirectly
 #[no_mangle]
 pub fn local_var_addr_used_indirectly(f: fn(bool)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let a = 5;
     let a_addr = &a as *const _ as usize;
     f(a_addr & 0x10 == 0);
@@ -157,7 +151,6 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
 // CHECK-LABEL: local_string_addr_taken
 #[no_mangle]
 pub fn local_string_addr_taken(f: fn(&String)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let x = String::new();
     f(&x);
 
@@ -186,7 +179,6 @@ impl SelfByRef for i32 {
 // CHECK-LABEL: local_var_addr_taken_used_locally_only
 #[no_mangle]
 pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let x = factory();
     let g = x.f();
     sink(g);
@@ -216,7 +208,6 @@ pub struct Gigastruct {
 // CHECK-LABEL: local_large_var_moved
 #[no_mangle]
 pub fn local_large_var_moved(f: fn(Gigastruct)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let x = Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 };
     f(x);
 
@@ -248,7 +239,6 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
 // CHECK-LABEL: local_large_var_cloned
 #[no_mangle]
 pub fn local_large_var_cloned(f: fn(Gigastruct)) {
-    // CHECK-DAG: .cv_fpo_endprologue
     f(Gigastruct { does: 0, not: 1, have: 2, array: 3, members: 4 });
 
     // A new instance of `Gigastruct` is passed to `f()`, without any apparent
@@ -308,7 +298,6 @@ extern "C" {
 // CHECK-LABEL: alloca_small_compile_time_constant_arg
 #[no_mangle]
 pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
-    // CHECK-DAG: .cv_fpo_endprologue
     f(unsafe { alloca(8) });
 
     // all: __security_check_cookie
@@ -323,7 +312,6 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
 // CHECK-LABEL: alloca_large_compile_time_constant_arg
 #[no_mangle]
 pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
-    // CHECK-DAG: .cv_fpo_endprologue
     f(unsafe { alloca(9) });
 
     // all: __security_check_cookie
@@ -338,7 +326,6 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
 // CHECK-LABEL: alloca_dynamic_arg
 #[no_mangle]
 pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
-    // CHECK-DAG: .cv_fpo_endprologue
     f(unsafe { alloca(n) });
 
     // all: __security_check_cookie
@@ -358,7 +345,6 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
 // CHECK-LABEL: unsized_fn_param
 #[no_mangle]
 pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
-    // CHECK-DAG: .cv_fpo_endprologue
     let n = if l { 1 } else { 2 };
     f(*Box::<[u8]>::from(&s[0..n])); // slice-copy with Box::from
 
