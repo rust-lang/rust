@@ -177,7 +177,10 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
-        if ignore(next_line, in_code_block) || REGEX_IGNORE_END.is_match(line) {
+        if ignore(next_line, in_code_block)
+            || REGEX_LIST_ENTRY.is_match(next_line)
+            || REGEX_IGNORE_END.is_match(line)
+        {
             continue;
         }
         if line.len() + next_line.len() < limit {
@@ -244,12 +247,28 @@ short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+preserve next line
+1. one
+
+preserve next line
+- two
+
+preserve next line
+* three
 ";
     let expected = "\
 do not split short sentences
 <div class='warning'>
 a bit of text inside
 </div>
+preserve next line
+1. one
+
+preserve next line
+- two
+
+preserve next line
+* three
 ";
     assert_eq!(expected, lengthen_lines(original, 50));
 }
