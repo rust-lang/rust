@@ -1,6 +1,7 @@
 //@ revisions: all strong none safestack safestack_strong safestack_all
 //@ assembly-output: emit-asm
 //@ ignore-msvc safestack sanitizer not supported
+//@ ignore-musl safestack sanitizer not supported
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32 safestack sanitizer not supported
 //@ ignore-aarch64
