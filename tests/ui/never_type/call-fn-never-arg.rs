@@ -3,7 +3,7 @@
 //@ check-pass
 
 #![feature(never_type)]
-#![allow(unreachable_code)]
+#![expect(unreachable_code)]
 
 fn foo(x: !) -> ! {
     x

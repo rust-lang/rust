@@ -3,7 +3,7 @@
 //
 //@ check-fail
 
-#![feature(exhaustive_patterns, never_type)]
+#![feature(never_type)]
 
 mod inner {
     pub struct Wrapper<T>(T);
