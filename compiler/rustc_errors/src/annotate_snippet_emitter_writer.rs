@@ -742,6 +742,14 @@ fn collect_annotations(
             }
         }
     }
+
+    // Sort annotations within each file by line number
+    for (_, ann) in output.iter_mut() {
+        ann.sort_by_key(|a| {
+            let lo = sm.lookup_char_pos(a.span.lo());
+            lo.line
+        });
+    }
     output
 }
 
