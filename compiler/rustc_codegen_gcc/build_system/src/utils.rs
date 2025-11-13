@@ -112,8 +112,7 @@ pub fn run_command_with_output(
     cwd: Option<&Path>,
 ) -> Result<(), String> {
     let exit_status = exec_command(input, cwd, None)?;
-    check_exit_status(input, cwd, exit_status, None, true)?;
-    Ok(())
+    check_exit_status(input, cwd, exit_status, None, true)
 }
 
 pub fn run_command_with_output_and_env(
@@ -122,8 +121,7 @@ pub fn run_command_with_output_and_env(
     env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
     let exit_status = exec_command(input, cwd, env)?;
-    check_exit_status(input, cwd, exit_status, None, true)?;
-    Ok(())
+    check_exit_status(input, cwd, exit_status, None, true)
 }
 
 #[cfg(not(unix))]
@@ -133,8 +131,7 @@ pub fn run_command_with_output_and_env_no_err(
     env: Option<&HashMap<String, String>>,
 ) -> Result<(), String> {
     let exit_status = exec_command(input, cwd, env)?;
-    check_exit_status(input, cwd, exit_status, None, false)?;
-    Ok(())
+    check_exit_status(input, cwd, exit_status, None, false)
 }
 
 pub fn cargo_install(to_install: &str) -> Result<(), String> {
