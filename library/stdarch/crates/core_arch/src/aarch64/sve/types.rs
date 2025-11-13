@@ -207,6 +207,439 @@ impl Clone for svfloat16_t {
 }
 
 // ============================================================================
+// SVE 向量元组类型定义
+// ============================================================================
+
+/// SVE 8位有符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(32)]
+pub struct svint8x2_t(i8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint8x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint8x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 8位无符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(32)]
+pub struct svuint8x2_t(u8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint8x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint8x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位有符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svint16x2_t(i16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint16x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint16x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位无符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svuint16x2_t(u16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint16x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint16x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位浮点双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svfloat32x2_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat32x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat32x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位有符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svint32x2_t(i32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint32x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint32x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位无符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svuint32x2_t(u32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint32x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint32x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位浮点双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(4)]
+pub struct svfloat64x2_t(f64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat64x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat64x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位有符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(4)]
+pub struct svint64x2_t(i64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint64x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint64x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位无符号整数双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(4)]
+pub struct svuint64x2_t(u64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint64x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint64x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 8位有符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(48)]
+pub struct svint8x3_t(i8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint8x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint8x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 8位无符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(48)]
+pub struct svuint8x3_t(u8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint8x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint8x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位有符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(24)]
+pub struct svint16x3_t(i16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint16x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint16x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位无符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(24)]
+pub struct svuint16x3_t(u16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint16x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint16x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位浮点三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(12)]
+pub struct svfloat32x3_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat32x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat32x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位有符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(12)]
+pub struct svint32x3_t(i32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint32x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint32x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位无符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(12)]
+pub struct svuint32x3_t(u32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint32x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint32x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位浮点三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(6)]
+pub struct svfloat64x3_t(f64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat64x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat64x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位有符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(6)]
+pub struct svint64x3_t(i64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint64x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint64x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位无符号整数三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(6)]
+pub struct svuint64x3_t(u64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint64x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint64x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 8位有符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(64)]
+pub struct svint8x4_t(i8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint8x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint8x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 8位无符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(64)]
+pub struct svuint8x4_t(u8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint8x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint8x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位有符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(32)]
+pub struct svint16x4_t(i16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint16x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint16x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位无符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(32)]
+pub struct svuint16x4_t(u16);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint16x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint16x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位浮点四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svfloat32x4_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat32x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat32x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位有符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svint32x4_t(i32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint32x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint32x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 32位无符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svuint32x4_t(u32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint32x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint32x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位浮点四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svfloat64x4_t(f64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat64x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat64x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位有符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svint64x4_t(i64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svint64x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svint64x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 64位无符号整数四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(8)]
+pub struct svuint64x4_t(u64);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svuint64x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svuint64x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位浮点双向量 (x2)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(16)]
+pub struct svfloat16x2_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat16x2_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat16x2_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位浮点三向量 (x3)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(24)]
+pub struct svfloat16x3_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat16x3_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat16x3_t {
+    fn clone(&self) -> Self { *self }
+}
+
+/// SVE 16位浮点四向量 (x4)
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[repr(C)]
+#[rustc_scalable_vector(32)]
+pub struct svfloat16x4_t(f32);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Copy for svfloat16x4_t {}
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl Clone for svfloat16x4_t {
+    fn clone(&self) -> Self { *self }
+}
+
+// ============================================================================
 // SVE 辅助类型
 // ============================================================================
 
@@ -218,6 +651,20 @@ pub struct svpattern(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
 impl svpattern {
+    /// 从原始字节创建模式值
+    #[inline(always)]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const fn from_raw(value: u8) -> Self {
+        svpattern(value)
+    }
+
+    /// 以原始字节形式返回模式值
+    #[inline(always)]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const fn as_raw(self) -> u8 {
+        self.0
+    }
+
     #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
     pub const SV_ALL: svpattern = svpattern(31);
     #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -259,6 +706,23 @@ impl svpattern {
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Eq, Debug, core::marker::ConstParamTy)]
 pub struct svprfop(u8);
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl svprfop {
+    /// 从原始字节创建预取操作值
+    #[inline(always)]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const fn from_raw(value: u8) -> Self {
+        svprfop(value)
+    }
+
+    /// 以原始字节形式返回预取操作值
+    #[inline(always)]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const fn as_raw(self) -> u8 {
+        self.0
+    }
+}
 
 // ============================================================================
 // 类型转换辅助函数（仅用于内部）
@@ -318,6 +782,38 @@ impl svbool2_t {
     pub unsafe fn into_svbool(self) -> svbool_t {
         simd_cast(self)
     }
+
+    /// 转换为 svbool4_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool4(self) -> svbool4_t {
+        simd_cast(self)
+    }
+
+    /// 转换为 svbool8_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool8(self) -> svbool8_t {
+        simd_cast(self)
+    }
+
+    /// 从 svbool4_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool4(x: svbool4_t) -> Self {
+        simd_cast(x)
+    }
+
+    /// 从 svbool8_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool8(x: svbool8_t) -> Self {
+        simd_cast(x)
+    }
 }
 
 /// svbool4_t 的转换方法
@@ -338,6 +834,38 @@ impl svbool4_t {
     pub unsafe fn into_svbool(self) -> svbool_t {
         simd_cast(self)
     }
+
+    /// 转换为 svbool2_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool2(self) -> svbool2_t {
+        simd_cast(self)
+    }
+
+    /// 转换为 svbool8_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool8(self) -> svbool8_t {
+        simd_cast(self)
+    }
+
+    /// 从 svbool2_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool2(x: svbool2_t) -> Self {
+        simd_cast(x)
+    }
+
+    /// 从 svbool8_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool8(x: svbool8_t) -> Self {
+        simd_cast(x)
+    }
 }
 
 /// svbool8_t 的转换方法
@@ -357,6 +885,38 @@ impl svbool8_t {
     #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
     pub unsafe fn into_svbool(self) -> svbool_t {
         simd_cast(self)
+    }
+
+    /// 转换为 svbool2_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool2(self) -> svbool2_t {
+        simd_cast(self)
+    }
+
+    /// 转换为 svbool4_t
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn into_svbool4(self) -> svbool4_t {
+        simd_cast(self)
+    }
+
+    /// 从 svbool2_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool2(x: svbool2_t) -> Self {
+        simd_cast(x)
+    }
+
+    /// 从 svbool4_t 创建
+    #[inline]
+    #[target_feature(enable = "sve")]
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub unsafe fn from_svbool4(x: svbool4_t) -> Self {
+        simd_cast(x)
     }
 }
 
@@ -507,6 +1067,390 @@ impl AsUnsigned for svint64_t {
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
 impl AsSigned for svint64_t {
     type Signed = svint64_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint8x2_t {
+    type Unsigned = svuint8x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint8x2_t {
+    type Signed = svint8x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint8x2_t {
+    type Unsigned = svuint8x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint8x2_t {
+    type Signed = svint8x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint16x2_t {
+    type Unsigned = svuint16x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint16x2_t {
+    type Signed = svint16x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint16x2_t {
+    type Unsigned = svuint16x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint16x2_t {
+    type Signed = svint16x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint32x2_t {
+    type Unsigned = svuint32x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint32x2_t {
+    type Signed = svint32x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint32x2_t {
+    type Unsigned = svuint32x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint32x2_t {
+    type Signed = svint32x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint64x2_t {
+    type Unsigned = svuint64x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint64x2_t {
+    type Signed = svint64x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint64x2_t {
+    type Unsigned = svuint64x2_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint64x2_t {
+    type Signed = svint64x2_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint8x3_t {
+    type Unsigned = svuint8x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint8x3_t {
+    type Signed = svint8x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint8x3_t {
+    type Unsigned = svuint8x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint8x3_t {
+    type Signed = svint8x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint16x3_t {
+    type Unsigned = svuint16x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint16x3_t {
+    type Signed = svint16x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint16x3_t {
+    type Unsigned = svuint16x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint16x3_t {
+    type Signed = svint16x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint32x3_t {
+    type Unsigned = svuint32x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint32x3_t {
+    type Signed = svint32x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint32x3_t {
+    type Unsigned = svuint32x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint32x3_t {
+    type Signed = svint32x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint64x3_t {
+    type Unsigned = svuint64x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint64x3_t {
+    type Signed = svint64x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint64x3_t {
+    type Unsigned = svuint64x3_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint64x3_t {
+    type Signed = svint64x3_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint8x4_t {
+    type Unsigned = svuint8x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint8x4_t {
+    type Signed = svint8x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint8x4_t {
+    type Unsigned = svuint8x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint8x4_t {
+    type Signed = svint8x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint16x4_t {
+    type Unsigned = svuint16x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint16x4_t {
+    type Signed = svint16x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint16x4_t {
+    type Unsigned = svuint16x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint16x4_t {
+    type Signed = svint16x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint32x4_t {
+    type Unsigned = svuint32x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint32x4_t {
+    type Signed = svint32x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint32x4_t {
+    type Unsigned = svuint32x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint32x4_t {
+    type Signed = svint32x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svuint64x4_t {
+    type Unsigned = svuint64x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned { self }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svuint64x4_t {
+    type Signed = svint64x4_t;
+    #[inline(always)]
+    fn as_signed(self) -> Self::Signed {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsUnsigned for svint64x4_t {
+    type Unsigned = svuint64x4_t;
+    #[inline(always)]
+    fn as_unsigned(self) -> Self::Unsigned {
+        unsafe { simd_cast(self) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl AsSigned for svint64x4_t {
+    type Signed = svint64x4_t;
     #[inline(always)]
     fn as_signed(self) -> Self::Signed { self }
 }
