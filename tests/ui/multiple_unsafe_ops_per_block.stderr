@@ -276,5 +276,88 @@ note: unsafe function call occurs here
 LL |         Some(foo_unchecked()).unwrap_unchecked().await;
    |              ^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:236:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         _ = &u.i;
+LL | |         _ = &u.i;
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:238:14
+   |
+LL |         _ = &u.i;
+   |              ^^^
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:239:14
+   |
+LL |         _ = &u.i;
+   |              ^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:244:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         _ = &raw const (*&raw const u).i;
+LL | |         _ = &raw const (*&raw const u).i;
+LL | |     }
+   | |_____^
+   |
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:246:24
+   |
+LL |         _ = &raw const (*&raw const u).i;
+   |                        ^^^^^^^^^^^^^^^
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:247:24
+   |
+LL |         _ = &raw const (*&raw const u).i;
+   |                        ^^^^^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:294:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         _ = &raw const w.s.i;
+LL | |         _ = &raw const w.s.i;
+LL | |     }
+   | |_____^
+   |
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:296:24
+   |
+LL |         _ = &raw const w.s.i;
+   |                        ^^^
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:297:24
+   |
+LL |         _ = &raw const w.s.i;
+   |                        ^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:309:5
+   |
+LL | /     unsafe {
+LL | |
+LL | |         apply(|| f(0));
+LL | |     }
+   | |_____^
+   |
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:311:9
+   |
+LL |         apply(|| f(0));
+   |         ^^^^^^^^^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:311:18
+   |
+LL |         apply(|| f(0));
+   |                  ^^^^
+
+error: aborting due to 16 previous errors
 
