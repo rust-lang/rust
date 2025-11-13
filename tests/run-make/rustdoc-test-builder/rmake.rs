@@ -25,7 +25,10 @@ fn main() {
 
     // Some targets (for example wasm) cannot execute doctests directly even with a runner,
     // so only exercise the success path when the target can run on the host.
-    if target().contains("wasm") || std::env::var_os("REMOTE_TEST_CLIENT").is_some() {
+    if target().contains("wasm")
+        || target().contains("sgx")
+        || std::env::var_os("REMOTE_TEST_CLIENT").is_some()
+    {
         return;
     }
 
