@@ -7,7 +7,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location, traversal};
 use rustc_middle::ty::{RegionVid, TyCtxt};
-use rustc_middle::{span_bug, ty};
+use rustc_middle::{bug, span_bug, ty};
 use rustc_mir_dataflow::move_paths::MoveData;
 use tracing::debug;
 
@@ -304,7 +304,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
             self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         } else if let &mir::Rvalue::Reborrow(mutability, borrowed_place) = rvalue {
             let borrowed_place_ty = borrowed_place.ty(self.body, self.tcx).ty;
-            let ty::Adt(_, args) = borrowed_place_ty.kind() else { unreachable!() };
+            let &ty::Adt(reborrowed_adt, _args) = borrowed_place_ty.kind() else { unreachable!() };
+            let &ty::Adt(target_adt, args) = assigned_place.ty(self.body, self.tcx).ty.kind()
+            else {
+                unreachable!()
+            };
+            if target_adt.did() != reborrowed_adt.did() {
+                bug!("hir-typeck passed but reborrow involves mismatching types at {location:?}")
+            }
             for arg in args.iter() {
                 let ty::GenericArgKind::Lifetime(region) = arg.kind() else {
                     continue;

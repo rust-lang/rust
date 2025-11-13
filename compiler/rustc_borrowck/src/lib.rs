@@ -1254,6 +1254,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
+        debug!(?borrows_in_scope, ?location);
 
         each_borrow_involving_path(
             self,
@@ -1597,8 +1598,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 let access_kind = (
                     Deep,
                     if mutability == Mutability::Mut {
-                        Reservation(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            kind: MutBorrowKind::TwoPhaseBorrow,
+                        Write(WriteKind::MutableBorrow(BorrowKind::Mut {
+                            kind: MutBorrowKind::Default,
                         }))
                     } else {
                         Read(ReadKind::Borrow(BorrowKind::Shared))
