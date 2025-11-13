@@ -1,12 +1,13 @@
 // Tests that `return` without a semicolon parses correctly in a match arm.
 // See <https://github.com/rust-lang/rust/issues/521>
 //
-//@ run-pass
+//@ check-pass
 
-fn f() {
+fn _f() {
+    #[rustfmt::skip]
     let _x = match true {
-        true => { 10 }
-        false => { return }
+        true => { 10 },
+        false => { return },
     };
 }
 
