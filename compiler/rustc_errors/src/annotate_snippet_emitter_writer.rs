@@ -633,7 +633,7 @@ impl AnnotateSnippetEmitter {
                     report.push(std::mem::replace(&mut group, Group::with_level(level.clone())));
                 }
 
-                if !line_tracker.contains(&lo.line) {
+                if !line_tracker.contains(&lo.line) && (i == 0 || hi.line <= lo.line) {
                     line_tracker.push(lo.line);
                     // ╭▸ $SRC_DIR/core/src/option.rs:594:0 (<- It adds *this*)
                     // ⸬  $SRC_DIR/core/src/option.rs:602:4

@@ -689,7 +689,6 @@ note: method `filter` is not const because trait `Iterator` is not const
    |
    = note: this trait is not const
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: this method is not const
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
@@ -704,7 +703,6 @@ note: method `map` is not const because trait `Iterator` is not const
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: this trait is not const
-  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
   ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
    = note: this method is not const
