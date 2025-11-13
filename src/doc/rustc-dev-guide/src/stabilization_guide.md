@@ -29,7 +29,7 @@ Places that may need updated documentation include:
   If you're not sure, please open an issue on this repository and it can be discussed.
 - Standard library documentation: This is updated as needed.
   Language features often don't need this, but if it's a feature that changes how idiomatic examples are written, such as when `?` was added to the language, updating these in the library documentation is important.
-  Review also the keyword documentation and ABI documentation in the standard library, as these sometimes needs updates for language changes.
+  Review also the keyword documentation and ABI documentation in the standard library, as these sometimes need updates for language changes.
 - [Rust by Example]: This is updated as needed.
 
 Prepare PRs to update documentation involving this new feature for the repositories mentioned above.
@@ -63,7 +63,8 @@ Before the stabilization will be considered by the lang team, there must be a co
 
 There is a central listing of unstable feature-gates in [`compiler/rustc_feature/src/unstable.rs`].
 Search for the `declare_features!`  macro.
-There should be an entry for the feature you are aiming to stabilize, something like (this example is taken from [rust-lang/rust#32409]:
+There should be an entry for the feature you are aiming to stabilize,
+something like the following (taken from [rust-lang/rust#32409]:
 
 ```rust,ignore
 // pub(restricted) visibilities (RFC 1422)
@@ -85,7 +86,9 @@ When it is done, it should look like:
 ### Removing existing uses of the feature-gate
 
 Next, search for the feature string (in this case, `pub_restricted`) in the codebase to find where it appears.
-Change uses of `#![feature(XXX)]` from the `std` and any rustc crates (this includes test folders under `library/` and `compiler/` but not the toplevel `tests/` one) to be `#![cfg_attr(bootstrap, feature(XXX))]`.
+Change uses of `#![feature(XXX)]` from the `std` and any rustc crates
+(which includes test folders under `library/` and `compiler/` but not the toplevel `tests/` one)
+to be `#![cfg_attr(bootstrap, feature(XXX))]`.
 This includes the feature-gate only for stage0, which is built using the current beta (this is needed because the feature is still unstable in the current beta).
 
 Also, remove those strings from any tests (e.g. under `tests/`). If there are tests specifically targeting the feature-gate (i.e., testing that the feature-gate is required to use the feature, but nothing else), simply remove the test.
@@ -110,7 +113,7 @@ if self.tcx.features().async_fn_in_dyn_trait() { /* XXX */ }
 ```
 
 This `pub_restricted` field (named after the feature) would ordinarily be false if the feature flag is not present and true if it is.
-So transform the code to assume that the field is true.
+So, transform the code to assume that the field is true.
 In this case, that would mean removing the `if` and leaving just the `/* XXX */`.
 
 ```rust,ignore
