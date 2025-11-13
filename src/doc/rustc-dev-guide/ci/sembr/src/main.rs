@@ -190,7 +190,7 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
 
 #[test]
 fn test_sembr() {
-    let original = "\
+    let original = "
 # some. heading
 must! be; split?
 1. ignore a dot after number. but no further
@@ -207,7 +207,7 @@ sentence with *italics* should not be ignored. truly.
 git log main.. compiler
  foo.   bar.  baz
 ";
-    let expected = "\
+    let expected = "
 # some. heading
 must!
 be;
@@ -276,13 +276,13 @@ fn test_prettify_ignore_link_targets() {
 
 #[test]
 fn test_sembr_then_prettify() {
-    let original = "\
+    let original = "
 hi there. do
 not split
 short sentences.
 hi again.
 ";
-    let expected = "\
+    let expected = "
 hi there.
 do
 not split
@@ -291,7 +291,7 @@ hi again.
 ";
     let processed = comply(original);
     assert_eq!(expected, processed);
-    let expected = "\
+    let expected = "
 hi there.
 do not split
 short sentences.
@@ -299,7 +299,7 @@ hi again.
 ";
     let processed = lengthen_lines(&processed, 50);
     assert_eq!(expected, processed);
-    let expected = "\
+    let expected = "
 hi there.
 do not split short sentences.
 hi again.
@@ -310,12 +310,12 @@ hi again.
 
 #[test]
 fn test_sembr_question_mark() {
-    let original = "\
+    let original = "
 o? whatever
 r? @reviewer
  r? @reviewer
 ";
-    let expected = "\
+    let expected = "
 o?
 whatever
 r? @reviewer
