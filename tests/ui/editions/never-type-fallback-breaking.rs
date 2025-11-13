@@ -75,3 +75,10 @@ fn fully_apit() -> Result<(), ()> {
     //[e2024]~^ error: the trait bound `!: Default` is not satisfied
     Ok(())
 }
+
+fn return_as_argument() {
+    //[e2021]~^ error: this function depends on never type fallback being `()`
+    //[e2021]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+    takes_apit2(return);
+    //[e2024]~^ error: trait bound `!: Test` is not satisfied
+}
