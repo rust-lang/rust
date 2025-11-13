@@ -224,6 +224,7 @@ where
 }
 
 pub fn combine_ty_args<Infcx, I, R>(
+    infcx: &Infcx,
     relation: &mut R,
     a_ty: I::Ty,
     b_ty: I::Ty,
@@ -237,8 +238,8 @@ where
     I: Interner,
     R: PredicateEmittingRelation<Infcx>,
 {
-    let cx = relation.cx();
-    let mut has_bivariant_arg = false;
+    let cx = infcx.cx();
+    let mut has_unconstrained_bivariant_arg = false;
     let args = iter::zip(a_args.iter(), b_args.iter()).enumerate().map(|(i, (a, b))| {
         let variance = variances.get(i).unwrap();
         let variance_info = match variance {
@@ -247,7 +248,13 @@ where
             }
             ty::Covariant | ty::Contravariant => VarianceDiagInfo::default(),
             ty::Bivariant => {
-                has_bivariant_arg = true;
+                let has_non_region_infer = |arg: I::GenericArg| {
+                    arg.has_non_region_infer()
+                        && infcx.resolve_vars_if_possible(arg).has_non_region_infer()
+                };
+                if has_non_region_infer(a) || has_non_region_infer(b) {
+                    has_unconstrained_bivariant_arg = true;
+                }
                 VarianceDiagInfo::default()
             }
         };
@@ -268,9 +275,9 @@ where
     //         data: A
     //     }
     //
-    // here, `A` will be covariant, but `B` is unconstrained.
+    // here, `A` will be covariant, but `B` is unconstrained. However, whatever it is,
+    // for `Foo` to be WF, it must be equal to `A::Item`.
     //
-    // However, whatever it is, for `Foo` to be WF, it must be equal to `A::Item`.
     // If we have an input `Foo<?A, ?B>`, then after generalization we will wind
     // up with a type like `Foo<?C, ?D>`. When we enforce `Foo<?A, ?B> <: Foo<?C, ?D>`,
     // we will wind up with the requirement that `?A <: ?C`, but no particular
@@ -278,7 +285,7 @@ where
     // different). If we do nothing else, this may mean that `?D` goes unconstrained
     // (as in #41677). To avoid this we emit a `WellFormed` when relating types with
     // bivariant arguments.
-    if has_bivariant_arg {
+    if has_unconstrained_bivariant_arg {
         relation.register_predicates([
             ty::ClauseKind::WellFormed(a_ty.into()),
             ty::ClauseKind::WellFormed(b_ty.into()),

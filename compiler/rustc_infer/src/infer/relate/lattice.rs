@@ -86,7 +86,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         mk: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         let variances = self.cx().variances_of(def_id);
-        combine_ty_args(self, a_ty, b_ty, variances, a_args, b_args, |args| mk(args))
+        combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |args| mk(args))
     }
 
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(

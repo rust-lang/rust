@@ -321,7 +321,16 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
             Ok(a_ty)
         } else {
             let variances = self.cx().variances_of(def_id);
-            combine_ty_args(self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
+            combine_ty_args(
+                &self.type_checker.infcx.infcx,
+                self,
+                a_ty,
+                b_ty,
+                variances,
+                a_args,
+                b_args,
+                |_| a_ty,
+            )
         }
     }
 
@@ -350,7 +359,7 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let infcx = self.type_checker.infcx;
 
-        let a = self.type_checker.infcx.shallow_resolve(a);
+        let a = infcx.shallow_resolve(a);
         assert!(!b.has_non_region_infer(), "unexpected inference var {:?}", b);
 
         if a == b {

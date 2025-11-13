@@ -95,7 +95,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
             Ok(a_ty)
         } else {
             let variances = self.cx().variances_of(def_id);
-            combine_ty_args(self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
+            combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
         }
     }
 
