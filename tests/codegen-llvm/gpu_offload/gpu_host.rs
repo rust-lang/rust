@@ -28,9 +28,9 @@ fn main() {
 
 // CHECK: @.offload_sizes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 1024]
 // CHECK: @.offload_maptypes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 35]
-// CHECK: @._kernel_1.region_id = weak unnamed_addr constant i8 0
+// CHECK: @._kernel_1.region_id = internal unnamed_addr constant i8 0
 // CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
-// CHECK: @.offloading.entry._kernel_1 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
+// CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
 
 // CHECK: @anon.{{.*}}.0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.{{.*}}.0 }, align 8
@@ -80,10 +80,10 @@ fn main() {
 // CHECK-NEXT:   %6 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 72
 // CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %5, i8 0, i64 32, i1 false)
 // CHECK-NEXT:   store <4 x i32> <i32 2097152, i32 0, i32 0, i32 256>, ptr %6, align 8
-// CHECK-NEXT:   %.fca.1.gep2 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
-// CHECK-NEXT:   store i32 0, ptr %.fca.1.gep2, align 8
-// CHECK-NEXT:   %.fca.2.gep3 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 92
-// CHECK-NEXT:   store i32 0, ptr %.fca.2.gep3, align 4
+// CHECK-NEXT:   %.fca.1.gep3 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
+// CHECK-NEXT:   store i32 0, ptr %.fca.1.gep3, align 8
+// CHECK-NEXT:   %.fca.2.gep4 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 92
+// CHECK-NEXT:   store i32 0, ptr %.fca.2.gep4, align 4
 // CHECK-NEXT:   %7 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 96
 // CHECK-NEXT:   store i32 0, ptr %7, align 8
 // CHECK-NEXT:   %8 = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2097152, i32 256, ptr nonnull @._kernel_1.region_id, ptr nonnull %kernel_args)

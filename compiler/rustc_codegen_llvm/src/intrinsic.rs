@@ -23,7 +23,7 @@ use rustc_target::callconv::PassMode;
 use rustc_target::spec::Os;
 use tracing::debug;
 
-use crate::abi::{FnAbiLlvmExt, LlvmType};
+use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::TgtOffloadEntry;
@@ -200,6 +200,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
+                // FIXME(Sa4dUs): emit error when offload is not enabled
                 codegen_offload(self, tcx, instance, args);
                 return Ok(());
             }
@@ -1269,7 +1270,6 @@ fn codegen_offload<'ll, 'tcx>(
 
     let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
 
-    // Build TypeTree (or something similar)
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
     let inputs = sig.inputs();
 
@@ -1277,7 +1277,6 @@ fn codegen_offload<'ll, 'tcx>(
 
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
-    // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
     let (offload_sizes, memtransfer_types, region_id, offload_entry) =
         crate::builder::gpu_offload::gen_define_handling(
             cx,
@@ -1287,7 +1286,6 @@ fn codegen_offload<'ll, 'tcx>(
             &target_symbol,
         );
 
-    // TODO(Sa4dUs): this is just to a void lifetime's issues
     let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
     crate::builder::gpu_offload::gen_call_handling(
         cx,

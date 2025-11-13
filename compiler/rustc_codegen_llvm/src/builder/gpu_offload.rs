@@ -2,40 +2,13 @@ use std::ffi::CString;
 
 use llvm::Linkage::*;
 use rustc_abi::Align;
-use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods;
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
 use crate::builder::SBuilder;
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, BasicBlock, Linkage, Type, Value};
-use crate::{LlvmCodegenBackend, SimpleCx, attributes};
-
-pub(crate) fn handle_gpu_code<'ll>(
-    _cgcx: &CodegenContext<LlvmCodegenBackend>,
-    cx: &'ll SimpleCx<'_>,
-) {
-    /*
-    // The offload memory transfer type for each kernel
-    let mut memtransfer_types = vec![];
-    let mut region_ids = vec![];
-    let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
-    // This is a temporary hack, we only search for kernel_0 to kernel_9 functions.
-    // There is a draft PR in progress which will introduce a proper offload intrinsic to remove
-    // this limitation.
-    for num in 0..9 {
-        let kernel = cx.get_function(&format!("kernel_{num}"));
-        if let Some(kernel) = kernel {
-            let (o, k) = gen_define_handling(&cx, kernel, offload_entry_ty, num);
-            memtransfer_types.push(o);
-            region_ids.push(k);
-        }
-    }
-
-    gen_call_handling(&cx, &memtransfer_types, &region_ids);
-    */
-}
+use crate::{SimpleCx, attributes};
 
 // ; Function Attrs: nounwind
 // declare i32 @__tgt_target_kernel(ptr, i64, i32, i32, ptr, ptr) #2
@@ -273,13 +246,10 @@ pub(crate) fn gen_define_handling<'ll>(
         _ => None,
     });
 
+    // FIXME(Sa4dUs): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
     let (ptr_sizes, ptr_transfer): (Vec<_>, Vec<_>) =
-        ptr_meta.map(|m| (m.payload_size, m.mode as u64 | 0x20)).unzip();
+        ptr_meta.map(|m| (m.payload_size, m.mode.bits() | 0x20)).unzip();
 
-    // We do not know their size anymore at this level, so hardcode a placeholder.
-    // A follow-up pr will track these from the frontend, where we still have Rust types.
-    // Then, we will be able to figure out that e.g. `&[f32;256]` will result in 4*256 bytes.
-    // I decided that 1024 bytes is a great placeholder value for now.
     let offload_sizes = add_priv_unnamed_arr(&cx, &format!(".offload_sizes.{symbol}"), &ptr_sizes);
     // Here we figure out whether something needs to be copied to the gpu (=1), from the gpu (=2),
     // or both to and from the gpu (=3). Other values shouldn't affect us for now.
@@ -305,7 +275,6 @@ pub(crate) fn gen_define_handling<'ll>(
     llvm::set_alignment(llglobal, Align::ONE);
     llvm::set_section(llglobal, c".llvm.rodata.offloading");
 
-    // Not actively used yet, for calling real kernels
     let name = format!(".offloading.entry.{symbol}");
 
     // See the __tgt_offload_entry documentation above.
@@ -340,8 +309,7 @@ fn declare_offload_fn<'ll>(
 }
 
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
-// the gpu. We don't have a proper frontend yet, so we assume that every call to a kernel function
-// from main is intended to run on the GPU. For now, we only handle the data transfer part of it.
+// the gpu. For now, we only handle the data transfer part of it.
 // If two consecutive kernels use the same memory, we still move it to the host and back to the gpu.
 // Since in our frontend users (by default) don't have to specify data transfer, this is something
 // we should optimize in the future! We also assume that everything should be copied back and forth,
@@ -383,6 +351,7 @@ pub(crate) fn gen_call_handling<'ll>(
 
     let mut builder = SBuilder::build(cx, bb);
 
+    // prevent these globals from being optimized away
     for val in [offload_sizes, offload_entry] {
         unsafe {
             let dummy = llvm::LLVMBuildLoad2(
@@ -447,8 +416,6 @@ pub(crate) fn gen_call_handling<'ll>(
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
         builder.store(geps[i as usize], gep2, Align::EIGHT);
         let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
-        // As mentioned above, we don't use Rust type information yet. So for now we will just
-        // assume that we have 1024 bytes, 256 f32 values.
         // FIXME(offload): write an offload frontend and handle arbitrary types.
         builder.store(cx.get_const_i64(metadata[i as usize].payload_size), gep3, Align::EIGHT);
     }
