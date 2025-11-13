@@ -1278,6 +1278,8 @@ pub trait Read {
         let mut buf = [MaybeUninit::uninit(); N];
         let mut borrowed_buf = BorrowedBuf::from(buf.as_mut_slice());
         self.read_buf_exact(borrowed_buf.unfilled())?;
+        // Guard against incorrect `read_buf_exact` implementations.
+        assert_eq!(borrowed_buf.len(), N);
         Ok(unsafe { MaybeUninit::array_assume_init(buf) })
     }
 }
