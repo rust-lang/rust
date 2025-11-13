@@ -45,7 +45,7 @@ mod traits {
     pub trait Tr2<T: PrivTr> {} //~ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr2`
     pub trait Tr3 {
         type Alias: PrivTr;
-        //~^ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr3::Alias`
+        //~^ ERROR private trait `traits::PrivTr` in public interface
         fn f<T: PrivTr>(arg: T) {}
         //~^ ERROR trait `traits::PrivTr` is more private than the item `traits::Tr3::f`
         fn g() -> impl PrivTr;

@@ -33,8 +33,8 @@ use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, 
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitor,
+    self, AssocContainer, Const, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitor,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -1601,6 +1601,9 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
         if check_ty {
             check.ty();
         }
+        if is_assoc_ty && item.container == AssocContainer::Trait {
+            check.bounds();
+        }
     }
 
     fn get(&self, def_id: LocalDefId) -> Option<EffectiveVisibility> {
@@ -1633,15 +1636,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
                     self.check_assoc_item(assoc_item, item_visibility, effective_vis);
-
-                    if assoc_item.is_type() {
-                        self.check(
-                            assoc_item.def_id.expect_local(),
-                            item_visibility,
-                            effective_vis,
-                        )
-                        .bounds();
-                    }
                 }
             }
             DefKind::TraitAlias => {

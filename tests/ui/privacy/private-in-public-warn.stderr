@@ -170,17 +170,14 @@ note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
 LL |     trait PrivTr {}
    |     ^^^^^^^^^^^^
 
-error: trait `traits::PrivTr` is more private than the item `traits::Tr3::Alias`
+error[E0446]: private trait `traits::PrivTr` in public interface
   --> $DIR/private-in-public-warn.rs:47:9
    |
-LL |         type Alias: PrivTr;
-   |         ^^^^^^^^^^^^^^^^^^ associated type `traits::Tr3::Alias` is reachable at visibility `pub(crate)`
-   |
-note: but trait `traits::PrivTr` is only usable at visibility `pub(self)`
-  --> $DIR/private-in-public-warn.rs:37:5
-   |
 LL |     trait PrivTr {}
-   |     ^^^^^^^^^^^^
+   |     ------------ `traits::PrivTr` declared as private
+...
+LL |         type Alias: PrivTr;
+   |         ^^^^^^^^^^^^^^^^^^ can't leak private trait
 
 error: trait `traits::PrivTr` is more private than the item `traits::Tr3::f`
   --> $DIR/private-in-public-warn.rs:49:9
