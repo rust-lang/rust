@@ -213,6 +213,7 @@ impl AnnotateSnippetEmitter {
                 file_ann.swap(0, pos);
             }
 
+            let file_ann_len = file_ann.len();
             for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate() {
                 if should_show_source_code(&self.ignored_directories_in_source_blocks, sm, &file) {
                     if let Some(snippet) = self.annotated_snippet(annotations, &file.name, sm) {
@@ -240,6 +241,7 @@ impl AnnotateSnippetEmitter {
                     // ╰ warning: this was previously accepted
                     if let Some(c) = children.first()
                         && (!c.span.has_primary_spans() && !c.span.has_span_labels())
+                        && file_idx == file_ann_len - 1
                     {
                         group = group.element(Padding);
                     }
