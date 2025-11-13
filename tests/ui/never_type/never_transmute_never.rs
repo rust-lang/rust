@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![crate_type="lib"]
-
 #![feature(never_type)]
 #![allow(dead_code)]
 #![allow(unreachable_code)]
@@ -21,3 +19,5 @@ pub fn ub() {
     };
     f(x)
 }
+
+fn main() {}

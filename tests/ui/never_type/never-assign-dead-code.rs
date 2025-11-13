@@ -1,5 +1,5 @@
 // Test that an assignment of type ! makes the rest of the block dead code.
-
+//
 //@ check-pass
 
 #![feature(never_type)]

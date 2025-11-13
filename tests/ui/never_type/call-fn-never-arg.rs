@@ -1,5 +1,5 @@
 // Test that we can use a ! for an argument of type !
-
+//
 //@ check-pass
 
 #![feature(never_type)]
