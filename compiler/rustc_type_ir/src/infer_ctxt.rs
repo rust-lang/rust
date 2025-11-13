@@ -133,6 +133,17 @@ impl<I: Interner> TypingMode<I> {
             TypingMode::PostBorrowckAnalysis { defined_opaque_types }
         }
     }
+
+    /// Returns `true` if this typing mode is allowed to define new opaque types.
+    pub fn may_define_opaque_types(&self) -> bool {
+        match self {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                !defining_opaque_types_and_generators.is_empty()
+            }
+            TypingMode::Borrowck { defining_opaque_types } => !defining_opaque_types.is_empty(),
+            _ => false,
+        }
+    }
 }
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_infer_ctxt_like")]
