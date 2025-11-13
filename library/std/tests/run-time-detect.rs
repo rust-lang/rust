@@ -16,6 +16,7 @@
     all(target_arch = "powerpc64", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
+#![cfg_attr(all(target_arch = "s390x", target_os = "linux"), feature(s390x_target_feature))]
 
 #[test]
 #[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
