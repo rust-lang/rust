@@ -22,7 +22,7 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
