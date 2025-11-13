@@ -1278,21 +1278,24 @@ fn codegen_offload<'ll, 'tcx>(
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
     // TODO(Sa4dUs): separate globals from call-independent headers and use typetrees to reserve the correct amount of memory
-    let (memtransfer_type, region_id) = crate::builder::gpu_offload::gen_define_handling(
-        cx,
-        offload_entry_ty,
-        &metadata,
-        &types,
-        &target_symbol,
-    );
+    let (offload_sizes, memtransfer_types, region_id, offload_entry) =
+        crate::builder::gpu_offload::gen_define_handling(
+            cx,
+            offload_entry_ty,
+            &metadata,
+            &types,
+            &target_symbol,
+        );
 
     // TODO(Sa4dUs): this is just to a void lifetime's issues
     let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
     crate::builder::gpu_offload::gen_call_handling(
         cx,
         bb,
-        &[memtransfer_type],
-        &[region_id],
+        offload_sizes,
+        offload_entry,
+        memtransfer_types,
+        region_id,
         &args,
         &types,
         &metadata,

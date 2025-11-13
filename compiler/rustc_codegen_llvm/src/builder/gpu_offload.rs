@@ -170,7 +170,7 @@ impl KernelArgsTy {
     fn new<'ll>(
         cx: &'ll SimpleCx<'_>,
         num_args: u64,
-        memtransfer_types: &[&'ll Value],
+        memtransfer_types: &'ll Value,
         geps: [&'ll Value; 3],
     ) -> [(Align, &'ll Value); 13] {
         let four = Align::from_bytes(4).expect("4 Byte alignment should work");
@@ -184,7 +184,7 @@ impl KernelArgsTy {
             (eight, geps[0]),
             (eight, geps[1]),
             (eight, geps[2]),
-            (eight, memtransfer_types[0]),
+            (eight, memtransfer_types),
             // The next two are debug infos. FIXME(offload): set them
             (eight, cx.const_null(cx.type_ptr())), // dbg
             (eight, cx.const_null(cx.type_ptr())), // dbg
@@ -265,7 +265,7 @@ pub(crate) fn gen_define_handling<'ll>(
     metadata: &[OffloadMetadata],
     types: &[&Type],
     symbol: &str,
-) -> (&'ll llvm::Value, &'ll llvm::Value) {
+) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value) {
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
     let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
@@ -313,16 +313,15 @@ pub(crate) fn gen_define_handling<'ll>(
 
     let initializer = crate::common::named_struct(offload_entry_ty, &elems);
     let c_name = CString::new(name).unwrap();
-    let llglobal = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, WeakAnyLinkage);
-    llvm::set_initializer(llglobal, initializer);
-    llvm::set_alignment(llglobal, Align::EIGHT);
+    let offload_entry = llvm::add_global(cx.llmod, offload_entry_ty, &c_name);
+    llvm::set_global_constant(offload_entry, true);
+    llvm::set_linkage(offload_entry, WeakAnyLinkage);
+    llvm::set_initializer(offload_entry, initializer);
+    llvm::set_alignment(offload_entry, Align::EIGHT);
     let c_section_name = CString::new("llvm_offload_entries").unwrap();
-    llvm::set_section(llglobal, &c_section_name);
+    llvm::set_section(offload_entry, &c_section_name);
 
-    add_to_llvm_used(cx, &[offload_sizes, memtransfer_types, region_id, llglobal]);
-    (memtransfer_types, region_id)
+    (offload_sizes, memtransfer_types, region_id, offload_entry)
 }
 
 fn declare_offload_fn<'ll>(
@@ -363,8 +362,10 @@ fn declare_offload_fn<'ll>(
 pub(crate) fn gen_call_handling<'ll>(
     cx: &SimpleCx<'ll>,
     bb: &BasicBlock,
-    memtransfer_types: &[&'ll llvm::Value],
-    region_ids: &[&'ll llvm::Value],
+    offload_sizes: &'ll llvm::Value,
+    offload_entry: &'ll llvm::Value,
+    memtransfer_types: &'ll llvm::Value,
+    region_id: &'ll llvm::Value,
     args: &[&'ll Value],
     types: &[&Type],
     metadata: &[OffloadMetadata],
@@ -381,6 +382,18 @@ pub(crate) fn gen_call_handling<'ll>(
     let (begin_mapper_decl, _, end_mapper_decl, fn_ty) = gen_tgt_data_mappers(&cx);
 
     let mut builder = SBuilder::build(cx, bb);
+
+    for val in [offload_sizes, offload_entry] {
+        unsafe {
+            let dummy = llvm::LLVMBuildLoad2(
+                &builder.llbuilder,
+                llvm::LLVMTypeOf(val),
+                val,
+                b"dummy\0".as_ptr() as *const _,
+            );
+            llvm::LLVMSetVolatile(dummy, llvm::TRUE);
+        }
+    }
 
     let num_args = types.len() as u64;
 
@@ -479,7 +492,7 @@ pub(crate) fn gen_call_handling<'ll>(
 
     // Step 2)
     let s_ident_t = generate_at_one(&cx);
-    let o = memtransfer_types[0];
+    let o = memtransfer_types;
     let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
     generate_mapper_call(&mut builder, &cx, geps, o, begin_mapper_decl, fn_ty, num_args, s_ident_t);
     let values = KernelArgsTy::new(&cx, num_args, memtransfer_types, geps);
@@ -498,7 +511,7 @@ pub(crate) fn gen_call_handling<'ll>(
         // FIXME(offload): Don't hardcode the numbers of threads in the future.
         cx.get_const_i32(2097152),
         cx.get_const_i32(256),
-        region_ids[0],
+        region_id,
         a5,
     ];
     builder.call(tgt_target_kernel_ty, tgt_decl, &args, None);
@@ -511,42 +524,4 @@ pub(crate) fn gen_call_handling<'ll>(
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 
     drop(builder);
-}
-
-// TODO(Sa4dUs): check if there's a better way of doing this, also move to a proper location
-fn add_to_llvm_used<'ll>(cx: &'ll SimpleCx<'_>, globals: &[&'ll Value]) {
-    let ptr_ty = cx.type_ptr();
-    let arr_ty = cx.type_array(ptr_ty, globals.len() as u64);
-    let arr_val = cx.const_array(ptr_ty, globals);
-
-    let name = CString::new("llvm.used").unwrap();
-
-    let used_global_opt = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, name.as_ptr()) };
-
-    if used_global_opt.is_none() {
-        let new_global = unsafe { llvm::LLVMAddGlobal(cx.llmod, arr_ty, name.as_ptr()) };
-        unsafe { llvm::LLVMSetLinkage(new_global, llvm::Linkage::AppendingLinkage) };
-        unsafe {
-            llvm::LLVMSetSection(new_global, CString::new("llvm.metadata").unwrap().as_ptr())
-        };
-        unsafe { llvm::LLVMSetInitializer(new_global, arr_val) };
-        llvm::LLVMSetGlobalConstant(new_global, llvm::TRUE);
-        return;
-    }
-
-    let used_global = used_global_opt.expect("expected @llvm.used");
-    let mut combined: Vec<&'ll Value> = Vec::new();
-
-    if let Some(existing_init) = llvm::LLVMGetInitializer(used_global) {
-        let num_elems = unsafe { llvm::LLVMGetNumOperands(existing_init) };
-        for i in 0..num_elems {
-            if let Some(elem) = unsafe { llvm::LLVMGetOperand(existing_init, i) } {
-                combined.push(elem);
-            }
-        }
-    }
-
-    combined.extend_from_slice(globals);
-    let new_arr = cx.const_array(ptr_ty, &combined);
-    unsafe { llvm::LLVMSetInitializer(used_global, new_arr) };
 }
