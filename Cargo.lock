@@ -600,7 +600,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "termize",
- "tikv-jemalloc-sys",
  "toml 0.9.7",
  "ui_test",
  "walkdir",
@@ -4807,7 +4806,6 @@ dependencies = [
  "stringdex",
  "tempfile",
  "threadpool",
- "tikv-jemalloc-sys",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -5539,9 +5537,9 @@ version = "0.1.0"
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
+version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
+checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
 dependencies = [
  "cc",
  "libc",
