@@ -77,3 +77,12 @@ tests/ui/explicit-tail-calls/recursion-etc.rs
 tests/ui/explicit-tail-calls/indexer.rs
 tests/ui/explicit-tail-calls/drop-order.rs
 tests/ui/c-variadic/valid.rs
+tests/ui/c-variadic/inherent-method.rs
+tests/ui/c-variadic/trait-method.rs
+tests/ui/explicit-tail-calls/become-cast-return.rs
+tests/ui/explicit-tail-calls/become-indirect-return.rs
+tests/ui/panics/panic-abort-backtrace-without-debuginfo.rs
+tests/ui/sanitizer/kcfi-c-variadic.rs
+tests/ui/sanitizer/kcfi/fn-trait-objects.rs
+tests/ui/statics/const_generics.rs
+tests/ui/test-attrs/test-panic-while-printing.rs
