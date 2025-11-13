@@ -62,3 +62,10 @@ overrideCommand = [
     "--build-dir",
     "build-rust-analyzer",
 ]
+
+[language-server.rust-analyzer.environment]
+RUSTUP_TOOLCHAIN = "nightly"
+
+[[language]]
+name = "rust"
+file-types = ["rs", "fixed", "pp", "mir"]
