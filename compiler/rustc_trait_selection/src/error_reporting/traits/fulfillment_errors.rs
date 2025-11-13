@@ -548,11 +548,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             });
                             let unit_obligation = obligation.with(tcx, predicate);
                             if self.predicate_may_hold(&unit_obligation) {
-                                // FIXME: make a new issue for this
                                 err.note(
                                     "this error might have been caused by changes to \
-                                    Rust's type-inference algorithm (see issue #48950 \
-                                    <https://github.com/rust-lang/rust/issues/48950> \
+                                    Rust's type-inference algorithm (see issue #148922 \
+                                    <https://github.com/rust-lang/rust/issues/148922> \
                                     for more information)",
                                 );
                                 err.help("you might have intended to use the type `()` here instead");
