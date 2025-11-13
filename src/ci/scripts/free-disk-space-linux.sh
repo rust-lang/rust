@@ -275,7 +275,11 @@ checkAlternative() {
         # remount under the obj dir which is used by docker scripts to write most
         # of our build output. And apply optimized mount options while we're at it.
         mkdir ./obj
-        sudo mount $blkdev ./obj -o $mntopts || (sudo dmesg | tail -n 20 ; exit 1)
+        if ! sudo mount $blkdev ./obj -o $mntopts; then
+            sudo dmesg | tail -n 20 # kernel log should have more details for mount failures
+            echo "::warning::Failed to remount $blkdev to ./obj with options: $mntopts"
+            return
+        fi
 
         # ensure current user can access everything.
         # later scripts assume they have recursive access to obj
