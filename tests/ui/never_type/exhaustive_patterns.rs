@@ -1,3 +1,6 @@
+// Check that we don't consider types which aren't publicly uninhabited as
+// uninhabited for purposes of pattern matching.
+//
 //@ check-fail
 
 #![feature(exhaustive_patterns, never_type)]

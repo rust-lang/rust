@@ -1,3 +1,6 @@
+// Test that `!` can be coerced to multiple different types after getting it
+// from pattern matching.
+//
 //@ run-pass
 
 #![allow(unused_variables)]
