@@ -525,8 +525,11 @@ fn codegen_float_intrinsic_call<'tcx>(
             let input_tys: Vec<_> = call_args.iter().map(|_| AbiParam::new(call_ty)).collect();
             let ret_val =
                 fx.lib_call(call_name, input_tys, vec![AbiParam::new(call_ty)], call_args)[0];
-            let ret_val =
-                if convert_back_to_f16 { codegen_f16_f128::f32_to_f16(fx, ret_val) } else { ret_val };
+            let ret_val = if convert_back_to_f16 {
+                codegen_f16_f128::f32_to_f16(fx, ret_val)
+            } else {
+                ret_val
+            };
             CValue::by_val(ret_val, fx.layout_of(ty))
         }
     };
