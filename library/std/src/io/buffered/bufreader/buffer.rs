@@ -21,25 +21,19 @@ pub struct Buffer {
     // Each call to `fill_buf` sets `filled` to indicate how many bytes at the start of `buf` are
     // initialized with bytes from a read.
     filled: usize,
-    // This is the max number of bytes returned across all `fill_buf` calls. We track this so that we
-    // can accurately tell `read_buf` how many bytes of buf are initialized, to bypass as much of its
-    // defensive initialization as possible. Note that while this often the same as `filled`, it
-    // doesn't need to be. Calls to `fill_buf` are not required to actually fill the buffer, and
-    // omitting this is a huge perf regression for `Read` impls that do not.
-    initialized: usize,
 }
 
 impl Buffer {
     #[inline]
     pub fn with_capacity(capacity: usize) -> Self {
         let buf = Box::new_uninit_slice(capacity);
-        Self { buf, pos: 0, filled: 0, initialized: 0 }
+        Self { buf, pos: 0, filled: 0 }
     }
 
     #[inline]
     pub fn try_with_capacity(capacity: usize) -> io::Result<Self> {
         match Box::try_new_uninit_slice(capacity) {
-            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0, initialized: 0 }),
+            Ok(buf) => Ok(Self { buf, pos: 0, filled: 0 }),
             Err(_) => {
                 Err(io::const_error!(ErrorKind::OutOfMemory, "failed to allocate read buffer"))
             }
@@ -66,12 +60,6 @@ impl Buffer {
     #[inline]
     pub fn pos(&self) -> usize {
         self.pos
-    }
-
-    // This is only used by a test which asserts that the initialization-tracking is correct.
-    #[cfg(test)]
-    pub fn initialized(&self) -> usize {
-        self.initialized
     }
 
     #[inline]
@@ -110,13 +98,8 @@ impl Buffer {
     /// Read more bytes into the buffer without discarding any of its contents
     pub fn read_more(&mut self, mut reader: impl Read) -> io::Result<usize> {
         let mut buf = BorrowedBuf::from(&mut self.buf[self.filled..]);
-        let old_init = self.initialized - self.filled;
-        unsafe {
-            buf.set_init(old_init);
-        }
         reader.read_buf(buf.unfilled())?;
         self.filled += buf.len();
-        self.initialized += buf.init_len() - old_init;
         Ok(buf.len())
     }
 
@@ -137,16 +120,10 @@ impl Buffer {
             debug_assert!(self.pos == self.filled);
 
             let mut buf = BorrowedBuf::from(&mut *self.buf);
-            // SAFETY: `self.filled` bytes will always have been initialized.
-            unsafe {
-                buf.set_init(self.initialized);
-            }
-
             let result = reader.read_buf(buf.unfilled());
 
             self.pos = 0;
             self.filled = buf.len();
-            self.initialized = buf.init_len();
 
             result?;
         }
