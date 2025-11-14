@@ -116,6 +116,13 @@ fn typeck_with_inspect<'tcx>(
         return tcx.typeck(typeck_root_def_id);
     }
 
+    if let DefKind::AnonConst = tcx.def_kind(def_id)
+        && let ty::AnonConstKind::MCG = tcx.anon_const_kind(def_id)
+        && let Err(e) = tcx.hir_const_arg_anon_check_invalid_param_uses(def_id)
+    {
+        e.raise_fatal();
+    }
+
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
     let span = tcx.def_span(def_id);
