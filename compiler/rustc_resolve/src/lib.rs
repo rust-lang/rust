@@ -702,18 +702,24 @@ impl<'ra> Module<'ra> {
     }
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
-    fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
-        let mut traits = self.traits.borrow_mut(resolver.as_ref());
+    fn ensure_traits<'tcx>(self, resolver: &Resolver<'ra, 'tcx>) {
+        let mut traits = self.traits.borrow_mut(resolver);
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |r, name, ns, binding| {
-                if ns != TypeNS {
-                    return;
+            for (key, entry) in resolver.resolutions(self).borrow().iter() {
+                if key.ns == TypeNS {
+                    let entry = entry.borrow();
+                    for binding in [entry.non_glob_binding, entry.glob_binding] {
+                        if let Some(binding) = binding
+                            && let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) =
+                                binding.res()
+                        {
+                            collected_traits.push((key.ident, binding, resolver.get_module(def_id)))
+                        }
+                    }
                 }
-                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                    collected_traits.push((name, binding, r.as_ref().get_module(def_id)))
-                }
-            });
+            }
+
             *traits = Some(collected_traits.into_boxed_slice());
         }
     }
