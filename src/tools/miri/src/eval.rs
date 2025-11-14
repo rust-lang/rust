@@ -88,8 +88,6 @@ pub struct MiriConfig {
     pub preemption_rate: f64,
     /// Report the current instruction being executed every N basic blocks.
     pub report_progress: Option<u32>,
-    /// Whether Stacked Borrows and Tree Borrows retagging should recurse into fields of datatypes.
-    pub retag_fields: RetagFields,
     /// The location of the shared object files to load when calling external functions
     pub native_lib: Vec<PathBuf>,
     /// Whether to enable the new native lib tracing system.
@@ -147,7 +145,6 @@ impl Default for MiriConfig {
             mute_stdout_stderr: false,
             preemption_rate: 0.01, // 1%
             report_progress: None,
-            retag_fields: RetagFields::Yes,
             native_lib: vec![],
             native_lib_enable_tracing: false,
             gc_interval: 10_000,

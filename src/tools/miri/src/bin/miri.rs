@@ -31,7 +31,7 @@ use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode, run_genmc_mode,
+    ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -571,7 +571,10 @@ fn main() {
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-retag-fields" {
-            miri_config.retag_fields = RetagFields::Yes;
+            eprintln!(
+                "warning: `-Zmiri-retag-fields` is a NOP and will be removed in a future version of Miri.\n\
+                Field retagging has been on-by-default for a long time."
+            );
         } else if arg == "-Zmiri-fixed-schedule" {
             miri_config.fixed_scheduling = true;
         } else if arg == "-Zmiri-deterministic-concurrency" {
@@ -579,13 +582,6 @@ fn main() {
             miri_config.address_reuse_cross_thread_rate = 0.0;
             miri_config.cmpxchg_weak_failure_rate = 0.0;
             miri_config.weak_memory_emulation = false;
-        } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
-            miri_config.retag_fields = match retag_fields {
-                "all" => RetagFields::Yes,
-                "none" => RetagFields::No,
-                "scalar" => RetagFields::OnlyScalar,
-                _ => fatal_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
-            };
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             let seed = param.parse::<u64>().unwrap_or_else(|_| {
                 fatal_error!("-Zmiri-seed must be an integer that fits into u64")
