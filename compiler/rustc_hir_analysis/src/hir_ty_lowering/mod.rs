@@ -2378,6 +2378,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let expr = &tcx.hir_body(anon.body).value;
         debug!(?expr);
 
+        // If the rhs is an anon const naming generics it shouldn't have
+        // access to then we lower to `ConstKind::Error`.
+        if let ty::AnonConstKind::MCG = tcx.anon_const_kind(anon.def_id)
+            && let Err(e) = tcx.hir_const_arg_anon_check_invalid_param_uses(anon.def_id)
+        {
+            return ty::Const::new_error(tcx, e);
+        }
+
         // FIXME(generic_const_parameter_types): We should use the proper generic args
         // here. It's only used as a hint for literals so doesn't matter too much to use the right
         // generic arguments, just weaker type inference.
