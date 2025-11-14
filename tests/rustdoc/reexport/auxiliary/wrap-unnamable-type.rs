@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 pub trait Assoc {
     type Ty;
 }

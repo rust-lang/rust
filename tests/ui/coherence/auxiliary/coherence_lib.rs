@@ -1,5 +1,7 @@
 #![crate_type="lib"]
 
+#![allow(unconstructable_pub_struct)]
+
 pub trait Remote {
     fn foo(&self) { }
 }

@@ -4,6 +4,7 @@
 
 #![crate_type = "lib"]
 #![allow(incomplete_features)]
+#![allow(unconstructable_pub_struct)]
 
 struct PrivTy;
 trait PrivTr {}

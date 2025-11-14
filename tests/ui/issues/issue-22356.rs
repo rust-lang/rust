@@ -1,6 +1,6 @@
 //@ check-pass
 #![allow(type_alias_bounds)]
-
+#![allow(unconstructable_pub_struct)]
 
 use std::marker::PhantomData;
 

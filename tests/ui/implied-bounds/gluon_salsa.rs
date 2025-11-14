@@ -1,6 +1,7 @@
 //@ check-pass
 // Related to Bevy regression #115559, found in
 // a crater run on #118553.
+#![allow(unconstructable_pub_struct)]
 
 pub trait QueryBase {
     type Db;

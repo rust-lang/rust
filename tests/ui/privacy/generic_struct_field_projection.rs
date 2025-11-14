@@ -10,6 +10,7 @@
 //! predicates.
 
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
 
 mod baz {
     struct Foo;

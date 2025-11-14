@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
 
 pub trait Foo {
     type Error: Error;

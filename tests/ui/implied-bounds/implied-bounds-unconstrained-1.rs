@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
 
 // Regression test for #112832.
 pub trait QueryDb {

@@ -7,6 +7,7 @@
 #![no_core]
 #![no_std]
 #![crate_type = "lib"]
+#![allow(unconstructable_pub_struct)]
 
 extern crate minicore;
 use minicore::*;

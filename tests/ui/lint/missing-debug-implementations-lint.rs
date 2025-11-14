@@ -5,6 +5,7 @@
 //@ compile-flags: --crate-type lib
 #![deny(missing_debug_implementations)]
 #![allow(unused)]
+#![allow(unconstructable_pub_struct)]
 
 use std::fmt;
 

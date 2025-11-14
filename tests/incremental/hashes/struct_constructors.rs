@@ -16,7 +16,7 @@
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
-
+#![allow(unconstructable_pub_struct)]
 
 pub struct RegularStruct {
     x: i32,

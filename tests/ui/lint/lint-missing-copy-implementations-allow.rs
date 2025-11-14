@@ -1,5 +1,6 @@
 //@ check-pass
 #![deny(missing_copy_implementations)]
+#![allow(unconstructable_pub_struct)]
 
 // Don't recommend implementing Copy on something stateful like an iterator.
 pub struct MyIterator {

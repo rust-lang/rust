@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(unconstructable_pub_struct)]
 fn main() {}
 #[derive(Clone)]
 pub struct Little;

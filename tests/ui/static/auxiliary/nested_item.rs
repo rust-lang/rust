@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 // original problem
 pub fn foo<T>() -> isize {
     {

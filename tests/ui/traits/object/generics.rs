@@ -1,5 +1,6 @@
 //@ run-pass
 // test for #8664
+#![allow(unconstructable_pub_struct)]
 
 use std::marker;
 

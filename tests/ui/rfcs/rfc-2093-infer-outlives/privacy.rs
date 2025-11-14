@@ -6,6 +6,7 @@
 //@ run-pass
 
 #![allow(dead_code)]
+#![allow(unconstructable_pub_struct)]
 
 pub struct Foo<'a> {
     field: Option<&'a <Foo<'a> as Private>::Out>

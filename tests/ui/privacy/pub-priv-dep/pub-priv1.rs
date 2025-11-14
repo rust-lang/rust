@@ -6,6 +6,7 @@
 // Basic behavior check of exported_private_dependencies from either a public
 // dependency or a private one.
 
+#![allow(unconstructable_pub_struct)]
 #![deny(exported_private_dependencies)]
 
 // This crate is a private dependency
