@@ -5167,7 +5167,7 @@ impl Methods {
                 },
                 (sym::expect, [_]) => {
                     match method_call(recv) {
-                        Some((sym::ok, recv, [], _, _)) => ok_expect::check(cx, expr, recv),
+                        Some((sym::ok, recv_inner, [], _, _)) => ok_expect::check(cx, expr, recv, recv_inner),
                         Some((sym::err, recv, [], err_span, _)) => {
                             err_expect::check(cx, expr, recv, span, err_span, self.msrv);
                         },
