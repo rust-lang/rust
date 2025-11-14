@@ -3,51 +3,52 @@
 
 // === CDB TESTS ===================================================================================
 // Generic functions cause ambigious breakpoints.
-// cdb-command:dx @$debuggerRootNamespace.Debugger.Settings.EngineInitialization.ResolveAmbiguousBreakpoints = true;
-// cdb-command:bp `closures.rs:57`
-// cdb-command:g
-// cdb-command:dx add_closure
-// cdb-check:add_closure      [Type: closures::main::closure_env$0]
-// cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
-// cdb-command:dx increment
-// cdb-check:increment        [Type: closures::main::closure_env$1]
-// cdb-check:     [+0x[...]] _ref__count      : 0x[...] : 2 [Type: int *]
-// cdb-command:dx consume_closure
-// cdb-check:consume_closure  [Type: closures::main::closure_env$2]
-// cdb-check:     [+0x[...]] x                : [...] [Type: alloc::string::String]
-// cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
-// cdb-command:dx simple_closure
+//@ cdb-command:dx @$debuggerRootNamespace.Debugger.Settings.EngineInitialization.ResolveAmbiguousBreakpoints = true;
+//@ cdb-command:bp `closures.rs:57`
+//@ cdb-command:g
+//@ cdb-command:dx add_closure
+//@ cdb-check:add_closure      [Type: closures::main::closure_env$0]
+//@ cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
+//@ cdb-command:dx increment
+//@ cdb-check:increment        [Type: closures::main::closure_env$1]
+//@ cdb-check:     [+0x[...]] _ref__count      : 0x[...] : 2 [Type: int *]
+//@ cdb-command:dx consume_closure
+//@ cdb-check:consume_closure  [Type: closures::main::closure_env$2]
+//@ cdb-check:     [+0x[...]] x                : [...] [Type: alloc::string::String]
+//@ cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
+//@ cdb-command:dx simple_closure
+// FIXME(#148097): Change `// cdb-checksimple_closure` to `//@ cdb-check:simple_closure`
 // cdb-checksimple_closure   [Type: closures::main::closure_env$5]
-// cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
-// cdb-command:g
-// cdb-command:dx first_closure
-// cdb-check:first_closure    [Type: closures::main::closure_env$6]
-// cdb-check:     [+0x[...]] _ref__variable   : 0x[...] : 1 [Type: int *]
-// cdb-check:     [+0x[...]] _ref__constant   : 0x[...] : 2 [Type: int *]
-// cdb-check:     [+0x[...]] _ref__a_struct   : 0x[...] [Type: closures::Struct *]
-// cdb-check:     [+0x[...]] _ref__struct_ref : 0x[...] [Type: closures::Struct * *]
-// cdb-check:     [+0x[...]] _ref__owned_value : 0x[...] [Type: int * *]
-// cdb-command:g
-// cdb-command:dx many_param_closure
-// cdb-check:many_param_closure [Type: closures::main::closure_env$7]
-// cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
-// cdb-command:g
-// cdb-command:dv
-// cdb-command:dx generic_closure
-// cdb-check:generic_closure  [Type: closures::generic_func::closure_env$0<i32>]
-// cdb-check:     [+0x[...]] _ref__x          : 0x[...] : 42 [Type: int *]
-// cdb-command:g
-// cdb-command:dx generic_closure
-// cdb-check:generic_closure  [Type: closures::generic_func::closure_env$0<ref$<str$> >]
-// cdb-check:     [+0x000] _ref__x          : 0x[...] : "base_value" [Type: ref$<str$> *]
-// cdb-command:g
-// cdb-command:dx second_closure
-// cdb-check:second_closure   [Type: closures::main::closure_env$8]
-// cdb-check:     [+0x[...]] _ref__variable   : 0x[...] : 2 [Type: int *]
-// cdb-check:     [+0x[...]] _ref__constant   : 0x[...] : 2 [Type: int *]
-// cdb-check:     [+0x[...]] _ref__a_struct   : 0x[...] [Type: closures::Struct *]
-// cdb-check:     [+0x[...]] _ref__struct_ref : 0x[...] [Type: closures::Struct * *]
-// cdb-check:     [+0x[...]] _ref__owned_value : 0x[...] [Type: int * *]
+//@ cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
+//@ cdb-command:g
+//@ cdb-command:dx first_closure
+//@ cdb-check:first_closure    [Type: closures::main::closure_env$6]
+//@ cdb-check:     [+0x[...]] _ref__variable   : 0x[...] : 1 [Type: int *]
+//@ cdb-check:     [+0x[...]] _ref__constant   : 0x[...] : 2 [Type: int *]
+//@ cdb-check:     [+0x[...]] _ref__a_struct   : 0x[...] [Type: closures::Struct *]
+//@ cdb-check:     [+0x[...]] _ref__struct_ref : 0x[...] [Type: closures::Struct * *]
+//@ cdb-check:     [+0x[...]] _ref__owned_value : 0x[...] [Type: int * *]
+//@ cdb-command:g
+//@ cdb-command:dx many_param_closure
+//@ cdb-check:many_param_closure [Type: closures::main::closure_env$7]
+//@ cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
+//@ cdb-command:g
+//@ cdb-command:dv
+//@ cdb-command:dx generic_closure
+//@ cdb-check:generic_closure  [Type: closures::generic_func::closure_env$0<i32>]
+//@ cdb-check:     [+0x[...]] _ref__x          : 0x[...] : 42 [Type: int *]
+//@ cdb-command:g
+//@ cdb-command:dx generic_closure
+//@ cdb-check:generic_closure  [Type: closures::generic_func::closure_env$0<ref$<str$> >]
+//@ cdb-check:     [+0x000] _ref__x          : 0x[...] : "base_value" [Type: ref$<str$> *]
+//@ cdb-command:g
+//@ cdb-command:dx second_closure
+//@ cdb-check:second_closure   [Type: closures::main::closure_env$8]
+//@ cdb-check:     [+0x[...]] _ref__variable   : 0x[...] : 2 [Type: int *]
+//@ cdb-check:     [+0x[...]] _ref__constant   : 0x[...] : 2 [Type: int *]
+//@ cdb-check:     [+0x[...]] _ref__a_struct   : 0x[...] [Type: closures::Struct *]
+//@ cdb-check:     [+0x[...]] _ref__struct_ref : 0x[...] [Type: closures::Struct * *]
+//@ cdb-check:     [+0x[...]] _ref__owned_value : 0x[...] [Type: int * *]
 
 #[inline(never)]
 fn generic_func<Tfunc: std::fmt::Debug>(x: Tfunc) {

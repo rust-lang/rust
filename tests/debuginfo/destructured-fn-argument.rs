@@ -4,300 +4,300 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print a
-// gdb-check:$1 = 1
-// gdb-command:print b
-// gdb-check:$2 = false
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$1 = 1
+//@ gdb-command:print b
+//@ gdb-check:$2 = false
+//@ gdb-command:continue
 
-// gdb-command:print a
-// gdb-check:$3 = 2
-// gdb-command:print b
-// gdb-check:$4 = 3
-// gdb-command:print c
-// gdb-check:$5 = 4
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$3 = 2
+//@ gdb-command:print b
+//@ gdb-check:$4 = 3
+//@ gdb-command:print c
+//@ gdb-check:$5 = 4
+//@ gdb-command:continue
 
-// gdb-command:print a
-// gdb-check:$6 = 5
-// gdb-command:print b
-// gdb-check:$7 = (6, 7)
-// gdb-command:continue
+//@ gdb-command:print a
+//@ gdb-check:$6 = 5
+//@ gdb-command:print b
+//@ gdb-check:$7 = (6, 7)
+//@ gdb-command:continue
 
-// gdb-command:print h
-// gdb-check:$8 = 8
-// gdb-command:print i
-// gdb-check:$9 = destructured_fn_argument::Struct {a: 9, b: 10}
-// gdb-command:print j
-// gdb-check:$10 = 11
-// gdb-command:continue
+//@ gdb-command:print h
+//@ gdb-check:$8 = 8
+//@ gdb-command:print i
+//@ gdb-check:$9 = destructured_fn_argument::Struct {a: 9, b: 10}
+//@ gdb-command:print j
+//@ gdb-check:$10 = 11
+//@ gdb-command:continue
 
-// gdb-command:print k
-// gdb-check:$11 = 12
-// gdb-command:print l
-// gdb-check:$12 = 13
-// gdb-command:continue
+//@ gdb-command:print k
+//@ gdb-check:$11 = 12
+//@ gdb-command:print l
+//@ gdb-check:$12 = 13
+//@ gdb-command:continue
 
-// gdb-command:print m
-// gdb-check:$13 = 14
-// gdb-command:print n
-// gdb-check:$14 = 16
-// gdb-command:continue
+//@ gdb-command:print m
+//@ gdb-check:$13 = 14
+//@ gdb-command:print n
+//@ gdb-check:$14 = 16
+//@ gdb-command:continue
 
-// gdb-command:print o
-// gdb-check:$15 = 18
-// gdb-command:continue
+//@ gdb-command:print o
+//@ gdb-check:$15 = 18
+//@ gdb-command:continue
 
-// gdb-command:print p
-// gdb-check:$16 = 19
-// gdb-command:print q
-// gdb-check:$17 = 20
-// gdb-command:print r
-// gdb-check:$18 = destructured_fn_argument::Struct {a: 21, b: 22}
-// gdb-command:continue
+//@ gdb-command:print p
+//@ gdb-check:$16 = 19
+//@ gdb-command:print q
+//@ gdb-check:$17 = 20
+//@ gdb-command:print r
+//@ gdb-check:$18 = destructured_fn_argument::Struct {a: 21, b: 22}
+//@ gdb-command:continue
 
-// gdb-command:print s
-// gdb-check:$19 = 24
-// gdb-command:print t
-// gdb-check:$20 = 23
-// gdb-command:continue
+//@ gdb-command:print s
+//@ gdb-check:$19 = 24
+//@ gdb-command:print t
+//@ gdb-check:$20 = 23
+//@ gdb-command:continue
 
-// gdb-command:print u
-// gdb-check:$21 = 25
-// gdb-command:print v
-// gdb-check:$22 = 26
-// gdb-command:print w
-// gdb-check:$23 = 27
-// gdb-command:print x
-// gdb-check:$24 = 28
-// gdb-command:print y
-// gdb-check:$25 = 29
-// gdb-command:print z
-// gdb-check:$26 = 30
-// gdb-command:print ae
-// gdb-check:$27 = 31
-// gdb-command:print oe
-// gdb-check:$28 = 32
-// gdb-command:print ue
-// gdb-check:$29 = 33
-// gdb-command:continue
+//@ gdb-command:print u
+//@ gdb-check:$21 = 25
+//@ gdb-command:print v
+//@ gdb-check:$22 = 26
+//@ gdb-command:print w
+//@ gdb-check:$23 = 27
+//@ gdb-command:print x
+//@ gdb-check:$24 = 28
+//@ gdb-command:print y
+//@ gdb-check:$25 = 29
+//@ gdb-command:print z
+//@ gdb-check:$26 = 30
+//@ gdb-command:print ae
+//@ gdb-check:$27 = 31
+//@ gdb-command:print oe
+//@ gdb-check:$28 = 32
+//@ gdb-command:print ue
+//@ gdb-check:$29 = 33
+//@ gdb-command:continue
 
-// gdb-command:print aa
-// gdb-check:$30 = (34, 35)
-// gdb-command:continue
+//@ gdb-command:print aa
+//@ gdb-check:$30 = (34, 35)
+//@ gdb-command:continue
 
-// gdb-command:print bb
-// gdb-check:$31 = (36, 37)
-// gdb-command:continue
+//@ gdb-command:print bb
+//@ gdb-check:$31 = (36, 37)
+//@ gdb-command:continue
 
-// gdb-command:print cc
-// gdb-check:$32 = 38
-// gdb-command:continue
+//@ gdb-command:print cc
+//@ gdb-check:$32 = 38
+//@ gdb-command:continue
 
-// gdb-command:print dd
-// gdb-check:$33 = (40, 41, 42)
-// gdb-command:continue
+//@ gdb-command:print dd
+//@ gdb-check:$33 = (40, 41, 42)
+//@ gdb-command:continue
 
-// gdb-command:print *ee
-// gdb-check:$34 = (43, 44, 45)
-// gdb-command:continue
+//@ gdb-command:print *ee
+//@ gdb-check:$34 = (43, 44, 45)
+//@ gdb-command:continue
 
-// gdb-command:print *ff
-// gdb-check:$35 = 46
-// gdb-command:print gg
-// gdb-check:$36 = (47, 48)
-// gdb-command:continue
+//@ gdb-command:print *ff
+//@ gdb-check:$35 = 46
+//@ gdb-command:print gg
+//@ gdb-check:$36 = (47, 48)
+//@ gdb-command:continue
 
-// gdb-command:print *hh
-// gdb-check:$37 = 50
-// gdb-command:continue
+//@ gdb-command:print *hh
+//@ gdb-check:$37 = 50
+//@ gdb-command:continue
 
-// gdb-command:print ii
-// gdb-check:$38 = 51
-// gdb-command:continue
+//@ gdb-command:print ii
+//@ gdb-check:$38 = 51
+//@ gdb-command:continue
 
-// gdb-command:print *jj
-// gdb-check:$39 = 52
-// gdb-command:continue
+//@ gdb-command:print *jj
+//@ gdb-check:$39 = 52
+//@ gdb-command:continue
 
-// gdb-command:print kk
-// gdb-check:$40 = 53
-// gdb-command:print ll
-// gdb-check:$41 = 54
-// gdb-command:continue
+//@ gdb-command:print kk
+//@ gdb-check:$40 = 53
+//@ gdb-command:print ll
+//@ gdb-check:$41 = 54
+//@ gdb-command:continue
 
-// gdb-command:print mm
-// gdb-check:$42 = 55
-// gdb-command:print *nn
-// gdb-check:$43 = 56
-// gdb-command:continue
+//@ gdb-command:print mm
+//@ gdb-check:$42 = 55
+//@ gdb-command:print *nn
+//@ gdb-check:$43 = 56
+//@ gdb-command:continue
 
-// gdb-command:print oo
-// gdb-check:$44 = 57
-// gdb-command:print pp
-// gdb-check:$45 = 58
-// gdb-command:print qq
-// gdb-check:$46 = 59
-// gdb-command:continue
+//@ gdb-command:print oo
+//@ gdb-check:$44 = 57
+//@ gdb-command:print pp
+//@ gdb-check:$45 = 58
+//@ gdb-command:print qq
+//@ gdb-check:$46 = 59
+//@ gdb-command:continue
 
-// gdb-command:print rr
-// gdb-check:$47 = 60
-// gdb-command:print ss
-// gdb-check:$48 = 61
-// gdb-command:print tt
-// gdb-check:$49 = 62
-// gdb-command:continue
+//@ gdb-command:print rr
+//@ gdb-check:$47 = 60
+//@ gdb-command:print ss
+//@ gdb-check:$48 = 61
+//@ gdb-command:print tt
+//@ gdb-check:$49 = 62
+//@ gdb-command:continue
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v a
-// lldb-check:[...] 1
-// lldb-command:v b
-// lldb-check:[...] false
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 1
+//@ lldb-command:v b
+//@ lldb-check:[...] false
+//@ lldb-command:continue
 
-// lldb-command:v a
-// lldb-check:[...] 2
-// lldb-command:v b
-// lldb-check:[...] 3
-// lldb-command:v c
-// lldb-check:[...] 4
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 2
+//@ lldb-command:v b
+//@ lldb-check:[...] 3
+//@ lldb-command:v c
+//@ lldb-check:[...] 4
+//@ lldb-command:continue
 
-// lldb-command:v a
-// lldb-check:[...] 5
-// lldb-command:v b
-// lldb-check:[...] { 0 = 6 1 = 7 }
-// lldb-command:continue
+//@ lldb-command:v a
+//@ lldb-check:[...] 5
+//@ lldb-command:v b
+//@ lldb-check:[...] { 0 = 6 1 = 7 }
+//@ lldb-command:continue
 
-// lldb-command:v h
-// lldb-check:[...] 8
-// lldb-command:v i
-// lldb-check:[...] { a = 9 b = 10 }
-// lldb-command:v j
-// lldb-check:[...] 11
-// lldb-command:continue
+//@ lldb-command:v h
+//@ lldb-check:[...] 8
+//@ lldb-command:v i
+//@ lldb-check:[...] { a = 9 b = 10 }
+//@ lldb-command:v j
+//@ lldb-check:[...] 11
+//@ lldb-command:continue
 
-// lldb-command:v k
-// lldb-check:[...] 12
-// lldb-command:v l
-// lldb-check:[...] 13
-// lldb-command:continue
+//@ lldb-command:v k
+//@ lldb-check:[...] 12
+//@ lldb-command:v l
+//@ lldb-check:[...] 13
+//@ lldb-command:continue
 
-// lldb-command:v m
-// lldb-check:[...] 14
-// lldb-command:v n
-// lldb-check:[...] 16
-// lldb-command:continue
+//@ lldb-command:v m
+//@ lldb-check:[...] 14
+//@ lldb-command:v n
+//@ lldb-check:[...] 16
+//@ lldb-command:continue
 
-// lldb-command:v o
-// lldb-check:[...] 18
-// lldb-command:continue
+//@ lldb-command:v o
+//@ lldb-check:[...] 18
+//@ lldb-command:continue
 
-// lldb-command:v p
-// lldb-check:[...] 19
-// lldb-command:v q
-// lldb-check:[...] 20
-// lldb-command:v r
-// lldb-check:[...] { a = 21 b = 22 }
-// lldb-command:continue
+//@ lldb-command:v p
+//@ lldb-check:[...] 19
+//@ lldb-command:v q
+//@ lldb-check:[...] 20
+//@ lldb-command:v r
+//@ lldb-check:[...] { a = 21 b = 22 }
+//@ lldb-command:continue
 
-// lldb-command:v s
-// lldb-check:[...] 24
-// lldb-command:v t
-// lldb-check:[...] 23
-// lldb-command:continue
+//@ lldb-command:v s
+//@ lldb-check:[...] 24
+//@ lldb-command:v t
+//@ lldb-check:[...] 23
+//@ lldb-command:continue
 
-// lldb-command:v u
-// lldb-check:[...] 25
-// lldb-command:v v
-// lldb-check:[...] 26
-// lldb-command:v w
-// lldb-check:[...] 27
-// lldb-command:v x
-// lldb-check:[...] 28
-// lldb-command:v y
-// lldb-check:[...] 29
-// lldb-command:v z
-// lldb-check:[...] 30
-// lldb-command:v ae
-// lldb-check:[...] 31
-// lldb-command:v oe
-// lldb-check:[...] 32
-// lldb-command:v ue
-// lldb-check:[...] 33
-// lldb-command:continue
+//@ lldb-command:v u
+//@ lldb-check:[...] 25
+//@ lldb-command:v v
+//@ lldb-check:[...] 26
+//@ lldb-command:v w
+//@ lldb-check:[...] 27
+//@ lldb-command:v x
+//@ lldb-check:[...] 28
+//@ lldb-command:v y
+//@ lldb-check:[...] 29
+//@ lldb-command:v z
+//@ lldb-check:[...] 30
+//@ lldb-command:v ae
+//@ lldb-check:[...] 31
+//@ lldb-command:v oe
+//@ lldb-check:[...] 32
+//@ lldb-command:v ue
+//@ lldb-check:[...] 33
+//@ lldb-command:continue
 
-// lldb-command:v aa
-// lldb-check:[...] { 0 = 34 1 = 35 }
-// lldb-command:continue
+//@ lldb-command:v aa
+//@ lldb-check:[...] { 0 = 34 1 = 35 }
+//@ lldb-command:continue
 
-// lldb-command:v bb
-// lldb-check:[...] { 0 = 36 1 = 37 }
-// lldb-command:continue
+//@ lldb-command:v bb
+//@ lldb-check:[...] { 0 = 36 1 = 37 }
+//@ lldb-command:continue
 
-// lldb-command:v cc
-// lldb-check:[...] 38
-// lldb-command:continue
+//@ lldb-command:v cc
+//@ lldb-check:[...] 38
+//@ lldb-command:continue
 
-// lldb-command:v dd
-// lldb-check:[...] { 0 = 40 1 = 41 2 = 42 }
-// lldb-command:continue
+//@ lldb-command:v dd
+//@ lldb-check:[...] { 0 = 40 1 = 41 2 = 42 }
+//@ lldb-command:continue
 
-// lldb-command:v *ee
-// lldb-check:[...] { 0 = 43 1 = 44 2 = 45 }
-// lldb-command:continue
+//@ lldb-command:v *ee
+//@ lldb-check:[...] { 0 = 43 1 = 44 2 = 45 }
+//@ lldb-command:continue
 
-// lldb-command:v *ff
-// lldb-check:[...] 46
-// lldb-command:v gg
-// lldb-check:[...] { 0 = 47 1 = 48 }
-// lldb-command:continue
+//@ lldb-command:v *ff
+//@ lldb-check:[...] 46
+//@ lldb-command:v gg
+//@ lldb-check:[...] { 0 = 47 1 = 48 }
+//@ lldb-command:continue
 
-// lldb-command:v *hh
-// lldb-check:[...] 50
-// lldb-command:continue
+//@ lldb-command:v *hh
+//@ lldb-check:[...] 50
+//@ lldb-command:continue
 
-// lldb-command:v ii
-// lldb-check:[...] 51
-// lldb-command:continue
+//@ lldb-command:v ii
+//@ lldb-check:[...] 51
+//@ lldb-command:continue
 
-// lldb-command:v *jj
-// lldb-check:[...] 52
-// lldb-command:continue
+//@ lldb-command:v *jj
+//@ lldb-check:[...] 52
+//@ lldb-command:continue
 
-// lldb-command:v kk
-// lldb-check:[...] 53
-// lldb-command:v ll
-// lldb-check:[...] 54
-// lldb-command:continue
+//@ lldb-command:v kk
+//@ lldb-check:[...] 53
+//@ lldb-command:v ll
+//@ lldb-check:[...] 54
+//@ lldb-command:continue
 
-// lldb-command:v mm
-// lldb-check:[...] 55
-// lldb-command:v *nn
-// lldb-check:[...] 56
-// lldb-command:continue
+//@ lldb-command:v mm
+//@ lldb-check:[...] 55
+//@ lldb-command:v *nn
+//@ lldb-check:[...] 56
+//@ lldb-command:continue
 
-// lldb-command:v oo
-// lldb-check:[...] 57
-// lldb-command:v pp
-// lldb-check:[...] 58
-// lldb-command:v qq
-// lldb-check:[...] 59
-// lldb-command:continue
+//@ lldb-command:v oo
+//@ lldb-check:[...] 57
+//@ lldb-command:v pp
+//@ lldb-check:[...] 58
+//@ lldb-command:v qq
+//@ lldb-check:[...] 59
+//@ lldb-command:continue
 
-// lldb-command:v rr
-// lldb-check:[...] 60
-// lldb-command:v ss
-// lldb-check:[...] 61
-// lldb-command:v tt
-// lldb-check:[...] 62
-// lldb-command:continue
+//@ lldb-command:v rr
+//@ lldb-check:[...] 60
+//@ lldb-command:v ss
+//@ lldb-check:[...] 61
+//@ lldb-command:v tt
+//@ lldb-check:[...] 62
+//@ lldb-command:continue
 
 #![allow(unused_variables)]
 #![feature(box_patterns)]

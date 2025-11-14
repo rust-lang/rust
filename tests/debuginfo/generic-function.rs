@@ -4,47 +4,47 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print *t0
-// gdb-check:$1 = 1
-// gdb-command:print *t1
-// gdb-check:$2 = 2.5
-// gdb-command:continue
+//@ gdb-command:print *t0
+//@ gdb-check:$1 = 1
+//@ gdb-command:print *t1
+//@ gdb-check:$2 = 2.5
+//@ gdb-command:continue
 
-// gdb-command:print *t0
-// gdb-check:$3 = 3.5
-// gdb-command:print *t1
-// gdb-check:$4 = 4
-// gdb-command:continue
+//@ gdb-command:print *t0
+//@ gdb-check:$3 = 3.5
+//@ gdb-command:print *t1
+//@ gdb-check:$4 = 4
+//@ gdb-command:continue
 
-// gdb-command:print *t0
-// gdb-check:$5 = 5
-// gdb-command:print *t1
-// gdb-check:$6 = generic_function::Struct {a: 6, b: 7.5}
-// gdb-command:continue
+//@ gdb-command:print *t0
+//@ gdb-check:$5 = 5
+//@ gdb-command:print *t1
+//@ gdb-check:$6 = generic_function::Struct {a: 6, b: 7.5}
+//@ gdb-command:continue
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v *t0
-// lldb-check:[...] 1
-// lldb-command:v *t1
-// lldb-check:[...] 2.5
-// lldb-command:continue
+//@ lldb-command:v *t0
+//@ lldb-check:[...] 1
+//@ lldb-command:v *t1
+//@ lldb-check:[...] 2.5
+//@ lldb-command:continue
 
-// lldb-command:v *t0
-// lldb-check:[...] 3.5
-// lldb-command:v *t1
-// lldb-check:[...] 4
-// lldb-command:continue
+//@ lldb-command:v *t0
+//@ lldb-check:[...] 3.5
+//@ lldb-command:v *t1
+//@ lldb-check:[...] 4
+//@ lldb-command:continue
 
-// lldb-command:v *t0
-// lldb-check:[...] 5
-// lldb-command:v *t1
-// lldb-check:[...] { a = 6 b = 7.5 }
-// lldb-command:continue
+//@ lldb-command:v *t0
+//@ lldb-check:[...] 5
+//@ lldb-command:v *t1
+//@ lldb-check:[...] { a = 6 b = 7.5 }
+//@ lldb-command:continue
 
 #[derive(Clone)]
 struct Struct {

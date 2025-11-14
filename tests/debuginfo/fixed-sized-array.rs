@@ -6,21 +6,21 @@
 
 // === CDB TESTS ==================================================================================
 
-// cdb-command: g
+//@ cdb-command: g
 
-// cdb-command: dx xs,d
-// cdb-check:xs,d             [Type: int [5]]
-// cdb-check:    [0]              : 1 [Type: int]
-// cdb-check:    [1]              : 2 [Type: int]
-// cdb-check:    [2]              : 3 [Type: int]
-// cdb-check:    [3]              : 4 [Type: int]
-// cdb-check:    [4]              : 5 [Type: int]
+//@ cdb-command: dx xs,d
+//@ cdb-check:xs,d             [Type: int [5]]
+//@ cdb-check:    [0]              : 1 [Type: int]
+//@ cdb-check:    [1]              : 2 [Type: int]
+//@ cdb-check:    [2]              : 3 [Type: int]
+//@ cdb-check:    [3]              : 4 [Type: int]
+//@ cdb-check:    [4]              : 5 [Type: int]
 
-// cdb-command: dx ys,d
-// cdb-check:ys,d             [Type: int [3]]
-// cdb-check:    [0]              : 0 [Type: int]
-// cdb-check:    [1]              : 0 [Type: int]
-// cdb-check:    [2]              : 0 [Type: int]
+//@ cdb-command: dx ys,d
+//@ cdb-check:ys,d             [Type: int [3]]
+//@ cdb-check:    [0]              : 0 [Type: int]
+//@ cdb-check:    [1]              : 0 [Type: int]
+//@ cdb-check:    [2]              : 0 [Type: int]
 
 fn main() {
     // Fixed-size array (type signature is superfluous)

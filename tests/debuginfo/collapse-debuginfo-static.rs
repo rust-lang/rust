@@ -7,8 +7,8 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:info line collapse_debuginfo_static::FOO
-// gdb-check:[...]Line 20[...]
+//@ gdb-command:info line collapse_debuginfo_static::FOO
+//@ gdb-check:[...]Line 20[...]
 
 #[collapse_debuginfo(yes)]
 macro_rules! decl_foo {

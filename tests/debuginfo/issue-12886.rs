@@ -4,10 +4,10 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 
-// gdb-command:run
-// gdb-command:next
-// gdb-check:[...]22[...]let s = Some(5).unwrap(); // #break
-// gdb-command:continue
+//@ gdb-command:run
+//@ gdb-command:next
+//@ gdb-check:[...]22[...]let s = Some(5).unwrap(); // #break
+//@ gdb-command:continue
 
 
 // IF YOU MODIFY THIS FILE, BE CAREFUL TO ADAPT THE LINE NUMBERS IN THE DEBUGGER COMMANDS

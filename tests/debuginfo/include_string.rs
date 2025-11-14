@@ -4,28 +4,28 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
-// gdb-command:run
-// gdb-command:print string1.length
-// gdb-check:$1 = 48
-// gdb-command:print string2.length
-// gdb-check:$2 = 49
-// gdb-command:print string3.length
-// gdb-check:$3 = 50
-// gdb-command:continue
+//@ gdb-command:run
+//@ gdb-command:print string1.length
+//@ gdb-check:$1 = 48
+//@ gdb-command:print string2.length
+//@ gdb-check:$2 = 49
+//@ gdb-command:print string3.length
+//@ gdb-check:$3 = 50
+//@ gdb-command:continue
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v string1.length
-// lldb-check:[...] 48
-// lldb-command:v string2.length
-// lldb-check:[...] 49
-// lldb-command:v string3.length
-// lldb-check:[...] 50
+//@ lldb-command:v string1.length
+//@ lldb-check:[...] 48
+//@ lldb-command:v string2.length
+//@ lldb-check:[...] 49
+//@ lldb-command:v string3.length
+//@ lldb-check:[...] 50
 
-// lldb-command:continue
+//@ lldb-command:continue
 
 #![allow(unused_variables)]
 

@@ -4,33 +4,33 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:set print union on
-// gdb-command:run
+//@ gdb-command:set print union on
+//@ gdb-command:run
 
-// gdb-command:print case1
-// gdb-check:$1 = generic_tuple_style_enum::Regular<u16, u32, u64>::Case1(0, 31868, 31868, 31868, 31868)
+//@ gdb-command:print case1
+//@ gdb-check:$1 = generic_tuple_style_enum::Regular<u16, u32, u64>::Case1(0, 31868, 31868, 31868, 31868)
 
-// gdb-command:print case2
-// gdb-check:$2 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case2(0, 286331153, 286331153)
+//@ gdb-command:print case2
+//@ gdb-check:$2 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case2(0, 286331153, 286331153)
 
-// gdb-command:print case3
-// gdb-check:$3 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case3(0, 6438275382588823897)
+//@ gdb-command:print case3
+//@ gdb-check:$3 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case3(0, 6438275382588823897)
 
-// gdb-command:print univariant
-// gdb-check:$4 = generic_tuple_style_enum::Univariant<i64>::TheOnlyCase(-1)
+//@ gdb-command:print univariant
+//@ gdb-check:$4 = generic_tuple_style_enum::Univariant<i64>::TheOnlyCase(-1)
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v case1
+//@ lldb-command:v case1
 
-// lldb-command:v case2
+//@ lldb-command:v case2
 
-// lldb-command:v case3
+//@ lldb-command:v case3
 
-// lldb-command:v univariant
+//@ lldb-command:v univariant
 
 
 use self::Regular::{Case1, Case2, Case3};

@@ -3,17 +3,17 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command: run
-// gdb-check:[...]#break[...]
-// gdb-command: up
-// gdb-check:[...]zzz[...]
+//@ gdb-command: run
+//@ gdb-check:[...]#break[...]
+//@ gdb-command: up
+//@ gdb-check:[...]zzz[...]
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
-// lldb-check:[...]#break[...]
-// lldb-command: up
-// lldb-check:[...]zzz[...]
+//@ lldb-command:run
+//@ lldb-check:[...]#break[...]
+//@ lldb-command: up
+//@ lldb-check:[...]zzz[...]
 
 struct Foo;
 
