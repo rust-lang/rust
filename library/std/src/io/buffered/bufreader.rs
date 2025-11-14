@@ -284,15 +284,6 @@ impl<R: ?Sized> BufReader<R> {
     }
 }
 
-// This is only used by a test which asserts that the initialization-tracking is correct.
-#[cfg(test)]
-impl<R: ?Sized> BufReader<R> {
-    #[allow(missing_docs)]
-    pub fn initialized(&self) -> usize {
-        self.buf.initialized()
-    }
-}
-
 impl<R: ?Sized + Seek> BufReader<R> {
     /// Seeks relative to the current position. If the new position lies within the buffer,
     /// the buffer will not be flushed, allowing for more efficient seeks.
