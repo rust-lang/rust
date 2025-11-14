@@ -21,9 +21,9 @@ rustc_public_bridge = { path = "../rustc_public_bridge" }
 # tidy-alphabetical-end
 
 [dependencies.tikv-jemalloc-sys]
-version = "0.6.1"
+version = "0.6.0"
 optional = true
-features = ['override_allocator_on_supported_platforms']
+features = ['unprefixed_malloc_on_supported_platforms']
 
 [features]
 # tidy-alphabetical-start

@@ -469,16 +469,18 @@ fn check_result(
         })
     }
 
-    // warn for nonblocking async fn.
+    // warn for nonblocking async functions, blocks and closures.
     // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
     if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
         && let Some(sanitize_span) = interesting_spans.sanitize
-        // async function
-        && (tcx.asyncness(did).is_async() || (tcx.is_closure_like(did.into())
+        // async fn
+        && (tcx.asyncness(did).is_async()
             // async block
-            && (tcx.coroutine_is_async(did.into())
-                // async closure
-                || tcx.coroutine_is_async(tcx.coroutine_for_closure(did)))))
+            || tcx.is_coroutine(did.into())
+            // async closure
+            || (tcx.is_closure_like(did.into())
+                && tcx.hir_node_by_def_id(did).expect_closure().kind
+                    != rustc_hir::ClosureKind::Closure))
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
         tcx.node_span_lint(

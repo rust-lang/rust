@@ -3926,16 +3926,25 @@ class DocSearch {
                  * @returns {Promise<rustdoc.PlainResultObject?>}
                  */
                 const handleAlias = async(name, alias, dist, index) => {
+                    const item = nonnull(await this.getRow(alias, false));
+                    // space both is an alias for ::,
+                    // and is also allowed to appear in doc alias names
+                    const path_dist = name.includes(" ") || parsedQuery.elems.length === 0 ?
+                        0 : checkRowPath(parsedQuery.elems[0].pathWithoutLast, item);
+                    // path distance exceeds max, omit alias from results
+                    if (path_dist === null) {
+                        return null;
+                    }
                     return {
                         id: alias,
                         dist,
-                        path_dist: 0,
+                        path_dist,
                         index,
                         alias: name,
                         is_alias: true,
                         elems: [], // only used in type-based queries
                         returned: [], // only used in type-based queries
-                        item: nonnull(await this.getRow(alias, false)),
+                        item,
                     };
                 };
                 /**

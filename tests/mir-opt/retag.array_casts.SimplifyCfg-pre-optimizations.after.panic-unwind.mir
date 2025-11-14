@@ -164,7 +164,6 @@ fn array_casts() -> () {
         _31 = &(*_32);
         StorageLive(_33);
         _33 = Option::<Arguments<'_>>::None;
-        Retag(_33);
         _27 = core::panicking::assert_failed::<usize, usize>(move _28, move _29, move _31, move _33) -> unwind continue;
     }
 }
