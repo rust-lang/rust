@@ -600,7 +600,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "termize",
- "tikv-jemalloc-sys",
  "toml 0.9.7",
  "ui_test",
  "walkdir",
@@ -1289,7 +1288,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2155,7 +2154,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07033963ba89ebaf1584d767badaa2e8fcec21aedea6b8c0346d487d49c28667"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.53.3",
 ]
 
 [[package]]
@@ -4807,7 +4806,6 @@ dependencies = [
  "stringdex",
  "tempfile",
  "threadpool",
- "tikv-jemalloc-sys",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -4907,7 +4905,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5275,9 +5273,9 @@ dependencies = [
 
 [[package]]
 name = "stringdex"
-version = "0.0.2"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18b3bd4f10d15ef859c40291769f0d85209de6b0f1c30713ff9cdf45ac43ea36"
+checksum = "556a6126952cb2f5150057c98a77cc6c771027dea2825bf7fa03d3d638b0a4f8"
 dependencies = [
  "stacker",
 ]
@@ -5539,9 +5537,9 @@ version = "0.1.0"
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
+version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
+checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
 dependencies = [
  "cc",
  "libc",

@@ -329,9 +329,6 @@ language_item_table! {
     // Lang items needed for `format_args!()`.
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
-    FormatCount,             sym::format_count,        format_count,               Target::Enum,           GenericRequirement::None;
-    FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         Target::Struct,         GenericRequirement::None;
-    FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          Target::Struct,         GenericRequirement::None;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);

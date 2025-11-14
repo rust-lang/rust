@@ -142,6 +142,7 @@ pub fn check(build: &mut Build) {
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
     let building_llvm = !build.config.llvm_from_ci
+        && !build.config.local_rebuild
         && build.hosts.iter().any(|host| {
             build.config.llvm_enabled(*host)
                 && build

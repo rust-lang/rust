@@ -13,7 +13,10 @@ fn main() {
         ::std::io::_print({
                 super let args = (&x,);
                 super let args = [format_argument::new_display(args.0)];
-                format_arguments::new_v1(&["a 123 b ", " xyz\n"], &args)
+                unsafe {
+                    format_arguments::new(b"\x08a 123 b \xc0\x05 xyz\n\x00",
+                        &args)
+                }
             });
     };
 }
