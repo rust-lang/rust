@@ -9,13 +9,11 @@
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [none] compile-flags: -Z stack-protector=none
 //@ [safestack] compile-flags: -Z stack-protector=none -Z sanitizer=safestack
-// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ [safestack_strong] compile-flags: -Z stack-protector=strong -Z sanitizer=safestack
-// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ [safestack_all] compile-flags: -Z stack-protector=all -Z sanitizer=safestack
-// RUSTFLAGS: -Cunsafe-allow-abi-mismatch=sanitizer
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 
+#![no_std]
 #![crate_type = "lib"]
 #![allow(internal_features)]
 #![feature(unsized_fn_params)]
@@ -25,7 +23,7 @@
 #[no_mangle]
 pub unsafe fn test1(src: *const u8, len: usize) -> u8 {
     let mut buf = [0u8; 64];
-    std::ptr::copy_nonoverlapping(src, buf.as_mut_ptr(), len.min(buf.len()));
+    core::ptr::copy_nonoverlapping(src, buf.as_mut_ptr(), len.min(buf.len()));
     buf[0]
 
     // none-NOT: __stack_chk_fail
