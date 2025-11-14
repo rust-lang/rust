@@ -39,8 +39,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: Option<ExprId>,
         region_scope: Scope,
     ) -> BlockAnd<()> {
-        let this = self;
-
         // This convoluted structure is to avoid using recursion as we walk down a list
         // of statements. Basically, the structure we get back is something like:
         //
@@ -58,21 +56,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //
         // First we build all the statements in the block.
         let mut let_scope_stack = Vec::with_capacity(8);
-        let outer_source_scope = this.source_scope;
+        let outer_source_scope = self.source_scope;
         // This scope information is kept for breaking out of the parent remainder scope in case
         // one let-else pattern matching fails.
         // By doing so, we can be sure that even temporaries that receive extended lifetime
         // assignments are dropped, too.
         let mut last_remainder_scope = region_scope;
 
-        let source_info = this.source_info(span);
+        let source_info = self.source_info(span);
         for stmt in stmts {
-            let Stmt { ref kind } = this.thir[*stmt];
+            let Stmt { ref kind } = self.thir[*stmt];
             match kind {
                 StmtKind::Expr { scope, expr } => {
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
+                    self.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     let si = (*scope, source_info);
-                    block = this
+                    block = self
                         .in_scope(si, LintLevel::Inherited, |this| {
                             this.stmt_expr(block, *expr, Some(*scope))
                         })
@@ -156,42 +154,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // └────────────────┘
 
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+                    self.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Lower the `else` block first because its parent scope is actually
                     // enclosing the rest of the `let .. else ..` parts.
-                    let else_block_span = this.thir[*else_block].span;
+                    let else_block_span = self.thir[*else_block].span;
                     // This place is not really used because this destination place
                     // should never be used to take values at the end of the failure
                     // block.
-                    let dummy_place = this.temp(this.tcx.types.never, else_block_span);
-                    let failure_entry = this.cfg.start_new_block();
+                    let dummy_place = self.temp(self.tcx.types.never, else_block_span);
+                    let failure_entry = self.cfg.start_new_block();
                     let failure_block;
-                    failure_block = this
+                    failure_block = self
                         .ast_block(
                             dummy_place,
                             failure_entry,
                             *else_block,
-                            this.source_info(else_block_span),
+                            self.source_info(else_block_span),
                         )
                         .into_block();
-                    this.cfg.terminate(
+                    self.cfg.terminate(
                         failure_block,
-                        this.source_info(else_block_span),
+                        self.source_info(else_block_span),
                         TerminatorKind::Unreachable,
                     );
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
-                    this.push_scope((*remainder_scope, source_info));
+                    let remainder_span = remainder_scope.span(self.tcx, self.region_scope_tree);
+                    self.push_scope((*remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 
                     let visibility_scope =
-                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited));
+                        Some(self.new_source_scope(remainder_span, LintLevel::Inherited));
 
-                    let initializer_span = this.thir[*initializer].span;
+                    let initializer_span = self.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
-                    let failure_and_block = this.in_scope(scope, *lint_level, |this| {
+                    let failure_and_block = self.in_scope(scope, *lint_level, |this| {
                         this.declare_bindings(
                             visibility_scope,
                             remainder_span,
@@ -199,7 +197,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             None,
                             Some((Some(&destination), initializer_span)),
                         );
-                        let else_block_span = this.thir[*else_block].span;
+                        let else_block_span = self.thir[*else_block].span;
                         let (matching, failure) =
                             this.in_if_then_scope(last_remainder_scope, else_block_span, |this| {
                                 this.lower_let_expr(
@@ -214,16 +212,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         matching.and(failure)
                     });
                     let failure = unpack!(block = failure_and_block);
-                    this.cfg.goto(failure, source_info, failure_entry);
+                    self.cfg.goto(failure, source_info, failure_entry);
 
                     if let Some(source_scope) = visibility_scope {
-                        this.source_scope = source_scope;
+                        self.source_scope = source_scope;
                     }
                     last_remainder_scope = *remainder_scope;
                 }
                 StmtKind::Let { init_scope, initializer: None, else_block: Some(_), .. } => {
                     span_bug!(
-                        init_scope.span(this.tcx, this.region_scope_tree),
+                        init_scope.span(self.tcx, self.region_scope_tree),
                         "initializer is missing, but else block is present in this let binding",
                     )
                 }
@@ -237,24 +235,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span: _,
                 } => {
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
-                    this.block_context.push(BlockFrame::Statement { ignores_expr_result });
+                    self.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
-                    this.push_scope((*remainder_scope, source_info));
+                    self.push_scope((*remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
+                    let remainder_span = remainder_scope.span(self.tcx, self.region_scope_tree);
 
                     let visibility_scope =
-                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited));
+                        Some(self.new_source_scope(remainder_span, LintLevel::Inherited));
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = *initializer {
-                        let initializer_span = this.thir[init].span;
+                        let initializer_span = self.thir[init].span;
                         let scope = (*init_scope, source_info);
 
-                        block = this
+                        block = self
                             .in_scope(scope, *lint_level, |this| {
                                 this.declare_bindings(
                                     visibility_scope,
@@ -269,7 +267,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             .into_block();
                     } else {
                         let scope = (*init_scope, source_info);
-                        let _: BlockAnd<()> = this.in_scope(scope, *lint_level, |this| {
+                        let _: BlockAnd<()> = self.in_scope(scope, *lint_level, |this| {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,
@@ -281,7 +279,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         });
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
-                        this.visit_primary_bindings(pattern, &mut |this, node, span| {
+                        self.visit_primary_bindings(pattern, &mut |this, node, span| {
                             this.storage_live_binding(
                                 block,
                                 node,
@@ -296,30 +294,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Enter the visibility scope, after evaluating the initializer.
                     if let Some(source_scope) = visibility_scope {
-                        this.source_scope = source_scope;
+                        self.source_scope = source_scope;
                     }
                     last_remainder_scope = *remainder_scope;
                 }
             }
 
-            let popped = this.block_context.pop();
+            let popped = self.block_context.pop();
             assert!(popped.is_some_and(|bf| bf.is_statement()));
         }
 
         // Then, the block may have an optional trailing expression which is a “return” value
         // of the block, which is stored into `destination`.
-        let tcx = this.tcx;
-        let destination_ty = destination.ty(&this.local_decls, tcx).ty;
+        let tcx = self.tcx;
+        let destination_ty = destination.ty(&self.local_decls, tcx).ty;
         if let Some(expr_id) = expr {
-            let expr = &this.thir[expr_id];
+            let expr = &self.thir[expr_id];
             let tail_result_is_ignored =
-                destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            this.block_context.push(BlockFrame::TailExpr {
+                destination_ty.is_unit() || self.block_context.currently_ignores_tail_results();
+            self.block_context.push(BlockFrame::TailExpr {
                 info: BlockTailInfo { tail_result_is_ignored, span: expr.span },
             });
 
-            block = this.expr_into_dest(destination, block, expr_id).into_block();
-            let popped = this.block_context.pop();
+            block = self.expr_into_dest(destination, block, expr_id).into_block();
+            let popped = self.block_context.pop();
 
             assert!(popped.is_some_and(|bf| bf.is_tail_expr()));
         } else {
@@ -334,16 +332,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
+                self.cfg.push_assign_unit(block, source_info, destination, self.tcx);
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
-            block = this.pop_scope((*scope, source_info), block).into_block();
+            block = self.pop_scope((*scope, source_info), block).into_block();
         }
         // Restore the original source scope.
-        this.source_scope = outer_source_scope;
+        self.source_scope = outer_source_scope;
         block.unit()
     }
 }

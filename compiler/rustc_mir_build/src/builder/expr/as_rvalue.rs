@@ -47,25 +47,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        let this = self;
-        let expr = &this.thir[expr_id];
+        let expr = &self.thir[expr_id];
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
         let expr_span = expr.span;
-        let source_info = this.source_info(expr_span);
+        let source_info = self.source_info(expr_span);
 
         match expr.kind {
             ExprKind::ThreadLocalRef(did) => block.and(Rvalue::ThreadLocalRef(did)),
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                this.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
+                self.in_scope(region_scope, lint_level, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
-                if Some(0) == count.try_to_target_usize(this.tcx) {
-                    this.build_zero_repeat(block, value, scope, source_info)
+                if Some(0) == count.try_to_target_usize(self.tcx) {
+                    self.build_zero_repeat(block, value, scope, source_info)
                 } else {
                     let value_operand = unpack!(
-                        block = this.as_operand(
+                        block = self.as_operand(
                             block,
                             scope,
                             value,
@@ -78,7 +77,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(
-                    block = this.as_operand(
+                    block = self.as_operand(
                         block,
                         scope,
                         lhs,
@@ -88,30 +87,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 let rhs = unpack!(
                     block =
-                        this.as_operand(block, scope, rhs, LocalInfo::Boring, NeedsTemporary::No)
+                        self.as_operand(block, scope, rhs, LocalInfo::Boring, NeedsTemporary::No)
                 );
-                this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
+                self.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(
                     block =
-                        this.as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
+                        self.as_operand(block, scope, arg, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 // Check for -MIN on signed integers
-                if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
-                    let bool_ty = this.tcx.types.bool;
+                if self.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
+                    let bool_ty = self.tcx.types.bool;
 
-                    let minval = this.minval_literal(expr_span, expr.ty);
-                    let is_min = this.temp(bool_ty, expr_span);
+                    let minval = self.minval_literal(expr_span, expr.ty);
+                    let is_min = self.temp(bool_ty, expr_span);
 
-                    this.cfg.push_assign(
+                    self.cfg.push_assign(
                         block,
                         source_info,
                         is_min,
                         Rvalue::BinaryOp(BinOp::Eq, Box::new((arg.to_copy(), minval))),
                     );
 
-                    block = this.assert(
+                    block = self.assert(
                         block,
                         Operand::Move(is_min),
                         false,
@@ -122,9 +121,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::UnaryOp(op, arg))
             }
             ExprKind::Box { value } => {
-                let value_ty = this.thir[value].ty;
-                let tcx = this.tcx;
-                let source_info = this.source_info(expr_span);
+                let value_ty = self.thir[value].ty;
+                let tcx = self.tcx;
+                let source_info = self.source_info(expr_span);
 
                 let size = tcx.require_lang_item(LangItem::SizeOf, expr_span);
                 let size = Operand::unevaluated_constant(tcx, size, &[value_ty.into()], expr_span);
@@ -140,9 +139,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
-                let success = this.cfg.start_new_block();
-                this.cfg.terminate(
+                let storage = self.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
+                let success = self.cfg.start_new_block();
+                self.cfg.terminate(
                     block,
                     source_info,
                     TerminatorKind::Call {
@@ -159,29 +158,29 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         fn_span: expr_span,
                     },
                 );
-                this.diverge_from(block);
+                self.diverge_from(block);
                 block = success;
 
-                let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
-                this.cfg
+                let result = self.local_decls.push(LocalDecl::new(expr.ty, expr_span));
+                self.cfg
                     .push(block, Statement::new(source_info, StatementKind::StorageLive(result)));
                 if let Some(scope) = scope.temp_lifetime {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_drop_storage_and_value(expr_span, scope, result);
+                    self.schedule_drop_storage_and_value(expr_span, scope, result);
                 }
 
                 // Transmute `*mut u8` to the box (thus far, uninitialized):
                 let box_ = Rvalue::ShallowInitBox(Operand::Move(storage), value_ty);
-                this.cfg.push_assign(block, source_info, Place::from(result), box_);
+                self.cfg.push_assign(block, source_info, Place::from(result), box_);
 
                 // initialize the box contents:
-                block = this
-                    .expr_into_dest(this.tcx.mk_place_deref(Place::from(result)), block, value)
+                block = self
+                    .expr_into_dest(self.tcx.mk_place_deref(Place::from(result)), block, value)
                     .into_block();
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
-                let source_expr = &this.thir[source];
+                let source_expr = &self.thir[source];
 
                 // Casting an enum to an integer is equivalent to computing the discriminant and casting the
                 // discriminant. Previously every backend had to repeat the logic for this operation. Now we
@@ -189,10 +188,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source_expr.ty.kind()
                     && adt_def.is_enum()
                 {
-                    let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
-                    let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let discr = this.temp(discr_ty, source_expr.span);
-                    this.cfg.push_assign(
+                    let discr_ty = adt_def.repr().discr_type().to_ty(self.tcx);
+                    let temp = unpack!(block = self.as_temp(block, scope, source, Mutability::Not));
+                    let discr = self.temp(discr_ty, source_expr.span);
+                    self.cfg.push_assign(
                         block,
                         source_info,
                         discr,
@@ -202,7 +201,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } else {
                     let ty = source_expr.ty;
                     let source = unpack!(
-                        block = this.as_operand(
+                        block = self.as_operand(
                             block,
                             scope,
                             source,
@@ -220,7 +219,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::PointerCoercion { cast, source, is_from_as_cast } => {
                 let source = unpack!(
-                    block = this.as_operand(
+                    block = self.as_operand(
                         block,
                         scope,
                         source,
@@ -260,13 +259,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
-                let el_ty = expr.ty.sequence_element_type(this.tcx);
+                let el_ty = expr.ty.sequence_element_type(self.tcx);
                 let fields: IndexVec<FieldIdx, _> = fields
                     .into_iter()
                     .copied()
                     .map(|f| {
                         unpack!(
-                            block = this.as_operand(
+                            block = self.as_operand(
                                 block,
                                 scope,
                                 f,
@@ -287,7 +286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .copied()
                     .map(|f| {
                         unpack!(
-                            block = this.as_operand(
+                            block = self.as_operand(
                                 block,
                                 scope,
                                 f,
@@ -322,12 +321,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // ```
                 //
                 for (thir_place, cause, hir_id) in fake_reads.into_iter() {
-                    let place_builder = unpack!(block = this.as_place_builder(block, *thir_place));
+                    let place_builder = unpack!(block = self.as_place_builder(block, *thir_place));
 
-                    if let Some(mir_place) = place_builder.try_to_place(this) {
-                        this.cfg.push_fake_read(
+                    if let Some(mir_place) = place_builder.try_to_place(self) {
+                        self.cfg.push_fake_read(
                             block,
-                            this.source_info(this.tcx.hir_span(*hir_id)),
+                            self.source_info(self.tcx.hir_span(*hir_id)),
                             *cause,
                             mir_place,
                         );
@@ -339,7 +338,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .into_iter()
                     .copied()
                     .map(|upvar| {
-                        let upvar_expr = &this.thir[upvar];
+                        let upvar_expr = &self.thir[upvar];
                         match Category::of(&upvar_expr.kind) {
                             // Use as_place to avoid creating a temporary when
                             // moving a variable into a closure, so that
@@ -350,8 +349,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             // This occurs when capturing by copy/move, while
                             // by reference captures use as_operand
                             Some(Category::Place) => {
-                                let place = unpack!(block = this.as_place(block, upvar));
-                                this.consume_by_copy_or_move(place)
+                                let place = unpack!(block = self.as_place(block, upvar));
+                                self.consume_by_copy_or_move(place)
                             }
                             _ => {
                                 // Turn mutable borrow captures into unique
@@ -364,7 +363,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                             BorrowKind::Mut { kind: MutBorrowKind::Default },
                                         arg,
                                     } => unpack!(
-                                        block = this.limit_capture_mutability(
+                                        block = self.limit_capture_mutability(
                                             upvar_expr.span,
                                             upvar_expr.ty,
                                             scope.temp_lifetime,
@@ -374,7 +373,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     ),
                                     _ => {
                                         unpack!(
-                                            block = this.as_operand(
+                                            block = self.as_operand(
                                                 block,
                                                 scope,
                                                 upvar,
@@ -403,11 +402,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
-                block = this.stmt_expr(block, expr_id, None).into_block();
+                block = self.stmt_expr(block, expr_id, None).into_block();
                 block.and(Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
                     span: expr_span,
                     user_ty: None,
-                    const_: Const::zero_sized(this.tcx.types.unit),
+                    const_: Const::zero_sized(self.tcx.types.unit),
                 }))))
             }
 
@@ -422,13 +421,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::StaticRef { .. } => {
-                let constant = this.as_constant(expr);
+                let constant = self.as_constant(expr);
                 block.and(Rvalue::Use(Operand::Constant(Box::new(constant))))
             }
 
             ExprKind::WrapUnsafeBinder { source } => {
                 let source = unpack!(
-                    block = this.as_operand(
+                    block = self.as_operand(
                         block,
                         scope,
                         source,
@@ -475,7 +474,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
                 let operand = unpack!(
-                    block = this.as_operand(
+                    block = self.as_operand(
                         block,
                         scope,
                         expr_id,
@@ -489,7 +488,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::ByUse { expr, span: _ } => {
                 let operand = unpack!(
                     block =
-                        this.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
+                        self.as_operand(block, scope, expr, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 block.and(Rvalue::Use(operand))
             }
@@ -676,19 +675,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: TempLifetime,
         outer_source_info: SourceInfo,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        let this = self;
-        let value_expr = &this.thir[value];
+        let value_expr = &self.thir[value];
         let elem_ty = value_expr.ty;
-        if this.check_constness(&value_expr.kind) {
+        if self.check_constness(&value_expr.kind) {
             // Repeating a const does nothing
         } else {
             // For a non-const, we may need to generate an appropriate `Drop`
             let value_operand = unpack!(
-                block = this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
+                block = self.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
             );
             if let Operand::Move(to_drop) = value_operand {
-                let success = this.cfg.start_new_block();
-                this.cfg.terminate(
+                let success = self.cfg.start_new_block();
+                self.cfg.terminate(
                     block,
                     outer_source_info,
                     TerminatorKind::Drop {
@@ -700,10 +698,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         async_fut: None,
                     },
                 );
-                this.diverge_from(block);
+                self.diverge_from(block);
                 block = success;
             }
-            this.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
+            self.record_operands_moved(&[Spanned { node: value_operand, span: DUMMY_SP }]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }
@@ -716,25 +714,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         arg: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        let this = self;
+        let source_info = self.source_info(upvar_span);
+        let temp = self.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
 
-        let source_info = this.source_info(upvar_span);
-        let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));
+        self.cfg.push(block, Statement::new(source_info, StatementKind::StorageLive(temp)));
 
-        this.cfg.push(block, Statement::new(source_info, StatementKind::StorageLive(temp)));
-
-        let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
+        let arg_place_builder = unpack!(block = self.as_place_builder(block, arg));
 
         let mutability = match arg_place_builder.base() {
             // We are capturing a path that starts off a local variable in the parent.
             // The mutability of the current capture is same as the mutability
             // of the local declaration in the parent.
-            PlaceBase::Local(local) => this.local_decls[local].mutability,
+            PlaceBase::Local(local) => self.local_decls[local].mutability,
             // Parent is a closure and we are capturing a path that is captured
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
             PlaceBase::Upvar { .. } => {
-                let enclosing_upvars_resolved = arg_place_builder.to_place(this);
+                let enclosing_upvars_resolved = arg_place_builder.to_place(self);
 
                 match enclosing_upvars_resolved.as_ref() {
                     PlaceRef {
@@ -753,12 +749,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         );
                         // Not in a closure
                         debug_assert!(
-                            this.upvars.len() > upvar_index.index(),
+                            self.upvars.len() > upvar_index.index(),
                             "Unexpected capture place, upvars={:#?}, upvar_index={:?}",
-                            this.upvars,
+                            self.upvars,
                             upvar_index
                         );
-                        this.upvars[upvar_index.index()].mutability
+                        self.upvars[upvar_index.index()].mutability
                     }
                     _ => bug!("Unexpected capture place"),
                 }
@@ -770,19 +766,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         };
 
-        let arg_place = arg_place_builder.to_place(this);
+        let arg_place = arg_place_builder.to_place(self);
 
-        this.cfg.push_assign(
+        self.cfg.push_assign(
             block,
             source_info,
             Place::from(temp),
-            Rvalue::Ref(this.tcx.lifetimes.re_erased, borrow_kind, arg_place),
+            Rvalue::Ref(self.tcx.lifetimes.re_erased, borrow_kind, arg_place),
         );
 
         // This can be `None` if the expression's temporary scope was extended so that it can be
         // borrowed by a `const` or `static`. In that case, it's never dropped.
         if let Some(temp_lifetime) = temp_lifetime {
-            this.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
+            self.schedule_drop_storage_and_value(upvar_span, temp_lifetime, temp);
         }
 
         block.and(Operand::Move(Place::from(temp)))

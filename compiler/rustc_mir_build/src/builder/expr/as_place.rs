@@ -423,19 +423,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr = &self.thir[expr_id];
         debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
 
-        let this = self;
         let expr_span = expr.span;
-        let source_info = this.source_info(expr_span);
+        let source_info = self.source_info(expr_span);
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+                self.in_scope((region_scope, source_info), lint_level, |this| {
                     this.expr_as_place(block, value, mutability, fake_borrow_temps)
                 })
             }
             ExprKind::Field { lhs, variant_index, name } => {
-                let lhs_expr = &this.thir[lhs];
+                let lhs_expr = &self.thir[lhs];
                 let mut place_builder =
-                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                    unpack!(block = self.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
                 if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
@@ -445,10 +444,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Deref { arg } => {
                 let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                    unpack!(block = self.expr_as_place(block, arg, mutability, fake_borrow_temps,));
                 block.and(place_builder.deref())
             }
-            ExprKind::Index { lhs, index } => this.lower_index_expression(
+            ExprKind::Index { lhs, index } => self.lower_index_expression(
                 block,
                 lhs,
                 index,
@@ -458,15 +457,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 source_info,
             ),
             ExprKind::UpvarRef { closure_def_id, var_hir_id } => {
-                this.lower_captured_upvar(block, closure_def_id.expect_local(), var_hir_id)
+                self.lower_captured_upvar(block, closure_def_id.expect_local(), var_hir_id)
             }
 
             ExprKind::VarRef { id } => {
-                let place_builder = if this.is_bound_var_in_guard(id) {
-                    let index = this.var_local_id(id, RefWithinGuard);
+                let place_builder = if self.is_bound_var_in_guard(id) {
+                    let index = self.var_local_id(id, RefWithinGuard);
                     PlaceBuilder::from(index).deref()
                 } else {
-                    let index = this.var_local_id(id, OutsideGuard);
+                    let index = self.var_local_id(id, OutsideGuard);
                     PlaceBuilder::from(index)
                 };
                 block.and(place_builder)
@@ -474,19 +473,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, ref user_ty, user_ty_span } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = self.expr_as_place(block, source, mutability, fake_borrow_temps,)
                 );
                 if let Some(user_ty) = user_ty {
-                    let ty_source_info = this.source_info(user_ty_span);
+                    let ty_source_info = self.source_info(user_ty_span);
                     let annotation_index =
-                        this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        self.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: user_ty_span,
                             user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
 
-                    let place = place_builder.to_place(this);
-                    this.cfg.push(
+                    let place = place_builder.to_place(self);
+                    self.cfg.push(
                         block,
                         Statement::new(
                             ty_source_info,
@@ -503,19 +502,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder)
             }
             ExprKind::ValueTypeAscription { source, ref user_ty, user_ty_span } => {
-                let source_expr = &this.thir[source];
+                let source_expr = &self.thir[source];
                 let temp = unpack!(
-                    block = this.as_temp(block, source_expr.temp_lifetime, source, mutability)
+                    block = self.as_temp(block, source_expr.temp_lifetime, source, mutability)
                 );
                 if let Some(user_ty) = user_ty {
-                    let ty_source_info = this.source_info(user_ty_span);
+                    let ty_source_info = self.source_info(user_ty_span);
                     let annotation_index =
-                        this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
+                        self.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
                             span: user_ty_span,
                             user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
-                    this.cfg.push(
+                    self.cfg.push(
                         block,
                         Statement::new(
                             ty_source_info,
@@ -534,14 +533,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceUnwrapUnsafeBinder { source } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = self.expr_as_place(block, source, mutability, fake_borrow_temps,)
                 );
                 block.and(place_builder.project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
             ExprKind::ValueUnwrapUnsafeBinder { source } => {
-                let source_expr = &this.thir[source];
+                let source_expr = &self.thir[source];
                 let temp = unpack!(
-                    block = this.as_temp(block, source_expr.temp_lifetime, source, mutability)
+                    block = self.as_temp(block, source_expr.temp_lifetime, source, mutability)
                 );
                 block.and(PlaceBuilder::from(temp).project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
@@ -591,7 +590,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
                 let temp =
-                    unpack!(block = this.as_temp(block, expr.temp_lifetime, expr_id, mutability));
+                    unpack!(block = self.as_temp(block, expr.temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
         }

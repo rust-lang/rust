@@ -109,21 +109,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,   // Condition expression to lower
         args: ThenElseArgs,
     ) -> BlockAnd<()> {
-        let this = self;
-        let expr = &this.thir[expr_id];
+        let expr = &self.thir[expr_id];
         let expr_span = expr.span;
 
         match expr.kind {
             ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                let lhs_then_block = this.then_else_break_inner(block, lhs, args).into_block();
+                let lhs_then_block = self.then_else_break_inner(block, lhs, args).into_block();
                 let rhs_then_block =
-                    this.then_else_break_inner(lhs_then_block, rhs, args).into_block();
+                    self.then_else_break_inner(lhs_then_block, rhs, args).into_block();
                 rhs_then_block.unit()
             }
             ExprKind::LogicalOp { op: LogicalOp::Or, lhs, rhs } => {
-                let local_scope = this.local_scope();
+                let local_scope = self.local_scope();
                 let (lhs_success_block, failure_block) =
-                    this.in_if_then_scope(local_scope, expr_span, |this| {
+                    self.in_if_then_scope(local_scope, expr_span, |this| {
                         this.then_else_break_inner(
                             block,
                             lhs,
@@ -133,7 +132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                let rhs_success_block = this
+                let rhs_success_block = self
                     .then_else_break_inner(
                         failure_block,
                         rhs,
@@ -147,22 +146,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Make the LHS and RHS success arms converge to a common block.
                 // (We can't just make LHS goto RHS, because `rhs_success_block`
                 // might contain statements that we don't want on the LHS path.)
-                let success_block = this.cfg.start_new_block();
-                this.cfg.goto(lhs_success_block, args.variable_source_info, success_block);
-                this.cfg.goto(rhs_success_block, args.variable_source_info, success_block);
+                let success_block = self.cfg.start_new_block();
+                self.cfg.goto(lhs_success_block, args.variable_source_info, success_block);
+                self.cfg.goto(rhs_success_block, args.variable_source_info, success_block);
                 success_block.unit()
             }
             ExprKind::Unary { op: UnOp::Not, arg } => {
                 // Improve branch coverage instrumentation by noting conditions
                 // nested within one or more `!` expressions.
                 // (Skipped if branch coverage is not enabled.)
-                if let Some(coverage_info) = this.coverage_info.as_mut() {
-                    coverage_info.visit_unary_not(this.thir, expr_id);
+                if let Some(coverage_info) = self.coverage_info.as_mut() {
+                    coverage_info.visit_unary_not(self.thir, expr_id);
                 }
 
-                let local_scope = this.local_scope();
+                let local_scope = self.local_scope();
                 let (success_block, failure_block) =
-                    this.in_if_then_scope(local_scope, expr_span, |this| {
+                    self.in_if_then_scope(local_scope, expr_span, |this| {
                         // Help out coverage instrumentation by injecting a dummy statement with
                         // the original condition's span (including `!`). This fixes #115468.
                         if this.tcx.sess.instrument_coverage() {
@@ -177,17 +176,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             },
                         )
                     });
-                this.break_for_else(success_block, args.variable_source_info);
+                self.break_for_else(success_block, args.variable_source_info);
                 failure_block.unit()
             }
             ExprKind::Scope { region_scope, lint_level, value } => {
-                let region_scope = (region_scope, this.source_info(expr_span));
-                this.in_scope(region_scope, lint_level, |this| {
+                let region_scope = (region_scope, self.source_info(expr_span));
+                self.in_scope(region_scope, lint_level, |this| {
                     this.then_else_break_inner(block, value, args)
                 })
             }
-            ExprKind::Use { source } => this.then_else_break_inner(block, source, args),
-            ExprKind::Let { expr, ref pat } => this.lower_let_expr(
+            ExprKind::Use { source } => self.then_else_break_inner(block, source, args),
+            ExprKind::Let { expr, ref pat } => self.lower_let_expr(
                 block,
                 expr,
                 pat,
@@ -197,11 +196,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ),
             _ => {
                 let mut block = block;
-                let temp_scope = args.temp_scope_override.unwrap_or_else(|| this.local_scope());
+                let temp_scope = args.temp_scope_override.unwrap_or_else(|| self.local_scope());
                 let mutability = Mutability::Mut;
 
                 let place = unpack!(
-                    block = this.as_temp(
+                    block = self.as_temp(
                         block,
                         TempLifetime {
                             temp_lifetime: Some(temp_scope),
@@ -214,17 +213,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let operand = Operand::Move(Place::from(place));
 
-                let then_block = this.cfg.start_new_block();
-                let else_block = this.cfg.start_new_block();
+                let then_block = self.cfg.start_new_block();
+                let else_block = self.cfg.start_new_block();
                 let term = TerminatorKind::if_(operand, then_block, else_block);
 
                 // Record branch coverage info for this condition.
                 // (Does nothing if branch coverage is not enabled.)
-                this.visit_coverage_branch_condition(expr_id, then_block, else_block);
+                self.visit_coverage_branch_condition(expr_id, then_block, else_block);
 
-                let source_info = this.source_info(expr_span);
-                this.cfg.terminate(block, source_info, term);
-                this.break_for_else(else_block, source_info);
+                let source_info = self.source_info(expr_span);
+                self.cfg.terminate(block, source_info, term);
+                self.break_for_else(else_block, source_info);
 
                 then_block.unit()
             }

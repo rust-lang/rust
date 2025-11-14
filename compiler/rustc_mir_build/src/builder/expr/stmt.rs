@@ -18,42 +18,41 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,
         statement_scope: Option<region::Scope>,
     ) -> BlockAnd<()> {
-        let this = self;
-        let expr = &this.thir[expr_id];
+        let expr = &self.thir[expr_id];
         let expr_span = expr.span;
-        let source_info = this.source_info(expr.span);
+        let source_info = self.source_info(expr.span);
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+                self.in_scope((region_scope, source_info), lint_level, |this| {
                     this.stmt_expr(block, value, statement_scope)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
-                let lhs_expr = &this.thir[lhs];
+                let lhs_expr = &self.thir[lhs];
 
                 // Note: we evaluate assignments right-to-left. This
                 // is better for borrowck interaction with overloaded
                 // operators like x[j] = x[i].
 
                 debug!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr);
-                this.block_context.push(BlockFrame::SubExpr);
+                self.block_context.push(BlockFrame::SubExpr);
 
                 // Generate better code for things that don't need to be
                 // dropped.
-                if lhs_expr.ty.needs_drop(this.tcx, this.typing_env()) {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
+                if lhs_expr.ty.needs_drop(self.tcx, self.typing_env()) {
+                    let rhs = unpack!(block = self.as_local_rvalue(block, rhs));
+                    let lhs = unpack!(block = self.as_place(block, lhs));
                     block =
-                        this.build_drop_and_replace(block, lhs_expr.span, lhs, rhs).into_block();
+                        self.build_drop_and_replace(block, lhs_expr.span, lhs, rhs).into_block();
                 } else {
-                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
-                    let lhs = unpack!(block = this.as_place(block, lhs));
-                    this.cfg.push_assign(block, source_info, lhs, rhs);
+                    let rhs = unpack!(block = self.as_local_rvalue(block, rhs));
+                    let lhs = unpack!(block = self.as_place(block, lhs));
+                    self.cfg.push_assign(block, source_info, lhs, rhs);
                 }
 
-                this.block_context.pop();
+                self.block_context.pop();
                 block.unit()
             }
             ExprKind::AssignOp { op, lhs, rhs } => {
@@ -65,20 +64,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // only affects weird things like `x += {x += 1; x}`
                 // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
 
-                let lhs_ty = this.thir[lhs].ty;
+                let lhs_ty = self.thir[lhs].ty;
 
                 debug!("stmt_expr AssignOp block_context.push(SubExpr) : {:?}", expr);
-                this.block_context.push(BlockFrame::SubExpr);
+                self.block_context.push(BlockFrame::SubExpr);
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_local_operand(block, rhs));
-                let lhs = unpack!(block = this.as_place(block, lhs));
+                let rhs = unpack!(block = self.as_local_operand(block, rhs));
+                let lhs = unpack!(block = self.as_place(block, lhs));
 
                 // we don't have to drop prior contents or anything
                 // because AssignOp is only legal for Copy types
                 // (overloaded ops should be desugared into a call).
                 let result = unpack!(
-                    block = this.build_binary_op(
+                    block = self.build_binary_op(
                         block,
                         op.into(),
                         expr_span,
@@ -87,35 +86,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         rhs
                     )
                 );
-                this.cfg.push_assign(block, source_info, lhs, result);
+                self.cfg.push_assign(block, source_info, lhs, result);
 
-                this.block_context.pop();
+                self.block_context.pop();
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                this.break_scope(block, None, BreakableTarget::Continue(label), source_info)
+                self.break_scope(block, None, BreakableTarget::Continue(label), source_info)
             }
             ExprKind::Break { label, value } => {
-                this.break_scope(block, value, BreakableTarget::Break(label), source_info)
+                self.break_scope(block, value, BreakableTarget::Break(label), source_info)
             }
             ExprKind::ConstContinue { label, value } => {
-                this.break_const_continuable_scope(block, value, label, source_info)
+                self.break_const_continuable_scope(block, value, label, source_info)
             }
             ExprKind::Return { value } => {
-                this.break_scope(block, value, BreakableTarget::Return, source_info)
+                self.break_scope(block, value, BreakableTarget::Return, source_info)
             }
             ExprKind::Become { value } => {
-                let v = &this.thir[value];
+                let v = &self.thir[value];
                 let ExprKind::Scope { value, lint_level, region_scope } = v.kind else {
                     span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
                 };
 
-                let v = &this.thir[value];
+                let v = &self.thir[value];
                 let ExprKind::Call { ref args, fun, fn_span, .. } = v.kind else {
                     span_bug!(v.span, "`thir_check_tail_calls` should have disallowed this {v:?}")
                 };
 
-                this.in_scope((region_scope, source_info), lint_level, |this| {
+                self.in_scope((region_scope, source_info), lint_level, |this| {
                     let fun = unpack!(block = this.as_local_operand(block, fun));
                     let args: Box<[_]> = args
                         .into_iter()
@@ -156,23 +155,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
                 let adjusted_span = if let ExprKind::Block { block } = expr.kind
-                    && let Some(tail_ex) = this.thir[block].expr
+                    && let Some(tail_ex) = self.thir[block].expr
                 {
-                    let mut expr = &this.thir[tail_ex];
+                    let mut expr = &self.thir[tail_ex];
                     loop {
                         match expr.kind {
                             ExprKind::Block { block }
-                                if let Some(nested_expr) = this.thir[block].expr =>
+                                if let Some(nested_expr) = self.thir[block].expr =>
                             {
-                                expr = &this.thir[nested_expr];
+                                expr = &self.thir[nested_expr];
                             }
                             ExprKind::Scope { value: nested_expr, .. } => {
-                                expr = &this.thir[nested_expr];
+                                expr = &self.thir[nested_expr];
                             }
                             _ => break,
                         }
                     }
-                    this.block_context.push(BlockFrame::TailExpr {
+                    self.block_context.push(BlockFrame::TailExpr {
                         info: BlockTailInfo { tail_result_is_ignored: true, span: expr.span },
                     });
                     Some(expr.span)
@@ -181,7 +180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 let temp = unpack!(
-                    block = this.as_temp(
+                    block = self.as_temp(
                         block,
                         TempLifetime {
                             temp_lifetime: statement_scope,
@@ -193,8 +192,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
 
                 if let Some(span) = adjusted_span {
-                    this.local_decls[temp].source_info.span = span;
-                    this.block_context.pop();
+                    self.local_decls[temp].source_info.span = span;
+                    self.block_context.pop();
                 }
 
                 block.unit()
