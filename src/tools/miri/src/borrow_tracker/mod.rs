@@ -116,8 +116,6 @@ pub struct GlobalStateInner {
     protected_tags: FxHashMap<BorTag, ProtectorKind>,
     /// The pointer ids to trace
     tracked_pointer_tags: FxHashSet<BorTag>,
-    /// Whether to recurse into datatypes when searching for pointers to retag.
-    retag_fields: RetagFields,
 }
 
 impl VisitProvenance for GlobalStateInner {
@@ -130,18 +128,6 @@ impl VisitProvenance for GlobalStateInner {
 
 /// We need interior mutable access to the global state.
 pub type GlobalState = RefCell<GlobalStateInner>;
-
-/// Policy on whether to recurse into fields to retag
-#[derive(Copy, Clone, Debug)]
-pub enum RetagFields {
-    /// Don't retag any fields.
-    No,
-    /// Retag all fields.
-    Yes,
-    /// Only retag fields of types with Scalar and ScalarPair layout,
-    /// to match the LLVM `noalias` we generate.
-    OnlyScalar,
-}
 
 /// The flavor of the protector.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -168,7 +154,6 @@ impl GlobalStateInner {
     pub fn new(
         borrow_tracker_method: BorrowTrackerMethod,
         tracked_pointer_tags: FxHashSet<BorTag>,
-        retag_fields: RetagFields,
     ) -> Self {
         GlobalStateInner {
             borrow_tracker_method,
@@ -176,7 +161,6 @@ impl GlobalStateInner {
             root_ptr_tags: FxHashMap::default(),
             protected_tags: FxHashMap::default(),
             tracked_pointer_tags,
-            retag_fields,
         }
     }
 
@@ -244,11 +228,7 @@ pub struct TreeBorrowsParams {
 
 impl BorrowTrackerMethod {
     pub fn instantiate_global_state(self, config: &MiriConfig) -> GlobalState {
-        RefCell::new(GlobalStateInner::new(
-            self,
-            config.tracked_pointer_tags.clone(),
-            config.retag_fields,
-        ))
+        RefCell::new(GlobalStateInner::new(self, config.tracked_pointer_tags.clone()))
     }
 
     pub fn get_tree_borrows_params(self) -> TreeBorrowsParams {
