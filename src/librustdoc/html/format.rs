@@ -838,9 +838,23 @@ fn print_higher_ranked_params_with_space(
 pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         if let Ok(HrefInfo { url, kind, rust_path }) = href(did, cx) {
+            let tcx = cx.tcx();
+            let def_kind = tcx.def_kind(did);
+            let anchor = if matches!(
+                def_kind,
+                DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant
+            ) {
+                let parent_def_id = tcx.parent(did);
+                let item_type =
+                    ItemType::from_def_kind(def_kind, Some(tcx.def_kind(parent_def_id)));
+                format!("#{}.{}", item_type.as_str(), tcx.item_name(did))
+            } else {
+                String::new()
+            };
+
             write!(
                 f,
-                r#"<a class="{kind}" href="{url}" title="{kind} {path}">{text}</a>"#,
+                r#"<a class="{kind}" href="{url}{anchor}" title="{kind} {path}">{text}</a>"#,
                 path = join_path_syms(rust_path),
                 text = EscapeBodyText(text.as_str()),
             )
