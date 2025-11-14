@@ -335,7 +335,6 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// Parse the leading decimal number from an iterator of characters.
     /// ```
-    /// #![feature(peekable_next_if_map)]
     /// let mut iter = "125 GOTO 10".chars().peekable();
     /// let mut line_num = 0_u32;
     /// while let Some(digit) = iter.next_if_map(|c| c.to_digit(10).ok_or(c)) {
@@ -347,7 +346,6 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// Matching custom types.
     /// ```
-    /// #![feature(peekable_next_if_map)]
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// enum Node {
@@ -406,7 +404,7 @@ impl<I: Iterator> Peekable<I> {
     ///#     ],
     ///# )
     /// ```
-    #[unstable(feature = "peekable_next_if_map", issue = "143702")]
+    #[stable(feature = "peekable_next_if_map", since = "CURRENT_RUSTC_VERSION")]
     pub fn next_if_map<R>(&mut self, f: impl FnOnce(I::Item) -> Result<R, I::Item>) -> Option<R> {
         let unpeek = if let Some(item) = self.next() {
             match f(item) {
