@@ -10,6 +10,7 @@ type Adt1<const N: usize> = Foo<N>;
 type Adt2<const N: usize> = Foo<{ N }>;
 type Adt3<const N: usize> = Foo<const { N }>;
 //~^ ERROR: generic parameters may not be used in const operations
+//~^^ ERROR generic parameters may not be used in const operations
 type Adt4<const N: usize> = Foo<{ 1 + 1 }>;
 //~^ ERROR: complex const arguments must be placed inside of a `const` block
 type Adt5<const N: usize> = Foo<const { 1 + 1 }>;
