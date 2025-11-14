@@ -1,4 +1,6 @@
+//@ check-pass
 //@ edition:2018
+
 #![warn(rust_2021_prelude_collisions)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -22,10 +24,10 @@ mod d {
     use crate::m::*;
 
     fn main() {
-        // Here, `TryIntoU32` is imported but shadowed, but in that case we don't permit its methods
-        // to be available.
+        // Here, `TryIntoU32` is imported and shadowed, but its methods are still available.
         let _: u32 = 3u8.try_into().unwrap();
-        //~^ ERROR no method named `try_into` found for type `u8` in the current scope
+        //~^ WARN trait method `try_into` will become ambiguous in Rust 2021
+        //~| WARN this is accepted in the current edition
     }
 }
 

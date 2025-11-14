@@ -433,7 +433,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             Ok(())
-        })
+        })?;
+
+        if ident.name != kw::Underscore
+            && binding.is_glob_import()
+            && matches!(binding.res(), Res::Def(DefKind::Trait | DefKind::TraitAlias, _))
+        {
+            self.try_define_local(
+                module,
+                Ident::new(kw::Underscore, ident.span),
+                TypeNS,
+                binding,
+                false,
+            )
+            .expect("tralala");
+        }
+
+        Ok(())
     }
 
     fn new_ambiguity_binding(
