@@ -116,6 +116,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
+#![feature(fmt_arguments_from_str)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
