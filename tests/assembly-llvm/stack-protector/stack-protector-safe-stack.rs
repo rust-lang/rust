@@ -14,16 +14,23 @@
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled
 
 #![no_std]
-#![crate_type = "lib"]
-#![allow(internal_features)]
+#![feature(link_llvm_intrinsics)]
 #![feature(unsized_fn_params)]
+#![crate_type = "lib"]
 
-// Check the coexistence of stack-protector and safe-stack.
+extern "C" {
+    #[link_name = "llvm.memcpy.p0.p0.i64"]
+    fn memcpy_intrinsic(dst: *mut u8, src: *const u8, size: u64, align: u32, is_volatile: bool);
+}
+
 // CHECK-LABEL: test1{{:|\[}}
 #[no_mangle]
 pub unsafe fn test1(src: *const u8, len: usize) -> u8 {
-    let mut buf = [0u8; 64];
-    core::ptr::copy_nonoverlapping(src, buf.as_mut_ptr(), len.min(buf.len()));
+    let mut buf: [u8; 64] = [0; 64];
+
+    let copy_len = if len < 64 { len } else { 64 };
+    memcpy_intrinsic(buf.as_mut_ptr(), src, copy_len as u64, 1, false);
+
     buf[0]
 
     // none-NOT: __stack_chk_fail
