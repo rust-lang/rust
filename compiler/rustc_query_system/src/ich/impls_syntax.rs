@@ -55,6 +55,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             external_src: _,
             start_pos: _,
             normalized_source_len: _,
+            unnormalized_source_len: _,
             lines: _,
             ref multibyte_chars,
             ref normalized_pos,
