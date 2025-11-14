@@ -11,7 +11,5 @@ LL | #![deny(warnings, unused)]
    |                   ^^^^^^
    = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
 
-error: miri cannot be run on programs that fail compilation
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

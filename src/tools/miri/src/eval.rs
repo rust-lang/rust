@@ -1,6 +1,7 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
 use std::ffi::{OsStr, OsString};
+use std::num::NonZeroI32;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -462,7 +463,7 @@ pub fn eval_entry<'tcx>(
     entry_type: MiriEntryFnType,
     config: &MiriConfig,
     genmc_ctx: Option<Rc<GenmcCtx>>,
-) -> Option<i32> {
+) -> Result<(), NonZeroI32> {
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
@@ -482,35 +483,50 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
-    // `Ok` can never happen; the interpreter loop always exits with an "error"
-    // (but that "error" might be just "regular program termination").
-    let Err(err) = res.report_err();
+    // Obtain the result of the execution. This is always an `Err`, but that doesn't necessarily
+    // indicate an error.
+    let Err(res) = res.report_err();
 
-    // Show diagnostic, if any.
-    let (return_code, leak_check) = report_error(&ecx, err)?;
+    // Error reporting: if we survive all checks, we return the exit code the program gave us.
+    'miri_error: {
+        // Show diagnostic, if any.
+        let Some((return_code, leak_check)) = report_result(&ecx, res) else {
+            break 'miri_error;
+        };
 
-    // If we get here there was no fatal error.
-
-    // Possibly check for memory leaks.
-    if leak_check && !ignore_leaks {
-        // Check for thread leaks.
-        if !ecx.have_all_terminated() {
-            tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
-            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
-            return None;
+        // If we get here there was no fatal error -- yet.
+        // Possibly check for memory leaks.
+        if leak_check && !ignore_leaks {
+            // Check for thread leaks.
+            if !ecx.have_all_terminated() {
+                tcx.dcx()
+                    .err("the main thread terminated without waiting for all remaining threads");
+                tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
+                break 'miri_error;
+            }
+            // Check for memory leaks.
+            info!("Additional static roots: {:?}", ecx.machine.static_roots);
+            let leaks = ecx.take_leaked_allocations(|ecx| &ecx.machine.static_roots);
+            if !leaks.is_empty() {
+                report_leaks(&ecx, leaks);
+                tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
+                // Ignore the provided return code - let the reported error
+                // determine the return code.
+                break 'miri_error;
+            }
         }
-        // Check for memory leaks.
-        info!("Additional static roots: {:?}", ecx.machine.static_roots);
-        let leaks = ecx.take_leaked_allocations(|ecx| &ecx.machine.static_roots);
-        if !leaks.is_empty() {
-            report_leaks(&ecx, leaks);
-            tcx.dcx().note("set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check");
-            // Ignore the provided return code - let the reported error
-            // determine the return code.
-            return None;
-        }
+
+        // The interpreter has not reported an error.
+        // (There could still be errors in the session if there are other interpreters.)
+        return match NonZeroI32::new(return_code) {
+            None => Ok(()),
+            Some(return_code) => Err(return_code),
+        };
     }
-    Some(return_code)
+
+    // The interpreter reported an error.
+    assert!(tcx.dcx().has_errors().is_some());
+    Err(NonZeroI32::new(rustc_driver::EXIT_FAILURE).unwrap())
 }
 
 /// Turns an array of arguments into a Windows command line string.
