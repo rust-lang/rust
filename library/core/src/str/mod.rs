@@ -1251,7 +1251,7 @@ impl str {
     /// ending will return the same lines as an otherwise identical string
     /// without a final line ending.
     ///
-    /// An empty string returns no lines.
+    /// An empty string returns an empty iterator.
     ///
     /// # Examples
     ///
@@ -1284,7 +1284,7 @@ impl str {
     /// assert_eq!(None, lines.next());
     /// ```
     ///
-    /// An empty string returns no lines:
+    /// An empty string returns an empty iterator:
     ///
     /// ```
     /// let text = "";
