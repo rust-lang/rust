@@ -50,17 +50,25 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     ) -> Self {
         let err = Ty::new_error(tcx, guar);
 
-        let arity = if let Some(frame) = cycle_error.cycle.get(0)
-            && frame.query.dep_kind == dep_kinds::fn_sig
-            && let Some(def_id) = frame.query.def_id
-            && let Some(node) = tcx.hir_get_if_local(def_id)
-            && let Some(sig) = node.fn_sig()
-        {
-            sig.decl.inputs.len()
-        } else {
-            tcx.dcx().abort_if_errors();
-            unreachable!()
-        };
+        let arity = search_for_cycle_permutation(
+            &cycle_error.cycle,
+            |cycle| {
+                if let Some(frame) = cycle.get(0)
+                    && frame.query.dep_kind == dep_kinds::fn_sig
+                    && let Some(def_id) = frame.query.def_id
+                    && let Some(node) = tcx.hir_get_if_local(def_id)
+                    && let Some(sig) = node.fn_sig()
+                {
+                    ControlFlow::Break(sig.decl.inputs.len())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+            || {
+                tcx.dcx().abort_if_errors();
+                unreachable!()
+            },
+        );
 
         let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
             std::iter::repeat_n(err, arity),
