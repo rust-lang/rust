@@ -1,5 +1,5 @@
-//@ known-bug: #131886
 //@ compile-flags: -Zvalidate-mir
+//@ check-pass
 #![feature(type_alias_impl_trait)]
 
 type Tait = impl Sized;
