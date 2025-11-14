@@ -22,6 +22,7 @@ use crate::clean::types::ExternalLocation;
 use crate::clean::utils::has_doc_flag;
 use crate::clean::{self, ExternalCrate};
 use crate::config::{ModuleSorting, RenderOptions, ShouldMerge};
+use crate::display::fmt_json;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -826,7 +827,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             };
             let items = self.build_sidebar_items(module);
             let js_dst = self.dst.join(format!("sidebar-items{}.js", self.shared.resource_suffix));
-            let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());
+            let v = format!(
+                "window.SIDEBAR_ITEMS = {};",
+                fmt::from_fn(|f| Ok(fmt_json(f, &items).unwrap()))
+            );
             self.shared.fs.write(js_dst, v)?;
         }
         Ok(())
