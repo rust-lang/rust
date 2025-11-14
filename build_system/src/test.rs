@@ -1065,6 +1065,7 @@ where
         &test_dir,
         &"--compiletest-rustc-args",
         &rustc_args,
+        &"--bypass-ignore-backends",
     ];
 
     if run_ignored_tests {
