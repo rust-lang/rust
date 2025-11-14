@@ -13,8 +13,8 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this `use` statement.
+/// See docs in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs>
+/// and <https://github.com/rust-lang/rust/pull/146627> for why we need this `use` statement.
 #[cfg(feature = "jemalloc")]
 use tikv_jemalloc_sys as _;
 
@@ -187,7 +187,6 @@ fn display_help() {
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
 
-#[expect(clippy::too_many_lines)]
 pub fn main() {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
