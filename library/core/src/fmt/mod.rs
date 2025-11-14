@@ -743,23 +743,6 @@ impl<'a> Arguments<'a> {
     }
 }
 
-impl<'a> Arguments<'a> {
-    /// Create a `fmt::Arguments` object for a single static string.
-    ///
-    /// Formatting this `fmt::Arguments` will just produce the string as-is.
-    #[inline]
-    #[unstable(feature = "fmt_arguments_from_str", issue = "148905")]
-    pub const fn from_str(s: &'static str) -> Arguments<'a> {
-        // SAFETY: This is the "static str" representation of fmt::Arguments; see above.
-        unsafe {
-            Arguments {
-                template: mem::transmute(s.as_ptr()),
-                args: mem::transmute(s.len() << 1 | 1),
-            }
-        }
-    }
-}
-
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", issue = "none")]
 impl<'a> Arguments<'a> {
@@ -824,6 +807,21 @@ impl<'a> Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
+    /// Create a `fmt::Arguments` object for a single static string.
+    ///
+    /// Formatting this `fmt::Arguments` will just produce the string as-is.
+    #[inline]
+    #[unstable(feature = "fmt_arguments_from_str", issue = "148905")]
+    pub const fn from_str(s: &'static str) -> Arguments<'a> {
+        // SAFETY: This is the "static str" representation of fmt::Arguments; see above.
+        unsafe {
+            Arguments {
+                template: mem::transmute(s.as_ptr()),
+                args: mem::transmute(s.len() << 1 | 1),
+            }
+        }
+    }
+
     /// Gets the formatted string, if it has no arguments to be formatted at runtime.
     ///
     /// This can be used to avoid allocations in some cases.
