@@ -1557,7 +1557,7 @@ float_test! {
     name: exp,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1578,7 +1578,7 @@ float_test! {
     name: exp2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1598,7 +1598,7 @@ float_test! {
     name: ln,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1620,7 +1620,7 @@ float_test! {
     name: log_generic,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1645,7 +1645,7 @@ float_test! {
     name: log2,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
@@ -1668,7 +1668,7 @@ float_test! {
     name: log10,
     attrs: {
         const: #[cfg(false)],
-        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16))],
         f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
     },
     test<Float> {
