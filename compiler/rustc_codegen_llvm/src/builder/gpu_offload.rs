@@ -390,8 +390,7 @@ pub(crate) fn gen_call_handling<'ll>(
     let mut vals = vec![];
     let mut geps = vec![];
     let i32_0 = cx.get_const_i32(0);
-    for index in 0..num_args {
-        let v = args[index as usize];
+    for &v in args {
         let gep = builder.inbounds_gep(cx.type_f32(), v, &[i32_0]);
         vals.push(v);
         geps.push(gep);

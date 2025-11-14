@@ -86,19 +86,8 @@ impl MappingFlags {
             | ty::Adt(_, _)
             | ty::Tuple(_)
             | ty::Array(_, _)
-            | ty::FnDef(_, _)
-            | ty::FnPtr(_, _)
-            | ty::Closure(_, _)
-            | ty::CoroutineClosure(_, _)
-            | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(_, _)
-            | ty::Never
             | ty::Alias(_, _)
-            | ty::Param(_)
-            | ty::Bound(_, _)
-            | ty::Placeholder(_)
-            | ty::Infer(_)
-            | ty::Error(_) => MappingFlags::TO,
+            | ty::Param(_) => MappingFlags::TO,
 
             ty::RawPtr(_, Not) | ty::Ref(_, _, Not) => MappingFlags::TO,
 
@@ -109,6 +98,18 @@ impl MappingFlags {
             ty::Foreign(_) | ty::Pat(_, _) | ty::UnsafeBinder(_) => {
                 MappingFlags::TO | MappingFlags::FROM
             }
+
+            ty::FnDef(_, _)
+            | ty::FnPtr(_, _)
+            | ty::Closure(_, _)
+            | ty::CoroutineClosure(_, _)
+            | ty::Coroutine(_, _)
+            | ty::CoroutineWitness(_, _)
+            | ty::Never
+            | ty::Bound(_, _)
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_) => MappingFlags::TO, /* TODO(Sa4dUs): emit error */
         }
     }
 }

@@ -200,7 +200,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
-                // FIXME(Sa4dUs): emit error when offload is not enabled
+                // TODO(Sa4dUs): emit error when offload is not enabled
                 codegen_offload(self, tcx, instance, args);
                 return Ok(());
             }
