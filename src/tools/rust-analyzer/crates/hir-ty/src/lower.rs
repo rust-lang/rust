@@ -1826,25 +1826,16 @@ where
                     ));
                     predicates.push(clause);
                 };
-                if generics.parent_generics().is_some_and(|parent| filter(parent.def())) {
-                    generics.iter_parent().enumerate().for_each(
-                        |(param_idx, (param_id, param_data))| {
-                            add_sized_clause(param_idx as u32, param_id, param_data);
-                        },
-                    );
-                }
-                if filter(def) {
-                    let parent_params_len = generics.len_parent();
-                    generics.iter_self().enumerate().for_each(
-                        |(param_idx, (param_id, param_data))| {
-                            add_sized_clause(
-                                (param_idx + parent_params_len) as u32,
-                                param_id,
-                                param_data,
-                            );
-                        },
-                    );
-                }
+                let parent_params_len = maybe_parent_generics.len_parent();
+                maybe_parent_generics.iter_self().enumerate().for_each(
+                    |(param_idx, (param_id, param_data))| {
+                        add_sized_clause(
+                            (param_idx + parent_params_len) as u32,
+                            param_id,
+                            param_data,
+                        );
+                    },
+                );
             }
 
             // We do not clear `ctx.unsized_types`, as the `?Sized` clause of a child (e.g. an associated type) can
