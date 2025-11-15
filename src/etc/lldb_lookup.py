@@ -91,7 +91,18 @@ def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:
 
 def synthetic_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
     """Returns the synthetic provider for the given value"""
-    is_msvc = valobj.GetTarget().GetTriple().endswith("msvc")
+
+    # small hack to check for the DWARF debug info section, since SBTarget.triple and
+    # SBProcess.triple report lldb's target rather than the executable's. SBProcessInfo.triple
+    # returns a triple without the ABI. It is also possible for any of those functions to return a
+    # None object.
+    # Instead, we look for the GNU `.debug_info` section, as MSVC does not have one with the same
+    # name
+    # FIXME: I don't know if this works when the DWARF lives in a separate file
+    # (see: https://gcc.gnu.org/wiki/DebugFissionDWP). Splitting the DWARF is very uncommon afaik so
+    # it should be okay for the time being.
+    is_msvc = not valobj.GetFrame().GetModule().FindSection(".debug_info").IsValid()
+
     rust_type = classify_rust_type(valobj.GetType(), is_msvc)
 
     if rust_type == RustType.Struct or rust_type == RustType.Union:
