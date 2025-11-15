@@ -12,7 +12,7 @@ use std::{fmt, iter};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::traits::solve::Goal;
@@ -22,7 +22,8 @@ use rustc_infer::traits::{
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span, Symbol};
+use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -353,14 +354,33 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
-    fn get_extern_crate_renamed_symbol(&self, trait_def_id: DefId) -> Option<Symbol> {
-        if !trait_def_id.is_local()
-            && let Some(data) = self.tcx.extern_crate(trait_def_id.krate)
-            && let rustc_session::cstore::ExternCrateSource::Extern(def_id) = data.src
-        {
-            self.tcx.opt_item_name(def_id)
-        } else {
-            None
+    fn extern_crates_with_the_same_name(
+        &self,
+        expected_def_id: DefId,
+        trait_def_id: DefId,
+    ) -> bool {
+        if expected_def_id.is_local() || trait_def_id.is_local() {
+            return false;
+        }
+        match (
+            self.tcx.extern_crate(expected_def_id.krate),
+            self.tcx.extern_crate(trait_def_id.krate),
+        ) {
+            (
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(expected_def_id),
+                    dependency_of: krate1,
+                    ..
+                }),
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(trait_def_id),
+                    dependency_of: krate2,
+                    ..
+                }),
+            ) if (*krate1, *krate2) == (LOCAL_CRATE, LOCAL_CRATE) => {
+                self.tcx.item_name(expected_def_id) == self.tcx.item_name(trait_def_id)
+            }
+            _ => false,
         }
     }
 
@@ -377,13 +397,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     {
         let krate = self.tcx.crate_name(expected_did.krate);
         let name = self.tcx.item_name(expected_did);
-        let locally_renamed_krate = self
-            .get_extern_crate_renamed_symbol(expected_did)
-            .map_or(None, |s| if s != krate { Some(s) } else { None });
         let definitions_with_same_path: UnordSet<_> = found_dids
             .filter(|def_id| {
                 def_id.krate != expected_did.krate
-                    && (locally_renamed_krate == self.get_extern_crate_renamed_symbol(*def_id)
+                    && (self.extern_crates_with_the_same_name(expected_did, *def_id)
                         || self.tcx.crate_name(def_id.krate) == krate)
                     && self.tcx.item_name(def_id) == name
             })
