@@ -71,6 +71,13 @@ pub(crate) struct ExpnNode {
     /// This links an expansion node to its parent in the tree.
     pub(crate) call_site_expn_id: Option<ExpnId>,
 
+    /// Holds the function signature span, if it belongs to this expansion.
+    /// Used by special-case code in span refinement.
+    pub(crate) fn_sig_span: Option<Span>,
+    /// Holds the function body span, if it belongs to this expansion.
+    /// Used by special-case code in span refinement.
+    pub(crate) body_span: Option<Span>,
+
     /// Spans (and their associated BCBs) belonging to this expansion.
     pub(crate) spans: Vec<SpanWithBcb>,
     /// Expansions whose call-site is in this expansion.
@@ -94,6 +101,9 @@ impl ExpnNode {
             expn_kind: expn_data.kind,
             call_site,
             call_site_expn_id,
+
+            fn_sig_span: None,
+            body_span: None,
 
             spans: vec![],
             child_expn_ids: FxIndexSet::default(),
@@ -140,6 +150,20 @@ pub(crate) fn build_expn_tree(
             prev = expn_id;
             curr_expn_id = node.call_site_expn_id;
         }
+    }
+
+    // If we have a span for the function signature, associate it with the
+    // corresponding expansion tree node.
+    if let Some(fn_sig_span) = hir_info.fn_sig_span
+        && let Some(node) = nodes.get_mut(&fn_sig_span.ctxt().outer_expn())
+    {
+        node.fn_sig_span = Some(fn_sig_span);
+    }
+
+    // Also associate the body span with its expansion tree node.
+    let body_span = hir_info.body_span;
+    if let Some(node) = nodes.get_mut(&body_span.ctxt().outer_expn()) {
+        node.body_span = Some(body_span);
     }
 
     // Associate each hole span (extracted from HIR) with its corresponding
