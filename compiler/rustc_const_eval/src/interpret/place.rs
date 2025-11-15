@@ -884,10 +884,29 @@ where
                 dest.layout().ty,
             );
         }
+        // If the source has padding, we want to always do the mem-to-mem copy to ensure consistent
+        // padding in the target independent of layout choices.
+        let src_has_padding = match src.layout().backend_repr {
+            BackendRepr::Scalar(_) => false,
+            BackendRepr::ScalarPair(left, right) => {
+                let left_size = left.size(self);
+                let right_size = right.size(self);
+                // We have padding if the sizes don't add up to the total.
+                left_size + right_size != src.layout().size
+            }
+            // Everything else can only exist in memory anyway.
+            _ => true,
+        };
 
-        // Let us see if the layout is simple so we take a shortcut,
-        // avoid force_allocation.
-        let src = match self.read_immediate_raw(src)? {
+        let src_val = if src_has_padding {
+            // Do our best to get an mplace. If there's no mplace, then this is stored as an
+            // "optimized" local, so its padding is definitely uninitialized and we are fine.
+            src.to_op(self)?.as_mplace_or_imm()
+        } else {
+            // Do our best to get an immediate, to avoid having to force_allocate the destination.
+            self.read_immediate_raw(src)?
+        };
+        let src = match src_val {
             Right(src_val) => {
                 assert!(!src.layout().is_unsized());
                 assert!(!dest.layout().is_unsized());
