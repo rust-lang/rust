@@ -708,7 +708,7 @@ fn pointer_width() {
 #[test]
 fn wasm_special() {
     let ignores = [
-        ("wasm32-unknown-unknown", "emscripten", true),
+        ("wasm32-unknown-unknown", "emscripten", false),
         ("wasm32-unknown-unknown", "wasm32", true),
         ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
@@ -729,8 +729,13 @@ fn wasm_special() {
         assert_eq!(
             check_ignore(&config, &format!("//@ ignore-{pattern}")),
             ignore,
-            "{target} {pattern}"
+            "target `{target}` vs `//@ ignore-{pattern}`"
         );
+        assert_eq!(
+            check_ignore(&config, &format!("//@ only-{pattern}")),
+            !ignore,
+            "target `{target}` vs `//@ only-{pattern}`"
+        )
     }
 }
 
