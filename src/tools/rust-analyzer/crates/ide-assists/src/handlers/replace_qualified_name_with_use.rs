@@ -1,4 +1,4 @@
-use hir::AsAssocItem;
+use hir::{AsAssocItem, ModuleDef, PathResolution};
 use ide_db::{
     helpers::mod_path_to_ast,
     imports::insert_use::{ImportScope, insert_use},
@@ -30,26 +30,19 @@ pub(crate) fn replace_qualified_name_with_use(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let mut original_path: ast::Path = ctx.find_node_at_offset()?;
+    let original_path: ast::Path = ctx.find_node_at_offset()?;
     // We don't want to mess with use statements
     if original_path.syntax().ancestors().find_map(ast::UseTree::cast).is_some() {
         cov_mark::hit!(not_applicable_in_use);
         return None;
     }
 
-    if original_path.qualifier().is_none() {
-        original_path = original_path.parent_path()?;
-    }
+    let original_path = target_path(ctx, original_path)?;
 
-    // only offer replacement for non assoc items
-    match ctx.sema.resolve_path(&original_path)? {
-        hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => (),
-        _ => return None,
-    }
     // then search for an import for the first path segment of what we want to replace
     // that way it is less likely that we import the item from a different location due re-exports
     let module = match ctx.sema.resolve_path(&original_path.first_qualifier_or_self())? {
-        hir::PathResolution::Def(module @ hir::ModuleDef::Module(_)) => module,
+        PathResolution::Def(module @ ModuleDef::Module(_)) => module,
         _ => return None,
     };
 
@@ -95,6 +88,22 @@ pub(crate) fn replace_qualified_name_with_use(
             insert_use(&scope, path, &ctx.config.insert_use);
         },
     )
+}
+
+fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<ast::Path> {
+    let on_first = original_path.qualifier().is_none();
+
+    if on_first {
+        original_path = original_path.top_path();
+    }
+
+    match ctx.sema.resolve_path(&original_path)? {
+        PathResolution::Def(ModuleDef::Variant(_)) if on_first => original_path.qualifier(),
+        PathResolution::Def(def) if def.as_assoc_item(ctx.db()).is_some() => {
+            on_first.then_some(original_path.qualifier()?)
+        }
+        _ => Some(original_path),
+    }
 }
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
@@ -270,12 +279,117 @@ fn main() {
 }
     ",
             r"
-use std::fmt;
+use std::fmt::Debug;
 
 mod std { pub mod fmt { pub trait Debug {} } }
 fn main() {
-    fmt::Debug;
-    let x: fmt::Debug = fmt::Debug;
+    Debug;
+    let x: Debug = Debug;
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn assist_runs_on_first_segment_for_enum() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    $0std::option::Option;
+    let x: std::option::Option<()> = std::option::Option::Some(());
+}
+    ",
+            r"
+use std::option::Option;
+
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    Option;
+    let x: Option<()> = Option::Some(());
+}
+    ",
+        );
+
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    std::option::Option;
+    let x: std::option::Option<()> = $0std::option::Option::Some(());
+}
+    ",
+            r"
+use std::option::Option;
+
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    Option;
+    let x: Option<()> = Option::Some(());
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn assist_runs_on_first_segment_for_assoc_type() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod foo { pub struct Foo; impl Foo { pub fn foo() {} } }
+fn main() {
+    $0foo::Foo::foo();
+}
+    ",
+            r"
+use foo::Foo;
+
+mod foo { pub struct Foo; impl Foo { pub fn foo() {} } }
+fn main() {
+    Foo::foo();
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn assist_runs_on_enum_variant() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    let x = std::option::Option::Some$0(());
+}
+    ",
+            r"
+use std::option::Option::Some;
+
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    let x = Some(());
+}
+    ",
+        );
+
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    std::option::Option;
+    let x: std::option::Option<()> = $0std::option::Option::Some(());
+}
+    ",
+            r"
+use std::option::Option;
+
+mod std { pub mod option { pub enum Option<T> { Some(T), None } } }
+fn main() {
+    Option;
+    let x: Option<()> = Option::Some(());
 }
     ",
         );
