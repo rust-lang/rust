@@ -71,7 +71,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         // Finally, wrap this up in the expr's scope.
         expr = Expr {
-            temp_lifetime: expr.temp_lifetime,
+            temp_scope_id: expr_scope.local_id,
             ty: expr.ty,
             span: hir_expr.span,
             kind: ExprKind::Scope {
@@ -93,7 +93,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         adjustment: &Adjustment<'tcx>,
         mut span: Span,
     ) -> Expr<'tcx> {
-        let Expr { temp_lifetime, .. } = expr;
+        let Expr { temp_scope_id, .. } = expr;
 
         // Adjust the span from the block, to the last expression of the
         // block. This is a better span when returning a mutable reference
@@ -152,7 +152,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     Ty::new_fn_def(self.tcx, call_def_id, self.tcx.mk_args(&[expr.ty.into()]));
 
                 expr = Expr {
-                    temp_lifetime,
+                    temp_scope_id,
                     ty: Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, expr.ty, deref.mutbl),
                     span,
                     kind: ExprKind::Borrow {
@@ -199,13 +199,13 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     variant_index: FIRST_VARIANT,
                     name: FieldIdx::ZERO,
                 };
-                let arg = Expr { temp_lifetime, ty: pin_ty, span, kind: pointer_target };
+                let arg = Expr { temp_scope_id, ty: pin_ty, span, kind: pointer_target };
                 let arg = self.thir.exprs.push(arg);
 
                 // arg = *pointer
                 let expr = ExprKind::Deref { arg };
                 let arg = self.thir.exprs.push(Expr {
-                    temp_lifetime,
+                    temp_scope_id,
                     ty: ptr_target_ty,
                     span,
                     kind: expr,
@@ -219,7 +219,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let new_pin_target =
                     Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, ptr_target_ty, mutbl);
                 let expr = self.thir.exprs.push(Expr {
-                    temp_lifetime,
+                    temp_scope_id,
                     ty: new_pin_target,
                     span,
                     kind: ExprKind::Borrow { borrow_kind, arg },
@@ -242,7 +242,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
         };
 
-        Expr { temp_lifetime, ty: adjustment.target, span, kind }
+        Expr { temp_scope_id, ty: adjustment.target, span, kind }
     }
 
     /// Lowers a cast expression.
@@ -251,7 +251,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     fn mirror_expr_cast(
         &mut self,
         source: &'tcx hir::Expr<'tcx>,
-        temp_lifetime: TempLifetime,
+        temp_scope_id: hir::ItemLocalId,
         span: Span,
     ) -> ExprKind<'tcx> {
         let tcx = self.tcx;
@@ -309,7 +309,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 );
             }
             let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
-            let offset = self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+            let offset = self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind });
 
             let source = match discr_did {
                 // in case we are offsetting from a computed discriminant
@@ -317,9 +317,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 Some(did) => {
                     let kind = ExprKind::NamedConst { def_id: did, args, user_ty: None };
                     let lhs =
-                        self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind });
+                        self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind });
                     let bin = ExprKind::Binary { op: BinOp::Add, lhs, rhs: offset };
-                    self.thir.exprs.push(Expr { temp_lifetime, ty: discr_ty, span, kind: bin })
+                    self.thir.exprs.push(Expr { temp_scope_id, ty: discr_ty, span, kind: bin })
                 }
                 None => offset,
             };
@@ -336,8 +336,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results.expr_ty(expr);
-        let (temp_lifetime, backwards_incompatible) =
-            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
@@ -372,7 +370,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     let arg_tys = args.iter().map(|e| self.typeck_results.expr_ty_adjusted(e));
                     let tupled_args = Expr {
                         ty: Ty::new_tup_from_iter(tcx, arg_tys),
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: expr.hir_id.local_id,
                         span: expr.span,
                         kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
                     };
@@ -398,7 +396,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     }
                     let value = &args[0];
                     return Expr {
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: expr.hir_id.local_id,
                         ty: expr_ty,
                         span: expr.span,
                         kind: ExprKind::Box { value: self.mirror_expr(value) },
@@ -502,17 +500,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             expr: Some(arg),
                             safety_mode: BlockSafety::Safe,
                         });
-                        let (temp_lifetime, backwards_incompatible) =
-                            self.region_scope_tree.temporary_scope(arg_expr.hir_id.local_id);
                         arg = self.thir.exprs.push(Expr {
-                            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                            temp_scope_id: arg_expr.hir_id.local_id,
                             ty: arg_ty,
                             span: arg_expr.span,
                             kind: ExprKind::Block { block },
                         });
                     }
                     let expr = self.thir.exprs.push(Expr {
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: expr.hir_id.local_id,
                         ty,
                         span: expr.span,
                         kind: ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg },
@@ -995,12 +991,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     }
                 } else {
                     let block_ty = self.typeck_results.node_type(body.hir_id);
-                    let (temp_lifetime, backwards_incompatible) =
-                        self.region_scope_tree.temporary_scope(body.hir_id.local_id);
                     let block = self.mirror_block(body);
                     let body = self.thir.exprs.push(Expr {
                         ty: block_ty,
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: body.hir_id.local_id,
                         span: self.thir[block].span,
                         kind: ExprKind::Block { block },
                     });
@@ -1022,17 +1016,13 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     expr, cast_ty.hir_id, user_ty,
                 );
 
-                let cast = self.mirror_expr_cast(
-                    source,
-                    TempLifetime { temp_lifetime, backwards_incompatible },
-                    expr.span,
-                );
+                let cast = self.mirror_expr_cast(source, expr.hir_id.local_id, expr.span);
 
                 if let Some(user_ty) = user_ty {
                     // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
                     //       inefficient, revisit this when performance becomes an issue.
                     let cast_expr = self.thir.exprs.push(Expr {
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: expr.hir_id.local_id,
                         ty: expr_ty,
                         span: expr.span,
                         kind: cast,
@@ -1091,12 +1081,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };
 
-        Expr {
-            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
-            ty: expr_ty,
-            span: expr.span,
-            kind,
-        }
+        Expr { temp_scope_id: expr.hir_id.local_id, ty: expr_ty, span: expr.span, kind }
     }
 
     fn user_args_applied_to_res(
@@ -1140,8 +1125,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
         span: Span,
         overloaded_callee: Option<Ty<'tcx>>,
     ) -> Expr<'tcx> {
-        let (temp_lifetime, backwards_incompatible) =
-            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let (ty, user_ty) = match overloaded_callee {
             Some(fn_def) => (fn_def, None),
             None => {
@@ -1158,7 +1141,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
         };
         Expr {
-            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+            temp_scope_id: expr.hir_id.local_id,
             ty,
             span,
             kind: ExprKind::ZstLiteral { user_ty },
@@ -1235,8 +1218,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
             Res::Def(DefKind::Static { .. }, id) => {
                 // this is &raw for extern static or static mut, and & for other statics
                 let ty = self.tcx.static_ptr_ty(id, self.typing_env);
-                let (temp_lifetime, backwards_incompatible) =
-                    self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
@@ -1246,7 +1227,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 ExprKind::Deref {
                     arg: self.thir.exprs.push(Expr {
                         ty,
-                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        temp_scope_id: expr.hir_id.local_id,
                         span: expr.span,
                         kind,
                     }),
@@ -1317,13 +1298,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         // construct the complete expression `foo()` for the overloaded call,
         // which will yield the &T type
-        let (temp_lifetime, backwards_incompatible) =
-            self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let fun = self.method_callee(expr, span, overloaded_callee);
         let fun = self.thir.exprs.push(fun);
         let fun_ty = self.thir[fun].ty;
         let ref_expr = self.thir.exprs.push(Expr {
-            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+            temp_scope_id: expr.hir_id.local_id,
             ty: ref_ty,
             span,
             kind: ExprKind::Call { ty: fun_ty, fun, args, from_hir_call: false, fn_span: span },
@@ -1338,8 +1317,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         closure_expr: &'tcx hir::Expr<'tcx>,
         place: HirPlace<'tcx>,
     ) -> Expr<'tcx> {
-        let (temp_lifetime, backwards_incompatible) =
-            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
+        let temp_scope_id = closure_expr.hir_id.local_id;
         let var_ty = place.base_ty;
 
         // The result of capture analysis in `rustc_hir_typeck/src/upvar.rs` represents a captured path
@@ -1353,7 +1331,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         };
 
         let mut captured_place_expr = Expr {
-            temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+            temp_scope_id,
             ty: var_ty,
             span: closure_expr.span,
             kind: self.convert_var(var_hir_id),
@@ -1381,12 +1359,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             };
 
-            captured_place_expr = Expr {
-                temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
-                ty: proj.ty,
-                span: closure_expr.span,
-                kind,
-            };
+            captured_place_expr =
+                Expr { temp_scope_id, ty: proj.ty, span: closure_expr.span, kind };
         }
 
         captured_place_expr
@@ -1401,8 +1375,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
         let captured_place_expr =
             self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
-        let (temp_lifetime, backwards_incompatible) =
-            self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
+        let temp_scope_id = closure_expr.hir_id.local_id;
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,
@@ -1411,7 +1384,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 let expr_id = self.thir.exprs.push(captured_place_expr);
 
                 Expr {
-                    temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                    temp_scope_id,
                     ty: upvar_ty,
                     span: closure_expr.span,
                     kind: ExprKind::ByUse { expr: expr_id, span },
@@ -1428,7 +1401,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     }
                 };
                 Expr {
-                    temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                    temp_scope_id,
                     ty: upvar_ty,
                     span: closure_expr.span,
                     kind: ExprKind::Borrow {

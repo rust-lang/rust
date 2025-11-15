@@ -503,10 +503,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder)
             }
             ExprKind::ValueTypeAscription { source, ref user_ty, user_ty_span } => {
-                let source_expr = &this.thir[source];
-                let temp = unpack!(
-                    block = this.as_temp(block, source_expr.temp_lifetime, source, mutability)
-                );
+                let temp_lifetime =
+                    this.region_scope_tree.temporary_scope(this.thir[source].temp_scope_id);
+                let temp = unpack!(block = this.as_temp(block, temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
                     let ty_source_info = this.source_info(user_ty_span);
                     let annotation_index =
@@ -539,10 +538,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder.project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
             ExprKind::ValueUnwrapUnsafeBinder { source } => {
-                let source_expr = &this.thir[source];
-                let temp = unpack!(
-                    block = this.as_temp(block, source_expr.temp_lifetime, source, mutability)
-                );
+                let temp_lifetime =
+                    this.region_scope_tree.temporary_scope(this.thir[source].temp_scope_id);
+                let temp = unpack!(block = this.as_temp(block, temp_lifetime, source, mutability));
                 block.and(PlaceBuilder::from(temp).project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
 
@@ -590,8 +588,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
-                let temp =
-                    unpack!(block = this.as_temp(block, expr.temp_lifetime, expr_id, mutability));
+                let temp_lifetime = this.region_scope_tree.temporary_scope(expr.temp_scope_id);
+                let temp = unpack!(block = this.as_temp(block, temp_lifetime, expr_id, mutability));
                 block.and(PlaceBuilder::from(temp))
             }
         }
@@ -637,7 +635,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Making this a *fresh* temporary means we do not have to worry about
         // the index changing later: Nothing will ever change this temporary.
         // The "retagging" transformation (for Stacked Borrows) relies on this.
-        let index_lifetime = self.thir[index].temp_lifetime;
+        // Using the enclosing temporary scope for the index ensures it will live past where this
+        // place is used. This lifetime may be larger than strictly necessary but it means we don't
+        // need to pass a scope for operands to `as_place`.
+        let index_lifetime = self.region_scope_tree.temporary_scope(self.thir[index].temp_scope_id);
         let idx = unpack!(block = self.as_temp(block, index_lifetime, index, Mutability::Not));
 
         block = self.bounds_check(block, &base_place, idx, expr_span, source_info);

@@ -234,6 +234,17 @@ pub struct ScopeTree {
     pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
 }
 
+/// Temporary lifetime information for expressions, used when lowering to MIR.
+#[derive(Clone, Copy, Debug, HashStable)]
+pub struct TempLifetime {
+    /// The scope in which a temporary should be dropped. If `None`, no drop is scheduled; this is
+    /// the case for lifetime-extended temporaries extended by a const/static item or const block.
+    pub temp_lifetime: Option<Scope>,
+    /// If `Some(lt)`, indicates that the lifetime of this temporary will change to `lt` in a future edition.
+    /// If `None`, then no changes are expected, or lints are disabled.
+    pub backwards_incompatible: Option<Scope>,
+}
+
 impl ScopeTree {
     pub fn record_scope_parent(&mut self, child: Scope, parent: Option<Scope>) {
         debug!("{:?}.parent = {:?}", child, parent);
@@ -332,16 +343,16 @@ impl ScopeTree {
     /// Returns the scope when the temp created by `expr_id` will be cleaned up.
     /// It also emits a lint on potential backwards incompatible change to the temporary scope
     /// which is *for now* always shortening.
-    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> (Option<Scope>, Option<Scope>) {
+    pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> TempLifetime {
         // Check for a designated extended temporary scope.
         if let Some(&s) = self.extended_temp_scopes.get(&expr_id) {
             debug!("temporary_scope({expr_id:?}) = {s:?} [custom]");
-            return (s, None);
+            return TempLifetime { temp_lifetime: s, backwards_incompatible: None };
         }
 
         // Otherwise, locate the innermost terminating scope.
-        let (scope, backward_incompatible) =
+        let (scope, backwards_incompatible) =
             self.default_temporary_scope(Scope { local_id: expr_id, data: ScopeData::Node });
-        (Some(scope), backward_incompatible)
+        TempLifetime { temp_lifetime: Some(scope), backwards_incompatible }
     }
 }
