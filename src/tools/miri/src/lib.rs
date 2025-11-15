@@ -136,7 +136,7 @@ pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;
 pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{
-    EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
+    EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_result,
 };
 pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
 pub use crate::helpers::{EvalContextExt as _, ToU64 as _, ToUsize as _};

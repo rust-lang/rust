@@ -226,19 +226,20 @@ pub fn prune_stacktrace<'tcx>(
     }
 }
 
-/// Emit a custom diagnostic without going through the miri-engine machinery.
+/// Report the result of a Miri execution.
 ///
-/// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
-pub fn report_error<'tcx>(
+/// Returns `Some` if this was regular program termination with a given exit code and a `bool`
+/// indicating whether a leak check should happen; `None` otherwise.
+pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    e: InterpErrorInfo<'tcx>,
+    res: InterpErrorInfo<'tcx>,
 ) -> Option<(i32, bool)> {
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut labels = vec![];
 
-    let (title, helps) = if let MachineStop(info) = e.kind() {
+    let (title, helps) = if let MachineStop(info) = res.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
@@ -334,7 +335,7 @@ pub fn report_error<'tcx>(
         };
         (title, helps)
     } else {
-        let title = match e.kind() {
+        let title = match res.kind() {
             UndefinedBehavior(ValidationError(validation_err))
                 if matches!(
                     validation_err.kind,
@@ -344,7 +345,7 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
@@ -363,12 +364,12 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
         };
         #[rustfmt::skip]
-        let helps = match e.kind() {
+        let helps = match res.kind() {
             Unsupported(_) =>
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
@@ -422,7 +423,7 @@ pub fn report_error<'tcx>(
     // We want to dump the allocation if this is `InvalidUninitBytes`.
     // Since `format_interp_error` consumes `e`, we compute the outut early.
     let mut extra = String::new();
-    match e.kind() {
+    match res.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
@@ -448,7 +449,7 @@ pub fn report_error<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
         labels.push(format!("{} occurred here", title.unwrap_or("error")));
