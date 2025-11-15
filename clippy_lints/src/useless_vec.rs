@@ -10,7 +10,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, higher, is_in_test, span_contains_comment, sym};
+use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_parent_expr, higher, is_in_test, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, LetStmt, Mutability, Node, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -123,8 +123,16 @@ impl UselessVec {
                     // allow indexing into a vec and some set of allowed method calls that exist on slices, too
                     if let Some(parent) = get_parent_expr(cx, expr)
                         && (adjusts_to_slice(cx, expr)
-                            || matches!(parent.kind, ExprKind::Index(..))
-                            || is_allowed_vec_method(parent))
+                            || match parent.kind {
+                                ExprKind::Index(..) => true,
+                                ExprKind::MethodCall(path, _, [], _) => {
+                                    // If the given expression is a method call to a `Vec` method that also exists on
+                                    // slices, it means that this expression does not actually require a `Vec` and could
+                                    // just work with an array.
+                                    VEC_METHODS_SHADOWING_SLICE_METHODS.contains(&path.ident.name)
+                                },
+                                _ => false,
+                            })
                     {
                         ControlFlow::Continue(())
                     } else {
@@ -144,8 +152,9 @@ impl UselessVec {
                 VecToArray::Impossible
             },
             // search for `for _ in vec![...]`
-            Node::Expr(Expr { span, .. })
-                if span.is_desugaring(DesugaringKind::ForLoop) && self.msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR) =>
+            Node::Expr(expr)
+                if expr.span.is_desugaring(DesugaringKind::ForLoop)
+                    && self.msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR) =>
             {
                 VecToArray::Possible
             },
@@ -276,9 +285,8 @@ impl SuggestedType {
         assert!(args_span.is_none_or(|s| !s.from_expansion()));
         assert!(len_span.is_none_or(|s| !s.from_expansion()));
 
-        let maybe_args = args_span
-            .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
-            .map_or(String::new(), |x| x.to_owned());
+        let maybe_args = args_span.map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"));
+        let maybe_args = maybe_args.as_deref().unwrap_or_default();
         let maybe_len = len_span
             .map(|sp| sp.get_source_text(cx).expect("spans are always crate-local"))
             .map(|st| format!("; {st}"))
@@ -299,17 +307,6 @@ fn size_of(cx: &LateContext<'_>, expr: &Expr<'_>) -> u64 {
 
 fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     matches!(cx.typeck_results().expr_ty_adjusted(e).kind(), ty::Ref(_, ty, _) if ty.is_slice())
-}
-
-/// Checks if the given expression is a method call to a `Vec` method
-/// that also exists on slices. If this returns true, it means that
-/// this expression does not actually require a `Vec` and could just work with an array.
-pub fn is_allowed_vec_method(e: &Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(path, _, [], _) = e.kind {
-        matches!(path.ident.name, sym::as_ptr | sym::is_empty | sym::len)
-    } else {
-        false
-    }
 }
 
 fn suggest_type(expr: &Expr<'_>) -> SuggestedType {
