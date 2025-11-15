@@ -20,8 +20,14 @@ use crate::*;
 
 #[derive(Clone)]
 enum MacOsUnfairLock {
-    Active { mutex_ref: MutexRef },
-    PermanentlyLocked,
+    Active {
+        mutex_ref: MutexRef,
+    },
+    /// If a lock gets copied while being held, we put it in this state.
+    /// It seems like in the real implementation, the lock actually remembers who held it,
+    /// and still behaves as-if it was held by that thread in the new location. In Miri, we don't
+    /// know who actually owns this lock at the moment.
+    PermanentlyLockedByUnknown,
 }
 
 impl SyncObj for MacOsUnfairLock {
@@ -93,10 +99,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // locks when they get released, so it got copied while locked. Unfortunately
                     // that is something `std` needs to support (the guard could have been leaked).
                     // On the plus side, we know nobody was queued for the lock while it got copied;
-                    // that would have been rejected by our `on_access`. So we behave like a
-                    // futex-based lock would in this case: any attempt to acquire the lock will
-                    // just wait forever, since there's nobody to wake us up.
-                    interp_ok(MacOsUnfairLock::PermanentlyLocked)
+                    // that would have been rejected by our `on_access`.
+                    // The real implementation would apparently remember who held the old lock, and
+                    // consider them to hold the copy as well -- but our copies don't preserve sync
+                    // object metadata so we instead move the lock into a "permanently locked"
+                    // state.
+                    interp_ok(MacOsUnfairLock::PermanentlyLockedByUnknown)
                 } else {
                     throw_ub_format!("`os_unfair_lock` was not properly initialized at this location, or it got overwritten");
                 }
@@ -303,18 +311,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // Trying to get a poisoned lock. Just block forever...
-            this.block_thread(
-                BlockReason::Sleep,
-                None,
-                callback!(
-                    @capture<'tcx> {}
-                    |_this, _unblock: UnblockKind| {
-                        panic!("we shouldn't wake up ever")
-                    }
-                ),
+            // Trying to lock a perma-locked lock. On macOS this would block or abort depending
+            // on whether the current thread is considered to be the one holding this lock. We
+            // don't know who is considered to be holding the lock so we don't know what to do.
+            throw_unsup_format!(
+                "attempted to lock an os_unfair_lock that was copied while being locked"
             );
-            return interp_ok(());
         };
         let mutex_ref = mutex_ref.clone();
 
@@ -342,15 +344,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // Trying to get a poisoned lock. That never works.
+            // Trying to lock a perma-locked lock. That behaves the same no matter who the owner is
+            // so we can implement the real behavior here.
             this.write_scalar(Scalar::from_bool(false), dest)?;
             return interp_ok(());
         };
         let mutex_ref = mutex_ref.clone();
 
         if mutex_ref.owner().is_some() {
-            // Contrary to the blocking lock function, this does not check for
-            // reentrancy.
+            // Contrary to the blocking lock function, this does not check for reentrancy.
             this.write_scalar(Scalar::from_bool(false), dest)?;
         } else {
             this.mutex_lock(&mutex_ref)?;
@@ -364,10 +366,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // A perma-locked lock is definitely not held by us.
-            throw_machine_stop!(TerminationInfo::Abort(
-                "attempted to unlock an os_unfair_lock not owned by the current thread".to_owned()
-            ));
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to unlock an os_unfair_lock that was copied while being locked"
+            );
         };
         let mutex_ref = mutex_ref.clone();
 
@@ -393,10 +395,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // A perma-locked lock is definitely not held by us.
-            throw_machine_stop!(TerminationInfo::Abort(
-                "called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread".to_owned()
-            ));
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
+            );
         };
         let mutex_ref = mutex_ref.clone();
 
@@ -415,8 +417,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let MacOsUnfairLock::Active { mutex_ref } = this.os_unfair_lock_get_data(lock_op)? else {
-            // A perma-locked lock is definitely not held by us.
-            return interp_ok(());
+            // We don't know who the owner is so we cannot proceed.
+            throw_unsup_format!(
+                "attempted to assert the owner of an os_unfair_lock that was copied while being locked"
+            );
         };
         let mutex_ref = mutex_ref.clone();
 
