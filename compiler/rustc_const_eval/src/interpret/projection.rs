@@ -97,7 +97,7 @@ pub trait Projectable<'tcx, Prov: Provenance>: Sized + std::fmt::Debug {
     }
 
     /// Convert this to an `OpTy`. This might be an irreversible transformation, but is useful for
-    /// reading from this thing.
+    /// reading from this thing. This will never actually do a read from memory!
     fn to_op<M: Machine<'tcx, Provenance = Prov>>(
         &self,
         ecx: &InterpCx<'tcx, M>,
