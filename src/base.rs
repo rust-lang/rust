@@ -865,17 +865,8 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                                 fields.iter(),
                             )
                             .bytes(),
-                        NullOp::UbChecks => {
-                            let val = fx.tcx.sess.ub_checks();
-                            let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
-                                fx.layout_of(fx.tcx.types.bool),
-                            );
-                            lval.write_cvalue(fx, val);
-                            return;
-                        }
-                        NullOp::ContractChecks => {
-                            let val = fx.tcx.sess.contract_checks();
+                        NullOp::RuntimeChecks(kind) => {
+                            let val = kind.value(fx.tcx.sess);
                             let val = CValue::by_val(
                                 fx.bcx.ins().iconst(types::I8, i64::from(val)),
                                 fx.layout_of(fx.tcx.types.bool),
