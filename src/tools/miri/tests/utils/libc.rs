@@ -22,6 +22,18 @@ pub unsafe fn read_all(
     return read_so_far as libc::ssize_t;
 }
 
+#[track_caller]
+pub fn read_all_into_array<const N: usize>(fd: libc::c_int) -> Result<[u8; N], libc::ssize_t> {
+    let mut buf = [0; N];
+    let res = unsafe { read_all(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    if res >= 0 {
+        assert_eq!(res as usize, buf.len());
+        Ok(buf)
+    } else {
+        Err(res)
+    }
+}
+
 pub unsafe fn write_all(
     fd: libc::c_int,
     buf: *const libc::c_void,
@@ -38,4 +50,15 @@ pub unsafe fn write_all(
         written_so_far += res as libc::size_t;
     }
     return written_so_far as libc::ssize_t;
+}
+
+#[track_caller]
+pub fn write_all_from_slice(fd: libc::c_int, buf: &[u8]) -> Result<(), libc::ssize_t> {
+    let res = unsafe { write_all(fd, buf.as_ptr().cast(), buf.len()) };
+    if res >= 0 {
+        assert_eq!(res as usize, buf.len());
+        Ok(())
+    } else {
+        Err(res)
+    }
 }
