@@ -231,7 +231,8 @@ fn multiple_events_wake_multiple_threads() {
     let mut ev = libc::epoll_event { events: EPOLL_IN_OUT_ET, u64: fd2 as u64 };
     let res = unsafe { libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd2, &mut ev) };
     assert_eq!(res, 0);
-    // Consume the initial event.
+
+    // Consume the initial events.
     let expected = [(libc::EPOLLOUT as u32, fd1 as u64), (libc::EPOLLOUT as u32, fd2 as u64)];
     check_epoll_wait::<8>(epfd, &expected, -1);
 

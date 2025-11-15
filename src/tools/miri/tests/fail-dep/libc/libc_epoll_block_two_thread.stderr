@@ -17,8 +17,8 @@ LL |     thread2.join().unwrap();
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL |         check_epoll_wait::<TAG>(epfd, &[(expected_event, expected_value)], -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
+LL |         check_epoll_wait::<TAG>(epfd, &expected, -1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

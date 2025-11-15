@@ -479,7 +479,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     |this, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
-                                return_ready_list(&epfd, &dest, &event, this)?;
+                                let events = return_ready_list(&epfd, &dest, &event, this)?;
+                                assert!(events > 0, "we got woken up with no events to deliver");
                                 interp_ok(())
                             },
                             UnblockKind::TimedOut => {
@@ -583,6 +584,13 @@ fn update_readiness<'tcx>(
             num_ready = num_ready.saturating_sub(events);
         }
     }
+    // Sanity-check: if there are threads left to wake up, then there are no more ready events.
+    if !epoll.queue.borrow().is_empty() {
+        assert!(
+            epoll.interest_list.borrow().values().all(|i| !i.ready),
+            "there are unconsumed ready events and threads ready to take them"
+        );
+    }
 
     interp_ok(())
 }
@@ -594,7 +602,7 @@ fn return_ready_list<'tcx>(
     dest: &MPlaceTy<'tcx>,
     events: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx> {
+) -> InterpResult<'tcx, i32> {
     let mut interest_list = epfd.interest_list.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
@@ -634,5 +642,5 @@ fn return_ready_list<'tcx>(
         }
     }
     ecx.write_int(num_of_events, dest)?;
-    interp_ok(())
+    interp_ok(num_of_events)
 }
