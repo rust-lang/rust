@@ -74,7 +74,7 @@ fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> u64 {
 }
 
 impl MappingFlags {
-    fn from_ty<'tcx>(_tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
+    fn from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
         use rustc_ast::Mutability::*;
 
         match ty.kind() {
@@ -109,7 +109,11 @@ impl MappingFlags {
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_)
-            | ty::Error(_) => MappingFlags::TO, /* TODO(Sa4dUs): emit error */
+            | ty::Error(_) => {
+                tcx.dcx()
+                    .span_err(rustc_span::DUMMY_SP, format!("type `{ty:?}` cannot be offloaded"));
+                MappingFlags::empty()
+            }
         }
     }
 }

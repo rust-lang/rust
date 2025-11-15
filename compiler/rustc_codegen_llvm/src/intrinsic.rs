@@ -28,7 +28,9 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::TgtOffloadEntry;
 use crate::context::CodegenCx;
-use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLto};
+use crate::errors::{
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
+};
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -200,7 +202,20 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 return Ok(());
             }
             sym::offload => {
-                // TODO(Sa4dUs): emit error when offload is not enabled
+                if !tcx
+                    .sess
+                    .opts
+                    .unstable_opts
+                    .offload
+                    .contains(&rustc_session::config::Offload::Enable)
+                {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
+                }
+
+                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                }
+
                 codegen_offload(self, tcx, instance, args);
                 return Ok(());
             }
