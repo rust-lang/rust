@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cell::{Cell, RefCell};
-use crate::fmt;
+use crate::ffi::OsStr;
 use crate::fs::File;
 use crate::io::prelude::*;
 use crate::io::{
@@ -12,10 +12,12 @@ use crate::io::{
     SpecReadByte,
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
+use crate::str::FromStr as _;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
 use crate::sys::stdio;
 use crate::thread::AccessError;
+use crate::{env, fmt};
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
 
@@ -579,32 +581,38 @@ impl fmt::Debug for StdinLock<'_> {
 
 /// A buffered writer for stdout and stderr.
 ///
-/// This writer may be either [line-buffered](LineWriter) or [block-buffered](BufWriter), depending
-/// on whether the underlying file is a terminal or not.
+/// This writer may be either [line-buffered](LineWriter),
+/// [block-buffered](BufWriter), or unbuffered.
 #[derive(Debug)]
 enum StdioBufWriter<W: Write> {
     LineBuffered(LineWriter<W>),
     BlockBuffered(BufWriter<W>),
-}
-
-impl<W: Write + IsTerminal> StdioBufWriter<W> {
-    /// Wraps a writer using the most appropriate buffering method.
-    ///
-    /// If `w` is a terminal, then the resulting `StdioBufWriter` will be line-buffered, otherwise
-    /// it will be block-buffered.
-    fn new(w: W) -> Self {
-        if w.is_terminal() {
-            Self::LineBuffered(LineWriter::new(w))
-        } else {
-            Self::BlockBuffered(BufWriter::new(w))
-        }
-    }
+    Unbuffered(W),
 }
 
 impl<W: Write> StdioBufWriter<W> {
-    /// Wraps a writer using a block-buffer with the given capacity.
-    fn with_capacity(cap: usize, w: W) -> Self {
-        Self::BlockBuffered(BufWriter::with_capacity(cap, w))
+    /// Wraps a writer using the most appropriate buffering method.
+    fn from_env_value(stderr: bool, w: W, value: Option<&OsStr>) -> Self {
+        if let Some(value) = value {
+            if value == "L" {
+                return StdioBufWriter::LineBuffered(LineWriter::new(w));
+            }
+            if let Some(size) = value.to_str().and_then(|v| usize::from_str(v).ok()) {
+                if size == 0 {
+                    return StdioBufWriter::Unbuffered(w);
+                } else {
+                    return StdioBufWriter::BlockBuffered(BufWriter::with_capacity(size, w));
+                }
+            }
+        }
+        Self::default_buffering(stderr, w)
+    }
+    fn default_buffering(stderr: bool, w: W) -> Self {
+        if stderr {
+            StdioBufWriter::Unbuffered(w)
+        } else {
+            StdioBufWriter::LineBuffered(LineWriter::new(w))
+        }
     }
 }
 
@@ -613,36 +621,42 @@ impl<W: Write> Write for StdioBufWriter<W> {
         match self {
             Self::LineBuffered(w) => w.write(buf),
             Self::BlockBuffered(w) => w.write(buf),
+            Self::Unbuffered(w) => w.write(buf),
         }
     }
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self {
             Self::LineBuffered(w) => w.write_vectored(bufs),
             Self::BlockBuffered(w) => w.write_vectored(bufs),
+            Self::Unbuffered(w) => w.write_vectored(bufs),
         }
     }
     fn is_write_vectored(&self) -> bool {
         match self {
             Self::LineBuffered(w) => w.is_write_vectored(),
             Self::BlockBuffered(w) => w.is_write_vectored(),
+            Self::Unbuffered(w) => w.is_write_vectored(),
         }
     }
     fn flush(&mut self) -> io::Result<()> {
         match self {
             Self::LineBuffered(w) => w.flush(),
             Self::BlockBuffered(w) => w.flush(),
+            Self::Unbuffered(w) => w.flush(),
         }
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         match self {
             Self::LineBuffered(w) => w.write_all(buf),
             Self::BlockBuffered(w) => w.write_all(buf),
+            Self::Unbuffered(w) => w.write_all(buf),
         }
     }
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
         match self {
             Self::LineBuffered(w) => w.write_all_vectored(bufs),
             Self::BlockBuffered(w) => w.write_all_vectored(bufs),
+            Self::Unbuffered(w) => w.write_all_vectored(bufs),
         }
     }
 }
@@ -785,8 +799,13 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<StdioBufWriter<StdoutRaw>>>> = Onc
 #[cfg_attr(not(test), rustc_diagnostic_item = "io_stdout")]
 pub fn stdout() -> Stdout {
     Stdout {
-        inner: STDOUT
-            .get_or_init(|| ReentrantLock::new(RefCell::new(StdioBufWriter::new(stdout_raw())))),
+        inner: STDOUT.get_or_init(|| {
+            ReentrantLock::new(RefCell::new(StdioBufWriter::from_env_value(
+                false,
+                stdout_raw(),
+                env::var_os("_STDBUF_O").as_deref(),
+            )))
+        }),
     }
 }
 
@@ -794,21 +813,32 @@ pub fn stdout() -> Stdout {
 // by replacing the line writer by one with zero
 // buffering capacity.
 pub fn cleanup() {
-    let mut initialized = false;
-    let stdout = STDOUT.get_or_init(|| {
-        initialized = true;
-        ReentrantLock::new(RefCell::new(StdioBufWriter::with_capacity(0, stdout_raw())))
-    });
+    fn cleanup<W: Write, F: Fn() -> W>(
+        global: &'static OnceLock<ReentrantLock<RefCell<StdioBufWriter<W>>>>,
+        init_writer: F,
+    ) {
+        let mut initialized = false;
+        let global = global.get_or_init(|| {
+            initialized = true;
+            ReentrantLock::new(RefCell::new(StdioBufWriter::Unbuffered(init_writer())))
+        });
 
-    if !initialized {
-        // The buffer was previously initialized, overwrite it here.
-        // We use try_lock() instead of lock(), because someone
-        // might have leaked a StdoutLock, which would
-        // otherwise cause a deadlock here.
-        if let Some(lock) = stdout.try_lock() {
-            *lock.borrow_mut() = StdioBufWriter::with_capacity(0, stdout_raw());
+        if !initialized {
+            // The buffer was previously initialized, overwrite it here.
+            // We use try_lock() instead of lock(), because someone
+            // might have leaked a StdoutLock, which would
+            // otherwise cause a deadlock here.
+            if let Some(lock) = global.try_lock() {
+                let mut lock = lock.borrow_mut();
+                if !matches!(*lock, StdioBufWriter::Unbuffered(_)) {
+                    *lock = StdioBufWriter::Unbuffered(init_writer());
+                }
+            }
         }
     }
+
+    cleanup(&STDERR, stderr_raw);
+    cleanup(&STDOUT, stdout_raw);
 }
 
 impl Stdout {
@@ -960,7 +990,9 @@ impl fmt::Debug for StdoutLock<'_> {
 /// standard library or via raw Windows API calls, will fail.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: &'static ReentrantLock<RefCell<StderrRaw>>,
+    // FIXME: if this is not line buffered it should flush-on-panic or some
+    //        form of flush-on-abort.
+    inner: &'static ReentrantLock<RefCell<StdioBufWriter<StderrRaw>>>,
 }
 
 /// A locked reference to the [`Stderr`] handle.
@@ -982,8 +1014,10 @@ pub struct Stderr {
 #[must_use = "if unused stderr will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
-    inner: ReentrantLockGuard<'a, RefCell<StderrRaw>>,
+    inner: ReentrantLockGuard<'a, RefCell<StdioBufWriter<StderrRaw>>>,
 }
+
+static STDERR: OnceLock<ReentrantLock<RefCell<StdioBufWriter<StderrRaw>>>> = OnceLock::new();
 
 /// Constructs a new handle to the standard error of the current process.
 ///
@@ -1033,13 +1067,15 @@ pub struct StderrLock<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "io_stderr")]
 pub fn stderr() -> Stderr {
-    // Note that unlike `stdout()` we don't use `at_exit` here to register a
-    // destructor. Stderr is not buffered, so there's no need to run a
-    // destructor for flushing the buffer
-    static INSTANCE: ReentrantLock<RefCell<StderrRaw>> =
-        ReentrantLock::new(RefCell::new(stderr_raw()));
-
-    Stderr { inner: &INSTANCE }
+    Stderr {
+        inner: STDERR.get_or_init(|| {
+            ReentrantLock::new(RefCell::new(StdioBufWriter::from_env_value(
+                true,
+                stderr_raw(),
+                env::var_os("_STDBUF_E").as_deref(),
+            )))
+        }),
+    }
 }
 
 impl Stderr {
