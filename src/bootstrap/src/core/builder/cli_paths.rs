@@ -136,7 +136,7 @@ pub(crate) fn match_paths_to_steps_and_run(
 
     if paths.is_empty() || builder.config.include_default_paths {
         for StepExtra { desc, should_run } in &steps {
-            if desc.default && should_run.is_really_default() {
+            if desc.default && (desc.is_really_default_fn)(builder) {
                 desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
             }
         }

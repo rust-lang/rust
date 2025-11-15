@@ -808,8 +808,11 @@ impl Step for Cargo {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.tool_enabled("cargo"))
+        run.path("src/tools/cargo")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("cargo")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1030,8 +1033,11 @@ impl Step for RustAnalyzer {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(builder.tool_enabled("rust-analyzer"))
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1083,14 +1089,14 @@ impl Step for RustAnalyzerProcMacroSrv {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
-            .default_condition(
-                builder.tool_enabled("rust-analyzer")
-                    || builder.tool_enabled("rust-analyzer-proc-macro-srv"),
-            )
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
+            || builder.tool_enabled("rust-analyzer-proc-macro-srv")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1173,9 +1179,11 @@ impl Step for LlvmBitcodeLinker {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         run.path("src/tools/llvm-bitcode-linker")
-            .default_condition(builder.tool_enabled("llvm-bitcode-linker"))
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("llvm-bitcode-linker")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1386,8 +1394,14 @@ macro_rules! tool_rustc_extended {
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 should_run_extended_rustc_tool(
                     run,
-                    $tool_name,
                     $path,
+                )
+            }
+
+            fn is_really_default(builder: &Builder<'_>) -> bool {
+                is_really_default_extended_rustc_tool(
+                    builder,
+                    $tool_name,
                     $stable,
                 )
             }
@@ -1421,28 +1435,28 @@ macro_rules! tool_rustc_extended {
     }
 }
 
-fn should_run_extended_rustc_tool<'a>(
-    run: ShouldRun<'a>,
+fn should_run_extended_rustc_tool<'a>(run: ShouldRun<'a>, path: &'static str) -> ShouldRun<'a> {
+    run.path(path)
+}
+
+fn is_really_default_extended_rustc_tool(
+    builder: &Builder<'_>,
     tool_name: &'static str,
-    path: &'static str,
     stable: bool,
-) -> ShouldRun<'a> {
-    let builder = run.builder;
-    run.path(path).default_condition(
-        builder.config.extended
-            && builder.config.tools.as_ref().map_or(
-                // By default, on nightly/dev enable all tools, else only
-                // build stable tools.
-                stable || builder.build.unstable_features(),
-                // If `tools` is set, search list for this tool.
-                |tools| {
-                    tools.iter().any(|tool| match tool.as_ref() {
-                        "clippy" => tool_name == "clippy-driver",
-                        x => tool_name == x,
-                    })
-                },
-            ),
-    )
+) -> bool {
+    builder.config.extended
+        && builder.config.tools.as_ref().map_or(
+            // By default, on nightly/dev enable all tools, else only
+            // build stable tools.
+            stable || builder.build.unstable_features(),
+            // If `tools` is set, search list for this tool.
+            |tools| {
+                tools.iter().any(|tool| match tool.as_ref() {
+                    "clippy" => tool_name == "clippy-driver",
+                    x => tool_name == x,
+                })
+            },
+        )
 }
 
 fn build_extended_rustc_tool(
