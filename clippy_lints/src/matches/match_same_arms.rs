@@ -264,7 +264,7 @@ impl<'a> NormalizedPat<'a> {
             PatKind::Binding(.., Some(pat))
             | PatKind::Box(pat)
             | PatKind::Deref(pat)
-            | PatKind::Ref(pat, _)
+            | PatKind::Ref(pat, _, _)
             | PatKind::Guard(pat, _) => Self::from_pat(cx, arena, pat),
             PatKind::Never => Self::Never,
             PatKind::Struct(ref path, fields, _) => {

@@ -82,7 +82,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
 fn as_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<Mutability> {
     if let Some([first_pat, ..]) = as_some_pattern(cx, arm.pat)
-        && let PatKind::Binding(BindingMode(ByRef::Yes(mutabl), _), .., ident, _) = first_pat.kind
+        && let PatKind::Binding(BindingMode(ByRef::Yes(_, mutabl), _), .., ident, _) = first_pat.kind
         && let Some(arg) = as_some_expr(cx, peel_blocks(arm.body))
         && let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind
         && path2.segments.len() == 1

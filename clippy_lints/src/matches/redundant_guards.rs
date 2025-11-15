@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => arm.pat.span,
             };
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => let_expr.pat.span,
             };
@@ -176,7 +176,7 @@ fn get_pat_binding<'tcx>(
             if let PatKind::Binding(bind_annot, hir_id, ident, _) = pat.kind
                 && hir_id == local
             {
-                if matches!(bind_annot.0, rustc_ast::ByRef::Yes(_)) {
+                if matches!(bind_annot.0, rustc_ast::ByRef::Yes(..)) {
                     let _ = byref_ident.insert(ident);
                 }
                 // the second call of `replace()` returns a `Some(span)`, meaning a multi-binding pattern

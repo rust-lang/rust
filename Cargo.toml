@@ -31,6 +31,7 @@ tempfile = { version = "3.20", optional = true }
 termize = "0.2"
 color-print = "0.3.4"
 anstream = "0.6.18"
+tikv-jemalloc-sys = { version = "0.6.1", optional = true, features = ['override_allocator_on_supported_platforms'] }
 
 [dev-dependencies]
 cargo_metadata = "0.18.1"
@@ -56,7 +57,7 @@ rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 [features]
 integration = ["dep:tempfile"]
 internal = ["dep:clippy_lints_internal", "dep:tempfile"]
-jemalloc = []
+jemalloc = ["dep:tikv-jemalloc-sys"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]

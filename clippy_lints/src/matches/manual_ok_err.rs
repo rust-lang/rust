@@ -78,7 +78,7 @@ fn is_variant_or_wildcard(cx: &LateContext<'_>, pat: &Pat<'_>, can_be_wild: bool
                 .is_lang_item(cx, ResultErr)
                 == must_match_err
         },
-        PatKind::Binding(_, _, _, Some(pat)) | PatKind::Ref(pat, _) => {
+        PatKind::Binding(_, _, _, Some(pat)) | PatKind::Ref(pat, _, _) => {
             is_variant_or_wildcard(cx, pat, can_be_wild, must_match_err)
         },
         _ => false,

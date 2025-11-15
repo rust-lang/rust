@@ -404,7 +404,7 @@ fn is_find_or_filter<'a>(
         && let filter_body = cx.tcx.hir_body(filter_body_id)
         && let [filter_param] = filter_body.params
         // optional ref pattern: `filter(|&x| ..)`
-        && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
+        && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _, _) = filter_param.pat.kind {
             (ref_pat, true)
         } else {
             (filter_param.pat, false)

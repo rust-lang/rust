@@ -818,7 +818,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
                 capture = CaptureKind::Value;
             },
-            ByRef::Yes(Mutability::Mut) if capture != CaptureKind::Value => {
+            ByRef::Yes(_, Mutability::Mut) if capture != CaptureKind::Value => {
                 capture = CaptureKind::Ref(Mutability::Mut);
             },
             _ => (),
@@ -1498,7 +1498,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
         PatKind::Missing => unreachable!(),
         PatKind::Wild | PatKind::Never => false, // If `!` typechecked then the type is empty, so not refutable.
         PatKind::Binding(_, _, _, pat) => pat.is_some_and(|pat| is_refutable(cx, pat)),
-        PatKind::Box(pat) | PatKind::Ref(pat, _) => is_refutable(cx, pat),
+        PatKind::Box(pat) | PatKind::Ref(pat, _, _) => is_refutable(cx, pat),
         PatKind::Expr(PatExpr {
             kind: PatExprKind::Path(qpath),
             hir_id,
@@ -1648,7 +1648,7 @@ pub fn is_lint_allowed(cx: &LateContext<'_>, lint: &'static Lint, id: HirId) -> 
 }
 
 pub fn strip_pat_refs<'hir>(mut pat: &'hir Pat<'hir>) -> &'hir Pat<'hir> {
-    while let PatKind::Ref(subpat, _) = pat.kind {
+    while let PatKind::Ref(subpat, _, _) = pat.kind {
         pat = subpat;
     }
     pat
@@ -1866,7 +1866,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
         .typeck_results()
         .pat_binding_modes()
         .get(pat.hir_id)
-        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(_)))
+        .is_some_and(|mode| matches!(mode.0, ByRef::Yes(..)))
     {
         // If the parameter is `(x, y)` of type `&(T, T)`, or `[x, y]` of type `&[T; 2]`, then
         // due to match ergonomics, the inner patterns become references. Don't consider this
@@ -2193,7 +2193,7 @@ where
 /// references removed.
 pub fn peel_hir_pat_refs<'a>(pat: &'a Pat<'a>) -> (&'a Pat<'a>, usize) {
     fn peel<'a>(pat: &'a Pat<'a>, count: usize) -> (&'a Pat<'a>, usize) {
-        if let PatKind::Ref(pat, _) = pat.kind {
+        if let PatKind::Ref(pat, _, _) = pat.kind {
             peel(pat, count + 1)
         } else {
             (pat, count)

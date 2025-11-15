@@ -253,7 +253,7 @@ pub(super) fn try_parse_pattern<'tcx>(
     ) -> Option<OptionPat<'tcx>> {
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
-            PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
+            PatKind::Ref(pat, _, _) => f(cx, pat, ref_count + 1, ctxt),
             _ if is_none_pattern(cx, pat) => Some(OptionPat::None),
             _ if let Some([pattern]) = as_some_pattern(cx, pat)
                 && pat.span.ctxt() == ctxt =>

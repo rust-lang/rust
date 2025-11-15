@@ -320,6 +320,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.body(field!(anon_const.body));
             },
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
+            ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
         }
     }
 
@@ -743,10 +744,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let ann = match ann {
                     BindingMode::NONE => "NONE",
                     BindingMode::REF => "REF",
+                    BindingMode::REF_PIN => "REF_PIN",
                     BindingMode::MUT => "MUT",
                     BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::REF_PIN_MUT => "REF_PIN_MUT",
                     BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_PIN => "MUT_REF_PIN",
                     BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::MUT_REF_PIN_MUT => "MUT_REF_PIN_MUT",
                 };
                 kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);
@@ -788,9 +793,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Deref({pat})");
                 self.pat(pat);
             },
-            PatKind::Ref(pat, muta) => {
+            PatKind::Ref(pat, pinn, muta) => {
                 bind!(self, pat);
-                kind!("Ref({pat}, Mutability::{muta:?})");
+                kind!("Ref({pat}, Pinning::{pinn:?}, Mutability::{muta:?})");
                 self.pat(pat);
             },
             PatKind::Guard(pat, cond) => {
