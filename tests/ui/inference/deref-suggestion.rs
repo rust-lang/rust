@@ -1,7 +1,5 @@
 macro_rules! borrow {
-    ($x:expr) => {
-        &$x
-    };
+    ($x:expr) => { &$x }
 }
 
 fn foo(_: String) {}
@@ -41,13 +39,14 @@ fn main() {
     let u = 3;
     let s = S { u };
     //~^ ERROR mismatched types
-    let s = S { u };
+    let s = S { u: u };
     //~^ ERROR mismatched types
     let i = &4;
     let r = R { i };
     //~^ ERROR mismatched types
-    let r = R { i };
+    let r = R { i: i };
     //~^ ERROR mismatched types
+
 
     let a = &1;
     let b = &2;
@@ -80,6 +79,6 @@ fn main() {
     let bar = &Foo;
 
     if foo == bar {
-        //~^ ERROR mismatched types
+    //~^ ERROR mismatched types
     }
 }
