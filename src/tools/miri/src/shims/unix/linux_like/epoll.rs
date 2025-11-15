@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::io;
 use std::time::Duration;
 
@@ -22,8 +22,8 @@ struct Epoll {
     /// "ready" list; instead, a boolean flag in this list tracks which subset is ready. This makes
     /// `epoll_wait` less efficient, but also requires less bookkeeping.
     interest_list: RefCell<BTreeMap<EpollEventKey, EpollEventInterest>>,
-    /// A list of thread ids blocked on this epoll instance.
-    blocked: RefCell<Vec<ThreadId>>,
+    /// The queue of threads blocked on this epoll instance, and how many events they'd like to get.
+    queue: RefCell<VecDeque<(ThreadId, u32)>>,
 }
 
 impl VisitProvenance for Epoll {
@@ -459,7 +459,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             };
             // Record this thread as blocked.
-            epfd.blocked.borrow_mut().push(this.active_thread());
+            epfd.queue
+                .borrow_mut()
+                .push_back((this.active_thread(), maxevents.try_into().unwrap()));
             // And block it.
             let dest = dest.clone();
             // We keep a strong ref to the underlying `Epoll` to make sure it sticks around.
@@ -477,14 +479,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     |this, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
-                                return_ready_list(&epfd, &dest, &event, this)?;
+                                let events = return_ready_list(&epfd, &dest, &event, this)?;
+                                assert!(events > 0, "we got woken up with no events to deliver");
                                 interp_ok(())
                             },
                             UnblockKind::TimedOut => {
                                 // Remove the current active thread_id from the blocked thread_id list.
                                 epfd
-                                    .blocked.borrow_mut()
-                                    .retain(|&id| id != this.active_thread());
+                                    .queue.borrow_mut()
+                                    .retain(|&(id, _events)| id != this.active_thread());
                                 this.write_int(0, &dest)?;
                                 interp_ok(())
                             },
@@ -550,7 +553,7 @@ fn update_readiness<'tcx>(
         &mut dyn FnMut(&mut EpollEventInterest) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
-    let mut wakeup = false;
+    let mut num_ready = 0u32; // how many events we have ready to deliver
     for_each_interest(&mut |interest| {
         // Update the ready events tracked in this interest.
         let new_readiness = interest.relevant_events & active_events;
@@ -565,18 +568,28 @@ fn update_readiness<'tcx>(
             ecx.release_clock(|clock| {
                 interest.clock.join(clock);
             })?;
-            wakeup = true;
+            num_ready = num_ready.saturating_add(1);
         }
         interp_ok(())
     })?;
-    if wakeup {
-        // Wake up threads that may have been waiting for events on this epoll.
-        // Do this only once for all the interests.
-        // Edge-triggered notification only notify one thread even if there are
-        // multiple threads blocked on the same epoll.
-        if let Some(thread_id) = epoll.blocked.borrow_mut().pop() {
-            ecx.unblock_thread(thread_id, BlockReason::Epoll)?;
+    // Edge-triggered notifications only wake up as many threads as are needed to deliver
+    // all the events.
+    while num_ready > 0
+        && let Some((thread_id, events)) = epoll.queue.borrow_mut().pop_front()
+    {
+        ecx.unblock_thread(thread_id, BlockReason::Epoll)?;
+        // Keep track of how many events we have left to deliver (except if we saturated;
+        // in that case we just wake up everybody).
+        if num_ready != u32::MAX {
+            num_ready = num_ready.saturating_sub(events);
         }
+    }
+    // Sanity-check: if there are threads left to wake up, then there are no more ready events.
+    if !epoll.queue.borrow().is_empty() {
+        assert!(
+            epoll.interest_list.borrow().values().all(|i| !i.ready),
+            "there are unconsumed ready events and threads ready to take them"
+        );
     }
 
     interp_ok(())
@@ -589,7 +602,7 @@ fn return_ready_list<'tcx>(
     dest: &MPlaceTy<'tcx>,
     events: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
-) -> InterpResult<'tcx> {
+) -> InterpResult<'tcx, i32> {
     let mut interest_list = epfd.interest_list.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
@@ -629,5 +642,5 @@ fn return_ready_list<'tcx>(
         }
     }
     ecx.write_int(num_of_events, dest)?;
-    interp_ok(())
+    interp_ok(num_of_events)
 }

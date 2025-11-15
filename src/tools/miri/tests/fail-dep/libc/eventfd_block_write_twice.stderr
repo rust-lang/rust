@@ -15,23 +15,12 @@ LL |     thread2.join().unwrap();
    |     ^^^^^^^^^^^^^^
 
 error: the evaluated program deadlocked
-   |
-   = note: this thread got stuck here
-   = note: (no span available)
-
-error: the evaluated program deadlocked
   --> tests/fail-dep/libc/eventfd_block_write_twice.rs:LL:CC
    |
 LL |             libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
    |                                                                            ^ this thread got stuck here
 
-error: the evaluated program deadlocked
-   |
-   = note: this thread got stuck here
-   = note: (no span available)
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
