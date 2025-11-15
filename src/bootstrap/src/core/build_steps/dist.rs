@@ -63,11 +63,13 @@ pub struct Docs {
 
 impl Step for Docs {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.docs;
-        run.alias("rust-docs").default_condition(default)
+        run.alias("rust-docs")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -107,11 +109,13 @@ pub struct JsonDocs {
 
 impl Step for JsonDocs {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.docs;
-        run.alias("rust-docs-json").default_condition(default)
+        run.alias("rust-docs-json")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -156,13 +160,14 @@ pub struct RustcDocs {
 
 impl Step for RustcDocs {
     type Output = GeneratedTarball;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("rustc-docs").default_condition(builder.config.compiler_docs)
+        run.alias("rustc-docs")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.compiler_docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -382,10 +387,13 @@ pub struct Mingw {
 
 impl Step for Mingw {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-mingw")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -428,12 +436,14 @@ pub struct Rustc {
 
 impl Step for Rustc {
     type Output = GeneratedTarball;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -800,10 +810,13 @@ impl Std {
 
 impl Step for Std {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-std")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -862,11 +875,14 @@ impl RustcDev {
 
 impl Step for RustcDev {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc-dev")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -928,11 +944,12 @@ pub struct Analysis {
 impl Step for Analysis {
     type Output = Option<GeneratedTarball>;
 
-    const DEFAULT: bool = true;
-
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "analysis");
-        run.alias("rust-analysis").default_condition(default)
+        run.alias("rust-analysis")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "analysis")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1100,11 +1117,14 @@ pub struct Src;
 impl Step for Src {
     /// The output path of the src installer tarball
     type Output = GeneratedTarball;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-src")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1161,12 +1181,14 @@ pub struct PlainSourceTarball;
 impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("rustc-src").default_condition(builder.config.rust_dist_src)
+        run.alias("rustc-src")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.rust_dist_src
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1309,12 +1331,14 @@ pub struct Cargo {
 
 impl Step for Cargo {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "cargo");
-        run.alias("cargo").default_condition(default)
+        run.alias("cargo")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "cargo")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1367,12 +1391,14 @@ pub struct RustAnalyzer {
 
 impl Step for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rust-analyzer");
-        run.alias("rust-analyzer").default_condition(default)
+        run.alias("rust-analyzer")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1410,12 +1436,14 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "clippy");
-        run.alias("clippy").default_condition(default)
+        run.alias("clippy")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "clippy")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1456,12 +1484,14 @@ pub struct Miri {
 
 impl Step for Miri {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "miri");
-        run.alias("miri").default_condition(default)
+        run.alias("miri")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1504,20 +1534,21 @@ pub struct CraneliftCodegenBackend {
 
 impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_cranelift")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
         // We only want to build the cranelift backend in `x dist` if the backend was enabled
         // in rust.codegen-backends.
         // Sadly, we don't have access to the actual target for which we're disting clif here..
         // So we just use the host target.
-        let clif_enabled_by_default = run
-            .builder
+        builder
             .config
-            .enabled_codegen_backends(run.builder.host_target)
-            .contains(&CodegenBackendKind::Cranelift);
-        run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
+            .enabled_codegen_backends(builder.host_target)
+            .contains(&CodegenBackendKind::Cranelift)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1590,12 +1621,14 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rustfmt");
-        run.alias("rustfmt").default_condition(default)
+        run.alias("rustfmt")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "rustfmt")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1632,12 +1665,14 @@ pub struct Extended {
 
 impl Step for Extended {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("extended").default_condition(builder.config.extended)
+        run.alias("extended")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.extended
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2379,17 +2414,18 @@ pub struct LlvmTools {
 impl Step for LlvmTools {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "llvm-tools");
-
         let mut run = run.alias("llvm-tools");
         for tool in LLVM_TOOLS {
             run = run.alias(tool);
         }
 
-        run.default_condition(default)
+        run
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "llvm-tools")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2482,12 +2518,14 @@ pub struct LlvmBitcodeLinker {
 
 impl Step for LlvmBitcodeLinker {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
-        run.alias("llvm-bitcode-linker").default_condition(default)
+        run.alias("llvm-bitcode-linker")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "llvm-bitcode-linker")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2534,11 +2572,14 @@ pub struct RustDev {
 
 impl Step for RustDev {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-dev")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2723,11 +2764,14 @@ pub struct ReproducibleArtifacts {
 
 impl Step for ReproducibleArtifacts {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("reproducible-artifacts")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {

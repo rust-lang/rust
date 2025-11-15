@@ -113,10 +113,12 @@ impl Step for Std {
     /// Build stamp of std, if it was indeed built or uplifted.
     type Output = Option<BuildStamp>;
 
-    const DEFAULT: bool = true;
-
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("sysroot").path("library")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1011,9 +1013,7 @@ impl Rustc {
 
 impl Step for Rustc {
     type Output = BuiltRustc;
-
     const IS_HOST: bool = true;
-    const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut crates = run.builder.in_tree_crates("rustc-main", None);
@@ -1026,6 +1026,10 @@ impl Step for Rustc {
             }
         }
         run.crates(crates)
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn make_run(run: RunConfig<'_>) {
