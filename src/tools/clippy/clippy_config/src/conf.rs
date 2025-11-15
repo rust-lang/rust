@@ -108,7 +108,7 @@ struct ConfError {
 
 impl ConfError {
     fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
-        let span = error.span().unwrap_or(0..file.source_len.0 as usize);
+        let span = error.span().unwrap_or(0..file.normalized_source_len.0 as usize);
         Self::spanned(file, error.message(), None, span)
     }
 
