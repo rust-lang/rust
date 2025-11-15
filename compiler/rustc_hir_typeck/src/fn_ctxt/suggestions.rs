@@ -2708,6 +2708,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `ExprKind::DropTemps` is semantically irrelevant for these suggestions.
         let expr = expr.peel_drop_temps();
 
+        if let hir::ExprKind::Block(block, _) = &expr.kind
+            && block.expr.is_none()
+        {
+            return None;
+        }
+
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
