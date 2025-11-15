@@ -3,11 +3,17 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_default_equivalent_call, local_is_initialized};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{Body, BodyId, Expr, ExprKind, HirId, LangItem, QPath};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
-use rustc_span::sym;
+use rustc_middle::hir::place::ProjectionKind;
+use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty;
+use rustc_session::impl_lint_pass;
+use rustc_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,17 +39,57 @@ declare_clippy_lint! {
     perf,
     "assigning a newly created box to `Box<T>` is inefficient"
 }
-declare_lint_pass!(ReplaceBox => [REPLACE_BOX]);
+
+#[derive(Default)]
+pub struct ReplaceBox {
+    consumed_locals: FxHashSet<HirId>,
+    loaded_bodies: SmallVec<[BodyId; 2]>,
+}
+
+impl ReplaceBox {
+    fn get_consumed_locals(&mut self, cx: &LateContext<'_>) -> &FxHashSet<HirId> {
+        if let Some(body_id) = cx.enclosing_body
+            && !self.loaded_bodies.contains(&body_id)
+        {
+            self.loaded_bodies.push(body_id);
+            ExprUseVisitor::for_clippy(
+                cx,
+                cx.tcx.hir_body_owner_def_id(body_id),
+                MovedVariablesCtxt {
+                    consumed_locals: &mut self.consumed_locals,
+                },
+            )
+            .consume_body(cx.tcx.hir_body(body_id))
+            .into_ok();
+        }
+
+        &self.consumed_locals
+    }
+}
+
+impl_lint_pass!(ReplaceBox => [REPLACE_BOX]);
 
 impl LateLintPass<'_> for ReplaceBox {
+    fn check_body_post(&mut self, _: &LateContext<'_>, body: &Body<'_>) {
+        if self.loaded_bodies.first().is_some_and(|&x| x == body.id()) {
+            self.consumed_locals.clear();
+            self.loaded_bodies.clear();
+        }
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = &expr.kind
             && !lhs.span.from_expansion()
             && !rhs.span.from_expansion()
             && let lhs_ty = cx.typeck_results().expr_ty(lhs)
+            && let Some(inner_ty) = lhs_ty.boxed_ty()
             // No diagnostic for late-initialized locals
             && lhs.res_local_id().is_none_or(|local| local_is_initialized(cx, local))
-            && let Some(inner_ty) = lhs_ty.boxed_ty()
+            // No diagnostic if this is a local that has been moved, or the field
+            // of a local that has been moved, or several chained field accesses of a local
+            && local_base(lhs).is_none_or(|(base_id, _)| {
+                !self.get_consumed_locals(cx).contains(&base_id)
+            })
         {
             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
                 && implements_trait(cx, inner_ty, default_trait_id, &[])
@@ -107,5 +153,48 @@ fn get_box_new_payload<'tcx>(cx: &LateContext<'_>, expr: &Expr<'tcx>) -> Option<
         Some(arg)
     } else {
         None
+    }
+}
+
+struct MovedVariablesCtxt<'a> {
+    consumed_locals: &'a mut FxHashSet<HirId>,
+}
+
+impl<'tcx> Delegate<'tcx> for MovedVariablesCtxt<'_> {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
+        if let PlaceBase::Local(id) = cmt.place.base
+            && let mut projections = cmt
+                .place
+                .projections
+                .iter()
+                .filter(|x| matches!(x.kind, ProjectionKind::Deref))
+            // Either no deref or multiple derefs
+            && (projections.next().is_none() || projections.next().is_some())
+        {
+            self.consumed_locals.insert(id);
+        }
+    }
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
+/// A local place followed by optional fields
+type IdFields = (HirId, Vec<Symbol>);
+
+/// If `expr` is a local variable with optional field accesses, return it.
+fn local_base(expr: &Expr<'_>) -> Option<IdFields> {
+    match expr.kind {
+        ExprKind::Path(qpath) => qpath.res_local_id().map(|id| (id, Vec::new())),
+        ExprKind::Field(expr, field) => local_base(expr).map(|(id, mut fields)| {
+            fields.push(field.name);
+            (id, fields)
+        }),
+        _ => None,
     }
 }

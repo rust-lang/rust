@@ -20,6 +20,10 @@ fn main() {
     }
     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
     //~^ needless_collect
+
+    let _ = sample.iter().cloned().collect::<Vec<_>>()[1];
+    //~^ needless_collect
+
     // #7164 HashMap's and BTreeMap's `len` usage should not be linted
     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
     sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().len();

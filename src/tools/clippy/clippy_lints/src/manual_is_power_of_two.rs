@@ -70,12 +70,12 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
         if !expr.span.from_expansion()
             && let Some((lhs, rhs)) = unexpanded_binop_operands(expr, BinOpKind::Eq)
         {
-            if let Some(a) = count_ones_receiver(cx, lhs)
-                && is_integer_literal(rhs, 1)
+            if is_integer_literal(rhs, 1)
+                && let Some(a) = count_ones_receiver(cx, lhs)
             {
                 self.build_sugg(cx, expr, a);
-            } else if let Some(a) = count_ones_receiver(cx, rhs)
-                && is_integer_literal(lhs, 1)
+            } else if is_integer_literal(lhs, 1)
+                && let Some(a) = count_ones_receiver(cx, rhs)
             {
                 self.build_sugg(cx, expr, a);
             } else if is_integer_literal(rhs, 0)
