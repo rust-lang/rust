@@ -345,8 +345,26 @@ LL |     if result.is_ok() {
 LL |         println!("{:?}", result.unwrap());
    |                          ^^^^^^^^^^^^^^^
 
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:299:9
+   |
+LL |     if x.is_some() {
+   |     -------------- help: try: `if let Some(<item>) = x`
+LL |         borrow_option(&x);
+LL |         x.unwrap();
+   |         ^^^^^^^^^^
+
+error: called `unwrap` on `x` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:305:9
+   |
+LL |     if x.is_some() {
+   |     -------------- help: try: `if let Some(<item>) = &x`
+LL |         borrow_option(&x);
+LL |         x.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^
+
 error: called `unwrap` on `sopt.option` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:303:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:321:9
    |
 LL |     let _res = if sopt.option.is_some() {
    |                ------------------------ help: try: `if let Some(<item>) = sopt.option`
@@ -354,7 +372,7 @@ LL |         sopt.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:306:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:324:9
    |
 LL |     let _res = if sopt.option.is_some() {
    |                   --------------------- because of this check
@@ -363,7 +381,7 @@ LL |         sopt.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `sopt.option` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:312:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:330:9
    |
 LL |     let _res = if sopt.option.is_some() {
    |                ------------------------ help: try: `if let Some(<item>) = sopt.option`
@@ -372,7 +390,7 @@ LL |         sopt.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:316:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:334:9
    |
 LL |     let _res = if sopt.option.is_some() {
    |                   --------------------- because of this check
@@ -381,7 +399,7 @@ LL |         sopt.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `topt.0` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:340:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:358:9
    |
 LL |     let _res = if topt.0.is_some() {
    |                ------------------- help: try: `if let Some(<item>) = topt.0`
@@ -389,7 +407,7 @@ LL |         topt.0.unwrap()
    |         ^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:343:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:361:9
    |
 LL |     let _res = if topt.0.is_some() {
    |                   ---------------- because of this check
@@ -398,7 +416,7 @@ LL |         topt.0.unwrap()
    |         ^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `topt.0` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:349:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:367:9
    |
 LL |     let _res = if topt.0.is_some() {
    |                ------------------- help: try: `if let Some(<item>) = topt.0`
@@ -407,7 +425,7 @@ LL |         topt.0.unwrap()
    |         ^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:353:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:371:9
    |
 LL |     let _res = if topt.0.is_some() {
    |                   ---------------- because of this check
@@ -416,7 +434,7 @@ LL |         topt.0.unwrap()
    |         ^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:387:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:405:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
@@ -424,7 +442,7 @@ LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:390:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:408:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                   ----------------------------- because of this check
@@ -433,7 +451,7 @@ LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:397:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:415:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
@@ -442,7 +460,7 @@ LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:401:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:419:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                   ----------------------------- because of this check
@@ -451,7 +469,7 @@ LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `unwrap` on `sopt2.option.option` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:407:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:425:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                -------------------------------- help: try: `if let Some(<item>) = sopt2.option.option`
@@ -460,7 +478,7 @@ LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this call to `unwrap()` will always panic
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:411:9
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:429:9
    |
 LL |     let _res = if sopt2.option.option.is_some() {
    |                   ----------------------------- because of this check
@@ -468,5 +486,23 @@ LL |     let _res = if sopt2.option.option.is_some() {
 LL |         sopt2.option.option.unwrap()
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 53 previous errors
+error: called `unwrap` on `topt.0` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:465:9
+   |
+LL |     if topt.0.is_some() {
+   |     ------------------- help: try: `if let Some(<item>) = topt.0`
+LL |         borrow_toption(&topt);
+LL |         topt.0.unwrap();
+   |         ^^^^^^^^^^^^^^^
+
+error: called `unwrap` on `topt.0` after checking its variant with `is_some`
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:471:9
+   |
+LL |     if topt.0.is_some() {
+   |     ------------------- help: try: `if let Some(<item>) = &topt.0`
+LL |         borrow_toption(&topt);
+LL |         topt.0.as_ref().unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 57 previous errors
 

@@ -289,6 +289,24 @@ fn check_expect() {
     }
 }
 
+fn partial_moves() {
+    fn borrow_option(_: &Option<()>) {}
+
+    let x = Some(());
+    // Using `if let Some(o) = x` won't work here, as `borrow_option` will try to borrow a moved value
+    if x.is_some() {
+        borrow_option(&x);
+        x.unwrap();
+        //~^ unnecessary_unwrap
+    }
+    // This is fine though, as `if let Some(o) = &x` won't move `x`
+    if x.is_some() {
+        borrow_option(&x);
+        x.as_ref().unwrap();
+        //~^ unnecessary_unwrap
+    }
+}
+
 fn issue15321() {
     struct Soption {
         option: Option<bool>,
@@ -436,4 +454,21 @@ fn issue15321() {
         sopt2.option.option = None;
         sopt2.option.option.unwrap()
     };
+
+    // Partial moves
+    fn borrow_toption(_: &Toption) {}
+
+    // Using `if let Some(o) = topt.0` won't work here, as `borrow_toption` will try to borrow a
+    // partially moved value
+    if topt.0.is_some() {
+        borrow_toption(&topt);
+        topt.0.unwrap();
+        //~^ unnecessary_unwrap
+    }
+    // This is fine though, as `if let Some(o) = &topt.0` won't (partially) move `topt`
+    if topt.0.is_some() {
+        borrow_toption(&topt);
+        topt.0.as_ref().unwrap();
+        //~^ unnecessary_unwrap
+    }
 }
