@@ -3,6 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
+use super::psadbw;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -77,6 +78,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let r = tern(va, vb, vc, imm8);
                     this.write_scalar(Scalar::from_u32(r), &d_lane)?;
                 }
+            }
+            // Used to implement the _mm512_sad_epu8 function.
+            "psad.bw.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+
+                psadbw(this, left, right, dest)?
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

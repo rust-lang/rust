@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     ShiftOp, horizontal_bin_op, mask_load, mask_store, mpsadbw, packssdw, packsswb, packusdw,
-    packuswb, pmulhrsw, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    packuswb, pmulhrsw, psadbw, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -241,41 +241,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
             // Used to implement the _mm256_sad_epu8 function.
-            // Compute the absolute differences of packed unsigned 8-bit integers
-            // in `left` and `right`, then horizontally sum each consecutive 8
-            // differences to produce four unsigned 16-bit integers, and pack
-            // these unsigned 16-bit integers in the low 16 bits of 64-bit elements
-            // in `dest`.
-            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8
             "psad.bw" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(left_len, dest_len.strict_mul(8));
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-
-                    let mut acc: u16 = 0;
-                    for j in 0..8 {
-                        let src_index = i.strict_mul(8).strict_add(j);
-
-                        let left = this.project_index(&left, src_index)?;
-                        let left = this.read_scalar(&left)?.to_u8()?;
-
-                        let right = this.project_index(&right, src_index)?;
-                        let right = this.read_scalar(&right)?.to_u8()?;
-
-                        acc = acc.strict_add(left.abs_diff(right).into());
-                    }
-
-                    this.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
-                }
+                psadbw(this, left, right, dest)?
             }
             // Used to implement the _mm256_shuffle_epi8 intrinsic.
             // Shuffles bytes from `left` using `right` as pattern.
