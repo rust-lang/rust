@@ -4,41 +4,109 @@ error: called `ok().expect()` on a `Result` value
 LL |     res.ok().expect("disaster!");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: you can call `expect()` directly on the `Result`
    = note: `-D clippy::ok-expect` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ok_expect)]`
+help: call `expect()` directly on the `Result`
+   |
+LL -     res.ok().expect("disaster!");
+LL +     res.expect("disaster!");
+   |
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:19:5
+   |
+LL | /     res.ok()
+LL | |         .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+   | |___________________________________________________________________________^
+   |
+help: call `expect()` directly on the `Result`
+   |
+LL -     res.ok()
+LL -         .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+LL +     res.expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+   |
 
 error: called `ok().expect()` on a `Result` value
   --> tests/ui/ok_expect.rs:24:5
    |
+LL | /     resres
+LL | |         .ok()
+LL | |         .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+   | |___________________________________________________________________________^
+   |
+help: call `expect()` directly on the `Result`
+   |
+LL -     resres
+LL -         .ok()
+LL -         .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+LL +     resres.expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+   |
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:30:5
+   |
+LL | /     std::process::Command::new("rustc")
+LL | |         .arg("-vV")
+LL | |         .output()
+LL | |         .ok()
+LL | |         .expect("failed to get rustc version");
+   | |______________________________________________^
+   |
+help: call `expect()` directly on the `Result`
+   |
+LL -         .output()
+LL -         .ok()
+LL -         .expect("failed to get rustc version");
+LL +         .output().expect("failed to get rustc version");
+   |
+
+error: called `ok().expect()` on a `Result` value
+  --> tests/ui/ok_expect.rs:42:5
+   |
 LL |     res3.ok().expect("whoof");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: you can call `expect()` directly on the `Result`
+help: call `expect()` directly on the `Result`
+   |
+LL -     res3.ok().expect("whoof");
+LL +     res3.expect("whoof");
+   |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:28:5
+  --> tests/ui/ok_expect.rs:46:5
    |
 LL |     res4.ok().expect("argh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: you can call `expect()` directly on the `Result`
+help: call `expect()` directly on the `Result`
+   |
+LL -     res4.ok().expect("argh");
+LL +     res4.expect("argh");
+   |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:32:5
+  --> tests/ui/ok_expect.rs:50:5
    |
 LL |     res5.ok().expect("oops");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: you can call `expect()` directly on the `Result`
+help: call `expect()` directly on the `Result`
+   |
+LL -     res5.ok().expect("oops");
+LL +     res5.expect("oops");
+   |
 
 error: called `ok().expect()` on a `Result` value
-  --> tests/ui/ok_expect.rs:36:5
+  --> tests/ui/ok_expect.rs:54:5
    |
 LL |     res6.ok().expect("meh");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: you can call `expect()` directly on the `Result`
+help: call `expect()` directly on the `Result`
+   |
+LL -     res6.ok().expect("meh");
+LL +     res6.expect("meh");
+   |
 
-error: aborting due to 5 previous errors
+error: aborting due to 8 previous errors
 

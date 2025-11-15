@@ -371,7 +371,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
+                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {
@@ -625,7 +625,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
+                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {

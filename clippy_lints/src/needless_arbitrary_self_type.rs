@@ -1,10 +1,9 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use rustc_ast::ast::{BindingMode, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
+use rustc_ast::ast::{BindingMode, ByRef, Lifetime, Param, PatKind, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
 use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
@@ -65,52 +64,6 @@ enum Mode {
     Value,
 }
 
-fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mode: &Mode, mutbl: Mutability) {
-    if let [segment] = &path.segments[..]
-        && segment.ident.name == kw::SelfUpper
-    {
-        // In case we have a named lifetime, we check if the name comes from expansion.
-        // If it does, at this point we know the rest of the parameter was written by the user,
-        // so let them decide what the name of the lifetime should be.
-        // See #6089 for more details.
-        let mut applicability = Applicability::MachineApplicable;
-        let self_param = match (binding_mode, mutbl) {
-            (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
-            (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
-                if lifetime.ident.span.from_expansion() {
-                    applicability = Applicability::HasPlaceholders;
-                    "&'_ mut self".to_string()
-                } else {
-                    let lt_name = snippet_with_applicability(cx, lifetime.ident.span, "..", &mut applicability);
-                    format!("&{lt_name} mut self")
-                }
-            },
-            (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
-            (Mode::Ref(Some(lifetime)), Mutability::Not) => {
-                if lifetime.ident.span.from_expansion() {
-                    applicability = Applicability::HasPlaceholders;
-                    "&'_ self".to_string()
-                } else {
-                    let lt_name = snippet_with_applicability(cx, lifetime.ident.span, "..", &mut applicability);
-                    format!("&{lt_name} self")
-                }
-            },
-            (Mode::Value, Mutability::Mut) => "mut self".to_string(),
-            (Mode::Value, Mutability::Not) => "self".to_string(),
-        };
-
-        span_lint_and_sugg(
-            cx,
-            NEEDLESS_ARBITRARY_SELF_TYPE,
-            span,
-            "the type of the `self` parameter does not need to be arbitrary",
-            "consider to change this parameter to",
-            self_param,
-            applicability,
-        );
-    }
-}
-
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
         // Bail out if the parameter it's not a receiver or was not written by the user
@@ -118,20 +71,55 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
             return;
         }
 
-        match &p.ty.kind {
-            TyKind::Path(None, path) => {
-                if let PatKind::Ident(BindingMode(ByRef::No, mutbl), _, _) = p.pat.kind {
-                    check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Value, mutbl);
-                }
+        let (path, binding_mode, mutbl) = match &p.ty.kind {
+            TyKind::Path(None, path) if let PatKind::Ident(BindingMode(ByRef::No, mutbl), _, _) = p.pat.kind => {
+                (path, Mode::Value, mutbl)
             },
-            TyKind::Ref(lifetime, mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty)
                 if let TyKind::Path(None, path) = &mut_ty.ty.kind
-                    && let PatKind::Ident(BindingMode::NONE, _, _) = p.pat.kind
-                {
-                    check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
-                }
+                    && let PatKind::Ident(BindingMode::NONE, _, _) = p.pat.kind =>
+            {
+                (path, Mode::Ref(*lifetime), mut_ty.mutbl)
             },
-            _ => {},
+            _ => return,
+        };
+
+        let span = p.span.to(p.ty.span);
+        if let [segment] = &path.segments[..]
+            && segment.ident.name == kw::SelfUpper
+        {
+            span_lint_and_then(
+                cx,
+                NEEDLESS_ARBITRARY_SELF_TYPE,
+                span,
+                "the type of the `self` parameter does not need to be arbitrary",
+                |diag| {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let add = match binding_mode {
+                        Mode::Value => String::new(),
+                        Mode::Ref(None) => mutbl.ref_prefix_str().to_string(),
+                        Mode::Ref(Some(lifetime)) => {
+                            // In case we have a named lifetime, we check if the name comes from expansion.
+                            // If it does, at this point we know the rest of the parameter was written by the user,
+                            // so let them decide what the name of the lifetime should be.
+                            // See #6089 for more details.
+                            let lt_name = if lifetime.ident.span.from_expansion() {
+                                applicability = Applicability::HasPlaceholders;
+                                "'_".into()
+                            } else {
+                                snippet_with_applicability(cx, lifetime.ident.span, "'_", &mut applicability)
+                            };
+                            format!("&{lt_name} {mut_}", mut_ = mutbl.prefix_str())
+                        },
+                    };
+
+                    let mut sugg = vec![(p.ty.span.with_lo(p.span.hi()), String::new())];
+                    if !add.is_empty() {
+                        sugg.push((p.span.shrink_to_lo(), add));
+                    }
+                    diag.multipart_suggestion_verbose("remove the type", sugg, applicability);
+                },
+            );
         }
     }
 }

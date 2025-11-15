@@ -242,4 +242,9 @@ fn issue_13436() {
     }
 }
 
+fn issue16014() {
+    !(vec![1, 2, 3] <= vec![1, 2, 3, 3]);
+    //~^ nonminimal_bool
+}
+
 fn main() {}
