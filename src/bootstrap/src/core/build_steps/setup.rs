@@ -103,13 +103,16 @@ impl fmt::Display for Profile {
 
 impl Step for Profile {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         for choice in Profile::all() {
             run = run.alias(choice.as_str());
         }
         run
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -231,10 +234,13 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 pub struct Link;
 impl Step for Link {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("link")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -450,10 +456,13 @@ pub struct Hook;
 
 impl Step for Hook {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("hook")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -670,10 +679,13 @@ pub struct Editor;
 
 impl Step for Editor {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("editor")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
