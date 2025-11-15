@@ -469,7 +469,7 @@ pub fn report_result<'tcx>(
     eprint!("{extra}"); // newlines are already in the string
 
     if show_all_threads {
-        for (thread, stack) in ecx.machine.threads.all_stacks() {
+        for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
             if thread != ecx.active_thread() {
                 let stacktrace = Frame::generate_stacktrace_from_stack(stack);
                 let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);

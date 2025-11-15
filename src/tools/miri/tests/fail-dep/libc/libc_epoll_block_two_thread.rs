@@ -1,11 +1,9 @@
 //@compile-flags: -Zmiri-deterministic-concurrency
-//~^ERROR: deadlocked
-//~^^ERROR: deadlocked
 //@only-target: linux android illumos
 //@error-in-other-file: deadlock
 
 use std::convert::TryInto;
-use std::thread::spawn;
+use std::thread;
 
 // Using `as` cast since `EPOLLET` wraps around
 const EPOLL_IN_OUT_ET: u32 = (libc::EPOLLIN | libc::EPOLLOUT | libc::EPOLLET) as _;
@@ -66,22 +64,21 @@ fn main() {
 
     let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
     let expected_value = fds[0] as u64;
-    let thread1 = spawn(move || {
+    let thread1 = thread::spawn(move || {
+        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
+    });
+    let thread2 = thread::spawn(move || {
         check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
         //~^ERROR: deadlocked
     });
-    let thread2 = spawn(move || {
-        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
-    });
+    // Yield so the threads are both blocked.
+    thread::yield_now();
 
-    let thread3 = spawn(move || {
-        // Just a single write, so we only wake up one of them.
-        let data = "abcde".as_bytes().as_ptr();
-        let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
-        assert!(res > 0 && res <= 5);
-    });
+    // Just a single write, so we only wake up one of them.
+    let data = "abcde".as_bytes().as_ptr();
+    let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
+    assert!(res > 0 && res <= 5);
 
     thread1.join().unwrap();
     thread2.join().unwrap();
-    thread3.join().unwrap();
 }

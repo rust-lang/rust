@@ -515,10 +515,13 @@ impl<'tcx> ThreadManager<'tcx> {
         &mut self.threads[self.active_thread].stack
     }
 
-    pub fn all_stacks(
+    pub fn all_blocked_stacks(
         &self,
     ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> {
-        self.threads.iter_enumerated().map(|(id, t)| (id, &t.stack[..]))
+        self.threads
+            .iter_enumerated()
+            .filter(|(_id, t)| matches!(t.state, ThreadState::Blocked { .. }))
+            .map(|(id, t)| (id, &t.stack[..]))
     }
 
     /// Create a new thread and returns its id.
