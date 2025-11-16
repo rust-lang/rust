@@ -28,7 +28,7 @@ mod downloading {
     /// The GenMC repository the we get our commit from.
     pub(crate) const GENMC_GITHUB_URL: &str = "https://github.com/MPI-SWS/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "d9527280bb99f1cef64326b1803ffd952e3880df";
+    pub(crate) const GENMC_COMMIT: &str = "aa10ed65117c3291524efc19253b5d443a4602ac";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
     /// Return the path of the GenMC repo and whether the checked out commit was changed.
