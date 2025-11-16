@@ -1,31 +1,4 @@
-// These `thumbv*` targets cover the ARM Cortex-M family of processors which are widely used in
-// microcontrollers. Namely, all these processors:
-//
-// - Cortex-M0
-// - Cortex-M0+
-// - Cortex-M1
-// - Cortex-M3
-// - Cortex-M4(F)
-// - Cortex-M7(F)
-// - Cortex-M23
-// - Cortex-M33
-//
-// We have opted for these instead of one target per processor (e.g., `cortex-m0`, `cortex-m3`,
-// etc) because the differences between some processors like the cortex-m0 and cortex-m1 are almost
-// nonexistent from the POV of codegen so it doesn't make sense to have separate targets for them.
-// And if differences exist between two processors under the same target, rustc flags can be used to
-// optimize for one processor or the other.
-//
-// Also, we have not chosen a single target (`arm-none-eabi`) like GCC does because this makes
-// difficult to integrate Rust code and C code. Targeting the Cortex-M4 requires different gcc flags
-// than the ones you would use for the Cortex-M0 and with a single target it'd be impossible to
-// differentiate one processor from the other.
-//
-// About arm vs thumb in the name. The Cortex-M devices only support the Thumb instruction set,
-// which is more compact (higher code density), and not the ARM instruction set. That's why LLVM
-// triples use thumb instead of arm. We follow suit because having thumb in the name let us
-// differentiate these targets from our other `arm(v7)-*-*-gnueabi(hf)` targets in the context of
-// build scripts / gcc flags.
+// These are the baseline settings for 32-bit bare-metal Arm targets using the EABI or EABIHF ABI.
 
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, PanicStrategy, RelocModel, TargetOptions};
 
