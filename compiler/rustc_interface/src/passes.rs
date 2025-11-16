@@ -596,7 +596,9 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .map(|fmap| {
                 (
                     escape_dep_filename(&fmap.name.prefer_local().to_string()),
-                    fmap.source_len.0 as u64,
+                    // This needs to be unnormalized,
+                    // as external tools wouldn't know how rustc normalizes them
+                    fmap.unnormalized_source_len as u64,
                     fmap.checksum_hash,
                 )
             })
