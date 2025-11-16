@@ -305,8 +305,220 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
         }
     }
 
+    fn visit_projection_elem(
+        &mut self,
+        place_ref: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        match elem {
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                if from_end {
+                    if offset > min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset -{offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                } else {
+                    if offset >= min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset {offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                if !from_end && from > to {
+                    self.fail(location, "backwards subslice {from}..{to}");
+                }
+            }
+            ProjectionElem::OpaqueCast(ty) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        format!(
+                            "explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"
+                        ),
+                    )
+                }
+            }
+            _ => {}
+        }
+        self.super_projection_elem(place_ref, elem, context, location);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, cntxt: PlaceContext, location: Location) {
+        if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
+            && place.projection.len() > 1
+            && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
+            && place.projection[1..].contains(&ProjectionElem::Deref)
+        {
+            self.fail(
+                location,
+                format!("place {place:?} has deref as a later projection (it is only permitted as the first projection)"),
+            );
+        }
+
+        // Ensure all downcast projections are followed by field projections.
+        let mut projections_iter = place.projection.iter();
+        while let Some(proj) = projections_iter.next() {
+            if matches!(proj, ProjectionElem::Downcast(..)) {
+                if !matches!(projections_iter.next(), Some(ProjectionElem::Field(..))) {
+                    self.fail(
+                        location,
+                        format!(
+                            "place {place:?} has `Downcast` projection not followed by `Field`"
+                        ),
+                    );
+                }
+            }
+        }
+
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+            self.body.local_decls[place.local].local_info
+            && !place.is_indirect_first_projection()
+        {
+            if cntxt != PlaceContext::MutatingUse(MutatingUseContext::Store)
+                || place.as_local().is_none()
+            {
+                self.fail(
+                    location,
+                    format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
+                );
+            }
+        }
+
+        if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+            && let Some(i) = place
+                .projection
+                .iter()
+                .position(|elem| matches!(elem, ProjectionElem::Subslice { .. }))
+            && let Some(tail) = place.projection.get(i + 1..)
+            && tail.iter().any(|elem| {
+                matches!(
+                    elem,
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
+                )
+            })
+        {
+            self.fail(
+                location,
+                format!("place {place:?} has `ConstantIndex` or `Subslice` after `Subslice`"),
+            );
+        }
+
+        self.super_place(place, cntxt, location);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        match rvalue {
+            Rvalue::Use(_) => {}
+            Rvalue::CopyForDeref(_) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
+                }
+            }
+            Rvalue::Aggregate(kind, fields) => match **kind {
+                AggregateKind::Tuple => {}
+                AggregateKind::Array(_) => {}
+                AggregateKind::Adt(def_id, _, _, _, Some(_)) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(adt_def.is_union());
+                    if fields.len() != 1 {
+                        self.fail(location, "unions should have one initialized field");
+                    }
+                }
+                AggregateKind::Adt(def_id, idx, _, _, None) => {
+                    let adt_def = self.tcx.adt_def(def_id);
+                    assert!(!adt_def.is_union());
+                    let variant = &adt_def.variants()[idx];
+                    if variant.fields.len() != fields.len() {
+                        self.fail(location, format!(
+                            "adt {def_id:?} has the wrong number of initialized fields, expected {}, found {}",
+                            fields.len(),
+                            variant.fields.len(),
+                        ));
+                    }
+                }
+                AggregateKind::Closure(_, args) => {
+                    let upvars = args.as_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "closure has the wrong number of initialized fields");
+                    }
+                }
+                AggregateKind::Coroutine(_, args) => {
+                    let upvars = args.as_coroutine().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(location, "coroutine has the wrong number of initialized fields");
+                    }
+                }
+                AggregateKind::CoroutineClosure(_, args) => {
+                    let upvars = args.as_coroutine_closure().upvar_tys();
+                    if upvars.len() != fields.len() {
+                        self.fail(
+                            location,
+                            "coroutine-closure has the wrong number of initialized fields",
+                        );
+                    }
+                }
+                AggregateKind::RawPtr(..) => {
+                    if !matches!(self.body.phase, MirPhase::Runtime(_)) {
+                        // It would probably be fine to support this in earlier phases, but at the
+                        // time of writing it's only ever introduced from intrinsic lowering, so
+                        // earlier things just `bug!` on it.
+                        self.fail(location, "RawPtr should be in runtime MIR only");
+                    }
+
+                    if fields.len() != 2 {
+                        self.fail(location, "raw pointer aggregate must have 2 fields");
+                    }
+                }
+            },
+            Rvalue::Ref(_, BorrowKind::Fake(_), _) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(
+                        location,
+                        "`Assign` statement with a `Fake` borrow should have been removed in runtime MIR",
+                    );
+                }
+            }
+            Rvalue::Ref(..) => {}
+            Rvalue::BinaryOp(..) => {}
+            Rvalue::UnaryOp(..) => {}
+            Rvalue::ShallowInitBox(..) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
+                }
+            }
+            Rvalue::Cast(..) => {}
+            Rvalue::Repeat(_, _)
+            | Rvalue::ThreadLocalRef(_)
+            | Rvalue::RawPtr(_, _)
+            | Rvalue::Discriminant(_) => {}
+
+            Rvalue::WrapUnsafeBinder(..) => {}
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
+            StatementKind::Assign(box (dest, rvalue)) => {
+                if let Some(local) = dest.as_local()
+                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+                        self.body.local_decls[local].local_info
+                    && !matches!(rvalue, Rvalue::CopyForDeref(_))
+                {
+                    self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
+                }
+            }
             StatementKind::AscribeUserType(..) => {
                 if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -346,8 +558,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Assign(..)
-            | StatementKind::StorageLive(_)
+            StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter
@@ -390,71 +601,31 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.check_edge(location, *drop, EdgeKind::Normal);
                 }
             }
-            TerminatorKind::Call { func, args, .. }
-            | TerminatorKind::TailCall { func, args, .. } => {
-                // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
-                if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
-                    if let Some(target) = target {
-                        self.check_edge(location, target, EdgeKind::Normal);
-                    }
-                    self.check_unwind_edge(location, unwind);
-
-                    // The code generation assumes that there are no critical call edges. The
-                    // assumption is used to simplify inserting code that should be executed along
-                    // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
-                    // generation concern, the code generation should be responsible for handling
-                    // it.
-                    if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
-                        && self.is_critical_call_edge(target, unwind)
-                    {
-                        self.fail(
-                            location,
-                            format!(
-                                "encountered critical edge in `Call` terminator {:?}",
-                                terminator.kind,
-                            ),
-                        );
-                    }
-
-                    // The call destination place and Operand::Move place used as an argument might
-                    // be passed by a reference to the callee. Consequently they cannot be packed.
-                    if most_packed_projection(self.tcx, &self.body.local_decls, destination)
-                        .is_some()
-                    {
-                        // This is bad! The callee will expect the memory to be aligned.
-                        self.fail(
-                            location,
-                            format!(
-                                "encountered packed place in `Call` terminator destination: {:?}",
-                                terminator.kind,
-                            ),
-                        );
-                    }
+            TerminatorKind::Call { target, unwind, .. } => {
+                if let Some(target) = *target {
+                    self.check_edge(location, target, EdgeKind::Normal);
                 }
+                self.check_unwind_edge(location, *unwind);
 
-                for arg in args {
-                    if let Operand::Move(place) = &arg.node {
-                        if most_packed_projection(self.tcx, &self.body.local_decls, *place)
-                            .is_some()
-                        {
-                            // This is bad! The callee will expect the memory to be aligned.
-                            self.fail(
-                                location,
-                                format!(
-                                    "encountered `Move` of a packed place in `Call` terminator: {:?}",
-                                    terminator.kind,
-                                ),
-                            );
-                        }
-                    }
-                }
-
-                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
-                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
-                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                // The code generation assumes that there are no critical call edges. The
+                // assumption is used to simplify inserting code that should be executed along
+                // the return edge from the call. FIXME(tmiasko): Since this is a strictly code
+                // generation concern, the code generation should be responsible for handling
+                // it.
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && self.is_critical_call_edge(*target, *unwind)
                 {
-                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered critical edge in `Call` terminator {:?}",
+                            terminator.kind,
+                        ),
+                    );
                 }
+            }
+            TerminatorKind::TailCall { .. } => {
+                // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
             }
             TerminatorKind::Assert { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
@@ -534,6 +705,19 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
+            if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should have been removed in runtime MIR",
+                );
+            }
+        }
+
+        self.super_local_decl(local, local_decl);
     }
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
@@ -828,7 +1012,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("bad index ({index_ty} != usize)"))
                 }
             }
-            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+            ProjectionElem::ConstantIndex { from_end, .. } => {
                 let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
                 match indexed_ty.kind() {
                     ty::Array(_, _) => {
@@ -839,28 +1023,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ty::Slice(_) => {}
                     _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
                 }
-
-                if from_end {
-                    if offset > min_length {
-                        self.fail(
-                            location,
-                            format!(
-                                "constant index with offset -{offset} out of bounds of min length {min_length}"
-                            ),
-                        );
-                    }
-                } else {
-                    if offset >= min_length {
-                        self.fail(
-                            location,
-                            format!(
-                                "constant index with offset {offset} out of bounds of min length {min_length}"
-                            ),
-                        );
-                    }
-                }
             }
-            ProjectionElem::Subslice { from, to, from_end } => {
+            ProjectionElem::Subslice { from_end, .. } => {
                 let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
                 match indexed_ty.kind() {
                     ty::Array(_, _) => {
@@ -875,18 +1039,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                     _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
                 }
-
-                if !from_end && from > to {
-                    self.fail(location, "backwards subslice {from}..{to}");
-                }
-            }
-            ProjectionElem::OpaqueCast(ty)
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                self.fail(
-                    location,
-                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
-                )
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
@@ -953,66 +1105,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
     fn visit_place(&mut self, place: &Place<'tcx>, cntxt: PlaceContext, location: Location) {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
-
-        if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
-            && place.projection.len() > 1
-            && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
-            && place.projection[1..].contains(&ProjectionElem::Deref)
-        {
-            self.fail(
-                location,
-                format!("place {place:?} has deref as a later projection (it is only permitted as the first projection)"),
-            );
-        }
-
-        // Ensure all downcast projections are followed by field projections.
-        let mut projections_iter = place.projection.iter();
-        while let Some(proj) = projections_iter.next() {
-            if matches!(proj, ProjectionElem::Downcast(..)) {
-                if !matches!(projections_iter.next(), Some(ProjectionElem::Field(..))) {
-                    self.fail(
-                        location,
-                        format!(
-                            "place {place:?} has `Downcast` projection not followed by `Field`"
-                        ),
-                    );
-                }
-            }
-        }
-
-        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
-            self.body.local_decls[place.local].local_info
-            && !place.is_indirect_first_projection()
-        {
-            if cntxt != PlaceContext::MutatingUse(MutatingUseContext::Store)
-                || place.as_local().is_none()
-            {
-                self.fail(
-                    location,
-                    format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
-                );
-            }
-        }
-
-        if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
-            && let Some(i) = place
-                .projection
-                .iter()
-                .position(|elem| matches!(elem, ProjectionElem::Subslice { .. }))
-            && let Some(tail) = place.projection.get(i + 1..)
-            && tail.iter().any(|elem| {
-                matches!(
-                    elem,
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
-                )
-            })
-        {
-            self.fail(
-                location,
-                format!("place {place:?} has `ConstantIndex` or `Subslice` after `Subslice`"),
-            );
-        }
-
         self.super_place(place, cntxt, location);
     }
 
@@ -1026,11 +1118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
         match rvalue {
             Rvalue::Use(_) => {}
-            Rvalue::CopyForDeref(_) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
-                }
-            }
+            Rvalue::CopyForDeref(_) => {}
             Rvalue::Aggregate(kind, fields) => match **kind {
                 AggregateKind::Tuple => {}
                 AggregateKind::Array(dest) => {
@@ -1061,13 +1149,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     let adt_def = self.tcx.adt_def(def_id);
                     assert!(!adt_def.is_union());
                     let variant = &adt_def.variants()[idx];
-                    if variant.fields.len() != fields.len() {
-                        self.fail(location, format!(
-                            "adt {def_id:?} has the wrong number of initialized fields, expected {}, found {}",
-                            fields.len(),
-                            variant.fields.len(),
-                        ));
-                    }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
                         let dest_ty = self
                             .tcx
@@ -1114,13 +1195,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
                 AggregateKind::RawPtr(pointee_ty, mutability) => {
-                    if !matches!(self.body.phase, MirPhase::Runtime(_)) {
-                        // It would probably be fine to support this in earlier phases, but at the
-                        // time of writing it's only ever introduced from intrinsic lowering, so
-                        // earlier things just `bug!` on it.
-                        self.fail(location, "RawPtr should be in runtime MIR only");
-                    }
-
                     if let [data_ptr, metadata] = fields.raw.as_slice() {
                         let data_ptr_ty = data_ptr.ty(self.body, self.tcx);
                         let metadata_ty = metadata.ty(self.body, self.tcx);
@@ -1155,14 +1229,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             },
-            Rvalue::Ref(_, BorrowKind::Fake(_), _) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`Assign` statement with a `Fake` borrow should have been removed in runtime MIR",
-                    );
-                }
-            }
             Rvalue::Ref(..) => {}
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
@@ -1269,10 +1335,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::ShallowInitBox(operand, _) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
-                }
-
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
@@ -1489,30 +1551,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-
-                if let Some(local) = dest.as_local()
-                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
-                        self.body.local_decls[local].local_info
-                    && !matches!(rvalue, Rvalue::CopyForDeref(_))
-                {
-                    self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
-                }
-            }
-            StatementKind::AscribeUserType(..) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`AscribeUserType` should have been removed after drop lowering phase",
-                    );
-                }
-            }
-            StatementKind::FakeRead(..) => {
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(
-                        location,
-                        "`FakeRead` should have been removed after drop lowering phase",
-                    );
-                }
             }
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => {
                 let ty = op.ty(&self.body.local_decls, self.tcx);
@@ -1558,9 +1596,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::SetDiscriminant { place, .. } => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
-                }
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty;
                 if !matches!(
                     pty.kind(),
@@ -1574,15 +1609,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Retag(kind, _) => {
-                // FIXME(JakobDegen) The validator should check that `self.body.phase <
-                // DropsLowered`. However, this causes ICEs with generation of drop shims, which
-                // seem to fail to set their `MirPhase` correctly.
-                if matches!(kind, RetagKind::TwoPhase) {
-                    self.fail(location, format!("explicit `{kind:?}` is forbidden"));
-                }
-            }
-            StatementKind::StorageLive(_)
+            StatementKind::AscribeUserType(..)
+            | StatementKind::FakeRead(..)
+            | StatementKind::Retag(..)
+            | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
@@ -1622,7 +1652,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { func, .. } | TerminatorKind::TailCall { func, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 let func_ty = func.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
@@ -1635,9 +1666,51 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ),
                 }
 
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                {
+                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
+                }
+
                 if let TerminatorKind::TailCall { .. } = terminator.kind {
                     // FIXME(explicit_tail_calls): implement tail-call specific checks here (such
                     // as signature matching, forbidding closures, etc)
+                }
+
+                // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
+                if let TerminatorKind::Call { destination, .. } = terminator.kind {
+                    // The call destination place and Operand::Move place used as an argument might
+                    // be passed by a reference to the callee. Consequently they cannot be packed.
+                    if most_packed_projection(self.tcx, &self.body.local_decls, destination)
+                        .is_some()
+                    {
+                        // This is bad! The callee will expect the memory to be aligned.
+                        self.fail(
+                            location,
+                            format!(
+                                "encountered packed place in `Call` terminator destination: {:?}",
+                                terminator.kind,
+                            ),
+                        );
+                    }
+                }
+
+                for arg in args {
+                    if let Operand::Move(place) = &arg.node {
+                        if most_packed_projection(self.tcx, &self.body.local_decls, *place)
+                            .is_some()
+                        {
+                            // This is bad! The callee will expect the memory to be aligned.
+                            self.fail(
+                                location,
+                                format!(
+                                    "encountered `Move` of a packed place in `Call` terminator: {:?}",
+                                    terminator.kind,
+                                ),
+                            );
+                        }
+                    }
                 }
             }
             TerminatorKind::Assert { cond, .. } => {
@@ -1669,12 +1742,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
-            if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                self.fail(
-                    START_BLOCK.start_location(),
-                    "`DerefTemp` should have been removed in runtime MIR",
-                );
-            } else if local_decl.ty.builtin_deref(true).is_none() {
+            if local_decl.ty.builtin_deref(true).is_none() {
                 self.fail(
                     START_BLOCK.start_location(),
                     "`DerefTemp` should only be used for dereferenceable types",
