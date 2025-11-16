@@ -78,7 +78,16 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
 
         // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, typing_env, body, body) {
-            cfg_checker.fail(location, msg);
+            // We might see broken MIR when other errors have already occurred.
+            // But we may have some cases of errors happening *after* MIR construction,
+            // for instance because of generic constants or coroutines.
+            tcx.dcx().span_delayed_bug(
+                body.source_info(location).span,
+                format!(
+                    "broken MIR in {:?} ({}) at {:?}:\n{}",
+                    body.source.instance, self.when, location, msg,
+                ),
+            );
         }
 
         // Ensure that debuginfo records are not emitted for locals that are not in debuginfo.
@@ -126,12 +135,13 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
         // We might see broken MIR when other errors have already occurred.
         // But we may have some cases of errors happening *after* MIR construction,
         // for instance because of generic constants or coroutines.
-        self.tcx.dcx().span_delayed_bug(
+        span_bug!(
             self.body.source_info(location).span,
-            format!(
-                "broken MIR in {:?} ({}) at {:?}:\n{}",
-                self.body.source.instance, self.when, location, msg,
-            ),
+            "broken MIR in {:?} ({}) at {:?}:\n{}",
+            self.body.source.instance,
+            self.when,
+            location,
+            msg,
         );
     }
 
