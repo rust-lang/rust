@@ -16,7 +16,8 @@ use crate::alloc::{Allocator, Global};
 /// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
 #[stable(feature = "extract_if", since = "1.87.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain_mut` or `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
     'a,
     T,
