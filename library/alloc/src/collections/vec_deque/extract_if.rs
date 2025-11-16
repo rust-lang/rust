@@ -21,7 +21,8 @@ use crate::alloc::{Allocator, Global};
 /// let iter: ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
 #[unstable(feature = "vec_deque_extract_if", issue = "147750")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain_mut` or `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
     'a,
     T,
