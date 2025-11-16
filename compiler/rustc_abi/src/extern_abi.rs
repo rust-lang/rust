@@ -269,10 +269,8 @@ impl ExternAbi {
             | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }
-            | Self::EfiApi => CVariadicStatus::Stable,
-            Self::System { .. } => {
-                CVariadicStatus::Unstable { feature: rustc_span::sym::extern_system_varargs }
-            }
+            | Self::EfiApi
+            | Self::System { .. } => CVariadicStatus::Stable,
             _ => CVariadicStatus::NotSupported,
         }
     }
