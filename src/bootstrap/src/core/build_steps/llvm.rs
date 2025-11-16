@@ -457,6 +457,7 @@ impl Step for Llvm {
         // This is an experimental flag, which likely builds more than necessary.
         // We will optimize it when we get closer to releasing it on nightly.
         if builder.config.llvm_offload {
+            enabled_llvm_projects.push("lld");
             enabled_llvm_runtimes.push("offload");
             //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
             //Remove this line once they achieved it.
