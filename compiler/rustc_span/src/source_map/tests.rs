@@ -234,7 +234,7 @@ fn t10() {
         lines,
         multibyte_chars,
         normalized_pos,
-        stable_id,
+        stable_id: _,
         ..
     } = (*src_file).clone();
 
@@ -242,7 +242,9 @@ fn t10() {
         name,
         src_hash,
         checksum_hash,
-        stable_id,
+        StableSourceFileId::from_filename_in_current_crate(
+            &PathBuf::from("imported-blork.rs").into(),
+        ),
         source_len.to_u32(),
         CrateNum::ZERO,
         FreezeLock::new(lines.read().clone()),
