@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         metadata: TargetMetadata {
             description: Some("64-bit Solaris 11.4".into()),
             tier: Some(2),
-            host_tools: Some(false),
+            host_tools: Some(true),
             std: Some(true),
         },
         pointer_width: 64,
