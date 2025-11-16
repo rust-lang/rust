@@ -12,6 +12,7 @@ pub(crate) fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.atomic_cas = true;
     base.disable_redzone = true;
+    base.llvm_abiname = "lp64d".into();
 
     Target {
         llvm_target: "riscv64".into(),
