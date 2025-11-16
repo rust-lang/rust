@@ -1531,9 +1531,8 @@ mod prim_usize {}
 /// `&mut T` references can be freely coerced into `&T` references with the same referent type, and
 /// references with longer lifetimes can be freely coerced into references with shorter ones.
 ///
-/// Reference equality by address, instead of comparing the values pointed to, is accomplished via
-/// implicit reference-pointer coercion and raw pointer equality via [`ptr::eq`], while
-/// [`PartialEq`] compares values.
+/// [`PartialEq`] will compare referenced values. It is possible to compare the reference address
+/// using reference-pointer coercion and raw pointer equality via [`ptr::eq`].
 ///
 /// ```
 /// use std::ptr;
@@ -1648,7 +1647,7 @@ mod prim_usize {}
 /// For the other direction, things are more complicated: when unsafe code passes arguments
 /// to safe functions or returns values from safe functions, they generally must *at least*
 /// not violate these invariants. The full requirements are stronger, as the reference generally
-/// must point to data that is safe to use at type `T`.
+/// must point to data that is safe to use as type `T`.
 ///
 /// It is not decided yet whether unsafe code may violate these invariants temporarily on internal
 /// data. As a consequence, unsafe code which violates these invariants temporarily on internal data

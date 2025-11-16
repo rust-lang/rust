@@ -147,6 +147,7 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(temporary_niche_types)]
+#![feature(transmutability)]
 #![feature(trivial_clone)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
