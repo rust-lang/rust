@@ -12,6 +12,7 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Closure, Expr, ExprKind, HirId, LetStmt, Mutability, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
+use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Symbol;
 use rustc_span::symbol::sym;
@@ -43,26 +44,26 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         };
 
         // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
-        // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
+        // passed by reference. TODO: If the struct can be partially moved from and the struct isn't used
         // afterwards a mutable borrow of a field isn't necessary.
-        let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
+        let iterator_by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
             || !iter_expr_struct.can_move
             || !iter_expr_struct.fields.is_empty()
             || needs_mutable_borrow(cx, &iter_expr_struct, expr)
         {
-            ".by_ref()"
+            make_iterator_snippet(cx, iter_expr, iterator)
         } else {
-            ""
+            iterator.to_string()
         };
 
-        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
         span_lint_and_sugg(
             cx,
             WHILE_LET_ON_ITERATOR,
             expr.span.with_hi(let_expr.span.hi()),
             "this loop could be written as a `for` loop",
             "try",
-            format!("{loop_label}for {loop_var} in {iterator}{by_ref}"),
+            format!("{loop_label}for {loop_var} in {iterator_by_ref}"),
             applicability,
         );
     }
@@ -354,4 +355,20 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         v.visit_expr(cx.tcx.hir_body(cx.enclosing_body.unwrap()).value)
             .is_break()
     }
+}
+
+/// Constructs the transformed iterator expression for the suggestion.
+/// Returns `iterator.by_ref()` unless the iterator type is a reference to an unsized type,
+/// in which case it returns `&mut *iterator`.
+fn make_iterator_snippet<'tcx>(cx: &LateContext<'tcx>, iter_expr: &Expr<'tcx>, iterator: impl Into<String>) -> String {
+    let iterator = iterator.into();
+    let ty = cx.typeck_results().expr_ty(iter_expr);
+
+    if let ty::Ref(_, inner_ty, _) = ty.kind()
+        && !inner_ty.is_sized(cx.tcx, cx.typing_env())
+    {
+        return format!("&mut *{iterator}");
+    }
+
+    format!("{iterator}.by_ref()")
 }

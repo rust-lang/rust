@@ -492,6 +492,37 @@ fn issue13123() {
     }
 }
 
+fn issue16089() {
+    trait CertainTrait: Iterator<Item = u8> {
+        fn iter_over_self(&mut self) {
+            let mut a = 0;
+            while let Some(r) = self.next() {
+                //~^ while_let_on_iterator
+                a = r;
+            }
+            self.use_after_iter()
+        }
+
+        fn use_after_iter(&mut self) {}
+    }
+}
+
+fn issue16089_sized_trait_not_reborrowed() {
+    trait CertainTrait: Iterator<Item = u8> + Sized {
+        fn iter_over_self(&mut self) {
+            let mut a = 0;
+            // Check that the suggestion is just "self", since the trait is sized.
+            while let Some(r) = self.next() {
+                //~^ while_let_on_iterator
+                a = r;
+            }
+            self.use_after_iter()
+        }
+
+        fn use_after_iter(&mut self) {}
+    }
+}
+
 fn main() {
     let mut it = 0..20;
     while let Some(..) = it.next() {
