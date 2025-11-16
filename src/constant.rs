@@ -215,11 +215,6 @@ pub(crate) fn codegen_const_value<'tcx>(
                 CValue::by_val(val, layout)
             }
         },
-        ConstValue::RuntimeChecks(checks) => {
-            let int = checks.value(fx.tcx.sess);
-            let int = ScalarInt::try_from_uint(int, Size::from_bits(1)).unwrap();
-            return CValue::const_val(fx, layout, int);
-        }
         ConstValue::Indirect { alloc_id, offset } => CValue::by_ref(
             Pointer::new(pointer_for_allocation(fx, alloc_id))
                 .offset_i64(fx, i64::try_from(offset.bytes()).unwrap()),
@@ -545,6 +540,10 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     operand: &Operand<'tcx>,
 ) -> Option<ScalarInt> {
     match operand {
+        Operand::RuntimeChecks(checks) => {
+            let int = checks.value(fx.tcx.sess);
+            ScalarInt::try_from_uint(int, Size::from_bits(1))
+        }
         Operand::Constant(const_) => eval_mir_constant(fx, const_).0.try_to_scalar_int(),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
