@@ -15,6 +15,12 @@ pub(crate) fn target() -> Target {
     // and this may grow over time as more features are supported.
     let mut target = super::wasm32_wasip2::target();
     target.llvm_target = "wasm32-wasip3".into();
+    target.metadata = crate::spec::TargetMetadata {
+        description: Some("WebAssembly".into()),
+        tier: Some(3),
+        host_tools: Some(false),
+        std: Some(true),
+    };
     target.options.env = Env::P3;
     target
 }
