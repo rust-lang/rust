@@ -277,6 +277,7 @@ fn check_operand<'tcx>(
             Some(_) => Err((span, "cannot access `static` items in const fn".into())),
             None => Ok(()),
         },
+        Operand::RuntimeChecks(..) => Ok(()),
     }
 }
 

@@ -845,6 +845,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // FIXME: do some more logic on `move` to invalidate the old location
             &Copy(place) | &Move(place) => self.eval_place_to_op(place, layout)?,
 
+            &RuntimeChecks(checks) => {
+                let val = M::runtime_checks(self, checks)?;
+                ImmTy::from_bool(val, self.tcx()).into()
+            }
+
             Constant(constant) => {
                 let c = self.instantiate_from_current_frame_and_normalize_erasing_regions(
                     constant.const_,
@@ -891,10 +896,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // This is const data, no mutation allowed.
                 let ptr = Pointer::new(CtfeProvenance::from(alloc_id).as_immutable(), Size::ZERO);
                 Immediate::new_slice(self.global_root_pointer(ptr)?.into(), meta, self)
-            }
-            mir::ConstValue::RuntimeChecks(checks) => {
-                let val = M::runtime_checks(self, checks)?;
-                Scalar::from_bool(val).into()
             }
         };
         interp_ok(OpTy { op: Operand::Immediate(imm), layout })

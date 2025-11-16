@@ -312,7 +312,7 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
 }
 
 impl<'tcx> Stable<'tcx> for mir::RuntimeChecks {
-    type T = crate::ty::RuntimeChecks;
+    type T = crate::mir::RuntimeChecks;
     fn stable<'cx>(
         &self,
         _: &mut Tables<'cx, BridgeTys>,
@@ -320,9 +320,9 @@ impl<'tcx> Stable<'tcx> for mir::RuntimeChecks {
     ) -> Self::T {
         use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            UbChecks => crate::ty::RuntimeChecks::UbChecks,
-            ContractChecks => crate::ty::RuntimeChecks::ContractChecks,
-            OverflowChecks => crate::ty::RuntimeChecks::OverflowChecks,
+            UbChecks => crate::mir::RuntimeChecks::UbChecks,
+            ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+            OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
         }
     }
 }
@@ -379,6 +379,7 @@ impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
             Copy(place) => crate::mir::Operand::Copy(place.stable(tables, cx)),
             Move(place) => crate::mir::Operand::Move(place.stable(tables, cx)),
             Constant(c) => crate::mir::Operand::Constant(c.stable(tables, cx)),
+            RuntimeChecks(c) => crate::mir::Operand::RuntimeChecks(c.stable(tables, cx)),
         }
     }
 }
@@ -885,13 +886,6 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
             mir::Const::Val(mir::ConstValue::ZeroSized, ty) => {
                 let ty = ty.stable(tables, cx);
                 MirConst::new(ConstantKind::ZeroSized, ty, id)
-            }
-            mir::Const::Val(mir::ConstValue::RuntimeChecks(checks), ty) => {
-                let ty = cx.lift(ty).unwrap();
-                let checks = cx.lift(checks).unwrap();
-                let ty = ty.stable(tables, cx);
-                let kind = ConstantKind::RuntimeChecks(checks.stable(tables, cx));
-                MirConst::new(kind, ty, id)
             }
             mir::Const::Val(val, ty) => {
                 let ty = cx.lift(ty).unwrap();

@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // element, so we require the `Copy` trait.
                 if len.try_to_target_usize(tcx).is_none_or(|len| len > 1) {
                     match operand {
-                        Operand::Copy(..) | Operand::Constant(..) => {
+                        Operand::Copy(..) | Operand::Constant(..) | Operand::RuntimeChecks(_) => {
                             // These are always okay: direct use of a const, or a value that can
                             // evidently be copied.
                         }

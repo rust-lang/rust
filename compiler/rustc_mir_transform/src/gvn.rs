@@ -248,6 +248,7 @@ enum Value<'a, 'tcx> {
     Discriminant(VnIndex),
 
     // Operations.
+    RuntimeChecks(RuntimeChecks),
     UnaryOp(UnOp, VnIndex),
     BinaryOp(BinOp, VnIndex, VnIndex),
     Cast {
@@ -569,6 +570,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             _ if ty.is_zst() => ImmTy::uninit(ty).into(),
 
             Opaque(_) => return None,
+            // Keep runtime check constants as symbolic.
+            RuntimeChecks(..) => return None,
 
             // In general, evaluating repeat expressions just consumes a lot of memory.
             // But in the special case that the element is just Immediate::Uninit, we can evaluate
@@ -1005,11 +1008,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
+            Operand::RuntimeChecks(c) => {
+                Some(self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)))
+            }
             Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
                     *operand = Operand::Constant(Box::new(const_));
+                } else if let Value::RuntimeChecks(c) = self.get(value) {
+                    *operand = Operand::RuntimeChecks(c);
                 }
                 Some(value)
             }
@@ -1777,6 +1785,8 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
     fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
         if let Some(const_) = self.try_as_constant(index) {
             Some(Operand::Constant(Box::new(const_)))
+        } else if let Value::RuntimeChecks(c) = self.get(index) {
+            Some(Operand::RuntimeChecks(c))
         } else if let Some(place) = self.try_as_place(index, location, false) {
             self.reused_locals.insert(place.local);
             Some(Operand::Copy(place))

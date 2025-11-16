@@ -363,11 +363,15 @@ impl<'tcx> MutVisitor<'tcx> for SimplifyUbCheck<'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, _: Location) {
-        if let Operand::Constant(c) = operand
-            && let Const::Val(c, _) = &mut c.const_
-            && let ConstValue::RuntimeChecks(RuntimeChecks::UbChecks) = c
-        {
-            *c = ConstValue::from_bool(self.tcx.sess.ub_checks());
+        if let Operand::RuntimeChecks(RuntimeChecks::UbChecks) = operand {
+            *operand = Operand::Constant(Box::new(ConstOperand {
+                span: rustc_span::DUMMY_SP,
+                user_ty: None,
+                const_: Const::Val(
+                    ConstValue::from_bool(self.tcx.sess.ub_checks()),
+                    self.tcx.types.bool,
+                ),
+            }));
         }
     }
 }

@@ -1696,7 +1696,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     _ => propagate_closure_used_mut_place(self, place),
                 }
             }
-            Operand::Constant(..) => {}
+            Operand::Constant(..) | Operand::RuntimeChecks(_) => {}
         }
     }
 
@@ -1747,7 +1747,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     state,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 

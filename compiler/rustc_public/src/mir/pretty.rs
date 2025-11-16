@@ -332,6 +332,7 @@ fn pretty_operand(operand: &Operand) -> String {
             format!("move {mv:?}")
         }
         Operand::Constant(cnst) => pretty_mir_const(&cnst.const_),
+        Operand::RuntimeChecks(checks) => format!("const {checks:?}"),
     }
 }
 

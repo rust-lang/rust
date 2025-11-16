@@ -546,9 +546,10 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
 
     fn gather_operand(&mut self, operand: &Operand<'tcx>) {
         match *operand {
-            Operand::Constant(..) | Operand::Copy(..) => {} // not-a-move
+            // not-a-move
+            Operand::Constant(..) | Operand::Copy(..) | Operand::RuntimeChecks(_) => {}
+            // a move
             Operand::Move(place) => {
-                // a move
                 self.gather_move(place);
             }
         }

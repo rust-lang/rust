@@ -103,7 +103,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 self.penalty += CALL_PENALTY;
             }
             TerminatorKind::SwitchInt { discr, targets } => {
-                if discr.constant().is_some() {
+                if matches!(discr, Operand::Constant(_) | Operand::RuntimeChecks(_)) {
                     // Not only will this become a `Goto`, but likely other
                     // things will be removable as unreachable.
                     self.bonus += CONST_SWITCH_BONUS;
