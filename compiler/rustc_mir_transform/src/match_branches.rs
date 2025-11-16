@@ -1,12 +1,14 @@
 use rustc_abi::Integer;
+use rustc_const_eval::const_eval::mk_eval_cx_for_const_val;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 
 use super::simplify::simplify_cfg;
 use crate::patch::MirPatch;
 
-/// Merges all targets into one basic block if each statement can have the same statement.
+/// Unifies all targets into one basic block if each statement can have the same statement.
 pub(super) struct MatchBranchSimplification;
 
 impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
@@ -40,6 +42,7 @@ struct SimplifyMatch<'tcx, 'a> {
     patch: MirPatch<'tcx>,
     body: &'a Body<'tcx>,
     switch_bb: BasicBlock,
+    discr: &'a Operand<'tcx>,
     discr_local: Option<Local>,
     discr_ty: Ty<'tcx>,
 }
@@ -53,8 +56,8 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         })
     }
 
-    /// Merges the assignments if all rvalues are constants and equal.
-    fn merge_if_equal_const(
+    /// Unifies the assignments if all rvalues are constants and equal.
+    fn unify_if_equal_const(
         &self,
         dest: Place<'tcx>,
         consts: &[(u128, &ConstOperand<'tcx>)],
@@ -76,7 +79,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
 
     /// If a source block is found that switches between two blocks that are exactly
     /// the same modulo const bool assignments (e.g., one assigns true another false
-    /// to the same place), merge a target block statements into the source block,
+    /// to the same place), unify a target block statements into the source block,
     /// using Eq / Ne comparison with switch value where const bools value differ.
     ///
     /// For example:
@@ -105,7 +108,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
     ///    goto -> bb3;
     /// }
     /// ```
-    fn merge_by_eq_op(
+    fn unify_by_eq_op(
         &mut self,
         dest: Place<'tcx>,
         consts: &[(u128, &ConstOperand<'tcx>)],
@@ -140,7 +143,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         }
     }
 
-    /// Merges the assignments if all rvalues can be cast from the discriminant value by IntToInt.
+    /// Unifies the assignments if all rvalues can be cast from the discriminant value by IntToInt.
     ///
     /// For example:
     ///
@@ -177,7 +180,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
     ///    goto -> bb5;
     /// }
     /// ```
-    fn merge_by_int_to_int(
+    fn unify_by_int_to_int(
         &mut self,
         dest: Place<'tcx>,
         consts: &[(u128, &ConstOperand<'tcx>)],
@@ -207,10 +210,91 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         }
     }
 
+    /// This is primarily used to unify these copy statements that simplified the canonical enum clone method by GVN.
+    /// The GVN simplified
+    /// ```ignore (syntax-highlighting-only)
+    /// match a {
+    ///     Foo::A(x) => Foo::A(*x),
+    ///     Foo::B => Foo::B
+    /// }
+    /// ```
+    /// to
+    /// ```ignore (syntax-highlighting-only)
+    /// match a {
+    ///     Foo::A(_x) => a, // copy a
+    ///     Foo::B => Foo::B
+    /// }
+    /// ```
+    /// This will simplify into a copy statement.
+    fn unify_by_copy(
+        &self,
+        dest: Place<'tcx>,
+        rvals: &[(u128, &Rvalue<'tcx>)],
+    ) -> Option<StatementKind<'tcx>> {
+        let bbs = &self.body.basic_blocks;
+        // Check if the copy source matches the following pattern.
+        // _2 = discriminant(*_1); // "*_1" is the expected the copy source.
+        // switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+        let &Statement {
+            kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(copy_src_place))),
+            ..
+        } = bbs[self.switch_bb].statements.last()?
+        else {
+            return None;
+        };
+        if self.discr.place() != Some(discr_place) {
+            return None;
+        }
+        let src_ty = copy_src_place.ty(self.body.local_decls(), self.tcx);
+        if !src_ty.ty.is_enum() || src_ty.variant_index.is_some() {
+            return None;
+        }
+        let dest_ty = dest.ty(self.body.local_decls(), self.tcx);
+        if dest_ty.ty != src_ty.ty || dest_ty.variant_index.is_some() {
+            return None;
+        }
+        let ty::Adt(def, _) = dest_ty.ty.kind() else {
+            return None;
+        };
+
+        for &(case, rvalue) in rvals.iter() {
+            match rvalue {
+                // Check if `_3 = const Foo::B` can be transformed to `_3 = copy *_1`.
+                Rvalue::Use(Operand::Constant(box constant))
+                    if let Const::Val(const_, ty) = constant.const_ =>
+                {
+                    let (ecx, op) = mk_eval_cx_for_const_val(
+                        self.tcx.at(constant.span),
+                        self.typing_env,
+                        const_,
+                        ty,
+                    )?;
+                    let variant = ecx.read_discriminant(&op).discard_err()?;
+                    if !def.variants()[variant].fields.is_empty() {
+                        return None;
+                    }
+                    let Discr { val, .. } = ty.discriminant_for_variant(self.tcx, variant)?;
+                    if val != case {
+                        return None;
+                    }
+                }
+                Rvalue::Use(Operand::Copy(src_place)) if *src_place == copy_src_place => {}
+                // Check if `_3 = Foo::B` can be transformed to `_3 = copy *_1`.
+                Rvalue::Aggregate(box AggregateKind::Adt(_, variant_index, _, _, None), fields)
+                    if fields.is_empty()
+                        && let Some(Discr { val, .. }) =
+                            src_ty.ty.discriminant_for_variant(self.tcx, *variant_index)
+                        && val == case => {}
+                _ => return None,
+            }
+        }
+        Some(StatementKind::Assign(Box::new((dest, Rvalue::Use(Operand::Copy(copy_src_place))))))
+    }
+
     /// Returns a new statement if we can use the statement replace all statements.
-    fn try_merge_stmts(
+    fn try_unify_stmts(
         &mut self,
-        _index: usize,
+        index: usize,
         stmts: &[(u128, &StatementKind<'tcx>)],
         otherwise: Option<&StatementKind<'tcx>>,
     ) -> Option<StatementKind<'tcx>> {
@@ -220,18 +304,29 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
 
         let (dest, rvals, otherwise) = candidate_assign(stmts, otherwise)?;
         if let Some((consts, otherwise)) = candidate_const(&rvals, otherwise) {
-            if let Some(new_stmt) = self.merge_if_equal_const(dest, &consts, otherwise) {
+            if let Some(new_stmt) = self.unify_if_equal_const(dest, &consts, otherwise) {
                 return Some(new_stmt);
             }
-            if let Some(new_stmt) = self.merge_by_eq_op(dest, &consts, otherwise) {
+            if let Some(new_stmt) = self.unify_by_eq_op(dest, &consts, otherwise) {
                 return Some(new_stmt);
             }
             // Requires the otherwise is unreachable.
             if otherwise.is_none()
-                && let Some(new_stmt) = self.merge_by_int_to_int(dest, &consts)
+                && let Some(new_stmt) = self.unify_by_int_to_int(dest, &consts)
             {
                 return Some(new_stmt);
             }
+        }
+
+        // We only know the first statement is safe to introduce new dereferences.
+        if index == 0
+            // We cannot create overlapping assignments.
+            && dest.is_stable_offset()
+            // Requires the otherwise is unreachable.
+            && otherwise.is_none()
+            && let Some(new_stmt) = self.unify_by_copy(dest, &rvals)
+        {
+            return Some(new_stmt);
         }
         None
     }
@@ -239,6 +334,7 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
 
 /// Returns the first case target if all targets have an equal number of statements and identical destination.
 fn candidate_match<'tcx>(body: &Body<'tcx>, switch_bb: BasicBlock) -> bool {
+    use itertools::Itertools;
     let targets = match &body.basic_blocks[switch_bb].terminator().kind {
         TerminatorKind::SwitchInt {
             discr: Operand::Copy(_) | Operand::Move(_), targets, ..
@@ -254,21 +350,14 @@ fn candidate_match<'tcx>(body: &Body<'tcx>, switch_bb: BasicBlock) -> bool {
     if !targets.is_distinct() {
         return false;
     }
-    let &[first, ref others @ .., otherwise] = targets.all_targets() else {
-        return false;
-    };
-    let first_case_bb = &body.basic_blocks[first];
-    let first_case_terminator_kind = &first_case_bb.terminator().kind;
-    let first_case_stmts_len = first_case_bb.statements.len();
-
-    let otherwise =
-        if body.basic_blocks[otherwise].is_empty_unreachable() { None } else { Some(&otherwise) };
     // Check that destinations are identical, and if not, then don't optimize this block
-    others.iter().chain(otherwise).all(|&bb| {
-        let bb = &body.basic_blocks[bb];
-        first_case_stmts_len == bb.statements.len()
-            && first_case_terminator_kind == &bb.terminator().kind
-    })
+    targets
+        .all_targets()
+        .iter()
+        .map(|&bb| &body.basic_blocks[bb])
+        .filter(|bb| !bb.is_empty_unreachable())
+        .map(|bb| (bb.statements.len(), &bb.terminator().kind))
+        .all_equal()
 }
 
 fn simplify_match<'tcx>(
@@ -287,31 +376,41 @@ fn simplify_match<'tcx>(
         patch: MirPatch::new(body),
         body,
         switch_bb,
+        discr,
         discr_local: None,
         discr_ty: discr.ty(body.local_decls(), tcx),
     };
-    let stmts: Vec<_> = targets
-        .iter()
-        .map(|(case, bb)| (case, simplify_match.body.basic_blocks[bb].statements.as_slice()))
-        .collect();
+    let reachable_cases: Vec<_> =
+        targets.iter().filter(|&(_, bb)| !body.basic_blocks[bb].is_empty_unreachable()).collect();
     let mut new_stmts = Vec::new();
-    let otherwise_stmts = if body.basic_blocks[targets.otherwise()].is_empty_unreachable() {
+    let otherwise = if body.basic_blocks[targets.otherwise()].is_empty_unreachable() {
         None
     } else {
-        Some(body.basic_blocks[targets.otherwise()].statements.as_slice())
+        Some(targets.otherwise())
     };
-    let first_case_bb = targets.all_targets()[0];
+    // We can patch the terminator to goto because there is a single target.
+    match (&reachable_cases[..], otherwise) {
+        (&[(_, single_target)], None) | (&[], Some(single_target)) => {
+            let mut patch = simplify_match.patch;
+            patch.patch_terminator(switch_bb, TerminatorKind::Goto { target: single_target });
+            patch.apply(body);
+            return true;
+        }
+        _ => {}
+    }
+    let Some(&(_, first_case_bb)) = reachable_cases.first() else {
+        return false;
+    };
     let stmt_len = body.basic_blocks[first_case_bb].statements.len();
     let mut cases = Vec::with_capacity(stmt_len);
-    // Check at each position in the basic blocks whether these statements can be merged.
+    // Check at each position in the basic blocks whether these statements can be unified.
     for index in 0..stmt_len {
-        let otherwise = otherwise_stmts.map(|stmt| &stmt[index].kind);
         cases.clear();
-        for &(case, stmts) in &stmts {
-            cases.push((case, &stmts[index].kind));
+        let otherwise = otherwise.map(|bb| &body.basic_blocks[bb].statements[index].kind);
+        for &(case, bb) in &reachable_cases {
+            cases.push((case, &body.basic_blocks[bb].statements[index].kind));
         }
-        let Some(new_stmt) = simplify_match.try_merge_stmts(index, cases.as_slice(), otherwise)
-        else {
+        let Some(new_stmt) = simplify_match.try_unify_stmts(index, &cases, otherwise) else {
             return false;
         };
         new_stmts.push(new_stmt);
