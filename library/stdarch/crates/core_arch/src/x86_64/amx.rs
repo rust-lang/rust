@@ -937,7 +937,7 @@ mod tests {
         assert_eq!(res, [[128.0_f32; 16]; 16]);
     }
 
-    #[simd_test(enable = "amx-tile")]
+    #[simd_test(enable = "amx-movrs")]
     unsafe fn test_tile_loaddrs() {
         _init_amx();
         let mut config = __tilecfg::default();
@@ -954,7 +954,7 @@ mod tests {
         assert_eq!(out, [[1; 64]; 16]);
     }
 
-    #[simd_test(enable = "amx-tile")]
+    #[simd_test(enable = "amx-movrs")]
     unsafe fn test_tile_stream_loaddrs() {
         _init_amx();
         let mut config = __tilecfg::default();

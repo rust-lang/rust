@@ -5749,7 +5749,7 @@ mod tests {
         assert_eq_m256d(r, _mm256_setr_pd(0.0, 16.0, 64.0, 256.0));
     }
 
-    #[simd_test(enable = "avx")]
+    #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi8() {
         #[rustfmt::skip]
         let a = _mm256_setr_epi8(
