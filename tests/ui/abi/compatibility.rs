@@ -13,6 +13,9 @@
 //@ revisions: arm
 //@[arm] compile-flags: --target arm-unknown-linux-gnueabi
 //@[arm] needs-llvm-components: arm
+//@ revisions: thumb
+//@[thumb] compile-flags: --target thumbv8m.main-none-eabi
+//@[thumb] needs-llvm-components: arm
 //@ revisions: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
@@ -31,12 +34,21 @@
 //@ revisions: sparc64
 //@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
 //@[sparc64] needs-llvm-components: sparc
+//@ revisions: powerpc
+//@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
+//@[powerpc] needs-llvm-components: powerpc
 //@ revisions: powerpc64
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[powerpc64] needs-llvm-components: powerpc
+//@ revisions: aix
+//@[aix] compile-flags: --target powerpc64-ibm-aix
+//@[aix] needs-llvm-components: powerpc
 //@ revisions: riscv
 //@[riscv] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv] needs-llvm-components: riscv
+//@ revisions: loongarch32
+//@[loongarch32] compile-flags: --target loongarch32-unknown-none
+//@[loongarch32] needs-llvm-components: loongarch
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
