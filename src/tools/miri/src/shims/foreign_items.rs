@@ -538,7 +538,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         code,
                         crate::concurrency::ExitType::ExitCalled,
                     )?;
-                    todo!(); // FIXME(genmc): Add a way to return here that is allowed to not do progress (can't use existing EmulateItemResult variants).
+                    return interp_ok(EmulateItemResult::AlreadyJumped);
                 }
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
