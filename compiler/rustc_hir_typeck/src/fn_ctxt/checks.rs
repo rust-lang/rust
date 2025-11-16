@@ -735,6 +735,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => unreachable!(),
                         }
                     }
+                    ty::Adt(adt, ..) if tcx.is_lang_item(adt.did(), LangItem::NonZero) => {
+                        if i.get() == 0 {
+                            // FIXME: report a nice error
+                            None
+                        } else {
+                            Some(ty)
+                        }
+                    }
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())

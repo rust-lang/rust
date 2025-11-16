@@ -2581,7 +2581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        if !self.tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
+        if !self.tcx.is_lang_item(adt.did(), LangItem::NonZero) {
             return false;
         }
 
