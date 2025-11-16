@@ -93,8 +93,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.offload=true \
       --set llvm.clang=true \
       --set rust.lld=true \
-      --set llvm.cxxflags = "-fuse-ld=lld" \
-      --set llvm.cflags = "-fuse-ld=lld" \
+      --set llvm.cxxflags="-fuse-ld=lld" \
+      --set llvm.cflags="-fuse-ld=lld" \
       --set llvm.libzstd=true \
       --set rust.jemalloc \
       --set rust.bootstrap-override-lld=true \
