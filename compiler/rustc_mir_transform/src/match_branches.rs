@@ -1,6 +1,8 @@
 use rustc_abi::Integer;
+use rustc_const_eval::const_eval::mk_eval_cx_for_const_val;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 
 use super::simplify::simplify_cfg;
@@ -40,6 +42,7 @@ struct SimplifyMatch<'tcx, 'a> {
     patch: MirPatch<'tcx>,
     body: &'a Body<'tcx>,
     switch_bb: BasicBlock,
+    discr: &'a Operand<'tcx>,
     discr_local: Option<Local>,
     discr_ty: Ty<'tcx>,
 }
@@ -207,10 +210,91 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
         }
     }
 
+    /// This is primarily used to merge these copy statements that simplified the canonical enum clone method by GVN.
+    /// The GVN simplified
+    /// ```ignore (syntax-highlighting-only)
+    /// match a {
+    ///     Foo::A(x) => Foo::A(*x),
+    ///     Foo::B => Foo::B
+    /// }
+    /// ```
+    /// to
+    /// ```ignore (syntax-highlighting-only)
+    /// match a {
+    ///     Foo::A(_x) => a, // copy a
+    ///     Foo::B => Foo::B
+    /// }
+    /// ```
+    /// This will simplify into a copy statement.
+    fn merge_by_copy(
+        &self,
+        dest: Place<'tcx>,
+        rvals: &[(u128, &Rvalue<'tcx>)],
+    ) -> Option<StatementKind<'tcx>> {
+        let bbs = &self.body.basic_blocks;
+        // Check if the copy source matches the following pattern.
+        // _2 = discriminant(*_1); // "*_1" is the expected the copy source.
+        // switchInt(move _2) -> [0: bb3, 1: bb2, otherwise: bb1];
+        let &Statement {
+            kind: StatementKind::Assign(box (discr_place, Rvalue::Discriminant(copy_src_place))),
+            ..
+        } = bbs[self.switch_bb].statements.last()?
+        else {
+            return None;
+        };
+        if self.discr.place() != Some(discr_place) {
+            return None;
+        }
+        let src_ty = copy_src_place.ty(self.body.local_decls(), self.tcx);
+        if !src_ty.ty.is_enum() || src_ty.variant_index.is_some() {
+            return None;
+        }
+        let dest_ty = dest.ty(self.body.local_decls(), self.tcx);
+        if dest_ty.ty != src_ty.ty || dest_ty.variant_index.is_some() {
+            return None;
+        }
+        let ty::Adt(def, _) = dest_ty.ty.kind() else {
+            return None;
+        };
+
+        for &(case, rvalue) in rvals.iter() {
+            match rvalue {
+                // Check if `_3 = const Foo::B` can be transformed to `_3 = copy *_1`.
+                Rvalue::Use(Operand::Constant(box constant))
+                    if let Const::Val(const_, ty) = constant.const_ =>
+                {
+                    let (ecx, op) = mk_eval_cx_for_const_val(
+                        self.tcx.at(constant.span),
+                        self.typing_env,
+                        const_,
+                        ty,
+                    )?;
+                    let variant = ecx.read_discriminant(&op).discard_err()?;
+                    if !def.variants()[variant].fields.is_empty() {
+                        return None;
+                    }
+                    let Discr { val, .. } = ty.discriminant_for_variant(self.tcx, variant)?;
+                    if val != case {
+                        return None;
+                    }
+                }
+                Rvalue::Use(Operand::Copy(src_place)) if *src_place == copy_src_place => {}
+                // Check if `_3 = Foo::B` can be transformed to `_3 = copy *_1`.
+                Rvalue::Aggregate(box AggregateKind::Adt(_, variant_index, _, _, None), fields)
+                    if fields.is_empty()
+                        && let Some(Discr { val, .. }) =
+                            src_ty.ty.discriminant_for_variant(self.tcx, *variant_index)
+                        && val == case => {}
+                _ => return None,
+            }
+        }
+        Some(StatementKind::Assign(Box::new((dest, Rvalue::Use(Operand::Copy(copy_src_place))))))
+    }
+
     /// Returns a new statement if we can use the statement replace all statements.
     fn try_merge_stmts(
         &mut self,
-        _index: usize,
+        index: usize,
         stmts: &[(u128, &StatementKind<'tcx>)],
         otherwise: Option<&StatementKind<'tcx>>,
     ) -> Option<StatementKind<'tcx>> {
@@ -232,6 +316,15 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
             {
                 return Some(new_stmt);
             }
+        }
+
+        // We only know the first statement is safe to introduce new dereferences.
+        if index == 0
+            // Requires the otherwise is unreachable.
+            && otherwise.is_none()
+            && let Some(new_stmt) = self.merge_by_copy(dest, &rvals)
+        {
+            return Some(new_stmt);
         }
         None
     }
@@ -287,6 +380,7 @@ fn simplify_match<'tcx>(
         patch: MirPatch::new(body),
         body,
         switch_bb,
+        discr,
         discr_local: None,
         discr_ty: discr.ty(body.local_decls(), tcx),
     };
