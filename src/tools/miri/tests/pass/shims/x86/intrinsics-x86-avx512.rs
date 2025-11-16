@@ -15,10 +15,46 @@ fn main() {
     assert!(is_x86_feature_detected!("avx512vpopcntdq"));
 
     unsafe {
+        test_avx512();
         test_avx512bitalg();
         test_avx512vpopcntdq();
         test_avx512ternarylogic();
     }
+}
+
+#[target_feature(enable = "avx512bw")]
+unsafe fn test_avx512() {
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_sad_epu8() {
+        let a = _mm512_set_epi8(
+            71, 70, 69, 68, 67, 66, 65, 64, //
+            55, 54, 53, 52, 51, 50, 49, 48, //
+            47, 46, 45, 44, 43, 42, 41, 40, //
+            39, 38, 37, 36, 35, 34, 33, 32, //
+            31, 30, 29, 28, 27, 26, 25, 24, //
+            23, 22, 21, 20, 19, 18, 17, 16, //
+            15, 14, 13, 12, 11, 10, 9, 8, //
+            7, 6, 5, 4, 3, 2, 1, 0, //
+        );
+
+        //  `d` is the absolute difference with the corresponding row in `a`.
+        let b = _mm512_set_epi8(
+            63, 62, 61, 60, 59, 58, 57, 56, // lane 7 (d = 8)
+            62, 61, 60, 59, 58, 57, 56, 55, // lane 6 (d = 7)
+            53, 52, 51, 50, 49, 48, 47, 46, // lane 5 (d = 6)
+            44, 43, 42, 41, 40, 39, 38, 37, // lane 4 (d = 5)
+            35, 34, 33, 32, 31, 30, 29, 28, // lane 3 (d = 4)
+            26, 25, 24, 23, 22, 21, 20, 19, // lane 2 (d = 3)
+            17, 16, 15, 14, 13, 12, 11, 10, // lane 1 (d = 2)
+            8, 7, 6, 5, 4, 3, 2, 1, // lane 0 (d = 1)
+        );
+
+        let r = _mm512_sad_epu8(a, b);
+        let e = _mm512_set_epi64(64, 56, 48, 40, 32, 24, 16, 8);
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_sad_epu8();
 }
 
 // Some of the constants in the tests below are just bit patterns. They should not

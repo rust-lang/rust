@@ -464,11 +464,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   errors and warnings.
 * `-Zmiri-recursive-validation` is a *highly experimental* flag that makes validity checking
   recurse below references.
-* `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
-  fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
-  without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
-  types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
-  individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
   thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
   preemption. Note that even without preemption, the schedule is still non-deterministic:

@@ -1,8 +1,10 @@
-error: the evaluated program deadlocked
+error: unsupported operation: attempted to lock an os_unfair_lock that was copied while being locked
   --> tests/fail-dep/concurrency/apple_os_unfair_lock_move_deadlock.rs:LL:CC
    |
 LL |     unsafe { libc::os_unfair_lock_lock(lock.get()) };
-   |                                                  ^ this thread got stuck here
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

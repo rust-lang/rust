@@ -33,9 +33,6 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
-    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
-    /// No leak checks should be performed if this happens, since they would give false positives.
-    GenmcBlockedExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -80,8 +77,6 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcBlockedExecution =>
-                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -226,19 +221,20 @@ pub fn prune_stacktrace<'tcx>(
     }
 }
 
-/// Emit a custom diagnostic without going through the miri-engine machinery.
+/// Report the result of a Miri execution.
 ///
-/// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
-pub fn report_error<'tcx>(
+/// Returns `Some` if this was regular program termination with a given exit code and a `bool`
+/// indicating whether a leak check should happen; `None` otherwise.
+pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    e: InterpErrorInfo<'tcx>,
+    res: InterpErrorInfo<'tcx>,
 ) -> Option<(i32, bool)> {
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut labels = vec![];
 
-    let (title, helps) = if let MachineStop(info) = e.kind() {
+    let (title, helps) = if let MachineStop(info) = res.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
@@ -252,13 +248,6 @@ pub fn report_error<'tcx>(
             Deadlock => {
                 labels.push(format!("this thread got stuck here"));
                 None
-            }
-            GenmcBlockedExecution => {
-                // This case should only happen in GenMC mode.
-                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                // The program got blocked by GenMC without finishing the execution.
-                // No cleanup code was executed, so we don't do any leak checks.
-                return Some((0, false));
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -334,7 +323,7 @@ pub fn report_error<'tcx>(
         };
         (title, helps)
     } else {
-        let title = match e.kind() {
+        let title = match res.kind() {
             UndefinedBehavior(ValidationError(validation_err))
                 if matches!(
                     validation_err.kind,
@@ -344,7 +333,7 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
@@ -363,12 +352,12 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
         };
         #[rustfmt::skip]
-        let helps = match e.kind() {
+        let helps = match res.kind() {
             Unsupported(_) =>
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
@@ -422,7 +411,7 @@ pub fn report_error<'tcx>(
     // We want to dump the allocation if this is `InvalidUninitBytes`.
     // Since `format_interp_error` consumes `e`, we compute the outut early.
     let mut extra = String::new();
-    match e.kind() {
+    match res.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
@@ -448,7 +437,7 @@ pub fn report_error<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
         labels.push(format!("{} occurred here", title.unwrap_or("error")));
@@ -468,7 +457,7 @@ pub fn report_error<'tcx>(
     eprint!("{extra}"); // newlines are already in the string
 
     if show_all_threads {
-        for (thread, stack) in ecx.machine.threads.all_stacks() {
+        for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
             if thread != ecx.active_thread() {
                 let stacktrace = Frame::generate_stacktrace_from_stack(stack);
                 let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);

@@ -262,10 +262,8 @@ fn test_epoll_eventfd() {
     let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
     let fd = unsafe { libc::eventfd(0, flags) };
 
-    // Write to the eventfd instance.
-    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    // Write 1 to the eventfd instance.
+    libc_utils::write_all_from_slice(fd, &1_u64.to_ne_bytes()).unwrap();
 
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -281,18 +279,15 @@ fn test_epoll_eventfd() {
     let expected_value = u64::try_from(fd).unwrap();
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
-    // Write to the eventfd again.
-    let res = unsafe { libc_utils::write_all(fd, sized_8_data.as_ptr() as *const libc::c_void, 8) };
-    assert_eq!(res, 8);
+    // Write 0 to the eventfd.
+    libc_utils::write_all_from_slice(fd, &0_u64.to_ne_bytes()).unwrap();
 
     // This does not change the status, so we should get no event.
     // However, Linux performs a spurious wakeup.
     check_epoll_wait::<8>(epfd, &[(expected_event, expected_value)]);
 
     // Read from the eventfd.
-    let mut buf = [0u8; 8];
-    let res = unsafe { libc_utils::read_all(fd, buf.as_mut_ptr().cast(), 8) };
-    assert_eq!(res, 8);
+    libc_utils::read_all_into_array::<8>(fd).unwrap();
 
     // This consumes the event, so the read status is gone. However, deactivation
     // does not trigger an event.
@@ -355,6 +350,7 @@ fn test_epoll_socketpair_both_sides() {
 
     // The state of fds[1] does not change (was writable, is writable).
     // However, we force a spurious wakeup as the read buffer just got emptied.
+    // fds[0] lost its readability, but becoming less active is not considered an "edge".
     check_epoll_wait::<8>(epfd, &[(expected_event1, expected_value1)]);
 }
 

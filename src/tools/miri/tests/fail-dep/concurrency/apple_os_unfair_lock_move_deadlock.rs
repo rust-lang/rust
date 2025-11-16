@@ -9,5 +9,5 @@ fn main() {
     let lock = lock;
     // This needs to either error or deadlock.
     unsafe { libc::os_unfair_lock_lock(lock.get()) };
-    //~^ error: deadlock
+    //~^ error: lock an os_unfair_lock that was copied while being locked
 }

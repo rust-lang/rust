@@ -10,7 +10,7 @@ use rustc_target::spec::Os;
 
 use crate::shims::files::FileDescription;
 use crate::shims::sig::check_min_vararg_count;
-use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
+use crate::shims::unix::linux_like::epoll::EpollEvents;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -62,8 +62,8 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("cannot flock {}", self.name());
     }
 
-    /// Check the readiness of file description.
-    fn get_epoll_ready_events<'tcx>(&self) -> InterpResult<'tcx, EpollReadyEvents> {
+    /// Return which epoll events are currently active.
+    fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollEvents> {
         throw_unsup_format!("{}: epoll does not support this file description", self.name());
     }
 }

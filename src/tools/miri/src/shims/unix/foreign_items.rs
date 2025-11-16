@@ -27,14 +27,15 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         // needed at least on macOS to avoid file-based fallback in getrandom
         "getentropy" | "getrandom" => true,
         // Give specific OSes a chance to allow their symbols.
-        _ => match *target_os {
-            Os::Android => android::is_dyn_sym(name),
-            Os::FreeBsd => freebsd::is_dyn_sym(name),
-            Os::Linux => linux::is_dyn_sym(name),
-            Os::MacOs => macos::is_dyn_sym(name),
-            Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
-            _ => false,
-        },
+        _ =>
+            match *target_os {
+                Os::Android => android::is_dyn_sym(name),
+                Os::FreeBsd => freebsd::is_dyn_sym(name),
+                Os::Linux => linux::is_dyn_sym(name),
+                Os::MacOs => macos::is_dyn_sym(name),
+                Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
+                _ => false,
+            },
     }
 }
 
@@ -530,7 +531,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pipe2" => {
                 // Currently this function does not exist on all Unixes, e.g. on macOS.
-                this.check_target_os(&[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos], link_name)?;
+                this.check_target_os(
+                    &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos],
+                    link_name,
+                )?;
                 let [pipefd, flags] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*mut _, i32) -> i32),
                     link_name,

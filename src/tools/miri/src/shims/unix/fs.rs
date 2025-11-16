@@ -530,7 +530,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos) {
+        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
+        {
             panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
@@ -560,7 +561,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos) {
+        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
+        {
             panic!(
                 "`macos_fbsd_solaris_lstat` should not be called on {}",
                 this.tcx.sess.target.os
@@ -591,7 +593,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos) {
+        if !matches!(&this.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::Solaris | Os::Illumos)
+        {
             panic!(
                 "`macos_fbsd_solaris_fstat` should not be called on {}",
                 this.tcx.sess.target.os
@@ -904,7 +907,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn readdir64(&mut self, dirent_type: &str, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&this.tcx.sess.target.os, Os::Linux | Os::Solaris | Os::Illumos | Os::FreeBsd) {
+        if !matches!(&this.tcx.sess.target.os, Os::Linux | Os::Solaris | Os::Illumos | Os::FreeBsd)
+        {
             panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
         }
 

@@ -1038,6 +1038,54 @@ fn mpsadbw<'tcx>(
     interp_ok(())
 }
 
+/// Compute the absolute differences of packed unsigned 8-bit integers
+/// in `left` and `right`, then horizontally sum each consecutive 8
+/// differences to produce unsigned 16-bit integers, and pack
+/// these unsigned 16-bit integers in the low 16 bits of 64-bit elements
+/// in `dest`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_sad_epu8>
+fn psadbw<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn psadbw(a: u8x16, b: u8x16) -> u64x2;
+    // fn psadbw(a: u8x32, b: u8x32) -> u64x4;
+    // fn vpsadbw(a: u8x64, b: u8x64) -> u64x8;
+    assert_eq!(left_len, right_len);
+    assert_eq!(left_len, left.layout.layout.size().bytes());
+    assert_eq!(dest_len, left_len.strict_div(8));
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+
+        let mut acc: u16 = 0;
+        for j in 0..8 {
+            let src_index = i.strict_mul(8).strict_add(j);
+
+            let left = ecx.project_index(&left, src_index)?;
+            let left = ecx.read_scalar(&left)?.to_u8()?;
+
+            let right = ecx.project_index(&right, src_index)?;
+            let right = ecx.read_scalar(&right)?.to_u8()?;
+
+            acc = acc.strict_add(left.abs_diff(right).into());
+        }
+
+        ecx.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Multiplies packed 16-bit signed integer values, truncates the 32-bit
 /// product to the 18 most significant bits by right-shifting, and then
 /// divides the 18-bit value by 2 (rounding to nearest) by first adding
