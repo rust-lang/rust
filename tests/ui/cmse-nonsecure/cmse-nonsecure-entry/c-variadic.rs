@@ -31,9 +31,8 @@ async unsafe extern "cmse-nonsecure-entry" fn async_is_not_allowed() {
 // this file, but they may be moved into `minicore` if/when other `#[no_core]` tests want to use
 // them.
 
-// NOTE: in `core` this type uses `NonNull`.
 #[lang = "ResumeTy"]
-pub struct ResumeTy(*mut Context<'static>);
+pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[lang = "future_trait"]
 pub trait Future {
