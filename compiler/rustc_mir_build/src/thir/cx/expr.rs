@@ -240,6 +240,34 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
+            Adjust::NonZeroIntoInner => {
+                // These only happen on `NonZero`
+                let ty::Adt(adt, args) = expr.ty.kind() else {
+                    span_bug!(span, "nonzero adjustment not based on adt: {expr:#?}")
+                };
+                // Find the right field type
+                let ty = self
+                    .tcx
+                    .type_of(adt.variant(FIRST_VARIANT).fields[FieldIdx::ZERO].did)
+                    .instantiate(self.tcx, args);
+                // Get rid of the `ZeroablePrimitive` projection
+                let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
+                let lhs = self.thir.exprs.push(expr);
+                ExprKind::Field {
+                    lhs: self.thir.exprs.push(Expr {
+                        span,
+                        temp_lifetime,
+                        ty,
+                        kind: ExprKind::Field {
+                            lhs,
+                            variant_index: FIRST_VARIANT,
+                            name: FieldIdx::ZERO,
+                        },
+                    }),
+                    variant_index: FIRST_VARIANT,
+                    name: FieldIdx::ZERO,
+                }
+            }
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }

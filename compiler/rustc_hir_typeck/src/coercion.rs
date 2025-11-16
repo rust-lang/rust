@@ -265,6 +265,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // It cannot convert closures that require unsafe.
                 self.coerce_closure_to_fn(a, closure_def_id_a, args_a, b)
             }
+            ty::Adt(adt, args) if self.tcx.is_lang_item(adt.did(), hir::LangItem::NonZero) => {
+                self.coerce_non_zero(a, args.type_at(0), b)
+            }
             _ => {
                 // Otherwise, just use unification rules.
                 self.unify(a, b)
@@ -854,6 +857,19 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // To complete the reborrow, we need to make sure we can unify the inner types, and if so we
         // add the adjustments.
         self.unify_and(a, b, [], Adjust::ReborrowPin(mut_b))
+    }
+
+    fn coerce_non_zero(
+        &self,
+        non_zero: Ty<'tcx>,
+        wrapped_ty: Ty<'tcx>,
+        target_ty: Ty<'tcx>,
+    ) -> CoerceResult<'tcx> {
+        if target_ty.is_ty_var() {
+            return self.unify(non_zero, target_ty);
+        }
+        self.commit_if_ok(|_| self.unify_and(wrapped_ty, target_ty, [], Adjust::NonZeroIntoInner))
+            .or_else(|_| self.unify(non_zero, target_ty))
     }
 
     fn coerce_from_safe_fn(

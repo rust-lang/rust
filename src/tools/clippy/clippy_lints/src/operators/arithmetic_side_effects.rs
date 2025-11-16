@@ -5,6 +5,7 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::res::MaybeDef;
 use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::LangItem;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
@@ -90,7 +91,7 @@ impl ArithmeticSideEffects {
 
     fn is_non_zero_u(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         if let ty::Adt(adt, substs) = ty.kind()
-            && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
+            && cx.tcx.is_lang_item(adt.did(),LangItem::NonZero)
             && let int_type = substs.type_at(0)
             && matches!(int_type.kind(), ty::Uint(_))
         {
