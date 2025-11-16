@@ -165,14 +165,6 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
                 OperandValue::Immediate(llval)
             }
-            mir::ConstValue::RuntimeChecks(checks) => {
-                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
-                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
-                };
-                let x = Scalar::from_bool(checks.value(bx.tcx().sess));
-                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
-                OperandValue::Immediate(llval)
-            }
             ConstValue::ZeroSized => return OperandRef::zero_sized(layout),
             ConstValue::Slice { alloc_id, meta } => {
                 let BackendRepr::ScalarPair(a_scalar, _) = layout.backend_repr else {
@@ -1058,6 +1050,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let move_annotation = self.move_copy_annotation_instance(bx, place.as_ref(), kind);
 
                 OperandRef { move_annotation, ..self.codegen_consume(bx, place.as_ref()) }
+            }
+
+            mir::Operand::RuntimeChecks(checks) => {
+                let layout = bx.layout_of(bx.tcx().types.bool);
+                let BackendRepr::Scalar(scalar) = layout.backend_repr else {
+                    bug!("from_const: invalid ByVal layout: {:#?}", layout);
+                };
+                let x = Scalar::from_bool(checks.value(bx.tcx().sess));
+                let llval = bx.scalar_to_backend(x, scalar, bx.immediate_backend_type(layout));
+                let val = OperandValue::Immediate(llval);
+                OperandRef { val, layout, move_annotation: None }
             }
 
             mir::Operand::Constant(ref constant) => {

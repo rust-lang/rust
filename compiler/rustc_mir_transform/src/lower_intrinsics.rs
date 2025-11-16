@@ -35,14 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                                    span: terminator.source_info.span,
-                                    user_ty: None,
-                                    const_: Const::Val(
-                                        ConstValue::RuntimeChecks(op),
-                                        tcx.types.bool,
-                                    ),
-                                }))),
+                                Rvalue::Use(Operand::RuntimeChecks(op)),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };

@@ -8,10 +8,8 @@ type Demo = [u8; 3];
 #[no_mangle]
 pub fn slice_iter_len_eq_zero(y: std::slice::Iter<'_, Demo>) -> bool {
     // CHECK-NOT: sub
-    // CHECK: %2 = icmp ne ptr %1, null
-    // CHECK-NEXT: tail call void @llvm.assume(i1 %2)
-    // CHECK-NEXT: %[[RET:.+]] = icmp eq ptr {{%0, %1|%1, %0}}
-    // CHECK-NEXT: ret i1 %[[RET]]
+    // CHECK: %[[RET:.+]] = icmp eq ptr {{%y.0, %y.1|%y.1, %y.0}}
+    // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }
 
@@ -33,7 +31,7 @@ struct MyZST;
 // CHECK-LABEL: @slice_zst_iter_len_eq_zero
 #[no_mangle]
 pub fn slice_zst_iter_len_eq_zero(y: std::slice::Iter<'_, MyZST>) -> bool {
-    // CHECK: %[[RET:.+]] = icmp eq ptr %1, null
+    // CHECK: %[[RET:.+]] = icmp eq ptr %y.1, null
     // CHECK: ret i1 %[[RET]]
     y.len() == 0
 }

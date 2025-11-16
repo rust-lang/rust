@@ -296,6 +296,7 @@ macro_rules! make_mir_visitor {
                     Operand::Constant(constant) => {
                         self.visit_const_operand(constant, location);
                     }
+                    Operand::RuntimeChecks(_) => {}
                 }
             }
 

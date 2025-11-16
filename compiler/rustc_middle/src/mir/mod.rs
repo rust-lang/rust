@@ -607,9 +607,6 @@ impl<'tcx> Body<'tcx> {
                 typing_env,
                 crate::ty::EarlyBinder::bind(constant.const_),
             );
-            if let Const::Val(ConstValue::RuntimeChecks(check), _) = mono_literal {
-                return Some(check.value(tcx.sess) as u128);
-            }
             mono_literal.try_eval_bits(tcx, typing_env)
         };
 
@@ -621,6 +618,10 @@ impl<'tcx> Body<'tcx> {
         let discr = match discr {
             Operand::Constant(constant) => {
                 let bits = eval_mono_const(constant)?;
+                return Some((bits, targets));
+            }
+            Operand::RuntimeChecks(check) => {
+                let bits = check.value(tcx.sess) as u128;
                 return Some((bits, targets));
             }
             Operand::Move(place) | Operand::Copy(place) => place,

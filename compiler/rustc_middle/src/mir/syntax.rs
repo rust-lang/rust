@@ -1327,6 +1327,10 @@ pub enum Operand<'tcx> {
 
     /// Constants are already semantically values, and remain unchanged.
     Constant(Box<ConstOperand<'tcx>>),
+
+    /// Special constants whose value depends on the evaluation context. Their value depends on a
+    /// flag on the crate being codegenned.
+    RuntimeChecks(RuntimeChecks),
 }
 
 #[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
@@ -1556,6 +1560,29 @@ pub enum AggregateKind<'tcx> {
     /// creating a thin pointer. If you're just converting between thin pointers,
     /// you may want an [`Rvalue::Cast`] with [`CastKind::PtrToPtr`] instead.
     RawPtr(Ty<'tcx>, Mutability),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum RuntimeChecks {
+    /// Returns whether we should perform some UB-checking at runtime.
+    /// See the `ub_checks` intrinsic docs for details.
+    UbChecks,
+    /// Returns whether we should perform contract-checking at runtime.
+    /// See the `contract_checks` intrinsic docs for details.
+    ContractChecks,
+    /// Returns whether we should perform some overflow-checking at runtime.
+    /// See the `overflow_checks` intrinsic docs for details.
+    OverflowChecks,
+}
+
+impl RuntimeChecks {
+    pub fn value(self, sess: &rustc_session::Session) -> bool {
+        match self {
+            Self::UbChecks => sess.ub_checks(),
+            Self::ContractChecks => sess.contract_checks(),
+            Self::OverflowChecks => sess.overflow_checks(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]

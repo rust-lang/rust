@@ -673,6 +673,7 @@ pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(ConstOperand),
+    RuntimeChecks(RuntimeChecks),
 }
 
 #[derive(Clone, Eq, PartialEq, Hash, Serialize)]
@@ -693,6 +694,16 @@ pub struct ConstOperand {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
     pub const_: MirConst,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum RuntimeChecks {
+    /// cfg!(ub_checks), but at codegen time
+    UbChecks,
+    /// cfg!(contract_checks), but at codegen time
+    ContractChecks,
+    /// cfg!(overflow_checks), but at codegen time
+    OverflowChecks,
 }
 
 /// Debug information pertaining to a user variable.
@@ -1025,6 +1036,7 @@ impl Operand {
         match self {
             Operand::Copy(place) | Operand::Move(place) => place.ty(locals),
             Operand::Constant(c) => Ok(c.ty()),
+            Operand::RuntimeChecks(_) => Ok(Ty::bool_ty()),
         }
     }
 }

@@ -122,6 +122,13 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         unimplemented!()
     }
 
+    #[inline(always)]
+    fn runtime_checks(_ecx: &InterpCx<'tcx, Self>, r: RuntimeChecks) -> InterpResult<'tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        panic!("compiletime machine evaluated {r:?}")
+    }
+
     fn binary_ptr_op(
         ecx: &InterpCx<'tcx, Self>,
         bin_op: BinOp,

@@ -53,7 +53,6 @@ pub(crate) fn try_new_allocation<'tcx>(
         ConstValue::Scalar(scalar) => {
             alloc::try_new_scalar(layout, scalar, cx).map(|alloc| alloc.stable(tables, cx))
         }
-        ConstValue::RuntimeChecks(_) => todo!(),
         ConstValue::ZeroSized => Ok(new_empty_allocation(layout.align.abi)),
         ConstValue::Slice { alloc_id, meta } => {
             alloc::try_new_slice(layout, alloc_id, meta, cx).map(|alloc| alloc.stable(tables, cx))

@@ -247,7 +247,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     LocalMutationIsAllowed::Yes,
                 );
             }
-            Operand::Constant(_) => {}
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => {}
         }
     }
 

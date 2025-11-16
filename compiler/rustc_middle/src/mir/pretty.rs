@@ -1255,6 +1255,7 @@ impl<'tcx> Debug for Operand<'tcx> {
             Constant(ref a) => write!(fmt, "{a:?}"),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
+            RuntimeChecks(checks) => write!(fmt, "const {checks:?}"),
         }
     }
 }
@@ -1518,7 +1519,6 @@ pub fn write_allocations<'tcx>(
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
-            ConstValue::RuntimeChecks(_) => None,
             ConstValue::ZeroSized => None,
             ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
@@ -1969,7 +1969,6 @@ fn pretty_print_const_value_tcx<'tcx>(
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
-        (ConstValue::RuntimeChecks(checks), _) => return write!(fmt, "{checks:?}"),
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;

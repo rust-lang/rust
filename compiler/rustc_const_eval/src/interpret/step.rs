@@ -387,7 +387,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         move_definitely_disjoint: bool,
     ) -> InterpResult<'tcx, FnArg<'tcx, M::Provenance>> {
         interp_ok(match op {
-            mir::Operand::Copy(_) | mir::Operand::Constant(_) => {
+            mir::Operand::Copy(_) | mir::Operand::Constant(_) | mir::Operand::RuntimeChecks(_) => {
                 // Make a regular copy.
                 let op = self.eval_operand(op, None)?;
                 FnArg::Copy(op)

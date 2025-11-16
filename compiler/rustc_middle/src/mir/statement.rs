@@ -642,7 +642,7 @@ impl<'tcx> Operand<'tcx> {
 
     pub fn to_copy(&self) -> Self {
         match *self {
-            Operand::Copy(_) | Operand::Constant(_) => self.clone(),
+            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => self.clone(),
             Operand::Move(place) => Operand::Copy(place),
         }
     }
@@ -652,7 +652,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn place(&self) -> Option<Place<'tcx>> {
         match self {
             Operand::Copy(place) | Operand::Move(place) => Some(*place),
-            Operand::Constant(_) => None,
+            Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
         }
     }
 
@@ -661,7 +661,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn constant(&self) -> Option<&ConstOperand<'tcx>> {
         match self {
             Operand::Constant(x) => Some(&**x),
-            Operand::Copy(_) | Operand::Move(_) => None,
+            Operand::Copy(_) | Operand::Move(_) | Operand::RuntimeChecks(_) => None,
         }
     }
 
@@ -681,6 +681,7 @@ impl<'tcx> Operand<'tcx> {
         match self {
             &Operand::Copy(ref l) | &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
             Operand::Constant(c) => c.const_.ty(),
+            Operand::RuntimeChecks(_) => tcx.types.bool,
         }
     }
 
@@ -693,6 +694,7 @@ impl<'tcx> Operand<'tcx> {
                 local_decls.local_decls()[l.local].source_info.span
             }
             Operand::Constant(c) => c.span,
+            Operand::RuntimeChecks(_) => DUMMY_SP,
         }
     }
 }

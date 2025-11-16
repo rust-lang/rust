@@ -1354,7 +1354,6 @@ pub enum ConstantKind {
     Ty(TyConst),
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
-    RuntimeChecks(RuntimeChecks),
     Param(ParamConst),
     /// Store ZST constants.
     /// We have to special handle these constants since its type might be generic.
@@ -1372,16 +1371,6 @@ pub struct UnevaluatedConst {
     pub def: ConstDef,
     pub args: GenericArgs,
     pub promoted: Option<Promoted>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub enum RuntimeChecks {
-    /// cfg!(ub_checks), but at codegen time
-    UbChecks,
-    /// cfg!(contract_checks), but at codegen time
-    ContractChecks,
-    /// cfg!(overflow_checks), but at codegen time
-    OverflowChecks,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
