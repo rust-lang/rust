@@ -157,18 +157,19 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
     let path = "clippy_lints/src/lib.rs";
     let mut lib_rs = fs::read_to_string(path).context("reading")?;
 
-    let comment_start = lib_rs.find("// add lints here,").expect("Couldn't find comment");
-    let ctor_arg = if lint.pass == Pass::Late { "_" } else { "" };
-    let lint_pass = lint.pass;
+    let (comment, ctor_arg) = if lint.pass == Pass::Late {
+        ("// add late passes here", "_")
+    } else {
+        ("// add early passes here", "")
+    };
+    let comment_start = lib_rs.find(comment).expect("Couldn't find comment");
     let module_name = lint.name;
     let camel_name = to_camel_case(lint.name);
 
     let new_lint = if enable_msrv {
-        format!(
-            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(conf)));\n    ",
-        )
+        format!("Box::new(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(conf))),\n        ",)
     } else {
-        format!("store.register_{lint_pass}_pass(|{ctor_arg}| Box::new({module_name}::{camel_name}));\n    ",)
+        format!("Box::new(|{ctor_arg}| Box::new({module_name}::{camel_name})),\n        ",)
     };
 
     lib_rs.insert_str(comment_start, &new_lint);

@@ -1,5 +1,4 @@
 //@aux-build:proc_macros.rs
-//@no-rustfix: overlapping suggestions
 #![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec, unused)]
 #![warn(clippy::single_range_in_vec_init)]
 
@@ -65,4 +64,21 @@ fn main() {
         [0..200];
         vec![0..200];
     }
+}
+
+fn issue16042() {
+    use std::ops::Range;
+
+    let input = vec![Range { start: 0, end: 5 }];
+}
+
+fn issue16044() {
+    macro_rules! as_i32 {
+        ($x:expr) => {
+            $x as i32
+        };
+    }
+
+    let input = vec![0..as_i32!(10)];
+    //~^ single_range_in_vec_init
 }

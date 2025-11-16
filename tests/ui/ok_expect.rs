@@ -16,6 +16,24 @@ fn main() {
     res.ok().expect("disaster!");
     //~^ ok_expect
 
+    res.ok()
+        .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+    //~^^ ok_expect
+
+    let resres = res;
+    resres
+        .ok()
+        .expect("longlonglonglonglonglonglonglonglonglonglonglonglonglong");
+    //~^^^ ok_expect
+
+    // this one has a suboptimal suggestion, but oh well
+    std::process::Command::new("rustc")
+        .arg("-vV")
+        .output()
+        .ok()
+        .expect("failed to get rustc version");
+    //~^^^^^ ok_expect
+
     // the following should not warn, since `expect` isn't implemented unless
     // the error type implements `Debug`
     let res2: Result<i32, MyError> = Ok(0);
