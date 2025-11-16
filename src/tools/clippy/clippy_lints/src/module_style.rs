@@ -4,7 +4,7 @@ use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{FileName, SourceFile, Span, SyntaxContext, sym};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 declare_clippy_lint! {
@@ -150,7 +150,13 @@ fn check_self_named_module(cx: &EarlyContext<'_>, path: &Path, file: &SourceFile
 /// Using `mod.rs` in integration tests is a [common pattern](https://doc.rust-lang.org/book/ch11-03-test-organization.html#submodules-in-integration-test)
 /// for code-sharing between tests.
 fn check_mod_module(cx: &EarlyContext<'_>, path: &Path, file: &SourceFile) {
-    if path.ends_with("mod.rs") && !path.starts_with("tests") {
+    if path.ends_with("mod.rs")
+        && !path
+            .components()
+            .filter_map(|c| if let Component::Normal(d) = c { Some(d) } else { None })
+            .take_while(|&c| c != "src")
+            .any(|c| c == "tests")
+    {
         span_lint_and_then(
             cx,
             MOD_MODULE_FILES,

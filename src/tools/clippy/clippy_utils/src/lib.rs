@@ -50,6 +50,7 @@ extern crate rustc_span;
 extern crate rustc_trait_selection;
 
 pub mod ast_utils;
+#[deny(missing_docs)]
 pub mod attrs;
 mod check_proc_macro;
 pub mod comparisons;
@@ -131,7 +132,7 @@ use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant};
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef, MaybeResPath};
+use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
@@ -300,6 +301,22 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks is `expr` is `None`
+pub fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+}
+
+/// If `expr` is `Some(inner)`, returns `inner`
+pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(e, [arg]) = expr.kind
+        && e.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+    {
+        Some(arg)
+    } else {
+        None
+    }
+}
+
 /// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
@@ -318,6 +335,25 @@ pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
 /// Checks if given pattern is a wildcard (`_`)
 pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
+}
+
+/// If `pat` is:
+/// - `Some(inner)`, returns `inner`
+///    - it will _usually_ contain just one element, but could have two, given patterns like
+///      `Some(inner, ..)` or `Some(.., inner)`
+/// - `Some`, returns `[]`
+/// - otherwise, returns `None`
+pub fn as_some_pattern<'a, 'hir>(cx: &LateContext<'_>, pat: &'a Pat<'hir>) -> Option<&'a [Pat<'hir>]> {
+    if let PatKind::TupleStruct(ref qpath, inner, _) = pat.kind
+        && cx
+            .qpath_res(qpath, pat.hir_id)
+            .ctor_parent(cx)
+            .is_lang_item(cx, OptionSome)
+    {
+        Some(inner)
+    } else {
+        None
+    }
 }
 
 /// Checks if the `pat` is `None`.
@@ -2782,11 +2818,7 @@ pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     pat: &'a Pat<'hir>,
     else_body: &Expr<'_>,
 ) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind
-        && cx
-            .qpath_res(&pat_path, pat.hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, OptionSome)
+    if let Some([inner_pat]) = as_some_pattern(cx, pat)
         && !is_refutable(cx, inner_pat)
         && let else_body = peel_blocks(else_body)
         && let ExprKind::Ret(Some(ret_val)) = else_body.kind

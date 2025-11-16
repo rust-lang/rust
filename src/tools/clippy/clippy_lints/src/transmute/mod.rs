@@ -435,10 +435,11 @@ declare_clippy_lint! {
     /// to infer a technically correct yet unexpected type.
     ///
     /// ### Example
-    /// ```no_run
+    /// ```
     /// # unsafe {
+    /// let mut x: i32 = 0;
     /// // Avoid "naked" calls to `transmute()`!
-    /// let x: i32 = std::mem::transmute([1u16, 2u16]);
+    /// x = std::mem::transmute([1u16, 2u16]);
     ///
     /// // `first_answers` is intended to transmute a slice of bool to a slice of u8.
     /// // But the programmer forgot to index the first element of the outer slice,
@@ -449,7 +450,7 @@ declare_clippy_lint! {
     /// # }
     /// ```
     /// Use instead:
-    /// ```no_run
+    /// ```
     /// # unsafe {
     /// let x = std::mem::transmute::<[u16; 2], i32>([1u16, 2u16]);
     ///

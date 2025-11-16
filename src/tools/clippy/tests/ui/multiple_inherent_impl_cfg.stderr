@@ -16,76 +16,52 @@ LL | #![deny(clippy::multiple_inherent_impl)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: multiple implementations of this structure
+  --> tests/ui/multiple_inherent_impl_cfg.rs:19:1
+   |
+LL | impl A {}
+   | ^^^^^^^^^
+   |
+note: first implementation here
   --> tests/ui/multiple_inherent_impl_cfg.rs:16:1
    |
-LL | impl A {} // false positive
-   | ^^^^^^^^^
-   |
-note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:10:1
-   |
 LL | impl A {}
    | ^^^^^^^^^
 
 error: multiple implementations of this structure
-  --> tests/ui/multiple_inherent_impl_cfg.rs:20:1
-   |
-LL | impl A {}
-   | ^^^^^^^^^
-   |
-note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:10:1
-   |
-LL | impl A {}
-   | ^^^^^^^^^
-
-error: multiple implementations of this structure
-  --> tests/ui/multiple_inherent_impl_cfg.rs:28:1
-   |
-LL | impl B {} // false positive
-   | ^^^^^^^^^
-   |
-note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:25:1
-   |
-LL | impl B {}
-   | ^^^^^^^^^
-
-error: multiple implementations of this structure
-  --> tests/ui/multiple_inherent_impl_cfg.rs:31:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:29:1
    |
 LL | impl B {}
    | ^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:25:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:24:1
    |
 LL | impl B {}
    | ^^^^^^^^^
 
 error: multiple implementations of this structure
-  --> tests/ui/multiple_inherent_impl_cfg.rs:35:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:33:1
    |
 LL | impl B {}
    | ^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:25:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:27:1
    |
 LL | impl B {}
    | ^^^^^^^^^
 
 error: multiple implementations of this structure
-  --> tests/ui/multiple_inherent_impl_cfg.rs:45:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:43:1
    |
 LL | impl C {}
    | ^^^^^^^^^
    |
 note: first implementation here
-  --> tests/ui/multiple_inherent_impl_cfg.rs:42:1
+  --> tests/ui/multiple_inherent_impl_cfg.rs:40:1
    |
 LL | impl C {}
    | ^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 

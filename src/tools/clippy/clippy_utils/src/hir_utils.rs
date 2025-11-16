@@ -480,10 +480,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             // Use explicit match for now since ConstArg is undergoing flux.
             (ConstArgKind::Path(..), ConstArgKind::Anon(..))
             | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
-            | (ConstArgKind::Infer(..), _)
-            | (_, ConstArgKind::Infer(..))
-            | (ConstArgKind::Error(..), _)
-            | (_, ConstArgKind::Error(..)) => false,
+            | (ConstArgKind::Infer(..) | ConstArgKind::Error(..), _)
+            | (_, ConstArgKind::Infer(..) | ConstArgKind::Error(..)) => false,
         }
     }
 
