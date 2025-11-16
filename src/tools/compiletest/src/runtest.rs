@@ -1635,8 +1635,7 @@ impl<'test> TestCx<'test> {
                     // executed and that don't specify their own optimization levels.
                     // Note: aux libs don't have a pass-mode, so they won't get optimized
                     // unless compile-flags are set in the aux file.
-                    if self.config.optimize_tests
-                        && self.props.pass_mode(&self.config) == Some(PassMode::Run)
+                    if self.props.pass_mode(&self.config) == Some(PassMode::Run)
                         && !self
                             .props
                             .compile_flags
