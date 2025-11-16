@@ -1,9 +1,9 @@
 # `*-unknown-uefi`
 
-**Tier: 2**
-
 Unified Extensible Firmware Interface (UEFI) targets for application, driver,
 and core UEFI binaries.
+
+**Tier: 2**
 
 Available targets:
 
@@ -11,11 +11,18 @@ Available targets:
 - `i686-unknown-uefi`
 - `x86_64-unknown-uefi`
 
+**Tier: 3**
+
+Available targets:
+
+- `riscv64gc-unknown-uefi`
+
 ## Target maintainers
 
 - [@dvdhrm](https://github.com/dvdhrm)
 - [@nicholasbishop](https://github.com/nicholasbishop)
 - (for `aarch64-unknown-uefi` only) [@rust-lang/arm-maintainers][arm_maintainers] ([rust@arm.com][arm_email])
+- (for `riscv64gc-unknown-uefi` only) [@gjbauer](https://github.com/gjbauer)
 
 [arm_maintainers]: https://github.com/rust-lang/team/blob/master/teams/arm-maintainers.toml
 [arm_email]: mailto:rust@arm.com
