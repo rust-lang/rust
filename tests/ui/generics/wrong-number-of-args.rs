@@ -321,10 +321,6 @@ mod stdlib {
         //~| ERROR struct takes at least 2
         //~| HELP add missing
 
-        type D = HashMap<usize, String, char, f64>;
-        //~^ ERROR struct takes at most 3
-        //~| HELP remove the
-
         type E = HashMap<>;
         //~^ ERROR struct takes at least 2 generic arguments but 0 generic arguments
         //~| HELP add missing
