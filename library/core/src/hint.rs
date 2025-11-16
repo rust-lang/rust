@@ -292,7 +292,15 @@ pub fn spin_loop() {
             // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
             unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) }
         }
-        all(target_arch = "arm", target_feature = "v6") => {
+        all(
+            target_arch = "arm",
+            any(
+                all(target_feature = "v6k", not(target_feature = "thumb-mode")),
+                target_feature = "v6t2",
+                all(target_feature = "v6", target_feature = "mclass"),
+                target_feature = "v7",
+            )
+        ) => {
             // SAFETY: the `cfg` attr ensures that we only execute this on arm targets
             // with support for the v6 feature.
             unsafe { crate::arch::arm::__yield() }
