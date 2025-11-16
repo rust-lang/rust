@@ -1,0 +1,22 @@
+- // MIR for `single_case` before MatchBranchSimplification
++ // MIR for `single_case` after MatchBranchSimplification
+  
+  fn single_case(_1: Option<i32>) -> i32 {
+      let mut _0: i32;
+      let mut _2: isize;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(copy _2) -> [0: bb1, otherwise: bb2];
+-     }
+- 
+-     bb1: {
+          _0 = const 1_i32;
+          return;
+-     }
+- 
+-     bb2: {
+-         unreachable;
+      }
+  }
+  

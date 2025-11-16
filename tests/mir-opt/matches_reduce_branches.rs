@@ -81,6 +81,54 @@ fn match_nested_if() -> bool {
     val
 }
 
+// EMIT_MIR matches_reduce_branches.match_eq_bool.MatchBranchSimplification.diff
+fn match_eq_bool(i: i32) -> bool {
+    // CHECK-LABEL: fn match_eq_bool(
+    // CHECK: = Ne(
+    // CHECK-NOT: switchInt
+    // CHECK: return
+    let a;
+    match i {
+        7 => {
+            a = false;
+            ()
+        }
+        8 => {
+            a = true;
+            ()
+        }
+        _ => {
+            a = true;
+            ()
+        }
+    };
+    a
+}
+
+// EMIT_MIR matches_reduce_branches.match_eq_bool_2.MatchBranchSimplification.diff
+fn match_eq_bool_2(i: i32) -> bool {
+    // CHECK-LABEL: fn match_eq_bool_2(
+    // CHECK-NOT: = Ne(
+    // CHECK: switchInt
+    // CHECK: return
+    let a;
+    match i {
+        7 => {
+            a = false;
+            ()
+        }
+        8 => {
+            a = false;
+            ()
+        }
+        _ => {
+            a = true;
+            ()
+        }
+    };
+    a
+}
+
 // # Fold switchInt into IntToInt.
 // To simplify writing and checking these test cases, I use the first character of
 // each case to distinguish the sign of the number:
@@ -624,6 +672,29 @@ fn match_i128_u128(i: EnumAi128) -> u128 {
         EnumAi128::B => 2,
         EnumAi128::C => 3,
         EnumAi128::D => u128::MAX,
+    }
+}
+
+// EMIT_MIR matches_reduce_branches.single_case.MatchBranchSimplification.diff
+#[custom_mir(dialect = "runtime")]
+fn single_case(i: Option<i32>) -> i32 {
+    // CHECK-LABEL: fn single_case(
+    // CHECK-NOT: switchInt
+    mir! {
+        {
+            let discr = Discriminant(i);
+            match discr {
+                0 => none,
+                _ => unreachable_bb,
+            }
+        }
+        none = {
+            RET = 1;
+            Return()
+        }
+        unreachable_bb = {
+            Unreachable()
+        }
     }
 }
 
