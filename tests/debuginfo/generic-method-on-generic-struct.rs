@@ -58,7 +58,7 @@
 
 // STACK BY REF
 // lldb-command:v *self
-// lldb-check:[...] { x = { 0 = 8888 1 = -8888 } }
+// lldb-check:[...] { x = (8888, -8888) { 0 = 8888 1 = -8888 } }
 // lldb-command:v arg1
 // lldb-check:[...] -1
 // lldb-command:v arg2
@@ -67,7 +67,7 @@
 
 // STACK BY VAL
 // lldb-command:v self
-// lldb-check:[...] { x = { 0 = 8888 1 = -8888 } }
+// lldb-check:[...] { x = (8888, -8888) { 0 = 8888 1 = -8888 } }
 // lldb-command:v arg1
 // lldb-check:[...] -3
 // lldb-command:v arg2
