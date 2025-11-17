@@ -72,7 +72,7 @@ harness = false
 default = ["stack-cache", "native-lib"]
 genmc = ["dep:genmc-sys"]
 stack-cache = []
-stack-cache-consistency-check = ["stack-cache"]
+expensive-consistency-checks = ["stack-cache"]
 tracing = ["serde_json"]
 native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 
