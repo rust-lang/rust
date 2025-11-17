@@ -2766,12 +2766,11 @@ impl<'test> TestCx<'test> {
             .map_err(|err| format!("failed to load expected output from `{}`: {}", path, err))
     }
 
+    /// Attempts to delete a file, succeeding if the file does not exist.
     fn delete_file(&self, file: &Utf8Path) {
-        if !file.exists() {
-            // Deleting a nonexistent file would error.
-            return;
-        }
-        if let Err(e) = fs::remove_file(file.as_std_path()) {
+        if let Err(e) = fs::remove_file(file.as_std_path())
+            && e.kind() != io::ErrorKind::NotFound
+        {
             self.fatal(&format!("failed to delete `{}`: {}", file, e,));
         }
     }
