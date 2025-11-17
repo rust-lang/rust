@@ -112,12 +112,7 @@ fn parse_cfg_name_directive<'a>(
         message: "when the target is {name}"
     }
     condition! {
-        name: &[
-            Some(&*target_cfg.os),
-            // If something is ignored for emscripten, it likely also needs to be
-            // ignored for wasm32-unknown-unknown.
-            (config.target == "wasm32-unknown-unknown").then_some("emscripten"),
-        ],
+        name: &target_cfg.os,
         allowed_names: &target_cfgs.all_oses,
         message: "when the operating system is {name}"
     }

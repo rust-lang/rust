@@ -25,9 +25,7 @@ struct Rustflags(String, TargetSelection);
 
 impl Rustflags {
     fn new(target: TargetSelection) -> Rustflags {
-        let mut ret = Rustflags(String::new(), target);
-        ret.propagate_cargo_env("RUSTFLAGS");
-        ret
+        Rustflags(String::new(), target)
     }
 
     /// By default, cargo will pick up on various variables in the environment. However, bootstrap
@@ -59,6 +57,16 @@ impl Rustflags {
         }
         self.0.push_str(arg);
         self
+    }
+
+    fn propagate_rustflag_envs(&mut self, build_compiler_stage: u32) {
+        self.propagate_cargo_env("RUSTFLAGS");
+        if build_compiler_stage != 0 {
+            self.env("RUSTFLAGS_NOT_BOOTSTRAP");
+        } else {
+            self.env("RUSTFLAGS_BOOTSTRAP");
+            self.arg("--cfg=bootstrap");
+        }
     }
 }
 
@@ -96,6 +104,7 @@ pub struct Cargo {
     hostflags: HostFlags,
     allow_features: String,
     release_build: bool,
+    build_compiler_stage: u32,
 }
 
 impl Cargo {
@@ -394,6 +403,28 @@ impl From<Cargo> for BootstrapCommand {
             cargo.args.insert(0, "--release".into());
         }
 
+        // Propagate the envs here at the very end to make sure they override any previously set flags.
+        cargo.rustflags.propagate_rustflag_envs(cargo.build_compiler_stage);
+        cargo.rustdocflags.propagate_rustflag_envs(cargo.build_compiler_stage);
+
+        cargo.rustdocflags.propagate_cargo_env("RUSTDOCFLAGS");
+
+        if cargo.build_compiler_stage == 0 {
+            cargo.rustdocflags.env("RUSTDOCFLAGS_BOOTSTRAP");
+            if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
+                cargo.args(s.split_whitespace());
+            }
+        } else {
+            cargo.rustdocflags.env("RUSTDOCFLAGS_NOT_BOOTSTRAP");
+            if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
+                cargo.args(s.split_whitespace());
+            }
+        }
+
+        if let Ok(s) = env::var("CARGOFLAGS") {
+            cargo.args(s.split_whitespace());
+        }
+
         cargo.command.args(cargo.args);
 
         let rustflags = &cargo.rustflags.0;
@@ -601,18 +632,6 @@ impl Builder<'_> {
         }
 
         let mut rustflags = Rustflags::new(target);
-        if build_compiler_stage != 0 {
-            if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
-                cargo.args(s.split_whitespace());
-            }
-            rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
-        } else {
-            if let Ok(s) = env::var("CARGOFLAGS_BOOTSTRAP") {
-                cargo.args(s.split_whitespace());
-            }
-            rustflags.env("RUSTFLAGS_BOOTSTRAP");
-            rustflags.arg("--cfg=bootstrap");
-        }
 
         if cmd_kind == Kind::Clippy {
             // clippy overwrites sysroot if we pass it to cargo.
@@ -711,16 +730,6 @@ impl Builder<'_> {
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
         let mut rustdocflags = rustflags.clone();
-        rustdocflags.propagate_cargo_env("RUSTDOCFLAGS");
-        if build_compiler_stage == 0 {
-            rustdocflags.env("RUSTDOCFLAGS_BOOTSTRAP");
-        } else {
-            rustdocflags.env("RUSTDOCFLAGS_NOT_BOOTSTRAP");
-        }
-
-        if let Ok(s) = env::var("CARGOFLAGS") {
-            cargo.args(s.split_whitespace());
-        }
 
         match mode {
             Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
@@ -1374,6 +1383,7 @@ impl Builder<'_> {
             hostflags,
             allow_features,
             release_build,
+            build_compiler_stage,
         }
     }
 }

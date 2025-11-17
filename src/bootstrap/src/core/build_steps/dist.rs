@@ -22,7 +22,7 @@ use tracing::instrument;
 use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{
-    self, RustcPrivateCompilers, Tool, ToolTargetBuildMode, get_tool_target_compiler,
+    self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
@@ -2695,10 +2695,14 @@ impl Step for BuildManifest {
     }
 
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        let build_manifest = builder.tool_exe(Tool::BuildManifest);
+        // FIXME: Should BuildManifest actually be built for `self.target`?
+        // Today CI only builds this step where that matches the host_target so it doesn't matter
+        // today.
+        let build_manifest =
+            builder.ensure(tool::BuildManifest::new(builder, builder.config.host_target));
 
         let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
-        tarball.add_file(&build_manifest, "bin", FileType::Executable);
+        tarball.add_file(&build_manifest.tool_path, "bin", FileType::Executable);
         tarball.generate()
     }
 

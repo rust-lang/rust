@@ -103,3 +103,17 @@ fn test_trim() {
 
     assert_eq!(span(well_before, before).trim_start(other), None);
 }
+
+#[test]
+fn test_unnormalized_source_length() {
+    let source = "\u{feff}hello\r\nferries\r\n".to_owned();
+    let sf = SourceFile::new(
+        FileName::Anon(Hash64::ZERO),
+        source,
+        SourceFileHashAlgorithm::Sha256,
+        Some(SourceFileHashAlgorithm::Sha256),
+    )
+    .unwrap();
+    assert_eq!(sf.unnormalized_source_len, 19);
+    assert_eq!(sf.normalized_source_len.0, 14);
+}

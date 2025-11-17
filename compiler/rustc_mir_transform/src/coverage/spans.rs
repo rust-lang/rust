@@ -1,22 +1,18 @@
-use rustc_middle::mir;
 use rustc_middle::mir::coverage::{Mapping, MappingKind, START_BCB};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DesugaringKind, ExpnId, ExpnKind, MacroKind, Span};
 use tracing::instrument;
 
-use crate::coverage::expansion::{self, ExpnTree, SpanWithBcb};
+use crate::coverage::expansion::{ExpnTree, SpanWithBcb};
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::hir_info::ExtractedHirInfo;
-use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir};
-
-mod from_mir;
 
 pub(super) fn extract_refined_covspans<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
+    expn_tree: &ExpnTree,
     mappings: &mut Vec<Mapping>,
 ) {
     if hir_info.is_async_fn {
@@ -32,22 +28,32 @@ pub(super) fn extract_refined_covspans<'tcx>(
 
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
-    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
-    // Use the raw spans to build a tree of expansions for this function.
-    let expn_tree = expansion::build_expn_tree(
-        raw_spans
-            .into_iter()
-            .map(|RawSpanFromMir { raw_span, bcb }| SpanWithBcb { span: raw_span, bcb }),
-    );
+    // If there somehow isn't an expansion tree node corresponding to the
+    // body span, return now and don't create any mappings.
+    let Some(node) = expn_tree.get(body_span.ctxt().outer_expn()) else { return };
 
     let mut covspans = vec![];
-    let mut push_covspan = |covspan: Covspan| {
+
+    for &SpanWithBcb { span, bcb } in &node.spans {
+        covspans.push(Covspan { span, bcb });
+    }
+
+    // For each expansion with its call-site in the body span, try to
+    // distill a corresponding covspan.
+    for &child_expn_id in &node.child_expn_ids {
+        if let Some(covspan) = single_covspan_for_child_expn(tcx, graph, &expn_tree, child_expn_id)
+        {
+            covspans.push(covspan);
+        }
+    }
+
+    covspans.retain(|covspan: &Covspan| {
         let covspan_span = covspan.span;
         // Discard any spans not contained within the function body span.
         // Also discard any spans that fill the entire body, because they tend
         // to represent compiler-inserted code, e.g. implicitly returning `()`.
         if !body_span.contains(covspan_span) || body_span.source_equal(covspan_span) {
-            return;
+            return false;
         }
 
         // Each pushed covspan should have the same context as the body span.
@@ -57,27 +63,11 @@ pub(super) fn extract_refined_covspans<'tcx>(
                 false,
                 "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
             );
-            return;
+            return false;
         }
 
-        covspans.push(covspan);
-    };
-
-    if let Some(node) = expn_tree.get(body_span.ctxt().outer_expn()) {
-        for &SpanWithBcb { span, bcb } in &node.spans {
-            push_covspan(Covspan { span, bcb });
-        }
-
-        // For each expansion with its call-site in the body span, try to
-        // distill a corresponding covspan.
-        for &child_expn_id in &node.child_expn_ids {
-            if let Some(covspan) =
-                single_covspan_for_child_expn(tcx, graph, &expn_tree, child_expn_id)
-            {
-                push_covspan(covspan);
-            }
-        }
-    }
+        true
+    });
 
     // Only proceed if we found at least one usable span.
     if covspans.is_empty() {
@@ -107,14 +97,8 @@ pub(super) fn extract_refined_covspans<'tcx>(
     covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
-    let mut holes = hir_info
-        .hole_spans
-        .iter()
-        .copied()
-        // Discard any holes that aren't directly visible within the body span.
-        .filter(|&hole_span| body_span.contains(hole_span) && body_span.eq_ctxt(hole_span))
-        .map(|span| Hole { span })
-        .collect::<Vec<_>>();
+    let mut holes = node.hole_spans.iter().copied().map(|span| Hole { span }).collect::<Vec<_>>();
+
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
@@ -294,4 +278,20 @@ fn ensure_non_empty_span(source_map: &SourceMap, span: Span) -> Option<Span> {
             }
         })
         .ok()?
+}
+
+#[derive(Debug)]
+struct Hole {
+    span: Span,
+}
+
+impl Hole {
+    fn merge_if_overlapping_or_adjacent(&mut self, other: &mut Self) -> bool {
+        if !self.span.overlaps_or_adjacent(other.span) {
+            return false;
+        }
+
+        self.span = self.span.to(other.span);
+        true
+    }
 }

@@ -97,10 +97,6 @@ label {
     cursor: pointer;
 }
 
-.text-capitalize {
-    text-transform: capitalize;
-}
-
 .container {
     padding-right: 15px;
     padding-left: 15px;
@@ -372,7 +368,7 @@ article:hover .panel-title-name .anchor { display: inline;}
 
 @media (max-width: 430px) {
     /* Turn the version filter list to the left */
-    #version-filter-selector {
+    #version-filter .dropdown-menu {
         right: 0;
         left: auto;
     }
@@ -532,7 +528,7 @@ summary {
 }
 
 html:not(.js) #settings-dropdown,
-html:not(.js)#menu-filters {
+html:not(.js) #menu-filters {
     display: none;
 }
 
@@ -634,7 +630,7 @@ pre, hr {
     border: 1px solid var(--theme-popup-border);
 }
 
-#version-filter-selector .checkbox {
+#version-filter .checkbox {
     display: flex;
 }
 
@@ -667,13 +663,13 @@ ul.dropdown-menu li.checkbox > button:hover {
     border-bottom: 1px solid #000000;
 }
 
-#filter-label, .filter-clear {
+#filter-label, #filter-clear {
     background: var(--searchbar-bg);
     color: var(--searchbar-fg);
     border-color: var(--theme-popup-border);
     filter: brightness(95%);
 }
-#filter-label:hover, .filter-clear:hover {
+#filter-label:hover, #filter-clear:hover {
     filter: brightness(90%);
 }
 .filter-input {

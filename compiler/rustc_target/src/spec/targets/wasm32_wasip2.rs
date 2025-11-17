@@ -63,7 +63,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "wasm32-wasip2".into(),
         metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(true),
         },
