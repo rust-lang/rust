@@ -20,7 +20,7 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::spec::{Abi, Os, RelocModel, Target, ef_avr_arch};
+use rustc_target::spec::{Abi, Arch, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
@@ -211,6 +211,12 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         return None;
     };
     let binary_format = sess.target.binary_format.to_object();
+    
+    if sess.target.arch == Arch::RiscV64 && binary_format == BinaryFormat::Coff {
+        // Return None to use the fallback mechanism in create_wrapper_file
+        // Use this fallback specifically for RISC-V 64 UEFI
+        return None;
+    }
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
