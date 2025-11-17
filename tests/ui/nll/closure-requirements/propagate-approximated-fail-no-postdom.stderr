@@ -1,5 +1,5 @@
 note: external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:44:9
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:43:9
    |
 LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    = note: where '?1: '?3
 
 note: no external requirements
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:37:1
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:36:1
    |
 LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL | fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c:
    = note: defining type: supply
 
 error: lifetime may not live long enough
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:40:5
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:39:5
    |
 LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
    |             --      -- lifetime `'c` defined here
@@ -49,7 +49,7 @@ LL | |     );
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/propagate-approximated-fail-no-postdom.rs:40:5
+  --> $DIR/propagate-approximated-fail-no-postdom.rs:39:5
    |
 LL |   fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell<&'c u32>) {
    |                 --  -- lifetime `'c` defined here

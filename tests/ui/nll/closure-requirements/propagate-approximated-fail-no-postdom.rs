@@ -1,5 +1,6 @@
 // Test that we can propagate multiple region errors for closure constraints
 // where the longer region has multiple non-local lower bounds without any postdominating one.
+//@ compile-flags:-Zverbose-internals
 
 #![feature(rustc_attrs)]
 
