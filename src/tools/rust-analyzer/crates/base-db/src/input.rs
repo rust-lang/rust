@@ -867,6 +867,10 @@ impl Env {
     pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
         self.entries.insert(k.into(), v.into())
     }
+
+    pub fn contains_key(&self, arg: &str) -> bool {
+        self.entries.contains_key(arg)
+    }
 }
 
 impl From<Env> for Vec<(String, String)> {

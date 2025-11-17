@@ -13,7 +13,7 @@ use base_db::{
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
 use intern::{Symbol, sym};
-use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
+use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use span::{Edition, FileId};
@@ -1216,6 +1216,7 @@ fn cargo_to_crate_graph(
         load,
         crate_ws_data.clone(),
     );
+    let cargo_path = sysroot.tool_path(Tool::Cargo, cargo.workspace_root(), cargo.env());
 
     let cfg_options = CfgOptions::from_iter(rustc_cfg);
 
@@ -1290,6 +1291,7 @@ fn cargo_to_crate_graph(
                 } else {
                     Arc::new(pkg_data.manifest.parent().to_path_buf())
                 },
+                &cargo_path,
             );
             if let TargetKind::Lib { .. } = kind {
                 lib_tgt = Some((crate_id, name.clone()));
@@ -1397,6 +1399,7 @@ fn cargo_to_crate_graph(
                 },
                 // FIXME: This looks incorrect but I don't think this causes problems.
                 crate_ws_data,
+                &cargo_path,
             );
         }
     }
@@ -1475,6 +1478,7 @@ fn handle_rustc_crates(
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
     crate_ws_data: Arc<CrateWorkspaceData>,
+    cargo_path: &Utf8Path,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -1525,6 +1529,7 @@ fn handle_rustc_crates(
                         } else {
                             Arc::new(pkg_data.manifest.parent().to_path_buf())
                         },
+                        cargo_path,
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -1582,11 +1587,12 @@ fn add_target_crate_root(
     build_data: Option<(&BuildScriptOutput, bool)>,
     cfg_options: CfgOptions,
     file_id: FileId,
-    cargo_name: &str,
+    cargo_crate_name: &str,
     kind: TargetKind,
     origin: CrateOrigin,
     crate_ws_data: Arc<CrateWorkspaceData>,
     proc_macro_cwd: Arc<AbsPathBuf>,
+    cargo_path: &Utf8Path,
 ) -> CrateBuilderId {
     let edition = pkg.edition;
     let potential_cfg_options = if pkg.features.is_empty() {
@@ -1613,8 +1619,8 @@ fn add_target_crate_root(
 
     let mut env = cargo.env().clone();
     inject_cargo_package_env(&mut env, pkg);
-    inject_cargo_env(&mut env);
-    inject_rustc_tool_env(&mut env, cargo_name, kind);
+    inject_cargo_env(&mut env, &cargo_path);
+    inject_rustc_tool_env(&mut env, cargo_crate_name, kind);
 
     if let Some(envs) = build_data.map(|(it, _)| &it.envs) {
         env.extend_from_other(envs);
@@ -1622,7 +1628,7 @@ fn add_target_crate_root(
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
-        Some(CrateDisplayName::from_canonical_name(cargo_name)),
+        Some(CrateDisplayName::from_canonical_name(cargo_crate_name)),
         Some(pkg.version.to_string()),
         cfg_options,
         potential_cfg_options,
@@ -1636,7 +1642,9 @@ fn add_target_crate_root(
         let proc_macro = match build_data {
             Some((BuildScriptOutput { proc_macro_dylib_path, .. }, has_errors)) => {
                 match proc_macro_dylib_path {
-                    ProcMacroDylibPath::Path(path) => Ok((cargo_name.to_owned(), path.clone())),
+                    ProcMacroDylibPath::Path(path) => {
+                        Ok((cargo_crate_name.to_owned(), path.clone()))
+                    }
                     ProcMacroDylibPath::NotBuilt => Err(ProcMacroLoadingError::NotYetBuilt),
                     ProcMacroDylibPath::NotProcMacro | ProcMacroDylibPath::DylibNotFound
                         if has_errors =>
