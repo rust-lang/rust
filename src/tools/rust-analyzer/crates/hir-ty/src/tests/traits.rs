@@ -349,7 +349,6 @@ fn test() {
 
 #[test]
 fn trait_default_method_self_bound_implements_trait() {
-    cov_mark::check!(trait_self_implements_self);
     check(
         r#"
 trait Trait {
@@ -5030,5 +5029,30 @@ fn main() {
             191..198 'loop {}': !
             196..198 '{}': ()
         "#]],
+    );
+}
+
+#[test]
+fn implicit_sized_bound_on_param() {
+    check(
+        r#"
+//- minicore: sized
+struct PBox<T, A>(T, A);
+
+impl<T, A> PBox<T, A> {
+    fn token_with(self) {}
+}
+
+trait MoveMessage {
+    fn token<A>(self, alloc: A)
+    where
+        Self: Sized,
+    {
+        let b = PBox::<Self, A>(self, alloc);
+        b.token_with();
+     // ^^^^^^^^^^^^^^ type: ()
+    }
+}
+    "#,
     );
 }
