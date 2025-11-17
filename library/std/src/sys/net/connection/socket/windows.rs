@@ -227,8 +227,6 @@ impl Socket {
     }
 
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
-        // On unix when a socket is shut down all further reads return 0, so we
-        // do the same on windows to map a shut down socket to returning EOF.
         let length = cmp::min(buf.capacity(), i32::MAX as usize) as i32;
         let result =
             unsafe { c::recv(self.as_raw(), buf.as_mut().as_mut_ptr() as *mut _, length, flags) };
@@ -237,6 +235,9 @@ impl Socket {
             c::SOCKET_ERROR => {
                 let error = unsafe { c::WSAGetLastError() };
 
+                // On Unix when a socket is shut down, all further reads return
+                // 0, so we do the same on Windows to map a shut down socket to
+                // returning EOF.
                 if error == c::WSAESHUTDOWN {
                     Ok(())
                 } else {
@@ -261,8 +262,9 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        // On unix when a socket is shut down all further reads return 0, so we
-        // do the same on windows to map a shut down socket to returning EOF.
+        // WSARecv requires at least one buffer.
+        let bufs = if bufs.is_empty() { &mut [IoSliceMut::new(&mut [])] } else { bufs };
+
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nread = 0;
         let mut flags = 0;
@@ -283,6 +285,9 @@ impl Socket {
             _ => {
                 let error = unsafe { c::WSAGetLastError() };
 
+                // On Unix when a socket is shut down, all further reads return
+                // 0, so we do the same on Windows to map a shut down socket to
+                // returning EOF.
                 if error == c::WSAESHUTDOWN {
                     Ok(0)
                 } else {
@@ -312,8 +317,6 @@ impl Socket {
         let mut addrlen = size_of_val(&storage) as netc::socklen_t;
         let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
-        // On unix when a socket is shut down all further reads return 0, so we
-        // do the same on windows to map a shut down socket to returning EOF.
         let result = unsafe {
             c::recvfrom(
                 self.as_raw(),
@@ -329,6 +332,9 @@ impl Socket {
             c::SOCKET_ERROR => {
                 let error = unsafe { c::WSAGetLastError() };
 
+                // On Unix when a socket is shut down, all further reads return
+                // 0, so we do the same on Windows to map a shut down socket to
+                // returning EOF.
                 if error == c::WSAESHUTDOWN {
                     Ok((0, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
                 } else {
@@ -348,6 +354,9 @@ impl Socket {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        // WSASend requires at least one buffer.
+        let bufs = if bufs.is_empty() { &[IoSlice::new(&[])] } else { bufs };
+
         let length = cmp::min(bufs.len(), u32::MAX as usize) as u32;
         let mut nwritten = 0;
         let result = unsafe {

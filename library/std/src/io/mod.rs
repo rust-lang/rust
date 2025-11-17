@@ -1666,6 +1666,76 @@ impl<'a> Deref for IoSlice<'a> {
     }
 }
 
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+///
+/// For example, [POSIX writev] requires that `bufs.len()` is in `1..=IOV_MAX`.
+///
+/// [POSIX writev]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices(&mut $bufs:ident, $n:expr) {
+    // Rebind $bufs, so the lifetime does not need to live as long as the
+    // function parameter, and shadow it so the macro caller gets the result.
+    let mut $bufs: &[IoSlice<'_>] = $bufs;
+    let n: usize = $n;
+
+    let empty = &[IoSlice::new(&[])];
+
+    if $bufs.len() > n || $bufs.is_empty() {
+        crate::hint::cold_path();
+        'fixup: {
+            // Find the first non-empty buffer and take up to `n` buffers after it.
+            for (i, buf) in $bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min($bufs.len() - i, n);
+                    $bufs = &$bufs[i..i + len];
+                    break 'fixup;
+                }
+            }
+            // If no non-empty buffer is found, use a single empty buffer.
+            $bufs = empty;
+        }
+    }
+}
+
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+///
+/// For example, [POSIX readv] requires that `bufs.len()` is in `1..=IOV_MAX`.
+///
+/// [POSIX readv]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices_mut(&mut $bufs:ident, $n:expr) {
+    // Rebind $bufs, so the lifetime does not need to live as long as the
+    // function parameter, and shadow it so the macro caller gets the result.
+    let mut $bufs: &mut [IoSliceMut<'_>] = $bufs;
+    let n: usize = $n;
+
+    let empty = &mut [IoSliceMut::new(&mut [])];
+
+    if $bufs.len() > n || $bufs.is_empty() {
+        crate::hint::cold_path();
+        'fixup: {
+            // Find the first non-empty buffer and take up to `n` buffers after it.
+            for (i, buf) in $bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min($bufs.len() - i, n);
+                    $bufs = &mut $bufs[i..i + len];
+                    break 'fixup;
+                }
+            }
+            // If no non-empty buffer is found, use a single empty buffer.
+            $bufs = empty;
+        }
+    }
+}
+
 /// A trait for objects which are byte-oriented sinks.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
