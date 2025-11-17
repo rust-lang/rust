@@ -141,7 +141,6 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
   ...
 - Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`
-- WASM: `wasm32-bare` matches `wasm32-unknown-unknown`.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
 - Stage: `stage1`, `stage2`
