@@ -1070,7 +1070,6 @@ source file via `./x run src/tools/unicode-table-generator` instead of editing \
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
-    "@jsha",
     "@lolbinarycat",
 ]
 
