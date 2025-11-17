@@ -97,6 +97,52 @@ unsafe fn test_avx512() {
         assert_eq_m512i(r, e);
     }
     test_mm512_maddubs_epi16();
+
+    #[target_feature(enable = "avx512f")]
+    unsafe fn test_mm512_permutexvar_epi32() {
+        let a = _mm512_set_epi32(
+            15, 14, 13, 12, //
+            11, 10, 9, 8, //
+            7, 6, 5, 4, //
+            3, 2, 1, 0, //
+        );
+
+        let idx_identity = _mm512_set_epi32(
+            15, 14, 13, 12, //
+            11, 10, 9, 8, //
+            7, 6, 5, 4, //
+            3, 2, 1, 0, //
+        );
+        let r_id = _mm512_permutexvar_epi32(idx_identity, a);
+        assert_eq_m512i(r_id, a);
+
+        // Test some out-of-bounds indices.
+        let edge_cases = _mm512_set_epi32(
+            0,
+            -1,
+            -128,
+            i32::MIN,
+            15,
+            16,
+            128,
+            i32::MAX,
+            0,
+            -1,
+            -128,
+            i32::MIN,
+            15,
+            16,
+            128,
+            i32::MAX,
+        );
+
+        let r = _mm512_permutexvar_epi32(edge_cases, a);
+
+        let e = _mm512_set_epi32(0, 15, 0, 0, 15, 0, 0, 15, 0, 15, 0, 0, 15, 0, 0, 15);
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_permutexvar_epi32();
 }
 
 // Some of the constants in the tests below are just bit patterns. They should not
