@@ -83,7 +83,12 @@ pub fn parallel_prime_caches(
                         crate_name,
                     })?;
 
-                    let cancelled = Cancelled::catch(|| _ = hir::crate_def_map(&db, crate_id));
+                    let cancelled = Cancelled::catch(|| {
+                        _ = hir::crate_def_map(&db, crate_id);
+                        // we compute the lang items here as the work for them is also highly recursive and will be trigger by the module symbols query
+                        // slowing down leaf crate analysis tremendously as we go back to being blocked on a single thread
+                        _ = hir::crate_lang_items(&db, crate_id);
+                    });
 
                     match cancelled {
                         Ok(()) => progress_sender
