@@ -17,6 +17,7 @@
         core_intrinsics,
         dropck_eyepatch,
         min_specialization,
+        trivial_clone,
         extend_one,
         allocator_api,
         slice_ptr_get,
