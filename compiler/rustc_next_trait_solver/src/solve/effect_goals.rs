@@ -446,6 +446,6 @@ where
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
-        self.assemble_and_merge_candidates(proven_via, goal, |_ecx| Err(NoSolution))
+        self.assemble_and_merge_candidates(proven_via, goal, |_ecx| None, |_ecx| Err(NoSolution))
     }
 }
