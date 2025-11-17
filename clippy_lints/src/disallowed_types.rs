@@ -5,6 +5,7 @@ use clippy_utils::disallowed_profiles::{ProfileEntry, ProfileResolver};
 use clippy_utils::paths::PathNS;
 use clippy_utils::sym;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{AmbigArg, Item, ItemKind, PolyTraitRef, PrimTy, Ty, TyKind, UseKind};
@@ -12,7 +13,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
-use smallvec::SmallVec;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -181,20 +181,22 @@ impl DisallowedTypes {
                 .get(symbol)
                 .and_then(|lookup| lookup.find(res).map(|info| (*symbol, info)))
         }) {
+            let diag_amendment = disallowed_path.diag_amendment(span);
             span_lint_and_then(
                 cx,
                 DISALLOWED_TYPES,
                 span,
                 format!("use of a disallowed type `{path}` (profile: {profile})"),
-                disallowed_path.diag_amendment(span),
+                |diag| diag_amendment(diag),
             );
         } else if let Some((path, disallowed_path)) = self.default.find(res) {
+            let diag_amendment = disallowed_path.diag_amendment(span);
             span_lint_and_then(
                 cx,
                 DISALLOWED_TYPES,
                 span,
                 format!("use of a disallowed type `{path}`"),
-                disallowed_path.diag_amendment(span),
+                |diag| diag_amendment(diag),
             );
         }
     }

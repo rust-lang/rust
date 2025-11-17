@@ -1,10 +1,10 @@
 use crate::sym;
 use rustc_ast::ast::{LitKind, MetaItemInner};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_hir::{Attribute, HirId};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
-use smallvec::SmallVec;
 
 #[derive(Clone)]
 pub struct ProfileEntry {
