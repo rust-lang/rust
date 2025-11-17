@@ -21,6 +21,7 @@ declare_lint_pass! {
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
+        AMBIGUOUS_TRAIT_GLOB_IMPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
         BAD_ASM_STYLE,
@@ -4435,6 +4436,47 @@ declare_lint! {
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
         report_in_deps: true,
     };
+}
+
+declare_lint! {
+    /// The `ambiguous_trait_glob_imports` lint report traits that are imported ambiguously by glob imports,
+    /// but this wasn't done previously due to a rustc bug.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_trait_glob_imports)]
+    /// mod m1 {
+    ///    pub trait Trait {
+    ///            fn method1(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///    mod m2 {
+    ///        pub trait Trait {
+    ///            fn method2(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///
+    ///  fn main() {
+    ///      use m1::*;
+    ///      use m2::*;
+    ///      0u8.method1();
+    ///      0u8.method2();
+    ///  }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Previous versions of Rust compile this wrong and actually report that `method2`
+    /// can't be found. Now both traits are imported but a warning is emitted that they are ambiguous.
+    ///
+    pub AMBIGUOUS_TRAIT_GLOB_IMPORTS,
+    Warn,
+    "detects certain glob imports that import traits ambiguously and reports them.",
 }
 
 declare_lint! {

@@ -4555,6 +4555,8 @@ pub struct Upvar {
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_ids: SmallVec<[LocalDefId; 1]>,
+    // FIXME: explain why this is needed for now.
+    pub lint_ambiguous: bool,
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]

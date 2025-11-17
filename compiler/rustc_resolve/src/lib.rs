@@ -609,8 +609,18 @@ struct ModuleData<'ra> {
     globs: CmRefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits:
-        CmRefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
+    traits: CmRefCell<
+        Option<
+            Box<
+                [(
+                    Macros20NormalizedIdent,
+                    NameBinding<'ra>,
+                    Option<Module<'ra>>,
+                    bool, /* lint_ambiguous*/
+                )],
+            >,
+        >,
+    >,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -702,12 +712,29 @@ impl<'ra> Module<'ra> {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |r, name, ns, binding| {
-                if ns != TypeNS || binding.is_ambiguity_recursive() {
+            self.for_each_child(resolver, |r, name, ns, mut binding| {
+                if ns != TypeNS {
                     return;
                 }
-                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                    collected_traits.push((name, binding, r.as_ref().get_module(def_id)))
+                let lint_ambiguous = binding.is_ambiguity_recursive();
+                loop {
+                    // Add to collected_traits if it's a trait
+                    if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
+                        collected_traits.push((
+                            name,
+                            binding,
+                            r.as_ref().get_module(def_id),
+                            lint_ambiguous,
+                        ));
+                    }
+
+                    // Break if no ambiguity
+                    let Some((ambiguous_binding, AmbiguityKind::GlobVsGlob)) = binding.ambiguity
+                    else {
+                        break;
+                    };
+
+                    binding = ambiguous_binding;
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
@@ -1893,7 +1920,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(module) = current_trait {
             if self.trait_may_have_item(Some(module), assoc_item) {
                 let def_id = module.def_id();
-                found_traits.push(TraitCandidate { def_id, import_ids: smallvec![] });
+                found_traits.push(TraitCandidate {
+                    def_id,
+                    import_ids: smallvec![],
+                    lint_ambiguous: false,
+                });
             }
         }
 
@@ -1928,11 +1959,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         module.ensure_traits(self);
         let traits = module.traits.borrow();
-        for &(trait_name, trait_binding, trait_module) in traits.as_ref().unwrap().iter() {
+        for &(trait_name, trait_binding, trait_module, lint_ambiguous) in
+            traits.as_ref().unwrap().iter()
+        {
             if self.trait_may_have_item(trait_module, assoc_item) {
                 let def_id = trait_binding.res().def_id();
                 let import_ids = self.find_transitive_imports(&trait_binding.kind, trait_name.0);
-                found_traits.push(TraitCandidate { def_id, import_ids });
+                found_traits.push(TraitCandidate { def_id, import_ids, lint_ambiguous });
             }
         }
     }
