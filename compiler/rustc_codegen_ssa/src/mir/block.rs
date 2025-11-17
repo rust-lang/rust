@@ -1040,8 +1040,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
             && name.as_str().starts_with("llvm.")
         {
-            let dest_ty = destination.ty(&self.mir.local_decls, bx.tcx()).ty;
-            let return_dest = if dest_ty.is_unit() {
+            let result_layout =
+                self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
+
+            let return_dest = if result_layout.is_zst() {
                 ReturnDest::Nothing
             } else if let Some(index) = destination.as_local() {
                 match self.locals[index] {
@@ -1070,10 +1072,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.store_return(
                     bx,
                     return_dest,
-                    &ArgAbi {
-                        layout: bx.layout_of(dest_ty),
-                        mode: PassMode::Direct(ArgAttributes::new()),
-                    },
+                    &ArgAbi { layout: result_layout, mode: PassMode::Direct(ArgAttributes::new()) },
                     llret,
                 );
                 return helper.funclet_br(self, bx, target, mergeable_succ);
