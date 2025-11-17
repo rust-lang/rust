@@ -1308,6 +1308,622 @@ pub fn svand_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t
 pub fn svand_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
     svand_u64_z(pg, op1, svdup_n_u64(op2))
 }
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.z.nvx16i1")]
+        fn _svbic_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbic_b_z(pg, op1, op2) }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.nxv16i8")]
+        fn _svbic_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t;
+    }
+    unsafe { _svbic_s8_m(pg, op1, op2) }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svbic_s8_m(pg, op1, svdup_n_s8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    svbic_s8_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svbic_s8_x(pg, op1, svdup_n_s8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    svbic_s8_m(pg, svsel_s8(pg, op1, svdup_n_s8(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svbic_s8_z(pg, op1, svdup_n_s8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.nxv8i16")]
+        fn _svbic_s16_m(pg: svbool8_t, op1: svint16_t, op2: svint16_t) -> svint16_t;
+    }
+    unsafe { _svbic_s16_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svbic_s16_m(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    svbic_s16_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svbic_s16_x(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    svbic_s16_m(pg, svsel_s16(pg, op1, svdup_n_s16(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svbic_s16_z(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.nxv4i32")]
+        fn _svbic_s32_m(pg: svbool4_t, op1: svint32_t, op2: svint32_t) -> svint32_t;
+    }
+    unsafe { _svbic_s32_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svbic_s32_m(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svbic_s32_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svbic_s32_x(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svbic_s32_m(pg, svsel_s32(pg, op1, svdup_n_s32(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svbic_s32_z(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.bic.nxv2i64")]
+        fn _svbic_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t) -> svint64_t;
+    }
+    unsafe { _svbic_s64_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svbic_s64_m(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    svbic_s64_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svbic_s64_x(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_s64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    svbic_s64_m(pg, svsel_s64(pg, op1, svdup_n_s64(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_s64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svbic_s64_z(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    unsafe { svbic_s8_m(pg, op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svbic_u8_m(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    svbic_u8_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svbic_u8_x(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    svbic_u8_m(pg, svsel_u8(pg, op1, svdup_n_u8(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svbic_u8_z(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    unsafe { svbic_s16_m(pg, op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svbic_u16_m(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    svbic_u16_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svbic_u16_x(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    svbic_u16_m(pg, svsel_u16(pg, op1, svdup_n_u16(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svbic_u16_z(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    unsafe { svbic_s32_m(pg, op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svbic_u32_m(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    svbic_u32_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svbic_u32_x(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    svbic_u32_m(pg, svsel_u32(pg, op1, svdup_n_u32(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svbic_u32_z(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    unsafe { svbic_s64_m(pg, op1.as_signed(), op2.as_signed()).as_unsigned() }
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svbic_u64_m(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    svbic_u64_m(pg, op1, op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svbic_u64_x(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_u64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    svbic_u64_m(pg, svsel_u64(pg, op1, svdup_n_u64(0)), op2)
+}
+#[doc = "Bitwise clear"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbic[_n_u64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(bic))]
+pub fn svbic_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svbic_u64_z(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Break after first true condition"]
+#[doc = ""]
+#[doc = "Break after first true condition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrka[_b]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brka))]
+pub fn svbrka_b_m(inactive: svbool_t, pg: svbool_t, op: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brka.nxv16i1")]
+        fn _svbrka_b_m(inactive: svbool_t, pg: svbool_t, op: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrka_b_m(inactive, pg, op) }
+}
+#[doc = "Break after first true condition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrka[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brka))]
+pub fn svbrka_b_z(pg: svbool_t, op: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brka.z.nxv16i1")]
+        fn _svbrka_b_z(pg: svbool_t, op: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrka_b_z(pg, op) }
+}
+#[doc = "Break before first true condition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrkb[_b]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brkb))]
+pub fn svbrkb_b_m(inactive: svbool_t, pg: svbool_t, op: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brkb.nxv16i1")]
+        fn _svbrkb_b_m(inactive: svbool_t, pg: svbool_t, op: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrkb_b_m(inactive, pg, op) }
+}
+#[doc = "Break before first true condition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrkb[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brkb))]
+pub fn svbrkb_b_z(pg: svbool_t, op: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brkb.z.nxv16i1")]
+        fn _svbrkb_b_z(pg: svbool_t, op: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrkb_b_z(pg, op) }
+}
+#[doc = "Propagate break to next partition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrkn[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brkn))]
+pub fn svbrkn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.brkn.z.nxv16i1")]
+        fn _svbrkn_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrkn_b_z(pg, op1, op2) }
+}
+#[doc = "Break after first true condition, propagating from previous partition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrkpa[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brkpa))]
+pub fn svbrkpa_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.brkpa.z.nxv16i1"
+        )]
+        fn _svbrkpa_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrkpa_b_z(pg, op1, op2) }
+}
+#[doc = "Break before first true condition, propagating from previous partition"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svbrkpb[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(brkpb))]
+pub fn svbrkpb_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.brkpb.z.nxv16i1"
+        )]
+        fn _svbrkpb_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svbrkpb_b_z(pg, op1, op2) }
+}
 #[doc = "Complex add with rotate"]
 #[doc = ""]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcadd[_f32]_m)"]
@@ -7115,4 +7731,714 @@ pub fn svcls_u32(pg: svbool_t, op: svuint32_t) -> svuint32_t {
 #[cfg_attr(test, assert_instr(cls))]
 pub fn svcls_u64(pg: svbool_t, op: svuint64_t) -> svuint64_t {
     unsafe { svcls_s64(pg, op.as_signed()).as_unsigned() }
+}
+
+// ============================================================================
+// 第4批：地址与加载/存储族 Intrinsics
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// svadr - 地址生成函数
+// ----------------------------------------------------------------------------
+
+#[doc = "Address generation"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadr[_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(adr))]
+pub unsafe fn svadr_s32(pg: svbool_t, base: *const i8, offset: svint32_t) -> svuint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.adr.nxv4i32")]
+        fn _svadr_s32(pg: svbool4_t, base: *const i8, offset: svint32_t) -> svuint64_t;
+    }
+    _svadr_s32(simd_cast(pg), base, offset)
+}
+
+#[doc = "Address generation"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadr[_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(adr))]
+pub unsafe fn svadr_s64(pg: svbool_t, base: *const i8, offset: svint64_t) -> svuint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.adr.nxv2i64")]
+        fn _svadr_s64(pg: svbool2_t, base: *const i8, offset: svint64_t) -> svuint64_t;
+    }
+    _svadr_s64(simd_cast(pg), base, offset)
+}
+
+#[doc = "Address generation"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadr[_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(adr))]
+pub unsafe fn svadr_u32(pg: svbool_t, base: *const i8, offset: svuint32_t) -> svuint64_t {
+    unsafe { svadr_s32(pg, base, offset.as_signed()).as_unsigned() }
+}
+
+#[doc = "Address generation"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svadr[_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(adr))]
+pub unsafe fn svadr_u64(pg: svbool_t, base: *const i8, offset: svuint64_t) -> svuint64_t {
+    unsafe { svadr_s64(pg, base, offset.as_signed()).as_unsigned() }
+}
+
+// ----------------------------------------------------------------------------
+// svld1_vnum - 带向量索引的加载
+// ----------------------------------------------------------------------------
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_f32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_vnum_f32(pg: svbool_t, base: *const f32, vnum: i64) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv4f32")]
+        fn _svld1_vnum_f32(pg: svbool4_t, base: *const f32) -> svfloat32_t;
+    }
+    let offset_base = base.add(vnum as usize * 4);
+    _svld1_vnum_f32(simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_f64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_vnum_f64(pg: svbool_t, base: *const f64, vnum: i64) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv2f64")]
+        fn _svld1_vnum_f64(pg: svbool2_t, base: *const f64) -> svfloat64_t;
+    }
+    let offset_base = base.add(vnum as usize * 2);
+    _svld1_vnum_f64(simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_s8])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1b))]
+pub unsafe fn svld1_vnum_s8(pg: svbool_t, base: *const i8, vnum: i64) -> svint8_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv16i8")]
+        fn _svld1_vnum_s8(pg: svbool_t, base: *const i8) -> svint8_t;
+    }
+    let offset_base = base.add(vnum as usize * 16);
+    _svld1_vnum_s8(pg, offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_s16])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1h))]
+pub unsafe fn svld1_vnum_s16(pg: svbool_t, base: *const i16, vnum: i64) -> svint16_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv8i16")]
+        fn _svld1_vnum_s16(pg: svbool8_t, base: *const i16) -> svint16_t;
+    }
+    let offset_base = base.add(vnum as usize * 8);
+    _svld1_vnum_s16(simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_s32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_vnum_s32(pg: svbool_t, base: *const i32, vnum: i64) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv4i32")]
+        fn _svld1_vnum_s32(pg: svbool4_t, base: *const i32) -> svint32_t;
+    }
+    let offset_base = base.add(vnum as usize * 4);
+    _svld1_vnum_s32(simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_s64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_vnum_s64(pg: svbool_t, base: *const i64, vnum: i64) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.nxv2i64")]
+        fn _svld1_vnum_s64(pg: svbool2_t, base: *const i64) -> svint64_t;
+    }
+    let offset_base = base.add(vnum as usize * 2);
+    _svld1_vnum_s64(simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_u8])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1b))]
+pub unsafe fn svld1_vnum_u8(pg: svbool_t, base: *const u8, vnum: i64) -> svuint8_t {
+    svld1_vnum_s8(pg, base.as_signed(), vnum).as_unsigned()
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_u16])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1h))]
+pub unsafe fn svld1_vnum_u16(pg: svbool_t, base: *const u16, vnum: i64) -> svuint16_t {
+    svld1_vnum_s16(pg, base.as_signed(), vnum).as_unsigned()
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_u32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_vnum_u32(pg: svbool_t, base: *const u32, vnum: i64) -> svuint32_t {
+    svld1_vnum_s32(pg, base.as_signed(), vnum).as_unsigned()
+}
+
+#[doc = "Unextended load (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_vnum[_u64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_vnum_u64(pg: svbool_t, base: *const u64, vnum: i64) -> svuint64_t {
+    svld1_vnum_s64(pg, base.as_signed(), vnum).as_unsigned()
+}
+
+// ----------------------------------------------------------------------------
+// svld1_gather - 聚集加载
+// ----------------------------------------------------------------------------
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_s32index]_f32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_gather_s32index_f32(
+    pg: svbool_t,
+    base: *const f32,
+    indices: svint32_t,
+) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.index.nxv4f32")]
+        fn _svld1_gather_s32index_f32(pg: svbool4_t, base: *const f32, indices: svint32_t) -> svfloat32_t;
+    }
+    _svld1_gather_s32index_f32(simd_cast(pg), base, indices)
+}
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_s64index]_f64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_gather_s64index_f64(
+    pg: svbool_t,
+    base: *const f64,
+    indices: svint64_t,
+) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.index.nxv2f64")]
+        fn _svld1_gather_s64index_f64(pg: svbool2_t, base: *const f64, indices: svint64_t) -> svfloat64_t;
+    }
+    _svld1_gather_s64index_f64(simd_cast(pg), base, indices)
+}
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_s32index]_s32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_gather_s32index_s32(
+    pg: svbool_t,
+    base: *const i32,
+    indices: svint32_t,
+) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.index.nxv4i32")]
+        fn _svld1_gather_s32index_s32(pg: svbool4_t, base: *const i32, indices: svint32_t) -> svint32_t;
+    }
+    _svld1_gather_s32index_s32(simd_cast(pg), base, indices)
+}
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_s64index]_s64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_gather_s64index_s64(
+    pg: svbool_t,
+    base: *const i64,
+    indices: svint64_t,
+) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.ld1.gather.index.nxv2i64")]
+        fn _svld1_gather_s64index_s64(pg: svbool2_t, base: *const i64, indices: svint64_t) -> svint64_t;
+    }
+    _svld1_gather_s64index_s64(simd_cast(pg), base, indices)
+}
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_u32index]_u32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1w))]
+pub unsafe fn svld1_gather_u32index_u32(
+    pg: svbool_t,
+    base: *const u32,
+    indices: svuint32_t,
+) -> svuint32_t {
+    unsafe {
+        svld1_gather_s32index_s32(pg, base.as_signed(), indices.as_signed()).as_unsigned()
+    }
+}
+
+#[doc = "Gather load"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svld1_gather[_u64index]_u64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(ld1d))]
+pub unsafe fn svld1_gather_u64index_u64(
+    pg: svbool_t,
+    base: *const u64,
+    indices: svuint64_t,
+) -> svuint64_t {
+    unsafe {
+        svld1_gather_s64index_s64(pg, base.as_signed(), indices.as_signed()).as_unsigned()
+    }
+}
+
+// ----------------------------------------------------------------------------
+// svst1_vnum - 带向量索引的存储
+// ----------------------------------------------------------------------------
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_f32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_vnum_f32(pg: svbool_t, base: *mut f32, vnum: i64, data: svfloat32_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv4f32")]
+        fn _svst1_vnum_f32(data: svfloat32_t, pg: svbool4_t, ptr: *mut f32);
+    }
+    let offset_base = base.add(vnum as usize * 4);
+    _svst1_vnum_f32(data, simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_f64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_vnum_f64(pg: svbool_t, base: *mut f64, vnum: i64, data: svfloat64_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv2f64")]
+        fn _svst1_vnum_f64(data: svfloat64_t, pg: svbool2_t, ptr: *mut f64);
+    }
+    let offset_base = base.add(vnum as usize * 2);
+    _svst1_vnum_f64(data, simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_s8])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1b))]
+pub unsafe fn svst1_vnum_s8(pg: svbool_t, base: *mut i8, vnum: i64, data: svint8_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv16i8")]
+        fn _svst1_vnum_s8(data: svint8_t, pg: svbool_t, ptr: *mut i8);
+    }
+    let offset_base = base.add(vnum as usize * 16);
+    _svst1_vnum_s8(data, pg, offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_s16])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1h))]
+pub unsafe fn svst1_vnum_s16(pg: svbool_t, base: *mut i16, vnum: i64, data: svint16_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv8i16")]
+        fn _svst1_vnum_s16(data: svint16_t, pg: svbool8_t, ptr: *mut i16);
+    }
+    let offset_base = base.add(vnum as usize * 8);
+    _svst1_vnum_s16(data, simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_s32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_vnum_s32(pg: svbool_t, base: *mut i32, vnum: i64, data: svint32_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv4i32")]
+        fn _svst1_vnum_s32(data: svint32_t, pg: svbool4_t, ptr: *mut i32);
+    }
+    let offset_base = base.add(vnum as usize * 4);
+    _svst1_vnum_s32(data, simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_s64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_vnum_s64(pg: svbool_t, base: *mut i64, vnum: i64, data: svint64_t) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.nxv2i64")]
+        fn _svst1_vnum_s64(data: svint64_t, pg: svbool2_t, ptr: *mut i64);
+    }
+    let offset_base = base.add(vnum as usize * 2);
+    _svst1_vnum_s64(data, simd_cast(pg), offset_base)
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_u8])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1b))]
+pub unsafe fn svst1_vnum_u8(pg: svbool_t, base: *mut u8, vnum: i64, data: svuint8_t) {
+    svst1_vnum_s8(pg, base.as_signed(), vnum, data.as_signed())
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_u16])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1h))]
+pub unsafe fn svst1_vnum_u16(pg: svbool_t, base: *mut u16, vnum: i64, data: svuint16_t) {
+    svst1_vnum_s16(pg, base.as_signed(), vnum, data.as_signed())
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_u32])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_vnum_u32(pg: svbool_t, base: *mut u32, vnum: i64, data: svuint32_t) {
+    svst1_vnum_s32(pg, base.as_signed(), vnum, data.as_signed())
+}
+
+#[doc = "Unextended store (vector base + scalar offset)"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_vnum[_u64])"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_vnum_u64(pg: svbool_t, base: *mut u64, vnum: i64, data: svuint64_t) {
+    svst1_vnum_s64(pg, base.as_signed(), vnum, data.as_signed())
+}
+
+// ----------------------------------------------------------------------------
+// svst1_scatter - 分散存储
+// ----------------------------------------------------------------------------
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_s32index]_f32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_scatter_s32index_f32(
+    pg: svbool_t,
+    base: *mut f32,
+    indices: svint32_t,
+    data: svfloat32_t,
+) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.index.nxv4f32")]
+        fn _svst1_scatter_s32index_f32(data: svfloat32_t, pg: svbool4_t, base: *mut f32, indices: svint32_t);
+    }
+    _svst1_scatter_s32index_f32(data, simd_cast(pg), base, indices)
+}
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_s64index]_f64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_scatter_s64index_f64(
+    pg: svbool_t,
+    base: *mut f64,
+    indices: svint64_t,
+    data: svfloat64_t,
+) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.index.nxv2f64")]
+        fn _svst1_scatter_s64index_f64(data: svfloat64_t, pg: svbool2_t, base: *mut f64, indices: svint64_t);
+    }
+    _svst1_scatter_s64index_f64(data, simd_cast(pg), base, indices)
+}
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_s32index]_s32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_scatter_s32index_s32(
+    pg: svbool_t,
+    base: *mut i32,
+    indices: svint32_t,
+    data: svint32_t,
+) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.index.nxv4i32")]
+        fn _svst1_scatter_s32index_s32(data: svint32_t, pg: svbool4_t, base: *mut i32, indices: svint32_t);
+    }
+    _svst1_scatter_s32index_s32(data, simd_cast(pg), base, indices)
+}
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_s64index]_s64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_scatter_s64index_s64(
+    pg: svbool_t,
+    base: *mut i64,
+    indices: svint64_t,
+    data: svint64_t,
+) {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.st1.scatter.index.nxv2i64")]
+        fn _svst1_scatter_s64index_s64(data: svint64_t, pg: svbool2_t, base: *mut i64, indices: svint64_t);
+    }
+    _svst1_scatter_s64index_s64(data, simd_cast(pg), base, indices)
+}
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_u32index]_u32)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1w))]
+pub unsafe fn svst1_scatter_u32index_u32(
+    pg: svbool_t,
+    base: *mut u32,
+    indices: svuint32_t,
+    data: svuint32_t,
+) {
+    unsafe {
+        svst1_scatter_s32index_s32(pg, base.as_signed(), indices.as_signed(), data.as_signed())
+    }
+}
+
+#[doc = "Scatter store"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svst1_scatter[_u64index]_u64)"]
+#[doc = ""]
+#[doc = "## Safety"]
+#[doc = "  * [`pointer::offset`](pointer#method.offset) safety constraints must be met for the address calculation for each active element (governed by `pg`)."]
+#[doc = "  * This dereferences and accesses the calculated address for each active element (governed by `pg`)."]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(st1d))]
+pub unsafe fn svst1_scatter_u64index_u64(
+    pg: svbool_t,
+    base: *mut u64,
+    indices: svuint64_t,
+    data: svuint64_t,
+) {
+    unsafe {
+        svst1_scatter_s64index_s64(pg, base.as_signed(), indices.as_signed(), data.as_signed())
+    }
 }
