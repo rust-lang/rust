@@ -5,6 +5,8 @@ We currently work on launching the following Rust kernel on the GPU. To follow a
 
 ```rust
 #![feature(abi_gpu_kernel)]
+#![feature(rustc_attrs)]
+#![feature(core_intrinsics)]
 #![no_std]
 
 #[cfg(target_os = "linux")]
@@ -12,6 +14,7 @@ extern crate libc;
 #[cfg(target_os = "linux")]
 use libc::c_char;
 
+#[cfg(target_os = "linux")]
 use core::mem;
 
 #[panic_handler]
@@ -38,7 +41,7 @@ fn main() {
     }
 
     unsafe {
-        kernel_1(array_c);
+        kernel(array_c);
     }
     core::hint::black_box(&array_c);
     unsafe {
@@ -52,6 +55,11 @@ fn main() {
     }
 }
 
+#[inline(never)]
+unsafe fn kernel(x: *mut [f64; 256]) {
+    core::intrinsics::offload(kernel_1, (x,))
+}
+
 #[cfg(target_os = "linux")]
 unsafe extern "C" {
     pub fn kernel_1(array_b: *mut [f64; 256]);
@@ -60,6 +68,7 @@ unsafe extern "C" {
 #[cfg(not(target_os = "linux"))]
 #[unsafe(no_mangle)]
 #[inline(never)]
+#[rustc_offload_kernel]
 pub extern "gpu-kernel" fn kernel_1(x: *mut [f64; 256]) {
     unsafe { (*x)[0] = 21.0 };
 }
