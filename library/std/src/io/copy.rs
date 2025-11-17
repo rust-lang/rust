@@ -4,6 +4,7 @@ use crate::cmp;
 use crate::collections::VecDeque;
 use crate::io::IoSlice;
 use crate::mem::MaybeUninit;
+use crate::sys::io::{CopyState, kernel_copy};
 
 #[cfg(test)]
 mod tests;
@@ -63,19 +64,17 @@ where
     R: Read,
     W: Write,
 {
-    cfg_select! {
-        any(target_os = "linux", target_os = "android") => {
-            crate::sys::kernel_copy::copy_spec(reader, writer)
-        }
-        _ => {
-            generic_copy(reader, writer)
+    match kernel_copy(reader, writer)? {
+        CopyState::Ended(copied) => Ok(copied),
+        CopyState::Fallback(copied) => {
+            generic_copy(reader, writer).map(|additional| copied + additional)
         }
     }
 }
 
 /// The userspace read-write-loop implementation of `io::copy` that is used when
 /// OS-specific specializations for copy offloading are not available or not applicable.
-pub(crate) fn generic_copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
+fn generic_copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where
     R: Read,
     W: Write,
@@ -269,7 +268,7 @@ impl BufferedWriterSpec for Vec<u8> {
     }
 }
 
-pub fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
+fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<u64> {
