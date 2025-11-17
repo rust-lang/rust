@@ -25,7 +25,7 @@ use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
-use crate::errors::AutoDiffWithoutEnable;
+use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLto};
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -1135,6 +1135,9 @@ fn codegen_autodiff<'ll, 'tcx>(
 ) {
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
+    }
+    if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
     }
 
     let fn_args = instance.args;
