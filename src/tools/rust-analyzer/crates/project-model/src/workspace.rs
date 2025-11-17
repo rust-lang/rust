@@ -1619,7 +1619,7 @@ fn add_target_crate_root(
 
     let mut env = cargo.env().clone();
     inject_cargo_package_env(&mut env, pkg);
-    inject_cargo_env(&mut env, &cargo_path);
+    inject_cargo_env(&mut env, cargo_path);
     inject_rustc_tool_env(&mut env, cargo_crate_name, kind);
 
     if let Some(envs) = build_data.map(|(it, _)| &it.envs) {
