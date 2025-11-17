@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     ShiftOp, horizontal_bin_op, mask_load, mask_store, mpsadbw, packssdw, packsswb, packusdw,
-    packuswb, pmaddbw, pmulhrsw, psadbw, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    packuswb, permute, pmaddbw, pmulhrsw, psadbw, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -189,28 +189,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 packusdw(this, left, right, dest)?;
             }
-            // Used to implement the _mm256_permutevar8x32_epi32 and
-            // _mm256_permutevar8x32_ps function.
-            // Shuffles `left` using the three low bits of each element of `right`
-            // as indices.
+            // Used to implement _mm256_permutevar8x32_epi32 and _mm256_permutevar8x32_ps.
             "permd" | "permps" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u32()?;
-                    let left = this.project_index(&left, (right & 0b111).into())?;
-
-                    this.copy_op(&left, &dest)?;
-                }
+                permute(this, left, right, dest)?;
             }
             // Used to implement the _mm256_sad_epu8 function.
             "psad.bw" => {

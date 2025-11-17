@@ -3,7 +3,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{pmaddbw, psadbw};
+use super::{permute, pmaddbw, psadbw};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -100,20 +100,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    let right = this.read_scalar(&this.project_index(&right, i)?)?.to_u32()?;
-                    let left = this.project_index(&left, (right & 0b1111).into())?;
-
-                    this.copy_op(&left, &dest)?;
-                }
+                permute(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
