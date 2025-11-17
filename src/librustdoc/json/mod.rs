@@ -302,6 +302,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,
                             },
+                            path: self
+                                .tcx
+                                .used_crate_source(*crate_num)
+                                .paths()
+                                .next()
+                                .expect("crate should have at least 1 path")
+                                .clone(),
                         },
                     )
                 })
@@ -339,15 +346,12 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItemConstraint, 112);
     static_assert_size!(Crate, 184);
-    static_assert_size!(ExternalCrate, 48);
     static_assert_size!(FunctionPointer, 168);
     static_assert_size!(GenericArg, 80);
     static_assert_size!(GenericArgs, 104);
     static_assert_size!(GenericBound, 72);
     static_assert_size!(GenericParamDef, 136);
     static_assert_size!(Impl, 304);
-    // `Item` contains a `PathBuf`, which is different sizes on different OSes.
-    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
     static_assert_size!(ItemSummary, 32);
     static_assert_size!(PolyTrait, 64);
     static_assert_size!(PreciseCapturingArg, 32);
@@ -355,4 +359,8 @@ mod size_asserts {
     static_assert_size!(Type, 80);
     static_assert_size!(WherePredicate, 160);
     // tidy-alphabetical-end
+
+    // These contains a `PathBuf`, which is different sizes on different OSes.
+    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(ExternalCrate, 48 + size_of::<std::path::PathBuf>());
 }
