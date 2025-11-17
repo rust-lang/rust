@@ -23,18 +23,18 @@ extern crate rustc_span;
 mod log;
 
 use std::env;
-use std::num::NonZero;
+use std::num::{NonZero, NonZeroI32};
 use std::ops::Range;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
-    ProvenanceMode, RetagFields, TreeBorrowsParams, ValidationMode, run_genmc_mode,
+    ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
@@ -120,15 +120,47 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
     }
 }
 
+fn run_many_seeds(
+    many_seeds: ManySeedsConfig,
+    eval_entry_once: impl Fn(u64) -> Result<(), NonZeroI32> + DynSync,
+) -> Result<(), NonZeroI32> {
+    let exit_code =
+        sync::IntoDynSyncSend(AtomicU32::new(rustc_driver::EXIT_SUCCESS.cast_unsigned()));
+    let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
+    sync::par_for_each_in(many_seeds.seeds.clone(), |&seed| {
+        if let Err(return_code) = eval_entry_once(seed.into()) {
+            eprintln!("FAILING SEED: {seed}");
+            if !many_seeds.keep_going {
+                // `abort_if_errors` would unwind but would not actually stop miri, since
+                // `par_for_each` waits for the rest of the threads to finish.
+                exit(return_code.get());
+            }
+            // Preserve the "maximum" return code (when interpreted as `u32`), to make
+            // the result order-independent and to make it 0 only if all executions were 0.
+            exit_code.fetch_max(return_code.get().cast_unsigned(), Ordering::Relaxed);
+            num_failed.fetch_add(1, Ordering::Relaxed);
+        }
+    });
+    let num_failed = num_failed.0.into_inner();
+    let exit_code = exit_code.0.into_inner().cast_signed();
+    if num_failed > 0 {
+        eprintln!("{num_failed}/{total} SEEDS FAILED", total = many_seeds.seeds.count());
+        Err(NonZeroI32::new(exit_code).unwrap())
+    } else {
+        assert!(exit_code == 0);
+        Ok(())
+    }
+}
+
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn after_analysis<'tcx>(
         &mut self,
         _: &rustc_interface::interface::Compiler,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
-        if tcx.sess.dcx().has_errors_or_delayed_bugs().is_some() {
-            tcx.dcx().fatal("miri cannot be run on programs that fail compilation");
-        }
+        tcx.dcx().abort_if_errors();
+        tcx.dcx().flush_delayed();
+
         if !tcx.crate_types().contains(&CrateType::Executable) {
             tcx.dcx().fatal("miri only makes sense on bin crates");
         }
@@ -161,64 +193,28 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
-        // Run in GenMC mode if enabled.
-        if config.genmc_config.is_some() {
-            // Validate GenMC settings.
-            if let Err(err) = GenmcConfig::validate(&mut config, tcx) {
-                fatal_error!("Invalid settings: {err}");
-            }
-
-            // This is the entry point used in GenMC mode.
-            // This closure will be called multiple times to explore the concurrent execution space of the program.
-            let eval_entry_once = |genmc_ctx: Rc<GenmcCtx>| {
+        let res = if config.genmc_config.is_some() {
+            assert!(self.many_seeds.is_none());
+            run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
                 miri::eval_entry(tcx, entry_def_id, entry_type, &config, Some(genmc_ctx))
-            };
-            let return_code = run_genmc_mode(&config, eval_entry_once, tcx).unwrap_or_else(|| {
-                tcx.dcx().abort_if_errors();
-                rustc_driver::EXIT_FAILURE
-            });
-            exit(return_code);
+            })
+        } else if let Some(many_seeds) = self.many_seeds.take() {
+            assert!(config.seed.is_none());
+            run_many_seeds(many_seeds, |seed| {
+                let mut config = config.clone();
+                config.seed = Some(seed);
+                eprintln!("Trying seed: {seed}");
+                miri::eval_entry(tcx, entry_def_id, entry_type, &config, /* genmc_ctx */ None)
+            })
+        } else {
+            miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
         };
 
-        if let Some(many_seeds) = self.many_seeds.take() {
-            assert!(config.seed.is_none());
-            let exit_code = sync::IntoDynSyncSend(AtomicI32::new(rustc_driver::EXIT_SUCCESS));
-            let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
-            sync::par_for_each_in(many_seeds.seeds.clone(), |seed| {
-                let mut config = config.clone();
-                config.seed = Some((*seed).into());
-                eprintln!("Trying seed: {seed}");
-                let return_code = miri::eval_entry(
-                    tcx,
-                    entry_def_id,
-                    entry_type,
-                    &config,
-                    /* genmc_ctx */ None,
-                )
-                .unwrap_or(rustc_driver::EXIT_FAILURE);
-                if return_code != rustc_driver::EXIT_SUCCESS {
-                    eprintln!("FAILING SEED: {seed}");
-                    if !many_seeds.keep_going {
-                        // `abort_if_errors` would actually not stop, since `par_for_each` waits for the
-                        // rest of the to finish, so we just exit immediately.
-                        exit(return_code);
-                    }
-                    exit_code.store(return_code, Ordering::Relaxed);
-                    num_failed.fetch_add(1, Ordering::Relaxed);
-                }
-            });
-            let num_failed = num_failed.0.into_inner();
-            if num_failed > 0 {
-                eprintln!("{num_failed}/{total} SEEDS FAILED", total = many_seeds.seeds.count());
-            }
-            exit(exit_code.0.into_inner());
+        if let Err(return_code) = res {
+            tcx.dcx().abort_if_errors();
+            exit(return_code.get());
         } else {
-            let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
-                .unwrap_or_else(|| {
-                    tcx.dcx().abort_if_errors();
-                    rustc_driver::EXIT_FAILURE
-                });
-            exit(return_code);
+            exit(rustc_driver::EXIT_SUCCESS);
         }
 
         // Unreachable.
@@ -571,7 +567,10 @@ fn main() {
         } else if arg == "-Zmiri-mute-stdout-stderr" {
             miri_config.mute_stdout_stderr = true;
         } else if arg == "-Zmiri-retag-fields" {
-            miri_config.retag_fields = RetagFields::Yes;
+            eprintln!(
+                "warning: `-Zmiri-retag-fields` is a NOP and will be removed in a future version of Miri.\n\
+                Field retagging has been on-by-default for a long time."
+            );
         } else if arg == "-Zmiri-fixed-schedule" {
             miri_config.fixed_scheduling = true;
         } else if arg == "-Zmiri-deterministic-concurrency" {
@@ -579,13 +578,6 @@ fn main() {
             miri_config.address_reuse_cross_thread_rate = 0.0;
             miri_config.cmpxchg_weak_failure_rate = 0.0;
             miri_config.weak_memory_emulation = false;
-        } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
-            miri_config.retag_fields = match retag_fields {
-                "all" => RetagFields::Yes,
-                "none" => RetagFields::No,
-                "scalar" => RetagFields::OnlyScalar,
-                _ => fatal_error!("`-Zmiri-retag-fields` can only be `all`, `none`, or `scalar`"),
-            };
         } else if let Some(param) = arg.strip_prefix("-Zmiri-seed=") {
             let seed = param.parse::<u64>().unwrap_or_else(|_| {
                 fatal_error!("-Zmiri-seed must be an integer that fits into u64")
@@ -746,6 +738,13 @@ fn main() {
             "Weak memory emulation cannot be enabled when the data race detector is disabled"
         );
     };
+
+    // Validate GenMC settings.
+    if miri_config.genmc_config.is_some()
+        && let Err(err) = GenmcConfig::validate(&mut miri_config)
+    {
+        fatal_error!("Invalid settings: {err}");
+    }
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);

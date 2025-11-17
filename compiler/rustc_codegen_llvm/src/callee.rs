@@ -7,7 +7,7 @@
 use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
-use rustc_target::spec::Arch;
+use rustc_target::spec::{Arch, Env};
 use tracing::debug;
 
 use crate::context::CodegenCx;
@@ -145,7 +145,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         if cx.use_dll_storage_attrs
             && let Some(library) = tcx.native_library(instance_def_id)
             && library.kind.is_dllimport()
-            && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
+            && !matches!(tcx.sess.target.env, Env::Gnu | Env::Uclibc)
         {
             llvm::set_dllimport_storage_class(llfn);
         }

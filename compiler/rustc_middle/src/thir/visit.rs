@@ -45,7 +45,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     expr: &'thir Expr<'tcx>,
 ) {
     use ExprKind::*;
-    let Expr { kind, ty: _, temp_lifetime: _, span: _ } = expr;
+    let Expr { kind, ty: _, temp_scope_id: _, span: _ } = expr;
     match *kind {
         Scope { value, region_scope: _, lint_level: _ } => {
             visitor.visit_expr(&visitor.thir()[value])

@@ -176,6 +176,7 @@ language_item_table! {
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
+    TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
@@ -328,9 +329,6 @@ language_item_table! {
     // Lang items needed for `format_args!()`.
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
-    FormatCount,             sym::format_count,        format_count,               Target::Enum,           GenericRequirement::None;
-    FormatPlaceholder,       sym::format_placeholder,  format_placeholder,         Target::Struct,         GenericRequirement::None;
-    FormatUnsafeArg,         sym::format_unsafe_arg,   format_unsafe_arg,          Target::Struct,         GenericRequirement::None;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn,             GenericRequirement::None;
     DropInPlace,             sym::drop_in_place,       drop_in_place_fn,           Target::Fn,             GenericRequirement::Minimum(1);
@@ -372,6 +370,7 @@ language_item_table! {
     TryTraitFromOutput,      sym::from_output,         from_output_fn,             Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitBranch,          sym::branch,              branch_fn,                  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
+    ResidualIntoTryType,     sym::into_try_type,       into_try_type_fn,           Target::Fn,             GenericRequirement::None;
 
     CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
 

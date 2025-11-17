@@ -683,7 +683,7 @@ pub(crate) unsafe fn llvm_optimize(
         // Here we map the old arguments to the new arguments, with an offset of 1 to make sure
         // that we don't use the newly added `%dyn_ptr`.
         unsafe {
-            llvm::LLVMRustOffloadMapper(cx.llmod(), old_fn, new_fn);
+            llvm::LLVMRustOffloadMapper(old_fn, new_fn);
         }
 
         llvm::set_linkage(new_fn, llvm::get_linkage(old_fn));

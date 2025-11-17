@@ -73,7 +73,10 @@ jobs:
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
-          sudo apt update
+          # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
+          for TRY in $(seq 3); do
+            { sudo apt update && break; } || sleep 30
+          done
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
       - uses: ./.github/workflows/setup

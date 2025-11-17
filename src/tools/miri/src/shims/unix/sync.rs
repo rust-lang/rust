@@ -1,4 +1,5 @@
 use rustc_abi::Size;
+use rustc_target::spec::Os;
 
 use crate::concurrency::sync::{AccessKind, SyncObj};
 use crate::*;
@@ -29,8 +30,8 @@ const PTHREAD_INIT: u8 = 1;
 
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
-    interp_ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "macos" | "freebsd" | "android" => 0,
+    interp_ok(match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
     })
 }
@@ -128,10 +129,10 @@ impl SyncObj for PthreadMutex {
 /// a statically initialized mutex that is used the first time, we pick some offset within
 /// `pthread_mutex_t` and use it as an "initialized" flag.
 fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
-    let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
+    let offset = match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
         // macOS stores a signature in the first bytes, so we move to offset 4.
-        "macos" => 4,
+        Os::MacOs => 4,
         os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
@@ -152,13 +153,13 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
 
         check_static_initializer("PTHREAD_MUTEX_INITIALIZER");
         // Check non-standard initializers.
-        match &*ecx.tcx.sess.target.os {
-            "linux" => {
+        match &ecx.tcx.sess.target.os {
+            Os::Linux => {
                 check_static_initializer("PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP");
                 check_static_initializer("PTHREAD_ADAPTIVE_MUTEX_INITIALIZER_NP");
             }
-            "illumos" | "solaris" | "macos" | "freebsd" | "android" => {
+            Os::Illumos | Os::Solaris | Os::MacOs | Os::FreeBsd | Os::Android => {
                 // No non-standard initializers.
             }
             os => throw_unsup_format!("`pthread_mutex` is not supported on {os}"),
@@ -215,8 +216,8 @@ fn mutex_kind_from_static_initializer<'tcx>(
         return interp_ok(MutexKind::Default);
     }
     // Support additional platform-specific initializers.
-    match &*ecx.tcx.sess.target.os {
-        "linux" =>
+    match &ecx.tcx.sess.target.os {
+        Os::Linux =>
             if is_initializer("PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP")? {
                 return interp_ok(MutexKind::Recursive);
             } else if is_initializer("PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP")? {
@@ -254,10 +255,10 @@ impl SyncObj for PthreadRwLock {
 }
 
 fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
-    let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
+    let offset = match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
         // macOS stores a signature in the first bytes, so we move to offset 4.
-        "macos" => 4,
+        Os::MacOs => 4,
         os => throw_unsup_format!("`pthread_rwlock` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
@@ -311,8 +312,8 @@ where
 
 #[inline]
 fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
-    interp_ok(match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
+    interp_ok(match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
         // macOS does not have a clock attribute.
         os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
     })
@@ -349,10 +350,10 @@ fn condattr_set_clock_id<'tcx>(
 // - init: u8
 
 fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> {
-    let offset = match &*ecx.tcx.sess.target.os {
-        "linux" | "illumos" | "solaris" | "freebsd" | "android" => 0,
+    let offset = match &ecx.tcx.sess.target.os {
+        Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
         // macOS stores a signature in the first bytes, so we move to offset 4.
-        "macos" => 4,
+        Os::MacOs => 4,
         os => throw_unsup_format!("`pthread_cond` is not supported on {os}"),
     };
     let offset = Size::from_bytes(offset);
@@ -748,7 +749,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // no clock attribute on macOS
-        if this.tcx.sess.target.os != "macos" {
+        if this.tcx.sess.target.os != Os::MacOs {
             // The default value of the clock attribute shall refer to the system
             // clock.
             // https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_condattr_setclock.html
@@ -798,7 +799,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Destroying an uninit pthread_condattr is UB, so check to make sure it's not uninit.
         // There's no clock attribute on macOS.
-        if this.tcx.sess.target.os != "macos" {
+        if this.tcx.sess.target.os != Os::MacOs {
             condattr_get_clock_id(this, attr_op)?;
         }
 
@@ -820,7 +821,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let attr = this.read_pointer(attr_op)?;
         // Default clock if `attr` is null, and on macOS where there is no clock attribute.
-        let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == "macos" {
+        let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == Os::MacOs {
             this.eval_libc("CLOCK_REALTIME")
         } else {
             condattr_get_clock_id(this, attr_op)?

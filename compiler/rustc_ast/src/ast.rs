@@ -648,9 +648,10 @@ impl Pat {
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
-            PatKind::Ref(pat, mutbl) => {
-                pat.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
-            }
+            PatKind::Ref(pat, pinned, mutbl) => pat.to_ty().map(|ty| match pinned {
+                Pinnedness::Not => TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }),
+                Pinnedness::Pinned => TyKind::PinnedRef(None, MutTy { ty, mutbl: *mutbl }),
+            })?,
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
             PatKind::Slice(pats) if let [pat] = pats.as_slice() => {
@@ -696,7 +697,7 @@ impl Pat {
             // Trivial wrappers over inner patterns.
             PatKind::Box(s)
             | PatKind::Deref(s)
-            | PatKind::Ref(s, _)
+            | PatKind::Ref(s, _, _)
             | PatKind::Paren(s)
             | PatKind::Guard(s, _) => s.walk(it),
 
@@ -717,7 +718,7 @@ impl Pat {
     /// Strip off all reference patterns (`&`, `&mut`) and return the inner pattern.
     pub fn peel_refs(&self) -> &Pat {
         let mut current = self;
-        while let PatKind::Ref(inner, _) = &current.kind {
+        while let PatKind::Ref(inner, _, _) = &current.kind {
             current = inner;
         }
         current
@@ -765,7 +766,9 @@ impl Pat {
             PatKind::Missing => unreachable!(),
             PatKind::Wild => Some("_".to_string()),
             PatKind::Ident(BindingMode::NONE, ident, None) => Some(format!("{ident}")),
-            PatKind::Ref(pat, mutbl) => pat.descr().map(|d| format!("&{}{d}", mutbl.prefix_str())),
+            PatKind::Ref(pat, pinned, mutbl) => {
+                pat.descr().map(|d| format!("&{}{d}", pinned.prefix_str(*mutbl)))
+            }
             _ => None,
         }
     }
@@ -913,7 +916,7 @@ pub enum PatKind {
     Deref(Box<Pat>),
 
     /// A reference pattern (e.g., `&mut (a, b)`).
-    Ref(Box<Pat>, Mutability),
+    Ref(Box<Pat>, Pinnedness, Mutability),
 
     /// A literal, const block or path.
     Expr(Box<Expr>),

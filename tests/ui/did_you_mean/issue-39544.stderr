@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:16:17
    |
 LL |         let _ = &mut self.x;
-   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -24,7 +24,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:20:17
    |
 LL |         let _ = &mut self.x;
-   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -35,7 +35,7 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
   --> $DIR/issue-39544.rs:21:17
    |
 LL |         let _ = &mut other.x;
-   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -46,7 +46,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:25:17
    |
 LL |         let _ = &mut self.x;
-   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -57,7 +57,7 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
   --> $DIR/issue-39544.rs:26:17
    |
 LL |         let _ = &mut other.x;
-   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -68,7 +68,7 @@ error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:30:17
    |
 LL |         let _ = &mut self.x;
-   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -79,7 +79,7 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
   --> $DIR/issue-39544.rs:31:17
    |
 LL |         let _ = &mut other.x;
-   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -90,7 +90,7 @@ error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` referenc
   --> $DIR/issue-39544.rs:35:17
    |
 LL |         let _ = &mut other.x;
-   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -112,7 +112,7 @@ error[E0596]: cannot borrow `w.x` as mutable, as it is behind a `&` reference
   --> $DIR/issue-39544.rs:42:13
    |
 LL |     let _ = &mut w.x;
-   |             ^^^^^^^^ `w` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |             ^^^^^^^^ `w` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

@@ -547,9 +547,11 @@ where
                 Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
                 }
-                Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
-                    G::consider_builtin_copy_clone_candidate(self, goal)
-                }
+                Some(
+                    SolverTraitLangItem::Copy
+                    | SolverTraitLangItem::Clone
+                    | SolverTraitLangItem::TrivialClone,
+                ) => G::consider_builtin_copy_clone_candidate(self, goal),
                 Some(SolverTraitLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }

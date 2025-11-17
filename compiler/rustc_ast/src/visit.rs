@@ -645,8 +645,9 @@ macro_rules! common_visitor_and_walkers {
             fn visit_fn(
                 &mut self,
                 fk: FnKind<$($lt)? $(${ignore($mut)} '_)?>,
+                _: &AttrVec,
                 _: Span,
-                _: NodeId
+                _: NodeId,
             ) -> Self::Result {
                 walk_fn(self, fk)
             }
@@ -740,6 +741,7 @@ macro_rules! common_visitor_and_walkers {
             type Ctxt;
             fn walk<$($lt,)? V: $Visitor$(<$lt>)?>(
                 &$($lt)? $($mut)? self,
+                attrs: &AttrVec,
                 span: Span,
                 id: NodeId,
                 visibility: &$($lt)? $($mut)? Visibility,
@@ -773,7 +775,7 @@ macro_rules! common_visitor_and_walkers {
         ) -> V::Result {
             let Item { attrs, id, kind, vis, span, tokens: _ } = item;
             visit_visitable!($($mut)? visitor, id, attrs, vis);
-            try_visit!(kind.walk(*span, *id, vis, ctxt, visitor));
+            try_visit!(kind.walk(attrs, *span, *id, vis, ctxt, visitor));
             visit_visitable!($($mut)? visitor, span);
             V::Result::output()
         }
@@ -799,6 +801,7 @@ macro_rules! common_visitor_and_walkers {
             type Ctxt = ();
             fn walk<$($lt,)? V: $Visitor$(<$lt>)?>(
                 &$($lt)? $($mut)? self,
+                attrs: &AttrVec,
                 span: Span,
                 id: NodeId,
                 visibility: &$($lt)? $($mut)? Visibility,
@@ -808,7 +811,7 @@ macro_rules! common_visitor_and_walkers {
                 match self {
                     ItemKind::Fn(func) => {
                         let kind = FnKind::Fn(FnCtxt::Free, visibility, &$($mut)? *func);
-                        try_visit!(vis.visit_fn(kind, span, id));
+                        try_visit!(vis.visit_fn(kind, attrs, span, id));
                     }
                     ItemKind::ExternCrate(orig_name, ident) =>
                         visit_visitable!($($mut)? vis, orig_name, ident),
@@ -856,6 +859,7 @@ macro_rules! common_visitor_and_walkers {
             type Ctxt = AssocCtxt;
             fn walk<$($lt,)? V: $Visitor$(<$lt>)?>(
                 &$($lt)? $($mut)? self,
+                attrs: &AttrVec,
                 span: Span,
                 id: NodeId,
                 visibility: &$($lt)? $($mut)? Visibility,
@@ -867,7 +871,7 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, item),
                     AssocItemKind::Fn(func) => {
                         let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), visibility, &$($mut)? *func);
-                        try_visit!(vis.visit_fn(kind, span, id))
+                        try_visit!(vis.visit_fn(kind, attrs, span, id))
                     }
                     AssocItemKind::Type(alias) =>
                         visit_visitable!($($mut)? vis, alias),
@@ -886,6 +890,7 @@ macro_rules! common_visitor_and_walkers {
             type Ctxt = ();
             fn walk<$($lt,)? V: $Visitor$(<$lt>)?>(
                 &$($lt)? $($mut)? self,
+                attrs: &AttrVec,
                 span: Span,
                 id: NodeId,
                 visibility: &$($lt)? $($mut)? Visibility,
@@ -897,7 +902,7 @@ macro_rules! common_visitor_and_walkers {
                         visit_visitable!($($mut)? vis, item),
                     ForeignItemKind::Fn(func) => {
                         let kind = FnKind::Fn(FnCtxt::Foreign, visibility, &$($mut)?*func);
-                        try_visit!(vis.visit_fn(kind, span, id))
+                        try_visit!(vis.visit_fn(kind, attrs, span, id))
                     }
                     ForeignItemKind::TyAlias(alias) =>
                         visit_visitable!($($mut)? vis, alias),
@@ -999,7 +1004,7 @@ macro_rules! common_visitor_and_walkers {
                 }) => {
                     visit_visitable!($($mut)? vis, constness, movability, capture_clause);
                     let kind = FnKind::Closure(binder, coroutine_kind, fn_decl, body);
-                    try_visit!(vis.visit_fn(kind, *span, *id));
+                    try_visit!(vis.visit_fn(kind, attrs, *span, *id));
                     visit_visitable!($($mut)? vis, fn_decl_span, fn_arg_span);
                 }
                 ExprKind::Block(block, opt_label) =>

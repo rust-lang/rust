@@ -1723,8 +1723,10 @@ pub struct SourceFile {
     pub external_src: FreezeLock<ExternalSource>,
     /// The start position of this source in the `SourceMap`.
     pub start_pos: BytePos,
-    /// The byte length of this source.
-    pub source_len: RelativeBytePos,
+    /// The byte length of this source after normalization.
+    pub normalized_source_len: RelativeBytePos,
+    /// The byte length of this source before normalization.
+    pub unnormalized_source_len: u32,
     /// Locations of lines beginnings in the source code.
     pub lines: FreezeLock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
@@ -1748,7 +1750,8 @@ impl Clone for SourceFile {
             checksum_hash: self.checksum_hash,
             external_src: self.external_src.clone(),
             start_pos: self.start_pos,
-            source_len: self.source_len,
+            normalized_source_len: self.normalized_source_len,
+            unnormalized_source_len: self.unnormalized_source_len,
             lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
@@ -1764,7 +1767,8 @@ impl<S: SpanEncoder> Encodable<S> for SourceFile {
         self.src_hash.encode(s);
         self.checksum_hash.encode(s);
         // Do not encode `start_pos` as it's global state for this session.
-        self.source_len.encode(s);
+        self.normalized_source_len.encode(s);
+        self.unnormalized_source_len.encode(s);
 
         // We are always in `Lines` form by the time we reach here.
         assert!(self.lines.read().is_lines());
@@ -1837,7 +1841,8 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);
         let checksum_hash: Option<SourceFileHash> = Decodable::decode(d);
-        let source_len: RelativeBytePos = Decodable::decode(d);
+        let normalized_source_len: RelativeBytePos = Decodable::decode(d);
+        let unnormalized_source_len = Decodable::decode(d);
         let lines = {
             let num_lines: u32 = Decodable::decode(d);
             if num_lines > 0 {
@@ -1859,7 +1864,8 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
         SourceFile {
             name,
             start_pos: BytePos::from_u32(0),
-            source_len,
+            normalized_source_len,
+            unnormalized_source_len,
             src: None,
             src_hash,
             checksum_hash,
@@ -1959,12 +1965,17 @@ impl SourceFile {
                 SourceFileHash::new_in_memory(checksum_hash_kind, src.as_bytes())
             }
         });
+        // Capture the original source length before normalization.
+        let unnormalized_source_len = u32::try_from(src.len()).map_err(|_| OffsetOverflowError)?;
+        if unnormalized_source_len > Self::MAX_FILE_SIZE {
+            return Err(OffsetOverflowError);
+        }
+
         let normalized_pos = normalize_src(&mut src);
 
         let stable_id = StableSourceFileId::from_filename_in_current_crate(&name);
-        let source_len = src.len();
-        let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
-        if source_len > Self::MAX_FILE_SIZE {
+        let normalized_source_len = u32::try_from(src.len()).map_err(|_| OffsetOverflowError)?;
+        if normalized_source_len > Self::MAX_FILE_SIZE {
             return Err(OffsetOverflowError);
         }
 
@@ -1977,7 +1988,8 @@ impl SourceFile {
             checksum_hash,
             external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             start_pos: BytePos::from_u32(0),
-            source_len: RelativeBytePos::from_u32(source_len),
+            normalized_source_len: RelativeBytePos::from_u32(normalized_source_len),
+            unnormalized_source_len,
             lines: FreezeLock::frozen(SourceFileLines::Lines(lines)),
             multibyte_chars,
             normalized_pos,
@@ -2161,7 +2173,7 @@ impl SourceFile {
 
     #[inline]
     pub fn end_position(&self) -> BytePos {
-        self.absolute_position(self.source_len)
+        self.absolute_position(self.normalized_source_len)
     }
 
     /// Finds the line containing the given position. The return value is the
@@ -2197,7 +2209,7 @@ impl SourceFile {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.source_len.to_u32() == 0
+        self.normalized_source_len.to_u32() == 0
     }
 
     /// Calculates the original byte position relative to the start of the file

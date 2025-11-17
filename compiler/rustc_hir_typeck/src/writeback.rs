@@ -79,9 +79,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_offset_of_container_types();
         wbcx.visit_potentially_region_dependent_goals();
 
-        wbcx.typeck_results.rvalue_scopes =
-            mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
-
         let used_trait_imports =
             mem::take(&mut self.typeck_results.borrow_mut().used_trait_imports);
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);

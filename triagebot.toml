@@ -922,9 +922,6 @@ cc = ["@davidtwco", "@wesleywiser"]
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
 
-[mentions."compiler/rustc_codegen_ssa"]
-cc = ["@WaffleLapkin"]
-
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
 
@@ -1663,7 +1660,7 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 format = "rustc"
 project-name = "Rust"
 changelog-path = "RELEASES.md"
-changelog-branch = "master"
+changelog-branch = "main"
 
 [shortcut]
 

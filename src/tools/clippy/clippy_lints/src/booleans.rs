@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::higher::has_let_expr;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeDef;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{eq_expr_value, sym};
@@ -415,19 +415,20 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                 BinOpKind::Ge => Some(" < "),
                 _ => None,
             }
-            .and_then(|op| {
-                let lhs_snippet = lhs.span.get_source_text(cx)?;
-                let rhs_snippet = rhs.span.get_source_text(cx)?;
+            .map(|op| {
+                let mut app = Applicability::MachineApplicable;
+                let (lhs_snippet, _) = snippet_with_context(cx, lhs.span, SyntaxContext::root(), "", &mut app);
+                let (rhs_snippet, _) = snippet_with_context(cx, rhs.span, SyntaxContext::root(), "", &mut app);
 
                 if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')'))
                     && let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node)
                 {
                     // e.g. `(a as u64) < b`. Without the parens the `<` is
                     // interpreted as a start of generic arguments for `u64`
-                    return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
+                    return format!("({lhs_snippet}){op}{rhs_snippet}");
                 }
 
-                Some(format!("{lhs_snippet}{op}{rhs_snippet}"))
+                format!("{lhs_snippet}{op}{rhs_snippet}")
             })
         },
         ExprKind::MethodCall(path, receiver, args, _) => {

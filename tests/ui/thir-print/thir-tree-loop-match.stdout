@@ -27,7 +27,7 @@ params: [
 body:
     Expr {
         ty: bool
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+        temp_scope_id: 28
         span: $DIR/thir-tree-loop-match.rs:7:37: 20:2 (#0)
         kind: 
             Scope {
@@ -36,7 +36,7 @@ body:
                 value:
                     Expr {
                         ty: bool
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                        temp_scope_id: 28
                         span: $DIR/thir-tree-loop-match.rs:7:37: 20:2 (#0)
                         kind: 
                             Block {
@@ -48,7 +48,7 @@ body:
                                 expr:
                                     Expr {
                                         ty: bool
-                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                        temp_scope_id: 4
                                         span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
                                         kind: 
                                             Scope {
@@ -57,21 +57,21 @@ body:
                                                 value:
                                                     Expr {
                                                         ty: bool
-                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                        temp_scope_id: 4
                                                         span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
                                                         kind: 
                                                             NeverToAny {
                                                                 source:
                                                                     Expr {
                                                                         ty: !
-                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                        temp_scope_id: 4
                                                                         span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
                                                                         kind: 
                                                                             LoopMatch {
                                                                                 state:
                                                                                     Expr {
                                                                                         ty: bool
-                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                        temp_scope_id: 7
                                                                                         span: $DIR/thir-tree-loop-match.rs:10:9: 10:14 (#0)
                                                                                         kind: 
                                                                                             Scope {
@@ -80,7 +80,7 @@ body:
                                                                                                 value:
                                                                                                     Expr {
                                                                                                         ty: bool
-                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                        temp_scope_id: 7
                                                                                                         span: $DIR/thir-tree-loop-match.rs:10:9: 10:14 (#0)
                                                                                                         kind: 
                                                                                                             VarRef {
@@ -96,7 +96,7 @@ body:
                                                                                         scrutinee:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                temp_scope_id: 12
                                                                                                 span: $DIR/thir-tree-loop-match.rs:11:19: 11:24 (#0)
                                                                                                 kind: 
                                                                                                     Scope {
@@ -105,7 +105,7 @@ body:
                                                                                                         value:
                                                                                                             Expr {
                                                                                                                 ty: bool
-                                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                                temp_scope_id: 12
                                                                                                                 span: $DIR/thir-tree-loop-match.rs:11:19: 11:24 (#0)
                                                                                                                 kind: 
                                                                                                                     VarRef {
@@ -130,7 +130,7 @@ body:
                                                                                                 body: 
                                                                                                     Expr {
                                                                                                         ty: bool
-                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                        temp_scope_id: 17
                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                         kind: 
                                                                                                             Scope {
@@ -139,14 +139,14 @@ body:
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
-                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                                        temp_scope_id: 17
                                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                                         kind: 
                                                                                                                             NeverToAny {
                                                                                                                                 source:
                                                                                                                                     Expr {
                                                                                                                                         ty: !
-                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                                                        temp_scope_id: 17
                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
                                                                                                                                         kind: 
                                                                                                                                             Block {
@@ -161,7 +161,7 @@ body:
                                                                                                                                                             expr:
                                                                                                                                                                 Expr {
                                                                                                                                                                     ty: !
-                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                    temp_scope_id: 19
                                                                                                                                                                     span: $DIR/thir-tree-loop-match.rs:14:21: 14:37 (#0)
                                                                                                                                                                     kind: 
                                                                                                                                                                         Scope {
@@ -170,7 +170,7 @@ body:
                                                                                                                                                                             value:
                                                                                                                                                                                 Expr {
                                                                                                                                                                                     ty: !
-                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                    temp_scope_id: 19
                                                                                                                                                                                     span: $DIR/thir-tree-loop-match.rs:14:21: 14:37 (#0)
                                                                                                                                                                                     kind: 
                                                                                                                                                                                         ConstContinue (
@@ -178,7 +178,7 @@ body:
                                                                                                                                                                                             value:
                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                     ty: bool
-                                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                                    temp_scope_id: 20
                                                                                                                                                                                                     span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0)
                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                         Scope {
@@ -187,7 +187,7 @@ body:
                                                                                                                                                                                                             value:
                                                                                                                                                                                                                 Expr {
                                                                                                                                                                                                                     ty: bool
-                                                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                                                    temp_scope_id: 20
                                                                                                                                                                                                                     span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0)
                                                                                                                                                                                                                     kind: 
                                                                                                                                                                                                                         Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0) }, neg: false)
@@ -228,7 +228,7 @@ body:
                                                                                                 body: 
                                                                                                     Expr {
                                                                                                         ty: bool
-                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                        temp_scope_id: 25
                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                         kind: 
                                                                                                             Scope {
@@ -237,21 +237,21 @@ body:
                                                                                                                 value:
                                                                                                                     Expr {
                                                                                                                         ty: bool
-                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                        temp_scope_id: 25
                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                                         kind: 
                                                                                                                             NeverToAny {
                                                                                                                                 source:
                                                                                                                                     Expr {
                                                                                                                                         ty: !
-                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                        temp_scope_id: 25
                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
                                                                                                                                         kind: 
                                                                                                                                             Return {
                                                                                                                                                 value:
                                                                                                                                                     Expr {
                                                                                                                                                         ty: bool
-                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                                        temp_scope_id: 26
                                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
                                                                                                                                                         kind: 
                                                                                                                                                             Scope {
@@ -260,7 +260,7 @@ body:
                                                                                                                                                                 value:
                                                                                                                                                                     Expr {
                                                                                                                                                                         ty: bool
-                                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                                                        temp_scope_id: 26
                                                                                                                                                                         span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
                                                                                                                                                                         kind: 
                                                                                                                                                                             VarRef {
@@ -299,7 +299,7 @@ params: [
 body:
     Expr {
         ty: ()
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+        temp_scope_id: 2
         span: $DIR/thir-tree-loop-match.rs:22:11: 22:13 (#0)
         kind: 
             Scope {
@@ -308,7 +308,7 @@ body:
                 value:
                     Expr {
                         ty: ()
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                        temp_scope_id: 2
                         span: $DIR/thir-tree-loop-match.rs:22:11: 22:13 (#0)
                         kind: 
                             Block {

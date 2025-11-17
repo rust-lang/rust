@@ -1,6 +1,5 @@
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
-use rustc_middle::ty::TyCtxt;
 
 pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
@@ -23,6 +22,7 @@ pub struct GenmcCtx {}
 pub struct GenmcConfig {}
 
 mod run {
+    use std::num::NonZeroI32;
     use std::rc::Rc;
 
     use rustc_middle::ty::TyCtxt;
@@ -30,10 +30,10 @@ mod run {
     use crate::{GenmcCtx, MiriConfig};
 
     pub fn run_genmc_mode<'tcx>(
-        _config: &MiriConfig,
-        _eval_entry: impl Fn(Rc<GenmcCtx>) -> Option<i32>,
         _tcx: TyCtxt<'tcx>,
-    ) -> Option<i32> {
+        _config: &MiriConfig,
+        _eval_entry: impl Fn(Rc<GenmcCtx>) -> Result<(), NonZeroI32>,
+    ) -> Result<(), NonZeroI32> {
         unreachable!();
     }
 }
@@ -240,10 +240,7 @@ impl GenmcConfig {
         }
     }
 
-    pub fn validate(
-        _miri_config: &mut crate::MiriConfig,
-        _tcx: TyCtxt<'_>,
-    ) -> Result<(), &'static str> {
+    pub fn validate(_miri_config: &mut crate::MiriConfig) -> Result<(), &'static str> {
         Ok(())
     }
 }

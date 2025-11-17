@@ -7,9 +7,10 @@ use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
-use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind, Pinnedness};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_data_structures::thinvec::ExtractIf;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
@@ -98,7 +99,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
         return;
     }
 
-    let mut pat = Box::new(pat.clone());
+    let mut pat = pat.clone();
 
     // Nix all the paren patterns everywhere so that they aren't in our way.
     remove_all_parens(&mut pat);
@@ -120,7 +121,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 }
 
 /// Remove all `(p)` patterns in `pat`.
-fn remove_all_parens(pat: &mut Box<Pat>) {
+fn remove_all_parens(pat: &mut Pat) {
     #[derive(Default)]
     struct Visitor {
         /// If is not in the outer most pattern. This is needed to avoid removing the outermost
@@ -143,7 +144,7 @@ fn remove_all_parens(pat: &mut Box<Pat>) {
 }
 
 /// Insert parens where necessary according to Rust's precedence rules for patterns.
-fn insert_necessary_parens(pat: &mut Box<Pat>) {
+fn insert_necessary_parens(pat: &mut Pat) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut Pat) {
@@ -151,8 +152,9 @@ fn insert_necessary_parens(pat: &mut Box<Pat>) {
             walk_pat(self, pat);
             let target = match &mut pat.kind {
                 // `i @ a | b`, `box a | b`, and `& mut? a | b`.
-                Ident(.., Some(p)) | Box(p) | Ref(p, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
-                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p, // `&(mut x)`
+                Ident(.., Some(p)) | Box(p) | Ref(p, _, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
+                // `&(mut x)`
+                Ref(p, Pinnedness::Not, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p,
                 _ => return,
             };
             target.kind = Paren(Box::new(take_pat(target)));
@@ -163,7 +165,7 @@ fn insert_necessary_parens(pat: &mut Box<Pat>) {
 
 /// Unnest or-patterns `p0 | ... | p1` in the pattern `pat`.
 /// For example, this would transform `Some(0) | FOO | Some(2)` into `Some(0 | 2) | FOO`.
-fn unnest_or_patterns(pat: &mut Box<Pat>) -> bool {
+fn unnest_or_patterns(pat: &mut Pat) -> bool {
     struct Visitor {
         changed: bool,
     }
@@ -241,7 +243,8 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.
-        | Ref(_, Mutability::Not)
+        // FIXME(pin_ergonomics): handle pinned patterns
+        | Ref(_, _, Mutability::Not)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
@@ -254,10 +257,10 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Pat>, focus_idx: usize
             |k| always_pat!(k, Box(p) => *p),
         ),
         // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
-        Ref(target, Mutability::Mut) => extend_with_matching(
+        Ref(target, _, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
-            |k| matches!(k, Ref(_, Mutability::Mut)),
-            |k| always_pat!(k, Ref(p, _) => *p),
+            |k| matches!(k, Ref(_, _, Mutability::Mut)),
+            |k| always_pat!(k, Ref(p, _, _) => *p),
         ),
         // Transform `b @ p0 | ... b @ p1` into `b @ (p0 | p1)`.
         Ident(b1, i1, Some(target)) => extend_with_matching(
@@ -384,15 +387,14 @@ fn take_pat(from: &mut Pat) -> Pat {
 /// in `tail_or` if there are any and return if there were.
 fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Pat>) -> bool {
     fn extend(target: &mut Pat, mut tail_or: ThinVec<Pat>) {
-        match target {
-            // On an existing or-pattern in the target, append to it.
-            Pat { kind: Or(ps), .. } => ps.append(&mut tail_or),
-            // Otherwise convert the target to an or-pattern.
-            target => {
-                let mut init_or = thin_vec![take_pat(target)];
-                init_or.append(&mut tail_or);
-                target.kind = Or(init_or);
-            },
+        // On an existing or-pattern in the target, append to it,
+        // otherwise convert the target to an or-pattern.
+        if let Or(ps) = &mut target.kind {
+            ps.append(&mut tail_or);
+        } else {
+            let mut init_or = thin_vec![take_pat(target)];
+            init_or.append(&mut tail_or);
+            target.kind = Or(init_or);
         }
     }
 
@@ -415,26 +417,14 @@ fn drain_matching(
     let mut tail_or = ThinVec::new();
     let mut idx = 0;
 
-    // If `ThinVec` had the `drain_filter` method, this loop could be rewritten
-    // like so:
-    //
-    //   for pat in alternatives.drain_filter(|p| {
-    //       // Check if we should extract, but only if `idx >= start`.
-    //       idx += 1;
-    //       idx > start && predicate(&p.kind)
-    //   }) {
-    //       tail_or.push(extract(pat.into_inner().kind));
-    //   }
-    let mut i = 0;
-    while i < alternatives.len() {
-        idx += 1;
+    // FIXME: once `thin-vec` releases a new version, change this to `alternatives.extract_if()`
+    // See https://github.com/mozilla/thin-vec/issues/77
+    for pat in ExtractIf::new(alternatives, |p| {
         // Check if we should extract, but only if `idx >= start`.
-        if idx > start && predicate(&alternatives[i].kind) {
-            let pat = alternatives.remove(i);
-            tail_or.push(extract(pat.kind));
-        } else {
-            i += 1;
-        }
+        idx += 1;
+        idx > start && predicate(&p.kind)
+    }) {
+        tail_or.push(extract(pat.kind));
     }
 
     tail_or

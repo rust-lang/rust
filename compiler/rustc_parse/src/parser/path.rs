@@ -404,7 +404,7 @@ impl<'a> Parser<'a> {
                         // Inside parenthesized type arguments, we want types only, not names.
                         let mode = FnParseMode {
                             context: FnContext::Free,
-                            req_name: |_| false,
+                            req_name: |_, _| false,
                             req_body: false,
                         };
                         let param = p.parse_param_general(&mode, false, false);

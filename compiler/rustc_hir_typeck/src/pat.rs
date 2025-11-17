@@ -91,6 +91,7 @@ struct TopInfo<'tcx> {
 #[derive(Copy, Clone)]
 struct PatInfo<'tcx> {
     binding_mode: ByRef,
+    max_pinnedness: PinnednessCap,
     max_ref_mutbl: MutblCap,
     top_info: TopInfo<'tcx>,
     decl_origin: Option<DeclOrigin<'tcx>>,
@@ -241,6 +242,19 @@ impl MutblCap {
     }
 }
 
+/// `ref` or `ref mut` bindings (not pinned, explicitly or match-ergonomics) are only allowed behind
+/// an `&pin` reference if the binding's type is `Unpin`.
+///
+/// Normally, the borrow checker enforces this (not implemented yet), but we track it here for better
+/// diagnostics.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PinnednessCap {
+    /// No restriction on pinnedness.
+    Not,
+    /// Pinnedness restricted to pinned.
+    Pinned,
+}
+
 /// Variations on RFC 3627's Rule 4: when do reference patterns match against inherited references?
 ///
 /// "Inherited reference" designates the `&`/`&mut` types that arise from using match ergonomics, i.e.
@@ -374,6 +388,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let top_info = TopInfo { expected, origin_expr, span, hir_id: pat.hir_id };
         let pat_info = PatInfo {
             binding_mode: ByRef::No,
+            max_pinnedness: PinnednessCap::Not,
             max_ref_mutbl: MutblCap::Mut,
             top_info,
             decl_origin,
@@ -489,22 +504,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let old_pat_info = pat_info;
         let pat_info = PatInfo { current_depth: old_pat_info.current_depth + 1, ..old_pat_info };
 
-        let adjust_binding_mode = |inner_pinnedness, inner_mutability| {
-            match pat_info.binding_mode {
-                // If default binding mode is by value, make it `ref`, `ref mut`, `ref pin const`
-                // or `ref pin mut` (depending on whether we observe `&`, `&mut`, `&pin const` or
-                // `&pin mut`).
-                ByRef::No => ByRef::Yes(inner_pinnedness, inner_mutability),
-                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                // Pinnedness is preserved.
-                ByRef::Yes(pinnedness, Mutability::Mut) => ByRef::Yes(pinnedness, inner_mutability),
-                // Once a `ref`, always a `ref`.
-                // This is because a `& &mut` cannot mutate the underlying value.
-                // Pinnedness is preserved.
-                ByRef::Yes(pinnedness, Mutability::Not) => ByRef::Yes(pinnedness, Mutability::Not),
-            }
-        };
-
         match pat.kind {
             // Peel off a `&` or `&mut`from the scrutinee type. See the examples in
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
@@ -524,19 +523,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .or_default()
                     .push(PatAdjustment { kind: PatAdjust::BuiltinDeref, source: expected });
 
-                let mut binding_mode = adjust_binding_mode(Pinnedness::Not, inner_mutability);
-
-                let mut max_ref_mutbl = pat_info.max_ref_mutbl;
-                if self.downgrade_mut_inside_shared() {
-                    binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
-                }
-                if matches!(binding_mode, ByRef::Yes(_, Mutability::Not)) {
-                    max_ref_mutbl = MutblCap::Not;
-                }
-                debug!("default binding mode is now {:?}", binding_mode);
-
                 // Use the old pat info to keep `current_depth` to its old value.
-                let new_pat_info = PatInfo { binding_mode, max_ref_mutbl, ..old_pat_info };
+                let new_pat_info =
+                    self.adjust_pat_info(Pinnedness::Not, inner_mutability, old_pat_info);
+
                 // Recurse with the new expected type.
                 self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
             }
@@ -569,20 +559,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     });
                 }
 
-                let binding_mode = adjust_binding_mode(Pinnedness::Pinned, inner_mutability);
-                // If the pinnedness is `Not`, it means the pattern is unpinned
-                // and thus requires an `Unpin` bound.
-                if matches!(binding_mode, ByRef::Yes(Pinnedness::Not, _)) {
-                    self.register_bound(
-                        inner_ty,
-                        self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
-                        self.misc(pat.span),
-                    )
-                }
-                debug!("default binding mode is now {:?}", binding_mode);
-
                 // Use the old pat info to keep `current_depth` to its old value.
-                let new_pat_info = PatInfo { binding_mode, ..old_pat_info };
+                let new_pat_info =
+                    self.adjust_pat_info(Pinnedness::Pinned, inner_mutability, old_pat_info);
 
                 self.check_deref_pattern(
                     pat,
@@ -689,11 +668,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
             PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
-            PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
+            PatKind::Ref(inner, pinned, mutbl) => {
+                self.check_pat_ref(pat, inner, pinned, mutbl, expected, pat_info)
+            }
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
         }
+    }
+
+    fn adjust_pat_info(
+        &self,
+        inner_pinnedness: Pinnedness,
+        inner_mutability: Mutability,
+        pat_info: PatInfo<'tcx>,
+    ) -> PatInfo<'tcx> {
+        let mut binding_mode = match pat_info.binding_mode {
+            // If default binding mode is by value, make it `ref`, `ref mut`, `ref pin const`
+            // or `ref pin mut` (depending on whether we observe `&`, `&mut`, `&pin const` or
+            // `&pin mut`).
+            ByRef::No => ByRef::Yes(inner_pinnedness, inner_mutability),
+            ByRef::Yes(pinnedness, mutability) => {
+                let pinnedness = match pinnedness {
+                    // When `ref`, stay a `ref` (on `&`) or downgrade to `ref pin` (on `&pin`).
+                    Pinnedness::Not => inner_pinnedness,
+                    // When `ref pin`, stay a `ref pin`.
+                    // This is because we cannot get an `&mut T` from `&mut &pin mut T` unless `T: Unpin`.
+                    // Note that `&T` and `&mut T` are `Unpin`, which implies
+                    // `& &pin const T` <-> `&pin const &T` and `&mut &pin mut T` <-> `&pin mut &mut T`
+                    // (i.e. mutually coercible).
+                    Pinnedness::Pinned => Pinnedness::Pinned,
+                };
+
+                let mutability = match mutability {
+                    // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
+                    Mutability::Mut => inner_mutability,
+                    // Once a `ref`, always a `ref`.
+                    // This is because a `& &mut` cannot mutate the underlying value.
+                    Mutability::Not => Mutability::Not,
+                };
+                ByRef::Yes(pinnedness, mutability)
+            }
+        };
+
+        let PatInfo { mut max_ref_mutbl, mut max_pinnedness, .. } = pat_info;
+        if self.downgrade_mut_inside_shared() {
+            binding_mode = binding_mode.cap_ref_mutability(max_ref_mutbl.as_mutbl());
+        }
+        match binding_mode {
+            ByRef::Yes(_, Mutability::Not) => max_ref_mutbl = MutblCap::Not,
+            ByRef::Yes(Pinnedness::Pinned, _) => max_pinnedness = PinnednessCap::Pinned,
+            _ => {}
+        }
+        debug!("default binding mode is now {:?}", binding_mode);
+        PatInfo { binding_mode, max_pinnedness, max_ref_mutbl, ..pat_info }
     }
 
     fn check_deref_pattern(
@@ -1195,6 +1223,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
+        // If there exists a pinned reference in the pattern but the binding is not pinned,
+        // it means the binding is unpinned and thus requires an `Unpin` bound.
+        if pat_info.max_pinnedness == PinnednessCap::Pinned
+            && matches!(bm.0, ByRef::Yes(Pinnedness::Not, _))
+        {
+            self.register_bound(
+                expected,
+                self.tcx.require_lang_item(hir::LangItem::Unpin, pat.span),
+                self.misc(pat.span),
+            )
+        }
+
         if matches!(bm.0, ByRef::Yes(_, Mutability::Mut))
             && let MutblCap::WeaklyNot(and_pat_span) = pat_info.max_ref_mutbl
         {
@@ -1223,22 +1263,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_ty = self.local_ty(pat.span, pat.hir_id);
         let eq_ty = match bm.0 {
-            ByRef::Yes(Pinnedness::Not, mutbl) => {
+            ByRef::Yes(pinnedness, mutbl) => {
                 // If the binding is like `ref x | ref mut x`,
                 // then `x` is assigned a value of type `&M T` where M is the
+                // mutability and T is the expected type.
+                //
+                // Under pin ergonomics, if the binding is like `ref pin const|mut x`,
+                // then `x` is assigned a value of type `&pin M T` where M is the
                 // mutability and T is the expected type.
                 //
                 // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)`
                 // is required. However, we use equality, which is stronger.
                 // See (note_1) for an explanation.
-                self.new_ref_ty(pat.span, mutbl, expected)
+                self.new_ref_ty(pat.span, pinnedness, mutbl, expected)
             }
-            // Wrapping the type into `Pin` if the binding is like `ref pin const|mut x`
-            ByRef::Yes(Pinnedness::Pinned, mutbl) => Ty::new_adt(
-                self.tcx,
-                self.tcx.adt_def(self.tcx.require_lang_item(hir::LangItem::Pin, pat.span)),
-                self.tcx.mk_args(&[self.new_ref_ty(pat.span, mutbl, expected).into()]),
-            ),
             // Otherwise, the type of x is the expected type `T`.
             ByRef::No => expected, // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
         };
@@ -1331,18 +1369,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Precondition: pat is a `Ref(_)` pattern
+    // FIXME(pin_ergonomics): add suggestions for `&pin mut` or `&pin const` patterns
     fn borrow_pat_suggestion(&self, err: &mut Diag<'_>, pat: &Pat<'_>) {
         let tcx = self.tcx;
-        if let PatKind::Ref(inner, mutbl) = pat.kind
+        if let PatKind::Ref(inner, pinned, mutbl) = pat.kind
             && let PatKind::Binding(_, _, binding, ..) = inner.kind
         {
             let binding_parent = tcx.parent_hir_node(pat.hir_id);
             debug!(?inner, ?pat, ?binding_parent);
 
-            let mutability = match mutbl {
-                ast::Mutability::Mut => "mut",
-                ast::Mutability::Not => "",
-            };
+            let pin_and_mut = pinned.prefix_str(mutbl).trim_end();
 
             let mut_var_suggestion = 'block: {
                 if mutbl.is_not() {
@@ -1392,7 +1428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // so we don't suggest moving something to the type that does not exist
                 hir::Node::Param(hir::Param { ty_span, pat, .. }) if pat.span != *ty_span => {
                     err.multipart_suggestion_verbose(
-                        format!("to take parameter `{binding}` by reference, move `&{mutability}` to the type"),
+                        format!("to take parameter `{binding}` by reference, move `&{pin_and_mut}` to the type"),
                         vec![
                             (pat.span.until(inner.span), "".to_owned()),
                             (ty_span.shrink_to_lo(), mutbl.ref_prefix_str().to_owned()),
@@ -1406,13 +1442,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 hir::Node::Pat(pt) if let PatKind::TupleStruct(_, pat_arr, _) = pt.kind => {
                     for i in pat_arr.iter() {
-                        if let PatKind::Ref(the_ref, _) = i.kind
+                        if let PatKind::Ref(the_ref, _, _) = i.kind
                             && let PatKind::Binding(mt, _, ident, _) = the_ref.kind
                         {
                             let BindingMode(_, mtblty) = mt;
                             err.span_suggestion_verbose(
                                 i.span,
-                                format!("consider removing `&{mutability}` from the pattern"),
+                                format!("consider removing `&{pin_and_mut}` from the pattern"),
                                 mtblty.prefix_str().to_string() + &ident.name.to_string(),
                                 Applicability::MaybeIncorrect,
                             );
@@ -1426,7 +1462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // rely on match ergonomics or it might be nested `&&pat`
                     err.span_suggestion_verbose(
                         pat.span.until(inner.span),
-                        format!("consider removing `&{mutability}` from the pattern"),
+                        format!("consider removing `&{pin_and_mut}` from the pattern"),
                         "",
                         Applicability::MaybeIncorrect,
                     );
@@ -2677,6 +2713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         inner: &'tcx Pat<'tcx>,
+        pat_pinned: Pinnedness,
         pat_mutbl: Mutability,
         mut expected: Ty<'tcx>,
         mut pat_info: PatInfo<'tcx>,
@@ -2699,9 +2736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Determine whether we're consuming an inherited reference and resetting the default
         // binding mode, based on edition and enabled experimental features.
         if let ByRef::Yes(inh_pin, inh_mut) = pat_info.binding_mode
-            // FIXME(pin_ergonomics): since `&pin` pattern is supported, the condition here
-            // should be adjusted to `pat_pin == inh_pin`
-            && (!self.tcx.features().pin_ergonomics() || inh_pin == Pinnedness::Not)
+            && pat_pinned == inh_pin
         {
             match self.ref_pat_matches_inherited_ref(pat.span.edition()) {
                 InheritedRefMatchRule::EatOuter => {
@@ -2821,21 +2856,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // to avoid creating needless variables. This also helps with
                 // the bad interactions of the given hack detailed in (note_1).
                 debug!("check_pat_ref: expected={:?}", expected);
-                match *expected.kind() {
-                    ty::Ref(_, r_ty, r_mutbl)
-                        if (ref_pat_matches_mut_ref && r_mutbl >= pat_mutbl)
-                            || r_mutbl == pat_mutbl =>
+                match expected.maybe_pinned_ref() {
+                    Some((r_ty, r_pinned, r_mutbl))
+                        if ((ref_pat_matches_mut_ref && r_mutbl >= pat_mutbl)
+                            || r_mutbl == pat_mutbl)
+                            && pat_pinned == r_pinned =>
                     {
                         if r_mutbl == Mutability::Not {
                             pat_info.max_ref_mutbl = MutblCap::Not;
                         }
+                        if r_pinned == Pinnedness::Pinned {
+                            pat_info.max_pinnedness = PinnednessCap::Pinned;
+                        }
 
                         (expected, r_ty)
                     }
-
                     _ => {
                         let inner_ty = self.next_ty_var(inner.span);
-                        let ref_ty = self.new_ref_ty(pat.span, pat_mutbl, inner_ty);
+                        let ref_ty = self.new_ref_ty(pat.span, pat_pinned, pat_mutbl, inner_ty);
                         debug!("check_pat_ref: demanding {:?} = {:?}", expected, ref_ty);
                         let err = self.demand_eqtype_pat_diag(
                             pat.span,
@@ -2864,10 +2902,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ref_ty
     }
 
-    /// Create a reference type with a fresh region variable.
-    fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
+    /// Create a reference or pinned reference type with a fresh region variable.
+    fn new_ref_ty(
+        &self,
+        span: Span,
+        pinnedness: Pinnedness,
+        mutbl: Mutability,
+        ty: Ty<'tcx>,
+    ) -> Ty<'tcx> {
         let region = self.next_region_var(RegionVariableOrigin::PatternRegion(span));
-        Ty::new_ref(self.tcx, region, ty, mutbl)
+        let ref_ty = Ty::new_ref(self.tcx, region, ty, mutbl);
+        if pinnedness.is_pinned() {
+            return self.new_pinned_ty(span, ref_ty);
+        }
+        ref_ty
+    }
+
+    /// Create a pinned type.
+    fn new_pinned_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        Ty::new_adt(
+            self.tcx,
+            self.tcx.adt_def(self.tcx.require_lang_item(LangItem::Pin, span)),
+            self.tcx.mk_args(&[ty.into()]),
+        )
     }
 
     fn error_inherited_ref_mutability_mismatch(

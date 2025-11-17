@@ -1,6 +1,4 @@
 //@ignore-target: windows # No libc socketpair on Windows
-//~^ERROR: deadlocked
-//~^^ERROR: deadlocked
 // test_race depends on a deterministic schedule.
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock

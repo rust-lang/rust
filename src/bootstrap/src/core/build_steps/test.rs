@@ -2075,7 +2075,9 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--target-rustcflags").arg(flag);
         }
 
-        cmd.arg("--python").arg(builder.python());
+        cmd.arg("--python").arg(
+            builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
+        );
 
         // FIXME(#148099): Currently we set these Android-related flags in all
         // modes, even though they should only be needed in "debuginfo" mode,
@@ -2094,11 +2096,11 @@ Please disable assertions with `rust.debug-assertions = false`.
                 cmd.arg("--gdb").arg(gdb);
             }
 
-            if let Some(debuggers::Lldb { lldb_version, lldb_python_dir }) =
+            if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
                 debuggers::discover_lldb(builder)
             {
+                cmd.arg("--lldb").arg(lldb_exe);
                 cmd.arg("--lldb-version").arg(lldb_version);
-                cmd.arg("--lldb-python-dir").arg(lldb_python_dir);
             }
         }
 
@@ -3359,7 +3361,9 @@ impl Step for BootstrapPy {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let mut check_bootstrap = command(builder.python());
+        let mut check_bootstrap = command(
+            builder.config.python.as_ref().expect("python is required for running bootstrap tests"),
+        );
         check_bootstrap
             .args(["-m", "unittest", "bootstrap_test.py"])
             // Forward command-line args after `--` to unittest, for filtering etc.
@@ -3408,6 +3412,13 @@ impl Step for Bootstrap {
             // Needed for insta to correctly write pending snapshots to the right directories.
             .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
+
+        if builder.config.cmd.bless() {
+            // Tell `insta` to automatically bless any failing `.snap` files.
+            // Unlike compiletest blessing, the tests might still report failure.
+            // Does not bless inline snapshots.
+            cargo.env("INSTA_UPDATE", "always");
+        }
 
         run_cargo_test(cargo, &[], &[], None, host, builder);
     }

@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:41:11
    |
 LL |     &mut **x
-   |           ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |           ^^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -35,7 +35,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:53:6
    |
 LL |     **x = 3;
-   |      ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |      ^^ `x` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

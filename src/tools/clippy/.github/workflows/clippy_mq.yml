@@ -25,8 +25,6 @@ jobs:
           host: i686-unknown-linux-gnu
         - os: windows-latest
           host: x86_64-pc-windows-msvc
-        - os: macos-13
-          host: x86_64-apple-darwin
         - os: macos-latest
           host: aarch64-apple-darwin
 

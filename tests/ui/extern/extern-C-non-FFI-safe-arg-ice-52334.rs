@@ -4,6 +4,8 @@
 //@ normalize-stderr: "\[i8\]" -> "[i8 or u8 (arch dependant)]"
 //@ normalize-stderr: "\[u8\]" -> "[i8 or u8 (arch dependant)]"
 
+#![allow(function_casts_as_integer)]
+
 type Foo = extern "C" fn(::std::ffi::CStr);
 //~^ WARN `extern` fn uses type
 extern "C" {

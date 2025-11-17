@@ -225,6 +225,12 @@ pub(crate) struct TraitDef<'a> {
     pub is_const: bool,
 
     pub is_staged_api_crate: bool,
+
+    /// The safety of the `impl`.
+    pub safety: Safety,
+
+    /// Whether the added `impl` should appear in rustdoc output.
+    pub document: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -826,13 +832,17 @@ impl<'a> TraitDef<'a> {
             )
         }
 
+        if !self.document {
+            attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
+        }
+
         cx.item(
             self.span,
             attrs,
             ast::ItemKind::Impl(ast::Impl {
                 generics: trait_generics,
                 of_trait: Some(Box::new(ast::TraitImplHeader {
-                    safety: ast::Safety::Default,
+                    safety: self.safety,
                     polarity: ast::ImplPolarity::Positive,
                     defaultness: ast::Defaultness::Final,
                     constness: if self.is_const {

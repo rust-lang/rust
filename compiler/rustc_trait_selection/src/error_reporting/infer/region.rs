@@ -864,6 +864,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        if sub.kind() == ty::ReStatic
+            && let Some(node) = self.tcx.hir_get_if_local(generic_param_scope.into())
+            && let hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { sig, body, has_body: true, .. },
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)),
+                ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Fn(sig, body), ..
+            }) = node
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(body.hir_id)
+            && let hir::ExprKind::Block(block, _) = expr.kind
+            && let Some(tail) = block.expr
+            && tail.span == span
+            && let hir::FnRetTy::Return(ty) = sig.decl.output
+            && let hir::TyKind::Path(path) = ty.kind
+            && let hir::QPath::Resolved(None, path) = path
+            && let hir::def::Res::Def(_, def_id) = path.res
+            && Some(def_id) == self.tcx.lang_items().owned_box()
+            && let [segment] = path.segments
+            && let Some(args) = segment.args
+            && let [hir::GenericArg::Type(ty)] = args.args
+            && let hir::TyKind::TraitObject(_, tagged_ref) = ty.kind
+            && let hir::LifetimeKind::ImplicitObjectLifetimeDefault = tagged_ref.pointer().kind
+        {
+            // Explicitly look for `-> Box<dyn Trait>` to point at it as the *likely* source of
+            // the `'static` lifetime requirement.
+            err.span_label(
+                ty.span,
+                format!("this `dyn Trait` has an implicit `'static` lifetime bound"),
+            );
+        }
+
         err
     }
 

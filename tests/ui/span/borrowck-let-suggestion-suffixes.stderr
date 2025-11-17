@@ -1,6 +1,9 @@
 error[E0597]: `young[_]` does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:13:17
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:14:17
    |
+LL |     let mut v1 = Vec::new(); // statement 1
+   |         ------ variable `v1` declared here
+...
 LL |         let young = ['y'];       // statement 3
    |             ----- binding `young` declared here
 ...
@@ -12,9 +15,12 @@ LL |     }
 ...
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |          -- borrow later used here
+   |
+   = note: `v1` is a collection that stores borrowed references, but `young[_]` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:20:14
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:23:14
    |
 LL |     v3.push(&id('x'));           // statement 6
    |              ^^^^^^^ - temporary value is freed at the end of this statement
@@ -31,7 +37,7 @@ LL ~     v3.push(&binding);           // statement 6
    |
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:30:18
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:33:18
    |
 LL |         v4.push(&id('y'));
    |                  ^^^^^^^ - temporary value is freed at the end of this statement
@@ -44,7 +50,7 @@ LL |         v4.use_ref();
    = note: consider using a `let` binding to create a longer lived value
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:41:14
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:44:14
    |
 LL |     v5.push(&id('z'));
    |              ^^^^^^^ - temporary value is freed at the end of this statement

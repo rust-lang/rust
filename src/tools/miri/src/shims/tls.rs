@@ -6,6 +6,7 @@ use std::task::Poll;
 
 use rustc_abi::{ExternAbi, HasDataLayout, Size};
 use rustc_middle::ty;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -234,8 +235,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
         let new_state = 'new_state: {
             match &mut self.0 {
                 Init => {
-                    match this.tcx.sess.target.os.as_ref() {
-                        "macos" => {
+                    match this.tcx.sess.target.os {
+                        Os::MacOs => {
                             // macOS has a _tlv_atexit function that allows
                             // registering destructors without associated keys.
                             // These are run first.
@@ -245,7 +246,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             // All other Unixes directly jump to running the pthread dtors.
                             break 'new_state PthreadDtors(Default::default());
                         }
-                        "windows" => {
+                        Os::Windows => {
                             // Determine which destructors to run.
                             let dtors = this.lookup_windows_tls_dtors()?;
                             // And move to the next state, that runs them.

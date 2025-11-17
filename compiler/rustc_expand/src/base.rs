@@ -1099,6 +1099,9 @@ pub struct Indeterminate;
 pub struct DeriveResolution {
     pub path: ast::Path,
     pub item: Annotatable,
+    // FIXME: currently this field is only used in `is_none`/`is_some` conditions. However, the
+    // `Arc<SyntaxExtension>` will be used if the FIXME in `MacroExpander::fully_expand_fragment`
+    // is completed.
     pub exts: Option<Arc<SyntaxExtension>>,
     pub is_const: bool,
 }

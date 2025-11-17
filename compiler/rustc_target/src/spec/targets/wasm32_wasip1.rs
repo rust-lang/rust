@@ -11,14 +11,15 @@
 //! introduced.
 
 use crate::spec::{
-    Arch, Cc, LinkSelfContainedDefault, LinkerFlavor, Target, TargetMetadata, base, crt_objects,
+    Arch, Cc, Env, LinkSelfContainedDefault, LinkerFlavor, Os, Target, TargetMetadata, base,
+    crt_objects,
 };
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
-    options.os = "wasi".into();
-    options.env = "p1".into();
+    options.os = Os::Wasi;
+    options.env = Env::P1;
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasip1"]);
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();

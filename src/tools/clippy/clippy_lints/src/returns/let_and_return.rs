@@ -3,7 +3,7 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_cfg};
+use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_whitespace};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, PatKind, StmtKind};
@@ -27,7 +27,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
         && !initexpr.span.in_external_macro(cx.sess().source_map())
         && !retexpr.span.in_external_macro(cx.sess().source_map())
         && !local.span.from_expansion()
-        && !span_contains_cfg(cx, stmt.span.between(retexpr.span))
+        && !span_contains_non_whitespace(cx, stmt.span.between(retexpr.span), true)
     {
         span_lint_hir_and_then(
             cx,

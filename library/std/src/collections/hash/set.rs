@@ -1391,6 +1391,8 @@ pub struct Drain<'a, K: 'a> {
 /// let mut extract_ifed = a.extract_if(|v| v % 2 == 0);
 /// ```
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain` to remove and discard elements"]
 pub struct ExtractIf<'a, K, F> {
     base: base::ExtractIf<'a, K, F>,
 }

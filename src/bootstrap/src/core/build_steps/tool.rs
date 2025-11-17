@@ -485,7 +485,6 @@ bootstrap_tool!(
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
     Compiletest, "src/tools/compiletest", "compiletest";
-    BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
@@ -1265,6 +1264,52 @@ impl Step for LibcxxVersionTool {
         } else {
             panic!("Coudln't recognize the standard library version.");
         }
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BuildManifest {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl BuildManifest {
+    pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
+        BuildManifest { compiler: builder.compiler(1, builder.config.host_target), target }
+    }
+}
+
+impl Step for BuildManifest {
+    type Output = ToolBuildResult;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/build-manifest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BuildManifest::new(run.builder, run.target));
+    }
+
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        // Building with the beta compiler will produce a broken build-manifest that doesn't support
+        // recently stabilized targets/hosts.
+        assert!(self.compiler.stage != 0);
+        builder.ensure(ToolBuild {
+            build_compiler: self.compiler,
+            target: self.target,
+            tool: "build-manifest",
+            mode: Mode::ToolStd,
+            path: "src/tools/build-manifest",
+            source_type: SourceType::InTree,
+            extra_features: vec![],
+            allow_features: "",
+            cargo_args: vec![],
+            artifact_kind: ToolArtifactKind::Binary,
+        })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("build-manifest", self.target).built_by(self.compiler))
     }
 }
 

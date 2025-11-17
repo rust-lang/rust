@@ -157,7 +157,7 @@ fn check_iter(
                     ),
                 );
             },
-            hir::PatKind::Ref(pat, _) => make_span_lint_and_sugg(
+            hir::PatKind::Ref(pat, _, _) => make_span_lint_and_sugg(
                 cx,
                 parent_expr_span,
                 format!(
@@ -196,7 +196,7 @@ fn check_to_owned(
         && let filter_body = cx.tcx.hir_body(closure.body)
         && let [filter_params] = filter_body.params
         && msrv.meets(cx, msrvs::STRING_RETAIN)
-        && let hir::PatKind::Ref(pat, _) = filter_params.pat.kind
+        && let hir::PatKind::Ref(pat, _, _) = filter_params.pat.kind
     {
         make_span_lint_and_sugg(
             cx,

@@ -45,9 +45,8 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
                 && eq_expr_opt(lt.as_deref(), rt.as_deref())
                 && eq_range_end(&le.node, &re.node)
         },
-        (Box(l), Box(r))
-        | (Ref(l, Mutability::Not), Ref(r, Mutability::Not))
-        | (Ref(l, Mutability::Mut), Ref(r, Mutability::Mut)) => eq_pat(l, r),
+        (Box(l), Box(r)) => eq_pat(l, r),
+        (Ref(l, l_pin, l_mut), Ref(r, r_pin, r_mut)) => l_pin == r_pin && l_mut == r_mut && eq_pat(l, r),
         (Tuple(l), Tuple(r)) | (Slice(l), Slice(r)) => over(l, r, eq_pat),
         (Path(lq, lp), Path(rq, rp)) => both(lq.as_deref(), rq.as_deref(), eq_qself) && eq_path(lp, rp),
         (TupleStruct(lqself, lp, lfs), TupleStruct(rqself, rp, rfs)) => {
@@ -372,7 +371,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
+                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {
@@ -626,7 +625,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(lb.as_ref(), rb.as_ref(), |l, r| eq_const_item_rhs(l, r))
+                && both(lb.as_ref(), rb.as_ref(), eq_const_item_rhs)
         },
         (
             Fn(box ast::Fn {

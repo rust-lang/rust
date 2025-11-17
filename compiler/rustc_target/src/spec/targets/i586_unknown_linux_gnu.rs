@@ -5,5 +5,11 @@ pub(crate) fn target() -> Target {
     base.rustc_abi = None; // overwrite the SSE2 ABI set by the base target
     base.cpu = "pentium".into();
     base.llvm_target = "i586-unknown-linux-gnu".into();
+    base.metadata = crate::spec::TargetMetadata {
+        description: Some("32-bit Linux (kernel 3.2, glibc 2.17+)".into()),
+        tier: Some(2),
+        host_tools: Some(false),
+        std: Some(true),
+    };
     base
 }

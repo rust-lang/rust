@@ -1,4 +1,6 @@
 use core::any::Any;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::TrivialClone;
 use core::error::Error;
 use core::mem;
 use core::pin::Pin;
@@ -75,11 +77,13 @@ impl<T: Clone> BoxFromSlice<T> for Box<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> BoxFromSlice<T> for Box<[T]> {
+impl<T: TrivialClone> BoxFromSlice<T> for Box<[T]> {
     #[inline]
     fn from_slice(slice: &[T]) -> Self {
         let len = slice.len();
         let buf = RawVec::with_capacity(len);
+        // SAFETY: since `T` implements `TrivialClone`, this is sound and
+        // equivalent to the above.
         unsafe {
             ptr::copy_nonoverlapping(slice.as_ptr(), buf.ptr(), len);
             buf.into_box(slice.len()).assume_init()

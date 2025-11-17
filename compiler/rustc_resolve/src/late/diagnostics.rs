@@ -3592,8 +3592,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         && (lt.kind == MissingLifetimeKind::Ampersand
                             || lt.kind == MissingLifetimeKind::Underscore)
                     {
-                        let pre = if lt.kind == MissingLifetimeKind::Ampersand
-                            && let Some((kind, _span)) = self.diag_metadata.current_function
+                        let pre = if let Some((kind, _span)) = self.diag_metadata.current_function
                             && let FnKind::Fn(_, _, ast::Fn { sig, .. }) = kind
                             && !sig.decl.inputs.is_empty()
                             && let sugg = sig
@@ -3623,10 +3622,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             } else {
                                 ("one of the", "s")
                             };
+                            let dotdotdot =
+                                if lt.kind == MissingLifetimeKind::Ampersand { "..." } else { "" };
                             err.multipart_suggestion_verbose(
                                 format!(
                                     "instead, you are more likely to want to change {the} \
-                                     argument{s} to be borrowed...",
+                                     argument{s} to be borrowed{dotdotdot}",
                                 ),
                                 sugg,
                                 Applicability::MaybeIncorrect,

@@ -40,6 +40,7 @@
 #![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(temporary_niche_types)]
+#![feature(trivial_clone)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]

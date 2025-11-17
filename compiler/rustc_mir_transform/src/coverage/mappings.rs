@@ -5,6 +5,7 @@ use rustc_middle::mir::coverage::{
 use rustc_middle::mir::{self, BasicBlock, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
+use crate::coverage::expansion;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::extract_refined_covspans;
@@ -23,10 +24,12 @@ pub(crate) fn extract_mappings_from_mir<'tcx>(
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
 ) -> ExtractedMappings {
+    let expn_tree = expansion::build_expn_tree(mir_body, hir_info, graph);
+
     let mut mappings = vec![];
 
     // Extract ordinary code mappings from MIR statement/terminator spans.
-    extract_refined_covspans(tcx, mir_body, hir_info, graph, &mut mappings);
+    extract_refined_covspans(tcx, hir_info, graph, &expn_tree, &mut mappings);
 
     extract_branch_mappings(mir_body, hir_info, graph, &mut mappings);
 

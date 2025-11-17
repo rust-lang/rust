@@ -8,8 +8,8 @@ use std::sync::Arc;
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::emitter::stderr_destination;
-use rustc_errors::{AutoStream, ColorConfig, DiagCtxtHandle};
+use rustc_errors::emitter::get_stderr_color_choice;
+use rustc_errors::{AutoStream, ColorChoice, ColorConfig, DiagCtxtHandle};
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
@@ -446,7 +446,7 @@ fn parse_source(
     span: Span,
 ) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
-    use rustc_errors::emitter::{Emitter, HumanEmitter};
+    use rustc_errors::emitter::HumanEmitter;
     use rustc_span::source_map::FilePathMapping;
 
     let mut info =
@@ -458,9 +458,12 @@ fn parse_source(
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let translator = rustc_driver::default_translator();
-    info.supports_color =
-        HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator.clone())
-            .supports_color();
+    let supports_color = match get_stderr_color_choice(ColorConfig::Auto, &std::io::stderr()) {
+        ColorChoice::Auto => unreachable!(),
+        ColorChoice::AlwaysAnsi | ColorChoice::Always => true,
+        ColorChoice::Never => false,
+    };
+    info.supports_color = supports_color;
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
     let emitter = HumanEmitter::new(AutoStream::never(Box::new(io::sink())), translator);

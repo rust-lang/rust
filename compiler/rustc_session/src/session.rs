@@ -32,7 +32,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{FileNameDisplayPreference, RealFileName, Span, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
-    Arch, CodeModel, DebuginfoKind, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
+    Arch, CodeModel, DebuginfoKind, Os, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
     SmallDataThresholdSupport, SplitDebuginfo, StackProtector, SymbolVisibility, Target,
     TargetTuple, TlsModel, apple,
 };
@@ -382,7 +382,7 @@ impl Session {
     }
 
     pub fn is_wasi_reactor(&self) -> bool {
-        self.target.options.os == "wasi"
+        self.target.options.os == Os::Wasi
             && matches!(
                 self.opts.unstable_opts.wasi_exec_model,
                 Some(config::WasiExecModel::Reactor)

@@ -16,7 +16,7 @@
    LL|       |    for
    LL|       |        _
    LL|       |    in
-   LL|      3|        0..2
+   LL|      1|        0..2
    LL|       |    {
    LL|       |        let z
    LL|       |        ;

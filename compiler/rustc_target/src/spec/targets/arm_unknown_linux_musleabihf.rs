@@ -1,4 +1,4 @@
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: Arch::Arm,
         options: TargetOptions {
-            abi: "eabihf".into(),
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // Most of these settings are copied from the arm_unknown_linux_gnueabihf
             // target.

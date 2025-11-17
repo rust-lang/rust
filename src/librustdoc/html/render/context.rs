@@ -203,52 +203,54 @@ impl<'tcx> Context<'tcx> {
             // `record_extern_fqn` correctly points to external items.
             render_redirect_pages = true;
         }
-        let mut title = String::new();
-        if !is_module {
-            title.push_str(it.name.unwrap().as_str());
-        }
-        let short_title;
-        let short_title = if is_module {
-            let module_name = self.current.last().unwrap();
-            short_title = if it.is_crate() {
-                format!("Crate {module_name}")
-            } else {
-                format!("Module {module_name}")
-            };
-            &short_title[..]
-        } else {
-            it.name.as_ref().unwrap().as_str()
-        };
-        if !it.is_fake_item() {
-            if !is_module {
-                title.push_str(" in ");
-            }
-            // No need to include the namespace for primitive types and keywords
-            title.push_str(&join_path_syms(&self.current));
-        };
-        title.push_str(" - Rust");
-        let tyname = it.type_();
-        let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
-        let desc = if !desc.is_empty() {
-            desc
-        } else if it.is_crate() {
-            format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
-        } else {
-            format!(
-                "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
-                name = it.name.as_ref().unwrap(),
-                krate = self.shared.layout.krate,
-            )
-        };
-        let name;
-        let tyname_s = if it.is_crate() {
-            name = format!("{tyname} crate");
-            name.as_str()
-        } else {
-            tyname.as_str()
-        };
 
         if !render_redirect_pages {
+            let mut title = String::new();
+            if !is_module {
+                title.push_str(it.name.unwrap().as_str());
+            }
+            let short_title;
+            let short_title = if is_module {
+                let module_name = self.current.last().unwrap();
+                short_title = if it.is_crate() {
+                    format!("Crate {module_name}")
+                } else {
+                    format!("Module {module_name}")
+                };
+                &short_title[..]
+            } else {
+                it.name.as_ref().unwrap().as_str()
+            };
+            if !it.is_fake_item() {
+                if !is_module {
+                    title.push_str(" in ");
+                }
+                // No need to include the namespace for primitive types and keywords
+                title.push_str(&join_path_syms(&self.current));
+            };
+            title.push_str(" - Rust");
+            let tyname = it.type_();
+            let desc = plain_text_summary(&it.doc_value(), &it.link_names(self.cache()));
+            let desc = if !desc.is_empty() {
+                desc
+            } else if it.is_crate() {
+                format!("API documentation for the Rust `{}` crate.", self.shared.layout.krate)
+            } else {
+                format!(
+                    "API documentation for the Rust `{name}` {tyname} in crate `{krate}`.",
+                    name = it.name.as_ref().unwrap(),
+                    krate = self.shared.layout.krate,
+                )
+            };
+
+            let name;
+            let tyname_s = if it.is_crate() {
+                name = format!("{tyname} crate");
+                name.as_str()
+            } else {
+                tyname.as_str()
+            };
+
             let content = print_item(self, it);
             let page = layout::Page {
                 css_class: tyname_s,

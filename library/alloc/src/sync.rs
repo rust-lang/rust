@@ -12,6 +12,8 @@ use core::any::Any;
 use core::cell::CloneFromCell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::TrivialClone;
 use core::clone::UseCloned;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -2156,7 +2158,8 @@ impl<T> Arc<[T]> {
 
     /// Copy elements from slice into newly allocated `Arc<[T]>`
     ///
-    /// Unsafe because the caller must either take ownership or bind `T: Copy`.
+    /// Unsafe because the caller must either take ownership, bind `T: Copy` or
+    /// bind `T: TrivialClone`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         unsafe {
@@ -2248,9 +2251,11 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> ArcFromSlice<T> for Arc<[T]> {
+impl<T: TrivialClone> ArcFromSlice<T> for Arc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
+        // SAFETY: `T` implements `TrivialClone`, so this is sound and equivalent
+        // to the above.
         unsafe { Arc::copy_from_slice(v) }
     }
 }

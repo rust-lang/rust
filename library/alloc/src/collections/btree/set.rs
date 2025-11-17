@@ -1189,7 +1189,8 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
-    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
+    /// Use `extract_if().for_each(drop)` if you do not need the returned iterator,
+    /// or [`retain`] with a negated predicate if you also do not need to restrict the range.
     ///
     /// [`retain`]: BTreeSet::retain
     /// # Examples
@@ -1547,7 +1548,8 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
 
 /// An iterator produced by calling `extract_if` on BTreeSet.
 #[stable(feature = "btree_extract_if", since = "1.91.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain` or `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
     'a,
     T,

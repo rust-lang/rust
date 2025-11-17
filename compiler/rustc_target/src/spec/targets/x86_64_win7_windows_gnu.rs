@@ -1,18 +1,20 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
-    let mut base = base::windows_gnu::opts();
-    base.vendor = "win7".into();
-    base.cpu = "x86-64".into();
-    base.plt_by_default = false;
+    let mut base = TargetOptions {
+        vendor: "win7".into(),
+        cpu: "x86-64".into(),
+        plt_by_default: false,
+        max_atomic_width: Some(64),
+        linker: Some("x86_64-w64-mingw32-gcc".into()),
+        ..base::windows_gnu::opts()
+    };
     // Use high-entropy 64 bit address space for ASLR
     base.add_pre_link_args(
         LinkerFlavor::Gnu(Cc::No, Lld::No),
         &["-m", "i386pep", "--high-entropy-va"],
     );
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64", "-Wl,--high-entropy-va"]);
-    base.max_atomic_width = Some(64);
-    base.linker = Some("x86_64-w64-mingw32-gcc".into());
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".into(),

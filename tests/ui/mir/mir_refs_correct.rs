@@ -1,6 +1,7 @@
 //@ run-pass
 //@ aux-build:mir_external_refs.rs
 
+#![allow(function_casts_as_integer)]
 #![allow(unpredictable_function_pointer_comparisons)]
 
 extern crate mir_external_refs as ext;

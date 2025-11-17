@@ -29,7 +29,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{
-    Arch, HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
+    Abi, Arch, Env, HasTargetSpec, Os, RelocModel, SmallDataThresholdSupport, Target, TlsModel,
 };
 use smallvec::SmallVec;
 
@@ -335,9 +335,9 @@ pub(crate) unsafe fn create_module<'ll>(
 
     // Control Flow Guard is currently only supported by MSVC and LLVM on Windows.
     if sess.target.is_like_msvc
-        || (sess.target.options.os == "windows"
-            && sess.target.options.env == "gnu"
-            && sess.target.options.abi == "llvm")
+        || (sess.target.options.os == Os::Windows
+            && sess.target.options.env == Env::Gnu
+            && sess.target.options.abi == Abi::Llvm)
     {
         match sess.opts.cg.control_flow_guard {
             CFGuard::Disabled => {}
@@ -669,7 +669,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// This corresponds to the `-fobjc-abi-version=` flag in Clang / GCC.
     pub(crate) fn objc_abi_version(&self) -> u32 {
         assert!(self.tcx.sess.target.is_like_darwin);
-        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == "macos" {
+        if self.tcx.sess.target.arch == Arch::X86 && self.tcx.sess.target.os == Os::MacOs {
             // 32-bit x86 macOS uses ABI version 1 (a.k.a. the "fragile ABI").
             1
         } else {
@@ -710,7 +710,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             },
         );
 
-        if self.tcx.sess.target.env == "sim" {
+        if self.tcx.sess.target.env == Env::Sim {
             llvm::add_module_flag_u32(
                 self.llmod,
                 llvm::ModuleFlagMergeBehavior::Error,
@@ -963,7 +963,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             return eh_catch_typeinfo;
         }
         let tcx = self.tcx;
-        assert!(self.sess().target.os == "emscripten");
+        assert!(self.sess().target.os == Os::Emscripten);
         let eh_catch_typeinfo = match tcx.lang_items().eh_catch_typeinfo() {
             Some(def_id) => self.get_static(def_id),
             _ => {

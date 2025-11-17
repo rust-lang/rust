@@ -1,6 +1,11 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::BasicCoverageBlock;
 use rustc_span::{ExpnId, ExpnKind, Span};
+
+use crate::coverage::from_mir;
+use crate::coverage::graph::CoverageGraph;
+use crate::coverage::hir_info::ExtractedHirInfo;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SpanWithBcb {
@@ -70,6 +75,10 @@ pub(crate) struct ExpnNode {
     pub(crate) spans: Vec<SpanWithBcb>,
     /// Expansions whose call-site is in this expansion.
     pub(crate) child_expn_ids: FxIndexSet<ExpnId>,
+
+    /// Hole spans belonging to this expansion, to be carved out from the
+    /// code spans during span refinement.
+    pub(crate) hole_spans: Vec<Span>,
 }
 
 impl ExpnNode {
@@ -88,17 +97,27 @@ impl ExpnNode {
 
             spans: vec![],
             child_expn_ids: FxIndexSet::default(),
+
+            hole_spans: vec![],
         }
     }
 }
 
-/// Given a collection of span/BCB pairs from potentially-different syntax contexts,
+/// Extracts raw span/BCB pairs from potentially-different syntax contexts, and
 /// arranges them into an "expansion tree" based on their expansion call-sites.
-pub(crate) fn build_expn_tree(spans: impl IntoIterator<Item = SpanWithBcb>) -> ExpnTree {
+pub(crate) fn build_expn_tree(
+    mir_body: &mir::Body<'_>,
+    hir_info: &ExtractedHirInfo,
+    graph: &CoverageGraph,
+) -> ExpnTree {
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+
     let mut nodes = FxIndexMap::default();
     let new_node = |&expn_id: &ExpnId| ExpnNode::new(expn_id);
 
-    for span_with_bcb in spans {
+    for from_mir::RawSpanFromMir { raw_span, bcb } in raw_spans {
+        let span_with_bcb = SpanWithBcb { span: raw_span, bcb };
+
         // Create a node for this span's enclosing expansion, and add the span to it.
         let expn_id = span_with_bcb.span.ctxt().outer_expn();
         let node = nodes.entry(expn_id).or_insert_with_key(new_node);
@@ -121,6 +140,14 @@ pub(crate) fn build_expn_tree(spans: impl IntoIterator<Item = SpanWithBcb>) -> E
             prev = expn_id;
             curr_expn_id = node.call_site_expn_id;
         }
+    }
+
+    // Associate each hole span (extracted from HIR) with its corresponding
+    // expansion tree node.
+    for &hole_span in &hir_info.hole_spans {
+        let expn_id = hole_span.ctxt().outer_expn();
+        let Some(node) = nodes.get_mut(&expn_id) else { continue };
+        node.hole_spans.push(hole_span);
     }
 
     ExpnTree { nodes }

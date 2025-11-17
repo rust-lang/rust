@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => arm.pat.span,
             };
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => let_expr.pat.span,
             };

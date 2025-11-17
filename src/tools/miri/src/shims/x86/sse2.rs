@@ -6,7 +6,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::{
     FloatBinOp, ShiftOp, bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int,
-    packssdw, packsswb, packuswb, shift_simd_by_scalar,
+    packssdw, packsswb, packuswb, psadbw, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -37,41 +37,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // vectors.
         match unprefixed_name {
             // Used to implement the _mm_sad_epu8 function.
-            // Computes the absolute differences of packed unsigned 8-bit integers in `a`
-            // and `b`, then horizontally sum each consecutive 8 differences to produce
-            // two unsigned 16-bit integers, and pack these unsigned 16-bit integers in
-            // the low 16 bits of 64-bit elements returned.
-            //
-            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8
             "psad.bw" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                // left and right are u8x16, dest is u64x2
-                assert_eq!(left_len, right_len);
-                assert_eq!(left_len, 16);
-                assert_eq!(dest_len, 2);
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-
-                    let mut res: u16 = 0;
-                    let n = left_len.strict_div(dest_len);
-                    for j in 0..n {
-                        let op_i = j.strict_add(i.strict_mul(n));
-                        let left = this.read_scalar(&this.project_index(&left, op_i)?)?.to_u8()?;
-                        let right =
-                            this.read_scalar(&this.project_index(&right, op_i)?)?.to_u8()?;
-
-                        res = res.strict_add(left.abs_diff(right).into());
-                    }
-
-                    this.write_scalar(Scalar::from_u64(res.into()), &dest)?;
-                }
+                psadbw(this, left, right, dest)?
             }
             // Used to implement the _mm_{sll,srl,sra}_epi{16,32,64} functions
             // (except _mm_sra_epi64, which is not available in SSE2).

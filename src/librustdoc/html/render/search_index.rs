@@ -3,7 +3,9 @@ mod serde;
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
+use std::io;
 use std::path::Path;
+use std::string::FromUtf8Error;
 
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
@@ -95,21 +97,22 @@ impl SerializedSearchIndex {
         ) -> Result<(), Error> {
             let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
             let column_path = doc_root.join(format!("search.index/{column_name}/"));
+
+            let mut consume = |_, cell: &[u8]| {
+                column.push(String::from_utf8(cell.to_vec())?);
+                Ok::<_, FromUtf8Error>(())
+            };
+
             stringdex_internals::read_data_from_disk_column(
                 root_path,
                 column_name.as_bytes(),
                 column_path.clone(),
-                &mut |_id, item| {
-                    column.push(String::from_utf8(item.to_vec())?);
-                    Ok(())
-                },
+                &mut consume,
             )
-            .map_err(
-                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
-                    file: column_path,
-                    error: format!("failed to read column from disk: {error}"),
-                },
-            )
+            .map_err(|error| Error {
+                file: column_path,
+                error: format!("failed to read column from disk: {error}"),
+            })
         }
         fn perform_read_serde(
             resource_suffix: &str,
@@ -119,25 +122,26 @@ impl SerializedSearchIndex {
         ) -> Result<(), Error> {
             let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
             let column_path = doc_root.join(format!("search.index/{column_name}/"));
+
+            let mut consume = |_, cell: &[u8]| {
+                if cell.is_empty() {
+                    column.push(None);
+                } else {
+                    column.push(Some(serde_json::from_slice(cell)?));
+                }
+                Ok::<_, serde_json::Error>(())
+            };
+
             stringdex_internals::read_data_from_disk_column(
                 root_path,
                 column_name.as_bytes(),
                 column_path.clone(),
-                &mut |_id, item| {
-                    if item.is_empty() {
-                        column.push(None);
-                    } else {
-                        column.push(Some(serde_json::from_slice(item)?));
-                    }
-                    Ok(())
-                },
+                &mut consume,
             )
-            .map_err(
-                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
-                    file: column_path,
-                    error: format!("failed to read column from disk: {error}"),
-                },
-            )
+            .map_err(|error| Error {
+                file: column_path,
+                error: format!("failed to read column from disk: {error}"),
+            })
         }
         fn perform_read_postings(
             resource_suffix: &str,
@@ -147,23 +151,28 @@ impl SerializedSearchIndex {
         ) -> Result<(), Error> {
             let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
             let column_path = doc_root.join(format!("search.index/{column_name}/"));
+
+            fn consumer(
+                column: &mut Vec<Vec<Vec<u32>>>,
+            ) -> impl FnMut(u32, &[u8]) -> io::Result<()> {
+                |_, cell| {
+                    let mut postings = Vec::new();
+                    encode::read_postings_from_string(&mut postings, cell);
+                    column.push(postings);
+                    Ok(())
+                }
+            }
+
             stringdex_internals::read_data_from_disk_column(
                 root_path,
                 column_name.as_bytes(),
                 column_path.clone(),
-                &mut |_id, buf| {
-                    let mut postings = Vec::new();
-                    encode::read_postings_from_string(&mut postings, buf);
-                    column.push(postings);
-                    Ok(())
-                },
+                &mut consumer(column),
             )
-            .map_err(
-                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
-                    file: column_path,
-                    error: format!("failed to read column from disk: {error}"),
-                },
-            )
+            .map_err(|error| Error {
+                file: column_path,
+                error: format!("failed to read column from disk: {error}"),
+            })
         }
 
         assert_eq!(names.len(), path_data.len());
@@ -1055,12 +1064,12 @@ impl Serialize for TypeData {
         let mut buf = Vec::new();
         encode::write_postings_to_string(&self.inverted_function_inputs_index, &mut buf);
         let mut serialized_result = Vec::new();
-        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result).unwrap();
         seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
         buf.clear();
         serialized_result.clear();
         encode::write_postings_to_string(&self.inverted_function_output_index, &mut buf);
-        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+        stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result).unwrap();
         seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
         if self.search_unbox {
             seq.serialize_element(&1)?;

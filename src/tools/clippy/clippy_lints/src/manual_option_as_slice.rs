@@ -3,10 +3,9 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{is_none_pattern, msrvs, peel_hir_expr_refs, sym};
+use clippy_utils::{as_some_pattern, is_none_pattern, msrvs, peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
+use rustc_hir::{Arm, Expr, ExprKind, Pat, PatKind, QPath, is_range_literal};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -154,10 +153,8 @@ fn check_as_ref(cx: &LateContext<'_>, expr: &Expr<'_>, span: Span, msrv: Msrv) {
 }
 
 fn extract_ident_from_some_pat(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<Symbol> {
-    if let PatKind::TupleStruct(QPath::Resolved(None, path), [binding], _) = pat.kind
-        && let Res::Def(DefKind::Ctor(..), def_id) = path.res
+    if let Some([binding]) = as_some_pattern(cx, pat)
         && let PatKind::Binding(_mode, _hir_id, ident, _inner_pat) = binding.kind
-        && clippy_utils::is_lang_item_or_ctor(cx, def_id, LangItem::OptionSome)
     {
         Some(ident.name)
     } else {

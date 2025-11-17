@@ -193,7 +193,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         });
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
         match fn_kind {
             FnKind::Fn(
                 _ctxt,

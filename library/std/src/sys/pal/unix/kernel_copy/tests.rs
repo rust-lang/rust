@@ -50,7 +50,7 @@ fn copy_specialization() -> Result<()> {
             "inner Take allowed reading beyond end of file, some bytes should be left"
         );
 
-        let mut sink = sink.into_inner()?;
+        let mut sink = sink.into_inner().map_err(io::Error::from)?;
         sink.seek(SeekFrom::Start(0))?;
         let mut copied = Vec::new();
         sink.read_to_end(&mut copied)?;

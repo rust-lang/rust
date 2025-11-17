@@ -886,9 +886,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                     }
                 } else if let SyntaxExtensionKind::NonMacroAttr = ext {
-                    if let ast::Safety::Unsafe(span) = attr.get_normal_item().unsafety {
-                        self.cx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
-                    }
                     // `-Zmacro-stats` ignores these because they don't do any real expansion.
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
