@@ -10,7 +10,7 @@
 
 // Autodiff requires users to enable lto=fat (for now).
 // In the past, autodiff did not run if users forget to enable fat-lto, which caused functions to
-// returning zero-derivatives. That's obviously wrong and confusing to users. We now added a check
+// return zero-derivatives. That's obviously wrong and confusing to users. We now added a check
 // which will abort compilation instead.
 
 use std::autodiff::autodiff_reverse;
