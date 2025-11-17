@@ -423,7 +423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr = &self.thir[expr_id];
         debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
 
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {

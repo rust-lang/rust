@@ -19,7 +19,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
     pub(crate) fn as_constant(&mut self, expr: &Expr<'tcx>) -> ConstOperand<'tcx> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let tcx = this.tcx;
         let Expr { ty, temp_scope_id: _, span, ref kind } = *expr;
         match kind {
