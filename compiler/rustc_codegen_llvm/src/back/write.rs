@@ -1189,7 +1189,8 @@ fn embed_bitcode(
         llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
     } else {
         // We need custom section flags, so emit module-level inline assembly.
-        let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
+        // The "n" flags is currently not supported on RISC-V
+        let section_flags = if cgcx.is_pe_coff && cgcx.target_arch != "riscv64" { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
         llvm::append_module_inline_asm(llmod, &asm);
         let asm = create_section_with_flags_asm(".llvmcmd", section_flags, &[]);
