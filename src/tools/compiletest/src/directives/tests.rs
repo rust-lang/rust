@@ -710,18 +710,14 @@ fn wasm_special() {
     let ignores = [
         ("wasm32-unknown-unknown", "emscripten", false),
         ("wasm32-unknown-unknown", "wasm32", true),
-        ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
-        ("wasm32-unknown-emscripten", "wasm32-bare", false),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
-        ("wasm32-wasip1", "wasm32-bare", false),
         ("wasm32-wasip1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
-        ("wasm64-unknown-unknown", "wasm32-bare", false),
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
     for (target, pattern, ignore) in ignores {
