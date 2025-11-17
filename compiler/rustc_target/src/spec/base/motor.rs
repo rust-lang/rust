@@ -4,16 +4,8 @@ use crate::spec::{
 
 pub(crate) fn opts() -> TargetOptions {
     let pre_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gnu(Cc::No, Lld::No),
-        &[
-            "-e",
-            "motor_start",
-            "--no-undefined",
-            "--error-unresolved-symbols",
-            "--no-undefined-version",
-            "-u",
-            "__rust_abort",
-        ],
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        &["-e", "motor_start", "-u", "__rust_abort"],
     );
     TargetOptions {
         os: Os::Motor,
@@ -23,7 +15,7 @@ pub(crate) fn opts() -> TargetOptions {
         // We use "OS level" TLS (see thread/local.rs in stdlib).
         has_thread_local: false,
         frame_pointer: FramePointer::NonLeaf,
-        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::No),
+        linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         main_needs_argc_argv: true,
         panic_strategy: PanicStrategy::Abort,
         pre_link_args,
