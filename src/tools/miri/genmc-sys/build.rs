@@ -28,7 +28,7 @@ mod downloading {
     /// The GenMC repository the we get our commit from.
     pub(crate) const GENMC_GITHUB_URL: &str = "https://github.com/MPI-SWS/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "d9527280bb99f1cef64326b1803ffd952e3880df";
+    pub(crate) const GENMC_COMMIT: &str = "aa10ed65117c3291524efc19253b5d443a4602ac";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
     /// Return the path of the GenMC repo and whether the checked out commit was changed.
@@ -140,51 +140,6 @@ mod downloading {
     }
 }
 
-// FIXME(genmc,llvm): Remove once the LLVM dependency of the GenMC model checker is removed.
-/// The linked LLVM version is in the generated `config.h`` file, which we parse and use to link to LLVM.
-/// Returns c++ compiler definitions required for building with/including LLVM, and the include path for LLVM headers.
-fn link_to_llvm(config_file: &Path) -> (String, String) {
-    /// Search a string for a line matching `//@VARIABLE_NAME: VARIABLE CONTENT`
-    fn extract_value<'a>(input: &'a str, name: &str) -> Option<&'a str> {
-        input
-            .lines()
-            .find_map(|line| line.strip_prefix("//@")?.strip_prefix(name)?.strip_prefix(": "))
-    }
-
-    let file_content = std::fs::read_to_string(&config_file).unwrap_or_else(|err| {
-        panic!("GenMC config file ({}) should exist, but got errror {err:?}", config_file.display())
-    });
-
-    let llvm_definitions = extract_value(&file_content, "LLVM_DEFINITIONS")
-        .expect("Config file should contain LLVM_DEFINITIONS");
-    let llvm_include_dirs = extract_value(&file_content, "LLVM_INCLUDE_DIRS")
-        .expect("Config file should contain LLVM_INCLUDE_DIRS");
-    let llvm_library_dir = extract_value(&file_content, "LLVM_LIBRARY_DIR")
-        .expect("Config file should contain LLVM_LIBRARY_DIR");
-    let llvm_config_path = extract_value(&file_content, "LLVM_CONFIG_PATH")
-        .expect("Config file should contain LLVM_CONFIG_PATH");
-
-    // Add linker search path.
-    let lib_dir = PathBuf::from_str(llvm_library_dir).unwrap();
-    println!("cargo::rustc-link-search=native={}", lib_dir.display());
-
-    // Add libraries to link.
-    let output = std::process::Command::new(llvm_config_path)
-        .arg("--libs") // Print the libraries to link to (space-separated list)
-        .output()
-        .expect("failed to execute llvm-config");
-    let llvm_link_libs =
-        String::try_from(output.stdout).expect("llvm-config output should be a valid string");
-
-    for link_lib in llvm_link_libs.trim().split(" ") {
-        let link_lib =
-            link_lib.strip_prefix("-l").expect("Linker parameter should start with \"-l\"");
-        println!("cargo::rustc-link-lib=dylib={link_lib}");
-    }
-
-    (llvm_definitions.to_string(), llvm_include_dirs.to_string())
-}
-
 /// Build the GenMC model checker library and the Rust-C++ interop library with cxx.rs
 fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
     // Give each step a separate build directory to prevent interference.
@@ -204,6 +159,7 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
         .always_configure(always_configure) // We force running the configure step when the GenMC commit changed.
         .out_dir(genmc_build_dir)
         .profile(GENMC_CMAKE_PROFILE)
+        .define("BUILD_LLI", "OFF")
         .define("GENMC_DEBUG", if enable_genmc_debug { "ON" } else { "OFF" });
 
     // The actual compilation happens here:
@@ -214,18 +170,10 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
     println!("cargo::rustc-link-search=native={}", cmake_lib_dir.display());
     println!("cargo::rustc-link-lib=static={GENMC_MODEL_CHECKER}");
 
-    // FIXME(genmc,llvm): Remove once the LLVM dependency of the GenMC model checker is removed.
-    let config_file = genmc_install_dir.join("include").join("genmc").join("config.h");
-    let (llvm_definitions, llvm_include_dirs) = link_to_llvm(&config_file);
-
     // Part 2:
     // Compile the cxx_bridge (the link between the Rust and C++ code).
 
     let genmc_include_dir = genmc_install_dir.join("include").join("genmc");
-
-    // FIXME(genmc,llvm): remove once LLVM dependency is removed.
-    // These definitions are parsed into a cmake list and then printed to the config.h file, so they are ';' separated.
-    let definitions = llvm_definitions.split(";");
 
     // These are all the C++ files we need to compile, which needs to be updated if more C++ files are added to Miri.
     // We use absolute paths since relative paths can confuse IDEs when attempting to go-to-source on a path in a compiler error.
@@ -244,16 +192,12 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
     if enable_genmc_debug {
         bridge.define("ENABLE_GENMC_DEBUG", None);
     }
-    for definition in definitions {
-        bridge.flag(definition);
-    }
     bridge
         .opt_level(2)
         .debug(true) // Same settings that GenMC uses (default for cmake `RelWithDebInfo`)
         .warnings(false) // NOTE: enabling this produces a lot of warnings.
         .std("c++23")
         .include(genmc_include_dir)
-        .include(llvm_include_dirs)
         .include("./cpp/include")
         .files(&cpp_files)
         .out_dir(interface_build_dir)
