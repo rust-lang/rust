@@ -5955,7 +5955,7 @@ pub fn _mm_maskz_madd_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaddubsw))]
 pub fn _mm512_maddubs_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vpmaddubsw(a.as_i8x64(), b.as_i8x64())) }
+    unsafe { transmute(vpmaddubsw(a.as_u8x64(), b.as_i8x64())) }
 }
 
 /// Multiply packed unsigned 8-bit integers in a by packed signed 8-bit integers in b, producing intermediate signed 16-bit integers. Horizontally add adjacent pairs of intermediate signed 16-bit integers, and pack the saturated results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -11688,7 +11688,7 @@ unsafe extern "C" {
     fn vpmulhrsw(a: i16x32, b: i16x32) -> i16x32;
 
     #[link_name = "llvm.x86.avx512.pmaddubs.w.512"]
-    fn vpmaddubsw(a: i8x64, b: i8x64) -> i16x32;
+    fn vpmaddubsw(a: u8x64, b: i8x64) -> i16x32;
 
     #[link_name = "llvm.x86.avx512.packssdw.512"]
     fn vpackssdw(a: i32x16, b: i32x16) -> i16x32;

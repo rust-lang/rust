@@ -1773,7 +1773,7 @@ pub fn _mm256_madd_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaddubsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_maddubs_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(pmaddubsw(a.as_u8x32(), b.as_u8x32())) }
+    unsafe { transmute(pmaddubsw(a.as_u8x32(), b.as_i8x32())) }
 }
 
 /// Loads packed 32-bit integers from memory pointed by `mem_addr` using `mask`
@@ -3702,7 +3702,7 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx2.phsub.sw"]
     fn phsubsw(a: i16x16, b: i16x16) -> i16x16;
     #[link_name = "llvm.x86.avx2.pmadd.ub.sw"]
-    fn pmaddubsw(a: u8x32, b: u8x32) -> i16x16;
+    fn pmaddubsw(a: u8x32, b: i8x32) -> i16x16;
     #[link_name = "llvm.x86.avx2.mpsadbw"]
     fn mpsadbw(a: u8x32, b: u8x32, imm8: i8) -> u16x16;
     #[link_name = "llvm.x86.avx2.pmul.hr.sw"]
