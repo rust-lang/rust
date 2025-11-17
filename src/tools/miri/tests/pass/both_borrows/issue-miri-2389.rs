@@ -1,3 +1,6 @@
+//@revisions: stack tree
+//@compile-flags: -Zmiri-permissive-provenance
+//@[tree]compile-flags: -Zmiri-tree-borrows
 use std::cell::Cell;
 
 fn main() {

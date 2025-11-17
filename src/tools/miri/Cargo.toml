@@ -40,7 +40,7 @@ features = ['unprefixed_malloc_on_supported_platforms']
 libc = "0.2"
 # native-lib dependencies
 libffi = { version = "5.0.0", optional = true }
-libloading = { version = "0.8", optional = true }
+libloading = { version = "0.9", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -72,7 +72,7 @@ harness = false
 default = ["stack-cache", "native-lib"]
 genmc = ["dep:genmc-sys"]
 stack-cache = []
-stack-cache-consistency-check = ["stack-cache"]
+expensive-consistency-checks = ["stack-cache"]
 tracing = ["serde_json"]
 native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 

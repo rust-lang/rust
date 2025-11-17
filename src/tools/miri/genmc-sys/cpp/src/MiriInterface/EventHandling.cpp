@@ -34,7 +34,7 @@
 
 void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
     BUG_ON(getExec().getGraph().isThreadBlocked(thread_id));
-    GenMCDriver::handleAssume(inc_pos(thread_id), assume_type);
+    GenMCDriver::handleAssume(nullptr, inc_pos(thread_id), assume_type);
 }
 
 /**** Memory access handling ****/
@@ -76,6 +76,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
 ) -> StoreResult {
     const auto pos = inc_pos(thread_id);
     const auto ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::Write>(
+        nullptr,
         pos,
         GenmcScalarExt::try_to_sval(old_val),
         ord,
@@ -100,7 +101,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
 
 void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     const auto pos = inc_pos(thread_id);
-    GenMCDriver::handleFence(pos, ord, EventDeps());
+    GenMCDriver::handleFence(nullptr, pos, ord, EventDeps());
 }
 
 [[nodiscard]] auto MiriGenmcShim::handle_read_modify_write(
@@ -143,6 +144,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
     const auto storePos = inc_pos(thread_id);
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::FaiWrite>(
+        nullptr,
         storePos,
         GenmcScalarExt::try_to_sval(old_val),
         ordering,
@@ -210,6 +212,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
     const auto storePos = inc_pos(thread_id);
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::CasWrite>(
+        nullptr,
         storePos,
         GenmcScalarExt::try_to_sval(old_val),
         success_ordering,
@@ -242,6 +245,7 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
     const auto address_space = AddressSpace::AS_User;
 
     const SVal ret_val = GenMCDriver::handleMalloc(
+        nullptr,
         pos,
         size,
         alignment,
@@ -255,7 +259,7 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
 
 auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> bool {
     const auto pos = inc_pos(thread_id);
-    GenMCDriver::handleFree(pos, SAddr(address), EventDeps());
+    GenMCDriver::handleFree(nullptr, pos, SAddr(address), EventDeps());
     // FIXME(genmc): use returned error from `handleFree` once implemented in GenMC.
     return getResult().status.has_value();
 }
