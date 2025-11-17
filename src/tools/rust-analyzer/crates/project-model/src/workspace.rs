@@ -2,6 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
+use std::thread::Builder;
 use std::{collections::VecDeque, fmt, fs, iter, ops::Deref, sync, thread};
 
 use anyhow::Context;
@@ -301,31 +302,39 @@ impl ProjectWorkspace {
         // We can speed up loading a bit by spawning all of these processes in parallel (especially
         // on systems were process spawning is delayed)
         let join = thread::scope(|s| {
-            let rustc_cfg = s.spawn(|| {
-                rustc_cfg::get(toolchain_config, targets.first().map(Deref::deref), extra_env)
-            });
-            let target_data = s.spawn(|| {
-                target_data::get(
-                    toolchain_config,
-                    targets.first().map(Deref::deref),
-                    extra_env,
-                ).inspect_err(|e| {
-                    tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace")
+            let rustc_cfg = Builder::new()
+                .name("ProjectWorkspace::rustc_cfg".to_owned())
+                .spawn_scoped(s, || {
+                    rustc_cfg::get(toolchain_config, targets.first().map(Deref::deref), extra_env)
                 })
-            });
-
-            let rustc_dir = s.spawn(|| {
-                let rustc_dir = match rustc_source {
-                    Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
-                        .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
-                    Some(RustLibSource::Discover) => {
-                        sysroot.discover_rustc_src().ok_or_else(|| {
-                            Some("Failed to discover rustc source for sysroot.".to_owned())
+                .expect("failed to spawn thread");
+            let target_data = Builder::new()
+                .name("ProjectWorkspace::target_data".to_owned())
+                .spawn_scoped(s, || {
+                    target_data::get(toolchain_config, targets.first().map(Deref::deref), extra_env)
+                        .inspect_err(|e| {
+                            tracing::error!(%e,
+                                "failed fetching data layout for \
+                                {cargo_toml:?} workspace"
+                            )
                         })
-                    }
-                    None => Err(None),
-                };
-                rustc_dir.and_then(|rustc_dir| {
+                })
+                .expect("failed to spawn thread");
+
+            let rustc_dir = Builder::new()
+                .name("ProjectWorkspace::rustc_dir".to_owned())
+                .spawn_scoped(s, || {
+                    let rustc_dir = match rustc_source {
+                        Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
+                            .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
+                        Some(RustLibSource::Discover) => {
+                            sysroot.discover_rustc_src().ok_or_else(|| {
+                                Some("Failed to discover rustc source for sysroot.".to_owned())
+                            })
+                        }
+                        None => Err(None),
+                    };
+                    rustc_dir.and_then(|rustc_dir| {
                     info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
                     match FetchMetadata::new(
                         &rustc_dir,
@@ -359,31 +368,44 @@ impl ProjectWorkspace {
                         Err(e) => {
                             tracing::error!(
                                 %e,
-                                "Failed to read Cargo metadata from rustc source at {rustc_dir}",
+                                "Failed to read Cargo metadata from rustc source \
+                                at {rustc_dir}",
                             );
                             Err(Some(format!(
-                                "Failed to read Cargo metadata from rustc source at {rustc_dir}: {e}"
+                                "Failed to read Cargo metadata from rustc source \
+                                at {rustc_dir}: {e}"
                             )))
                         }
                     }
                 })
-            });
+                })
+                .expect("failed to spawn thread");
 
-            let cargo_metadata = s.spawn(|| fetch_metadata.exec(false, progress));
-            let loaded_sysroot = s.spawn(|| {
-                sysroot.load_workspace(
-                    &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
-                        config,
-                        workspace_dir,
-                        &targets,
-                        toolchain.clone(),
-                    )),
-                    config.no_deps,
-                    progress,
-                )
-            });
-            let cargo_env =
-                s.spawn(move || cargo_config_env(cargo_toml, &config_file, &config.extra_env));
+            let cargo_metadata = Builder::new()
+                .name("ProjectWorkspace::cargo_metadata".to_owned())
+                .spawn_scoped(s, || fetch_metadata.exec(false, progress))
+                .expect("failed to spawn thread");
+            let loaded_sysroot = Builder::new()
+                .name("ProjectWorkspace::loaded_sysroot".to_owned())
+                .spawn_scoped(s, || {
+                    sysroot.load_workspace(
+                        &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
+                            config,
+                            workspace_dir,
+                            &targets,
+                            toolchain.clone(),
+                        )),
+                        config.no_deps,
+                        progress,
+                    )
+                })
+                .expect("failed to spawn thread");
+            let cargo_env = Builder::new()
+                .name("ProjectWorkspace::cargo_env".to_owned())
+                .spawn_scoped(s, move || {
+                    cargo_config_env(cargo_toml, &config_file, &config.extra_env)
+                })
+                .expect("failed to spawn thread");
             thread::Result::Ok((
                 rustc_cfg.join()?,
                 target_data.join()?,
