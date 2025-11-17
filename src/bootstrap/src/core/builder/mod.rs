@@ -5,7 +5,7 @@ use std::fmt::{Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use std::{env, fs};
 
@@ -67,6 +67,11 @@ pub struct Builder<'a> {
     /// Cached list of submodules from self.build.src.
     submodule_paths_cache: OnceLock<Vec<String>>,
 
+    /// Caches the check for whether `tidy` (HTML Tidy) is installed.
+    pub(crate) html_tidy_is_available_memo: OnceLock<bool>,
+    /// Caches the check for whether `https://www.npmjs.com/package/browser-ui-test` is installed.
+    pub(crate) browser_ui_test_is_available_memo: OnceLock<bool>,
+
     /// When enabled by tests, this causes the top-level steps that _would_ be
     /// executed to be logged instead. Used by snapshot tests of command-line
     /// paths-to-steps handling.
@@ -104,8 +109,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Whether this step is run by default as part of its respective phase, as defined by the `describe`
     /// macro in [`Builder::get_step_descriptions`].
     ///
-    /// Note: Even if set to `true`, it can still be overridden with [`ShouldRun::default_condition`]
-    /// by `Step::should_run`.
+    /// Note: Even if set to `true`, it can still be overridden by [`Step::is_really_default`].
     const DEFAULT: bool = false;
 
     /// If this value is true, then the values of `run.target` passed to the `make_run` function of
@@ -131,7 +135,26 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// depending on the `Step::run` implementation of the caller.
     fn run(self, builder: &Builder<'_>) -> Self::Output;
 
-    /// Determines if this `Step` should be run when given specific paths (e.g., `x build $path`).
+    /// Some steps that are marked `DEFAULT = true` want to only be treated as
+    /// default steps on a conditional basis, depending on factors like config
+    /// settings or the availability of external tools.
+    ///
+    /// Those steps can override this function, which will be called just before
+    /// the step would actually be run as part of the default set of steps, so
+    /// that the step can conditionally decide whether to run or not.
+    ///
+    /// If the underlying check should not be performed repeatedly
+    /// (e.g. because it probes command-line tools),
+    /// consider memoizing its outcome via a field in the builder.
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        // This default impl doesn't use the builder, but we want it to be
+        // named `builder` for IDE autocompletion.
+        let _ = builder;
+        Self::DEFAULT
+    }
+
+    /// Called to allow steps to register the command-line paths that should
+    /// cause them to run.
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_>;
 
     /// Called directly by the bootstrap `Step` handler when not triggered indirectly by other `Step`s using [`Builder::ensure`].
@@ -316,6 +339,7 @@ struct StepDescription {
     default: bool,
     is_host: bool,
     should_run: fn(ShouldRun<'_>) -> ShouldRun<'_>,
+    is_really_default_fn: fn(&Builder<'_>) -> bool,
     make_run: fn(RunConfig<'_>),
     name: &'static str,
     kind: Kind,
@@ -437,6 +461,7 @@ impl StepDescription {
             default: S::DEFAULT,
             is_host: S::IS_HOST,
             should_run: S::should_run,
+            is_really_default_fn: S::is_really_default,
             make_run: S::make_run,
             name: std::any::type_name::<S>(),
             kind,
@@ -488,48 +513,23 @@ impl StepDescription {
     }
 }
 
-enum ReallyDefault<'a> {
-    Bool(bool),
-    Lazy(LazyLock<bool, Box<dyn Fn() -> bool + 'a>>),
-}
-
+/// Builder that allows steps to register command-line paths/aliases that
+/// should cause those steps to be run.
+///
+/// For example, if the user invokes `./x test compiler` or `./x doc unstable-book`,
+/// this allows bootstrap to determine what steps "compiler" or "unstable-book"
+/// correspond to.
 pub struct ShouldRun<'a> {
     pub builder: &'a Builder<'a>,
     kind: Kind,
 
     // use a BTreeSet to maintain sort order
     paths: BTreeSet<PathSet>,
-
-    // If this is a default rule, this is an additional constraint placed on
-    // its run. Generally something like compiler docs being enabled.
-    is_really_default: ReallyDefault<'a>,
 }
 
 impl<'a> ShouldRun<'a> {
     fn new(builder: &'a Builder<'_>, kind: Kind) -> ShouldRun<'a> {
-        ShouldRun {
-            builder,
-            kind,
-            paths: BTreeSet::new(),
-            is_really_default: ReallyDefault::Bool(true), // by default no additional conditions
-        }
-    }
-
-    pub fn default_condition(mut self, cond: bool) -> Self {
-        self.is_really_default = ReallyDefault::Bool(cond);
-        self
-    }
-
-    pub fn lazy_default_condition(mut self, lazy_cond: Box<dyn Fn() -> bool + 'a>) -> Self {
-        self.is_really_default = ReallyDefault::Lazy(LazyLock::new(lazy_cond));
-        self
-    }
-
-    pub fn is_really_default(&self) -> bool {
-        match &self.is_really_default {
-            ReallyDefault::Bool(val) => *val,
-            ReallyDefault::Lazy(lazy) => *lazy.deref(),
-        }
+        ShouldRun { builder, kind, paths: BTreeSet::new() }
     }
 
     /// Indicates it should run if the command-line selects the given crate or
@@ -1092,6 +1092,8 @@ impl<'a> Builder<'a> {
             time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
             paths,
             submodule_paths_cache: Default::default(),
+            html_tidy_is_available_memo: OnceLock::new(),
+            browser_ui_test_is_available_memo: OnceLock::new(),
             log_cli_step_for_tests: None,
         }
     }
@@ -1648,7 +1650,11 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { Some(self.ensure(step)) } else { None }
+        if desc.default && (desc.is_really_default_fn)(self) {
+            Some(self.ensure(step))
+        } else {
+            None
+        }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.

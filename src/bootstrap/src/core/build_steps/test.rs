@@ -171,9 +171,11 @@ You can skip linkcheck with --skip src/tools/linkchecker"
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.path("src/tools/linkchecker");
-        run.default_condition(builder.config.docs)
+        run.path("src/tools/linkchecker")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -186,7 +188,9 @@ You can skip linkcheck with --skip src/tools/linkchecker"
 }
 
 fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
-    command("tidy").allow_failure().arg("--version").run_capture_stdout(builder).is_success()
+    *builder.html_tidy_is_available_memo.get_or_init(|| {
+        command("tidy").allow_failure().arg("--version").run_capture_stdout(builder).is_success()
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -200,9 +204,11 @@ impl Step for HtmlCheck {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.path("src/tools/html-checker");
-        run.lazy_default_condition(Box::new(|| check_if_tidy_is_installed(builder)))
+        run.path("src/tools/html-checker")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        check_if_tidy_is_installed(builder)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -990,8 +996,11 @@ impl Step for RustdocJSStd {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.nodejs.is_some();
-        run.suite_path("tests/rustdoc-js-std").default_condition(default)
+        run.suite_path("tests/rustdoc-js-std")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1051,8 +1060,11 @@ impl Step for RustdocJSNotStd {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.nodejs.is_some();
-        run.suite_path("tests/rustdoc-js").default_condition(default)
+        run.suite_path("tests/rustdoc-js")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1094,6 +1106,13 @@ fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<Stri
         .or_else(|| get_browser_ui_test_version_inner(builder, npm, true))
 }
 
+fn check_if_browser_ui_test_is_available(builder: &Builder<'_>) -> bool {
+    *builder.browser_ui_test_is_available_memo.get_or_init(|| {
+        let Some(npm) = builder.config.npm.as_deref() else { return false };
+        get_browser_ui_test_version(builder, npm).is_some()
+    })
+}
+
 /// Run GUI tests on a given rustdoc.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocGUI {
@@ -1108,18 +1127,13 @@ impl Step for RustdocGUI {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.suite_path("tests/rustdoc-gui");
-        run.lazy_default_condition(Box::new(move || {
-            builder.config.nodejs.is_some()
-                && builder.doc_tests != DocTests::Only
-                && builder
-                    .config
-                    .npm
-                    .as_ref()
-                    .map(|p| get_browser_ui_test_version(builder, p).is_some())
-                    .unwrap_or(false)
-        }))
+        run.suite_path("tests/rustdoc-gui")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
+            && builder.doc_tests != DocTests::Only
+            && check_if_browser_ui_test_is_available(builder)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1311,8 +1325,11 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.doc_tests != DocTests::Only;
-        run.path("src/tools/tidy").default_condition(default)
+        run.path("src/tools/tidy")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.doc_tests != DocTests::Only
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3349,11 +3366,14 @@ impl Step for BootstrapPy {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("bootstrap-py")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
         // Bootstrap tests might not be perfectly self-contained and can depend
         // on the environment, so only run them by default in CI, not locally.
         // See `test::Bootstrap::should_run`.
-        let is_ci = run.builder.config.is_running_on_ci;
-        run.alias("bootstrap-py").default_condition(is_ci)
+        builder.config.is_running_on_ci
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3424,11 +3444,14 @@ impl Step for Bootstrap {
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/bootstrap")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
         // Bootstrap tests might not be perfectly self-contained and can depend on the external
         // environment, submodules that are checked out, etc.
         // Therefore we only run them by default on CI.
-        let runs_on_ci = run.builder.config.is_running_on_ci;
-        run.path("src/bootstrap").default_condition(runs_on_ci)
+        builder.config.is_running_on_ci
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3502,10 +3525,13 @@ impl Step for LintDocs {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let stage = run.builder.top_stage;
+        run.path("src/tools/lint-docs")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
         // Lint docs tests might not work with stage 1, so do not run this test by default in
         // `x test` below stage 2.
-        run.path("src/tools/lint-docs").default_condition(stage > 1)
+        builder.top_stage >= 2
     }
 
     fn make_run(run: RunConfig<'_>) {

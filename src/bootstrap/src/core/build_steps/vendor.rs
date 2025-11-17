@@ -57,7 +57,7 @@ impl Step for Vendor {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("placeholder").default_condition(true)
+        run.alias("placeholder")
     }
 
     fn make_run(run: RunConfig<'_>) {

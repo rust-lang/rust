@@ -35,8 +35,11 @@ macro_rules! book {
             const DEFAULT: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(builder.config.docs)
+                run.path($path)
+            }
+
+            fn is_really_default(builder: &Builder<'_>) -> bool {
+                builder.config.docs
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -88,8 +91,11 @@ impl Step for UnstableBook {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/doc/unstable-book").default_condition(builder.config.docs)
+        run.path("src/doc/unstable-book")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -216,8 +222,11 @@ impl Step for TheBook {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/doc/book").default_condition(builder.config.docs)
+        run.path("src/doc/book")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -340,8 +349,11 @@ impl Step for Standalone {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/doc").alias("standalone").default_condition(builder.config.docs)
+        run.path("src/doc").alias("standalone")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -450,8 +462,11 @@ impl Step for Releases {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("RELEASES.md").alias("releases").default_condition(builder.config.docs)
+        run.path("RELEASES.md").alias("releases")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -634,8 +649,11 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.crate_or_deps("sysroot").path("library").default_condition(builder.config.docs)
+        run.crate_or_deps("sysroot").path("library")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -862,10 +880,11 @@ impl Step for Rustc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.crate_or_deps("rustc-main")
-            .path("compiler")
-            .default_condition(builder.config.compiler_docs)
+        run.crate_or_deps("rustc-main").path("compiler")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.compiler_docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1009,8 +1028,11 @@ macro_rules! tool_doc {
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(builder.config.compiler_docs)
+                run.path($path)
+            }
+
+            fn is_really_default(builder: &Builder<'_>) -> bool {
+                builder.config.compiler_docs
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -1210,8 +1232,11 @@ impl Step for ErrorIndex {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/error_index_generator").default_condition(builder.config.docs)
+        run.path("src/tools/error_index_generator")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1255,8 +1280,11 @@ impl Step for UnstableBookGen {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/unstable-book-gen").default_condition(builder.config.docs)
+        run.path("src/tools/unstable-book-gen")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1322,8 +1350,11 @@ impl Step for RustcBook {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/doc/rustc").default_condition(builder.config.docs)
+        run.path("src/doc/rustc")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1418,8 +1449,11 @@ impl Step for Reference {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/doc/reference").default_condition(builder.config.docs)
+        run.path("src/doc/reference")
+    }
+
+    fn is_really_default(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
