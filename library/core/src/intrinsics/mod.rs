@@ -56,7 +56,7 @@
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
 use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
-use crate::ptr;
+use crate::{mem, ptr};
 
 mod bounds;
 pub mod fallback;
@@ -2013,7 +2013,14 @@ pub const unsafe fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
+#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn rotate_left<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
+    // Make sure to call the intrinsic for `funnel_shl`, not the fallback impl.
+    // SAFETY: we modulo `shift` so that the result is definitely less than the size of
+    // `T` in bits.
+    unsafe { unchecked_funnel_shl(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+}
 
 /// Performs rotate right.
 ///
@@ -2028,7 +2035,14 @@ pub const fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn rotate_right<T: Copy>(x: T, shift: u32) -> T;
+#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
+    // Make sure to call the intrinsic for `funnel_shr`, not the fallback impl.
+    // SAFETY: we modulo `shift` so that the result is definitely less than the size of
+    // `T` in bits.
+    unsafe { unchecked_funnel_shr(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+}
 
 /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
 ///
