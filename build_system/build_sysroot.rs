@@ -140,7 +140,7 @@ impl SysrootTarget {
 
 static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
+    CargoProject::new(RelPath::build("stdlib/library/sysroot"), "stdlib_target");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,

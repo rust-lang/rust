@@ -75,12 +75,12 @@ impl Compiler {
 }
 
 pub(crate) struct CargoProject {
-    source: &'static RelPath,
+    source: RelPath,
     target: &'static str,
 }
 
 impl CargoProject {
-    pub(crate) const fn new(path: &'static RelPath, target: &'static str) -> CargoProject {
+    pub(crate) const fn new(path: RelPath, target: &'static str) -> CargoProject {
         CargoProject { source: path, target }
     }
 
