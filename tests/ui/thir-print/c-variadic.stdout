@@ -34,7 +34,7 @@ params: [
 body:
     Expr {
         ty: ()
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(6)), backwards_incompatible: None }
+        temp_scope_id: 6
         span: $DIR/c-variadic.rs:7:39: 7:41 (#0)
         kind: 
             Scope {
@@ -43,7 +43,7 @@ body:
                 value:
                     Expr {
                         ty: ()
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(6)), backwards_incompatible: None }
+                        temp_scope_id: 6
                         span: $DIR/c-variadic.rs:7:39: 7:41 (#0)
                         kind: 
                             Block {

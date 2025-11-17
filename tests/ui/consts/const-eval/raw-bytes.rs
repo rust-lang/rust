@@ -34,7 +34,7 @@ const BAD_ENUM2: Enum2 = unsafe { mem::transmute(0usize) };
 #[derive(Copy, Clone)]
 enum Never {}
 
-// An enum with 3 variants of which some are uninhabited -- so the uninhabited variants *do*
+// An enum with 4 variants of which only some are uninhabited -- so the uninhabited variants *do*
 // have a discriminant.
 enum UninhDiscriminant {
     A,

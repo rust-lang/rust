@@ -348,6 +348,7 @@
 #![feature(int_from_ascii)]
 #![feature(ip)]
 #![feature(lazy_get)]
+#![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
@@ -381,7 +382,6 @@
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
 #![feature(unique_rc_arc)]
-#![feature(vec_into_raw_parts)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //

@@ -59,7 +59,10 @@
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
 # Set this to `true` to download if CI llvm available otherwise it builds
-# from `src/llvm-project`.
+# from `src/llvm-project`. If you set it to `true`, it's safe and time-saving to run
+# `git submodule deinit src/llvm-project` to avoid git updating the llvm-project submodule
+# when building compiler locally.
+#
 #
 # Set this to `"if-unchanged"` to download only if the llvm-project has not
 # been modified. You can also use this if you are unsure whether you're on a

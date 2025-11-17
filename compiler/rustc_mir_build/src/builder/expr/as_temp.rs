@@ -2,7 +2,7 @@
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::HirId;
-use rustc_middle::middle::region::{Scope, ScopeData};
+use rustc_middle::middle::region::{Scope, ScopeData, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};

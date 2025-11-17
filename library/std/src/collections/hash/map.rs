@@ -1685,7 +1685,8 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// let iter = map.extract_if(|_k, v| *v % 2 == 0);
 /// ```
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain` to remove and discard elements"]
 pub struct ExtractIf<'a, K, V, F> {
     base: base::ExtractIf<'a, K, V, F>,
 }

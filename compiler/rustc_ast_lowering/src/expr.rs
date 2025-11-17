@@ -1929,7 +1929,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     ControlFlow::Break(residual) =>
     ///         #[allow(unreachable_code)]
     ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Try::from_residual(residual),
+    ///         break 'catch_target Residual::into_try_type(residual),
     ///         // Otherwise:
     ///         return Try::from_residual(residual),
     /// }
@@ -1979,7 +1979,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
             let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
             let from_residual_expr = self.wrap_in_try_constructor(
-                hir::LangItem::TryTraitFromResidual,
+                if self.catch_scope.is_some() {
+                    hir::LangItem::ResidualIntoTryType
+                } else {
+                    hir::LangItem::TryTraitFromResidual
+                },
                 try_span,
                 self.arena.alloc(residual_expr),
                 unstable_span,

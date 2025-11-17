@@ -1744,7 +1744,8 @@ impl<'a> CrateMetadataRef<'a> {
                     src_hash,
                     checksum_hash,
                     start_pos: original_start_pos,
-                    source_len,
+                    normalized_source_len,
+                    unnormalized_source_len,
                     lines,
                     multibyte_chars,
                     normalized_pos,
@@ -1804,7 +1805,8 @@ impl<'a> CrateMetadataRef<'a> {
                     src_hash,
                     checksum_hash,
                     stable_id,
-                    source_len.to_u32(),
+                    normalized_source_len.to_u32(),
+                    unnormalized_source_len,
                     self.cnum,
                     lines,
                     multibyte_chars,
@@ -1817,9 +1819,9 @@ impl<'a> CrateMetadataRef<'a> {
                          translated (start_pos {:?} source_len {:?})",
                     local_version.name,
                     original_start_pos,
-                    source_len,
+                    normalized_source_len,
                     local_version.start_pos,
-                    local_version.source_len
+                    local_version.normalized_source_len
                 );
 
                 ImportedSourceFile {

@@ -2025,7 +2025,7 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    pub(crate) fn LLVMRustOffloadMapper<'a>(M: &'a Module, Fn: &'a Value, Fn: &'a Value);
+    pub(crate) fn LLVMRustOffloadMapper<'a>(Fn: &'a Value, Fn: &'a Value);
     pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
         M: &'a Module,
         Name: *const c_char,

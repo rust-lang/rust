@@ -2916,9 +2916,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn with_generic_param_rib<'c, F>(
-        &'c mut self,
-        params: &'c [GenericParam],
+    fn with_generic_param_rib<F>(
+        &mut self,
+        params: &[GenericParam],
         kind: RibKind<'ra>,
         binder: NodeId,
         generics_kind: LifetimeBinderKind,

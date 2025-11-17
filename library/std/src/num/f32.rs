@@ -308,6 +308,7 @@ impl f32 {
     /// assert!(abs_difference <= 1e-5);
     ///
     /// assert_eq!(f32::powi(f32::NAN, 0), 1.0);
+    /// assert_eq!(f32::powi(0.0, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -333,6 +334,7 @@ impl f32 {
     ///
     /// assert_eq!(f32::powf(1.0, f32::NAN), 1.0);
     /// assert_eq!(f32::powf(f32::NAN, 0.0), 1.0);
+    /// assert_eq!(f32::powf(0.0, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]

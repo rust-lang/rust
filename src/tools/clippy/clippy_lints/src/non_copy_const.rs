@@ -706,7 +706,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 IsFreeze::Maybe => match cx.tcx.const_eval_poly(item.owner_id.to_def_id()) {
                     Ok(val) if let Ok(is_freeze) = self.is_value_freeze(cx.tcx, cx.typing_env(), ty, val) => !is_freeze,
                     // FIXME: we just assume mgca rhs's are freeze
-                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).map_or(false, |e| !self.is_init_expr_freeze(
+                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| !self.is_init_expr_freeze(
                         cx.tcx,
                         cx.typing_env(),
                         cx.tcx.typeck(item.owner_id),
@@ -749,7 +749,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                             !is_freeze
                         },
                         // FIXME: we just assume mgca rhs's are freeze
-                        _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).map_or(false, |e| {
+                        _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| {
                             !self.is_init_expr_freeze(
                                 cx.tcx,
                                 cx.typing_env(),
@@ -806,7 +806,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 IsFreeze::Maybe => match cx.tcx.const_eval_poly(item.owner_id.to_def_id()) {
                     Ok(val) if let Ok(is_freeze) = self.is_value_freeze(cx.tcx, cx.typing_env(), ty, val) => !is_freeze,
                     // FIXME: we just assume mgca rhs's are freeze
-                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).map_or(false, |e| {
+                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| {
                         !self.is_init_expr_freeze(
                             cx.tcx,
                             cx.typing_env(),

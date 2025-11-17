@@ -142,19 +142,3 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         | TerminatorKind::InlineAsm { .. } => Some(terminator.source_info.span),
     }
 }
-
-#[derive(Debug)]
-pub(crate) struct Hole {
-    pub(crate) span: Span,
-}
-
-impl Hole {
-    pub(crate) fn merge_if_overlapping_or_adjacent(&mut self, other: &mut Self) -> bool {
-        if !self.span.overlaps_or_adjacent(other.span) {
-            return false;
-        }
-
-        self.span = self.span.to(other.span);
-        true
-    }
-}
