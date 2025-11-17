@@ -1,7 +1,7 @@
 //@ needs-enzyme
 //@ no-prefer-dynamic
 //@ revisions: with_lto no_lto
-//@[with_lto] compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+//@[with_lto] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=fat
 //@[no_lto] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=thin
 
 #![feature(autodiff)]
