@@ -5,8 +5,8 @@
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_data_structures::assert_matches;
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use tracing::field::Empty;
 use tracing::{instrument, trace};
@@ -884,18 +884,27 @@ where
                 dest.layout().ty,
             );
         }
-        // If the source has padding, we want to always do the mem-to-mem copy to ensure consistent
+        // If the source has padding, we want to always do a mem-to-mem copy to ensure consistent
         // padding in the target independent of layout choices.
         let src_has_padding = match src.layout().backend_repr {
             BackendRepr::Scalar(_) => false,
+            BackendRepr::ScalarPair(left, right)
+                if matches!(src.layout().ty.kind(), ty::Ref(..) | ty::RawPtr(..)) =>
+            {
+                // Wide pointers never have padding, so we can avoid calling `size()`.
+                debug_assert_eq!(left.size(self) + right.size(self), src.layout().size);
+                false
+            }
             BackendRepr::ScalarPair(left, right) => {
                 let left_size = left.size(self);
                 let right_size = right.size(self);
                 // We have padding if the sizes don't add up to the total.
                 left_size + right_size != src.layout().size
             }
-            // Everything else can only exist in memory anyway.
-            _ => true,
+            // Everything else can only exist in memory anyway, so it doesn't matter.
+            BackendRepr::SimdVector { .. }
+            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::Memory { .. } => true,
         };
 
         let src_val = if src_has_padding {
