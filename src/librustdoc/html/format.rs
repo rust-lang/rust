@@ -840,16 +840,25 @@ pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl D
         if let Ok(HrefInfo { url, kind, rust_path }) = href(did, cx) {
             let tcx = cx.tcx();
             let def_kind = tcx.def_kind(did);
-            let anchor = if matches!(
-                def_kind,
-                DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant
-            ) {
-                let parent_def_id = tcx.parent(did);
-                let item_type =
-                    ItemType::from_def_kind(def_kind, Some(tcx.def_kind(parent_def_id)));
-                format!("#{}.{}", item_type.as_str(), tcx.item_name(did))
-            } else {
-                String::new()
+            let anchor = match def_kind {
+                DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+                    let parent_def_id = tcx.parent(did);
+                    let item_type =
+                        ItemType::from_def_kind(def_kind, Some(tcx.def_kind(parent_def_id)));
+                    format!("#{}.{}", item_type.as_str(), tcx.item_name(did))
+                }
+                DefKind::Field => {
+                    let s;
+                    let parent_id = tcx.parent(did);
+                    let kind = if tcx.def_kind(parent_id) == DefKind::Variant {
+                        s = format!("variant.{}.field", tcx.item_name(parent_id).as_str());
+                        &s
+                    } else {
+                        "structfield"
+                    };
+                    format!("#{kind}.{}", tcx.item_name(did))
+                }
+                _ => String::new(),
             };
 
             write!(
