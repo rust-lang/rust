@@ -131,6 +131,9 @@ LL | const RAW_MUT_COERCE: SyncPtr<i32> = SyncPtr { x: &mut 0 };
 error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
   --> $DIR/mutable_references.rs:109:5
    |
+LL | static OH_YES: &mut i32 = &mut 42;
+   | ----------------------- this `static` cannot be written to
+...
 LL |     *OH_YES = 99;
    |     ^^^^^^^^^^^^ cannot assign
 

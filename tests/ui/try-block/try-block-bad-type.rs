@@ -4,7 +4,7 @@
 
 pub fn main() {
     let res: Result<u32, std::array::TryFromSliceError> = try {
-        Err("")?; //~ ERROR `?` couldn't convert the error
+        Err("")?; //~ ERROR mismatched types
         5
     };
 

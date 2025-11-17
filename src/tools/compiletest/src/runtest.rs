@@ -200,10 +200,11 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         }
 
         Some(Debugger::Lldb) => {
-            config.python.hash(&mut hash);
-            config.lldb_python_dir.hash(&mut hash);
+            // LLDB debuginfo tests now use LLDB's embedded Python, with an
+            // explicit PYTHONPATH, so they don't depend on `--python` or
+            // the ambient PYTHONPATH.
+            config.lldb.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
-            env::var_os("PYTHONPATH").hash(&mut hash);
         }
 
         None => {}
@@ -1634,8 +1635,7 @@ impl<'test> TestCx<'test> {
                     // executed and that don't specify their own optimization levels.
                     // Note: aux libs don't have a pass-mode, so they won't get optimized
                     // unless compile-flags are set in the aux file.
-                    if self.config.optimize_tests
-                        && self.props.pass_mode(&self.config) == Some(PassMode::Run)
+                    if self.props.pass_mode(&self.config) == Some(PassMode::Run)
                         && !self
                             .props
                             .compile_flags

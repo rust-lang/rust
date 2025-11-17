@@ -17,7 +17,9 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-errors.rs:38:10
    |
 LL |     let &ref mut x = &0;
-   |          ^^^^^^^^^ cannot borrow as mutable
+   |          ^^^^^^^^^   -- this cannot be borrowed as mutable
+   |          |
+   |          cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 

@@ -227,6 +227,30 @@ pub(crate) fn item_relative_path(tcx: TyCtxt<'_>, def_id: DefId) -> Vec<Symbol> 
     tcx.def_path(def_id).data.into_iter().filter_map(|elem| elem.data.get_opt_name()).collect()
 }
 
+/// Get the public Rust path to an item. This is used to generate the URL to the item's page.
+///
+/// In particular: we handle macro differently: if it's not a macro 2.0 oe a built-in macro, then
+/// it is generated at the top-level of the crate and its path will be `[crate_name, macro_name]`.
+pub(crate) fn get_item_path(tcx: TyCtxt<'_>, def_id: DefId, kind: ItemType) -> Vec<Symbol> {
+    let crate_name = tcx.crate_name(def_id.krate);
+    let relative = item_relative_path(tcx, def_id);
+
+    if let ItemType::Macro = kind {
+        // Check to see if it is a macro 2.0 or built-in macro
+        // More information in <https://rust-lang.github.io/rfcs/1584-macros.html>.
+        if matches!(
+            CStore::from_tcx(tcx).load_macro_untracked(def_id, tcx),
+            LoadedMacro::MacroDef { def, .. } if !def.macro_rules
+        ) {
+            once(crate_name).chain(relative).collect()
+        } else {
+            vec![crate_name, *relative.last().expect("relative was empty")]
+        }
+    } else {
+        once(crate_name).chain(relative).collect()
+    }
+}
+
 /// Record an external fully qualified name in the external_paths cache.
 ///
 /// These names are used later on by HTML rendering to generate things like
@@ -240,27 +264,12 @@ pub(crate) fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemT
         return;
     }
 
-    let crate_name = cx.tcx.crate_name(did.krate);
-
-    let relative = item_relative_path(cx.tcx, did);
-    let fqn = if let ItemType::Macro = kind {
-        // Check to see if it is a macro 2.0 or built-in macro
-        if matches!(
-            CStore::from_tcx(cx.tcx).load_macro_untracked(did, cx.tcx),
-            LoadedMacro::MacroDef { def, .. } if !def.macro_rules
-        ) {
-            once(crate_name).chain(relative).collect()
-        } else {
-            vec![crate_name, *relative.last().expect("relative was empty")]
-        }
-    } else {
-        once(crate_name).chain(relative).collect()
-    };
+    let item_path = get_item_path(cx.tcx, did, kind);
 
     if did.is_local() {
-        cx.cache.exact_paths.insert(did, fqn);
+        cx.cache.exact_paths.insert(did, item_path);
     } else {
-        cx.cache.external_paths.insert(did, (fqn, kind));
+        cx.cache.external_paths.insert(did, (item_path, kind));
     }
 }
 
@@ -497,7 +506,7 @@ pub(crate) fn build_impl(
         return;
     }
 
-    let document_hidden = cx.render_options.document_hidden;
+    let document_hidden = cx.document_hidden();
     let (trait_items, generics) = match impl_item {
         Some(impl_) => (
             impl_

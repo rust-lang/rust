@@ -36,7 +36,7 @@ error[E0596]: cannot borrow `*self` as mutable, as it is behind a `&` reference
   --> $DIR/trait-impl-argument-difference-ice.rs:16:19
    |
 LL |         let a16 = self.read_word() as u16;
-   |                   ^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                   ^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
    |
@@ -47,7 +47,7 @@ error[E0596]: cannot borrow `*self` as mutable, as it is behind a `&` reference
   --> $DIR/trait-impl-argument-difference-ice.rs:18:19
    |
 LL |         let b16 = self.read_word() as u16;
-   |                   ^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |                   ^^^^ `self` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
    |

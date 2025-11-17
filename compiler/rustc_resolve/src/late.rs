@@ -1034,7 +1034,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             }
         }
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, sp: Span, fn_id: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'ast>, _: &AttrVec, sp: Span, fn_id: NodeId) {
         let previous_value = self.diag_metadata.current_function;
         match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
@@ -2916,9 +2916,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn with_generic_param_rib<'c, F>(
-        &'c mut self,
-        params: &'c [GenericParam],
+    fn with_generic_param_rib<F>(
+        &mut self,
+        params: &[GenericParam],
         kind: RibKind<'ra>,
         binder: NodeId,
         generics_kind: LifetimeBinderKind,

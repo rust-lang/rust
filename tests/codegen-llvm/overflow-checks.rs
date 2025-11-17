@@ -18,7 +18,7 @@ extern crate overflow_checks_add;
 // CHECK-LABEL: @add(
 #[no_mangle]
 pub unsafe fn add(a: u8, b: u8) -> u8 {
-    //        CHECK: i8 noundef %a, i8 noundef %b
+    //        CHECK: i8 noundef{{( zeroext)?}} %a, i8 noundef{{( zeroext)?}} %b
     //        CHECK: add i8 %b, %a
     //        DEBUG: icmp ult i8 [[zero:[^,]+]], %a
     //        DEBUG: call core::num::overflow_panic::add

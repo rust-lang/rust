@@ -1,6 +1,5 @@
 //! Test that various operations involving pointer fragments work as expected.
 //@ run-pass
-//@ ignore-test: disabled due to <https://github.com/rust-lang/rust/issues/146291>
 
 use std::mem::{self, MaybeUninit, transmute};
 use std::ptr;
@@ -56,6 +55,39 @@ fn reassemble_ptr_fragments_in_static() {
     static X: Thing = unsafe {
         let Thing { x, y } = transmute(&raw const DATA);
         Thing { x, y }
+    };
+}
+
+const _PARTIAL_OVERWRITE: () = {
+    // The result in `p` is not a valid pointer, but we never use it again so that's fine.
+    let mut p = &42;
+    unsafe {
+        let ptr: *mut _ = &mut p;
+        *(ptr as *mut u8) = 123;
+    }
+};
+
+#[allow(dead_code)]
+fn fragment_in_dst_padding_gets_overwritten() {
+    #[repr(C)]
+    struct Pair {
+        x: u128,
+        // at offset 16
+        y: u64,
+    }
+
+    const C: MaybeUninit<Pair> = unsafe {
+        let mut m = MaybeUninit::<Pair>::uninit();
+        // Store pointer half-way into trailing padding.
+        m.as_mut_ptr().byte_add(20).cast::<&i32>().write_unaligned(&0);
+        // Overwrite `m`.
+        let val = Pair { x: 0, y: 0 };
+        *m.as_mut_ptr() = val;
+        // If the assignment of `val` above only copied the field and left the rest of `m`
+        // unchanged, there would be pointer fragments left in the padding which would be carried
+        // all the way to the final value, causing compilation failure.
+        // We prevent this by having the copy of `val` overwrite the entire destination.
+        m
     };
 }
 

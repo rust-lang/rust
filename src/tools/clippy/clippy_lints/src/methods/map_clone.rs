@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
-use rustc_middle::mir::Mutability;
+use rustc_middle::mir::{Mutability, Pinnedness};
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::Ident;
@@ -50,7 +50,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                 let closure_body = cx.tcx.hir_body(body);
                 let closure_expr = peel_blocks(closure_body.value);
                 match closure_body.params[0].pat.kind {
-                    hir::PatKind::Ref(inner, Mutability::Not) => {
+                    hir::PatKind::Ref(inner, Pinnedness::Not, Mutability::Not) => {
                         if let hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) = inner.kind
                             && ident_eq(name, closure_expr)
                         {

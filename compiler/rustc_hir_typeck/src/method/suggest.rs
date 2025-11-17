@@ -1079,6 +1079,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_ident, expected);
+        self.suggest_bounds_for_range_to_method(&mut err, source, item_ident);
         err.emit()
     }
 
@@ -2610,7 +2611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let mut current_node = parent_node;
 
                                 while let Node::Pat(parent_pat) = current_node {
-                                    if let hir::PatKind::Ref(_, mutability) = parent_pat.kind {
+                                    if let hir::PatKind::Ref(_, _, mutability) = parent_pat.kind {
                                         ref_muts.push(mutability);
                                         current_node = self.tcx.parent_hir_node(parent_pat.hir_id);
                                     } else {
@@ -3258,6 +3259,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return;
             }
         }
+    }
+
+    fn suggest_bounds_for_range_to_method(
+        &self,
+        err: &mut Diag<'_>,
+        source: SelfSource<'tcx>,
+        item_ident: Ident,
+    ) {
+        let SelfSource::MethodCall(rcvr_expr) = source else { return };
+        let hir::ExprKind::Struct(qpath, fields, _) = rcvr_expr.kind else { return };
+        let Some(lang_item) = self.tcx.qpath_lang_item(*qpath) else {
+            return;
+        };
+        let is_inclusive = match lang_item {
+            hir::LangItem::RangeTo => false,
+            hir::LangItem::RangeToInclusive | hir::LangItem::RangeInclusiveCopy => true,
+            _ => return,
+        };
+
+        let Some(iterator_trait) = self.tcx.get_diagnostic_item(sym::Iterator) else { return };
+        let Some(_) = self
+            .tcx
+            .associated_items(iterator_trait)
+            .filter_by_name_unhygienic(item_ident.name)
+            .next()
+        else {
+            return;
+        };
+
+        let source_map = self.tcx.sess.source_map();
+        let range_type = if is_inclusive { "RangeInclusive" } else { "Range" };
+        let Some(end_field) = fields.iter().find(|f| f.ident.name == rustc_span::sym::end) else {
+            return;
+        };
+
+        let element_ty = self.typeck_results.borrow().expr_ty_opt(end_field.expr);
+        let is_integral = element_ty.is_some_and(|ty| ty.is_integral());
+        let end_is_negative = is_integral
+            && matches!(end_field.expr.kind, hir::ExprKind::Unary(rustc_ast::UnOp::Neg, _));
+
+        let Ok(snippet) = source_map.span_to_snippet(rcvr_expr.span) else { return };
+
+        let offset = snippet
+            .chars()
+            .take_while(|&c| c == '(' || c.is_whitespace())
+            .map(|c| c.len_utf8())
+            .sum::<usize>();
+
+        let insert_span = rcvr_expr
+            .span
+            .with_lo(rcvr_expr.span.lo() + rustc_span::BytePos(offset as u32))
+            .shrink_to_lo();
+
+        let (value, appl) = if is_integral && !end_is_negative {
+            ("0", Applicability::MachineApplicable)
+        } else {
+            ("/* start */", Applicability::HasPlaceholders)
+        };
+
+        err.span_suggestion_verbose(
+            insert_span,
+            format!("consider using a bounded `{range_type}` by adding a concrete starting value"),
+            value,
+            appl,
+        );
     }
 
     /// Print out the type for use in value namespace.
@@ -4212,7 +4278,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diag<'_>,
         item_def_id: DefId,
         hir_id: hir::HirId,
-        rcvr_ty: Option<Ty<'_>>,
+        rcvr_ty: Option<Ty<'tcx>>,
     ) -> bool {
         let hir_id = self.tcx.parent_hir_id(hir_id);
         let Some(traits) = self.tcx.in_scope_traits(hir_id) else { return false };
@@ -4223,49 +4289,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !self.tcx.is_trait(trait_def_id) {
             return false;
         }
-        let krate = self.tcx.crate_name(trait_def_id.krate);
-        let name = self.tcx.item_name(trait_def_id);
-        let candidates: Vec<_> = traits
-            .iter()
-            .filter(|c| {
-                c.def_id.krate != trait_def_id.krate
-                    && self.tcx.crate_name(c.def_id.krate) == krate
-                    && self.tcx.item_name(c.def_id) == name
-            })
-            .map(|c| (c.def_id, c.import_ids.get(0).cloned()))
-            .collect();
-        if candidates.is_empty() {
+        let hir::Node::Expr(rcvr) = self.tcx.hir_node(hir_id) else {
             return false;
-        }
-        let item_span = self.tcx.def_span(item_def_id);
-        let msg = format!(
-            "there are multiple different versions of crate `{krate}` in the dependency graph",
-        );
-        let trait_span = self.tcx.def_span(trait_def_id);
-        let mut multi_span: MultiSpan = trait_span.into();
-        multi_span.push_span_label(trait_span, "this is the trait that is needed".to_string());
-        let descr = self.tcx.associated_item(item_def_id).descr();
-        let rcvr_ty =
-            rcvr_ty.map(|t| format!("`{t}`")).unwrap_or_else(|| "the receiver".to_string());
-        multi_span
-            .push_span_label(item_span, format!("the {descr} is available for {rcvr_ty} here"));
-        for (def_id, import_def_id) in candidates {
-            if let Some(import_def_id) = import_def_id {
-                multi_span.push_span_label(
-                    self.tcx.def_span(import_def_id),
-                    format!(
-                        "`{name}` imported here doesn't correspond to the right version of crate \
-                         `{krate}`",
-                    ),
-                );
-            }
-            multi_span.push_span_label(
-                self.tcx.def_span(def_id),
-                "this is the trait that was imported".to_string(),
-            );
-        }
-        err.span_note(multi_span, msg);
-        true
+        };
+        let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, rcvr_ty.into_iter());
+        let trait_pred = ty::Binder::dummy(ty::TraitPredicate {
+            trait_ref,
+            polarity: ty::PredicatePolarity::Positive,
+        });
+        let obligation = Obligation::new(self.tcx, self.misc(rcvr.span), self.param_env, trait_ref);
+        self.err_ctxt().note_different_trait_with_same_name(err, &obligation, trait_pred)
     }
 
     /// issue #102320, for `unwrap_or` with closure as argument, suggest `unwrap_or_else`

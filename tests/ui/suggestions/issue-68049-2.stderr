@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `*input`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:9:7
    |
 LL |       *input = self.0;
-   |       ^^^^^^^^^^^^^^^ `input` is a `&` reference, so the data it refers to cannot be written
+   |       ^^^^^^^^^^^^^^^ `input` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
    |
@@ -13,7 +13,7 @@ error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
   --> $DIR/issue-68049-2.rs:17:5
    |
 LL |     self.0 += *input;
-   |     ^^^^^^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^^^^^^^^^ `self` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
    |

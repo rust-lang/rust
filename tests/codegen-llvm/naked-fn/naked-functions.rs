@@ -62,11 +62,14 @@ use minicore::*;
 #[no_mangle]
 #[unsafe(naked)]
 pub extern "C" fn naked_empty() {
-    #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
-    naked_asm!("ret");
-
-    #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))]
-    naked_asm!("bx lr");
+    cfg_select! {
+        all(target_arch = "arm", target_feature = "thumb-mode") => {
+            naked_asm!("bx lr");
+        }
+        _ => {
+            naked_asm!("ret");
+        }
+    }
 }
 
 // linux,win: .intel_syntax
@@ -116,19 +119,16 @@ pub extern "C" fn naked_empty() {
 #[no_mangle]
 #[unsafe(naked)]
 pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        naked_asm!("lea rax, [rdi + rsi]", "ret")
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        naked_asm!("add x0, x0, x1", "ret")
-    }
-
-    #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))]
-    {
-        naked_asm!("adds r0, r0, r1", "bx lr")
+    cfg_select! {
+        any(target_arch = "x86_64", target_arch = "x86") => {
+            naked_asm!("lea rax, [rdi + rsi]", "ret")
+        }
+        target_arch = "aarch64" => {
+            naked_asm!("add x0, x0, x1", "ret")
+        }
+        all(target_arch = "arm", target_feature = "thumb-mode") => {
+            naked_asm!("adds r0, r0, r1", "bx lr")
+        }
     }
 }
 
@@ -141,11 +141,14 @@ pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
 #[unsafe(naked)]
 #[link_section = ".text.some_different_name"]
 pub extern "C" fn test_link_section() {
-    #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
-    naked_asm!("ret");
-
-    #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))]
-    naked_asm!("bx lr");
+    cfg_select! {
+        all(target_arch = "arm", target_feature = "thumb-mode") => {
+            naked_asm!("bx lr");
+        }
+        _ => {
+            naked_asm!("ret");
+        }
+    }
 }
 
 // win_x86:  .def fastcall_cc

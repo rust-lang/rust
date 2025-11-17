@@ -1,7 +1,7 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // with the Floating Point extension.
 
-use crate::spec::{Arch, FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{Abi, Arch, FloatAbi, Os, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -18,8 +18,8 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             families: cvs!["unix"],
-            os: "nuttx".into(),
-            abi: "eabihf".into(),
+            os: Os::NuttX,
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // If the Floating Point extension is implemented in the Cortex-M33
             // processor, the Cortex-M33 Technical Reference Manual states that

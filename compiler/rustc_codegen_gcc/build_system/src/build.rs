@@ -149,6 +149,9 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 
     // Copy files to sysroot
     let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
+    // To avoid errors like "multiple candidates for `rmeta` dependency `core` found", we clean the
+    // sysroot directory before copying the sysroot build artifacts.
+    let _ = fs::remove_dir_all(&sysroot_path);
     create_dir(&sysroot_path)?;
     let mut copier = |dir_to_copy: &Path| {
         // FIXME: should not use shell command!

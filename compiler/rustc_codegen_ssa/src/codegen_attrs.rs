@@ -16,6 +16,7 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, sym};
+use rustc_target::spec::Os;
 
 use crate::errors;
 use crate::target_features::{
@@ -258,7 +259,7 @@ fn process_builtin_attrs(
                     UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                     UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
                     UsedBy::Default => {
-                        let used_form = if tcx.sess.target.os == "illumos" {
+                        let used_form = if tcx.sess.target.os == Os::Illumos {
                             // illumos' `ld` doesn't support a section header that would represent
                             // `#[used(linker)]`, see
                             // https://github.com/rust-lang/rust/issues/146169. For that target,
@@ -468,16 +469,18 @@ fn check_result(
         })
     }
 
-    // warn for nonblocking async fn.
+    // warn for nonblocking async functions, blocks and closures.
     // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
     if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
         && let Some(sanitize_span) = interesting_spans.sanitize
-        // async function
-        && (tcx.asyncness(did).is_async() || (tcx.is_closure_like(did.into())
+        // async fn
+        && (tcx.asyncness(did).is_async()
             // async block
-            && (tcx.coroutine_is_async(did.into())
-                // async closure
-                || tcx.coroutine_is_async(tcx.coroutine_for_closure(did)))))
+            || tcx.is_coroutine(did.into())
+            // async closure
+            || (tcx.is_closure_like(did.into())
+                && tcx.hir_node_by_def_id(did).expect_closure().kind
+                    != rustc_hir::ClosureKind::Closure))
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
         tcx.node_span_lint(

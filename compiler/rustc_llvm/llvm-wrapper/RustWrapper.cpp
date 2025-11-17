@@ -144,9 +144,7 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
-extern "C" void LLVMRustOffloadMapper(LLVMModuleRef M, LLVMValueRef OldFn,
-                                      LLVMValueRef NewFn) {
-  llvm::Module *module = llvm::unwrap(M);
+extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
 

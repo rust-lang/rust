@@ -1,12 +1,14 @@
-use crate::spec::{Arch, SanitizerSet, Target, TargetMetadata, base};
+use crate::spec::{Arch, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
-    let mut base = base::windows_msvc::opts();
-    base.vendor = "win7".into();
-    base.cpu = "x86-64".into();
-    base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
-    base.supported_sanitizers = SanitizerSet::ADDRESS;
+    let base = TargetOptions {
+        vendor: "win7".into(),
+        cpu: "x86-64".into(),
+        plt_by_default: false,
+        max_atomic_width: Some(64),
+        supported_sanitizers: SanitizerSet::ADDRESS,
+        ..base::windows_msvc::opts()
+    };
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".into(),

@@ -530,6 +530,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "unwinding",
     "vex-sdk",
     "wasi",
+    "windows-link",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",

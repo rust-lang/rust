@@ -12,6 +12,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
+use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
@@ -119,7 +120,7 @@ impl<'a> Parser<'a> {
 impl<'a> Parser<'a> {
     pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode =
-            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true };
+            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
         self.parse_item_(fn_parse_mode, force_collect).map(|i| i.map(Box::new))
     }
 
@@ -976,7 +977,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
         let fn_parse_mode =
-            FnParseMode { req_name: |_| true, context: FnContext::Impl, req_body: true };
+            FnParseMode { req_name: |_, _| true, context: FnContext::Impl, req_body: true };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
 
@@ -985,7 +986,7 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
         let fn_parse_mode = FnParseMode {
-            req_name: |edition| edition >= Edition::Edition2018,
+            req_name: |edition, _| edition >= Edition::Edition2018,
             context: FnContext::Trait,
             req_body: false,
         };
@@ -1245,8 +1246,11 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<ForeignItem>>>> {
-        let fn_parse_mode =
-            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: false };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
+            context: FnContext::Free,
+            req_body: false,
+        };
         Ok(self.parse_item_(fn_parse_mode, force_collect)?.map(
             |Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
@@ -2133,7 +2137,7 @@ impl<'a> Parser<'a> {
                     Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited, tokens: None };
                 // We use `parse_fn` to get a span for the function
                 let fn_parse_mode =
-                    FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true };
+                    FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
                 match self.parse_fn(
                     &mut AttrVec::new(),
                     fn_parse_mode,
@@ -2366,8 +2370,16 @@ impl<'a> Parser<'a> {
 /// The function decides if, per-parameter `p`, `p` must have a pattern or just a type.
 ///
 /// This function pointer accepts an edition, because in edition 2015, trait declarations
-/// were allowed to omit parameter names. In 2018, they became required.
-type ReqName = fn(Edition) -> bool;
+/// were allowed to omit parameter names. In 2018, they became required. It also accepts an
+/// `IsDotDotDot` parameter, as `extern` function declarations and function pointer types are
+/// allowed to omit the name of the `...` but regular function items are not.
+type ReqName = fn(Edition, IsDotDotDot) -> bool;
+
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum IsDotDotDot {
+    Yes,
+    No,
+}
 
 /// Parsing configuration for functions.
 ///
@@ -2400,6 +2412,9 @@ pub(crate) struct FnParseMode {
     ///     to true.
     ///   * The span is from Edition 2015. In particular, you can get a
     ///     2015 span inside a 2021 crate using macros.
+    ///
+    /// Or if `IsDotDotDot::Yes`, this function will also return `false` if the item being parsed
+    /// is inside an `extern` block.
     pub(super) req_name: ReqName,
     /// The context in which this function is parsed, used for diagnostics.
     /// This indicates the fn is a free function or method and so on.
@@ -3049,11 +3064,25 @@ impl<'a> Parser<'a> {
                 return Ok((res?, Trailing::No, UsePreAttrPos::No));
             }
 
-            let is_name_required = match this.token.kind {
-                token::DotDotDot => false,
-                _ => (fn_parse_mode.req_name)(
-                    this.token.span.with_neighbor(this.prev_token.span).edition(),
-                ),
+            let is_dot_dot_dot = if this.token.kind == token::DotDotDot {
+                IsDotDotDot::Yes
+            } else {
+                IsDotDotDot::No
+            };
+            let is_name_required = (fn_parse_mode.req_name)(
+                this.token.span.with_neighbor(this.prev_token.span).edition(),
+                is_dot_dot_dot,
+            );
+            let is_name_required = if is_name_required && is_dot_dot_dot == IsDotDotDot::Yes {
+                this.psess.buffer_lint(
+                    VARARGS_WITHOUT_PATTERN,
+                    this.token.span,
+                    ast::CRATE_NODE_ID,
+                    errors::VarargsWithoutPattern { span: this.token.span },
+                );
+                false
+            } else {
+                is_name_required
             };
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);

@@ -1,7 +1,7 @@
 // Trusty OS target for X86_64.
 
 use crate::spec::{
-    Arch, LinkSelfContainedDefault, PanicStrategy, RelroLevel, StackProbeType, Target,
+    Arch, LinkSelfContainedDefault, Os, PanicStrategy, RelroLevel, StackProbeType, Target,
     TargetMetadata, TargetOptions,
 };
 
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             executables: true,
             max_atomic_width: Some(64),
             panic_strategy: PanicStrategy::Abort,
-            os: "trusty".into(),
+            os: Os::Trusty,
             link_self_contained: LinkSelfContainedDefault::InferredForMusl,
             position_independent_executables: true,
             static_position_independent_executables: true,

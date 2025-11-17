@@ -856,6 +856,7 @@ bidirectional_lang_item_map! {
     PointeeTrait,
     Sized,
     TransmuteTrait,
+    TrivialClone,
     Tuple,
     Unpin,
     Unsize,

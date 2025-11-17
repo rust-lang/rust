@@ -14,6 +14,7 @@ use crate::directives::directive_names::{
     KNOWN_DIRECTIVE_NAMES_SET, KNOWN_HTMLDOCCK_DIRECTIVE_NAMES, KNOWN_JSONDOCCK_DIRECTIVE_NAMES,
 };
 pub(crate) use crate::directives::file::FileDirectives;
+use crate::directives::handlers::DIRECTIVE_HANDLERS_MAP;
 use crate::directives::line::{DirectiveLine, line_directive};
 use crate::directives::needs::CachedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
@@ -26,6 +27,7 @@ mod auxiliary;
 mod cfg;
 mod directive_names;
 mod file;
+mod handlers;
 mod line;
 mod needs;
 #[cfg(test)]
@@ -359,269 +361,9 @@ impl TestProps {
                         return;
                     }
 
-                    use directives::*;
-
-                    config.push_name_value_directive(
-                        ln,
-                        ERROR_PATTERN,
-                        &mut self.error_patterns,
-                        |r| r,
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        REGEX_ERROR_PATTERN,
-                        &mut self.regex_error_patterns,
-                        |r| r,
-                    );
-
-                    config.push_name_value_directive(ln, DOC_FLAGS, &mut self.doc_flags, |r| r);
-
-                    fn split_flags(flags: &str) -> Vec<String> {
-                        // Individual flags can be single-quoted to preserve spaces; see
-                        // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
-                        flags
-                            .split('\'')
-                            .enumerate()
-                            .flat_map(|(i, f)| {
-                                if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
-                            })
-                            .map(move |s| s.to_owned())
-                            .collect::<Vec<_>>()
+                    if let Some(handler) = DIRECTIVE_HANDLERS_MAP.get(ln.name) {
+                        handler.handle(config, ln, self);
                     }
-
-                    if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
-                        let flags = split_flags(&flags);
-                        for (i, flag) in flags.iter().enumerate() {
-                            if flag == "--edition" || flag.starts_with("--edition=") {
-                                panic!("you must use `//@ edition` to configure the edition");
-                            }
-                            if (flag == "-C"
-                                && flags.get(i + 1).is_some_and(|v| v.starts_with("incremental=")))
-                                || flag.starts_with("-Cincremental=")
-                            {
-                                panic!(
-                                    "you must use `//@ incremental` to enable incremental compilation"
-                                );
-                            }
-                        }
-                        self.compile_flags.extend(flags);
-                    }
-
-                    if let Some(range) = parse_edition_range(config, ln) {
-                        self.edition = Some(range.edition_to_test(config.edition));
-                    }
-
-                    config.parse_and_update_revisions(ln, &mut self.revisions);
-
-                    if let Some(flags) = config.parse_name_value_directive(ln, RUN_FLAGS) {
-                        self.run_flags.extend(split_flags(&flags));
-                    }
-
-                    if self.pp_exact.is_none() {
-                        self.pp_exact = config.parse_pp_exact(ln);
-                    }
-
-                    config.set_name_directive(ln, SHOULD_ICE, &mut self.should_ice);
-                    config.set_name_directive(ln, BUILD_AUX_DOCS, &mut self.build_aux_docs);
-                    config.set_name_directive(ln, UNIQUE_DOC_OUT_DIR, &mut self.unique_doc_out_dir);
-
-                    config.set_name_directive(ln, FORCE_HOST, &mut self.force_host);
-                    config.set_name_directive(ln, CHECK_STDOUT, &mut self.check_stdout);
-                    config.set_name_directive(ln, CHECK_RUN_RESULTS, &mut self.check_run_results);
-                    config.set_name_directive(
-                        ln,
-                        DONT_CHECK_COMPILER_STDOUT,
-                        &mut self.dont_check_compiler_stdout,
-                    );
-                    config.set_name_directive(
-                        ln,
-                        DONT_CHECK_COMPILER_STDERR,
-                        &mut self.dont_check_compiler_stderr,
-                    );
-                    config.set_name_directive(ln, NO_PREFER_DYNAMIC, &mut self.no_prefer_dynamic);
-
-                    if let Some(m) = config.parse_name_value_directive(ln, PRETTY_MODE) {
-                        self.pretty_mode = m;
-                    }
-
-                    config.set_name_directive(
-                        ln,
-                        PRETTY_COMPARE_ONLY,
-                        &mut self.pretty_compare_only,
-                    );
-
-                    // Call a helper method to deal with aux-related directives.
-                    parse_and_update_aux(config, ln, &mut self.aux);
-
-                    config.push_name_value_directive(
-                        ln,
-                        EXEC_ENV,
-                        &mut self.exec_env,
-                        Config::parse_env,
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        UNSET_EXEC_ENV,
-                        &mut self.unset_exec_env,
-                        |r| r.trim().to_owned(),
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        RUSTC_ENV,
-                        &mut self.rustc_env,
-                        Config::parse_env,
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        UNSET_RUSTC_ENV,
-                        &mut self.unset_rustc_env,
-                        |r| r.trim().to_owned(),
-                    );
-                    config.push_name_value_directive(
-                        ln,
-                        FORBID_OUTPUT,
-                        &mut self.forbid_output,
-                        |r| r,
-                    );
-                    config.set_name_directive(
-                        ln,
-                        CHECK_TEST_LINE_NUMBERS_MATCH,
-                        &mut self.check_test_line_numbers_match,
-                    );
-
-                    self.update_pass_mode(ln, config);
-                    self.update_fail_mode(ln, config);
-
-                    config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
-
-                    if let Some(NormalizeRule { kind, regex, replacement }) =
-                        config.parse_custom_normalization(ln)
-                    {
-                        let rule_tuple = (regex, replacement);
-                        match kind {
-                            NormalizeKind::Stdout => self.normalize_stdout.push(rule_tuple),
-                            NormalizeKind::Stderr => self.normalize_stderr.push(rule_tuple),
-                            NormalizeKind::Stderr32bit => {
-                                if config.target_cfg().pointer_width == 32 {
-                                    self.normalize_stderr.push(rule_tuple);
-                                }
-                            }
-                            NormalizeKind::Stderr64bit => {
-                                if config.target_cfg().pointer_width == 64 {
-                                    self.normalize_stderr.push(rule_tuple);
-                                }
-                            }
-                        }
-                    }
-
-                    if let Some(code) = config
-                        .parse_name_value_directive(ln, FAILURE_STATUS)
-                        .and_then(|code| code.trim().parse::<i32>().ok())
-                    {
-                        self.failure_status = Some(code);
-                    }
-
-                    config.set_name_directive(
-                        ln,
-                        DONT_CHECK_FAILURE_STATUS,
-                        &mut self.dont_check_failure_status,
-                    );
-
-                    config.set_name_directive(ln, RUN_RUSTFIX, &mut self.run_rustfix);
-                    config.set_name_directive(
-                        ln,
-                        RUSTFIX_ONLY_MACHINE_APPLICABLE,
-                        &mut self.rustfix_only_machine_applicable,
-                    );
-                    config.set_name_value_directive(
-                        ln,
-                        ASSEMBLY_OUTPUT,
-                        &mut self.assembly_output,
-                        |r| r.trim().to_string(),
-                    );
-                    config.set_name_directive(
-                        ln,
-                        STDERR_PER_BITWIDTH,
-                        &mut self.stderr_per_bitwidth,
-                    );
-                    config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
-
-                    // Unlike the other `name_value_directive`s this needs to be handled manually,
-                    // because it sets a `bool` flag.
-                    if let Some(known_bug) = config.parse_name_value_directive(ln, KNOWN_BUG) {
-                        let known_bug = known_bug.trim();
-                        if known_bug == "unknown"
-                            || known_bug.split(',').all(|issue_ref| {
-                                issue_ref
-                                    .trim()
-                                    .split_once('#')
-                                    .filter(|(_, number)| {
-                                        number.chars().all(|digit| digit.is_numeric())
-                                    })
-                                    .is_some()
-                            })
-                        {
-                            self.known_bug = true;
-                        } else {
-                            panic!(
-                                "Invalid known-bug value: {known_bug}\nIt requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
-                            );
-                        }
-                    } else if config.parse_name_directive(ln, KNOWN_BUG) {
-                        panic!(
-                            "Invalid known-bug attribute, requires comma-separated issue references (`#000` or `chalk#000`) or `known-bug: unknown`."
-                        );
-                    }
-
-                    config.set_name_value_directive(
-                        ln,
-                        TEST_MIR_PASS,
-                        &mut self.mir_unit_test,
-                        |s| s.trim().to_string(),
-                    );
-                    config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
-
-                    if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
-                        self.llvm_cov_flags.extend(split_flags(&flags));
-                    }
-
-                    if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {
-                        self.filecheck_flags.extend(split_flags(&flags));
-                    }
-
-                    config.set_name_directive(ln, NO_AUTO_CHECK_CFG, &mut self.no_auto_check_cfg);
-
-                    self.update_add_minicore(ln, config);
-
-                    if let Some(flags) =
-                        config.parse_name_value_directive(ln, MINICORE_COMPILE_FLAGS)
-                    {
-                        let flags = split_flags(&flags);
-                        for flag in &flags {
-                            if flag == "--edition" || flag.starts_with("--edition=") {
-                                panic!("you must use `//@ edition` to configure the edition");
-                            }
-                        }
-                        self.minicore_compile_flags.extend(flags);
-                    }
-
-                    if let Some(err_kind) =
-                        config.parse_name_value_directive(ln, DONT_REQUIRE_ANNOTATIONS)
-                    {
-                        self.dont_require_annotations
-                            .insert(ErrorKind::expect_from_user_str(err_kind.trim()));
-                    }
-
-                    config.set_name_directive(
-                        ln,
-                        DISABLE_GDB_PRETTY_PRINTERS,
-                        &mut self.disable_gdb_pretty_printers,
-                    );
-                    config.set_name_directive(
-                        ln,
-                        COMPARE_OUTPUT_BY_LINES,
-                        &mut self.compare_output_by_lines,
-                    );
                 },
             );
         }
@@ -1690,4 +1432,17 @@ impl EditionRange {
             }
         }
     }
+}
+
+fn split_flags(flags: &str) -> Vec<String> {
+    // Individual flags can be single-quoted to preserve spaces; see
+    // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
+    // FIXME(#147955): Replace this ad-hoc quoting with an escape/quote system that
+    // is closer to what actual shells do, so that it's more flexible and familiar.
+    flags
+        .split('\'')
+        .enumerate()
+        .flat_map(|(i, f)| if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() })
+        .map(move |s| s.to_owned())
+        .collect::<Vec<_>>()
 }

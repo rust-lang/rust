@@ -235,8 +235,9 @@ where
             // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/185>.
             ecx.try_evaluate_added_goals()?;
 
-            // Add GAT where clauses from the trait's definition.
-            // FIXME: We don't need these, since these are the type's own WF obligations.
+            // Add GAT where clauses from the trait's definition. This is necessary
+            // for soundness until we properly handle implied bounds on binders,
+            // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())

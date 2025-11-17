@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, FramePointer, LinkerFlavor, Lld, PanicStrategy, StackProbeType, TargetOptions,
+    Cc, FramePointer, LinkerFlavor, Lld, Os, PanicStrategy, StackProbeType, TargetOptions,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -16,7 +16,7 @@ pub(crate) fn opts() -> TargetOptions {
         ],
     );
     TargetOptions {
-        os: "motor".into(),
+        os: Os::Motor,
         executables: true,
         // TLS is false below because if true, the compiler assumes
         // we handle TLS at the ELF loading level, which we don't.

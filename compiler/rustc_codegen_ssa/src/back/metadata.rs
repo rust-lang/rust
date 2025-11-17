@@ -20,7 +20,7 @@ use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
+use rustc_target::spec::{Abi, Os, RelocModel, Target, ef_avr_arch};
 use tracing::debug;
 
 use super::apple;
@@ -260,10 +260,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 }
 
 pub(super) fn elf_os_abi(sess: &Session) -> u8 {
-    match sess.target.options.os.as_ref() {
-        "hermit" => elf::ELFOSABI_STANDALONE,
-        "freebsd" => elf::ELFOSABI_FREEBSD,
-        "solaris" => elf::ELFOSABI_SOLARIS,
+    match sess.target.options.os {
+        Os::Hermit => elf::ELFOSABI_STANDALONE,
+        Os::FreeBsd => elf::ELFOSABI_FREEBSD,
+        Os::Solaris => elf::ELFOSABI_SOLARIS,
         _ => elf::ELFOSABI_NONE,
     }
 }
@@ -379,11 +379,11 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             }
         }
         Architecture::Csky => {
-            let e_flags = match sess.target.options.abi.as_ref() {
-                "abiv2" => elf::EF_CSKY_ABIV2,
-                _ => elf::EF_CSKY_ABIV1,
-            };
-            e_flags
+            if matches!(sess.target.options.abi, Abi::AbiV2) {
+                elf::EF_CSKY_ABIV2
+            } else {
+                elf::EF_CSKY_ABIV1
+            }
         }
         Architecture::PowerPc64 => {
             const EF_PPC64_ABI_UNKNOWN: u32 = 0;

@@ -186,7 +186,7 @@ fn find_method_sugg_for_if_let<'tcx>(
     // also look inside refs
     // if we have &None for example, peel it so we can detect "if let None = x"
     let check_pat = match let_pat.kind {
-        PatKind::Ref(inner, _mutability) => inner,
+        PatKind::Ref(inner, _pinnedness, _mutability) => inner,
         _ => let_pat,
     };
     let op_ty = cx.typeck_results().expr_ty(let_expr);

@@ -1,8 +1,8 @@
-use crate::spec::{RelroLevel, TargetOptions, cvs};
+use crate::spec::{Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "hurd".into(),
+        os: Os::Hurd,
         dynamic_linking: true,
         families: cvs!["unix"],
         has_rpath: true,

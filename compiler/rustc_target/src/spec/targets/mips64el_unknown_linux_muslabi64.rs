@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: Arch::Mips64,
         options: TargetOptions {
-            abi: "abi64".into(),
+            abi: Abi::Abi64,
             mcount: "_mcount".into(),
             llvm_abiname: "n64".into(),
             ..base

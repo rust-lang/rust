@@ -1,14 +1,14 @@
 //@ run-pass
 //@ only-x86_64
 //@ only-linux
-#![feature(c_variadic)]
+#![feature(c_variadic, c_variadic_naked_functions)]
 
 #[repr(C)]
 #[derive(Debug, PartialEq)]
 struct Data(i32, f64);
 
 #[unsafe(naked)]
-unsafe extern "C" fn c_variadic(_: ...) -> Data {
+unsafe extern "sysv64" fn c_variadic_sysv64(_: ...) -> Data {
     // This assembly was generated with GCC, because clang/LLVM is unable to
     // optimize out the spilling of all registers to the stack.
     core::arch::naked_asm!(
@@ -32,9 +32,20 @@ unsafe extern "C" fn c_variadic(_: ...) -> Data {
     )
 }
 
+#[unsafe(naked)]
+unsafe extern "C" fn c_variadic_c(_: ...) -> Data {
+    core::arch::naked_asm!(
+        "jmp {}",
+        sym c_variadic_sysv64,
+    )
+}
+
 fn main() {
     unsafe {
-        assert_eq!(c_variadic(1, 2.0), Data(1, 2.0));
-        assert_eq!(c_variadic(123, 4.56), Data(123, 4.56));
+        assert_eq!(c_variadic_sysv64(1, 2.0), Data(1, 2.0));
+        assert_eq!(c_variadic_sysv64(123, 4.56), Data(123, 4.56));
+
+        assert_eq!(c_variadic_c(1, 2.0), Data(1, 2.0));
+        assert_eq!(c_variadic_c(123, 4.56), Data(123, 4.56));
     }
 }

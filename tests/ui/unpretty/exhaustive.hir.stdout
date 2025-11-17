@@ -390,11 +390,11 @@ mod expressions {
     /// ExprKind::FormatArgs
     fn expr_format_args() {
         let expr;
-        format_arguments::new_const(&[]);
+        format_arguments::from_str("");
         {
             super let args = (&expr,);
             super let args = [format_argument::new_display(args.0)];
-            format_arguments::new_v1(&[""], &args)
+            unsafe { format_arguments::new(b"\xc0\x00", &args) }
         };
     }
 }

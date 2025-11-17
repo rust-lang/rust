@@ -1,6 +1,5 @@
-use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
-use rustc_ast::{NodeId, PatKind, attr, token};
+use rustc_ast::{self as ast, AttrVec, NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
@@ -392,7 +391,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'a>, _: &AttrVec, span: Span, _: NodeId) {
         if let Some(_header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
         }

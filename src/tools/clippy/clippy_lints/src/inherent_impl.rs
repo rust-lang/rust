@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::InherentImplLintScope;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::fulfill_or_allowed;
+use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_in_cfg_test};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::{Item, ItemKind, Node};
@@ -100,7 +100,8 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
                     },
                     InherentImplLintScope::Crate => Criterion::Crate,
                 };
-                match type_map.entry((impl_ty, criterion)) {
+                let is_test = is_cfg_test(cx.tcx, hir_id) || is_in_cfg_test(cx.tcx, hir_id);
+                match type_map.entry((impl_ty, criterion, is_test)) {
                     Entry::Vacant(e) => {
                         // Store the id for the first impl block of this type. The span is retrieved lazily.
                         e.insert(IdOrSpan::Id(impl_id));

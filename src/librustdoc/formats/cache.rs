@@ -10,6 +10,7 @@ use tracing::debug;
 
 use crate::clean::types::ExternalLocation;
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::Impl;
@@ -156,7 +157,11 @@ impl Cache {
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
-    pub(crate) fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
+    pub(crate) fn populate(
+        cx: &mut DocContext<'_>,
+        mut krate: clean::Crate,
+        render_options: &RenderOptions,
+    ) -> clean::Crate {
         let tcx = cx.tcx;
 
         // Crawl the crate to build various caches used for the output
@@ -164,7 +169,6 @@ impl Cache {
         assert!(cx.external_traits.is_empty());
         cx.cache.traits = mem::take(&mut krate.external_traits);
 
-        let render_options = &cx.render_options;
         let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
         let dst = &render_options.output;
 

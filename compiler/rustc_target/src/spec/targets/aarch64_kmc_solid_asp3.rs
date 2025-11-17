@@ -1,7 +1,7 @@
 use crate::spec::{Arch, RelocModel, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
-    let base = base::solid::opts("asp3");
+    let base = base::solid::opts();
     Target {
         llvm_target: "aarch64-unknown-none".into(),
         metadata: TargetMetadata {

@@ -2300,20 +2300,6 @@ fn test_vec_swap() {
 }
 
 #[test]
-fn test_extend_from_within_spec() {
-    #[derive(Copy)]
-    struct CopyOnly;
-
-    impl Clone for CopyOnly {
-        fn clone(&self) -> Self {
-            panic!("extend_from_within must use specialization on copy");
-        }
-    }
-
-    vec![CopyOnly, CopyOnly].extend_from_within(..);
-}
-
-#[test]
 fn test_extend_from_within_clone() {
     let mut v = vec![String::from("sssss"), String::from("12334567890"), String::from("c")];
     v.extend_from_within(1..);

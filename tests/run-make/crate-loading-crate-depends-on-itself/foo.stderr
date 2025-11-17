@@ -7,22 +7,19 @@ error[E0277]: the trait bound `foo::Struct: Trait` is not satisfied
 note: there are multiple different versions of crate `foo` in the dependency graph
   --> foo-current.rs:7:1
    |
- 4 | extern crate foo;
-   | ----------------- one version of crate `foo` used here, as a direct dependency of the current crate
- 5 |
- 6 | pub struct Struct;
-   | ----------------- this type implements the required trait
  7 | pub trait Trait {}
-   | ^^^^^^^^^^^^^^^ this is the required trait
+   | ^^^^^^^^^^^^^^^ this is the expected trait
    |
   ::: foo-prev.rs:X:Y
    |
- 4 | pub struct Struct;
-   | ----------------- this type doesn't implement the required trait
  5 | pub trait Trait {}
    | --------------- this is the found trait
-   = note: two types coming from two different versions of the same crate are different types even if they look the same
    = help: you can use `cargo tree` to explore your dependency tree
+help: the trait `Trait` is implemented for `Struct`
+  --> foo-current.rs:8:1
+   |
+ 8 | impl Trait for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `check_trait`
   --> foo-current.rs:10:19
    |

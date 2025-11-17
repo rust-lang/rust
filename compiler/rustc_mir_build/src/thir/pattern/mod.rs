@@ -97,7 +97,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
         // gets the least-dereferenced type).
         let unadjusted_pat = match pat.kind {
-            hir::PatKind::Ref(inner, _)
+            hir::PatKind::Ref(inner, _, _)
                 if self.typeck_results.skipped_ref_pats().contains(pat.hir_id) =>
             {
                 self.lower_pattern(inner)
@@ -319,7 +319,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let borrow = self.typeck_results.deref_pat_borrow_mode(ty, subpattern);
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), borrow }
             }
-            hir::PatKind::Ref(subpattern, _) => {
+            hir::PatKind::Ref(subpattern, _, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
                 let opt_old_mode_span =
                     self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
@@ -370,10 +370,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                             if let Some(pty) = ty.pinned_ty()
                                 && let &ty::Ref(_, rty, _) = pty.kind() =>
                         {
-                            debug_assert!(
-                                self.tcx.features().pin_ergonomics(),
-                                "`pin_ergonomics` must be enabled to have a by-pin-ref binding"
-                            );
                             ty = rty;
                         }
                         hir::Pinnedness::Not if let &ty::Ref(_, rty, _) = ty.kind() => {

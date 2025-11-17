@@ -725,9 +725,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "box_take", issue = "147212")]
     pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
         unsafe {
-            let (raw, alloc) = Box::into_raw_with_allocator(boxed);
+            let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
             let value = raw.read();
-            let uninit = Box::from_raw_in(raw.cast::<mem::MaybeUninit<T>>(), alloc);
+            let uninit = Box::from_non_null_in(raw.cast_uninit(), alloc);
             (value, uninit)
         }
     }

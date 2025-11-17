@@ -6,7 +6,7 @@ use rustc_abi::{
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
-use crate::spec::HasTargetSpec;
+use crate::spec::{Env, HasTargetSpec, Os};
 
 #[derive(Clone, Debug)]
 struct Sdata {
@@ -223,8 +223,8 @@ where
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
-            if cx.target_spec().os == "linux"
-                && matches!(&*cx.target_spec().env, "gnu" | "musl" | "uclibc")
+            if cx.target_spec().os == Os::Linux
+                && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
                 && arg.layout.is_zst()
             {
                 arg.make_indirect_from_ignore();

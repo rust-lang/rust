@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Abi, Arch, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: Arch::Mips64r6,
         options: TargetOptions {
-            abi: "abi64".into(),
+            abi: Abi::Abi64,
             // NOTE(mips64r6) matches C toolchain
             cpu: "mips64r6".into(),
             features: "+mips64r6".into(),
