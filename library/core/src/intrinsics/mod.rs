@@ -3349,6 +3349,9 @@ pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) ->
 ///     unsafe { (*x)[0] = 21.0 };
 /// }
 /// ```
+///
+/// For reference, see the Clang documentation on offloading:
+/// <https://clang.llvm.org/docs/OffloadingDesign.html>.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn offload<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
