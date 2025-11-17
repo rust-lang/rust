@@ -26,6 +26,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::display::Joined as _;
+use crate::formats::item_type::ItemType;
 
 #[cfg(test)]
 mod tests;
@@ -496,7 +497,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
 
     let (kind, did) = match res {
         Res::Def(
-            kind @ (AssocTy
+            AssocTy
             | AssocFn
             | AssocConst
             | Variant
@@ -511,9 +512,9 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Const
             | Static { .. }
             | Macro(..)
-            | TraitAlias),
+            | TraitAlias,
             did,
-        ) => (kind.into(), did),
+        ) => (ItemType::from_def_id(did, cx.tcx), did),
 
         _ => panic!("register_res: unexpected {res:?}"),
     };

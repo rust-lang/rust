@@ -203,43 +203,6 @@ pub(crate) enum UrlFragment {
     UserWritten(String),
 }
 
-impl UrlFragment {
-    /// Render the fragment, including the leading `#`.
-    pub(crate) fn render(&self, s: &mut String, tcx: TyCtxt<'_>) {
-        s.push('#');
-        match self {
-            &UrlFragment::Item(def_id) => {
-                let kind = match tcx.def_kind(def_id) {
-                    DefKind::AssocFn => {
-                        if tcx.associated_item(def_id).defaultness(tcx).has_value() {
-                            "method."
-                        } else {
-                            "tymethod."
-                        }
-                    }
-                    DefKind::AssocConst => "associatedconstant.",
-                    DefKind::AssocTy => "associatedtype.",
-                    DefKind::Variant => "variant.",
-                    DefKind::Field => {
-                        let parent_id = tcx.parent(def_id);
-                        if tcx.def_kind(parent_id) == DefKind::Variant {
-                            s.push_str("variant.");
-                            s.push_str(tcx.item_name(parent_id).as_str());
-                            ".field."
-                        } else {
-                            "structfield."
-                        }
-                    }
-                    kind => bug!("unexpected associated item kind: {kind:?}"),
-                };
-                s.push_str(kind);
-                s.push_str(tcx.item_name(def_id).as_str());
-            }
-            UrlFragment::UserWritten(raw) => s.push_str(raw),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) struct ResolutionInfo {
     item_id: DefId,

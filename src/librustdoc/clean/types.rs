@@ -522,8 +522,15 @@ impl Item {
                 debug!(?id);
                 if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
                     debug!(?url);
-                    if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut url, cx.tcx())
+                    match fragment {
+                        Some(UrlFragment::Item(def_id)) => {
+                            url.push_str(&crate::html::format::fragment(*def_id, cx.tcx()))
+                        }
+                        Some(UrlFragment::UserWritten(raw)) => {
+                            url.push('#');
+                            url.push_str(raw);
+                        }
+                        None => {}
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
