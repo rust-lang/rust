@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
     base.llvm_abiname = "lp64d".into();
 
     Target {
-        llvm_target: "riscv64".into(),
+        llvm_target: "riscv64-unknown-windows".into(),
         metadata: TargetMetadata {
             description: Some("Bare RISC-V (RV64IMAFDC ISA) UEFI".into()),
             tier: Some(3),
