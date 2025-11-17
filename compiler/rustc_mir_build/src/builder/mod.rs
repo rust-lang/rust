@@ -2,6 +2,23 @@
 //! "Go to file" feature to silently ignore all files in the module, probably
 //! because it assumes that "build" is a build-output directory.
 //! See <https://github.com/rust-lang/rust/pull/134365>.
+//!
+//! ## The `let this = self;` idiom (LET_THIS_SELF)
+//!
+//! Throughout MIR building there are several places where a `Builder` method
+//! needs to borrow `self`, and then re-expose it to a closure as `|this|`.
+//!
+//! In complex builder methods, potentially with multiple levels of nesting, it
+//! would thus become necessary to mentally keep track of whether the builder
+//! is `self` (at the top level) or `this` (nested in a closure), or to replace
+//! one with the other when moving code in or out of a closure.
+//!
+//! (The borrow checker will prevent incorrect usage, but having to go back and
+//! satisfy the borrow checker still creates contributor friction.)
+//!
+//! To reduce that friction, some builder methods therefore start with
+//! `let this = self;` or similar, allowing subsequent code to uniformly refer
+//! to the builder as `this` (and never `self`), even when not nested.
 
 use itertools::Itertools;
 use rustc_abi::{ExternAbi, FieldIdx};
