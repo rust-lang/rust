@@ -22,6 +22,7 @@
     auto_traits,
     freeze_impls,
     negative_impls,
+    pattern_types,
     rustc_attrs,
     decl_macro,
     f16,
@@ -260,6 +261,14 @@ pub mod mem {
 pub enum c_void {
     __variant1,
     __variant2,
+}
+
+#[rustc_builtin_macro(pattern_type)]
+#[macro_export]
+macro_rules! pattern_type {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 #[lang = "const_param_ty"]

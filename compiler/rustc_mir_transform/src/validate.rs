@@ -673,22 +673,23 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 let fail_out_of_bounds = |this: &mut Self, location| {
                     this.fail(location, format!("Out of bounds field {f:?} for {parent_ty:?}"));
                 };
-                let check_equal = |this: &mut Self, location, f_ty| {
-                    if !this.mir_assign_valid_types(ty, f_ty) {
-                        this.fail(
-                            location,
-                            format!(
-                                "Field projection `{place_ref:?}.{f:?}` specified type `{ty}`, but actual type is `{f_ty}`"
-                            )
-                        )
-                    }
-                };
 
                 let kind = match parent_ty.ty.kind() {
                     &ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                         self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
                     }
                     kind => kind,
+                };
+
+                let check_equal = |this: &mut Self, location, f_ty| {
+                    if !this.mir_assign_valid_types(ty, f_ty) {
+                        this.fail(
+                            location,
+                            format!(
+                                "Field projection `{place_ref:?}.{f:?}` specified type `{ty}`, but actual field type of `{kind:?}` is `{f_ty}`"
+                            )
+                        )
+                    }
                 };
 
                 match kind {
