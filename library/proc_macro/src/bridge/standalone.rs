@@ -159,7 +159,7 @@ fn parse_numeral(mut s: &str) -> Result<Literal> {
         }
     }
     let is_negative = s.starts_with('-');
-    let non_negative = s.strip_prefix('-').unwrap();
+    let non_negative = s.trim_prefix('-');
     if non_negative.starts_with("0b")
         || non_negative.starts_with("0o")
         || non_negative.starts_with("0x")
@@ -168,12 +168,12 @@ fn parse_numeral(mut s: &str) -> Result<Literal> {
     }
     let (s, suffix) = strip_number_suffix(s, FLOAT_SUFFIXES);
 
-    Ok(Literal { kind: LitKind::Float, symbol: todo!(), suffix, span: Span })
+    Ok(Literal { kind: LitKind::Float, symbol: Symbol::new(s), suffix, span: Span })
 }
 
 fn parse_integer(mut s: &str) -> Result<Literal> {
     let is_negative = s.starts_with('-');
-    s = s.strip_prefix('-').unwrap();
+    s = s.trim_prefix('-');
 
     let (s, valid_chars) = if let Some(s) = s.strip_prefix("0b") {
         (s, '0'..='1')
@@ -272,6 +272,8 @@ impl server::TokenStream for NoRustc {
     }
 
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
+        return TokenStream::new();
+
         /// Returns the delimiter, and whether it is the opening form.
         fn char_to_delim(c: char) -> Option<(Delimiter, bool)> {
             Some(match c {
