@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_in_const_context;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
@@ -110,7 +111,16 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
             let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
             let mut applicability = Applicability::MachineApplicable;
 
-            if is_structural_partial_eq(cx, exp_ty, pat_ty) && !contains_type_mismatch(cx, let_expr.pat) {
+            if is_structural_partial_eq(cx, exp_ty, pat_ty)
+                && !contains_type_mismatch(cx, let_expr.pat)
+                // Calls to trait methods (`PartialEq::eq` in this case) aren't stable yet. We could _technically_
+                // try looking at whether:
+                // 1) features `const_trait_impl` and `const_cmp` are enabled
+                // 2) implementation of `PartialEq<Rhs=PatTy> for ExpTy` has `fn eq` that is `const`
+                //
+                // but that didn't quite work out (see #15482), so we just reject outright in this case
+                && !is_in_const_context(cx)
+            {
                 let pat_str = match let_expr.pat.kind {
                     PatKind::Struct(..) => format!(
                         "({})",

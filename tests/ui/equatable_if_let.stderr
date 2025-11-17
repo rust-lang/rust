@@ -103,5 +103,17 @@ error: this pattern matching can be expressed using `matches!`
 LL |         if let Some(MyEnum::B) = get_enum() {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(get_enum(), Some(MyEnum::B))`
 
-error: aborting due to 17 previous errors
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:158:23
+   |
+LL |     const _: u32 = if let NonConstEq::A = N { 0 } else { 1 };
+   |                       ^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(N, NonConstEq::A)`
+
+error: this pattern matching can be expressed using `matches!`
+  --> tests/ui/equatable_if_let.rs:160:23
+   |
+LL |     const _: u32 = if let Some(NonConstEq::A) = Some(N) { 0 } else { 1 };
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `matches!(Some(N), Some(NonConstEq::A))`
+
+error: aborting due to 19 previous errors
 
