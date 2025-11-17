@@ -1086,6 +1086,90 @@ fn psadbw<'tcx>(
     interp_ok(())
 }
 
+/// Multiplies packed 8-bit unsigned integers from `left` and packed
+/// signed 8-bit integers from `right` into 16-bit signed integers. Then,
+/// the saturating sum of the products with indices `2*i` and `2*i+1`
+/// produces the output at index `i`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maddubs_epi16>
+fn pmaddbw<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn pmaddubsw128(a: u8x16, b: i8x16) -> i16x8;
+    // fn pmaddubsw(   a: u8x32, b: i8x32) -> i16x16;
+    // fn vpmaddubsw(  a: u8x64, b: i8x64) -> i16x32;
+    assert_eq!(left_len, right_len);
+    assert_eq!(dest_len.strict_mul(2), left_len);
+
+    for i in 0..dest_len {
+        let j1 = i.strict_mul(2);
+        let left1 = ecx.read_scalar(&ecx.project_index(&left, j1)?)?.to_u8()?;
+        let right1 = ecx.read_scalar(&ecx.project_index(&right, j1)?)?.to_i8()?;
+
+        let j2 = j1.strict_add(1);
+        let left2 = ecx.read_scalar(&ecx.project_index(&left, j2)?)?.to_u8()?;
+        let right2 = ecx.read_scalar(&ecx.project_index(&right, j2)?)?.to_i8()?;
+
+        let dest = ecx.project_index(&dest, i)?;
+
+        // Multiplication of a u8 and an i8 into an i16 cannot overflow.
+        let mul1 = i16::from(left1).strict_mul(right1.into());
+        let mul2 = i16::from(left2).strict_mul(right2.into());
+        let res = mul1.saturating_add(mul2);
+
+        ecx.write_scalar(Scalar::from_i16(res), &dest)?;
+    }
+
+    interp_ok(())
+}
+
+/// Shuffle 32-bit integers in `values` across lanes using the corresponding
+/// index in `indices`, and store the results in dst.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_ps>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutexvar_epi32>
+fn permute<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    values: &OpTy<'tcx>,
+    indices: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (values, values_len) = ecx.project_to_simd(values)?;
+    let (indices, indices_len) = ecx.project_to_simd(indices)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn permd(a: u32x8, b: u32x8) -> u32x8;
+    // fn permps(a: __m256, b: i32x8) -> __m256;
+    // fn vpermd(a: i32x16, idx: i32x16) -> i32x16;
+    assert_eq!(dest_len, values_len);
+    assert_eq!(dest_len, indices_len);
+
+    // Only use the lower 3 bits to index into a vector with 8 lanes,
+    // or the lower 4 bits when indexing into a 16-lane vector.
+    assert!(dest_len.is_power_of_two());
+    let mask = u32::try_from(dest_len).unwrap().strict_sub(1);
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+        let index = ecx.read_scalar(&ecx.project_index(&indices, i)?)?.to_u32()?;
+        let element = ecx.project_index(&values, (index & mask).into())?;
+
+        ecx.copy_op(&element, &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Multiplies packed 16-bit signed integer values, truncates the 32-bit
 /// product to the 18 most significant bits by right-shifting, and then
 /// divides the 18-bit value by 2 (rounding to nearest) by first adding

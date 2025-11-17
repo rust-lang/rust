@@ -4,7 +4,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
-use super::{horizontal_bin_op, pmulhrsw, psign};
+use super::{horizontal_bin_op, pmaddbw, pmulhrsw, psign};
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -67,40 +67,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 horizontal_bin_op(this, which, /*saturating*/ true, left, right, dest)?;
             }
             // Used to implement the _mm_maddubs_epi16 function.
-            // Multiplies packed 8-bit unsigned integers from `left` and packed
-            // signed 8-bit integers from `right` into 16-bit signed integers. Then,
-            // the saturating sum of the products with indices `2*i` and `2*i+1`
-            // produces the output at index `i`.
-            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16
             "pmadd.ub.sw.128" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.strict_mul(2), left_len);
-
-                for i in 0..dest_len {
-                    let j1 = i.strict_mul(2);
-                    let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_u8()?;
-                    let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i8()?;
-
-                    let j2 = j1.strict_add(1);
-                    let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_u8()?;
-                    let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i8()?;
-
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Multiplication of a u8 and an i8 into an i16 cannot overflow.
-                    let mul1 = i16::from(left1).strict_mul(right1.into());
-                    let mul2 = i16::from(left2).strict_mul(right2.into());
-                    let res = mul1.saturating_add(mul2);
-
-                    this.write_scalar(Scalar::from_i16(res), &dest)?;
-                }
+                pmaddbw(this, left, right, dest)?;
             }
             // Used to implement the _mm_mulhrs_epi16 function.
             // Multiplies packed 16-bit signed integer values, truncates the 32-bit
