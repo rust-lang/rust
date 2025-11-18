@@ -15,10 +15,10 @@ struct Timespec {
 }
 
 impl Timespec {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     const MAX: Timespec = Self::new(i64::MAX, 1_000_000_000 - 1);
 
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     const MIN: Timespec = Self::new(i64::MIN, 0);
 
     const fn zero() -> Timespec {
@@ -215,10 +215,10 @@ pub struct SystemTime(Timespec);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Timespec::zero());
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
 
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
 
     pub fn new(tv_sec: i64, tv_nsec: i32) -> SystemTime {

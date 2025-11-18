@@ -10,10 +10,10 @@ pub struct SystemTime(abi::time_t);
 pub const UNIX_EPOCH: SystemTime = SystemTime(0);
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime(abi::time_t::MAX);
 
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime(abi::time_t::MIN);
 
     pub fn now() -> SystemTime {

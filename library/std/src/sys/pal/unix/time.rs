@@ -29,10 +29,10 @@ pub(crate) struct Timespec {
 }
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime { t: Timespec::MAX };
 
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime { t: Timespec::MIN };
 
     #[cfg_attr(any(target_os = "horizon", target_os = "hurd"), allow(unused))]
@@ -67,13 +67,13 @@ impl fmt::Debug for SystemTime {
 }
 
 impl Timespec {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     const MAX: Timespec = unsafe { Self::new_unchecked(i64::MAX, 1_000_000_000 - 1) };
 
     // As described below, on AppleOS, dates before epoch are represented differently.
     // This is not an issue here however, because we are using tv_sec = i64::MIN,
     // which will cause the compatibility wrapper to not be executed at all.
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     const MIN: Timespec = unsafe { Self::new_unchecked(i64::MIN, 0) };
 
     const unsafe fn new_unchecked(tv_sec: i64, tv_nsec: i64) -> Timespec {

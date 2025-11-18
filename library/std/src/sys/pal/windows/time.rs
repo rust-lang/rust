@@ -64,7 +64,7 @@ impl Instant {
 }
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime {
         t: c::FILETIME {
             dwLowDateTime: (i64::MAX & 0xFFFFFFFF) as u32,
@@ -72,7 +72,7 @@ impl SystemTime {
         },
     };
 
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime {
         t: c::FILETIME {
             dwLowDateTime: (i64::MIN & 0xFFFFFFFF) as u32,
