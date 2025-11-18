@@ -27,7 +27,7 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{RootQueryDb, SourceDatabase, SourceRootId};
+use base_db::{RootQueryDb, SourceRootId};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -37,7 +37,6 @@ use hir::{
 };
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
-use triomphe::Arc;
 
 use crate::RootDatabase;
 
@@ -102,63 +101,26 @@ impl Query {
     }
 }
 
-#[query_group::query_group]
-pub trait SymbolsDatabase: HirDatabase + SourceDatabase {
-    /// The symbol index for a given module. These modules should only be in source roots that
-    /// are inside local_roots.
-    // FIXME: Is it worth breaking the encapsulation boundary of `hir`, and make this take a `ModuleId`,
-    // in order for it to be a non-interned query?
-    #[salsa::invoke_interned(module_symbols)]
-    fn module_symbols(&self, module: Module) -> Arc<SymbolIndex>;
-
-    /// The symbol index for a given source root within library_roots.
-    #[salsa::invoke_interned(library_symbols)]
-    fn library_symbols(&self, source_root_id: SourceRootId) -> Arc<SymbolIndex>;
-
-    #[salsa::transparent]
-    /// The symbol indices of modules that make up a given crate.
-    fn crate_symbols(&self, krate: Crate) -> Box<[Arc<SymbolIndex>]>;
-
-    /// The set of "local" (that is, from the current workspace) roots.
-    /// Files in local roots are assumed to change frequently.
-    #[salsa::input]
-    fn local_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
-
-    /// The set of roots for crates.io libraries.
-    /// Files in libraries are assumed to never change.
-    #[salsa::input]
-    fn library_roots(&self) -> Arc<FxHashSet<SourceRootId>>;
+/// The set of roots for crates.io libraries.
+/// Files in libraries are assumed to never change.
+#[salsa::input(singleton, debug)]
+pub struct LibraryRoots {
+    #[returns(ref)]
+    pub roots: FxHashSet<SourceRootId>,
 }
 
-fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Arc<SymbolIndex> {
-    let _p = tracing::info_span!("library_symbols").entered();
-
-    // We call this without attaching because this runs in parallel, so we need to attach here.
-    hir::attach_db(db, || {
-        let mut symbol_collector = SymbolCollector::new(db);
-
-        db.source_root_crates(source_root_id)
-            .iter()
-            .flat_map(|&krate| Crate::from(krate).modules(db))
-            // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
-            // as the index for a library is not going to really ever change, and we do not want to store each
-            // the module or crate indices for those in salsa unless we need to.
-            .for_each(|module| symbol_collector.collect(module));
-
-        Arc::new(SymbolIndex::new(symbol_collector.finish()))
-    })
+/// The set of "local" (that is, from the current workspace) roots.
+/// Files in local roots are assumed to change frequently.
+#[salsa::input(singleton, debug)]
+pub struct LocalRoots {
+    #[returns(ref)]
+    pub roots: FxHashSet<SourceRootId>,
 }
 
-fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
-    let _p = tracing::info_span!("module_symbols").entered();
-
-    // We call this without attaching because this runs in parallel, so we need to attach here.
-    hir::attach_db(db, || Arc::new(SymbolIndex::new(SymbolCollector::new_module(db, module))))
-}
-
-pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
+/// The symbol indices of modules that make up a given crate.
+pub fn crate_symbols(db: &dyn HirDatabase, krate: Crate) -> Box<[&SymbolIndex]> {
     let _p = tracing::info_span!("crate_symbols").entered();
-    krate.modules(db).into_iter().map(|module| db.module_symbols(module)).collect()
+    krate.modules(db).into_iter().map(|module| SymbolIndex::module_symbols(db, module)).collect()
 }
 
 // Feature: Workspace Symbol
@@ -190,20 +152,26 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
     let indices: Vec<_> = if query.libs {
-        db.library_roots()
+        LibraryRoots::get(db)
+            .roots(db)
             .par_iter()
-            .map_with(db.clone(), |snap, &root| snap.library_symbols(root))
+            .for_each_with(db.clone(), |snap, &root| _ = SymbolIndex::library_symbols(snap, root));
+        LibraryRoots::get(db)
+            .roots(db)
+            .iter()
+            .map(|&root| SymbolIndex::library_symbols(db, root))
             .collect()
     } else {
         let mut crates = Vec::new();
 
-        for &root in db.local_roots().iter() {
+        for &root in LocalRoots::get(db).roots(db).iter() {
             crates.extend(db.source_root_crates(root).iter().copied())
         }
-        let indices: Vec<_> = crates
-            .into_par_iter()
-            .map_with(db.clone(), |snap, krate| snap.crate_symbols(krate.into()))
-            .collect();
+        crates
+            .par_iter()
+            .for_each_with(db.clone(), |snap, &krate| _ = crate_symbols(snap, krate.into()));
+        let indices: Vec<_> =
+            crates.into_iter().map(|krate| crate_symbols(db, krate.into())).collect();
         indices.iter().flat_map(|indices| indices.iter().cloned()).collect()
     };
 
@@ -219,6 +187,67 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
 pub struct SymbolIndex {
     symbols: Box<[FileSymbol]>,
     map: fst::Map<Vec<u8>>,
+}
+
+impl SymbolIndex {
+    /// The symbol index for a given source root within library_roots.
+    pub fn library_symbols(db: &dyn HirDatabase, source_root_id: SourceRootId) -> &SymbolIndex {
+        // FIXME:
+        #[salsa::interned]
+        struct InternedSourceRootId {
+            id: SourceRootId,
+        }
+        #[salsa::tracked(returns(ref))]
+        fn library_symbols(
+            db: &dyn HirDatabase,
+            source_root_id: InternedSourceRootId<'_>,
+        ) -> SymbolIndex {
+            let _p = tracing::info_span!("library_symbols").entered();
+
+            // We call this without attaching because this runs in parallel, so we need to attach here.
+            hir::attach_db(db, || {
+                let mut symbol_collector = SymbolCollector::new(db, true);
+
+                db.source_root_crates(source_root_id.id(db))
+                    .iter()
+                    .flat_map(|&krate| Crate::from(krate).modules(db))
+                    // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,
+                    // as the index for a library is not going to really ever change, and we do not want to store
+                    // the module or crate indices for those in salsa unless we need to.
+                    .for_each(|module| symbol_collector.collect(module));
+
+                SymbolIndex::new(symbol_collector.finish())
+            })
+        }
+        library_symbols(db, InternedSourceRootId::new(db, source_root_id))
+    }
+
+    /// The symbol index for a given module. These modules should only be in source roots that
+    /// are inside local_roots.
+    pub fn module_symbols(db: &dyn HirDatabase, module: Module) -> &SymbolIndex {
+        // FIXME:
+        #[salsa::interned]
+        struct InternedModuleId {
+            id: hir::ModuleId,
+        }
+
+        #[salsa::tracked(returns(ref))]
+        fn module_symbols(db: &dyn HirDatabase, module: InternedModuleId<'_>) -> SymbolIndex {
+            let _p = tracing::info_span!("module_symbols").entered();
+
+            // We call this without attaching because this runs in parallel, so we need to attach here.
+            hir::attach_db(db, || {
+                let module: Module = module.id(db).into();
+                SymbolIndex::new(SymbolCollector::new_module(
+                    db,
+                    module,
+                    !module.krate().origin(db).is_local(),
+                ))
+            })
+        }
+
+        module_symbols(db, InternedModuleId::new(db, hir::ModuleId::from(module)))
+    }
 }
 
 impl fmt::Debug for SymbolIndex {
@@ -309,7 +338,7 @@ impl SymbolIndex {
 impl Query {
     pub(crate) fn search<'sym, T>(
         self,
-        indices: &'sym [Arc<SymbolIndex>],
+        indices: &'sym [&SymbolIndex],
         cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
@@ -344,7 +373,7 @@ impl Query {
 
     fn search_maps<'sym, T>(
         &self,
-        indices: &'sym [Arc<SymbolIndex>],
+        indices: &'sym [&SymbolIndex],
         mut stream: fst::map::Union<'_>,
         mut cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
     ) -> Option<T> {
@@ -397,7 +426,7 @@ impl Query {
 mod tests {
 
     use expect_test::expect_file;
-    use salsa::Durability;
+    use salsa::Setter;
     use test_fixture::{WORKSPACE, WithFixture};
 
     use super::*;
@@ -484,7 +513,7 @@ pub(self) use crate::Trait as IsThisJustATrait;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id, false);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
@@ -511,7 +540,7 @@ struct Duplicate;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                let mut symbols = SymbolCollector::new_module(&db, module_id, false);
                 symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
@@ -535,7 +564,7 @@ pub struct Foo;
 
         let mut local_roots = FxHashSet::default();
         local_roots.insert(WORKSPACE);
-        db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
+        LocalRoots::get(&db).set_roots(&mut db).to(local_roots);
 
         let mut query = Query::new("Foo".to_owned());
         let mut symbols = world_symbols(&db, query.clone());

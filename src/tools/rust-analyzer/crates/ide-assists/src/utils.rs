@@ -57,6 +57,14 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
+    if stmt_list
+        .syntax()
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
+    {
+        return None;
+    }
 
     if let Some(expr) = stmt_list.tail_expr() {
         if has_anything_else(expr.syntax()) {
