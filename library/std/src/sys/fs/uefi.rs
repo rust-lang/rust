@@ -344,8 +344,16 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     unsupported()
 }
 
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn unlink(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_file() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::IsADirectory, "expected a file but got a directory"))
+    }
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
@@ -364,8 +372,16 @@ pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
+pub fn rmdir(p: &Path) -> io::Result<()> {
+    let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
+    let file_info = f.file_info()?;
+    let file_attr = FileAttr::from_uefi(file_info);
+
+    if file_attr.file_type().is_dir() {
+        f.delete()
+    } else {
+        Err(io::const_error!(io::ErrorKind::NotADirectory, "expected a directory but got a file"))
+    }
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
@@ -536,6 +552,16 @@ mod uefi_fs {
             };
 
             if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
+        }
+
+        pub(crate) fn delete(self) -> io::Result<()> {
+            let file_ptr = self.0.as_ptr();
+            let r = unsafe { ((*file_ptr).delete)(file_ptr) };
+
+            // Spec states that even in case of failure, the file handle will be closed.
+            crate::mem::forget(self);
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
         }
     }
 
