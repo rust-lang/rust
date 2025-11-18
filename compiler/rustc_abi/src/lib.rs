@@ -1092,7 +1092,7 @@ impl Align {
 /// The only concern for us is that preferred alignment must not be less than the mandated alignment
 /// and thus in practice the two values are almost always identical.
 ///
-/// An example of a rare thing actually affected by preferred alignment is aligning of statics.
+/// An example of a rare thing actually affected by preferred alignment is aligning of statistics.
 /// It is of effectively no consequence for layout in structs and on the stack.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
