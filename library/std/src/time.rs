@@ -528,7 +528,7 @@ impl SystemTime {
     /// // But adding just 1ns will already fail.
     /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(0, 1)), None);
     /// ```
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime(time::SystemTime::MAX);
 
     /// Represents the minimum value representable by [`SystemTime`] on this platform.
@@ -548,7 +548,7 @@ impl SystemTime {
     /// // But subtracting just 1ns will already fail.
     /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(0, 1)), None);
     /// ```
-    #[unstable(feature = "time_systemtime_limits", issue = "none")]
+    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime(time::SystemTime::MIN);
 
     /// Returns the system time corresponding to "now".
