@@ -70,10 +70,8 @@ impl Instant {
 }
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = MAX_UEFI_TIME;
 
-    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime::from_uefi(r_efi::efi::Time {
         year: 1900,
         month: 1,
