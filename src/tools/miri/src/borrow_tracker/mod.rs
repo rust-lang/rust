@@ -352,6 +352,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap();
         // The body of this loop needs `borrow_tracker` immutably
         // so we can't move this code inside the following `end_call`.
+
         for (alloc_id, tag) in &frame
             .extra
             .borrow_tracker
@@ -378,6 +379,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         borrow_tracker.borrow_mut().end_call(&frame.extra);
+
         interp_ok(())
     }
 }

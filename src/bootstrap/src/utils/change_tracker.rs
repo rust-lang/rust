@@ -586,4 +586,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Flags from `*FLAGS*` (such as `RUSTFLAGS`) env. vars. now have precedence over rustflags set by bootstrap. Before, it was the other way around.",
     },
+    ChangeInfo {
+        change_id: 148763,
+        severity: ChangeSeverity::Info,
+        summary: "`yarn` is now used instead of `npm` to install dependencies for some extra tidy checks. Use `build.yarn` to manually specify the path to `yarn` (`build.npm` is no longer used).",
+    },
 ];

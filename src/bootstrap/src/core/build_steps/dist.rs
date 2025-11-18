@@ -1199,11 +1199,11 @@ impl Step for PlainSourceTarball {
             "bootstrap.example.toml",
             "configure",
             "license-metadata.json",
-            "package-lock.json",
             "package.json",
             "x",
             "x.ps1",
             "x.py",
+            "yarn.lock",
             // tidy-alphabetical-end
         ];
         let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];

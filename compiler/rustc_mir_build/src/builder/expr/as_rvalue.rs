@@ -47,7 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
 
@@ -676,7 +676,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: TempLifetime,
         outer_source_info: SourceInfo,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let value_expr = &this.thir[value];
         let elem_ty = value_expr.ty;
         if this.check_constness(&value_expr.kind) {
@@ -716,7 +716,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         arg: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
 
         let source_info = this.source_info(upvar_span);
         let temp = this.local_decls.push(LocalDecl::new(upvar_ty, upvar_span));

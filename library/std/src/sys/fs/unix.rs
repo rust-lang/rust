@@ -2302,7 +2302,7 @@ mod cfm {
     }
 }
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub(crate) use cfm::CachedFileMetadata;
+pub(in crate::sys) use cfm::CachedFileMetadata;
 
 #[cfg(not(target_vendor = "apple"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

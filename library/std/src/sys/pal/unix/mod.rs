@@ -5,8 +5,6 @@ use crate::io::ErrorKind;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub mod kernel_copy;
 #[cfg(target_os = "linux")]
 pub mod linux;
 pub mod os;

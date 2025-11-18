@@ -158,19 +158,24 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         _: &rustc_interface::interface::Compiler,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
+        // Compilation is done, interpretation is starting. Deal with diagnostics from the
+        // compilation part. We cannot call `sess.finish_diagnostics()` as then "aborting due to
+        // previous errors" gets printed twice.
+        tcx.dcx().emit_stashed_diagnostics();
         tcx.dcx().abort_if_errors();
         tcx.dcx().flush_delayed();
 
+        // Miri is taking over. Start logging.
+        init_late_loggers(&EarlyDiagCtxt::new(tcx.sess.opts.error_format), tcx);
+
+        // Find the entry point.
         if !tcx.crate_types().contains(&CrateType::Executable) {
             tcx.dcx().fatal("miri only makes sense on bin crates");
         }
-
-        let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
-        init_late_loggers(&early_dcx, tcx);
-
         let (entry_def_id, entry_type) = entry_fn(tcx);
-        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
 
+        // Obtain and complete the Miri configuration.
+        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
         // Add filename to `miri` arguments.
         config.args.insert(0, tcx.sess.io.input.filestem().to_string());
 
@@ -179,6 +184,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             env::set_current_dir(cwd).unwrap();
         }
 
+        // Emit warnings for some unusual configurations.
         if tcx.sess.opts.optimize != OptLevel::No {
             tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
                     of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
@@ -193,6 +199,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
+        // Invoke the interpreter.
         let res = if config.genmc_config.is_some() {
             assert!(self.many_seeds.is_none());
             run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
@@ -209,7 +216,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         } else {
             miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
         };
-
+        // Process interpreter result.
         if let Err(return_code) = res {
             tcx.dcx().abort_if_errors();
             exit(return_code.get());
@@ -509,7 +516,6 @@ fn main() {
                 Some(BorrowTrackerMethod::TreeBorrows(TreeBorrowsParams {
                     precise_interior_mut: true,
                 }));
-            miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-tree-borrows-no-precise-interior-mut" {
             match &mut miri_config.borrow_tracker {
                 Some(BorrowTrackerMethod::TreeBorrows(params)) => {
@@ -701,17 +707,6 @@ fn main() {
         } else {
             // Forward to rustc.
             rustc_args.push(arg);
-        }
-    }
-    // Tree Borrows implies strict provenance, and is not compatible with native calls.
-    if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows { .. })) {
-        if miri_config.provenance_mode != ProvenanceMode::Strict {
-            fatal_error!(
-                "Tree Borrows does not support integer-to-pointer casts, and hence requires strict provenance"
-            );
-        }
-        if !miri_config.native_lib.is_empty() {
-            fatal_error!("Tree Borrows is not compatible with calling native functions");
         }
     }
 

@@ -1,7 +1,11 @@
 //@ needs-enzyme
 //@ no-prefer-dynamic
 //@ revisions: with_lto no_lto
+rollup-ktha5ha
 //@[with_lto] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=fat
+=======
+//@[with_lto] compile-flags: -Zautodiff=Enable -C opt-level=3  -Clto=fat
+main
 //@[no_lto] compile-flags: -Zautodiff=Enable -C opt-level=3 -Clto=thin
 
 #![feature(autodiff)]
@@ -10,7 +14,11 @@
 
 // Autodiff requires users to enable lto=fat (for now).
 // In the past, autodiff did not run if users forget to enable fat-lto, which caused functions to
+rollup-ktha5ha
 // return zero-derivatives. That's obviously wrong and confusing to users. We now added a check
+=======
+// returning zero-derivatives. That's obviously wrong and confusing to users. We now added a check
+main
 // which will abort compilation instead.
 
 use std::autodiff::autodiff_reverse;

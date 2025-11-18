@@ -48,9 +48,9 @@ use libc::sendfile as sendfile64;
 use libc::sendfile64;
 use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
+use super::CopyState;
 use crate::cmp::min;
 use crate::fs::{File, Metadata};
-use crate::io::copy::generic_copy;
 use crate::io::{
     BufRead, BufReader, BufWriter, Error, PipeReader, PipeWriter, Read, Result, StderrLock,
     StdinLock, StdoutLock, Take, Write,
@@ -70,10 +70,10 @@ use crate::sys::weak::syscall;
 #[cfg(test)]
 mod tests;
 
-pub(crate) fn copy_spec<R: Read + ?Sized, W: Write + ?Sized>(
+pub fn kernel_copy<R: Read + ?Sized, W: Write + ?Sized>(
     read: &mut R,
     write: &mut W,
-) -> Result<u64> {
+) -> Result<CopyState> {
     let copier = Copier { read, write };
     SpecCopy::copy(copier)
 }
@@ -176,17 +176,17 @@ struct Copier<'a, 'b, R: Read + ?Sized, W: Write + ?Sized> {
 }
 
 trait SpecCopy {
-    fn copy(self) -> Result<u64>;
+    fn copy(self) -> Result<CopyState>;
 }
 
 impl<R: Read + ?Sized, W: Write + ?Sized> SpecCopy for Copier<'_, '_, R, W> {
-    default fn copy(self) -> Result<u64> {
-        generic_copy(self.read, self.write)
+    default fn copy(self) -> Result<CopyState> {
+        Ok(CopyState::Fallback(0))
     }
 }
 
 impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
-    fn copy(self) -> Result<u64> {
+    fn copy(self) -> Result<CopyState> {
         let (reader, writer) = (self.read, self.write);
         let r_cfg = reader.properties();
         let w_cfg = writer.properties();
@@ -214,7 +214,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Ended(bytes_copied) => {
+                        return Ok(CopyState::Ended(bytes_copied + written));
+                    }
                     CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
@@ -231,7 +233,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Ended(bytes_copied) => {
+                        return Ok(CopyState::Ended(bytes_copied + written));
+                    }
                     CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(bytes) => written += bytes,
                 }
@@ -244,7 +248,9 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
                 result.update_take(reader);
 
                 match result {
-                    CopyResult::Ended(bytes_copied) => return Ok(bytes_copied + written),
+                    CopyResult::Ended(bytes_copied) => {
+                        return Ok(CopyState::Ended(bytes_copied + written));
+                    }
                     CopyResult::Error(e, _) => return Err(e),
                     CopyResult::Fallback(0) => { /* use the fallback below */ }
                     CopyResult::Fallback(_) => {
@@ -255,10 +261,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
         }
 
         // fallback if none of the more specialized syscalls wants to work with these file descriptors
-        match generic_copy(reader, writer) {
-            Ok(bytes) => Ok(bytes + written),
-            err => err,
-        }
+        Ok(CopyState::Fallback(written))
     }
 }
 
@@ -558,7 +561,7 @@ fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
     }
 }
 
-pub(super) enum CopyResult {
+enum CopyResult {
     Ended(u64),
     Error(Error, u64),
     Fallback(u64),
@@ -587,7 +590,7 @@ const INVALID_FD: RawFd = -1;
 /// Callers must handle fallback to a generic copy loop.
 /// `Fallback` may indicate non-zero number of bytes already written
 /// if one of the files' cursor +`max_len` would exceed u64::MAX (`EOVERFLOW`).
-pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
+fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult {
     use crate::cmp;
 
     const NOT_PROBED: u8 = 0;

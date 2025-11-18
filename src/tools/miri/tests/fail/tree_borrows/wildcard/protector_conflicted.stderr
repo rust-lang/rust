@@ -1,0 +1,21 @@
+error: Undefined Behavior: write access through <wildcard> at ALLOC[0x0] is forbidden
+  --> tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
+   |
+LL |         unsafe { *wild = 4 };
+   |                  ^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: there are no exposed tags which may perform this access here
+   = note: BACKTRACE:
+   = note: inside closure at tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
+note: inside `main`
+  --> tests/fail/tree_borrows/wildcard/protector_conflicted.rs:LL:CC
+   |
+LL |     protect(ref1);
+   |     ^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

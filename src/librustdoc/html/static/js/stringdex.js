@@ -2282,7 +2282,7 @@ function loadDatabase(hooks) {
      */
     class InlineNeighborsTree {
         /**
-         * @param {Uint8Array} encoded
+         * @param {Uint8Array<ArrayBuffer>} encoded
          * @param {number} start
          */
         constructor(
@@ -2654,7 +2654,7 @@ function loadDatabase(hooks) {
 
     /**
      * @param {string} inputBase64
-     * @returns {[Uint8Array, SearchTree]}
+     * @returns {[Uint8Array<ArrayBuffer>, SearchTree]}
      */
     function makeSearchTreeFromBase64(inputBase64) {
         const input = makeUint8ArrayFromBase64(inputBase64);
@@ -3305,7 +3305,7 @@ if (typeof window !== "undefined") {
 // eslint-disable-next-line max-len
 // polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
 /**
- * @type {function(string): Uint8Array} base64
+ * @type {function(string): Uint8Array<ArrayBuffer>} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 : (string => {
@@ -3318,7 +3318,7 @@ const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 :
     return bytes;
 });
 /**
- * @type {function(string): Uint8Array} base64
+ * @type {function(string): Uint8Array<ArrayBuffer>} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromHex = Uint8Array.fromHex ? Uint8Array.fromHex : (string => {
