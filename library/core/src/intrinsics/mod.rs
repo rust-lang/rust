@@ -2791,6 +2791,26 @@ pub const fn size_of<T>() -> usize;
 #[rustc_intrinsic]
 pub const fn align_of<T>() -> usize;
 
+/// The offset of a field inside a type.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic can only be evaluated at compile-time, and should only appear in
+/// constants or inline const blocks.
+///
+/// The stabilized version of this intrinsic is [`core::mem::offset_of`].
+/// This intrinsic is also a lang item so `offset_of!` can desugar to calls to it.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_intrinsic]
+#[lang = "offset_of"]
+pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
+
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
 ///

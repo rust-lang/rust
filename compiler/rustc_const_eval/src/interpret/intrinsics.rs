@@ -6,7 +6,7 @@ mod simd;
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::{FieldIdx, HasDataLayout, Size};
+use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
@@ -202,6 +202,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 let val = layout.align.bytes();
                 self.write_scalar(Scalar::from_target_usize(val, self), dest)?;
+            }
+            sym::offset_of => {
+                let tp_ty = instance.args.type_at(0);
+
+                let variant = self.read_scalar(&args[0])?.to_u32()?;
+                let field = self.read_scalar(&args[1])?.to_u32()? as usize;
+
+                let layout = self.layout_of(tp_ty)?;
+                let cx = ty::layout::LayoutCx::new(*self.tcx, self.typing_env);
+
+                let layout = layout.for_variant(&cx, VariantIdx::from_u32(variant));
+                let offset = layout.fields.offset(field).bytes();
+
+                self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);
