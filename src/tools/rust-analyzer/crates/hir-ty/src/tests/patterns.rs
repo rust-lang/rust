@@ -6,7 +6,7 @@ use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches
 fn infer_pattern() {
     check_infer(
         r#"
-        //- minicore: iterator
+        //- minicore: iterator, add, builtin_impls
         fn test(x: &i32) {
             let y = x;
             let &z = x;

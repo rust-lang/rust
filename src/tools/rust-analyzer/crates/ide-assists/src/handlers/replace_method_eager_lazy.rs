@@ -45,7 +45,6 @@ pub(crate) fn replace_with_lazy_method(acc: &mut Assists, ctx: &AssistContext<'_
         &scope,
         &scope.visible_traits().0,
         None,
-        None,
         |func| {
             let valid = func.name(ctx.sema.db).as_str() == &*method_name_lazy
                 && func.num_params(ctx.sema.db) == n_params
@@ -126,7 +125,6 @@ pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'
         ctx.sema.db,
         &scope,
         &scope.visible_traits().0,
-        None,
         None,
         |func| {
             let valid = func.name(ctx.sema.db).as_str() == method_name_eager

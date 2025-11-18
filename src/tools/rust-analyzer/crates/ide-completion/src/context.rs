@@ -615,21 +615,14 @@ impl CompletionContext<'_> {
         mut cb: impl FnMut(hir::AssocItem),
     ) {
         let mut seen = FxHashSet::default();
-        ty.iterate_path_candidates(
-            self.db,
-            &self.scope,
-            &self.traits_in_scope(),
-            Some(self.module),
-            None,
-            |item| {
-                // We might iterate candidates of a trait multiple times here, so deduplicate
-                // them.
-                if seen.insert(item) {
-                    cb(item)
-                }
-                None::<()>
-            },
-        );
+        ty.iterate_path_candidates(self.db, &self.scope, &self.traits_in_scope(), None, |item| {
+            // We might iterate candidates of a trait multiple times here, so deduplicate
+            // them.
+            if seen.insert(item) {
+                cb(item)
+            }
+            None::<()>
+        });
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and

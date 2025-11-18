@@ -180,7 +180,7 @@ impl<'a> IntoIterator for &'a Grid {
     "#,
         expect![[r#"
             150..154 'self': &'a Grid
-            174..181 '{     }': <&'a Grid as IntoIterator>::IntoIter
+            174..181 '{     }': ()
         "#]],
     );
 }
@@ -414,7 +414,7 @@ fn foo() {
             244..246 '_x': {unknown}
             249..257 'to_bytes': fn to_bytes() -> [u8; _]
             249..259 'to_bytes()': [u8; _]
-            249..268 'to_byt..._vec()': Vec<<[u8; _] as Foo>::Item>
+            249..268 'to_byt..._vec()': {unknown}
         "#]],
     );
 }

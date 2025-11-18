@@ -3198,6 +3198,7 @@ fn main() {
 fn ambiguous_float_literal() {
     check(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 
 impl i32 {
@@ -3232,6 +3233,7 @@ fn foo() {
 fn ambiguous_float_literal_in_ambiguous_method_call() {
     check(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 
 impl i32 {

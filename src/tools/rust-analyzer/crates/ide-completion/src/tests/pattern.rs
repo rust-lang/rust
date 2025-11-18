@@ -653,6 +653,7 @@ fn f(u: U) {
 
     check(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 #[lang = "u32"]
 impl u32 {

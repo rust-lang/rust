@@ -240,12 +240,12 @@ fn main() {
             replace_arith_with_wrapping,
             r#"
 fn main() {
-    let x = 1*x $0+ 2;
+    let x = 1*3 $0+ 2;
 }
 "#,
             r#"
 fn main() {
-    let x = (1*x).wrapping_add(2);
+    let x = (1*3).wrapping_add(2);
 }
 "#,
         )

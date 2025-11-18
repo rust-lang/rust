@@ -4250,7 +4250,7 @@ fn $0fun_name() -> Result<i32, i64> {
         check_assist(
             extract_function,
             r#"
-//- minicore: option
+//- minicore: option, add, builtin_impls
 fn bar() -> Option<i32> { None }
 fn foo() -> Option<()> {
     let n = bar()?;
@@ -4314,7 +4314,7 @@ fn $0fun_name() -> Option<()> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;
@@ -4345,7 +4345,7 @@ fn $0fun_name() -> Result<i32, i64> {
         check_assist(
             extract_function,
             r#"
-//- minicore: option
+//- minicore: option, add, builtin_impls
 fn foo() -> Option<()> {
     let n = 1;
     $0let k = foo()?;
@@ -4382,7 +4382,7 @@ fn $0fun_name() -> Option<i32> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;
@@ -4441,7 +4441,7 @@ fn foo() -> Option<()> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;

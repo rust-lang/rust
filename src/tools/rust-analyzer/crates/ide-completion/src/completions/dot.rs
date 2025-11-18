@@ -270,7 +270,6 @@ fn complete_methods(
         ctx.db,
         &ctx.scope,
         traits_in_scope,
-        Some(ctx.module),
         None,
         Callback { ctx, f, seen_methods: FxHashSet::default() },
     );
@@ -597,7 +596,6 @@ fn foo(a: A) {
 }
 "#,
             expect![[r#"
-                me local_method()      fn(&self)
                 me pub_module_method() fn(&self)
             "#]],
         );
@@ -1526,6 +1524,8 @@ async fn bar() {
         check_no_kw(
             r#"
 //- minicore: receiver
+#![feature(arbitrary_self_types)]
+
 use core::ops::Receiver;
 
 struct Foo;

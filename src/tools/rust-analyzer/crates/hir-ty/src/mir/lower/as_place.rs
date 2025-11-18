@@ -193,7 +193,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                     return self.lower_overloaded_deref(
                         current,
                         p,
-                        self.expr_ty_after_adjustments(*expr),
+                        self.expr_ty_without_adjust(*expr),
                         self.expr_ty_without_adjust(expr_id),
                         expr_id.into(),
                         'b: {

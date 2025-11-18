@@ -273,7 +273,7 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     fn transitive_rev_deps(&self, of: Crate) -> FxHashSet<Crate>;
 }
 
-pub fn transitive_deps(db: &dyn SourceDatabase, crate_id: Crate) -> FxHashSet<Crate> {
+fn transitive_deps(db: &dyn SourceDatabase, crate_id: Crate) -> FxHashSet<Crate> {
     // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
     // and removing that is a bit difficult.
     let mut worklist = vec![crate_id];
