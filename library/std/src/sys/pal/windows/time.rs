@@ -71,12 +71,8 @@ impl SystemTime {
         },
     };
 
-    pub const MIN: SystemTime = SystemTime {
-        t: c::FILETIME {
-            dwLowDateTime: (i64::MIN & 0xFFFFFFFF) as u32,
-            dwHighDateTime: (i64::MIN >> 32) as u32,
-        },
-    };
+    pub const MIN: SystemTime =
+        SystemTime { t: c::FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 } };
 
     pub fn now() -> SystemTime {
         unsafe {
