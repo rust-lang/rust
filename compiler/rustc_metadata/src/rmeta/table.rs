@@ -25,6 +25,24 @@ impl IsDefault for bool {
     }
 }
 
+impl IsDefault for ty::Asyncness {
+    fn is_default(&self) -> bool {
+        match self {
+            ty::Asyncness::Yes => false,
+            ty::Asyncness::No => true,
+        }
+    }
+}
+
+impl IsDefault for hir::Constness {
+    fn is_default(&self) -> bool {
+        match self {
+            rustc_hir::Constness::Const => false,
+            rustc_hir::Constness::NotConst => true,
+        }
+    }
+}
+
 impl IsDefault for u32 {
     fn is_default(&self) -> bool {
         *self == 0
@@ -290,6 +308,50 @@ impl FixedSizeEncoding for bool {
     fn write_to_bytes(self, b: &mut [u8; 1]) {
         debug_assert!(!self.is_default());
         b[0] = self as u8
+    }
+}
+
+impl FixedSizeEncoding for ty::Asyncness {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => ty::Asyncness::No,
+            1 => ty::Asyncness::Yes,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            ty::Asyncness::No => 0,
+            ty::Asyncness::Yes => 1,
+        }
+    }
+}
+
+impl FixedSizeEncoding for hir::Constness {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => hir::Constness::NotConst,
+            1 => hir::Constness::Const,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            hir::Constness::NotConst => 0,
+            hir::Constness::Const => 1,
+        }
     }
 }
 
