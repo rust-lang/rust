@@ -577,10 +577,10 @@ fn test_nonzero_bit_width() {
         ($($T:ty),+) => {
             $(
                 {
-                    assert_eq!(NonZero::<$T>::new(0b010_1100).unwrap().bit_width(), 6);
-                    assert_eq!(NonZero::<$T>::new(0b111_1001).unwrap().bit_width(), 7);
-                    assert_eq!(NonZero::<$T>::MIN.bit_width(), 1);
-                    assert_eq!(NonZero::<$T>::MAX.bit_width(), <$T>::BITS);
+                    assert_eq!(NonZero::<$T>::new(0b010_1100).unwrap().bit_width(), NonZero::new(6).unwrap());
+                    assert_eq!(NonZero::<$T>::new(0b111_1001).unwrap().bit_width(), NonZero::new(7).unwrap());
+                    assert_eq!(NonZero::<$T>::MIN.bit_width(), NonZero::new(1).unwrap());
+                    assert_eq!(NonZero::<$T>::MAX.bit_width(), NonZero::new(<$T>::BITS).unwrap());
                 }
             )+
         };
