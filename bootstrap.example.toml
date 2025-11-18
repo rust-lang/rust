@@ -831,6 +831,11 @@
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #rust.new-symbol-mangling = true|false (see comment)
 
+# Size limit in bytes for move/copy annotations (-Zannotate-moves). Only types
+# at or above this size will be annotated. If not specified, uses the default
+# limit (65 bytes).
+#rust.annotate-moves-size-limit = 65
+
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
 # "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib, or "off" to disable

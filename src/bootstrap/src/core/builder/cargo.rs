@@ -673,6 +673,16 @@ impl Builder<'_> {
             rustflags.arg("-Csymbol-mangling-version=legacy");
         }
 
+        // Always enable move/copy annotations for profiler visibility (non-stage0 only).
+        // Note that -Zannotate-moves is only effective with debugging info enabled.
+        if build_compiler_stage >= 1 {
+            if let Some(limit) = self.config.rust_annotate_moves_size_limit {
+                rustflags.arg(&format!("-Zannotate-moves={limit}"));
+            } else {
+                rustflags.arg("-Zannotate-moves");
+            }
+        }
+
         // FIXME: the following components don't build with `-Zrandomize-layout` yet:
         // - rust-analyzer, due to the rowan crate
         // so we exclude an entire category of steps here due to lack of fine-grained control over
