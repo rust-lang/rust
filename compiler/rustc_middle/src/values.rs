@@ -51,11 +51,15 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     ) -> Self {
         let err = Ty::new_error(tcx, guar);
 
-        let frame = if sync::is_dyn_thread_safe() {
+        let frame = cycle_error.cycle.first().map(|info| &info.query).or_else(|| {
+            // FIXME: patchwork for #142064
+            if !sync::is_dyn_thread_safe() {
+                tcx.dcx().abort_if_errors();
+                unreachable!()
+            }
             cycle_error.usage.as_ref().map(|(_, query)| query)
-        } else {
-            cycle_error.cycle.first().map(|info| &info.query)
-        };
+        });
+
         let arity = if let Some(frame) = frame
             && frame.dep_kind == dep_kinds::fn_sig
             && let Some(def_id) = frame.def_id
