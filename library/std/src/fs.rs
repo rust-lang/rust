@@ -3358,8 +3358,8 @@ impl DirBuilder {
         uncreated_dirs.extend(ancestors.take(uncreated_dir_ctr));
 
         for uncreated_dir in uncreated_dirs.iter().rev() {
-            if e.kind() != io::ErrorKind::AlreadyExists || !uncreated_dir.is_dir() {
-                if !uncreated_dir.is_dir() {
+            if let Err(e) = self.inner.mkdir(uncreated_dir) {
+                if e.kind() != io::ErrorKind::AlreadyExists || !uncreated_dir.is_dir() {
                     return Err(e);
                 }
             }
