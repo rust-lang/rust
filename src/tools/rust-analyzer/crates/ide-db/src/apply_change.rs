@@ -3,10 +3,12 @@
 use base_db::SourceRootId;
 use profile::Bytes;
 use rustc_hash::FxHashSet;
-use salsa::{Database as _, Durability};
-use triomphe::Arc;
+use salsa::{Database as _, Durability, Setter as _};
 
-use crate::{ChangeWithProcMacros, RootDatabase, symbol_index::SymbolsDatabase};
+use crate::{
+    ChangeWithProcMacros, RootDatabase,
+    symbol_index::{LibraryRoots, LocalRoots},
+};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
@@ -29,8 +31,8 @@ impl RootDatabase {
                     local_roots.insert(root_id);
                 }
             }
-            self.set_local_roots_with_durability(Arc::new(local_roots), Durability::MEDIUM);
-            self.set_library_roots_with_durability(Arc::new(library_roots), Durability::MEDIUM);
+            LocalRoots::get(self).set_roots(self).to(local_roots);
+            LibraryRoots::get(self).set_roots(self).to(library_roots);
         }
         change.apply(self);
     }

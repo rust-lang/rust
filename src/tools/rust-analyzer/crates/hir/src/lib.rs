@@ -35,6 +35,9 @@ pub mod term_search;
 
 mod display;
 
+#[doc(hidden)]
+pub use hir_def::ModuleId;
+
 use std::{
     fmt,
     mem::discriminant,
@@ -48,8 +51,8 @@ use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
     CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, SyntheticSyntax,
-    TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    LocalFieldId, Lookup, MacroExpander, MacroId, StaticId, StructId, SyntheticSyntax, TupleId,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
     expr_store::{ExpressionStoreDiagnostics, ExpressionStoreSourceMap},
     hir::{
         BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat,

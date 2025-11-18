@@ -4289,11 +4289,81 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 /// threads. To achieve this, a fence prevents the compiler and CPU from reordering certain types of
 /// memory operations around it.
 ///
-/// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
-/// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
-/// exist operations X and Y, both operating on some atomic object 'm' such
-/// that A is sequenced before X, Y is sequenced before B and Y observes
-/// the change to m. This provides a happens-before dependence between A and B.
+/// There are 3 different ways to use an atomic fence:
+///
+/// - atomic - fence synchronization: an atomic operation with (at least) [`Release`] ordering
+///   semantics synchronizes with a fence with (at least) [`Acquire`] ordering semantics.
+/// - fence - atomic synchronization: a fence with (at least) [`Release`] ordering semantics
+///   synchronizes with an atomic operation with (at least) [`Acquire`] ordering semantics.
+/// - fence - fence synchronization: a fence with (at least) [`Release`] ordering semantics
+///   synchronizes with a fence with (at least) [`Acquire`] ordering semantics.
+///
+/// These 3 ways complement the regular, fence-less, atomic - atomic synchronization.
+///
+/// ## Atomic - Fence
+///
+/// An atomic operation on one thread will synchronize with a fence on another thread when:
+///
+/// -   on thread 1:
+///     -   an atomic operation 'X' with (at least) [`Release`] ordering semantics on some atomic
+///         object 'm',
+///
+/// -   is paired on thread 2 with:
+///     -   an atomic read 'Y' with any order on 'm',
+///     -   followed by a fence 'B' with (at least) [`Acquire`] ordering semantics.
+///
+/// This provides a happens-before dependence between X and B.
+///
+/// ```text
+///     Thread 1                                          Thread 2
+///
+/// m.store(3, Release); X ---------
+///                                |
+///                                |
+///                                -------------> Y  if m.load(Relaxed) == 3 {
+///                                               B      fence(Acquire);
+///                                                      ...
+///                                                  }
+/// ```
+///
+/// ## Fence - Atomic
+///
+/// A fence on one thread will synchronize with an atomic operation on another thread when:
+///
+/// -   on thread:
+///     -   a fence 'A' with (at least) [`Release`] ordering semantics,
+///     -   followed by an atomic write 'X' with any ordering on some atomic object 'm',
+///
+/// -   is paired on thread 2 with:
+///     -   an atomic operation 'Y' with (at least) [`Acquire`] ordering semantics.
+///
+/// This provides a happens-before dependence between A and Y.
+///
+/// ```text
+///     Thread 1                                          Thread 2
+///
+/// fence(Release);      A
+/// m.store(3, Relaxed); X ---------
+///                                |
+///                                |
+///                                -------------> Y  if m.load(Acquire) == 3 {
+///                                                      ...
+///                                                  }
+/// ```
+///
+/// ## Fence - Fence
+///
+/// A fence on one thread will synchronize with a fence on another thread when:
+///
+/// -   on thread 1:
+///     -   a fence 'A' which has (at least) [`Release`] ordering semantics,
+///     -   followed by an atomic write 'X' with any ordering on some atomic object 'm',
+///
+/// -   is paired on thread 2 with:
+///     -   an atomic read 'Y' with any ordering on 'm',
+///     -   followed by a fence 'B' with (at least) [`Acquire`] ordering semantics.
+///
+/// This provides a happens-before dependence between A and B.
 ///
 /// ```text
 ///     Thread 1                                          Thread 2
@@ -4308,18 +4378,20 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///                                                  }
 /// ```
 ///
-/// Note that in the example above, it is crucial that the accesses to `m` are atomic. Fences cannot
-/// be used to establish synchronization among non-atomic accesses in different threads. However,
-/// thanks to the happens-before relationship between A and B, any non-atomic accesses that
-/// happen-before A are now also properly synchronized with any non-atomic accesses that
-/// happen-after B.
+/// ## Mandatory Atomic
 ///
-/// Atomic operations with [`Release`] or [`Acquire`] semantics can also synchronize
-/// with a fence.
+/// Note that in the examples above, it is crucial that the access to `m` are atomic. Fences cannot
+/// be used to establish synchronization between non-atomic accesses in different threads. However,
+/// thanks to the happens-before relationship, any non-atomic access that happen-before the atomic
+/// operation or fence with (at least) [`Release`] ordering semantics are now also properly
+/// synchronized with any non-atomic accesses that happen-after the atomic operation or fence with
+/// (at least) [`Acquire`] ordering semantics.
 ///
-/// A fence which has [`SeqCst`] ordering, in addition to having both [`Acquire`]
-/// and [`Release`] semantics, participates in the global program order of the
-/// other [`SeqCst`] operations and/or fences.
+/// ## Memory Ordering
+///
+/// A fence which has [`SeqCst`] ordering, in addition to having both [`Acquire`] and [`Release`]
+/// semantics, participates in the global program order of the other [`SeqCst`] operations and/or
+/// fences.
 ///
 /// Accepts [`Acquire`], [`Release`], [`AcqRel`] and [`SeqCst`] orderings.
 ///

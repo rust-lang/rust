@@ -18,7 +18,7 @@ use hir_ty::{
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
+use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
 use crate::{HasCrate, Module, ModuleDef, Semantics};
 
@@ -29,7 +29,7 @@ pub struct FileSymbol {
     pub name: Symbol,
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
-    pub container_name: Option<SmolStr>,
+    pub container_name: Option<Symbol>,
     /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
@@ -65,23 +65,29 @@ pub struct SymbolCollector<'a> {
     db: &'a dyn HirDatabase,
     symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
-    current_container_name: Option<SmolStr>,
+    current_container_name: Option<Symbol>,
+    collect_pub_only: bool,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
 /// all symbols that should be indexed for the given module.
 impl<'a> SymbolCollector<'a> {
-    pub fn new(db: &'a dyn HirDatabase) -> Self {
+    pub fn new(db: &'a dyn HirDatabase, collect_pub_only: bool) -> Self {
         SymbolCollector {
             db,
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
+            collect_pub_only,
         }
     }
 
-    pub fn new_module(db: &dyn HirDatabase, module: Module) -> Box<[FileSymbol]> {
-        let mut symbol_collector = SymbolCollector::new(db);
+    pub fn new_module(
+        db: &dyn HirDatabase,
+        module: Module,
+        collect_pub_only: bool,
+    ) -> Box<[FileSymbol]> {
+        let mut symbol_collector = SymbolCollector::new(db, collect_pub_only);
         symbol_collector.collect(module);
         symbol_collector.finish()
     }
@@ -108,12 +114,16 @@ impl<'a> SymbolCollector<'a> {
         tracing::info!(?work, "SymbolCollector::do_work");
         self.db.unwind_if_revision_cancelled();
 
-        let parent_name = work.parent.map(|name| name.as_str().to_smolstr());
+        let parent_name = work.parent.map(|name| Symbol::intern(name.as_str()));
         self.with_container_name(parent_name, |s| s.collect_from_module(work.module_id));
     }
 
     fn collect_from_module(&mut self, module_id: ModuleId) {
-        let push_decl = |this: &mut Self, def, name| {
+        let collect_pub_only = self.collect_pub_only;
+        let push_decl = |this: &mut Self, def: ModuleDefId, name, vis| {
+            if collect_pub_only && vis != Visibility::Public {
+                return;
+            }
             match def {
                 ModuleDefId::ModuleId(id) => this.push_module(id, name),
                 ModuleDefId::FunctionId(id) => {
@@ -125,7 +135,7 @@ impl<'a> SymbolCollector<'a> {
                 }
                 ModuleDefId::AdtId(AdtId::EnumId(id)) => {
                     this.push_decl(id, name, false, None);
-                    let enum_name = this.db.enum_signature(id).name.as_str().to_smolstr();
+                    let enum_name = Symbol::intern(this.db.enum_signature(id).name.as_str());
                     this.with_container_name(Some(enum_name), |this| {
                         let variants = id.enum_variants(this.db);
                         for (variant_id, variant_name, _) in &variants.variants {
@@ -175,6 +185,9 @@ impl<'a> SymbolCollector<'a> {
         };
 
         let mut push_import = |this: &mut Self, i: ImportId, name: &Name, def: ModuleDefId, vis| {
+            if collect_pub_only && vis != Visibility::Public {
+                return;
+            }
             let source = import_child_source_cache
                 .entry(i.use_)
                 .or_insert_with(|| i.use_.child_source(this.db));
@@ -209,6 +222,9 @@ impl<'a> SymbolCollector<'a> {
 
         let push_extern_crate =
             |this: &mut Self, i: ExternCrateId, name: &Name, def: ModuleDefId, vis| {
+                if collect_pub_only && vis != Visibility::Public {
+                    return;
+                }
                 let loc = i.lookup(this.db);
                 let source = loc.source(this.db);
                 let rename = source.value.rename().and_then(|rename| rename.name());
@@ -258,7 +274,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def, name)
+            push_decl(self, def, name, vis)
         }
 
         for (name, Item { def, vis, import }) in scope.macros() {
@@ -271,7 +287,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def.into(), name)
+            push_decl(self, ModuleDefId::MacroId(def), name, vis)
         }
 
         for (name, Item { def, vis, import }) in scope.values() {
@@ -283,7 +299,7 @@ impl<'a> SymbolCollector<'a> {
                 continue;
             }
             // self is a declaration
-            push_decl(self, def, name)
+            push_decl(self, def, name, vis)
         }
 
         for const_id in scope.unnamed_consts() {
@@ -304,6 +320,9 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>, name: Option<Name>) {
+        if self.collect_pub_only {
+            return;
+        }
         let body_id = body_id.into();
         let body = self.db.body(body_id);
 
@@ -328,8 +347,13 @@ impl<'a> SymbolCollector<'a> {
                 )
                 .to_smolstr(),
         );
-        self.with_container_name(impl_name, |s| {
+        self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
+                if s.collect_pub_only && s.db.assoc_visibility(assoc_item_id) != Visibility::Public
+                {
+                    continue;
+                }
+
                 s.push_assoc_item(assoc_item_id, name, None)
             }
         })
@@ -337,14 +361,14 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_trait(&mut self, trait_id: TraitId, trait_do_not_complete: Complete) {
         let trait_data = self.db.trait_signature(trait_id);
-        self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
+        self.with_container_name(Some(Symbol::intern(trait_data.name.as_str())), |s| {
             for &(ref name, assoc_item_id) in &trait_id.trait_items(self.db).items {
                 s.push_assoc_item(assoc_item_id, name, Some(trait_do_not_complete));
             }
         });
     }
 
-    fn with_container_name(&mut self, container_name: Option<SmolStr>, f: impl FnOnce(&mut Self)) {
+    fn with_container_name(&mut self, container_name: Option<Symbol>, f: impl FnOnce(&mut Self)) {
         if let Some(container_name) = container_name {
             let prev = self.current_container_name.replace(container_name);
             f(self);

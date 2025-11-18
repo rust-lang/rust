@@ -231,7 +231,7 @@ fn cmp_runnables(
                 .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
         })
         .then_with(|| kind.disc().cmp(&kind_b.disc()))
-        .then_with(|| nav.name.cmp(&nav_b.name))
+        .then_with(|| nav.name.as_str().cmp(nav_b.name.as_str()))
 }
 
 fn find_related_tests(
@@ -817,7 +817,7 @@ mod not_a_root {
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..331, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..331, name: \"_\", kind: Module })",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 1..13, focus_range: 4..8, name: \"main\", kind: Function })",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 15..76, focus_range: 42..71, name: \"__cortex_m_rt_main_trampoline\", kind: Function })",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 78..154, focus_range: 113..149, name: \"__cortex_m_rt_main_trampoline_unsafe\", kind: Function })",
@@ -1138,7 +1138,7 @@ fn test_foo1() {}
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..51, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..51, name: \"_\", kind: Module })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 1..50, focus_range: 36..45, name: \"test_foo1\", kind: Function }, Atom(KeyValue { key: \"feature\", value: \"foo\" }))",
                 ]
             "#]],
@@ -1157,7 +1157,7 @@ fn test_foo1() {}
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..73, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..73, name: \"_\", kind: Module })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 1..72, focus_range: 58..67, name: \"test_foo1\", kind: Function }, All([Atom(KeyValue { key: \"feature\", value: \"foo\" }), Atom(KeyValue { key: \"feature\", value: \"bar\" })]))",
                 ]
             "#]],
@@ -1236,7 +1236,7 @@ generate_main!();
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..345, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..345, name: \"_\", kind: Module })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 282..312, focus_range: 286..291, name: \"tests\", kind: Module, description: \"mod tests\" })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..307, name: \"foo_test\", kind: Function })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..323, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
@@ -1679,10 +1679,10 @@ mod r#mod {
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 1..461, focus_range: 5..10, name: \"r#mod\", kind: Module, description: \"mod r#mod\" })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 1..461, focus_range: 5..10, name: \"mod\", kind: Module, description: \"mod r#mod\" })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 17..41, focus_range: 32..36, name: \"r#fn\", kind: Function })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 47..84, name: \"r#for\", container_name: \"r#mod\" })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 90..146, name: \"r#struct\", container_name: \"r#mod\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 47..84, name: \"r#for\", container_name: \"mod\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 90..146, name: \"r#struct\", container_name: \"mod\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 152..266, focus_range: 189..205, name: \"impl\", kind: Impl })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 216..260, name: \"r#fn\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 323..367, name: \"r#fn\" })",
