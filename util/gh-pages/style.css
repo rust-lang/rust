@@ -113,6 +113,7 @@ label {
     background: var(--bg);
     border: 1px solid var(--theme-popup-border);
     box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    display: block;
 }
 
 div.panel-body {
@@ -617,6 +618,7 @@ L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.649
     color: var(--fg);
     background: var(--theme-hover);
     border: 1px solid var(--theme-popup-border);
+    padding: 8px;
 }
 .page-header {
     border: 0;
