@@ -1433,20 +1433,6 @@ impl Literal {
     /// `Display` implementations to borrow references to symbol values, and
     /// both be optimized to reduce overhead.
     fn with_stringify_parts<R>(&self, f: impl FnOnce(&[&str]) -> R) -> R {
-        /// Returns a string containing exactly `num` '#' characters.
-        /// Uses a 256-character source string literal which is always safe to
-        /// index with a `u8` index.
-        fn get_hashes_str(num: u8) -> &'static str {
-            const HASHES: &str = "\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ";
-            const _: () = assert!(HASHES.len() == 256);
-            &HASHES[..num as usize]
-        }
-
         self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
             bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
             bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
@@ -1571,6 +1557,20 @@ impl Literal {
             _ => Err(ConversionErrorKind::InvalidLiteralKind),
         })
     }
+}
+
+/// Returns a string containing exactly `num` '#' characters.
+/// Uses a 256-character source string literal which is always safe to
+/// index with a `u8` index.
+fn get_hashes_str(num: u8) -> &'static str {
+    const HASHES: &str = "\
+    ################################################################\
+    ################################################################\
+    ################################################################\
+    ################################################################\
+    ";
+    const _: () = assert!(HASHES.len() == 256);
+    &HASHES[..num as usize]
 }
 
 /// Parse a single literal from its stringified representation.

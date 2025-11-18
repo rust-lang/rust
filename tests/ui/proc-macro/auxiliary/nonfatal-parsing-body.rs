@@ -15,26 +15,34 @@ enum Mode {
     OtherWithPanic,
 }
 
+fn print_unspanned<T>(s: &str) where T: FromStr<Err = LexError> + Debug {
+    let t = T::from_str(s);
+    let mut s = format!("{t:?}");
+    while let Some((l, r)) = s.split_once("span: #") {
+        let (_, r) = r.split_once(")").unwrap();
+        s = format!("{l}span: Span{r}");
+    } 
+    println!("{s}");
+}
+
 fn parse<T>(s: &str, mode: Mode)
 where
     T: FromStr<Err = LexError> + Debug,
 {
     match mode {
         NormalOk => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
-            //assert!(t.is_ok());
+            print_unspanned::<T>(s);
+            //assert!(T::from_str(s).is_ok());
         }
         NormalErr => {
-            let t = T::from_str(s);
-            println!("{:?}", t);
-            //assert!(t.is_err());
+            print_unspanned::<T>(s);
+            //assert!(T::from_str(s).is_err());
         }
         OtherError => {
-            println!("{:?}", T::from_str(s));
+            print_unspanned::<T>(s);
         }
         OtherWithPanic => {
-            if catch_unwind(|| println!("{:?}", T::from_str(s))).is_ok() {
+            if catch_unwind(|| print_unspanned::<T>(s)).is_ok() {
                 eprintln!("{s} did not panic");
             }
         }
@@ -64,6 +72,7 @@ fn lit(s: &str, mode: Mode) {
 }
 
 pub fn run() {
+    assert_eq!("\'", "'");
     // returns Ok(valid instance)
     lit("123", NormalOk);
     lit("\"ab\"", NormalOk);
@@ -99,6 +108,7 @@ pub fn run() {
         NormalOk,
     );
     stream("/*a*/ //", NormalOk);
+    lit("\"\"", NormalOk);
 
     println!("### ERRORS");
 
@@ -125,6 +135,8 @@ pub fn run() {
         parse("1 ) 2", OtherWithPanic);
         parse("( x  [ ) ]", OtherWithPanic);
         parse("r#", OtherWithPanic);
+
+        parse("\"a\"\"", OtherWithPanic);
 
         // emits diagnostic(s), then returns Ok(Literal { kind: ErrWithGuar, .. })
         parse("0b2", OtherError);

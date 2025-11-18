@@ -7,7 +7,7 @@ use crate::bridge::fxhash::FxHashMap;
 use crate::bridge::{
     self, DelimSpan, Diagnostic, ExpnGlobals, Group, LitKind, Punct, TokenTree, server,
 };
-use crate::{Delimiter, LEGAL_PUNCT_CHARS};
+use crate::{Delimiter, LEGAL_PUNCT_CHARS, get_hashes_str};
 
 type Result<T> = std::result::Result<T, ()>;
 type Literal = bridge::Literal<Span, Symbol>;
@@ -101,19 +101,6 @@ fn parse_maybe_raw_str(
     raw_variant: fn(u8) -> LitKind,
     regular_variant: LitKind,
 ) -> Result<Literal> {
-    /// Returns a string containing exactly `num` '#' characters.
-    /// Uses a 256-character source string literal which is always safe to
-    /// index with a `u8` index.
-    fn get_hashes_str(num: u8) -> &'static str {
-        const HASHES: &str = "\
-        ################################################################\
-        ################################################################\
-        ################################################################\
-        ################################################################\
-        ";
-        const _: () = assert!(HASHES.len() == 256);
-        &HASHES[..num as usize]
-    }
     let mut hash_count = None;
 
     if s.starts_with('r') {
@@ -320,21 +307,6 @@ impl server::TokenStream for NoRustc {
     }
 
     fn to_string(&mut self, tokens: &Self::TokenStream) -> String {
-        /*
-        /// Returns a string containing exactly `num` '#' characters.
-        /// Uses a 256-character source string literal which is always safe to
-        /// index with a `u8` index.
-        fn get_hashes_str(num: u8) -> &'static str {
-            const HASHES: &str = "\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ################################################################\
-            ";
-            const _: () = assert!(HASHES.len() == 256);
-            &HASHES[..num as usize]
-        }*/
-
         let mut s = String::new();
         let mut last = String::new();
         let mut second_last = String::new();
