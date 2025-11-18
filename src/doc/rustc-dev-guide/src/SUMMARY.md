@@ -228,11 +228,22 @@
     - [Debugging LLVM](./backend/debugging.md)
     - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
     - [Implicit caller location](./backend/implicit-caller-location.md)
+- [Debug Info](./debuginfo/intro.md)
+    - [Rust Codegen](./debuginfo/rust-codegen.md)
+    - [LLVM Codegen](./debuginfo/llvm-codegen.md)
+    - [Debugger Interanls](./debuginfo/debugger-internals.md)
+        - [LLDB Internals](./debuginfo/lldb-internals.md)
+        - [GDB Internals](./debuginfo/gdb-internals.md)
+    - [Debugger Visualizers](./debuginfo/debugger-visualizers.md)
+        - [LLDB - Python Providers](./debuginfo/lldb-visualizers.md)
+        - [GDB - Python Providers](./debuginfo/gdb-visualizers.md)
+        - [CDB - Natvis](./debuginfo/natvis-visualizers.md)
+    - [Testing](./debuginfo/testing.md)
+    - [(Lecture Notes) Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 - [Libraries and metadata](./backend/libs-and-metadata.md)
 - [Profile-guided optimization](./profile-guided-optimization.md)
 - [LLVM source-based code coverage](./llvm-coverage-instrumentation.md)
 - [Sanitizers support](./sanitizers.md)
-- [Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 
 ---
 
