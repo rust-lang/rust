@@ -40,31 +40,31 @@
 // lldb-command:run
 
 // lldb-command:v some
-// lldb-check:[...] Some(&0x[...])
+// lldb-check:[...] Some(0x[...]) { 0 = 0x[...] }
 
 // lldb-command:v none
 // lldb-check:[...] None
 
 // lldb-command:v full
-// lldb-check:[...] Full(454545, &0x[...], 9988)
+// lldb-check:[...] Full(454545, 0x[...], 9988) { 0 = 454545 1 = 0x[...] 2 = 9988 }
 
 // lldb-command:v empty
 // lldb-check:[...] Empty
 
 // lldb-command:v droid
-// lldb-check:[...] Droid { id: 675675, range: 10000001, internals: &0x[...] }
+// lldb-check:[...] Droid{id:675675, range:10000001, internals:0x[...]} { id = 675675 range = 10000001 internals = 0x[...] }
 
 // lldb-command:v void_droid
 // lldb-check:[...] Void
 
 // lldb-command:v some_str
-// lldb-check:[...] Some("abc")
+// lldb-check:[...] Some("abc") [...]
 
 // lldb-command:v none_str
 // lldb-check:[...] None
 
 // lldb-command:v nested_non_zero_yep
-// lldb-check:[...] Yep(10.5, NestedNonZeroField { a: 10, b: 20, c: &[...] })
+// lldb-check:[...] Yep(10.5, {a:10, b:20, c:[...]}) { 0 = 10.5 1 = { a = 10 b = 20 c = [...] } }
 
 // lldb-command:v nested_non_zero_nope
 // lldb-check:[...] Nope

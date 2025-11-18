@@ -15,7 +15,7 @@
 // lldb-command:run
 
 // lldb-command:v *abc
-// lldb-check:(enum_thinlto::ABC) *abc = { value = { x = 0 y = 8970181431921507452 } $discr$ = 0 }
+// lldb-check:(enum_thinlto::ABC) *abc = TheA{x:0, y:8970181431921507452} { x = 0 y = 8970181431921507452 }
 
 #![allow(unused_variables)]
 
