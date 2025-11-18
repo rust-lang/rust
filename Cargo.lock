@@ -85,6 +85,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a44baf24dd94e781f74dfe67ffee75a09a57971ddf0f615a178b4f6d404b48ff"
 dependencies = [
  "anstyle",
+ "memchr",
  "unicode-width 0.2.2",
 ]
 
