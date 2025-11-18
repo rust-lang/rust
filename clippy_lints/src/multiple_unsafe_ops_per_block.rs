@@ -130,12 +130,12 @@ fn collect_unsafe_exprs<'tcx>(
                 unsafe_ops.push(("access of a mutable static occurs here", expr.span));
             },
 
-            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty_adjusted(e).is_raw_ptr() => {
+            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_raw_ptr() => {
                 unsafe_ops.push(("raw pointer dereference occurs here", expr.span));
             },
 
             ExprKind::Call(path_expr, _) => {
-                let sig = match *cx.typeck_results().expr_ty(path_expr).kind() {
+                let sig = match *cx.typeck_results().expr_ty_adjusted(path_expr).kind() {
                     ty::FnDef(id, _) => cx.tcx.fn_sig(id).skip_binder(),
                     ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
                     _ => return Continue(Descend::Yes),

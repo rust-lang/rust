@@ -105,6 +105,14 @@ fn correct3() {
     }
 }
 
+fn with_adjustment(f: &unsafe fn()) {
+    unsafe {
+        //~^ multiple_unsafe_ops_per_block
+        f();
+        f();
+    }
+}
+
 fn issue10064() {
     unsafe fn read_char_bad(ptr: *const u8) -> char {
         unsafe { char::from_u32_unchecked(*ptr.cast::<u32>()) }
