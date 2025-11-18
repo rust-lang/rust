@@ -203,17 +203,15 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
     let trait_ref = checker.impl_header.trait_ref.instantiate_identity();
+    assert!(tcx.is_lang_item(trait_ref.def_id, LangItem::DispatchFromDyn));
+    let dispatch_from_dyn_trait_did = trait_ref.def_id;
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);
     let trait_name = "DispatchFromDyn";
 
-    let source = trait_ref.self_ty();
-    let target = {
-        assert!(tcx.is_lang_item(trait_ref.def_id, LangItem::DispatchFromDyn));
-
-        trait_ref.args.type_at(1)
-    };
+    let mut source = trait_ref.self_ty();
+    let mut target = trait_ref.args.type_at(1);
 
     // Check `CoercePointee` impl is WF -- if not, then there's no reason to report
     // redundant errors for `DispatchFromDyn`. This is best effort, though.
@@ -242,129 +240,137 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // trait, they *do* satisfy the repr(transparent) rules, and then we assume that everything else
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
-    match (source.kind(), target.kind()) {
-        (&ty::Pat(_, pat_a), &ty::Pat(_, pat_b)) => {
-            if pat_a != pat_b {
-                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
-                    span,
-                    trait_name,
-                    pat_a: pat_a.to_string(),
-                    pat_b: pat_b.to_string(),
-                }));
-            }
-            Ok(())
-        }
-
-        (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
-            if r_a == *r_b && mutbl_a == *mutbl_b =>
-        {
-            Ok(())
-        }
-        (&ty::RawPtr(_, a_mutbl), &ty::RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
-            if def_a.is_struct() && def_b.is_struct() =>
-        {
-            if def_a != def_b {
-                let source_path = tcx.def_path_str(def_a.did());
-                let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
-                    span,
-                    trait_name,
-                    note: true,
-                    source_path,
-                    target_path,
-                }));
+    let mut behind_ref = false;
+    loop {
+        match (source.kind(), target.kind()) {
+            (&ty::Pat(ty_a, pat_a), &ty::Pat(ty_b, pat_b)) => {
+                if pat_a != pat_b {
+                    return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                        span,
+                        trait_name,
+                        pat_a: pat_a.to_string(),
+                        pat_b: pat_b.to_string(),
+                    }));
+                }
+                source = ty_a;
+                target = ty_b;
             }
 
-            if def_a.repr().c() || def_a.repr().packed() {
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
+            (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b))
+                if !behind_ref && r_a == r_b && mutbl_a == mutbl_b =>
+            {
+                source = ty_a;
+                target = ty_b;
+                behind_ref = true;
             }
+            (&ty::RawPtr(ty_a, a_mutbl), &ty::RawPtr(ty_b, b_mutbl))
+                if !behind_ref && a_mutbl == b_mutbl =>
+            {
+                source = ty_a;
+                target = ty_b;
+                behind_ref = true;
+            }
+            (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+                if !behind_ref && def_a.is_struct() && def_b.is_struct() =>
+            {
+                if def_a != def_b {
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
+                    return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
+                        span,
+                        trait_name,
+                        note: true,
+                        source_path,
+                        target_path,
+                    }));
+                }
 
-            let fields = &def_a.non_enum_variant().fields;
+                if def_a.repr().c() || def_a.repr().packed() {
+                    return Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
+                }
 
-            let mut res = Ok(());
-            let coerced_fields = fields
-                .iter_enumerated()
-                .filter_map(|(i, field)| {
-                    // Ignore PhantomData fields
-                    let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
-                    if tcx
-                        .try_normalize_erasing_regions(
-                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
-                            unnormalized_ty,
-                        )
-                        .unwrap_or(unnormalized_ty)
-                        .is_phantom_data()
-                    {
-                        return None;
-                    }
+                let fields = &def_a.non_enum_variant().fields;
 
-                    let ty_a = field.ty(tcx, args_a);
-                    let ty_b = field.ty(tcx, args_b);
-
-                    // FIXME: We could do normalization here, but is it really worth it?
-                    if ty_a == ty_b {
-                        // Allow 1-ZSTs that don't mention type params.
-                        //
-                        // Allowing type params here would allow us to possibly transmute
-                        // between ZSTs, which may be used to create library unsoundness.
-                        if let Ok(layout) =
-                            tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
-                            && layout.is_1zst()
-                            && !ty_a.has_non_region_param()
+                let coerced_fields: Vec<_> = fields
+                    .iter_enumerated()
+                    .filter_map(|(i, field)| {
+                        // Ignore PhantomData fields
+                        let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
+                        if tcx
+                            .try_normalize_erasing_regions(
+                                ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                                unnormalized_ty,
+                            )
+                            .unwrap_or(unnormalized_ty)
+                            .is_phantom_data()
                         {
-                            // ignore 1-ZST fields
                             return None;
                         }
 
-                        res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
-                            span,
-                            name: field.ident(tcx),
-                            ty: ty_a,
-                        }));
+                        let ty_a = field.ty(tcx, args_a);
+                        let ty_b = field.ty(tcx, args_b);
 
-                        None
-                    } else {
-                        Some((i, ty_a, ty_b, tcx.def_span(field.did)))
-                    }
-                })
-                .collect::<Vec<_>>();
-            res?;
+                        // FIXME: We could do normalization here, but is it really worth it?
+                        if ty_a == ty_b {
+                            // Allow 1-ZSTs that don't mention type params.
+                            //
+                            // Allowing type params here would allow us to possibly transmute
+                            // between ZSTs, which may be used to create library unsoundness.
+                            if let Ok(layout) =
+                                tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
+                                && layout.is_1zst()
+                                && !ty_a.has_non_region_param()
+                            {
+                                // ignore 1-ZST fields
+                                return None;
+                            }
 
-            if coerced_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
-                    span,
-                    trait_name,
-                    note: true,
-                }));
-            } else if let &[(_, ty_a, ty_b, field_span)] = &coerced_fields[..] {
-                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-                ocx.register_obligation(Obligation::new(
-                    tcx,
-                    cause.clone(),
-                    param_env,
-                    ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
-                ));
-                let errors = ocx.evaluate_obligations_error_on_ambiguity();
-                if !errors.is_empty() {
-                    if is_from_coerce_pointee_derive(tcx, span) {
-                        return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
-                            span,
-                            trait_name,
-                            ty: trait_ref.self_ty(),
-                            field_span,
-                            field_ty: ty_a,
-                        }));
-                    } else {
-                        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
-                    }
+                            Some(Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
+                                span,
+                                name: field.ident(tcx),
+                                ty: ty_a,
+                            })))
+                        } else {
+                            Some(Ok((i, ty_a, ty_b, tcx.def_span(field.did))))
+                        }
+                    })
+                    .collect::<Result<_, _>>()?;
+
+                if coerced_fields.is_empty() {
+                    return Err(tcx.dcx().emit_err(errors::CoerceNoField {
+                        span,
+                        trait_name,
+                        note: true,
+                    }));
                 }
+                if let &[(_, ty_a, ty_b, field_span)] = &coerced_fields[..] {
+                    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+                    ocx.register_obligation(Obligation::new(
+                        tcx,
+                        cause.clone(),
+                        param_env,
+                        ty::TraitRef::new(tcx, dispatch_from_dyn_trait_did, [ty_a, ty_b]),
+                    ));
+                    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+                    if !errors.is_empty() {
+                        if is_from_coerce_pointee_derive(tcx, span) {
+                            return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
+                                span,
+                                trait_name,
+                                ty: trait_ref.self_ty(),
+                                field_span,
+                                field_ty: ty_a,
+                            }));
+                        } else {
+                            return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                        }
+                    }
 
-                // Finally, resolve all regions.
-                ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
+                    // Finally, resolve all regions.
+                    ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
 
-                Ok(())
-            } else {
+                    return Ok(());
+                }
                 return Err(tcx.dcx().emit_err(errors::CoerceMulti {
                     span,
                     trait_name,
@@ -372,8 +378,35 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     fields: coerced_fields.iter().map(|(_, _, _, s)| *s).collect::<Vec<_>>().into(),
                 }));
             }
+            (ty::Param(_), ty::Param(_)) => {
+                let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+                ocx.register_obligation(Obligation::new(
+                    tcx,
+                    cause.clone(),
+                    param_env,
+                    ty::TraitRef::new(
+                        tcx,
+                        tcx.require_lang_item(LangItem::Unsize, span),
+                        [source, target],
+                    ),
+                ));
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
+                if !errors.is_empty() {
+                    return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                }
+                ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
+                return Ok(());
+            }
+            _ => {
+                if behind_ref {
+                    return Err(tcx.dcx().emit_err(errors::DispatchFromDynMultiRefs { span }));
+                } else {
+                    return Err(tcx
+                        .dcx()
+                        .emit_err(errors::CoerceUnsizedNonStruct { span, trait_name }));
+                }
+            }
         }
-        _ => Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name })),
     }
 }
 

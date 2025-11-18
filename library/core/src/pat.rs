@@ -82,7 +82,7 @@ impl<T: PointeeSized, U: PointeeSized> CoerceUnsized<pattern_type!(*const U is !
 {
 }
 
-impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null) {}
+impl<T: DispatchFromDyn<U> + Unsize<U>, U> DispatchFromDyn<pattern_type!(U is !null)> for pattern_type!(T is !null) {}
 
 impl<T: PointeeSized> Unpin for pattern_type!(*const T is !null) {}
 
