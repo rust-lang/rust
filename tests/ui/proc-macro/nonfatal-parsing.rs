@@ -7,7 +7,7 @@
 //@[in_macro] check-fail
 //@[standalone] run-pass
 //@[standalone] check-run-results
-// FIXME: in_macro should be a run-pass test once invalidly parsed tokens no longer result in diagnostics
+// FIXME: should be a run-pass test once invalidly parsed tokens no longer result in diagnostics
 #![feature(proc_macro_standalone)]
 
 extern crate proc_macro;

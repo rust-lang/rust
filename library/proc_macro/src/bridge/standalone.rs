@@ -1,6 +1,6 @@
 #![warn(warnings)]
 use std::cell::{Cell, RefCell};
-use std::ops::{Bound, Range, RangeBounds};
+use std::ops::{Bound, Range};
 
 use crate::bridge::client::Symbol;
 use crate::bridge::fxhash::FxHashMap;
@@ -127,7 +127,15 @@ fn parse_maybe_raw_str(
 }
 
 fn parse_char(s: &str) -> Result<Literal> {
-    if s.chars().count() == 1 { Ok(make_literal(LitKind::Char, Symbol::new(s))) } else { Err(()) }
+    if let Some(s) = s.strip_circumfix('\'', '\'') {
+        if s.chars().count() == 1 {
+            Ok(make_literal(LitKind::Char, Symbol::new(s)))
+        } else {
+            Err(())
+        }
+    } else {
+        Err(())
+    }
 }
 
 fn parse_plain_str(mut s: &str) -> Result<Symbol> {
@@ -153,14 +161,19 @@ fn parse_numeral(mut s: &str) -> Result<Literal> {
     {
         return parse_integer(s);
     }
+    for suffix in FLOAT_SUFFIXES {
+        if s.ends_with(suffix) {
+            // return parse_float(s);
+        }
+    }
     let (s, suffix) = strip_number_suffix(s, FLOAT_SUFFIXES);
 
     Ok(Literal { kind: LitKind::Float, symbol: Symbol::new(s), suffix, span: Span })
 }
 
-fn parse_integer(mut s: &str) -> Result<Literal> {
-    let is_negative = s.starts_with('-');
-    s = s.trim_prefix('-');
+fn parse_integer(symbol: &str) -> Result<Literal> {
+    let is_negative = symbol.starts_with('-');
+    let s = symbol.trim_prefix('-');
 
     let (s, valid_chars) = if let Some(s) = s.strip_prefix("0b") {
         (s, '0'..='1')
@@ -189,7 +202,7 @@ fn parse_integer(mut s: &str) -> Result<Literal> {
         return Err(());
     }
 
-    Ok(Literal { kind: LitKind::Integer, symbol: Symbol::new(s), suffix, span: Span })
+    Ok(Literal { kind: LitKind::Integer, symbol: Symbol::new(symbol), suffix, span: Span })
 }
 
 fn strip_number_suffix<'a>(s: &'a str, suffixes: &[&str]) -> (&'a str, Option<Symbol>) {
@@ -219,11 +232,8 @@ impl server::FreeFunctions for NoRustc {
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal> {
         let mut chars = s.chars();
-        let Some(first) = chars.next() else {
-            return Err(());
-        };
+        let first = chars.next().ok_or(())?;
         let rest = &s[1..];
-
         match first {
             'b' => {
                 if chars.next() == Some('\'') {

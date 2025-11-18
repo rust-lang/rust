@@ -21,7 +21,7 @@ fn print_unspanned<T>(s: &str) where T: FromStr<Err = LexError> + Debug {
     while let Some((l, r)) = s.split_once("span: #") {
         let (_, r) = r.split_once(")").unwrap();
         s = format!("{l}span: Span{r}");
-    } 
+    }
     println!("{s}");
 }
 
@@ -76,12 +76,11 @@ pub fn run() {
     // returns Ok(valid instance)
     lit("123", NormalOk);
     lit("\"ab\"", NormalOk);
-    lit("\'b\'", NormalOk);
     lit("'b'", NormalOk);
     lit("b\"b\"", NormalOk);
     lit("c\"b\"", NormalOk);
     lit("cr\"b\"", NormalOk);
-    lit("b'b'", NormalOk);
+    lit("'\\''", NormalOk);
     lit("256u8", NormalOk);
     lit("-256u8", NormalOk);
     stream("-256u8", NormalOk);
