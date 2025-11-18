@@ -2288,10 +2288,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let lint_ambiguous = match probes[0].0.kind {
             TraitCandidate(_, lint) => lint,
-            WhereClauseCandidate(_) => false,
-            InherentImplCandidate { .. } | ObjectCandidate(_) => {
-                unreachable!()
-            }
+            _ => false,
         };
 
         // FIXME: check the return type here somehow.
@@ -2370,10 +2367,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let lint_ambiguous = match probes[0].0.kind {
             TraitCandidate(_, lint) => lint,
-            WhereClauseCandidate(_) => false,
-            InherentImplCandidate { .. } | ObjectCandidate(_) => {
-                unreachable!()
-            }
+            _ => false,
         };
 
         Some(Pick {
