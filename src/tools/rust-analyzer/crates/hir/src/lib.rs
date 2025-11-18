@@ -136,7 +136,7 @@ pub use {
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         find_path::PrefixKind,
         import_map,
-        lang_item::LangItem,
+        lang_item::{LangItem, crate_lang_items},
         nameres::{DefMap, ModuleSource, crate_def_map},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},

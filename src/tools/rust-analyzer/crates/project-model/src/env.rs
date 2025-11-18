@@ -2,7 +2,6 @@
 use base_db::Env;
 use paths::Utf8Path;
 use rustc_hash::FxHashMap;
-use toolchain::Tool;
 
 use crate::{ManifestPath, PackageData, TargetKind, cargo_config_file::CargoConfigFile};
 
@@ -48,8 +47,8 @@ pub(crate) fn inject_cargo_package_env(env: &mut Env, package: &PackageData) {
     );
 }
 
-pub(crate) fn inject_cargo_env(env: &mut Env) {
-    env.set("CARGO", Tool::Cargo.path().to_string());
+pub(crate) fn inject_cargo_env(env: &mut Env, cargo_path: &Utf8Path) {
+    env.set("CARGO", cargo_path.as_str());
 }
 
 pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: TargetKind) {
