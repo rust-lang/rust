@@ -6271,4 +6271,26 @@ fn $0fun_name(s: &Foo) {
 }"#,
         );
     }
+
+    #[test]
+    fn parameter_is_added_used_in_eq_expression_in_macro() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: fmt
+fn foo() {
+   let v = 123;
+   $0print!("{v:?}{}", v == 123);$0
+}"#,
+            r#"
+fn foo() {
+   let v = 123;
+   fun_name(v);
+}
+
+fn $0fun_name(v: i32) {
+    print!("{v:?}{}", v == 123);
+}"#,
+        );
+    }
 }

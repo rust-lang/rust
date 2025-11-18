@@ -283,7 +283,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         if p.eat(T![,]) {
             while !p.at(EOF) && !p.at(T![')']) {
                 let m = p.start();
-                if p.at(IDENT) && p.nth_at(1, T![=]) {
+                if p.at(IDENT) && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
                     name(p);
                     p.bump(T![=]);
                 }
