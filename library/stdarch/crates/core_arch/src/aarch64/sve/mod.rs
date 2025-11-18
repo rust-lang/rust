@@ -8,15 +8,17 @@ pub mod types;
 // ================================
 // 修复点 1/2：去掉 simd_*，改为位级转换
 // ================================
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "sve")]
 pub(crate) unsafe fn simd_reinterpret<T, U>(x: T) -> U {
     // 纯位级重解释；SVE 封装类型在这层视为opaque，避免走 simd_cast 触发 E0511
     core::mem::transmute_copy::<T, U>(&x)
 }
 
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "sve")]
 pub(crate) unsafe fn simd_cast<T, U>(x: T) -> U {
-    // 多数 SVE “cast”在 stdarch 内部只是布局相同的重解释；按位转即可
+    // 多数 SVE "cast"在 stdarch 内部只是布局相同的重解释；按位转即可
     // 如需数值语义转换，请在具体 API 内对接相应 LLVM SVE convert 内建。
     core::mem::transmute_copy::<T, U>(&x)
 }
@@ -147,30 +149,34 @@ impl __SveSelect for svbool_t {
 // impl_sve_select!("nxv16f8",  svmfloat8_t);
 
 // 实现从不同宽度的谓词类型到 svbool_t 的转换
+// 注意：这些实现直接使用 transmute_copy，不需要 target feature
+// 因为 transmute_copy 是纯位级转换，不涉及 SVE 指令
 impl From<svbool2_t> for svbool_t {
     #[inline(always)]
     fn from(x: svbool2_t) -> Self {
-        unsafe { simd_cast(x) }
+        // 使用 transmute_copy 进行位级转换，不需要 target feature
+        unsafe { core::mem::transmute_copy(&x) }
     }
 }
 
 impl From<svbool4_t> for svbool_t {
     #[inline(always)]
     fn from(x: svbool4_t) -> Self {
-        unsafe { simd_cast(x) }
+        unsafe { core::mem::transmute_copy(&x) }
     }
 }
 
 impl From<svbool8_t> for svbool_t {
     #[inline(always)]
     fn from(x: svbool8_t) -> Self {
-        unsafe { simd_cast(x) }
+        unsafe { core::mem::transmute_copy(&x) }
     }
 }
 
 // 公开的"选择"总入口：保持原函数签名不变（被 sve/*.rs 调用）
 // 现在它不再走 simd_select，而是经 trait 静态分派到 LLVM SVE `sel`
-#[inline(always)]
+#[inline]
+#[target_feature(enable = "sve")]
 pub(crate) unsafe fn simd_select<M, T>(m: M, a: T, b: T) -> T
 where
     // SVE 谓词统一为 svbool_t；避免出现 svbool4_t/svbool8_t 这类"假类型"
