@@ -767,6 +767,29 @@ fn ignore_coverage() {
 }
 
 #[test]
+fn only_ignore_elf() {
+    let cases = &[
+        ("aarch64-apple-darwin", false),
+        ("aarch64-unknown-linux-gnu", true),
+        ("powerpc64-ibm-aix", false),
+        ("wasm32-unknown-unknown", false),
+        ("wasm32-wasip1", false),
+        ("x86_64-apple-darwin", false),
+        ("x86_64-pc-windows-msvc", false),
+        ("x86_64-unknown-freebsd", true),
+        ("x86_64-unknown-illumos", true),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-unknown-none", true),
+        ("x86_64-unknown-uefi", false),
+    ];
+    for &(target, is_elf) in cases {
+        let config = &cfg().target(target).build();
+        assert_eq!(is_elf, check_ignore(config, "//@ ignore-elf"), "`//@ ignore-elf` for {target}");
+        assert_eq!(is_elf, !check_ignore(config, "//@ only-elf"), "`//@ only-elf` for {target}");
+    }
+}
+
+#[test]
 fn threads_support() {
     let threads = [
         ("x86_64-unknown-linux-gnu", true),
