@@ -2409,6 +2409,7 @@ impl ExprCollector<'_> {
                 };
                 let start = range_part_lower(p.start());
                 let end = range_part_lower(p.end());
+                // FIXME: Exclusive ended pattern range is stabilised
                 Pat::Range { start, end }
             }
         };
