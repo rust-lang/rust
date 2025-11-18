@@ -55,8 +55,10 @@ impl IsDefault for UnusedGenericParams {
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
-/// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
+///
+/// Invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
 /// but this has no impact on safety.
+/// In debug builds, this invariant is checked in `[TableBuilder::set]`
 pub(super) trait FixedSizeEncoding: IsDefault {
     /// This should be `[u8; BYTE_LEN]`;
     /// Cannot use an associated `const BYTE_LEN: usize` instead due to const eval limitations.
@@ -432,6 +434,13 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
     pub(crate) fn set(&mut self, i: I, value: T) {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert!(
+                T::from_bytes(&[0; N]).is_default(),
+                "expected all-zeroes to decode to the default value, as per the invariant of FixedSizeEncoding"
+            );
+        }
         if !value.is_default() {
             // FIXME(eddyb) investigate more compact encodings for sparse tables.
             // On the PR @michaelwoerister mentioned:
