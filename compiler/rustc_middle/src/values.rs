@@ -3,6 +3,7 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
@@ -50,9 +51,14 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     ) -> Self {
         let err = Ty::new_error(tcx, guar);
 
-        let arity = if let Some(frame) = cycle_error.cycle.get(0)
-            && frame.query.dep_kind == dep_kinds::fn_sig
-            && let Some(def_id) = frame.query.def_id
+        let frame = if sync::is_dyn_thread_safe() {
+            cycle_error.usage.as_ref().map(|(_, query)| query)
+        } else {
+            cycle_error.cycle.first().map(|info| &info.query)
+        };
+        let arity = if let Some(frame) = frame
+            && frame.dep_kind == dep_kinds::fn_sig
+            && let Some(def_id) = frame.def_id
             && let Some(node) = tcx.hir_get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
         {
