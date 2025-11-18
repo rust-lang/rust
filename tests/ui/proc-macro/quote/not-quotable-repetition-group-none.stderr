@@ -1,11 +1,14 @@
 error[E0277]: the trait bound `[{integer}; 3]: ToTokens` is not satisfied
-  --> $DIR/not-quotable-repetition-group-bracket.rs:9:5
+  --> $DIR/not-quotable-repetition-group-none.rs:9:9
    |
-LL |     quote! { $[$arr]* };
-   |     ^^^^^^^^^^^^^^^^^^^
+LL |         proc_macro::quote!($dollar $content *)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ToTokens` is not implemented for `[{integer}; 3]`
+...
+LL |     do_quote!($ f!($arr));
+   |     ---------------------
    |     |
-   |     the trait `ToTokens` is not implemented for `[{integer}; 3]`
    |     required by a bound introduced by this call
+   |     in this macro invocation
    |
    = help: the following other types implement trait `ToTokens`:
              &T
@@ -17,6 +20,7 @@ LL |     quote! { $[$arr]* };
              Rc<T>
              bool
            and 24 others
+   = note: this error originates in the macro `proc_macro::quote` which comes from the expansion of the macro `do_quote` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

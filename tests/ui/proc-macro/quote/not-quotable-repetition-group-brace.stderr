@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `[{integer}; 3]: ToTokens` is not satisfied
-  --> $DIR/not-quotable-repetition-group-brace.rs:9:13
+  --> $DIR/not-quotable-repetition-group-brace.rs:9:5
    |
-LL |     let _ = quote! { ${$arr}* };
-   |             ^^^^^^^^^^^^^^^^^^^
-   |             |
-   |             the trait `ToTokens` is not implemented for `[{integer}; 3]`
-   |             required by a bound introduced by this call
+LL |     quote! { ${$arr}* };
+   |     ^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the trait `ToTokens` is not implemented for `[{integer}; 3]`
+   |     required by a bound introduced by this call
    |
    = help: the following other types implement trait `ToTokens`:
              &T

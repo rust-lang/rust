@@ -292,8 +292,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
             after_dollar = false;
             match tree {
                 TokenTree::Group(ref tt) if tt.delimiter() == Delimiter::Parenthesis => {
-                    consume_dollar_group_sep_star(tt.stream().clone(), &mut iter)
-                        .to_tokens(&mut tokens);
+                    consume_dollar_group_sep_star(tt.stream(), &mut iter).to_tokens(&mut tokens);
                     continue;
                 }
                 TokenTree::Group(_) => {
@@ -390,6 +389,246 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     }
 }
 
+/// Consume a `$( CONTENTS ) SEP *` accordingly. It handles repetition by expanding `$( CONTENTS ) SEP *` to `{ REP_EXPANDED }`.
+fn consume_dollar_group_sep_star(
+    content_stream: TokenStream,
+    sep_iter: &mut Peekable<<TokenStream as IntoIterator>::IntoIter>,
+) -> TokenStream {
+    let mut tokens = TokenStream::new();
+
+    let mut current_contents: TokenStream = content_stream;
+    let mut sep_cand = Vec::new();
+
+    loop {
+        match sep_iter.peek() {
+            // Check for repetition `*`
+            Some(TokenTree::Punct(star)) if star.as_char() == '*' => {
+                let star_clone = star.clone();
+
+                // Verify it's actually a repetition star, not part of `*=`
+                let mut peek_iter = sep_iter.clone();
+                peek_iter.next(); // Skip the `*`
+                let is_repetition = !matches!(
+                    (star_clone.spacing(), peek_iter.peek()),
+                    (Spacing::Joint, Some(TokenTree::Punct(eq))) if eq.as_char() == '='
+                );
+
+                if is_repetition && is_valid_sep(&sep_cand) {
+                    sep_iter.next(); // Consume the `*`
+                    expand_dollar_group_sep_star(
+                        &mut tokens,
+                        current_contents,
+                        TokenStream::from_iter(sep_cand),
+                    );
+                    return tokens;
+                }
+            }
+
+            // Check for repeated `$( CONTENTS )` pattern
+            Some(TokenTree::Punct(dollar)) if dollar.as_char() == '$' => {
+                let mut peek_iter = sep_iter.clone();
+                peek_iter.next(); // Skip `$`
+                if let Some(TokenTree::Group(next_contents)) = peek_iter.peek()
+                    && next_contents.delimiter() == Delimiter::Parenthesis
+                    // NOTE: only single separator of `$` does not match this `is_valid_sep`` to escape via `$$`.
+                    && is_valid_sep(&sep_cand)
+                {
+                    // Output current group without expansion
+                    output_dollar_group_sep(&mut tokens, current_contents, sep_cand);
+
+                    // Move to the next `$( CONTENTS ) SEP *`
+                    sep_iter.next(); // Consume the `$`
+                    sep_iter.next(); // Consume the `next_contents`
+                    current_contents = next_contents.stream();
+                    sep_cand = Vec::new();
+                    continue;
+                }
+            }
+
+            _ => {}
+        }
+
+        // Try to extend separator with any other token
+        if let Some(token) = sep_iter.peek() {
+            sep_cand.push(token.clone());
+            if is_valid_sep_prefix(&sep_cand) {
+                sep_iter.next();
+            } else {
+                // Can't extend separator further, backtrack and exit
+                sep_cand.pop();
+                break;
+            }
+        }
+    }
+
+    // No repetition found, output `$( CONTENTS ) SEP *` without expansion
+    output_dollar_group_sep(&mut tokens, current_contents, sep_cand);
+    tokens
+}
+
+/// Output `$( CONTENTS ) SEP *` without expansion
+fn output_dollar_group_sep(
+    tokens: &mut TokenStream,
+    contents: TokenStream,
+    sep_cand: Vec<TokenTree>,
+) {
+    minimal_quote!(
+        crate::ToTokens::to_tokens(&TokenTree::from(Punct::new('$', Spacing::Joint)), &mut ts);
+    )
+    .to_tokens(tokens);
+
+    minimal_quote!(
+        (@ quote(TokenStream::from(TokenTree::Group(Group::new(Delimiter::Parenthesis, contents))))).to_tokens(&mut ts);
+    )
+    .to_tokens(tokens);
+
+    let sep = TokenStream::from_iter(sep_cand);
+    if !sep.is_empty() {
+        minimal_quote!(
+            (@ quote(sep)).to_tokens(&mut ts);
+        )
+        .to_tokens(tokens);
+    }
+}
+
+/// Check if a token sequence could be a valid separator prefix (for greedy matching).
+fn is_valid_sep_prefix(ts: &[TokenTree]) -> bool {
+    // First check if it's a complete valid separator
+    if is_valid_sep(ts) {
+        return true;
+    }
+
+    // Then check if it could be extended to a longer separator
+    match ts {
+        // Single punctuation that could be extended
+        [TokenTree::Punct(t1)] if t1.spacing() == Spacing::Joint => {
+            matches!(
+                t1.as_char(),
+                '.' | '<' | '>' | ':' | '+' | '&' | '^' |
+                '/' | '=' | '*' | '!' | '|' | '-' | '%' | '\'' |
+                // Escape `$` via `$$`.
+                '$'
+            )
+        }
+
+        // Two punctuation that could be extended to three
+        [TokenTree::Punct(t1), TokenTree::Punct(t2)]
+            if t1.spacing() == Spacing::Joint && t2.spacing() == Spacing::Joint =>
+        {
+            matches!([t1.as_char(), t2.as_char()], ['.', '.'] | ['<', '<'] | ['>', '>'])
+        }
+
+        _ => false,
+    }
+}
+
+/// Determine if the given token sequence is a complete valid separator.
+fn is_valid_sep(ts: &[TokenTree]) -> bool {
+    match ts {
+        [TokenTree::Punct(t1), TokenTree::Punct(t2), TokenTree::Punct(t3)]
+            if t1.spacing() == Spacing::Joint && t2.spacing() == Spacing::Joint =>
+        {
+            matches!(
+                [t1.as_char(), t2.as_char(), t3.as_char()],
+                ['.', '.', '.'] | ['.', '.', '='] | ['<', '<', '='] | ['>', '>', '=']
+            )
+        }
+        [TokenTree::Punct(t1), TokenTree::Punct(t2)]
+            if t1.spacing() == Spacing::Joint =>
+        {
+            matches!(
+                [t1.as_char(), t2.as_char()],
+                [':', ':'] | ['+', '='] | ['&', '&'] | ['&', '='] | ['^', '='] | ['/', '=']
+                | ['.', '.'] | ['=', '='] | ['>', '='] | ['<', '='] | ['*', '='] | ['!', '=']
+                | ['|', '='] | ['|', '|'] | ['-', '>'] | ['<', '-'] | ['%', '='] | ['=', '>']
+                | ['<', '<'] | ['>', '>'] | ['-', '='] |
+                // Escape `$` via `$$`.
+                ['$', '$']
+            )
+        }
+        [TokenTree::Punct(single_quote), TokenTree::Ident(_)] // lifetime
+            if single_quote.as_char() == '\'' && single_quote.spacing() == Spacing::Joint =>
+        {
+            true
+        }
+        [TokenTree::Punct(t1)] =>
+        {
+            matches!(
+                t1.as_char(),
+                // The LEGAL_CHARS except '\'' are available here.
+                '#' | ',' | '.' | ';' | ':' | '+' | '@' | '!' | '^' | '&' | '/' |
+                '=' | '>' | '<' | '|' | '?' | '%' | '*' | '-' | '_' | '~'
+            )
+        }
+        [TokenTree::Ident(_)] | [TokenTree::Group(_)] | [TokenTree::Literal(_)] => true,
+        [] => true,  // Empty separator is valid
+        _ => false,
+    }
+}
+
+fn expand_dollar_group_sep_star(tokens: &mut TokenStream, contents: TokenStream, sep: TokenStream) {
+    let mut rep_expanded = TokenStream::new();
+    let meta_vars = collect_meta_vars(contents.clone());
+
+    // Construct setup code for the `while_loop` where recursively quoted `CONTENTS` and `SEP` are repeatedly processed
+    minimal_quote!(
+        use crate::ext::*;
+        (@ if !sep.is_empty() {
+            Some(minimal_quote!(let mut _i = 0usize;))
+        } else {
+            None
+        })
+        let has_iter = crate::ThereIsNoIteratorInRepetition;
+    )
+    .to_tokens(&mut rep_expanded);
+    for meta_var in &meta_vars {
+        minimal_quote!(
+            #[allow(unused_mut)]
+            let (mut (@ meta_var), i) = (@ meta_var).quote_into_iter();
+            let has_iter = has_iter | i;
+        )
+        .to_tokens(&mut rep_expanded);
+    }
+    minimal_quote!(let _: crate::HasIterator = has_iter;).to_tokens(&mut rep_expanded);
+
+    // Construct the `while_loop`
+    let mut while_body = TokenStream::new();
+    for meta_var in &meta_vars {
+        minimal_quote!(
+            let (@ meta_var) = match (@ meta_var).next() {
+                Some(_x) => crate::RepInterp(_x),
+                None => break,
+            };
+        )
+        .to_tokens(&mut while_body);
+    }
+    minimal_quote!(
+        (@ if !sep.is_empty() {
+            Some(minimal_quote!(
+                if _i > 0 {
+                    (@
+                        quote(TokenTree::Group(Group::new(Delimiter::None, sep)).into()) // Adjust spacing by Delimiter::None
+                    ).to_tokens(&mut ts);
+                }
+                _i += 1;
+            ))
+        } else {
+            None
+        })
+        (@ quote(contents)).to_tokens(&mut ts);
+    )
+    .to_tokens(&mut while_body);
+    let while_loop = vec![
+        TokenTree::Ident(Ident::new("while", Span::call_site())),
+        TokenTree::Ident(Ident::new("true", Span::call_site())),
+        TokenTree::Group(Group::new(Delimiter::Brace, while_body)),
+    ];
+
+    rep_expanded.extend(while_loop);
+    minimal_quote!((@ TokenTree::Group(Group::new(Delimiter::Brace, rep_expanded))))
+        .to_tokens(tokens);
+}
+
 /// Helper function to support macro repetitions like `$( CONTENTS ) SEP *` in `quote!`.
 /// Recursively collects all `Ident`s (meta-variables) that follow a `$`
 /// from the given `CONTENTS` stream, preserving their order of appearance.
@@ -404,7 +643,6 @@ fn collect_meta_vars(content_stream: TokenStream) -> Vec<Ident> {
                 match tree {
                     TokenTree::Ident(id) => {
                         out.push(id.clone());
-                        iter.next();
                         continue;
                     }
                     // TokenTree::Punct(tt) if tt.as_char() == '$' => {} // Escape `$` via `$$`.
@@ -429,237 +667,6 @@ fn collect_meta_vars(content_stream: TokenStream) -> Vec<Ident> {
     let mut vars = Vec::new();
     helper(content_stream, &mut vars);
     vars
-}
-
-/// Consume a `$( CONTENTS ) SEP *` accordingly. It handles repetition by expanding `$( CONTENTS ) SEP *` to `{ REP_EXPANDED }`.
-fn consume_dollar_group_sep_star(
-    content_stream: TokenStream,
-    iter: &mut Peekable<<TokenStream as IntoIterator>::IntoIter>,
-) -> TokenStream {
-    let mut tokens = TokenStream::new();
-
-    let mut current_contents: TokenStream = content_stream;
-    let mut sep_cand = Vec::new();
-    let mut is_sep_confirmed = false;
-    loop {
-        match (iter.next(), iter.peek().cloned()) {
-            // If a valid `*` is found, expand the current_contents and consume the `*`.
-            (Some(TokenTree::Punct(star)), opt)
-                if star.as_char() == '*' && !matches!(opt, Some(TokenTree::Punct(_))) =>
-            {
-                expand_dollar_group_sep_star(current_contents, TokenStream::from_iter(sep_cand))
-                    .to_tokens(&mut tokens);
-                break;
-            }
-            (Some(TokenTree::Punct(star)), Some(TokenTree::Punct(not_assign)))
-                if star.as_char() == '*'
-                    && !(star.spacing() == Spacing::Joint && not_assign.as_char() == '=') =>
-            {
-                expand_dollar_group_sep_star(current_contents, TokenStream::from_iter(sep_cand))
-                    .to_tokens(&mut tokens);
-                break;
-            }
-
-            // If the next `$( CONTENTS )` is found before the `*`, consume the current `$( CONTENTS ) SEP` literally.
-            // Then move to consume the next `$( CONTENTS ) SEP *` .
-            (Some(TokenTree::Punct(dollar)), Some(TokenTree::Group(next_group)))
-                if dollar.as_char() == '$' && next_group.delimiter() == Delimiter::Parenthesis =>
-            {
-                minimal_quote!(
-                    crate::ToTokens::to_tokens(&TokenTree::from(Punct::new('$', Spacing::Joint)), &mut ts);
-                )
-                .to_tokens(&mut tokens);
-                minimal_quote!((@
-                    quote(
-                        TokenStream::from(TokenTree::Group(Group::new(Delimiter::Parenthesis, current_contents))))
-                    ).to_tokens(&mut ts);
-                )
-                .to_tokens(&mut tokens);
-                let sep = TokenStream::from_iter(sep_cand);
-                if !sep.is_empty() {
-                    minimal_quote!((@
-                        quote(sep)).to_tokens(&mut ts);
-                    )
-                    .to_tokens(&mut tokens);
-                }
-
-                // Move to consume the next `$( CONTENTS ) SEP *`.
-                current_contents = next_group.stream();
-                iter.next();
-                sep_cand = Vec::new();
-                is_sep_confirmed = false;
-            }
-
-            // Add the current token to the separator candidate until the separator is confirmed.
-            (Some(x), _) if !is_sep_confirmed => {
-                sep_cand.push(x.clone());
-                is_sep_confirmed = is_valid_sep(sep_cand.as_slice());
-
-                let mut current = Some(x);
-                while is_sep_confirmed {
-                    if let Some(TokenTree::Punct(ref punct)) = current
-                        && punct.spacing() == Spacing::Joint
-                    {
-                        match iter.peek() {
-                            Some(next) => {
-                                sep_cand.push(next.clone());
-                                is_sep_confirmed = is_valid_sep(sep_cand.as_slice());
-
-                                if !is_sep_confirmed {
-                                    sep_cand.pop();
-                                    if let Some(TokenTree::Punct(ref p)) = sep_cand.pop() {
-                                        let mut new_p = Punct::new(p.as_char(), Spacing::Alone);
-                                        new_p.set_span(p.span());
-                                        sep_cand.push(TokenTree::Punct(new_p));
-                                    }
-
-                                    is_sep_confirmed = true;
-                                    break;
-                                }
-                                current = iter.next();
-                            }
-                            None => break,
-                        }
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            // Consume the current `$( CONTENTS ) SEP` literally without a `*`.
-            (x, _) => {
-                minimal_quote!(
-                    crate::ToTokens::to_tokens(&TokenTree::from(Punct::new('$', Spacing::Joint)), &mut ts);
-                )
-                    .to_tokens(&mut tokens);
-                minimal_quote!((@
-                    quote(
-                        TokenStream::from(TokenTree::Group(Group::new(Delimiter::Parenthesis, current_contents))))
-                    ).to_tokens(&mut ts);
-                )
-                .to_tokens(&mut tokens);
-                let sep = TokenStream::from_iter(sep_cand);
-                if !sep.is_empty() {
-                    minimal_quote!((@
-                        quote(sep)).to_tokens(&mut ts);
-                    )
-                    .to_tokens(&mut tokens);
-                }
-
-                // Recover the unconsumed token `x`.
-                let mut new_stream = x.into_iter().collect::<TokenStream>();
-                new_stream.extend(iter.by_ref());
-                *iter = new_stream.into_iter().peekable();
-                break;
-            }
-        }
-    }
-    tokens
-}
-
-/// Determine if the given token sequence is a valid separator.
-fn is_valid_sep(ts: &[TokenTree]) -> bool {
-    match ts {
-        [TokenTree::Punct(t1), TokenTree::Punct(t2), TokenTree::Punct(t3)]
-            if t1.spacing() == Spacing::Joint && t2.spacing() == Spacing::Joint =>
-        {
-            matches!(
-                [t1.as_char(), t2.as_char(), t3.as_char()],
-                ['.', '.', '.'] | ['.', '.', '='] | ['<', '<', '='] | ['>', '>', '=']
-            )
-        }
-        [TokenTree::Punct(t1), TokenTree::Punct(t2)]
-            if t1.spacing() == Spacing::Joint =>
-        {
-            matches!(
-                [t1.as_char(), t2.as_char()],
-                [':', ':'] | ['+', '='] | ['&', '&'] | ['&', '='] | ['^', '='] | ['/', '=']
-                | ['.', '.'] | ['=', '='] | ['>', '='] | ['<', '='] | ['*', '='] | ['!', '=']
-                | ['|', '='] | ['|', '|'] | ['-', '>'] | ['<', '-'] | ['%', '='] | ['=', '>']
-                | ['<', '<'] | ['>', '>'] | ['-', '=']
-            )
-        }
-        [TokenTree::Punct(single_quote), TokenTree::Ident(_)] // lifetime
-            if single_quote.as_char() == '\'' && single_quote.spacing() == Spacing::Joint =>
-        {
-            true
-        }
-        [TokenTree::Punct(t1)] =>
-        {
-            matches!(
-                t1.as_char(),
-                // The LEGAL_CHARS except '\'' are available here.
-                '#' | ',' | '.' | ';' | ':' | '+' | '@' | '!' | '^' | '&' | '/' |
-                '=' | '>' | '<' | '|' | '?' | '%' | '*' | '-' | '_' | '~'
-            )
-        }
-        [TokenTree::Ident(_)] | [TokenTree::Group(_)] | [TokenTree::Literal(_)] => true,
-        _ => false,
-    }
-}
-
-fn expand_dollar_group_sep_star(contents: TokenStream, sep: TokenStream) -> TokenStream {
-    let mut tokens = TokenStream::new();
-
-    let mut rep_expanded = TokenStream::new();
-
-    // Append setup code for a `while`, where recursively quoted `CONTENTS`
-    // and `SEP` are repeatedly processed, to `REP_EXPANDED`.
-    let meta_vars = collect_meta_vars(contents.clone());
-    minimal_quote!(
-        use crate::ext::*;
-        (@ if !sep.is_empty() {
-            Some(minimal_quote!(let mut _i = 0usize;))
-        } else {
-            None
-        })
-        let has_iter = crate::ThereIsNoIteratorInRepetition;
-    )
-    .to_tokens(&mut rep_expanded);
-    for meta_var in &meta_vars {
-        minimal_quote!(
-            #[allow(unused_mut)]
-            let (mut (@ meta_var), i) = (@ meta_var).quote_into_iter();
-            let has_iter = has_iter | i;
-        )
-        .to_tokens(&mut rep_expanded);
-    }
-    minimal_quote!(let _: crate::HasIterator = has_iter;).to_tokens(&mut rep_expanded);
-
-    // Append the `while` to `REP_EXPANDED`.
-    let mut while_body = TokenStream::new();
-    for meta_var in &meta_vars {
-        minimal_quote!(
-            let (@ meta_var) = match (@ meta_var).next() {
-                Some(_x) => crate::RepInterp(_x),
-                None => break,
-            };
-        )
-        .to_tokens(&mut while_body);
-    }
-    minimal_quote!(
-        (@ if !sep.is_empty() {
-            Some(minimal_quote!(
-                if _i > 0 {
-                    (@ quote(sep)).to_tokens(&mut ts);
-                }
-                _i += 1;
-            ))
-        } else {
-            None
-        })
-        (@ quote(contents)).to_tokens(&mut ts);
-    )
-    .to_tokens(&mut while_body);
-    rep_expanded.extend(vec![
-        TokenTree::Ident(Ident::new("while", Span::call_site())),
-        TokenTree::Ident(Ident::new("true", Span::call_site())),
-        TokenTree::Group(Group::new(Delimiter::Brace, while_body)),
-    ]);
-
-    minimal_quote!((@ TokenTree::Group(Group::new(Delimiter::Brace, rep_expanded))))
-        .to_tokens(&mut tokens);
-    tokens
 }
 
 /// Quote a `Span` into a `TokenStream`.
