@@ -27,10 +27,8 @@ impl Instant {
 }
 
 impl SystemTime {
-    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = Duration::ZERO;
 
-    #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = Duration::MAX;
 
     pub fn now() -> SystemTime {
