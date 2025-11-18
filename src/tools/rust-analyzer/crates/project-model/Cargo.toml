@@ -21,6 +21,7 @@ serde_json.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
 temp-dir.workspace = true
+toml.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true

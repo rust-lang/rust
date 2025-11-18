@@ -27,7 +27,7 @@ use crate::{
     ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
     WorkspaceBuildScripts,
     build_dependencies::{BuildScriptOutput, ProcMacroDylibPath},
-    cargo_config_file,
+    cargo_config_file::CargoConfigFile,
     cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
@@ -268,7 +268,7 @@ impl ProjectWorkspace {
 
         tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.rust_lib_src_root(), root = ?sysroot.root(), "Using sysroot");
         progress("querying project metadata".to_owned());
-        let config_file = cargo_config_file::read(cargo_toml, extra_env, &sysroot);
+        let config_file = CargoConfigFile::load(cargo_toml, extra_env, &sysroot);
         let config_file_ = config_file.clone();
         let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml, &config_file_);
         let targets =
@@ -391,7 +391,6 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
-                            workspace_dir,
                             &targets,
                             toolchain.clone(),
                         )),
@@ -402,9 +401,7 @@ impl ProjectWorkspace {
                 .expect("failed to spawn thread");
             let cargo_env = Builder::new()
                 .name("ProjectWorkspace::cargo_env".to_owned())
-                .spawn_scoped(s, move || {
-                    cargo_config_env(cargo_toml, &config_file, &config.extra_env)
-                })
+                .spawn_scoped(s, move || cargo_config_env(&config_file, &config.extra_env))
                 .expect("failed to spawn thread");
             thread::Result::Ok((
                 rustc_cfg.join()?,
@@ -503,7 +500,6 @@ impl ProjectWorkspace {
                     sysroot.load_workspace(
                         &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                             config,
-                            project_json.project_root(),
                             &targets,
                             toolchain.clone(),
                         )),
@@ -548,7 +544,7 @@ impl ProjectWorkspace {
             None => Sysroot::empty(),
         };
 
-        let config_file = cargo_config_file::read(detached_file, &config.extra_env, &sysroot);
+        let config_file = CargoConfigFile::load(detached_file, &config.extra_env, &sysroot);
         let query_config = QueryConfig::Cargo(&sysroot, detached_file, &config_file);
         let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
         let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
@@ -559,7 +555,6 @@ impl ProjectWorkspace {
         let loaded_sysroot = sysroot.load_workspace(
             &RustSourceWorkspaceConfig::CargoMetadata(sysroot_metadata_config(
                 config,
-                dir,
                 &targets,
                 toolchain.clone(),
             )),
@@ -585,8 +580,7 @@ impl ProjectWorkspace {
             config.no_deps,
         );
         let cargo_script = fetch_metadata.exec(false, &|_| ()).ok().map(|(ws, error)| {
-            let cargo_config_extra_env =
-                cargo_config_env(detached_file, &config_file, &config.extra_env);
+            let cargo_config_extra_env = cargo_config_env(&config_file, &config.extra_env);
             (
                 CargoWorkspace::new(ws, detached_file.clone(), cargo_config_extra_env, false),
                 WorkspaceBuildScripts::default(),
@@ -1897,29 +1891,12 @@ fn add_dep_inner(graph: &mut CrateGraphBuilder, from: CrateBuilderId, dep: Depen
 
 fn sysroot_metadata_config(
     config: &CargoConfig,
-    current_dir: &AbsPath,
     targets: &[String],
     toolchain_version: Option<Version>,
 ) -> CargoMetadataConfig {
-    // We run `cargo metadata` on sysroot with sysroot dir as a working directory, but still pass
-    // the `targets` from the cargo config evaluated from the workspace's `current_dir`.
-    // So, we need to *canonicalize* those *might-be-relative-paths-to-custom-target-json-files*.
-    //
-    // See https://github.com/rust-lang/cargo/blob/f7acf448fc127df9a77c52cc2bba027790ac4931/src/cargo/core/compiler/compile_kind.rs#L171-L192
-    let targets = targets
-        .iter()
-        .map(|target| {
-            if target.ends_with(".json") {
-                current_dir.join(target).to_string()
-            } else {
-                target.to_owned()
-            }
-        })
-        .collect();
-
     CargoMetadataConfig {
         features: Default::default(),
-        targets,
+        targets: targets.to_vec(),
         extra_args: Default::default(),
         extra_env: config.extra_env.clone(),
         toolchain_version,

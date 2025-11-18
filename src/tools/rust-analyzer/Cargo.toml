@@ -106,7 +106,7 @@ lsp-server = { version = "0.7.9" }
 anyhow = "1.0.98"
 arrayvec = "0.7.6"
 bitflags = "2.9.1"
-cargo_metadata = "0.21.0"
+cargo_metadata = "0.23.0"
 camino = "1.1.10"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
@@ -155,6 +155,7 @@ smallvec = { version = "1.15.1", features = [
 smol_str = "0.3.2"
 temp-dir = "0.1.16"
 text-size = "1.1.1"
+toml = "0.9.8"
 tracing = "0.1.41"
 tracing-tree = "0.4.0"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
