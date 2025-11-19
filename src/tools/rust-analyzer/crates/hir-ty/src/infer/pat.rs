@@ -469,9 +469,9 @@ impl<'db> InferenceContext<'_, 'db> {
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
                 let inner_lt = self.table.next_region_var();
-                Ty::new_ref(self.interner(), inner_lt, inner_ty, mutability)
+                Ty::new_ref(self.interner(), inner_lt, expected, mutability)
             }
-            BindingMode::Move => inner_ty,
+            BindingMode::Move => expected,
         };
         self.write_pat_ty(pat, inner_ty);
         self.write_binding_ty(binding, bound_ty);
