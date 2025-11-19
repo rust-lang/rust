@@ -1,0 +1,20 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic_expr-2.rs:17:54
+   |
+LL |     const N1<T>: usize = const { std::mem::size_of::<T>() };
+   |                                                      ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic_expr-2.rs:20:47
+   |
+LL |     const N2<const I: usize>: usize = const { I + 1 };
+   |                                               ^
+
+error: generic parameters may not be used in const operations
+  --> $DIR/type_const-on-generic_expr-2.rs:23:35
+   |
+LL |     const N3: usize = const { 2 & X };
+   |                                   ^
+
+error: aborting due to 3 previous errors
+
