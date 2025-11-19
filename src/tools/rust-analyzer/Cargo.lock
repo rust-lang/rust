@@ -1849,9 +1849,7 @@ dependencies = [
  "proc-macro-test",
  "ra-ap-rustc_lexer",
  "span",
- "syntax-bridge",
  "temp-dir",
- "tt",
 ]
 
 [[package]]

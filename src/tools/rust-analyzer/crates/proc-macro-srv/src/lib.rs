@@ -28,6 +28,7 @@ extern crate rustc_lexer;
 
 mod dylib;
 mod server_impl;
+mod tt;
 
 use std::{
     collections::{HashMap, hash_map::Entry},
@@ -42,8 +43,6 @@ use std::{
 use paths::{Utf8Path, Utf8PathBuf};
 use span::Span;
 use temp_dir::TempDir;
-
-use crate::server_impl::TokenStream;
 
 pub use crate::server_impl::token_id::SpanId;
 
@@ -81,12 +80,12 @@ impl ProcMacroSrv<'_> {
         env: &[(String, String)],
         current_dir: Option<impl AsRef<Path>>,
         macro_name: &str,
-        macro_body: tt::TopSubtree<S>,
-        attribute: Option<tt::TopSubtree<S>>,
+        macro_body: tt::TokenStream<S>,
+        attribute: Option<tt::TokenStream<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<Vec<tt::TokenTree<S>>, PanicMessage> {
+    ) -> Result<tt::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
             message: Some(format!("failed to load macro: {err}")),
@@ -102,15 +101,7 @@ impl ProcMacroSrv<'_> {
                 .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
                     expander
-                        .expand(
-                            macro_name,
-                            server_impl::TopSubtree(macro_body.0.into_vec()),
-                            attribute.map(|it| server_impl::TopSubtree(it.0.into_vec())),
-                            def_site,
-                            call_site,
-                            mixed_site,
-                        )
-                        .map(|tt| tt.0)
+                        .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
                 });
             match thread.unwrap().join() {
                 Ok(res) => res,
@@ -157,8 +148,8 @@ impl ProcMacroSrv<'_> {
     }
 }
 
-pub trait ProcMacroSrvSpan: Copy + Send {
-    type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
+pub trait ProcMacroSrvSpan: Copy + Send + Sync {
+    type Server: proc_macro::bridge::server::Server<TokenStream = crate::tt::TokenStream<Self>>;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }
 
