@@ -479,6 +479,76 @@ macro_rules! uint_impl {
             intrinsics::bswap(self as $ActualT) as Self
         }
 
+        /// Returns an integer with the bit locations specified by `mask` packed
+        /// contiguously into the least significant bits of the result.
+        /// ```
+        /// #![feature(uint_gather_scatter_bits)]
+        #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1011_1100;")]
+        ///
+        /// assert_eq!(n.gather_bits(0b0010_0100), 0b0000_0011);
+        /// assert_eq!(n.gather_bits(0xF0), 0b0000_1011);
+        /// ```
+        #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn gather_bits(self, mut mask: Self) -> Self {
+            let mut bit_position = 1;
+            let mut result = 0;
+
+            // Iterate through the mask bits, unsetting the lowest bit after
+            // each iteration. We fill the bits in the result starting from the
+            // least significant bit.
+            while mask != 0 {
+                // Find the next lowest set bit in the mask
+                let next_mask_bit = mask.isolate_lowest_one();
+
+                // Retrieve the masked bit and if present, set it in the result
+                let src_bit = (self & next_mask_bit) != 0;
+                result |= if src_bit { bit_position } else { 0 };
+
+                // Unset lowest set bit in the mask, prepare next position to set
+                mask ^= next_mask_bit;
+                bit_position <<= 1;
+            }
+
+            result
+        }
+
+        /// Returns an integer with the least significant bits of `self`
+        /// distributed to the bit locations specified by `mask`.
+        /// ```
+        /// #![feature(uint_gather_scatter_bits)]
+        #[doc = concat!("let n: ", stringify!($SelfT), " = 0b1010_1101;")]
+        ///
+        /// assert_eq!(n.scatter_bits(0b0101_0101), 0b0101_0001);
+        /// assert_eq!(n.scatter_bits(0xF0), 0b1101_0000);
+        /// ```
+        #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        pub const fn scatter_bits(mut self, mut mask: Self) -> Self {
+            let mut result = 0;
+
+            // Iterate through the mask bits, unsetting the lowest bit after
+            // each iteration and right-shifting `self` by one to get the next
+            // bit into the least significant bit position.
+            while mask != 0 {
+                // Find the next bit position to potentially set
+                let next_mask_bit = mask.isolate_lowest_one();
+
+                // If bit is set, deposit it at the masked bit position
+                result |= if (self & 1) != 0 { next_mask_bit } else { 0 };
+
+                // Unset lowest set bit in the mask, shift in next `self` bit
+                mask ^= next_mask_bit;
+                self >>= 1;
+            }
+
+            result
+        }
+
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
         ///                 second least-significant bit becomes second most-significant bit, etc.
         ///
