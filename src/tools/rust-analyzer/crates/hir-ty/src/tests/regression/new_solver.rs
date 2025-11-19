@@ -552,3 +552,53 @@ where
         "#]],
     );
 }
+
+#[test]
+fn regression_19957() {
+    // async-trait patterns should not produce false type mismatches between
+    // Pin<Box<dyn Future>> and Pin<Box<impl Future>>
+    check_no_mismatches(
+        r#"
+//- minicore: future, pin, result, error, send
+use core::{future::Future, pin::Pin};
+
+pub enum SimpleAsyncTraitResult {
+    Ok,
+    Error,
+}
+
+pub struct ExampleData {
+    pub id: i32,
+    pub name: String,
+}
+// As we can't directly use #[async_trait] directly in tests
+// This simulates what #[async_trait] expands to
+pub trait SimpleAsyncTraitModel {
+    fn save<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> Pin<Box<dyn Future<Output = Result<SimpleAsyncTraitResult, Box<dyn core::error::Error + Send + Sync>>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait;
+}
+
+impl SimpleAsyncTraitModel for ExampleData {
+    fn save<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> Pin<Box<dyn Future<Output = Result<SimpleAsyncTraitResult, Box<dyn core::error::Error + Send + Sync>>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        Box::pin(async move {
+            if self.id > 0 {
+                Ok(SimpleAsyncTraitResult::Ok)
+            } else {
+                Ok(SimpleAsyncTraitResult::Error)
+            }
+        })
+    }
+}
+"#,
+    );
+}
