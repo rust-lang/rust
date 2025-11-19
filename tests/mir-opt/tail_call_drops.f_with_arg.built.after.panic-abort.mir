@@ -5,20 +5,20 @@ fn f_with_arg(_1: String, _2: String) -> () {
     debug _arg2 => _2;
     let mut _0: ();
     let mut _3: !;
-    let _4: std::string::String;
+    let _4: std::string::generic::String;
     let _8: ();
-    let mut _9: std::string::String;
-    let mut _10: std::string::String;
-    let mut _11: std::string::String;
+    let mut _9: std::string::generic::String;
+    let mut _10: std::string::generic::String;
+    let mut _11: std::string::generic::String;
     scope 1 {
         debug _a => _4;
         let _5: i32;
         scope 2 {
             debug _b => _5;
-            let _6: std::string::String;
+            let _6: std::string::generic::String;
             scope 3 {
                 debug _c => _6;
-                let _7: std::string::String;
+                let _7: std::string::generic::String;
                 scope 4 {
                     debug _d => _7;
                 }
@@ -28,7 +28,7 @@ fn f_with_arg(_1: String, _2: String) -> () {
 
     bb0: {
         StorageLive(_4);
-        _4 = String::new() -> [return: bb1, unwind: bb34];
+        _4 = string::<impl String>::new() -> [return: bb1, unwind: bb34];
     }
 
     bb1: {
@@ -37,13 +37,13 @@ fn f_with_arg(_1: String, _2: String) -> () {
         _5 = const 12_i32;
         FakeRead(ForLet(None), _5);
         StorageLive(_6);
-        _6 = String::new() -> [return: bb2, unwind: bb33];
+        _6 = string::<impl String>::new() -> [return: bb2, unwind: bb33];
     }
 
     bb2: {
         FakeRead(ForLet(None), _6);
         StorageLive(_7);
-        _7 = String::new() -> [return: bb3, unwind: bb32];
+        _7 = string::<impl String>::new() -> [return: bb3, unwind: bb32];
     }
 
     bb3: {
@@ -58,12 +58,12 @@ fn f_with_arg(_1: String, _2: String) -> () {
         StorageDead(_9);
         StorageDead(_8);
         StorageLive(_10);
-        _10 = String::new() -> [return: bb5, unwind: bb31];
+        _10 = string::<impl String>::new() -> [return: bb5, unwind: bb31];
     }
 
     bb5: {
         StorageLive(_11);
-        _11 = String::new() -> [return: bb6, unwind: bb29];
+        _11 = string::<impl String>::new() -> [return: bb6, unwind: bb29];
     }
 
     bb6: {

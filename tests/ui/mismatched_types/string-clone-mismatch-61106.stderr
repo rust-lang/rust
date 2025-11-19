@@ -6,6 +6,8 @@ LL |     foo(x.clone());
    |     |
    |     arguments to this function are incorrect
    |
+   = note: expected reference `&str`
+                 found struct `String`
 note: function defined here
   --> $DIR/string-clone-mismatch-61106.rs:7:4
    |
