@@ -1,16 +1,12 @@
 error[E0594]: cannot assign to `some_struct.field`, which is behind a `&` reference
   --> $DIR/option-inspect-mutation.rs:10:9
    |
-LL |     some_struct.as_mut().inspect(|some_struct| {
-   |                                   ----------- consider changing this binding's type to be: `&mut &mut Struct`
 LL |         some_struct.field *= 10;
    |         ^^^^^^^^^^^^^^^^^^^^^^^ `some_struct` is a `&` reference, so it cannot be written to
 
 error[E0594]: cannot assign to `some_struct.field`, which is behind a `&` reference
   --> $DIR/option-inspect-mutation.rs:16:9
    |
-LL |     Option::inspect(some_struct.as_mut(), |some_struct| {
-   |                                            ----------- consider changing this binding's type to be: `&mut &mut Struct`
 LL |         some_struct.field *= 20;
    |         ^^^^^^^^^^^^^^^^^^^^^^^ `some_struct` is a `&` reference, so it cannot be written to
 
