@@ -6,6 +6,8 @@ LL |     async fn woopsie_async(&self) -> String {
 LL |         42
    |         ^^ expected `String`, found integer
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |         42.to_string()

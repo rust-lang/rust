@@ -7,7 +7,7 @@ LL |
 LL | impl MyTrait for String { }
    | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `String`
    |
-   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::string::String` in future versions
+   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `std::string::generic::String` in future versions
 
 error: aborting due to 1 previous error
 
