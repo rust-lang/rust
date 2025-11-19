@@ -823,8 +823,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let Some(Res::Def(DefKind::Struct, def_id)) = res {
-                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
-                    err.note("constructor is not visible here due to private fields");
+                    if self.has_private_fields(def_id) {
+                        self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                        err.note("constructor is not visible here due to private fields");
+                    }
                 } else {
                     err.span_suggestion(
                         call_span,
@@ -1642,6 +1644,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn has_tuple_fields(&mut self, def_id: DefId) -> bool {
+        // As we cannot name a field "0", this is an indictation
+        // that we are looking at a tuple struct
+        if let Some(fields) = self.r.field_idents(def_id) {
+            if let Some(first_field) = fields.get(0) {
+                return first_field.name.as_str() == "0";
+            }
+        }
+        false
+    }
+
     fn update_err_for_private_tuple_struct_fields(
         &mut self,
         err: &mut Diag<'_>,
@@ -1664,17 +1677,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 span: call_span,
                 ..
             })) => {
-                err.primary_message(
-                    "cannot initialize a tuple struct which contains private fields",
-                );
-                self.suggest_alternative_construction_methods(
-                    def_id,
-                    err,
-                    path.span,
-                    *call_span,
-                    &args[..],
-                );
-                // Use spans of the tuple struct definition.
+                if self.has_tuple_fields(def_id) {
+                    err.primary_message(
+                        "cannot initialize a tuple struct which contains private fields",
+                    );
+                    self.suggest_alternative_construction_methods(
+                        def_id,
+                        err,
+                        path.span,
+                        *call_span,
+                        &args[..],
+                    );
+                }
                 self.r
                     .field_idents(def_id)
                     .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())
