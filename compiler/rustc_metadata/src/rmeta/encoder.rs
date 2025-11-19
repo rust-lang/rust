@@ -1524,17 +1524,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_constness(def_kind) {
                 let constness = self.tcx.constness(def_id);
-                match constness {
-                    hir::Constness::Const => self.tables.constness.set(def_id.index, constness),
-                    hir::Constness::NotConst => {}
-                }
+                self.tables.constness.set(def_id.index, constness);
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
-                match asyncness {
-                    ty::Asyncness::Yes => self.tables.asyncness.set(def_id.index, asyncness),
-                    ty::Asyncness::No => {}
-                }
+                self.tables.asyncness.set(def_id.index, asyncness);
                 record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
