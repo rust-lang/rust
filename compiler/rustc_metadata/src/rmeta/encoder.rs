@@ -1697,7 +1697,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }));
 
             for field in &variant.fields {
-                self.tables.safety.set_some(field.did.index, field.safety);
+                self.tables.safety.set(field.did.index, field.safety);
             }
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {

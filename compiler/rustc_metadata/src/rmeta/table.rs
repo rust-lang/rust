@@ -37,8 +37,17 @@ impl IsDefault for ty::Asyncness {
 impl IsDefault for hir::Constness {
     fn is_default(&self) -> bool {
         match self {
-            rustc_hir::Constness::Const => false,
-            rustc_hir::Constness::NotConst => true,
+            hir::Constness::Const => false,
+            hir::Constness::NotConst => true,
+        }
+    }
+}
+
+impl IsDefault for hir::Safety {
+    fn is_default(&self) -> bool {
+        match self {
+            hir::Safety::Safe => false,
+            hir::Safety::Unsafe => true,
         }
     }
 }
@@ -205,13 +214,6 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
-    hir::Safety {
-        ( Unsafe )
-        ( Safe   )
-    }
-}
-
-fixed_size_enum! {
     hir::CoroutineKind {
         ( Coroutine(hir::Movability::Movable)                                          )
         ( Coroutine(hir::Movability::Static)                                           )
@@ -339,6 +341,28 @@ impl FixedSizeEncoding for hir::Constness {
         b[0] = match self {
             hir::Constness::NotConst => 0,
             hir::Constness::Const => 1,
+        }
+    }
+}
+
+impl FixedSizeEncoding for hir::Safety {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => hir::Safety::Unsafe,
+            1 => hir::Safety::Safe,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            hir::Safety::Unsafe => 0,
+            hir::Safety::Safe => 1,
         }
     }
 }
