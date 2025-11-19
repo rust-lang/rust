@@ -124,8 +124,8 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
 
     #[inline(always)]
     fn runtime_checks(_ecx: &InterpCx<'tcx, Self>, r: RuntimeChecks) -> InterpResult<'tcx, bool> {
-        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
-        // unsound differences in evaluating the same constant at different instantiation sites.
+        // Runtime checks have different value depending on the crate they are codegenned in.
+        // Verify we aren't trying to evaluate them in mir-optimizations.
         panic!("compiletime machine evaluated {r:?}")
     }
 
