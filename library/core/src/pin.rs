@@ -916,7 +916,7 @@
 //! [`Vec::set_len`]: ../../std/vec/struct.Vec.html#method.set_len
 //! [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
 //! [VecDeque]: ../../std/collections/struct.VecDeque.html "collections::VecDeque"
-//! [`String`]: ../../std/string/struct.String.html "String"
+//! [`String`]: ../../std/string/type.String.html "String"
 
 #![stable(feature = "pin", since = "1.33.0")]
 
