@@ -26,7 +26,7 @@ fn produce() -> impl Trait<Assoc = impl Trait> {
 
 // Case 3: `impl Trait` is stranded
 fn ill_formed_string() -> String<impl Trait> {
-    //~^ ERROR struct takes 0 generic arguments but 1 generic argument was supplied
+    //~^ ERROR type alias takes 0 generic arguments but 1 generic argument was supplied
    String::from("a string")
 }
 
@@ -45,6 +45,6 @@ type Produce =  impl Trait<Assoc = impl Trait>;
 
 type IllFormedString =  String<impl Trait>;
 //~^ ERROR unconstrained opaque type
-//~| ERROR struct takes 0 generic arguments but 1 generic argument was supplied
+//~| ERROR type alias takes 0 generic arguments but 1 generic argument was supplied
 
 fn main() {}
