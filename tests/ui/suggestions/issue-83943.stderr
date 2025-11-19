@@ -10,6 +10,8 @@ LL | |         "B"
 LL | |     };
    | |_____- `if` and `else` have incompatible types
    |
+   = note: expected struct `String`
+           found reference `&str`
 help: try using a conversion method
    |
 LL |         "B".to_string()

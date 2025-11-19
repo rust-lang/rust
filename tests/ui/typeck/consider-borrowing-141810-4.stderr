@@ -4,6 +4,8 @@ error[E0308]: mismatched types
 LL |         String::from("hi")
    |         ^^^^^^^^^^^^^^^^^^ expected `&String`, found `String`
    |
+   = note: expected reference `&String`
+                 found struct `String`
 help: consider borrowing here
    |
 LL |         &String::from("hi")

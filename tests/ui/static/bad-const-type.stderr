@@ -6,6 +6,8 @@ LL | static i: String = 10;
    |           |
    |           expected because of the type of the static
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL | static i: String = 10.to_string();

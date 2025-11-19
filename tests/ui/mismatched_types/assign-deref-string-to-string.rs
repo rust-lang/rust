@@ -14,6 +14,7 @@ fn main() {
         a = *i.to_string();
         //~^ ERROR mismatched types
         //~| NOTE expected `String`, found `str`
+        //~| NOTE expected struct `String`
         v2.push(a);
     }
 }

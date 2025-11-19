@@ -3,7 +3,7 @@
 fn main() -> () {
     let mut _0: ();
     let _1: ();
-    let mut _2: std::string::String;
+    let mut _2: std::string::generic::String;
     let mut _3: &str;
     let _4: &str;
 
