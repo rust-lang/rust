@@ -853,31 +853,14 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         fx.bcx.ins().nop();
                     }
                 }
-                Rvalue::NullaryOp(ref null_op, ty) => {
+                Rvalue::NullaryOp(ref null_op) => {
                     assert!(lval.layout().ty.is_sized(fx.tcx, fx.typing_env()));
-                    let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
-                        NullOp::OffsetOf(fields) => fx
-                            .tcx
-                            .offset_of_subfield(
-                                ty::TypingEnv::fully_monomorphized(),
-                                layout,
-                                fields.iter(),
-                            )
-                            .bytes(),
-                        NullOp::RuntimeChecks(kind) => {
-                            let val = kind.value(fx.tcx.sess);
-                            let val = CValue::by_val(
-                                fx.bcx.ins().iconst(types::I8, i64::from(val)),
-                                fx.layout_of(fx.tcx.types.bool),
-                            );
-                            lval.write_cvalue(fx, val);
-                            return;
-                        }
+                        NullOp::RuntimeChecks(kind) => kind.value(fx.tcx.sess),
                     };
                     let val = CValue::by_val(
-                        fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(val).unwrap()),
-                        fx.layout_of(fx.tcx.types.usize),
+                        fx.bcx.ins().iconst(types::I8, i64::from(val)),
+                        fx.layout_of(fx.tcx.types.bool),
                     );
                     lval.write_cvalue(fx, val);
                 }
