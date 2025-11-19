@@ -1,4 +1,3 @@
-//@ run-rustfix
 //@ edition:2018
 //@ check-pass
 #![warn(rust_2021_compatibility)]
@@ -25,7 +24,6 @@ macro_rules! m {
 fn main() {
     let a = (Foo(0), Foo(1));
     m!({
-        //~^ HELP: add a dummy
         let x = a.0;
         println!("{:?}", x);
     });
