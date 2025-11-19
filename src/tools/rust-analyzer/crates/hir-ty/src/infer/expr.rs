@@ -1336,14 +1336,18 @@ impl<'db> InferenceContext<'_, 'db> {
                     ExprIsRead::Yes,
                 );
                 let usize = self.types.usize;
-                match self.body[repeat] {
+                let len = match self.body[repeat] {
                     Expr::Underscore => {
                         self.write_expr_ty(repeat, usize);
+                        self.table.next_const_var()
                     }
-                    _ => _ = self.infer_expr(repeat, &Expectation::HasType(usize), ExprIsRead::Yes),
-                }
+                    _ => {
+                        self.infer_expr(repeat, &Expectation::HasType(usize), ExprIsRead::Yes);
+                        consteval::eval_to_const(repeat, self)
+                    }
+                };
 
-                (elem_ty, consteval::eval_to_const(repeat, self))
+                (elem_ty, len)
             }
         };
         // Try to evaluate unevaluated constant, and insert variable if is not possible.

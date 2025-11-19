@@ -3943,3 +3943,16 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn infer_array_size() {
+    check_no_mismatches(
+        r#"
+fn foo(a: [u8; 3]) {}
+
+fn bar() {
+    foo([0; _]);
+}
+    "#,
+    );
+}
