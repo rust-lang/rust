@@ -4383,35 +4383,35 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
         &mut entry.1
     }
 
-    /// [insert](Self::insert) a value by providing the key at insertion time.
-    /// Returns a mutable reference to the inserted value.
+    /// Sets the key and value of the entry and returns a mutable reference to
+    /// the inserted value.
     ///
-    /// Useful if Into is not implemented for converting from &Q to K.
-    /// ```compile_fail
-    /// # use hashbrown::hash_map::EntryRef;
-    /// # use hashbrown::HashMap;
-    /// // note that our key is a (small) tuple
-    /// let mut h = HashMap::<(String,), char>::new();
-    /// let k = (String::from("c"),);
-    /// match h.entry_ref(&k) {
-    ///   // fails here, as &(i32) does not implement Into<(i32)>
-    ///   EntryRef::Vacant(r) => r.insert('c'),
-    ///   EntryRef::Occupied(r) => r.get(),
-    /// };
-    /// ```
-    /// ```
-    /// # use hashbrown::hash_map::EntryRef;
-    /// # use hashbrown::HashMap;
-    /// let mut h = HashMap::<(String,), char>::new();
-    /// let k = (String::from("c"),);
-    /// match h.entry_ref(&k) {
-    ///   // works, because we manually clone when needed.
-    ///   EntryRef::Vacant(r) => r.insert_with_key(k.clone(),'c'),
-    ///   // in this branch we avoided the clone
-    ///   EntryRef::Occupied(r) => r.get(),
-    /// };
-    /// ```
+    /// Unlike [`VacantEntryRef::insert`], this method allows the key to be
+    /// explicitly specified, which is useful for key types that don't implement
+    /// `K: From<&Q>`.
     ///
+    /// # Panics
+    ///
+    /// This method panics if `key` is not equivalent to the key used to create
+    /// the `VacantEntryRef`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::<(String, String), char>::new();
+    /// let k = ("c".to_string(), "C".to_string());
+    /// let v =  match map.entry_ref(&k) {
+    ///   // Insert cannot be used here because tuples do not implement From.
+    ///   // However this works because we can manually clone instead.
+    ///   EntryRef::Vacant(r) => r.insert_with_key(k.clone(), 'c'),
+    ///   // In this branch we avoid the clone.
+    ///   EntryRef::Occupied(r) => r.into_mut(),
+    /// };
+    /// assert_eq!(*v, 'c');
+    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn insert_with_key(self, key: K, value: V) -> &'map mut V
     where
@@ -4422,7 +4422,7 @@ impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K,
         let table = &mut self.table.table;
         assert!(
             (self.key).equivalent(&key),
-            "The key used for Entry creation and the one used for insertion are not equivalent"
+            "key used for Entry creation is not equivalent to the one used for insertion"
         );
         let entry = table.insert_entry(
             self.hash,
