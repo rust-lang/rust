@@ -316,6 +316,7 @@ pub struct InlayHintsConfig<'a> {
     pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
     pub implicit_drop_hints: bool,
+    pub implied_dyn_trait_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
@@ -907,6 +908,7 @@ mod tests {
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
         implicit_drop_hints: false,
+        implied_dyn_trait_hints: false,
         range_exclusive_hints: false,
         minicore: MiniCore::default(),
     };

@@ -1033,6 +1033,13 @@ Default: `false`
 Show inlay hints for the implied type parameter `Sized` bound.
 
 
+## rust-analyzer.inlayHints.impliedDynTraitHints.enable {#inlayHints.impliedDynTraitHints.enable}
+
+Default: `true`
+
+Show inlay hints for the implied `dyn` keyword in trait object types.
+
+
 ## rust-analyzer.inlayHints.lifetimeElisionHints.enable {#inlayHints.lifetimeElisionHints.enable}
 
 Default: `"never"`
