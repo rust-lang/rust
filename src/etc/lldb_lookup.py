@@ -168,7 +168,7 @@ def register_providers_compatibility():
     register(
         StdStringSyntheticProvider,
         StdStringSummaryProvider,
-        r"^(alloc::([a-z_]+::)+)String$",
+        r"^(alloc::([a-z_]+::)+)String<.+>$",
     )
 
     # str GNU
