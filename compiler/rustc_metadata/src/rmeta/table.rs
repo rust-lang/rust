@@ -197,13 +197,6 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
-    hir::Constness {
-        ( NotConst )
-        ( Const    )
-    }
-}
-
-fixed_size_enum! {
     hir::Defaultness {
         ( Final                        )
         ( Default { has_value: false } )
@@ -215,13 +208,6 @@ fixed_size_enum! {
     hir::Safety {
         ( Unsafe )
         ( Safe   )
-    }
-}
-
-fixed_size_enum! {
-    ty::Asyncness {
-        ( Yes )
-        ( No  )
     }
 }
 
