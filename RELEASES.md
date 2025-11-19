@@ -294,8 +294,8 @@ Stabilized APIs
 - [`impl PartialEq<String> for PathBuf`](https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#impl-PartialEq%3CString%3E-for-PathBuf)
 - [`impl PartialEq<str> for Path`](https://doc.rust-lang.org/stable/std/path/struct.Path.html#impl-PartialEq%3Cstr%3E-for-Path)
 - [`impl PartialEq<String> for Path`](https://doc.rust-lang.org/stable/std/path/struct.Path.html#impl-PartialEq%3CString%3E-for-Path)
-- [`impl PartialEq<PathBuf> for String`](https://doc.rust-lang.org/stable/std/string/struct.String.html#impl-PartialEq%3CPathBuf%3E-for-String)
-- [`impl PartialEq<Path> for String`](https://doc.rust-lang.org/stable/std/string/struct.String.html#impl-PartialEq%3CPath%3E-for-String)
+- [`impl PartialEq<PathBuf> for String`](https://doc.rust-lang.org/stable/std/string/type.String.html#impl-PartialEq%3CPathBuf%3E-for-String)
+- [`impl PartialEq<Path> for String`](https://doc.rust-lang.org/stable/std/string/type.String.html#impl-PartialEq%3CPath%3E-for-String)
 - [`impl PartialEq<PathBuf> for str`](https://doc.rust-lang.org/stable/std/primitive.str.html#impl-PartialEq%3CPathBuf%3E-for-str)
 - [`impl PartialEq<Path> for str`](https://doc.rust-lang.org/stable/std/primitive.str.html#impl-PartialEq%3CPath%3E-for-str)
 - [`Ipv4Addr::from_octets`](https://doc.rust-lang.org/stable/std/net/struct.Ipv4Addr.html#method.from_octets)
@@ -845,7 +845,7 @@ Stabilized APIs
 - [`<[T]>::split_off_first_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_off_first_mut)
 - [`<[T]>::split_off_last`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_off_last)
 - [`<[T]>::split_off_last_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.split_off_last_mut)
-- [`String::extend_from_within`](https://doc.rust-lang.org/stable/alloc/string/struct.String.html#method.extend_from_within)
+- [`String::extend_from_within`](https://doc.rust-lang.org/stable/alloc/string/type.String.html#method.extend_from_within)
 - [`os_str::Display`](https://doc.rust-lang.org/stable/std/ffi/os_str/struct.Display.html)
 - [`OsString::display`](https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.display)
 - [`OsStr::display`](https://doc.rust-lang.org/stable/std/ffi/struct.OsStr.html#method.display)
@@ -859,7 +859,7 @@ Stabilized APIs
 - [`impl From<PipeReader> for OwnedFd`](https://doc.rust-lang.org/stable/std/os/fd/struct.OwnedFd.html#impl-From%3CPipeReader%3E-for-OwnedFd)
 - [`impl From<PipeWriter> for OwnedFd`](https://doc.rust-lang.org/stable/std/os/fd/struct.OwnedFd.html#impl-From%3CPipeWriter%3E-for-OwnedFd)
 - [`Box<MaybeUninit<T>>::write`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.write)
-- [`impl TryFrom<Vec<u8>> for String`](https://doc.rust-lang.org/stable/std/string/struct.String.html#impl-TryFrom%3CVec%3Cu8%3E%3E-for-String)
+- [`impl TryFrom<Vec<u8>> for String`](https://doc.rust-lang.org/stable/std/string/type.String.html#impl-TryFrom%3CVec%3Cu8%3E%3E-for-String)
 - [`<*const T>::offset_from_unsigned`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from_unsigned)
 - [`<*const T>::byte_offset_from_unsigned`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.byte_offset_from_unsigned)
 - [`<*mut T>::offset_from_unsigned`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.offset_from_unsigned-1)
@@ -897,14 +897,14 @@ These previously stable APIs are now stable in const contexts:
 - [`char::is_whitespace`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_whitespace)
 - [`<[[T; N]]>::as_flattened`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened)
 - [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut) 
-- [`String::into_bytes`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.into_bytes)
-- [`String::as_str`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_str)
-- [`String::capacity`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.capacity)
-- [`String::as_bytes`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_bytes)
-- [`String::len`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.len)
-- [`String::is_empty`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.is_empty)
-- [`String::as_mut_str`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_mut_str)
-- [`String::as_mut_vec`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_mut_vec)
+- [`String::into_bytes`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.into_bytes)
+- [`String::as_str`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.as_str)
+- [`String::capacity`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.capacity)
+- [`String::as_bytes`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.as_bytes)
+- [`String::len`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.len)
+- [`String::is_empty`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.is_empty)
+- [`String::as_mut_str`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.as_mut_str)
+- [`String::as_mut_vec`](https://doc.rust-lang.org/stable/std/string/type.String.html#method.as_mut_vec)
 - [`Vec::as_ptr`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.as_ptr)
 - [`Vec::as_slice`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.as_slice)
 - [`Vec::capacity`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.capacity)
@@ -2956,7 +2956,7 @@ Stabilized APIs
 
 - [`impl<T: Send> Sync for mpsc::Sender<T>`](https://doc.rust-lang.org/stable/std/sync/mpsc/struct.Sender.html#impl-Sync-for-Sender%3CT%3E)
 - [`impl TryFrom<&OsStr> for &str`](https://doc.rust-lang.org/stable/std/primitive.str.html#impl-TryFrom%3C%26'a+OsStr%3E-for-%26'a+str)
-- [`String::leak`](https://doc.rust-lang.org/stable/alloc/string/struct.String.html#method.leak)
+- [`String::leak`](https://doc.rust-lang.org/stable/alloc/string/type.String.html#method.leak)
 
 These APIs are now stable in const contexts:
 
@@ -5015,8 +5015,8 @@ and related tools.
 [`collections::TryReserveError`]: https://doc.rust-lang.org/std/collections/struct.TryReserveError.html
 [`HashMap::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.try_reserve
 [`HashSet::try_reserve`]: https://doc.rust-lang.org/std/collections/hash_set/struct.HashSet.html#method.try_reserve
-[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve
-[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/struct.String.html#method.try_reserve_exact
+[`String::try_reserve`]: https://doc.rust-lang.org/alloc/string/type.String.html#method.try_reserve
+[`String::try_reserve_exact`]: https://doc.rust-lang.org/alloc/string/type.String.html#method.try_reserve_exact
 [`Vec::try_reserve`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve
 [`Vec::try_reserve_exact`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.try_reserve_exact
 [`VecDeque::try_reserve`]: https://doc.rust-lang.org/std/collections/struct.VecDeque.html#method.try_reserve
@@ -5157,7 +5157,7 @@ and related tools.
 [`BufWriter::into_parts`]: https://doc.rust-lang.org/stable/std/io/struct.BufWriter.html#method.into_parts
 [`core::panic::{UnwindSafe, RefUnwindSafe, AssertUnwindSafe}`]: https://github.com/rust-lang/rust/pull/84662
 [`Vec::shrink_to`]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.shrink_to
-[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/struct.String.html#method.shrink_to
+[`String::shrink_to`]: https://doc.rust-lang.org/stable/std/string/type.String.html#method.shrink_to
 [`OsString::shrink_to`]: https://doc.rust-lang.org/stable/std/ffi/struct.OsString.html#method.shrink_to
 [`PathBuf::shrink_to`]: https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.shrink_to
 [`BinaryHeap::shrink_to`]: https://doc.rust-lang.org/stable/std/collections/struct.BinaryHeap.html#method.shrink_to
@@ -9352,7 +9352,7 @@ Compatibility Notes
 [`Iterator::try_for_each`]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.try_for_each
 [`NonNull::cast`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html#method.cast
 [`Option::filter`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.filter
-[`String::replace_range`]: https://doc.rust-lang.org/std/string/struct.String.html#method.replace_range
+[`String::replace_range`]: https://doc.rust-lang.org/std/string/type.String.html#method.replace_range
 [`Take::set_limit`]: https://doc.rust-lang.org/std/io/struct.Take.html#method.set_limit
 [`hint::unreachable_unchecked`]: https://doc.rust-lang.org/std/hint/fn.unreachable_unchecked.html
 [`os::unix::process::parent_id`]: https://doc.rust-lang.org/std/os/unix/process/fn.parent_id.html
@@ -9597,7 +9597,7 @@ Compatibility Notes
 [`process::id`]: https://doc.rust-lang.org/std/process/fn.id.html
 [`slice::rotate_left`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rotate_left
 [`slice::rotate_right`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rotate_right
-[`String::retain`]: https://doc.rust-lang.org/std/string/struct.String.html#method.retain
+[`String::retain`]: https://doc.rust-lang.org/std/string/type.String.html#method.retain
 [cargo/5041]: https://github.com/rust-lang/cargo/pull/5041
 [cargo/5083]: https://github.com/rust-lang/cargo/pull/5083
 
@@ -11048,8 +11048,8 @@ Compatibility Notes
 [`Result::unwrap_or_default`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or_default
 [`SocketAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv4
 [`SocketAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv6
-[`String::insert_str`]: https://doc.rust-lang.org/std/string/struct.String.html#method.insert_str
-[`String::split_off`]: https://doc.rust-lang.org/std/string/struct.String.html#method.split_off
+[`String::insert_str`]: https://doc.rust-lang.org/std/string/type.String.html#method.insert_str
+[`String::split_off`]: https://doc.rust-lang.org/std/string/type.String.html#method.split_off
 [`Vec::dedup_by_key`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by_key
 [`Vec::dedup_by`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by
 [`VecDeque::resize`]:  https://doc.rust-lang.org/std/collections/vec_deque/struct.VecDeque.html#method.resize
@@ -12963,8 +12963,8 @@ Compatibility Notes
 [`Ipv6Addr::is_unspecified`]: http://doc.rust-lang.org/nightly/std/net/struct.Ipv6Addr.html#method.is_unspecified
 [`Path::strip_prefix`]: http://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.strip_prefix
 [`RandomState::new`]: http://doc.rust-lang.org/nightly/std/collections/hash_map/struct.RandomState.html#method.new
-[`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_mut_str
-[`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.as_str
+[`String::as_mut_str`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.as_mut_str
+[`String::as_str`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.as_str
 [`Vec::as_mut_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_mut_slice
 [`Vec::as_slice`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.as_slice
 [`clone_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.clone_from_slice
@@ -13150,7 +13150,7 @@ Compatibility Notes
 [`os::unix::fs::DirBuilderExt::mode`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html#tymethod.mode
 [`os::unix::fs::DirBuilderExt`]: http://doc.rust-lang.org/nightly/std/os/unix/fs/trait.DirBuilderExt.html
 [`string::Drain`]: http://doc.rust-lang.org/nightly/std/string/struct.Drain.html
-[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/struct.String.html#method.drain
+[`string::String::drain`]: http://doc.rust-lang.org/nightly/std/string/type.String.html#method.drain
 [`vec::Drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Drain.html
 [`vec::Vec::drain`]: http://doc.rust-lang.org/nightly/std/vec/struct.Vec.html#method.drain
 [`vec_deque::Drain`]: http://doc.rust-lang.org/nightly/std/collections/vec_deque/struct.Drain.html
@@ -13499,7 +13499,7 @@ Miscellaneous
 [`Rc::make_mut`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.make_mut
 [`Rc::try_unwrap`]: http://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html#method.try_unwrap
 [`Result::expect`]: http://doc.rust-lang.org/nightly/core/result/enum.Result.html#method.expect
-[`String::into_boxed_str`]: http://doc.rust-lang.org/nightly/collections/string/struct.String.html#method.into_boxed_str
+[`String::into_boxed_str`]: http://doc.rust-lang.org/nightly/collections/string/type.String.html#method.into_boxed_str
 [`TcpStream::read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.read_timeout
 [`TcpStream::set_read_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_read_timeout
 [`TcpStream::write_timeout`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.write_timeout

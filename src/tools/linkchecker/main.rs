@@ -423,6 +423,25 @@ impl Checker {
                 return;
             }
 
+            // String is now a type alias to alloc::string::generic::String<Global>
+            // as such, the docs page dynamically includes all the methods from the target struct
+            // linkchecker normally doesn't load these, but we hack it here.
+            if path.ends_with("alloc/string/type.String.html")
+                || path.ends_with("std/string/type.String.html")
+            {
+                let mut struct_file = path.clone();
+                struct_file.pop();
+                struct_file.push("generic/struct.String.html");
+                if let (_, FileEntry::HtmlFile { ids, source }) =
+                    self.load_file(&struct_file, report)
+                {
+                    parse_ids(&mut ids.borrow_mut(), &pretty_path, source, report);
+                    if ids.borrow().contains(*fragment) {
+                        return;
+                    }
+                }
+            }
+
             if is_exception(file, &format!("#{}", fragment)) {
                 report.links_ignored_exception += 1;
             } else {

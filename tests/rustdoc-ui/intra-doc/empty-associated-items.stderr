@@ -2,7 +2,7 @@ error: unresolved link to `String::`
   --> $DIR/empty-associated-items.rs:6:7
    |
 LL | /// [`String::`]
-   |       ^^^^^^^^ the struct `String` has no field or associated item named ``
+   |       ^^^^^^^^ the type alias `String` has no associated item named ``
    |
 note: the lint level is defined here
   --> $DIR/empty-associated-items.rs:4:8

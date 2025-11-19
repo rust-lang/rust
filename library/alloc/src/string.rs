@@ -2137,7 +2137,7 @@ impl<A: Allocator> generic::String<A> {
     /// assert_eq!(s, "Test Results: ✅❌❌");
     /// ```
     ///
-    /// [replacen]: ../../std/primitive.str.html#method.replacen
+    /// [replacen]: ../../../std/primitive.str.html#method.replacen
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_replace_in_place", issue = "147949")]
     pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
