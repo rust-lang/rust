@@ -8,7 +8,7 @@
 //@ gdb-command:run
 
 //@ gdb-command:print plain_string
-//@ gdb-check:$1 = alloc::string::String {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {inner: alloc::raw_vec::RawVecInner<alloc::alloc::Global> {ptr: core::ptr::unique::Unique<u8> {pointer: core::ptr::non_null::NonNull<u8> {pointer: 0x[...]}, _marker: core::marker::PhantomData<u8>}, cap: core::num::niche_types::UsizeNoHighBit (5), alloc: alloc::alloc::Global}, _marker: core::marker::PhantomData<u8>}, len: 5}}
+//@ gdb-check:$1 = alloc::string::generic::String<alloc::alloc::Global> {vec: alloc::vec::Vec<u8, alloc::alloc::Global> {buf: alloc::raw_vec::RawVec<u8, alloc::alloc::Global> {inner: alloc::raw_vec::RawVecInner<alloc::alloc::Global> {ptr: core::ptr::unique::Unique<u8> {pointer: core::ptr::non_null::NonNull<u8> {pointer: 0x[...]}, _marker: core::marker::PhantomData<u8>}, cap: core::num::niche_types::UsizeNoHighBit (5), alloc: alloc::alloc::Global}, _marker: core::marker::PhantomData<u8>}, len: 5}}
 
 //@ gdb-command:print plain_str
 //@ gdb-check:$2 = "Hello"
@@ -25,7 +25,7 @@
 // === LLDB TESTS ==================================================================================
 //@ lldb-command:run
 //@ lldb-command:v plain_string
-//@ lldb-check:(alloc::string::String) plain_string = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
+//@ lldb-check:(alloc::string::generic::String<alloc::alloc::Global>) plain_string = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
 
 //@ lldb-command:v plain_str
 //@ lldb-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }

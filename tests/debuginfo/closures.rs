@@ -14,7 +14,7 @@
 //@ cdb-check:     [+0x[...]] _ref__count      : 0x[...] : 2 [Type: int *]
 //@ cdb-command:dx consume_closure
 //@ cdb-check:consume_closure  [Type: closures::main::closure_env$2]
-//@ cdb-check:     [+0x[...]] x                : [...] [Type: alloc::string::String]
+//@ cdb-check:     [+0x[...]] x                : [...] [Type: alloc::string::generic::String<alloc::alloc::Global>]
 //@ cdb-check:     [+0x[...]] _ref__base_value : 0x[...] : 42 [Type: int *]
 //@ cdb-command:dx simple_closure
 // FIXME(#148097): Change `// cdb-checksimple_closure` to `//@ cdb-check:simple_closure`
