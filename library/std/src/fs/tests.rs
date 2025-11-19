@@ -1263,7 +1263,7 @@ fn readlink_not_symlink() {
 }
 
 #[test]
-#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
+#[cfg_attr(target_os = "android", ignore = "Android SELinux rules prevent creating hardlinks")]
 fn links_work() {
     let tmpdir = tmpdir();
     let input = tmpdir.join("in.txt");
@@ -1759,7 +1759,7 @@ fn metadata_access_times() {
 
 /// Test creating hard links to symlinks.
 #[test]
-#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
+#[cfg_attr(target_os = "android", ignore = "Android SELinux rules prevent creating hardlinks")]
 fn symlink_hard_link() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
