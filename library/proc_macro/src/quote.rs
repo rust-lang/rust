@@ -389,7 +389,7 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     }
 }
 
-/// Consume a `$( CONTENTS ) SEP *` accordingly. It handles repetition by expanding `$( CONTENTS ) SEP *` to `{ REP_EXPANDED }`.
+/// Consume a `$( CONTENTS ) SEP *` accordingly.
 fn consume_dollar_group_sep_star(
     content_stream: TokenStream,
     sep_iter: &mut Peekable<<TokenStream as IntoIterator>::IntoIter>,
@@ -427,13 +427,13 @@ fn consume_dollar_group_sep_star(
             // Check for repeated `$( CONTENTS )` pattern
             Some(TokenTree::Punct(dollar)) if dollar.as_char() == '$' => {
                 let mut peek_iter = sep_iter.clone();
-                peek_iter.next(); // Skip `$`
+                peek_iter.next(); // Skip the `$`
                 if let Some(TokenTree::Group(next_contents)) = peek_iter.peek()
                     && next_contents.delimiter() == Delimiter::Parenthesis
-                    // NOTE: only single separator of `$` does not match this `is_valid_sep`` to escape via `$$`.
+                    // NOTE: Only a separator of a single `$` does not match this `is_valid_sep` because it is escaped via `$$`.
                     && is_valid_sep(&sep_cand)
                 {
-                    // Output current group without expansion
+                    // Output the current `$( CONTENTS ) SEP` without expansion
                     output_dollar_group_sep(&mut tokens, current_contents, sep_cand);
 
                     // Move to the next `$( CONTENTS ) SEP *`
@@ -448,7 +448,7 @@ fn consume_dollar_group_sep_star(
             _ => {}
         }
 
-        // Try to extend separator with any other token
+        // Try to extend separator
         if let Some(token) = sep_iter.peek() {
             sep_cand.push(token.clone());
             if is_valid_sep_prefix(&sep_cand) {
@@ -461,12 +461,12 @@ fn consume_dollar_group_sep_star(
         }
     }
 
-    // No repetition found, output `$( CONTENTS ) SEP *` without expansion
+    // No repetition found, output `$( CONTENTS ) SEP` without expansion
     output_dollar_group_sep(&mut tokens, current_contents, sep_cand);
     tokens
 }
 
-/// Output `$( CONTENTS ) SEP *` without expansion
+/// Output `$( CONTENTS ) SEP` without expansion.
 fn output_dollar_group_sep(
     tokens: &mut TokenStream,
     contents: TokenStream,
@@ -566,6 +566,7 @@ fn is_valid_sep(ts: &[TokenTree]) -> bool {
     }
 }
 
+/// Handle repetition by expanding `$( CONTENTS ) SEP *` to `{ REP_EXPANDED }`.
 fn expand_dollar_group_sep_star(tokens: &mut TokenStream, contents: TokenStream, sep: TokenStream) {
     let mut rep_expanded = TokenStream::new();
     let meta_vars = collect_meta_vars(contents.clone());
