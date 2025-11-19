@@ -53,6 +53,8 @@ LL | |         return String::from("test");
 LL | |     }
    | |_____^ expected `String`, found `()`
    |
+   = note: expected struct `String`
+           found unit type `()`
    = note: `for` loops evaluate to unit type `()`
 help: consider returning a value here
    |
