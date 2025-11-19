@@ -60,7 +60,7 @@ impl<T: Copy, const N: usize> PackedSimd<T, N> {
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 fn simd_ops_f16() {
     use intrinsics::*;

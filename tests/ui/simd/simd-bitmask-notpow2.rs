@@ -3,8 +3,9 @@
 // This should be merged into `simd-bitmask` once that's fixed.
 //@ ignore-endian-big
 //@ ignore-backends: gcc
+//@ compile-flags: --cfg minisimd_const
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -12,15 +13,10 @@ use minisimd::*;
 
 use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
 
-fn main() {
+const fn bitmask() {
     // Non-power-of-2 multi-byte mask.
     #[allow(non_camel_case_types)]
     type i32x10 = PackedSimd<i32, 10>;
-    impl i32x10 {
-        fn splat(x: i32) -> Self {
-            Self([x; 10])
-        }
-    }
     unsafe {
         let mask = i32x10::from_array([!0, !0, 0, !0, 0, 0, !0, 0, !0, 0]);
         let mask_bits = if cfg!(target_endian = "little") { 0b0101001011 } else { 0b1101001010 };
@@ -49,11 +45,6 @@ fn main() {
     // Test for a mask where the next multiple of 8 is not a power of two.
     #[allow(non_camel_case_types)]
     type i32x20 = PackedSimd<i32, 20>;
-    impl i32x20 {
-        fn splat(x: i32) -> Self {
-            Self([x; 20])
-        }
-    }
     unsafe {
         let mask = i32x20::from_array([
             !0, !0,  0, !0,  0,
@@ -90,4 +81,9 @@ fn main() {
         assert_eq!(selected1, mask);
         assert_eq!(selected2, mask);
     }
+}
+
+fn main() {
+    const { bitmask() };
+    bitmask();
 }
