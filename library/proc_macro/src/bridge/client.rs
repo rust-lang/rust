@@ -6,7 +6,6 @@ use std::num::NonZero;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
-use crate::StandaloneLevel;
 use crate::bridge::server::{Dispatcher, DispatcherTrait};
 use crate::bridge::standalone::NoRustc;
 
@@ -193,7 +192,6 @@ mod state {
     use std::ptr;
 
     use super::Bridge;
-    use crate::StandaloneLevel;
     use crate::bridge::buffer::Buffer;
     use crate::bridge::client::{COUNTERS, DispatchWay};
     use crate::bridge::server::{Dispatcher, HandleStore, MarkedTypes};
@@ -202,7 +200,6 @@ mod state {
     thread_local! {
         static BRIDGE_STATE: Cell<*const ()> = const { Cell::new(ptr::null()) };
         static STANDALONE: RefCell<Bridge<'static>> = RefCell::new(standalone_bridge());
-        pub(super) static USE_STANDALONE: Cell<StandaloneLevel> = const { Cell::new(StandaloneLevel::Never) };
     }
 
     fn standalone_bridge() -> Bridge<'static> {
@@ -236,23 +233,24 @@ mod state {
     pub(super) fn with<R>(
         f: impl for<'bridge> FnOnce(Option<&RefCell<Bridge<'bridge>>>) -> R,
     ) -> R {
-        let level = USE_STANDALONE.get();
-        if level == StandaloneLevel::Always
-            || (level == StandaloneLevel::FallbackOnly && BRIDGE_STATE.get().is_null())
-        {
-            STANDALONE.with(|bridge| f(Some(bridge)))
-        } else {
-            let state = BRIDGE_STATE.get();
-            // SAFETY: the only place where the pointer is set is in `set`. It puts
-            // back the previous value after the inner call has returned, so we know
-            // that as long as the pointer is not null, it came from a reference to
-            // a `RefCell<Bridge>` that outlasts the call to this function. Since `f`
-            // works the same for any lifetime of the bridge, including the actual
-            // one, we can lie here and say that the lifetime is `'static` without
-            // anyone noticing.
-            let bridge = unsafe { state.cast::<RefCell<Bridge<'static>>>().as_ref() };
-            f(bridge)
-        }
+        let state = BRIDGE_STATE.get();
+        // SAFETY: the only place where the pointer is set is in `set`. It puts
+        // back the previous value after the inner call has returned, so we know
+        // that as long as the pointer is not null, it came from a reference to
+        // a `RefCell<Bridge>` that outlasts the call to this function. Since `f`
+        // works the same for any lifetime of the bridge, including the actual
+        // one, we can lie here and say that the lifetime is `'static` without
+        // anyone noticing.
+        // The other option is that the pointer was set is in `use_standalone`.
+        // In this case, the pointer points to the static `STANDALONE`,
+        // so it actually has a `'static` lifetime already and we are fine.
+        let bridge = unsafe { state.cast::<RefCell<Bridge<'static>>>().as_ref() };
+        f(bridge)
+    }
+
+    pub(super) fn use_standalone() {
+        let ptr = STANDALONE.with(|r| (&raw const *r).cast());
+        BRIDGE_STATE.set(ptr);
     }
 }
 
@@ -272,8 +270,11 @@ pub(crate) fn is_available() -> bool {
     state::with(|s| s.is_some())
 }
 
-pub(crate) fn enable_standalone(level: StandaloneLevel) {
-    state::USE_STANDALONE.set(level);
+pub(crate) fn enable_standalone() {
+    if is_available() {
+        panic!("cannot enable standalone backend inside a procedural macro");
+    }
+    state::use_standalone();
 }
 
 /// A client-side RPC entry-point, which may be using a different `proc_macro`

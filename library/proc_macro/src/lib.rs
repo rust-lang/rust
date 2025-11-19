@@ -91,31 +91,16 @@ pub fn is_available() -> bool {
     bridge::client::is_available()
 }
 
-/// Controls the extent to which the new standalone backend is used.
-///
-/// When this will be stabilized, the default level will change from
-/// `Never` to `FallbackOnly`.
-#[unstable(feature = "proc_macro_standalone", issue = "130856")]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum StandaloneLevel {
-    /// The standalone implementation is never used. This is the default.
-    Never,
-    /// The standalone implementation is only used outside of procedural macros.
-    FallbackOnly,
-    /// The standalone implementation is always used, even in procedural macros.
-    ///
-    /// This does not actually work and should be removed before merging.
-    Always,
-}
-
 /// Enables the new experimental standalone backend, which allows calling the
 /// functions in this crate outside of procedural macros.
+///
+/// Calling this function from inside a procedural macro will panic.
 ///
 /// When stabilizing this feature, this function will be removed and all programs
 /// will have the fallback activated automatically.
 #[unstable(feature = "proc_macro_standalone", issue = "130856")]
 pub fn enable_standalone() {
-    bridge::client::enable_standalone(StandaloneLevel::FallbackOnly);
+    bridge::client::enable_standalone();
 }
 
 /// The main type provided by this crate, representing an abstract stream of
