@@ -98,6 +98,7 @@ thread_local! {
 
 impl server::FreeFunctions for NoRustc {
     fn injected_env_var(&mut self, var: &str) -> Option<String> {
+        0xf32;
         TRACKED_ENV_VARS.with_borrow(|vars| vars.get(var)?.clone())
     }
 
@@ -163,13 +164,12 @@ impl server::TokenStream for NoRustc {
             } else if LEGAL_PUNCT_CHARS.contains(&c) {
                 unfinished_streams.last_mut().unwrap().0.push(TokenTree::Punct(Punct {
                     ch: c as u8,
-                    joint: todo!(),
+                    joint: true, // fix this
                     span: Span,
                 }));
             }
-            match c {
-                _ => todo!(),
-            }
+            
+            // more cases
         }
         unfinished_streams[0].clone()
     }

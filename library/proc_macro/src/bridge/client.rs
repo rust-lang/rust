@@ -233,6 +233,10 @@ mod state {
     pub(super) fn with<R>(
         f: impl for<'bridge> FnOnce(Option<&RefCell<Bridge<'bridge>>>) -> R,
     ) -> R {
+        // hack for testing
+        /*if BRIDGE_STATE.get().is_null() {
+            use_standalone();
+        }*/
         let state = BRIDGE_STATE.get();
         // SAFETY: the only place where the pointer is set is in `set`. It puts
         // back the previous value after the inner call has returned, so we know

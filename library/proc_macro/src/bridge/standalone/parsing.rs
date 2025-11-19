@@ -59,7 +59,6 @@ fn parse_numeral(s: &str) -> Result<Literal> {
             return parse_integer(s);
         }
     }
-    let is_negative = s.starts_with('-');
     let non_negative = s.trim_prefix('-');
     if non_negative.starts_with("0b")
         || non_negative.starts_with("0o")
@@ -85,18 +84,16 @@ fn parse_float(symbol: &str) -> Result<Literal> {
 }
 
 fn parse_integer(symbol: &str) -> Result<Literal> {
-    let is_negative = symbol.starts_with('-');
     let (symbol, suffix) = strip_number_suffix(symbol, INT_SUFFIXES);
     let s = symbol.trim_prefix('-');
-
     let (s, valid_chars) = if let Some(s) = s.strip_prefix("0b") {
-        (s, '0'..='1')
+        (s, ('0'..='1').collect::<Vec<_>>())
     } else if let Some(s) = s.strip_prefix("0o") {
-        (s, '0'..='7')
+        (s, ('0'..='7').collect())
     } else if let Some(s) = s.strip_prefix("0x") {
-        (s, '0'..='F')
+        (s, ('0'..='9').chain('a'..='f').chain('A'..='F').collect())
     } else {
-        (s, '0'..='9')
+        (s, ('0'..='9').collect())
     };
 
     let mut any_found = false;
@@ -131,6 +128,7 @@ fn make_literal(kind: LitKind, symbol: Symbol) -> Literal {
 }
 
 pub(super) fn literal_from_str(s: &str) -> Result<Literal> {
+    let s = &crate::escape::escape_bytes(s.as_bytes(), crate::escape::EscapeOptions { escape_single_quote: false, escape_double_quote: false, escape_nonascii: false });
     let mut chars = s.chars();
     let first = chars.next().ok_or(())?;
     let rest = &s[1..];
