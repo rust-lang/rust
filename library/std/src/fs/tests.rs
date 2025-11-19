@@ -224,11 +224,15 @@ fn file_test_io_seek_and_write() {
 #[test]
 #[cfg(any(
     windows,
+    target_os = "aix",
+    target_os = "cygwin",
     target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "illumos",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_multiple_shared() {
@@ -249,11 +253,15 @@ fn file_lock_multiple_shared() {
 #[test]
 #[cfg(any(
     windows,
+    target_os = "aix",
+    target_os = "cygwin",
     target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "illumos",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_blocking() {
@@ -275,11 +283,15 @@ fn file_lock_blocking() {
 #[test]
 #[cfg(any(
     windows,
+    target_os = "aix",
+    target_os = "cygwin",
     target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "illumos",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_drop() {
@@ -298,11 +310,15 @@ fn file_lock_drop() {
 #[test]
 #[cfg(any(
     windows,
+    target_os = "aix",
+    target_os = "cygwin",
     target_os = "freebsd",
+    target_os = "fuchsia",
+    target_os = "illumos",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "openbsd",
     target_os = "solaris",
-    target_os = "illumos",
     target_vendor = "apple",
 ))]
 fn file_lock_dup() {
