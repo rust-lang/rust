@@ -7,12 +7,12 @@ pub trait IsVoid {
 }
 impl IsVoid for () {
     #[type_const]
-    const IS_VOID: bool = true;
+    const IS_VOID: bool = const { true };
 }
 
 pub trait Maybe {}
 impl Maybe for () {}
-impl Maybe for () where (): IsVoid<IS_VOID = true> {}
+impl Maybe for () where (): IsVoid<IS_VOID = const { true }> {}
 //~^ ERROR conflicting implementations of trait `Maybe` for type `()`
 
 fn main() {}

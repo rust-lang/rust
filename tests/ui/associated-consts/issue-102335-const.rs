@@ -2,7 +2,7 @@
 #![allow(incomplete_features)]
 
 trait T {
-    type A: S<C<X = 0i32> = 34>;
+    type A: S<C<X = const { 0i32 }> = const { 34 }>;
     //~^ ERROR associated item constraints are not allowed here
     //~| ERROR associated item constraints are not allowed here
 }

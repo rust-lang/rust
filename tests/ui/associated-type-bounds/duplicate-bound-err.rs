@@ -61,7 +61,7 @@ impl Trait for () {
     type Gat<T> = ();
 
     #[type_const]
-    const ASSOC: i32 = 3;
+    const ASSOC: i32 = const { 3 };
 
     fn foo() {}
 }
@@ -70,7 +70,7 @@ impl Trait for u32 {
     type Gat<T> = ();
 
     #[type_const]
-    const ASSOC: i32 = 4;
+    const ASSOC: i32 = const { 4 };
 
     fn foo() -> u32 {
         42
@@ -79,9 +79,11 @@ impl Trait for u32 {
 
 fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
 
-fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+fn uncallable_const(_: impl Trait<ASSOC = const { 3 }, ASSOC = const { 4 }>) {}
 
-fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+fn uncallable_rtn(
+    _: impl Trait<foo(..): Trait<ASSOC = const { 3 }>, foo(..): Trait<ASSOC = const { 4 }>>
+) {}
 
 type MustFail = dyn Iterator<Item = i32, Item = u32>;
 //~^ ERROR [E0719]
@@ -92,14 +94,14 @@ trait Trait2 {
     const ASSOC: u32;
 }
 
-type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
+type MustFail2 = dyn Trait2<ASSOC = const { 3u32 }, ASSOC = const { 4u32 }>;
 //~^ ERROR [E0719]
 //~| ERROR conflicting associated type bounds
 
 type MustFail3 = dyn Iterator<Item = i32, Item = i32>;
 //~^ ERROR [E0719]
 
-type MustFail4 = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
+type MustFail4 = dyn Trait2<ASSOC = const { 3u32 }, ASSOC = const { 3u32 }>;
 //~^ ERROR [E0719]
 
 trait Trait3 {

@@ -4,8 +4,8 @@ use ast::token::IdentIsRaw;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
-    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
-    Path, PathSegment, QSelf,
+    AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, MgcaDisambiguation,
+    ParenthesizedArgs, Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{BytePos, Ident, Span, kw, sym};
@@ -870,12 +870,17 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if self.token.kind == token::OpenBrace {
-            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
+        let (value, mgca_disambiguation) = if self.token.kind == token::OpenBrace {
+            let value = self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?;
+            (value, MgcaDisambiguation::Direct)
+        } else if self.token.is_keyword(kw::Const) {
+            let value = self.parse_mgca_const_block(true)?;
+            (value.value, MgcaDisambiguation::AnonConst)
         } else {
-            self.handle_unambiguous_unbraced_const_arg()?
+            let value = self.handle_unambiguous_unbraced_const_arg()?;
+            (value, MgcaDisambiguation::Direct)
         };
-        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
+        Ok(AnonConst { id: ast::DUMMY_NODE_ID, value, mgca_disambiguation })
     }
 
     /// Parse a generic argument in a path segment.
@@ -976,7 +981,11 @@ impl<'a> Parser<'a> {
                 GenericArg::Type(_) => GenericArg::Type(self.mk_ty(attr_span, TyKind::Err(guar))),
                 GenericArg::Const(_) => {
                     let error_expr = self.mk_expr(attr_span, ExprKind::Err(guar));
-                    GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: error_expr })
+                    GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value: error_expr,
+                        mgca_disambiguation: MgcaDisambiguation::Direct,
+                    })
                 }
                 GenericArg::Lifetime(lt) => GenericArg::Lifetime(lt),
             }));

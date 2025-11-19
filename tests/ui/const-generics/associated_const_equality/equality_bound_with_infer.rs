@@ -16,7 +16,7 @@ impl Foo for () {
     const ASSOC<const N: u32>: u32 = N;
 }
 
-fn bar<const N: u32, T: Foo<ASSOC<N> = 10>>() {}
+fn bar<const N: u32, T: Foo<ASSOC<N> = const { 10 }>>() {}
 
 fn main() {
     bar::<_, ()>();

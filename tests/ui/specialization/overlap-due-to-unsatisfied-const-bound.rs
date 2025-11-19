@@ -10,11 +10,11 @@ pub trait IsVoid {
 }
 impl<T> IsVoid for T {
     #[type_const]
-    default const IS_VOID: bool = false;
+    default const IS_VOID: bool = const { false };
 }
 
 pub trait NotVoid {}
-impl<T> NotVoid for T where T: IsVoid<IS_VOID = false> + ?Sized {}
+impl<T> NotVoid for T where T: IsVoid<IS_VOID = const { false }> + ?Sized {}
 
 pub trait Maybe<T> {}
 impl<T> Maybe<T> for T {}

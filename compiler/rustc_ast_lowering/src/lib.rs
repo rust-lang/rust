@@ -1206,7 +1206,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .and_then(|partial_res| partial_res.full_res())
                         {
                             if !res.matches_ns(Namespace::TypeNS)
-                                && path.is_potential_trivial_const_arg(false)
+                                && path.is_potential_trivial_const_arg()
                             {
                                 debug!(
                                     "lower_generic_arg: Lowering type argument as const argument: {:?}",
@@ -2276,11 +2276,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
-        let ct_kind = if path
-            .is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
-            && (tcx.features().min_generic_const_args()
-                || matches!(res, Res::Def(DefKind::ConstParam, _)))
-        {
+        let is_trivial_path = path.is_potential_trivial_const_arg()
+            && matches!(res, Res::Def(DefKind::ConstParam, _));
+        let ct_kind = if is_trivial_path || tcx.features().min_generic_const_args() {
             let qpath = self.lower_qpath(
                 ty_id,
                 &None,
@@ -2359,6 +2357,50 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
+    fn lower_expr_to_const_arg_direct(&mut self, expr: &Expr) -> hir::ConstArg<'hir> {
+        let overly_complex_const = |this: &mut Self| {
+            let e = this.dcx().struct_span_err(
+                expr.span,
+                "complex const arguments must be placed inside of a `const` block",
+            );
+
+            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(expr.span, e.emit()) }
+        };
+
+        match &expr.kind {
+            ExprKind::Path(qself, path) => {
+                let qpath = self.lower_qpath(
+                    expr.id,
+                    qself,
+                    path,
+                    ParamMode::Explicit,
+                    AllowReturnTypeNotation::No,
+                    // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
+                );
+
+                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath) }
+            }
+            ExprKind::Underscore => ConstArg {
+                hir_id: self.lower_node_id(expr.id),
+                kind: hir::ConstArgKind::Infer(expr.span, ()),
+            },
+            ExprKind::Block(block, _) => {
+                if let [stmt] = block.stmts.as_slice()
+                    && let StmtKind::Expr(expr) = &stmt.kind
+                    && matches!(expr.kind, ExprKind::Path(..) | ExprKind::Struct(..))
+                {
+                    return self.lower_expr_to_const_arg_direct(expr);
+                }
+
+                overly_complex_const(self)
+            }
+            _ => overly_complex_const(self),
+        }
+    }
+
     /// See [`hir::ConstArg`] for when to use this function vs
     /// [`Self::lower_anon_const_to_anon_const`].
     fn lower_anon_const_to_const_arg(&mut self, anon: &AnonConst) -> &'hir hir::ConstArg<'hir> {
@@ -2379,12 +2421,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         } else {
             &anon.value
         };
+
+        if tcx.features().min_generic_const_args() {
+            match anon.mgca_disambiguation {
+                MgcaDisambiguation::AnonConst => {
+                    let lowered_anon = self.lower_anon_const_to_anon_const(anon);
+                    return ConstArg {
+                        hir_id: self.next_id(),
+                        kind: hir::ConstArgKind::Anon(lowered_anon),
+                    };
+                }
+                MgcaDisambiguation::Direct => return self.lower_expr_to_const_arg_direct(expr),
+            }
+        }
+
         let maybe_res =
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
         if let ExprKind::Path(qself, path) = &expr.kind
-            && path.is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
-            && (tcx.features().min_generic_const_args()
-                || matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _))))
+            && path.is_potential_trivial_const_arg()
+            && matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _)))
         {
             let qpath = self.lower_qpath(
                 expr.id,
@@ -2392,7 +2447,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Explicit,
                 AllowReturnTypeNotation::No,
-                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
