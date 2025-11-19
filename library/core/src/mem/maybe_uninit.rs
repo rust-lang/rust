@@ -1047,7 +1047,7 @@ impl<T> MaybeUninit<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
     /// let val = 0x12345678_i32;
@@ -1401,7 +1401,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
@@ -1428,7 +1428,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];

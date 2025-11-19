@@ -10,13 +10,13 @@
 // tidy-alphabetical-start
 #![allow(clippy::mut_from_ref)] // Arena allocators are one place where this pattern is fine.
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(maybe_uninit_slice))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(test(no_crate_inject, attr(deny(warnings), allow(internal_features))))]
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
-#![feature(maybe_uninit_slice)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(unwrap_infallible)]
