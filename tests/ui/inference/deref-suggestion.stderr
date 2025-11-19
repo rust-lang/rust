@@ -6,6 +6,8 @@ LL |     foo(s);
    |     |
    |     arguments to this function are incorrect
    |
+   = note: expected struct `String`
+           found reference `&String`
 note: function defined here
   --> $DIR/deref-suggestion.rs:5:4
    |
@@ -42,6 +44,8 @@ LL |     foo(&"aaa".to_owned());
    |     |
    |     arguments to this function are incorrect
    |
+   = note: expected struct `String`
+           found reference `&String`
 note: function defined here
   --> $DIR/deref-suggestion.rs:5:4
    |
@@ -61,6 +65,8 @@ LL |     foo(&mut "aaa".to_owned());
    |     |
    |     arguments to this function are incorrect
    |
+   = note:         expected struct `String`
+           found mutable reference `&mut String`
 note: function defined here
   --> $DIR/deref-suggestion.rs:5:4
    |

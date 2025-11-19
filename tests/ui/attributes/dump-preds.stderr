@@ -8,7 +8,7 @@ LL | trait Trait<T>: Iterator<Item: Copy>
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
-   = note: Binder { value: TraitPredicate(<std::string::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitPredicate(<std::string::generic::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as Trait<T>>, polarity:Positive), bound_vars: [] }
 
 error: rustc_dump_predicates
@@ -21,7 +21,7 @@ LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
-   = note: Binder { value: TraitPredicate(<std::string::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: TraitPredicate(<std::string::generic::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as Trait<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<P as std::marker::Sized>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<P as std::cmp::Eq>, polarity:Positive), bound_vars: [] }

@@ -26,7 +26,7 @@
 +     let mut _0: std::task::Poll<u32>;
       let _3: u32;
       let mut _4: !;
-      let mut _6: std::string::String;
+      let mut _6: std::string::generic::String;
       let mut _7: !;
       let mut _8: {async block@$DIR/async_fn.rs:80:50: 80:55};
       let mut _9: {async block@$DIR/async_fn.rs:80:50: 80:55};
@@ -57,7 +57,7 @@
           }
           scope 3 {
 +             coroutine debug __awaitee => _s2;
-              let _5: (std::string::String, !);
+              let _5: (std::string::generic::String, !);
               let mut _11: {async block@$DIR/async_fn.rs:80:50: 80:55};
               scope 4 {
 -                 debug __awaitee => _11;
@@ -76,7 +76,7 @@
 -         StorageLive(_4);
 -         StorageLive(_5);
 -         StorageLive(_6);
--         _6 = String::new() -> [return: bb1, unwind: bb30];
+-         _6 = string::<impl String>::new() -> [return: bb1, unwind: bb30];
 +         _30 = move _2 as std::ptr::NonNull<std::task::Context<'_>> (Transmute);
 +         _29 = std::future::ResumeTy(move _30);
 +         _28 = copy (_1.0: &mut {async fn body of partial_init()});
@@ -195,7 +195,7 @@
 -         StorageDead(_11);
 -         drop(_6) -> [return: bb12, unwind: bb25];
 +         nop;
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb12, unwind: bb19];
++         drop((((*_28) as variant#3).1: std::string::generic::String)) -> [return: bb12, unwind: bb19];
       }
   
       bb12: {
@@ -257,7 +257,7 @@
 -         drop(_1) -> [return: bb19, unwind: bb32];
 +     bb18 (cleanup): {
 +         nop;
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb19, unwind terminate(cleanup)];
++         drop((((*_28) as variant#3).1: std::string::generic::String)) -> [return: bb19, unwind terminate(cleanup)];
       }
   
 -     bb19: {
@@ -277,7 +277,7 @@
 -         StorageDead(_18);
 -         goto -> bb23;
 +         StorageDead(_9);
-+         drop((((*_28) as variant#3).1: std::string::String)) -> [return: bb22, unwind terminate(cleanup)];
++         drop((((*_28) as variant#3).1: std::string::generic::String)) -> [return: bb22, unwind terminate(cleanup)];
       }
   
       bb22 (cleanup): {
@@ -386,7 +386,7 @@
 +         StorageLive(_4);
 +         StorageLive(_5);
 +         nop;
-+         (((*_28) as variant#3).1: std::string::String) = String::new() -> [return: bb1, unwind: bb24];
++         (((*_28) as variant#3).1: std::string::generic::String) = string::<impl String>::new() -> [return: bb1, unwind: bb24];
       }
   }
   

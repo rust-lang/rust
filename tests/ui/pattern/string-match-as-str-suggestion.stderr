@@ -6,6 +6,8 @@ LL |     let _ = match s {
 LL |         "yes" => Some(true),
    |         ^^^^^ expected `String`, found `&str`
    |
+   = note: expected struct `String`
+           found reference `&'static str`
 help: consider converting the `String` to a `&str` using `.as_str()`
    |
 LL |     let _ = match s.as_str() {
@@ -20,6 +22,8 @@ LL |     let _ = match s {
 LL |         "no" => Some(false),
    |         ^^^^ expected `String`, found `&str`
    |
+   = note: expected struct `String`
+           found reference `&'static str`
 help: consider converting the `String` to a `&str` using `.as_str()`
    |
 LL |     let _ = match s.as_str() {
@@ -33,6 +37,8 @@ LL |     if let "hello" = s2 {
    |            |
    |            expected `String`, found `&str`
    |
+   = note: expected struct `String`
+           found reference `&'static str`
 help: consider converting the `String` to a `&str` using `.as_str()`
    |
 LL |     if let "hello" = s2.as_str() {
