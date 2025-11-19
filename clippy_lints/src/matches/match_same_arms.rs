@@ -152,7 +152,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     if let Some(((_, dest), src)) = split
                         && let Some(pat_snippets) = group
                             .iter()
-                            .map(|(_, arm)| arm.pat.span.get_source_text(cx))
+                            .map(|(_, arm)| arm.pat.span.get_text(cx))
                             .collect::<Option<Vec<_>>>()
                     {
                         let suggs = src

@@ -214,7 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 .unwrap_crate_local()
                 .lint_root;
 
-            if let Some(snip) = span.get_source_text(cx)
+            if let Some(snip) = span.get_text(cx)
                 && let Some(dot) = snip.rfind('.')
             {
                 let sugg_span = span.with_lo(span.lo() + BytePos(u32::try_from(dot).unwrap()));

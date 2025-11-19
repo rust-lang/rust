@@ -22,7 +22,7 @@ use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 /// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
 /// match arms.
 fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
-    span.check_source_text(cx, |text| text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*"))
+    span.check_text(cx, |text| text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*"))
 }
 
 pub(crate) fn check<'tcx>(

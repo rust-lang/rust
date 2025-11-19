@@ -1036,7 +1036,7 @@ fn reduce_exprkind<'hir>(
             // `{}` => `()`
             ([], None)
                 if block.span.ctxt() != eval_ctxt
-                    || block.span.check_source_text(cx, |src| {
+                    || block.span.check_text(cx, |src| {
                         tokenize(src, FrontmatterAllowed::No)
                             .map(|t| t.kind)
                             .filter(|t| {

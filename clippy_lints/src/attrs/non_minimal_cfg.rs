@@ -29,7 +29,7 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[MetaItemInner]) {
                         meta.span,
                         "unneeded sub `cfg` when there is only one condition",
                         |diag| {
-                            if let Some(snippet) = list[0].span().get_source_text(cx) {
+                            if let Some(snippet) = list[0].span().get_text(cx) {
                                 diag.span_suggestion(
                                     meta.span,
                                     "try",

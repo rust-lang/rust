@@ -78,7 +78,7 @@ impl LateLintPass<'_> for ImportRename {
                     && let Some(name) = self.renames.get(&id)
                     // Remove semicolon since it is not present for nested imports
                     && let span_without_semi = cx.sess().source_map().span_until_char(item.span, ';')
-                    && let Some(snip) = span_without_semi.get_source_text(cx)
+                    && let Some(snip) = span_without_semi.get_text(cx)
                     && let Some(import) = match snip.split_once(" as ") {
                         None => Some(snip.as_str()),
                         Some((import, rename)) => {

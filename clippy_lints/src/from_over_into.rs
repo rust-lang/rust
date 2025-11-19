@@ -197,8 +197,8 @@ fn convert_to_from(
         return None;
     };
 
-    let from = self_ty.span.get_source_text(cx)?;
-    let into = target_ty.span.get_source_text(cx)?;
+    let from = self_ty.span.get_text(cx)?;
+    let into = target_ty.span.get_text(cx)?;
 
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U

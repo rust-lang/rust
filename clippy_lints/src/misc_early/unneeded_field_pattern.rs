@@ -59,7 +59,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
                                         .iter()
                                         .filter_map(|f| match f.pat.kind {
                                             PatKind::Wild => None,
-                                            _ => f.span.get_source_text(cx),
+                                            _ => f.span.get_text(cx),
                                         })
                                         .format(", "),
                                 ));

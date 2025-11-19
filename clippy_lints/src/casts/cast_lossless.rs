@@ -40,7 +40,7 @@ pub(super) fn check(
             diag.help("an `as` cast can become silently lossy if the types change in the future");
             let mut applicability = Applicability::MachineApplicable;
             let from_sugg = Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "<from>", &mut applicability);
-            let Some(ty) = hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt()).get_source_text(cx) else {
+            let Some(ty) = hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt()).get_text(cx) else {
                 return;
             };
             match cast_to_hir.kind {

@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && let as_ptr_sig = cx.tcx.fn_sig(as_ptr_did).instantiate_identity().skip_norm_wip()
         && let Some(first_param_ty) = as_ptr_sig.skip_binder().inputs().iter().next()
         && let ty::Ref(_, _, Mutability::Not) = first_param_ty.kind()
-        && let Some(recv) = receiver.span.get_source_text(cx)
+        && let Some(recv) = receiver.span.get_text(cx)
     {
         // `as_mut_ptr` might not exist
         let applicability = Applicability::MaybeIncorrect;

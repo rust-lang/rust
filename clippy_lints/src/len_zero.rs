@@ -261,7 +261,7 @@ impl LenZero {
 }
 
 fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
-    let Some(snippet) = span.get_source_text(cx) else {
+    let Some(snippet) = span.get_text(cx) else {
         return span;
     };
     if has_enclosing_paren(snippet) {

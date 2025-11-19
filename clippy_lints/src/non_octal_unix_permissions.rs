@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && param.span.eq_ctxt(expr.span)
                     && param
                         .span
-                        .check_source_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
+                        .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
                 {
                     show_error(cx, param);
                 }
@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && param.span.eq_ctxt(expr.span)
                     && param
                         .span
-                        .check_source_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
+                        .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
                 {
                     show_error(cx, param);
                 }

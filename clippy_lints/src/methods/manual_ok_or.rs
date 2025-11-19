@@ -27,8 +27,8 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Call(err_path, [err_arg]) = or_expr.kind
         && err_path.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
         && is_ok_wrapping(cx, map_expr)
-        && let Some(recv_snippet) = recv.span.get_source_text(cx)
-        && let Some(err_arg_snippet) = err_arg.span.get_source_text(cx)
+        && let Some(recv_snippet) = recv.span.get_text(cx)
+        && let Some(err_arg_snippet) = err_arg.span.get_text(cx)
         && let Some(indent) = indent_of(cx, expr.span)
     {
         let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str(), true, Some(indent + 4));

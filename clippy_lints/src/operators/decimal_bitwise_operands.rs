@@ -40,7 +40,7 @@ fn check_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
             if let LitKind::Int(Pu128(val), _) = lit.node
                 && !is_single_digit(val)
                 && !is_power_of_twoish(val)
-                && let Some(src) = lit.span.get_source_text(cx)
+                && let Some(src) = lit.span.get_text(cx)
                 && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
                 && num_lit.is_decimal()
             {

@@ -99,7 +99,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                     if let Some(prev) = mod_pos.checked_sub(1)
                         && let prev = cx.tcx.hir_item(module.item_ids[prev])
                         && let items_span = last.span.with_lo(test_mod.span.hi())
-                        && let Some(items) = items_span.get_source_text(cx)
+                        && let Some(items) = items_span.get_text(cx)
                     {
                         diag.multipart_suggestion_with_style(
                             "move the items to before the test module was defined",

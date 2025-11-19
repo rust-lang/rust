@@ -143,8 +143,8 @@ impl LateLintPass<'_> for ManualRangePatterns {
                 pat.span,
                 "this OR pattern can be rewritten using a range",
                 |diag| {
-                    if let Some(min) = min.span.get_source_text(cx)
-                        && let Some(max) = max.span.get_source_text(cx)
+                    if let Some(min) = min.span.get_text(cx)
+                        && let Some(max) = max.span.get_text(cx)
                     {
                         diag.span_suggestion(
                             pat.span,

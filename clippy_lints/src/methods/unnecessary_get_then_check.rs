@@ -39,11 +39,11 @@ pub(super) fn check(
         return;
     };
     let both_calls_span = get_call_span.with_hi(call_span.hi());
-    if let Some(snippet) = both_calls_span.get_source_text(cx)
-        && let Some(arg_snippet) = arg.span.get_source_text(cx)
+    if let Some(snippet) = both_calls_span.get_text(cx)
+        && let Some(arg_snippet) = arg.span.get_text(cx)
     {
         let generics_snippet = if let Some(generics) = path.args
-            && let Some(generics_snippet) = generics.span_ext.get_source_text(cx)
+            && let Some(generics_snippet) = generics.span_ext.get_text(cx)
         {
             format!("::{generics_snippet}")
         } else {
@@ -64,7 +64,7 @@ pub(super) fn check(
                 suggestion,
                 Applicability::MaybeIncorrect,
             );
-        } else if let Some(caller_snippet) = get_caller.span.get_source_text(cx) {
+        } else if let Some(caller_snippet) = get_caller.span.get_text(cx) {
             let full_span = get_caller.span.with_hi(call_span.hi());
 
             span_lint_and_then(

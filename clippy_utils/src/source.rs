@@ -109,7 +109,7 @@ impl IntoSpan for Range<BytePos> {
 pub trait SpanExt: SpanRange {
     /// Attempts to get a handle to the source text. Returns `None` if either the span is malformed,
     /// or the source text is not accessible.
-    fn get_source_text<'sm>(self, sm: impl HasSourceMap<'sm>) -> Option<SourceText> {
+    fn get_text<'sm>(self, sm: impl HasSourceMap<'sm>) -> Option<SourceText> {
         get_source_range(sm.source_map(), self.into_range()).and_then(SourceText::new)
     }
 
@@ -127,7 +127,7 @@ pub trait SpanExt: SpanRange {
 
     /// Checks if the referenced source text satisfies the given predicate. Returns `false` if the
     /// source text cannot be retrieved.
-    fn check_source_text<'sm>(self, sm: impl HasSourceMap<'sm>, pred: impl for<'a> FnOnce(&'a str) -> bool) -> bool {
+    fn check_text<'sm>(self, sm: impl HasSourceMap<'sm>, pred: impl for<'a> FnOnce(&'a str) -> bool) -> bool {
         self.with_source_text(sm, pred).unwrap_or(false)
     }
 

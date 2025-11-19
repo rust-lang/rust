@@ -249,7 +249,7 @@ fn local_snippet_without_semicolon(cx: &LateContext<'_>, local: &LetStmt<'_>) ->
         None => local.pat.span.hi(),
     });
 
-    span.get_source_text(cx)
+    span.get_text(cx)
 }
 
 fn check<'tcx>(

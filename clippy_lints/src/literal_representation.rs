@@ -228,7 +228,7 @@ impl LiteralDigitGrouping {
     }
 
     fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
-        if let Some(src) = span.get_source_text(cx)
+        if let Some(src) = span.get_text(cx)
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
         {
@@ -441,7 +441,7 @@ impl DecimalLiteralRepresentation {
         if let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let LitKind::Int(val, _) = lit_kind
             && val >= u128::from(self.threshold)
-            && let Some(src) = span.get_source_text(cx)
+            && let Some(src) = span.get_text(cx)
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
             && num_lit.radix == Radix::Decimal
         {

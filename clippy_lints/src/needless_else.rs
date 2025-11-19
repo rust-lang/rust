@@ -43,7 +43,7 @@ impl EarlyLintPass for NeedlessElse {
             && !else_clause.span.from_expansion()
             && block.stmts.is_empty()
             && let range = (then_block.span.hi()..expr.span.hi()).trim_start(cx)
-            && range.clone().check_source_text(cx, |src| {
+            && range.clone().check_text(cx, |src| {
                 // Ignore else blocks that contain comments or #[cfg]s
                 !src.contains(['/', '#'])
             })

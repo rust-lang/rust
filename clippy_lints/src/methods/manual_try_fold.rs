@@ -31,14 +31,12 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Closure(closure) = acc.kind
         && msrv.meets(cx, msrvs::ITERATOR_TRY_FOLD)
         && !is_from_proc_macro(cx, expr)
-        && let Some(args_snip) = closure
-            .fn_arg_span
-            .and_then(|fn_arg_span| fn_arg_span.get_source_text(cx))
+        && let Some(args_snip) = closure.fn_arg_span.and_then(|fn_arg_span| fn_arg_span.get_text(cx))
     {
         let init_snip = rest
             .is_empty()
             .then_some(first.span)
-            .and_then(|span| span.get_source_text(cx))
+            .and_then(|span| span.get_text(cx))
             .map_or_else(|| "...".to_owned(), |src| src.to_owned());
 
         span_lint_and_sugg(

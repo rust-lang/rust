@@ -74,7 +74,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
             }
             let line_span = first_line_of_span(cx, attr.span);
 
-            if let Some(src) = line_span.get_source_text(cx)
+            if let Some(src) = line_span.get_text(cx)
                 && src.contains("#[")
             {
                 #[expect(clippy::collapsible_span_lint_calls)]

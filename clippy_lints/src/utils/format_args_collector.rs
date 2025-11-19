@@ -80,7 +80,7 @@ fn has_span_from_proc_macro(cx: &EarlyContext<'_>, args: &FormatArgs) -> bool {
         .tuple_windows()
         .map(|(start, end)| start.between(end))
         .all(|sp| {
-            sp.check_source_text(cx, |src| {
+            sp.check_text(cx, |src| {
                 // text should be either `, name` or `, name =`
                 let mut iter = tokenize(src, FrontmatterAllowed::No).filter(|t| {
                     !matches!(

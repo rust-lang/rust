@@ -2882,7 +2882,7 @@ pub fn tokenize_with_text(s: &str) -> impl Iterator<Item = (TokenKind, &str, Inn
 /// Checks whether a given span has any comment token
 /// This checks for all types of comment: line "//", block "/**", doc "///" "//!"
 pub fn span_contains_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> bool {
-    span.check_source_text(sm, |snippet| {
+    span.check_text(sm, |snippet| {
         tokenize(snippet, FrontmatterAllowed::No).any(|token| {
             matches!(
                 token.kind,
@@ -2897,7 +2897,7 @@ pub fn span_contains_comment<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> boo
 /// This is useful to determine if there are any actual code tokens in the span that are omitted in
 /// the late pass, such as platform-specific code.
 pub fn span_contains_non_whitespace<'sm>(sm: impl HasSourceMap<'sm>, span: Span, skip_comments: bool) -> bool {
-    span.check_source_text(sm, |snippet| {
+    span.check_text(sm, |snippet| {
         tokenize_with_text(snippet).any(|(token, _, _)| match token {
             TokenKind::Whitespace => false,
             TokenKind::BlockComment { .. } | TokenKind::LineComment { .. } => !skip_comments,

@@ -119,7 +119,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
             wildcard_ident.map_or(String::new(), |ident| {
                 ident
                     .span
-                    .get_source_text(cx)
+                    .get_text(cx)
                     .map_or_else(|| format!("{} @ ", ident.name), |s| format!("{s} @ "))
             }),
             if let CommonPrefixSearcher::Path(path_prefix) = path_prefix {

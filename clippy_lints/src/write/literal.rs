@@ -48,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) 
             && let Some(arg) = format_args.arguments.by_index(index)
             && let rustc_ast::ExprKind::Lit(lit) = &arg.expr.kind
             && !arg.expr.span.from_expansion()
-            && let Some(value_string) = arg.expr.span.get_source_text(cx)
+            && let Some(value_string) = arg.expr.span.get_text(cx)
         {
             let (replacement, replace_raw) = match lit.kind {
                 LitKind::Str | LitKind::StrRaw(_) => match extract_str_literal(&value_string) {
@@ -71,7 +71,7 @@ pub(super) fn check(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) 
                 _ => continue,
             };
 
-            let Some(format_string_snippet) = format_args.span.get_source_text(cx) else {
+            let Some(format_string_snippet) = format_args.span.get_text(cx) else {
                 continue;
             };
             let format_string_is_raw = format_string_snippet.starts_with('r');

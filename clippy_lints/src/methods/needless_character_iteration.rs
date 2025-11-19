@@ -36,7 +36,7 @@ fn handle_expr(
                 && receiver.res_local_id() == Some(first_param)
                 && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(receiver).peel_refs()
                 && *char_arg_ty.kind() == ty::Char
-                && let Some(snippet) = before_chars.get_source_text(cx)
+                && let Some(snippet) = before_chars.get_text(cx)
             {
                 span_lint_and_sugg(
                     cx,
@@ -78,7 +78,7 @@ fn handle_expr(
             if revert != is_all
                 && fn_path.ty_rel_def(cx).is_diag_item(cx, sym::char_is_ascii)
                 && peels_expr_ref(arg).res_local_id() == Some(first_param)
-                && let Some(snippet) = before_chars.get_source_text(cx)
+                && let Some(snippet) = before_chars.get_text(cx)
             {
                 span_lint_and_sugg(
                     cx,

@@ -92,7 +92,7 @@ fn expr_as_literal<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opti
 }
 
 fn format_isize_literal<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<String> {
-    let text = expr.span.get_source_text(cx)?;
+    let text = expr.span.get_text(cx)?;
     let text = peel_parens_str(&text);
     Some(text.trim_end_matches("isize").trim_end_matches('_').to_string())
 }

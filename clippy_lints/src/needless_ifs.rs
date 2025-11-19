@@ -48,7 +48,7 @@ impl LateLintPass<'_> for NeedlessIfs {
             && block.stmts.is_empty()
             && block.expr.is_none()
             && !expr.span.in_external_macro(cx.sess().source_map())
-            && then.span.check_source_text(cx, |src| {
+            && then.span.check_text(cx, |src| {
                 // Ignore
                 // - empty macro expansions
                 // - empty reptitions in macro expansions
@@ -58,7 +58,7 @@ impl LateLintPass<'_> for NeedlessIfs {
                     .all(|ch| matches!(ch, b'{' | b'}') || ch.is_ascii_whitespace() || ch == b'\x0b')
             })
             && let Some(cond_span) = walk_span_to_context(cond.span, expr.span.ctxt())
-            && let Some(cond_snippet) = cond_span.get_source_text(cx)
+            && let Some(cond_snippet) = cond_span.get_text(cx)
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_sugg(

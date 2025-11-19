@@ -300,7 +300,7 @@ fn check_possible_range_contains(
     if let ExprKind::Binary(ref lhs_op, _left, new_lhs) = left.kind
         && op == lhs_op.node
         && let new_span = Span::new(new_lhs.span.lo(), right.span.hi(), expr.span.ctxt(), expr.span.parent())
-        && new_span.check_source_text(cx, |src| {
+        && new_span.check_text(cx, |src| {
             // Do not continue if we have mismatched number of parens, otherwise the suggestion is wrong
             src.matches('(').count() == src.matches(')').count()
         })

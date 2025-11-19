@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // case somebody does that for some reason
             && (const_1.is_pos_infinity() && const_2.is_neg_infinity()
                 || const_1.is_neg_infinity() && const_2.is_pos_infinity())
-            && let Some(local_snippet) = first.span.get_source_text(cx)
+            && let Some(local_snippet) = first.span.get_text(cx)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
                 (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Eq) => Variant::ManualIsInfinite,

@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
 
                     // If the comment contains a bare CR (not followed by a LF), do not propose an auto-fix
                     // as bare CR are not allowed in doc comments.
-                    if span.check_source_text(cx, contains_bare_cr) {
+                    if span.check_text(cx, contains_bare_cr) {
                         diag.help(msg)
                             .note("bare CR characters are not allowed in doc comments");
                         return;

@@ -32,7 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
             expr.span,
             "derefed type is same as origin",
             "try",
-            recv.span.get_source_text(cx).unwrap().to_owned(),
+            recv.span.get_text(cx).unwrap().to_owned(),
             Applicability::MachineApplicable,
         );
     }

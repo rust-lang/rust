@@ -74,8 +74,8 @@ pub(super) fn check<'tcx>(
                     expr.span,
                     "manual implementation of an assign operation",
                     |diag| {
-                        if let Some(snip_a) = assignee.span.get_source_text(cx)
-                            && let Some(snip_r) = rhs.span.get_source_text(cx)
+                        if let Some(snip_a) = assignee.span.get_text(cx)
+                            && let Some(snip_r) = rhs.span.get_text(cx)
                         {
                             diag.span_suggestion(
                                 expr.span,

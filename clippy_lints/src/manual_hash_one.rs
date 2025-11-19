@@ -105,8 +105,8 @@ impl LateLintPass<'_> for ManualHashOne {
                 finish_expr.span,
                 "manual implementation of `BuildHasher::hash_one`",
                 |diag| {
-                    if let Some(build_hasher) = build_hasher.span.get_source_text(cx)
-                        && let Some(hashed_value) = hashed_value.span.get_source_text(cx)
+                    if let Some(build_hasher) = build_hasher.span.get_text(cx)
+                        && let Some(hashed_value) = hashed_value.span.get_text(cx)
                     {
                         diag.multipart_suggestion(
                             "try",

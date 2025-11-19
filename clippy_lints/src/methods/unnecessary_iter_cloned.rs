@@ -42,7 +42,7 @@ pub fn check_for_loop_iter(
         && let Some(ForLoop { pat, body, .. }) = ForLoop::hir(grandparent)
         && let (clone_or_copy_needed, references_to_binding) = clone_or_copy_needed(cx, pat, body)
         && !clone_or_copy_needed
-        && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        && let Some(receiver_snippet) = receiver.span.get_text(cx)
     {
         // Issue 12098
         // https://github.com/rust-lang/rust-clippy/issues/12098
@@ -102,7 +102,7 @@ pub fn check_for_loop_iter(
             && implements_trait(cx, collection_ty, into_iterator_trait_id, &[])
             && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, sym::Item)
             && iter_item_ty == into_iter_item_ty
-            && let Some(collection_snippet) = collection.span.get_source_text(cx)
+            && let Some(collection_snippet) = collection.span.get_text(cx)
         {
             collection_snippet
         } else {

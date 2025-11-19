@@ -49,8 +49,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
                     ),
                 )];
                 if let Some((left, right)) = invert_bindings
-                    && let Some(snip_left) = left.get_source_text(cx)
-                    && let Some(snip_right) = right.get_source_text(cx)
+                    && let Some(snip_left) = left.get_text(cx)
+                    && let Some(snip_right) = right.get_text(cx)
                 {
                     suggestions.extend([(left, snip_right.to_string()), (right, snip_left.to_string())]);
                 } else {

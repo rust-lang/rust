@@ -21,7 +21,7 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>
 
         let sugg = if let TyKind::Infer(()) = mut_ty.ty.kind {
             format!("{std_or_core}::{sugg_fn}()")
-        } else if let Some(mut_ty_snip) = mut_ty.ty.span.get_source_text(cx) {
+        } else if let Some(mut_ty_snip) = mut_ty.ty.span.get_text(cx) {
             format!("{std_or_core}::{sugg_fn}::<{mut_ty_snip}>()")
         } else {
             return;

@@ -197,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
                     // TODO: Is there a cleaner, robust way to ask this question?
                     // The obvious `LocalDecl::is_user_variable()` panics on "unwrapping cross-crate data",
                     // and that doesn't get us the true name in scope rather than the span text either.
-                    if let Some(name) = local_span.get_source_text(cx)
+                    if let Some(name) = local_span.get_text(cx)
                         && is_ident(&name)
                     {
                         // If the local is an ordinary named variable,

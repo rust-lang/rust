@@ -43,8 +43,8 @@ fn lint_misrefactored_assign_op(
         expr.span,
         "variable appears on both sides of an assignment operation",
         |diag| {
-            if let Some(snip_a) = assignee.span.get_source_text(cx)
-                && let Some(snip_r) = rhs_other.span.get_source_text(cx)
+            if let Some(snip_a) = assignee.span.get_text(cx)
+                && let Some(snip_r) = rhs_other.span.get_text(cx)
             {
                 let a = &sugg::Sugg::hir(cx, assignee, "..");
                 let r = &sugg::Sugg::hir(cx, rhs, "..");

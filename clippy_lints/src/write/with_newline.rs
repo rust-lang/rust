@@ -48,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: 
             format!("using `{name}!()` with a format string that ends in a single newline"),
             |diag| {
                 let name_span = cx.sess().source_map().span_until_char(macro_call.span, '!');
-                let Some(format_snippet) = format_string_span.get_source_text(cx) else {
+                let Some(format_snippet) = format_string_span.get_text(cx) else {
                     return;
                 };
 

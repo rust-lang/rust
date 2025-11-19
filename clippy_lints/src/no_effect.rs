@@ -285,8 +285,8 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         if let ExprKind::Index(..) = &expr.kind {
             if !is_inside_always_const_context(cx.tcx, expr.hir_id)
                 && let [arr, func] = &*reduced
-                && let Some(arr) = arr.span.get_source_text(cx)
-                && let Some(func) = func.span.get_source_text(cx)
+                && let Some(arr) = arr.span.get_text(cx)
+                && let Some(func) = func.span.get_text(cx)
             {
                 span_lint_hir_and_then(
                     cx,
@@ -307,7 +307,7 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         } else {
             let mut snippet = String::new();
             for e in reduced {
-                if let Some(snip) = e.span.get_source_text(cx) {
+                if let Some(snip) = e.span.get_text(cx) {
                     snippet.push_str(&snip);
                     snippet.push_str("; ");
                 } else {

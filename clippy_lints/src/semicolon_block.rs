@@ -94,7 +94,7 @@ impl SemicolonBlock {
         //     ({ 0 }); // if we remove this `;`, this will parse as a `({ 0 })(5);` function call
         //     (5);
         // }
-        if remove_span.check_source_text(cx, |src| src.contains(')')) {
+        if remove_span.check_text(cx, |src| src.contains(')')) {
             return;
         }
 

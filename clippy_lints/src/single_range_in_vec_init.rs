@@ -91,7 +91,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let Some(snippet) = span.get_source_text(cx) else {
+        let Some(snippet) = span.get_text(cx) else {
             return;
         };
         // `is_from_proc_macro` will skip any `vec![]`. Let's not!
