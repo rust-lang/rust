@@ -250,9 +250,10 @@ pub struct ImplTraitHeader<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable, Default)]
 pub enum Asyncness {
     Yes,
+    #[default]
     No,
 }
 
