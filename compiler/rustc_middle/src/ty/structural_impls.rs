@@ -257,8 +257,8 @@ TrivialTypeTraversalImpls! {
     crate::ty::AssocItem,
     crate::ty::AssocKind,
     crate::ty::BoundRegion,
+    crate::ty::ScalarInt,
     crate::ty::UserTypeAnnotationIndex,
-    crate::ty::ValTree<'tcx>,
     crate::ty::abstract_const::NotConstEvaluatable,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::adjustment::PointerCoercion,
@@ -694,6 +694,29 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
             | ConstKind::Bound(..)
             | ConstKind::Placeholder(_) => V::Result::output(),
         }
+    }
+}
+
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(&self, visitor: &mut V) -> V::Result {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        inner.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ty::ValTree<'tcx> {
+    fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        let valtree = folder.cx().intern_valtree(inner.clone().try_fold_with(folder)?);
+        Ok(valtree)
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        let inner: &ty::ValTreeKind<TyCtxt<'tcx>> = &*self;
+        folder.cx().intern_valtree(inner.clone().fold_with(folder))
     }
 }
 

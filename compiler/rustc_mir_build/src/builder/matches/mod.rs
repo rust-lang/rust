@@ -18,7 +18,9 @@ use rustc_hir::{BindingMode, ByRef, LangItem, LetStmt, LocalSource, Node, Pinned
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
+use rustc_middle::ty::{
+    self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind, ValTreeKindExt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::constructor::RangeEnd;
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
@@ -3014,7 +3016,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     bug!("malformed valtree for an enum")
                 };
 
-                let ValTreeKind::Leaf(actual_variant_idx) = ***actual_variant_idx else {
+                let ValTreeKind::Leaf(actual_variant_idx) = *actual_variant_idx.to_value().valtree
+                else {
                     bug!("malformed valtree for an enum")
                 };
 
