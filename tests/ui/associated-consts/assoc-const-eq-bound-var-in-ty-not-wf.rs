@@ -18,7 +18,7 @@ trait Trait<T: ConstParamTy_> {
 fn take(
     _: impl Trait<
         <<for<'a> fn(&'a str) -> &'a str as Project>::Out as Discard>::Out,
-        K = { () }
+        K = const { () }
     >,
 ) {}
 //~^^^ ERROR higher-ranked subtype error
