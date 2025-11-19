@@ -1097,20 +1097,6 @@ impl<T> MaybeUninit<T> {
             )
         }
     }
-
-    /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this.as_ptr() as *const T
-    }
-
-    /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this.as_mut_ptr() as *mut T
-    }
 }
 
 impl<T> [MaybeUninit<T>] {
@@ -1482,7 +1468,7 @@ impl<T> [MaybeUninit<T>] {
     /// requirement the compiler knows about it is that the data pointer must be
     /// non-null. Dropping such a `Vec<T>` however will cause undefined
     /// behaviour.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
     pub const unsafe fn assume_init_drop(&mut self)
@@ -1504,7 +1490,8 @@ impl<T> [MaybeUninit<T>] {
     /// Calling this when the content is not yet fully initialized causes undefined
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in
     /// the slice really is in an initialized state.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &[T] {
         // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
@@ -1522,7 +1509,8 @@ impl<T> [MaybeUninit<T>] {
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in the
     /// slice really is in an initialized state. For instance, `.assume_init_mut()` cannot
     /// be used to initialize a `MaybeUninit` slice.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut [T] {
         // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
