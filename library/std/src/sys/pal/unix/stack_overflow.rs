@@ -174,7 +174,9 @@ mod imp {
                 }
 
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
-                action.sa_sigaction = signal_handler as sighandler_t;
+                action.sa_sigaction = signal_handler
+                    as unsafe extern "C" fn(i32, *mut libc::siginfo_t, *mut libc::c_void)
+                    as sighandler_t;
                 // SAFETY: only overriding signals if the default is set
                 unsafe { sigaction(signal, &action, ptr::null_mut()) };
             }

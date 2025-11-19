@@ -16,8 +16,7 @@ const fn wrap(
     x
 }
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn huh() -> impl [const] PartialEq + [const] Destruct + Copy;
 }
 
@@ -36,8 +35,7 @@ const _: () = {
     assert!(x == x);
 };
 
-#[const_trait]
-trait T {}
+const trait T {}
 struct S;
 impl const T for S {}
 

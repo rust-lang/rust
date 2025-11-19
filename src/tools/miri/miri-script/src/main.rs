@@ -78,9 +78,9 @@ pub enum Command {
         /// Build the program with the dependencies declared in `tests/deps/Cargo.toml`.
         #[arg(long)]
         dep: bool,
-        /// Show build progress.
+        /// Hide build progress.
         #[arg(long, short)]
-        verbose: bool,
+        quiet: bool,
         /// The cross-interpretation target.
         #[arg(long)]
         target: Option<String>,

@@ -322,7 +322,6 @@ impl<'a> StripUnconfigured<'a> {
             self.sess,
             &cfg_predicate,
             ast::CRATE_NODE_ID,
-            self.features,
             ShouldEmit::ErrorsAndLints,
         )
         .as_bool()
@@ -443,7 +442,7 @@ impl<'a> StripUnconfigured<'a> {
             return EvalConfigResult::True;
         };
 
-        eval_config_entry(self.sess, &cfg, self.lint_node_id, self.features, emit_errors)
+        eval_config_entry(self.sess, &cfg, self.lint_node_id, emit_errors)
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`

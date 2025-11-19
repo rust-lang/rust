@@ -13,10 +13,6 @@ auto_llvm_sign_conversion: false
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
 
-# #[cfg(not(target_arch = "arm"))]
-target-not-arm: &target-not-arm
-  FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm"']]}]]
-
 # #[cfg(not(target_arch = "arm64ec"))]
 target-not-arm64ec: &target-not-arm64ec
   FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm64ec"']]}]]
@@ -62,6 +58,9 @@ neon-unstable-f16: &neon-unstable-f16
 # #[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
 neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
+
+aarch64-unstable-jscvt: &aarch64-unstable-jscvt
+  FnCall: [unstable, ['feature = "stdarch_aarch64_jscvt"', 'issue = "147555"']]
 
 # #[cfg(target_endian = "little")]
 little-endian: &little-endian
@@ -8781,7 +8780,6 @@ intrinsics:
       - [float64x1_t, float32x2_t]
       - [float32x4_t, float64x2_t]
       - [float64x2_t, float32x4_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8802,7 +8800,6 @@ intrinsics:
       # q
       - [float64x2_t, float16x8_t]
       - [float16x8_t, float64x2_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -13082,7 +13079,6 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [target_feature, ['enable = "crc"']]
-      - *target-not-arm
       - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32x"]] }]]
       - *aarch64-crc-stable
     safety: safe
@@ -13104,7 +13100,6 @@ intrinsics:
     return_type: "{type[0]}"
     attr:
       - FnCall: [target_feature, ['enable = "crc"']]
-      - *target-not-arm
       - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["crc32cx"]] }]]
       - *aarch64-crc-stable
     safety: safe
@@ -14267,3 +14262,21 @@ intrinsics:
                 - 'vluti4q_laneq_{neon_type[5]}_x2::<LANE>'
                 - - FnCall: [transmute, [a]]
                   - b
+
+  - name: "__jcvt"
+    doc: "Floating-point JavaScript convert to signed fixed-point, rounding toward zero"
+    arguments: ["a: {type}"]
+    return_type: "i32"
+    attr:
+      - FnCall: [target_feature, ['enable = "jsconv"']]
+      - FnCall: [cfg_attr, [test, { FnCall: [assert_instr, ["fjcvtzs"]] }]]
+      - *aarch64-unstable-jscvt
+    safety: safe
+    types:
+      - f64
+    compose:
+      - LLVMLink:
+          name: "fjcvtzs"
+          links:
+            - link: "llvm.aarch64.fjcvtzs"
+              arch: aarch64,arm64ec

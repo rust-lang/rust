@@ -22,7 +22,6 @@
     arm_target_feature,
     mips_target_feature,
     powerpc_target_feature,
-    s390x_target_feature,
     loongarch_target_feature,
     wasm_target_feature,
     abi_unadjusted,
@@ -64,11 +63,7 @@
 )]
 #![cfg_attr(
     test,
-    feature(
-        stdarch_arm_feature_detection,
-        stdarch_powerpc_feature_detection,
-        stdarch_s390x_feature_detection
-    )
+    feature(stdarch_arm_feature_detection, stdarch_powerpc_feature_detection,)
 )]
 
 #[cfg(test)]

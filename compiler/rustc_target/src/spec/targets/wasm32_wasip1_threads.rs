@@ -8,14 +8,15 @@
 //! Historically this target was known as `wasm32-wasi-preview1-threads`.
 
 use crate::spec::{
-    Cc, LinkSelfContainedDefault, LinkerFlavor, Target, TargetMetadata, base, crt_objects,
+    Arch, Cc, Env, LinkSelfContainedDefault, LinkerFlavor, Os, Target, TargetMetadata, base,
+    crt_objects,
 };
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
 
-    options.os = "wasi".into();
-    options.env = "p1".into();
+    options.os = Os::Wasi;
+    options.env = Env::P1;
 
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::No),
@@ -72,7 +73,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),
-        arch: "wasm32".into(),
+        arch: Arch::Wasm32,
         options,
     }
 }

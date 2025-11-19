@@ -29,7 +29,7 @@ trait Foo {
 impl Foo for Packed2 {
     fn evil(&self) {
         unsafe {
-            &self.x; //~ ERROR reference to packed field
+            &self.x; //~ ERROR reference to field of packed struct
         }
     }
 }
@@ -41,14 +41,14 @@ fn packed_dyn() {
 
     let ref local = Unaligned(ManuallyDrop::new([3, 5, 8u64]));
     let foo: &Unaligned<dyn Debug> = &*local;
-    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+    println!("{:?}", &*foo.0); //~ ERROR reference to field of packed struct
     let foo: &Unaligned<[u64]> = &*local;
-    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+    println!("{:?}", &*foo.0); //~ ERROR reference to field of packed struct
 
     // Even if the actual alignment is 1, we cannot know that when looking at `dyn Debug.`
     let ref local = Unaligned(ManuallyDrop::new([3, 5, 8u8]));
     let foo: &Unaligned<dyn Debug> = &*local;
-    println!("{:?}", &*foo.0); //~ ERROR reference to packed field
+    println!("{:?}", &*foo.0); //~ ERROR reference to field of packed struct
     // However, we *can* know the alignment when looking at a slice.
     let foo: &Unaligned<[u8]> = &*local;
     println!("{:?}", &*foo.0); // no error!
@@ -78,15 +78,15 @@ fn main() {
     unsafe {
         let good = Good { data: 0, ptr: &0, data2: [0, 0], aligned: [0; 32] };
 
-        let _ = &good.ptr; //~ ERROR reference to packed field
-        let _ = &good.data; //~ ERROR reference to packed field
+        let _ = &good.ptr; //~ ERROR reference to field of packed struct
+        let _ = &good.data; //~ ERROR reference to field of packed struct
         // Error even when turned into raw pointer immediately.
-        let _ = &good.data as *const _; //~ ERROR reference to packed field
-        let _: *const _ = &good.data; //~ ERROR reference to packed field
+        let _ = &good.data as *const _; //~ ERROR reference to field of packed struct
+        let _: *const _ = &good.data; //~ ERROR reference to field of packed struct
         // Error on method call.
-        let _ = good.data.clone(); //~ ERROR reference to packed field
+        let _ = good.data.clone(); //~ ERROR reference to field of packed struct
         // Error for nested fields.
-        let _ = &good.data2[0]; //~ ERROR reference to packed field
+        let _ = &good.data2[0]; //~ ERROR reference to field of packed struct
 
         let _ = &*good.ptr; // ok, behind a pointer
         let _ = &good.aligned; // ok, has align 1
@@ -95,7 +95,7 @@ fn main() {
 
     unsafe {
         let packed2 = Packed2 { x: 0, y: 0, z: 0 };
-        let _ = &packed2.x; //~ ERROR reference to packed field
+        let _ = &packed2.x; //~ ERROR reference to field of packed struct
         let _ = &packed2.y; // ok, has align 2 in packed(2) struct
         let _ = &packed2.z; // ok, has align 1
         packed2.evil();
@@ -134,9 +134,9 @@ fn main() {
         struct Misalign<T>(u8, T);
 
         let m1 = Misalign(0, Wrapper { a: U16(10), b: HasDrop });
-        let _ref = &m1.1.a; //~ ERROR reference to packed field
+        let _ref = &m1.1.a; //~ ERROR reference to field of packed struct
 
         let m2 = Misalign(0, Wrapper2 { a: U16(10), b: HasDrop });
-        let _ref = &m2.1.a; //~ ERROR reference to packed field
+        let _ref = &m2.1.a; //~ ERROR reference to field of packed struct
     }
 }

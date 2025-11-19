@@ -1177,6 +1177,7 @@ bitflags::bitflags! {
         const KERNELADDRESS = 1 << 9;
         const SAFESTACK = 1 << 10;
         const DATAFLOW = 1 << 11;
+        const REALTIME = 1 << 12;
     }
 }
 rustc_data_structures::external_bitflags_debug! { SanitizerSet }
@@ -1227,6 +1228,7 @@ impl SanitizerSet {
             SanitizerSet::SHADOWCALLSTACK => "shadow-call-stack",
             SanitizerSet::THREAD => "thread",
             SanitizerSet::HWADDRESS => "hwaddress",
+            SanitizerSet::REALTIME => "realtime",
             _ => return None,
         })
     }
@@ -1271,6 +1273,7 @@ impl FromStr for SanitizerSet {
             "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
             "thread" => SanitizerSet::THREAD,
             "hwaddress" => SanitizerSet::HWADDRESS,
+            "realtime" => SanitizerSet::REALTIME,
             s => return Err(format!("unknown sanitizer {s}")),
         })
     }
@@ -1847,6 +1850,206 @@ enum TargetKind {
     Builtin,
 }
 
+crate::target_spec_enum! {
+    pub enum Arch {
+        AArch64 = "aarch64",
+        AmdGpu = "amdgpu",
+        Arm = "arm",
+        Arm64EC = "arm64ec",
+        Avr = "avr",
+        Bpf = "bpf",
+        CSky = "csky",
+        Hexagon = "hexagon",
+        LoongArch32 = "loongarch32",
+        LoongArch64 = "loongarch64",
+        M68k = "m68k",
+        Mips = "mips",
+        Mips32r6 = "mips32r6",
+        Mips64 = "mips64",
+        Mips64r6 = "mips64r6",
+        Msp430 = "msp430",
+        Nvptx64 = "nvptx64",
+        PowerPC = "powerpc",
+        PowerPC64 = "powerpc64",
+        PowerPC64LE = "powerpc64le",
+        RiscV32 = "riscv32",
+        RiscV64 = "riscv64",
+        S390x = "s390x",
+        Sparc = "sparc",
+        Sparc64 = "sparc64",
+        SpirV = "spirv",
+        Wasm32 = "wasm32",
+        Wasm64 = "wasm64",
+        X86 = "x86",
+        X86_64 = "x86_64",
+        Xtensa = "xtensa",
+    }
+    other_variant = Other;
+}
+
+impl Arch {
+    pub fn desc_symbol(&self) -> Symbol {
+        match self {
+            Self::AArch64 => sym::aarch64,
+            Self::AmdGpu => sym::amdgpu,
+            Self::Arm => sym::arm,
+            Self::Arm64EC => sym::arm64ec,
+            Self::Avr => sym::avr,
+            Self::Bpf => sym::bpf,
+            Self::CSky => sym::csky,
+            Self::Hexagon => sym::hexagon,
+            Self::LoongArch32 => sym::loongarch32,
+            Self::LoongArch64 => sym::loongarch64,
+            Self::M68k => sym::m68k,
+            Self::Mips => sym::mips,
+            Self::Mips32r6 => sym::mips32r6,
+            Self::Mips64 => sym::mips64,
+            Self::Mips64r6 => sym::mips64r6,
+            Self::Msp430 => sym::msp430,
+            Self::Nvptx64 => sym::nvptx64,
+            Self::PowerPC => sym::powerpc,
+            Self::PowerPC64 => sym::powerpc64,
+            Self::PowerPC64LE => sym::powerpc64le,
+            Self::RiscV32 => sym::riscv32,
+            Self::RiscV64 => sym::riscv64,
+            Self::S390x => sym::s390x,
+            Self::Sparc => sym::sparc,
+            Self::Sparc64 => sym::sparc64,
+            Self::SpirV => sym::spirv,
+            Self::Wasm32 => sym::wasm32,
+            Self::Wasm64 => sym::wasm64,
+            Self::X86 => sym::x86,
+            Self::X86_64 => sym::x86_64,
+            Self::Xtensa => sym::xtensa,
+            Self::Other(name) => rustc_span::Symbol::intern(name),
+        }
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Os {
+        Aix = "aix",
+        AmdHsa = "amdhsa",
+        Android = "android",
+        Cuda = "cuda",
+        Cygwin = "cygwin",
+        Dragonfly = "dragonfly",
+        Emscripten = "emscripten",
+        EspIdf = "espidf",
+        FreeBsd = "freebsd",
+        Fuchsia = "fuchsia",
+        Haiku = "haiku",
+        HelenOs = "helenos",
+        Hermit = "hermit",
+        Horizon = "horizon",
+        Hurd = "hurd",
+        Illumos = "illumos",
+        IOs = "ios",
+        L4Re = "l4re",
+        Linux = "linux",
+        LynxOs178 = "lynxos178",
+        MacOs = "macos",
+        Managarm = "managarm",
+        Motor = "motor",
+        NetBsd = "netbsd",
+        None = "none",
+        Nto = "nto",
+        NuttX = "nuttx",
+        OpenBsd = "openbsd",
+        Psp = "psp",
+        Psx = "psx",
+        Redox = "redox",
+        Rtems = "rtems",
+        Solaris = "solaris",
+        SolidAsp3 = "solid_asp3",
+        TeeOs = "teeos",
+        Trusty = "trusty",
+        TvOs = "tvos",
+        Uefi = "uefi",
+        VexOs = "vexos",
+        VisionOs = "visionos",
+        Vita = "vita",
+        VxWorks = "vxworks",
+        Wasi = "wasi",
+        WatchOs = "watchos",
+        Windows = "windows",
+        Xous = "xous",
+        Zkvm = "zkvm",
+        Unknown = "unknown",
+    }
+    other_variant = Other;
+}
+
+impl Os {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Env {
+        Gnu = "gnu",
+        MacAbi = "macabi",
+        Mlibc = "mlibc",
+        Msvc = "msvc",
+        Musl = "musl",
+        Newlib = "newlib",
+        Nto70 = "nto70",
+        Nto71 = "nto71",
+        Nto71IoSock = "nto71_iosock",
+        Nto80 = "nto80",
+        Ohos = "ohos",
+        Relibc = "relibc",
+        Sgx = "sgx",
+        Sim = "sim",
+        P1 = "p1",
+        P2 = "p2",
+        P3 = "p3",
+        Uclibc = "uclibc",
+        V5 = "v5",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Env {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
+crate::target_spec_enum! {
+    pub enum Abi {
+        Abi64 = "abi64",
+        AbiV2 = "abiv2",
+        AbiV2Hf = "abiv2hf",
+        Eabi = "eabi",
+        EabiHf = "eabihf",
+        ElfV1 = "elfv1",
+        ElfV2 = "elfv2",
+        Fortanix = "fortanix",
+        Ilp32 = "ilp32",
+        Ilp32e = "ilp32e",
+        Llvm = "llvm",
+        MacAbi = "macabi",
+        Sim = "sim",
+        SoftFloat = "softfloat",
+        Spe = "spe",
+        Uwp = "uwp",
+        VecDefault = "vec-default",
+        VecExtAbi = "vec-extabi",
+        X32 = "x32",
+        Unspecified = "",
+    }
+    other_variant = Other;
+}
+
+impl Abi {
+    pub fn desc_symbol(&self) -> Symbol {
+        Symbol::intern(self.desc())
+    }
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -1866,7 +2069,7 @@ pub struct Target {
     pub pointer_width: u16,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
-    pub arch: StaticCow<str>,
+    pub arch: Arch,
     /// [Data layout](https://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
@@ -1959,25 +2162,29 @@ type StaticCow<T> = Cow<'static, T>;
 /// construction, all its fields logically belong to `Target` and available from `Target`
 /// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
+#[rustc_lint_opt_ty]
 pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
     pub c_int_width: u16,
-    /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
-    /// "none" implies a bare metal target without `std` library.
-    /// A couple of targets having `std` also use "unknown" as an `os` value,
+    /// OS name to use for conditional compilation (`target_os`). Defaults to [`Os::None`].
+    /// [`Os::None`] implies a bare metal target without `std` library.
+    /// A couple of targets having `std` also use [`Os::Unknown`] as their `os` value,
     /// but they are exceptions.
-    pub os: StaticCow<str>,
-    /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
-    pub env: StaticCow<str>,
+    pub os: Os,
+    /// Environment name to use for conditional compilation (`target_env`). Defaults to [`Env::Unspecified`].
+    pub env: Env,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
-    /// or `"eabihf"`. Defaults to "".
+    /// or `"eabihf"`. Defaults to [`Abi::Unspecified`].
     /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
     /// However, parts of the backend do check this field for specific values to enable special behavior.
-    pub abi: StaticCow<str>,
+    pub abi: Abi,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: StaticCow<str>,
+    #[rustc_lint_opt_deny_field_access(
+        "use `Target::is_like_*` instead of this field; see https://github.com/rust-lang/rust/issues/100343 for rationale"
+    )]
+    vendor: StaticCow<str>,
 
     /// Linker to invoke
     pub linker: Option<StaticCow<str>>,
@@ -2097,6 +2304,8 @@ pub struct TargetOptions {
     /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
     pub is_like_darwin: bool,
+    /// Whether the target is a GPU (e.g. NVIDIA, AMD, Intel).
+    pub is_like_gpu: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
@@ -2327,6 +2536,13 @@ pub struct TargetOptions {
     /// distributed with the target, the sanitizer should still appear in this list for the target.
     pub supported_sanitizers: SanitizerSet,
 
+    /// The sanitizers that are enabled by default on this target.
+    ///
+    /// Note that the support here is at a codegen level. If the machine code with sanitizer
+    /// enabled can generated on this target, but the necessary supporting libraries are not
+    /// distributed with the target, the sanitizer should still appear in this list for the target.
+    pub default_sanitizers: SanitizerSet,
+
     /// Minimum number of bits in #[repr(C)] enum. Defaults to the size of c_int
     pub c_enum_min_bits: Option<u64>,
 
@@ -2466,9 +2682,9 @@ impl Default for TargetOptions {
         TargetOptions {
             endian: Endian::Little,
             c_int_width: 32,
-            os: "none".into(),
-            env: "".into(),
-            abi: "".into(),
+            os: Os::None,
+            env: Env::Unspecified,
+            abi: Abi::Unspecified,
             vendor: "unknown".into(),
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
@@ -2500,6 +2716,7 @@ impl Default for TargetOptions {
             abi_return_struct_as_int: false,
             is_like_aix: false,
             is_like_darwin: false,
+            is_like_gpu: false,
             is_like_solaris: false,
             is_like_windows: false,
             is_like_msvc: false,
@@ -2575,6 +2792,7 @@ impl Default for TargetOptions {
             // `Off` is supported by default, but targets can remove this manually, e.g. Windows.
             supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
             supported_sanitizers: SanitizerSet::empty(),
+            default_sanitizers: SanitizerSet::empty(),
             c_enum_min_bits: None,
             generate_arange_section: true,
             supports_stack_protector: true,
@@ -2662,23 +2880,28 @@ impl Target {
         );
         check_eq!(
             self.is_like_solaris,
-            self.os == "solaris" || self.os == "illumos",
+            matches!(self.os, Os::Solaris | Os::Illumos),
             "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
         );
         check_eq!(
+            self.is_like_gpu,
+            self.arch == Arch::Nvptx64 || self.arch == Arch::AmdGpu,
+            "`is_like_gpu` must be set if and only if `target` is `nvptx64` or `amdgcn`"
+        );
+        check_eq!(
             self.is_like_windows,
-            self.os == "windows" || self.os == "uefi" || self.os == "cygwin",
+            matches!(self.os, Os::Windows | Os::Uefi | Os::Cygwin),
             "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
         );
         check_eq!(
             self.is_like_wasm,
-            self.arch == "wasm32" || self.arch == "wasm64",
+            matches!(self.arch, Arch::Wasm32 | Arch::Wasm64),
             "`is_like_wasm` must be set if and only if `arch` is `wasm32` or `wasm64`"
         );
         if self.is_like_msvc {
             check!(self.is_like_windows, "if `is_like_msvc` is set, `is_like_windows` must be set");
         }
-        if self.os == "emscripten" {
+        if self.os == Os::Emscripten {
             check!(self.is_like_wasm, "the `emcscripten` os only makes sense on wasm-like targets");
         }
 
@@ -2694,22 +2917,22 @@ impl Target {
             "`linker_flavor` must be `msvc` if and only if `is_like_msvc` is set"
         );
         check_eq!(
-            self.is_like_wasm && self.os != "emscripten",
+            self.is_like_wasm && self.os != Os::Emscripten,
             matches!(self.linker_flavor, LinkerFlavor::WasmLld(..)),
             "`linker_flavor` must be `wasm-lld` if and only if `is_like_wasm` is set and the `os` is not `emscripten`",
         );
         check_eq!(
-            self.os == "emscripten",
+            self.os == Os::Emscripten,
             matches!(self.linker_flavor, LinkerFlavor::EmCc),
             "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
         );
         check_eq!(
-            self.arch == "bpf",
+            self.arch == Arch::Bpf,
             matches!(self.linker_flavor, LinkerFlavor::Bpf),
             "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
         );
         check_eq!(
-            self.arch == "nvptx64",
+            self.arch == Arch::Nvptx64,
             matches!(self.linker_flavor, LinkerFlavor::Ptx),
             "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
         );
@@ -2723,7 +2946,7 @@ impl Target {
         ] {
             for (&flavor, flavor_args) in args {
                 check!(
-                    !flavor_args.is_empty() || self.arch == "avr",
+                    !flavor_args.is_empty() || self.arch == Arch::Avr,
                     "linker flavor args must not be empty"
                 );
                 // Check that flavors mentioned in link args are compatible with the default flavor.
@@ -2826,12 +3049,14 @@ impl Target {
         // except it and document the reasons.
         // Keep the default "unknown" vendor instead.
         check_ne!(self.vendor, "", "`vendor` cannot be empty");
-        check_ne!(self.os, "", "`os` cannot be empty");
+        if let Os::Other(s) = &self.os {
+            check!(!s.is_empty(), "`os` cannot be empty");
+        }
         if !self.can_use_os_unknown() {
             // Keep the default "none" for bare metal targets instead.
             check_ne!(
                 self.os,
-                "unknown",
+                Os::Unknown,
                 "`unknown` os can only be used on particular targets; use `none` for bare-metal targets"
             );
         }
@@ -2845,11 +3070,8 @@ impl Target {
             // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
             // hexagon: when targeting QuRT, that OS can load dynamic libraries.
             // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
-            if self.os == "none"
-                && (self.arch != "bpf"
-                    && self.arch != "hexagon"
-                    && self.arch != "wasm32"
-                    && self.arch != "wasm64")
+            if self.os == Os::None
+                && !matches!(self.arch, Arch::Bpf | Arch::Hexagon | Arch::Wasm32 | Arch::Wasm64)
             {
                 check!(
                     !self.dynamic_linking,
@@ -2881,7 +3103,7 @@ impl Target {
                 );
             }
             // The UEFI targets do not support dynamic linking but still require PIC (#101377).
-            if self.relocation_model == RelocModel::Pic && (self.os != "uefi") {
+            if self.relocation_model == RelocModel::Pic && self.os != Os::Uefi {
                 check!(
                     self.dynamic_linking || self.position_independent_executables,
                     "when the relocation model is `pic`, the target must support dynamic linking or use position-independent executables. \
@@ -2912,8 +3134,8 @@ impl Target {
 
         // Check that RISC-V targets always specify which ABI they use,
         // and that ARM targets specify their float ABI.
-        match &*self.arch {
-            "riscv32" => {
+        match self.arch {
+            Arch::RiscV32 => {
                 check_matches!(
                     &*self.llvm_abiname,
                     "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
@@ -2921,7 +3143,7 @@ impl Target {
                     self.llvm_abiname,
                 );
             }
-            "riscv64" => {
+            Arch::RiscV64 => {
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
                 check_matches!(
                     &*self.llvm_abiname,
@@ -2930,7 +3152,7 @@ impl Target {
                     self.llvm_abiname,
                 );
             }
-            "arm" => {
+            Arch::Arm => {
                 check!(
                     self.llvm_floatabi.is_some(),
                     "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
@@ -2943,13 +3165,13 @@ impl Target {
         if let Some(rust_abi) = self.rustc_abi {
             match rust_abi {
                 RustcAbi::X86Sse2 => check_matches!(
-                    &*self.arch,
-                    "x86",
+                    self.arch,
+                    Arch::X86,
                     "`x86-sse2` ABI is only valid for x86-32 targets"
                 ),
                 RustcAbi::X86Softfloat => check_matches!(
-                    &*self.arch,
-                    "x86" | "x86_64",
+                    self.arch,
+                    Arch::X86 | Arch::X86_64,
                     "`x86-softfloat` ABI is only valid for x86 targets"
                 ),
             }
@@ -3020,7 +3242,7 @@ impl Target {
     fn can_use_os_unknown(&self) -> bool {
         self.llvm_target == "wasm32-unknown-unknown"
             || self.llvm_target == "wasm64-unknown-unknown"
-            || (self.env == "sgx" && self.vendor == "fortanix")
+            || (self.env == Env::Sgx && self.vendor == "fortanix")
     }
 
     /// Load a built-in target
@@ -3095,15 +3317,7 @@ impl Target {
                     return load_file(&p);
                 }
 
-                // Leave in a specialized error message for the removed target.
-                // FIXME: If you see this and it's been a few months after this has been released,
-                // you can probably remove it.
-                if target_tuple == "i586-pc-windows-msvc" {
-                    Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
-                        Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
-                } else {
-                    Err(format!("could not find specification for target {target_tuple:?}"))
-                }
+                Err(format!("could not find specification for target {target_tuple:?}"))
             }
             TargetTuple::TargetJson { ref contents, .. } => Target::from_json(contents),
         }
@@ -3116,15 +3330,15 @@ impl Target {
             // Avoid having to duplicate the small data support in every
             // target file by supporting a default value for each
             // architecture.
-            SmallDataThresholdSupport::DefaultForArch => match self.arch.as_ref() {
-                "mips" | "mips64" | "mips32r6" => {
+            SmallDataThresholdSupport::DefaultForArch => match self.arch {
+                Arch::Mips | Arch::Mips64 | Arch::Mips32r6 => {
                     SmallDataThresholdSupport::LlvmArg("mips-ssection-threshold".into())
                 }
-                "hexagon" => {
+                Arch::Hexagon => {
                     SmallDataThresholdSupport::LlvmArg("hexagon-small-data-threshold".into())
                 }
-                "m68k" => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
-                "riscv32" | "riscv64" => {
+                Arch::M68k => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
+                Arch::RiscV32 | Arch::RiscV64 => {
                     SmallDataThresholdSupport::LlvmModuleFlag("SmallDataLimit".into())
                 }
                 _ => SmallDataThresholdSupport::None,
@@ -3138,9 +3352,9 @@ impl Target {
         unstable_target_features: &FxIndexSet<Symbol>,
     ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
         use object::Architecture;
-        Some(match self.arch.as_ref() {
-            "arm" => (Architecture::Arm, None),
-            "aarch64" => (
+        Some(match self.arch {
+            Arch::Arm => (Architecture::Arm, None),
+            Arch::AArch64 => (
                 if self.pointer_width == 32 {
                     Architecture::Aarch64_Ilp32
                 } else {
@@ -3148,11 +3362,11 @@ impl Target {
                 },
                 None,
             ),
-            "x86" => (Architecture::I386, None),
-            "s390x" => (Architecture::S390x, None),
-            "m68k" => (Architecture::M68k, None),
-            "mips" | "mips32r6" => (Architecture::Mips, None),
-            "mips64" | "mips64r6" => (
+            Arch::X86 => (Architecture::I386, None),
+            Arch::S390x => (Architecture::S390x, None),
+            Arch::M68k => (Architecture::M68k, None),
+            Arch::Mips | Arch::Mips32r6 => (Architecture::Mips, None),
+            Arch::Mips64 | Arch::Mips64r6 => (
                 // While there are currently no builtin targets
                 // using the N32 ABI, it is possible to specify
                 // it using a custom target specification. N32
@@ -3165,7 +3379,7 @@ impl Target {
                 },
                 None,
             ),
-            "x86_64" => (
+            Arch::X86_64 => (
                 if self.pointer_width == 32 {
                     Architecture::X86_64_X32
                 } else {
@@ -3173,11 +3387,11 @@ impl Target {
                 },
                 None,
             ),
-            "powerpc" => (Architecture::PowerPc, None),
-            "powerpc64" => (Architecture::PowerPc64, None),
-            "riscv32" => (Architecture::Riscv32, None),
-            "riscv64" => (Architecture::Riscv64, None),
-            "sparc" => {
+            Arch::PowerPC => (Architecture::PowerPc, None),
+            Arch::PowerPC64 => (Architecture::PowerPc64, None),
+            Arch::RiscV32 => (Architecture::Riscv32, None),
+            Arch::RiscV64 => (Architecture::Riscv64, None),
+            Arch::Sparc => {
                 if unstable_target_features.contains(&sym::v8plus) {
                     // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
                     (Architecture::Sparc32Plus, None)
@@ -3186,18 +3400,23 @@ impl Target {
                     (Architecture::Sparc, None)
                 }
             }
-            "sparc64" => (Architecture::Sparc64, None),
-            "avr" => (Architecture::Avr, None),
-            "msp430" => (Architecture::Msp430, None),
-            "hexagon" => (Architecture::Hexagon, None),
-            "xtensa" => (Architecture::Xtensa, None),
-            "bpf" => (Architecture::Bpf, None),
-            "loongarch32" => (Architecture::LoongArch32, None),
-            "loongarch64" => (Architecture::LoongArch64, None),
-            "csky" => (Architecture::Csky, None),
-            "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
-            // Unsupported architecture.
-            _ => return None,
+            Arch::Sparc64 => (Architecture::Sparc64, None),
+            Arch::Avr => (Architecture::Avr, None),
+            Arch::Msp430 => (Architecture::Msp430, None),
+            Arch::Hexagon => (Architecture::Hexagon, None),
+            Arch::Xtensa => (Architecture::Xtensa, None),
+            Arch::Bpf => (Architecture::Bpf, None),
+            Arch::LoongArch32 => (Architecture::LoongArch32, None),
+            Arch::LoongArch64 => (Architecture::LoongArch64, None),
+            Arch::CSky => (Architecture::Csky, None),
+            Arch::Arm64EC => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
+            Arch::AmdGpu
+            | Arch::Nvptx64
+            | Arch::PowerPC64LE
+            | Arch::SpirV
+            | Arch::Wasm32
+            | Arch::Wasm64
+            | Arch::Other(_) => return None,
         })
     }
 
@@ -3213,11 +3432,15 @@ impl Target {
         // FIXME(#112480) MSVC on x86-32 is unsound and fails to properly align many types with
         // more-than-4-byte-alignment on the stack. This makes alignments larger than 4 generally
         // unreliable on 32bit Windows.
-        if self.is_like_windows && self.arch == "x86" {
+        if self.is_like_windows && self.arch == Arch::X86 {
             Align::from_bytes(4).unwrap()
         } else {
             Align::MAX
         }
+    }
+
+    pub fn vendor_symbol(&self) -> Symbol {
+        Symbol::intern(&self.vendor)
     }
 }
 

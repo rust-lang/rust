@@ -55,7 +55,7 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         | PatKind::Err(_) => false,
         PatKind::Struct(_, a, etc) => etc.is_none() && a.iter().all(|x| unary_pattern(x.pat)),
         PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => etc.as_opt_usize().is_none() && array_rec(a),
-        PatKind::Ref(x, _) | PatKind::Box(x) | PatKind::Deref(x) | PatKind::Guard(x, _) => unary_pattern(x),
+        PatKind::Ref(x, _, _) | PatKind::Box(x) | PatKind::Deref(x) | PatKind::Guard(x, _) => unary_pattern(x),
         PatKind::Expr(_) => true,
     }
 }

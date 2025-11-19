@@ -3,12 +3,12 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, UsedBy};
+use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, RtsanSetting, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
@@ -16,7 +16,7 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::{Ident, Span, sym};
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::Os;
 
 use crate::errors;
 use crate::target_features::{
@@ -259,7 +259,7 @@ fn process_builtin_attrs(
                     UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                     UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
                     UsedBy::Default => {
-                        let used_form = if tcx.sess.target.os == "illumos" {
+                        let used_form = if tcx.sess.target.os == Os::Illumos {
                             // illumos' `ld` doesn't support a section header that would represent
                             // `#[used(linker)]`, see
                             // https://github.com/rust-lang/rust/issues/146169. For that target,
@@ -350,8 +350,10 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     codegen_fn_attrs.alignment =
         Ord::max(codegen_fn_attrs.alignment, tcx.sess.opts.unstable_opts.min_function_alignment);
 
-    // Compute the disabled sanitizers.
-    codegen_fn_attrs.no_sanitize |= tcx.disabled_sanitizers_for(did);
+    // Passed in sanitizer settings are always the default.
+    assert!(codegen_fn_attrs.sanitizers == SanitizerFnAttrs::default());
+    // Replace with #[sanitize] value
+    codegen_fn_attrs.sanitizers = tcx.sanitizer_settings_for(did);
     // On trait methods, inherit the `#[align]` of the trait's method prototype.
     codegen_fn_attrs.alignment = Ord::max(codegen_fn_attrs.alignment, tcx.inherited_align(did));
 
@@ -455,16 +457,40 @@ fn check_result(
     }
 
     // warn that inline has no effect when no_sanitize is present
-    if !codegen_fn_attrs.no_sanitize.is_empty()
+    if codegen_fn_attrs.sanitizers != SanitizerFnAttrs::default()
         && codegen_fn_attrs.inline.always()
-        && let (Some(no_sanitize_span), Some(inline_span)) =
+        && let (Some(sanitize_span), Some(inline_span)) =
             (interesting_spans.sanitize, interesting_spans.inline)
     {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
-            lint.primary_message("setting `sanitize` off will have no effect after inlining");
+        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, sanitize_span, |lint| {
+            lint.primary_message("non-default `sanitize` will have no effect after inlining");
             lint.span_note(inline_span, "inlining requested here");
         })
+    }
+
+    // warn for nonblocking async functions, blocks and closures.
+    // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
+    if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
+        && let Some(sanitize_span) = interesting_spans.sanitize
+        // async fn
+        && (tcx.asyncness(did).is_async()
+            // async block
+            || tcx.is_coroutine(did.into())
+            // async closure
+            || (tcx.is_closure_like(did.into())
+                && tcx.hir_node_by_def_id(did).expect_closure().kind
+                    != rustc_hir::ClosureKind::Closure))
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(
+            lint::builtin::RTSAN_NONBLOCKING_ASYNC,
+            hir_id,
+            sanitize_span,
+            |lint| {
+                lint.primary_message(r#"the async executor can run blocking code, without realtime sanitizer catching it"#);
+            }
+        );
     }
 
     // error when specifying link_name together with link_ordinal
@@ -576,30 +602,35 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
-fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
+fn sanitizer_settings_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerFnAttrs {
     // Backtrack to the crate root.
-    let mut disabled = match tcx.opt_local_parent(did) {
+    let mut settings = match tcx.opt_local_parent(did) {
         // Check the parent (recursively).
-        Some(parent) => tcx.disabled_sanitizers_for(parent),
+        Some(parent) => tcx.sanitizer_settings_for(parent),
         // We reached the crate root without seeing an attribute, so
         // there is no sanitizers to exclude.
-        None => SanitizerSet::empty(),
+        None => SanitizerFnAttrs::default(),
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some((on_set, off_set)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, ..} => (on_set, off_set))
+    if let Some((on_set, off_set, rtsan)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, rtsan, ..} => (on_set, off_set, rtsan))
     {
         // the on set is the set of sanitizers explicitly enabled.
         // we mask those out since we want the set of disabled sanitizers here
-        disabled &= !*on_set;
+        settings.disabled &= !*on_set;
         // the off set is the set of sanitizers explicitly disabled.
         // we or those in here.
-        disabled |= *off_set;
+        settings.disabled |= *off_set;
         // the on set and off set are distjoint since there's a third option: unset.
         // a node may not set the sanitizer setting in which case it inherits from parents.
         // the code above in this function does this backtracking
+
+        // if rtsan was specified here override the parent
+        if let Some(rtsan) = rtsan {
+            settings.rtsan_setting = *rtsan;
+        }
     }
-    disabled
+    settings
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
@@ -731,7 +762,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         codegen_fn_attrs,
         should_inherit_track_caller,
         inherited_align,
-        disabled_sanitizers_for,
+        sanitizer_settings_for,
         ..*providers
     };
 }

@@ -8,9 +8,9 @@ use genmc_sys::{
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::{throw_machine_stop, throw_ub_format, throw_unsup_format};
+use rustc_middle::{throw_ub_format, throw_unsup_format};
 // FIXME(genmc,tracing): Implement some work-around for enabling debug/trace level logging (currently disabled statically in rustc).
-use tracing::{debug, info};
+use tracing::debug;
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{
@@ -61,12 +61,6 @@ pub enum ExitType {
 struct ExitStatus {
     exit_code: i32,
     exit_type: ExitType,
-}
-
-impl ExitStatus {
-    fn do_leak_check(self) -> bool {
-        matches!(self.exit_type, ExitType::MainThreadFinish)
-    }
 }
 
 /// State that is reset at the start of every execution.
@@ -223,8 +217,6 @@ impl GenmcCtx {
 
     /// Inform GenMC that the program's execution has ended.
     ///
-    /// This function must be called even when the execution is blocked
-    /// (i.e., it returned a `InterpErrorKind::MachineStop` with error kind `TerminationInfo::GenmcBlockedExecution`).
     /// Don't call this function if an error was found.
     ///
     /// GenMC detects certain errors only when the execution ends.
@@ -694,39 +686,37 @@ impl GenmcCtx {
     }
 
     /// Handle a call to `libc::exit` or the exit of the main thread.
-    /// Unless an error is returned, the program should continue executing (in a different thread, chosen by the next scheduling call).
+    /// Unless an error is returned, the program should continue executing (in a different thread,
+    /// chosen by the next scheduling call).
     pub(crate) fn handle_exit<'tcx>(
         &self,
         thread: ThreadId,
         exit_code: i32,
         exit_type: ExitType,
     ) -> InterpResult<'tcx> {
-        // Calling `libc::exit` doesn't do cleanup, so we skip the leak check in that case.
-        let exit_status = ExitStatus { exit_code, exit_type };
-
         if let Some(old_exit_status) = self.exec_state.exit_status.get() {
             throw_ub_format!(
-                "`exit` called twice, first with status {old_exit_status:?}, now with status {exit_status:?}",
+                "`exit` called twice, first with exit code {old_exit_code}, now with status {exit_code}",
+                old_exit_code = old_exit_status.exit_code,
             );
         }
 
-        // FIXME(genmc): Add a flag to continue exploration even when the program exits with a non-zero exit code.
-        if exit_code != 0 {
-            info!("GenMC: 'exit' called with non-zero argument, aborting execution.");
-            let leak_check = exit_status.do_leak_check();
-            throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check });
+        match exit_type {
+            ExitType::ExitCalled => {
+                // `exit` kills the current thread; we have to tell GenMC about this.
+                let thread_infos = self.exec_state.thread_id_manager.borrow();
+                let genmc_tid = thread_infos.get_genmc_tid(thread);
+                self.handle.borrow_mut().pin_mut().handle_thread_kill(genmc_tid);
+            }
+            ExitType::MainThreadFinish => {
+                // The main thread has already exited so we don't call `handle_thread_kill` again.
+                assert_eq!(thread, ThreadId::MAIN_THREAD);
+            }
         }
-
-        if matches!(exit_type, ExitType::ExitCalled) {
-            let thread_infos = self.exec_state.thread_id_manager.borrow();
-            let genmc_tid = thread_infos.get_genmc_tid(thread);
-
-            self.handle.borrow_mut().pin_mut().handle_thread_kill(genmc_tid);
-        } else {
-            assert_eq!(thread, ThreadId::MAIN_THREAD);
-        }
-        // We continue executing now, so we store the exit status.
-        self.exec_state.exit_status.set(Some(exit_status));
+        // To cover all possible behaviors, we have to continue execution the other threads:
+        // whatever they do next could also have happened before the `exit` call. So we just
+        // remember the exit status and use it when the other threads are done.
+        self.exec_state.exit_status.set(Some(ExitStatus { exit_code, exit_type }));
         interp_ok(())
     }
 }

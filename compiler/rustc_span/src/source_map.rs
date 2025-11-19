@@ -262,7 +262,7 @@ impl SourceMap {
             bytes,
             Span::new(
                 file.start_pos,
-                BytePos(file.start_pos.0 + file.source_len.0),
+                BytePos(file.start_pos.0 + file.normalized_source_len.0),
                 SyntaxContext::root(),
                 None,
             ),
@@ -353,14 +353,15 @@ impl SourceMap {
         src_hash: SourceFileHash,
         checksum_hash: Option<SourceFileHash>,
         stable_id: StableSourceFileId,
-        source_len: u32,
+        normalized_source_len: u32,
+        unnormalized_source_len: u32,
         cnum: CrateNum,
         file_local_lines: FreezeLock<SourceFileLines>,
         multibyte_chars: Vec<MultiByteChar>,
         normalized_pos: Vec<NormalizedPos>,
         metadata_index: u32,
     ) -> Arc<SourceFile> {
-        let source_len = RelativeBytePos::from_u32(source_len);
+        let normalized_source_len = RelativeBytePos::from_u32(normalized_source_len);
 
         let source_file = SourceFile {
             name: filename,
@@ -372,7 +373,8 @@ impl SourceMap {
                 metadata_index,
             }),
             start_pos: BytePos(0),
-            source_len,
+            normalized_source_len,
+            unnormalized_source_len,
             lines: file_local_lines,
             multibyte_chars,
             normalized_pos,
@@ -566,7 +568,7 @@ impl SourceMap {
 
             let start_index = local_begin.pos.to_usize();
             let end_index = local_end.pos.to_usize();
-            let source_len = local_begin.sf.source_len.to_usize();
+            let source_len = local_begin.sf.normalized_source_len.to_usize();
 
             if start_index > end_index || end_index > source_len {
                 return Err(SpanSnippetError::MalformedForSourcemap(MalformedSourceMapPositions {
@@ -997,7 +999,7 @@ impl SourceMap {
             return 1;
         }
 
-        let source_len = local_begin.sf.source_len.to_usize();
+        let source_len = local_begin.sf.normalized_source_len.to_usize();
         debug!("source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len - 1 {

@@ -816,9 +816,8 @@ impl<T: Clone> Bound<&T> {
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 #[rustc_diagnostic_item = "RangeBounds"]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-pub trait RangeBounds<T: ?Sized> {
+pub const trait RangeBounds<T: ?Sized> {
     /// Start index bound.
     ///
     /// Returns the start value as a `Bound`.
@@ -954,9 +953,8 @@ pub trait RangeBounds<T: ?Sized> {
 /// `IntoBounds` is implemented by Rust’s built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
 #[unstable(feature = "range_into_bounds", issue = "136903")]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-pub trait IntoBounds<T>: [const] RangeBounds<T> {
+pub const trait IntoBounds<T>: [const] RangeBounds<T> {
     /// Convert this range into the start and end bounds.
     /// Returns `(start_bound, end_bound)`.
     ///
@@ -1319,9 +1317,8 @@ pub enum OneSidedRangeBound {
 /// Types that implement `OneSidedRange<T>` must return `Bound::Unbounded`
 /// from one of `RangeBounds::start_bound` or `RangeBounds::end_bound`.
 #[unstable(feature = "one_sided_range", issue = "69780")]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
-pub trait OneSidedRange<T>: RangeBounds<T> {
+pub const trait OneSidedRange<T>: RangeBounds<T> {
     /// An internal-only helper function for `split_off` and
     /// `split_off_mut` that returns the bound of the one-sided range.
     fn bound(self) -> (OneSidedRangeBound, T);

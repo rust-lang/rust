@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` referenc
   --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:7:5
    |
 LL |     string.push_str("test");
-   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^ `string` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider using `get_mut`
    |
@@ -14,7 +14,7 @@ error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` referenc
   --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:14:5
    |
 LL |     string.push_str("test");
-   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^ `string` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider using `get_mut`
    |
@@ -26,7 +26,7 @@ error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` referenc
   --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:19:5
    |
 LL |     string.push_str("test");
-   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^^^^^^ `string` is a `&` reference, so it cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

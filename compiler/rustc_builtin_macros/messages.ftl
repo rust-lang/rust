@@ -156,6 +156,7 @@ builtin_macros_duplicate_macro_attribute = duplicated attribute
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
+    .cargo_typo = there is a similar Cargo environment variable: `{$suggested_var}`
     .custom = use `std::env::var({$var_expr})` to read the variable at run time
 
 builtin_macros_env_not_unicode = environment variable `{$var}` is not a valid Unicode string

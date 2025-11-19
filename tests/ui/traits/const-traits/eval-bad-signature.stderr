@@ -1,11 +1,11 @@
 error[E0053]: method `value` has an incompatible type for trait
-  --> $DIR/eval-bad-signature.rs:17:19
+  --> $DIR/eval-bad-signature.rs:16:19
    |
 LL |     fn value() -> i64 {
    |                   ^^^ expected `u32`, found `i64`
    |
 note: type in trait
-  --> $DIR/eval-bad-signature.rs:7:19
+  --> $DIR/eval-bad-signature.rs:6:19
    |
 LL |     fn value() -> u32;
    |                   ^^^

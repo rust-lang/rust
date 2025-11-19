@@ -4,7 +4,7 @@
 // and will use software floating point operations. This matches the NuttX EABI
 // configuration without hardware floating point support.
 
-use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{Abi, Arch, FloatAbi, Os, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,12 +17,12 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
-        arch: "arm".into(),
+        arch: Arch::Arm,
 
         options: TargetOptions {
             families: cvs!["unix"],
-            os: "nuttx".into(),
-            abi: "eabi".into(),
+            os: Os::NuttX,
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             // Cortex-A7/A8/A9 with software floating point
             features: "+soft-float,-neon".into(),

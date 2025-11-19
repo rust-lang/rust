@@ -250,10 +250,42 @@ pub const trait Clone: Sized {
     }
 }
 
+/// Indicates that the `Clone` implementation is identical to copying the value.
+///
+/// This is used for some optimizations in the standard library, which specializes
+/// on this trait to select faster implementations of functions such as
+/// [`clone_from_slice`](slice::clone_from_slice). It is automatically implemented
+/// when using `#[derive(Clone, Copy)]`.
+///
+/// Note that this trait does not imply that the type is `Copy`, because e.g.
+/// `core::ops::Range<i32>` could soundly implement this trait.
+///
+/// # Safety
+/// `Clone::clone` must be equivalent to copying the value, otherwise calling functions
+/// such as `slice::clone_from_slice` can have undefined behaviour.
+#[unstable(
+    feature = "trivial_clone",
+    reason = "this isn't part of any API guarantee",
+    issue = "none"
+)]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[lang = "trivial_clone"]
+// SAFETY:
+// It is sound to specialize on this because the `clone` implementation cannot be
+// lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,
+// its invariant holds whenever `Clone` is implemented, even if the actual
+// `TrivialClone` bound would not be satisfied because of lifetime bounds.
+#[rustc_unsafe_specialization_marker]
+// If `#[derive(Clone, Clone, Copy)]` is written, there will be multiple
+// implementations of `TrivialClone`. To keep it from appearing in error
+// messages, make it a `#[marker]` trait.
+#[marker]
+pub const unsafe trait TrivialClone: [const] Clone {}
+
 /// Derive macro generating an impl of the trait `Clone`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+#[allow_internal_unstable(core_intrinsics, derive_clone_copy, trivial_clone)]
 pub macro Clone($item:item) {
     /* compiler built-in */
 }
@@ -569,6 +601,7 @@ unsafe impl CloneToUninit for crate::bstr::ByteStr {
 /// are implemented in `traits::SelectionContext::copy_clone_conditions()`
 /// in `rustc_trait_selection`.
 mod impls {
+    use super::TrivialClone;
     use crate::marker::PointeeSized;
 
     macro_rules! impl_clone {
@@ -582,6 +615,11 @@ mod impls {
                         *self
                     }
                 }
+
+                #[doc(hidden)]
+                #[unstable(feature = "trivial_clone", issue = "none")]
+                #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+                unsafe impl const TrivialClone for $t {}
             )*
         }
     }
@@ -602,6 +640,11 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
+    #[unstable(feature = "trivial_clone", issue = "none")]
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    unsafe impl const TrivialClone for ! {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     impl<T: PointeeSized> const Clone for *const T {
@@ -611,6 +654,11 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
+    #[unstable(feature = "trivial_clone", issue = "none")]
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    unsafe impl<T: PointeeSized> const TrivialClone for *const T {}
+
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     impl<T: PointeeSized> const Clone for *mut T {
@@ -619,6 +667,11 @@ mod impls {
             *self
         }
     }
+
+    #[doc(hidden)]
+    #[unstable(feature = "trivial_clone", issue = "none")]
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    unsafe impl<T: PointeeSized> const TrivialClone for *mut T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -630,6 +683,11 @@ mod impls {
             self
         }
     }
+
+    #[doc(hidden)]
+    #[unstable(feature = "trivial_clone", issue = "none")]
+    #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+    unsafe impl<T: PointeeSized> const TrivialClone for &T {}
 
     /// Shared references can be cloned, but mutable references *cannot*!
     #[stable(feature = "rust1", since = "1.0.0")]

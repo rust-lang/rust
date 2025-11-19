@@ -4,6 +4,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
+use rustc_target::spec::Arch;
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -79,7 +80,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // reinterpretation of values as (chunkable) byte arrays, and the loop in the
                 // block optimization in `ptr::swap_nonoverlapping` is hard to rewrite back
                 // into the (unoptimized) direct swapping implementation, so we disable it.
-                || bx.sess().target.arch == "spirv"
+                || bx.sess().target.arch == Arch::SpirV
             {
                 let align = pointee_layout.align.abi;
                 let x_place = args[0].val.deref(align);

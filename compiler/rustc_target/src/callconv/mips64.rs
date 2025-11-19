@@ -82,6 +82,10 @@ where
         extend_integer_width_mips(arg, 64);
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
 
     let dl = cx.data_layout();
     let size = arg.layout.size;

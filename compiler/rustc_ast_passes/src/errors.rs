@@ -35,6 +35,15 @@ pub(crate) enum VisibilityNotPermittedNote {
     #[note(ast_passes_individual_foreign_items)]
     IndividualForeignItems,
 }
+#[derive(Diagnostic)]
+#[diag(ast_passes_impl_fn_const)]
+pub(crate) struct ImplFnConst {
+    #[primary_span]
+    #[suggestion(ast_passes_label, code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(ast_passes_parent_constness)]
+    pub parent_constness: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_trait_fn_const, code = E0379)]
@@ -56,7 +65,7 @@ pub(crate) struct TraitFnConst {
     pub make_impl_const_sugg: Option<Span>,
     #[suggestion(
         ast_passes_make_trait_const_sugg,
-        code = "#[const_trait]\n",
+        code = "const ",
         applicability = "maybe-incorrect"
     )]
     pub make_trait_const_sugg: Option<Span>,
@@ -347,7 +356,18 @@ pub(crate) struct CVariadicMustBeUnsafe {
 pub(crate) struct CVariadicBadExtern {
     #[primary_span]
     pub span: Span,
-    pub abi: Symbol,
+    pub abi: &'static str,
+    #[label]
+    pub extern_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_c_variadic_bad_naked_extern)]
+#[help]
+pub(crate) struct CVariadicBadNakedExtern {
+    #[primary_span]
+    pub span: Span,
+    pub abi: &'static str,
     #[label]
     pub extern_span: Span,
 }

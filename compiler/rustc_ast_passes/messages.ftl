@@ -68,6 +68,10 @@ ast_passes_c_variadic_bad_extern = `...` is not supported for `extern "{$abi}"` 
     .label = `extern "{$abi}"` because of this
     .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
+ast_passes_c_variadic_bad_naked_extern = `...` is not supported for `extern "{$abi}"` naked functions
+    .label = `extern "{$abi}"` because of this
+    .help = C-variadic function must have a compatible calling convention
+
 ast_passes_c_variadic_must_be_unsafe =
     functions with a C variable argument list must be unsafe
     .suggestion = add the `unsafe` keyword to this definition
@@ -200,6 +204,11 @@ ast_passes_generic_before_constraints = generic arguments must come before the f
 
 ast_passes_generic_default_trailing = generic parameters with a default must be trailing
 
+ast_passes_impl_fn_const =
+    redundant `const` fn marker in const impl
+    .parent_constness = this declares all associated functions implicitly const
+    .label = remove the `const`
+
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
@@ -290,7 +299,7 @@ ast_passes_trait_fn_const =
         *[false] {""}
     }
     .make_impl_const_sugg = ... and declare the impl to be const instead
-    .make_trait_const_sugg = ... and declare the trait to be a `#[const_trait]` instead
+    .make_trait_const_sugg = ... and declare the trait to be const instead
 
 ast_passes_trait_object_single_bound = only a single explicit lifetime bound is permitted
 

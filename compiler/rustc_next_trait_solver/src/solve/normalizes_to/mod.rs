@@ -39,15 +39,49 @@ where
                         let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.assemble_and_merge_candidates(proven_via, goal, |ecx| {
-                    ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                        this.structurally_instantiate_normalizes_to_term(
-                            goal,
-                            goal.predicate.alias,
-                        );
-                        this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    })
-                })
+                self.assemble_and_merge_candidates(
+                    proven_via,
+                    goal,
+                    |ecx| {
+                        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+                        //
+                        // If this type is a GAT with currently unconstrained arguments, we do not
+                        // want to normalize it via a candidate which only applies for a specific
+                        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+                        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+                        //
+                        // This only avoids normalization if a GAT argument is fully unconstrained.
+                        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+                        for arg in goal.predicate.alias.own_args(cx).iter() {
+                            let Some(term) = arg.as_term() else {
+                                continue;
+                            };
+                            match ecx.structurally_normalize_term(goal.param_env, term) {
+                                Ok(term) => {
+                                    if term.is_infer() {
+                                        return Some(
+                                            ecx.evaluate_added_goals_and_make_canonical_response(
+                                                Certainty::AMBIGUOUS,
+                                            ),
+                                        );
+                                    }
+                                }
+                                Err(NoSolution) => return Some(Err(NoSolution)),
+                            }
+                        }
+
+                        None
+                    },
+                    |ecx| {
+                        ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                            this.structurally_instantiate_normalizes_to_term(
+                                goal,
+                                goal.predicate.alias,
+                            );
+                            this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                        })
+                    },
+                )
             }
             ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
                 self.normalize_inherent_associated_term(goal)
@@ -132,39 +166,7 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         let cx = ecx.cx();
-        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
-        //
-        // If this type is a GAT with currently unconstrained arguments, we do not
-        // want to normalize it via a candidate which only applies for a specific
-        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
-        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
-        //
-        // This only avoids normalization if the GAT arguments are fully unconstrained.
-        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
-        match goal.predicate.alias.kind(cx) {
-            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                for arg in goal.predicate.alias.own_args(cx).iter() {
-                    let Some(term) = arg.as_term() else {
-                        continue;
-                    };
-                    let term = ecx.structurally_normalize_term(goal.param_env, term)?;
-                    if term.is_infer() {
-                        return ecx.evaluate_added_goals_and_make_canonical_response(
-                            Certainty::AMBIGUOUS,
-                        );
-                    }
-                }
-            }
-            ty::AliasTermKind::OpaqueTy
-            | ty::AliasTermKind::InherentTy
-            | ty::AliasTermKind::InherentConst
-            | ty::AliasTermKind::FreeTy
-            | ty::AliasTermKind::FreeConst
-            | ty::AliasTermKind::UnevaluatedConst => {}
-        }
-
         let projection_pred = assumption.as_projection_clause().unwrap();
-
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
@@ -235,8 +237,9 @@ where
             // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/185>.
             ecx.try_evaluate_added_goals()?;
 
-            // Add GAT where clauses from the trait's definition.
-            // FIXME: We don't need these, since these are the type's own WF obligations.
+            // Add GAT where clauses from the trait's definition. This is necessary
+            // for soundness until we properly handle implied bounds on binders,
+            // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())
@@ -366,19 +369,7 @@ where
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
                 ty::AliasTermKind::ProjectionConst => {
-                    // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
-                    // this should instead return that.
-                    if cx.features().associated_const_equality() {
-                        panic!("associated const projection is not supported yet")
-                    } else {
-                        ty::EarlyBinder::bind(
-                            Const::new_error_with_message(
-                                cx,
-                                "associated const projection is not supported yet",
-                            )
-                            .into(),
-                        )
-                    }
+                    cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };

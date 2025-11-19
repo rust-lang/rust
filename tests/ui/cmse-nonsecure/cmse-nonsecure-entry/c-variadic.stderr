@@ -24,5 +24,12 @@ LL | async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) 
    |
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
-error: aborting due to 3 previous errors
+error[E0798]: `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+  --> $DIR/c-variadic.rs:25:1
+   |
+LL | async unsafe extern "cmse-nonsecure-entry" fn async_is_not_allowed() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0798`.

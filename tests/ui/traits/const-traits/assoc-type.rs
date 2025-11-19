@@ -3,8 +3,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Add<Rhs = Self> {
+const trait Add<Rhs = Self> {
     type Output;
 
     fn add(self, other: Rhs) -> Self::Output;
@@ -28,8 +27,7 @@ impl Add for NonConstAdd {
     }
 }
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     type Bar: [const] Add;
 }
 
@@ -38,8 +36,7 @@ impl const Foo for NonConstAdd {
     //~^ ERROR the trait bound `NonConstAdd: [const] Add` is not satisfied
 }
 
-#[const_trait]
-trait Baz {
+const trait Baz {
     type Qux: Add;
 }
 

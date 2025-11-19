@@ -7,7 +7,7 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
-use rustc_target::spec::RelocModel;
+use rustc_target::spec::{Arch, RelocModel};
 use tracing::debug;
 
 use crate::context::CodegenCx;
@@ -116,7 +116,7 @@ impl CodegenCx<'_, '_> {
         }
 
         // PowerPC64 prefers TOC indirection to avoid copy relocations.
-        if matches!(&*self.tcx.sess.target.arch, "powerpc64" | "powerpc64le") {
+        if matches!(self.tcx.sess.target.arch, Arch::PowerPC64 | Arch::PowerPC64LE) {
             return false;
         }
 

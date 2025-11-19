@@ -119,6 +119,24 @@ pub struct ManuallyDrop<T: PointeeSized> {
 }
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonNull<T: ?Sized> {
+    pointer: *const T,
+}
+impl<T: ?Sized> Copy for NonNull<T> {}
+
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_nonnull_optimization_guaranteed]
+pub struct NonZero<T>(T);
+
+pub struct Unique<T: ?Sized> {
+    pub pointer: NonNull<T>,
+    pub _marker: PhantomData<T>,
+}
+
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
 pub struct UnsafeCell<T: PointeeSized> {
@@ -177,6 +195,21 @@ impl Add<isize> for isize {
     }
 }
 
+#[lang = "neg"]
+pub trait Neg {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+impl Neg for isize {
+    type Output = isize;
+
+    fn neg(self) -> isize {
+        loop {} // Dummy impl, not actually used
+    }
+}
+
 #[lang = "sync"]
 trait Sync {}
 impl_marker_trait!(
@@ -231,6 +264,13 @@ pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
     pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn size_of<T>() -> usize;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const fn align_of<T>() -> usize;
 }
 
 #[lang = "c_void"]
@@ -239,3 +279,17 @@ pub enum c_void {
     __variant1,
     __variant2,
 }
+
+#[lang = "const_param_ty"]
+#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+pub trait ConstParamTy_ {}
+
+pub enum SimdAlign {
+    // These values must match the compiler's `SimdAlign` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    Unaligned = 0,
+    Element = 1,
+    Vector = 2,
+}
+
+impl ConstParamTy_ for SimdAlign {}

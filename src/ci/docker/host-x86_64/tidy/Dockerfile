@@ -28,9 +28,6 @@ COPY scripts/nodejs.sh /scripts/
 RUN sh /scripts/nodejs.sh /node
 ENV PATH="/node/bin:${PATH}"
 
-# Install eslint
-COPY host-x86_64/tidy/eslint.version /tmp/
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
@@ -39,8 +36,6 @@ RUN pip3 install --no-deps --no-cache-dir --require-hashes -r /tmp/reuse-require
   && pip3 install virtualenv
 
 COPY host-x86_64/pr-check-1/validate-toolstate.sh /scripts/
-
-RUN bash -c 'npm install -g eslint@$(cat /tmp/eslint.version)'
 
 # NOTE: intentionally uses python2 for x.py so we can test it still works.
 # validate-toolstate only runs in our CI, so it's ok for it to only support python3.

@@ -25,6 +25,10 @@ OPTIONS:
             Some features are not yet ready for production usage. This option will disable these
             features. This includes the JIT mode and inline assembly support.
 
+    --panic-unwind-support
+            Enable support for unwinding when -Cpanic=unwind is used. This currently regresses build
+            performance.
+
     --frozen
             Require Cargo.lock and cache are up to date
 

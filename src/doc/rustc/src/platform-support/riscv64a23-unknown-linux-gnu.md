@@ -1,6 +1,6 @@
 # `riscv64a23-unknown-linux-gnu`
 
-**Tier: 3**
+**Tier: 2 (without Host Tools)**
 
 RISC-V target using the ratified [RVA23 Profile](https://github.com/riscv/riscv-profiles/blob/main/src/rva23-profile.adoc).
 This target will enable all mandary features of rva23u64 by default.
@@ -18,24 +18,26 @@ Other platforms may work, but are not tested. Please contanct if you encounter a
 
 ## Building the target
 
-Tier-3 target is not distributed through `rustup`.
-
-You need to build your own Rust, the target can be build with:
+Tier-2 targets are distributed through `rustup`. Install the target with:
 
 ```bash
-./x build --target riscv64a23-unknown-linux-gnu
+rustup target add riscv64a23-unknown-linux-gnu
 ```
 
 ## Building Rust programs
 
-Add the toolchain:
+Cross compile crates with:
 
 ```bash
-rustup toolchain link rva23-toolchain {path-to-rust}/build/host/stage2
+cargo build --target=riscv64a23-unknown-linux-gnu
 ```
 
-Then cross compile crates with:
+For cross-compilation, you may need to install the appropriate linker:
 
 ```bash
-RUSTFLAGS="-C linker=riscv64-linux-gnu-gcc" cargo +rva23-toolchain build --target=riscv64a23-unknown-linux-gnu
+# Ubuntu/Debian
+sudo apt-get install gcc-riscv64-linux-gnu
+
+# Then set the linker
+RUSTFLAGS="-C linker=riscv64-linux-gnu-gcc" cargo build --target=riscv64a23-unknown-linux-gnu
 ```

@@ -74,7 +74,7 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind, Value,
+    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKind, Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
@@ -97,7 +97,6 @@ pub use self::region::{
     BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
     RegionKind, RegionVid,
 };
-pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
     CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
@@ -156,7 +155,6 @@ mod list;
 mod opaque_types;
 mod predicate;
 mod region;
-mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
@@ -1512,9 +1510,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) =
-            find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
-        {
+        let attributes = self.get_all_attrs(did);
+        if let Some(reprs) = find_attr!(attributes, AttributeKind::Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
@@ -1571,6 +1568,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // This is here instead of layout because the choice must make it into metadata.
         if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
+        }
+
+        // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+        if find_attr!(attributes, AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)) {
+            flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
@@ -2151,6 +2153,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 header.constness == hir::Constness::Const
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
+            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
@@ -2189,7 +2192,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 false
             }
             DefKind::Ctor(_, CtorKind::Const)
-            | DefKind::Impl { of_trait: false }
             | DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

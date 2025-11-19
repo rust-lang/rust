@@ -1,25 +1,31 @@
 use itertools::Itertools;
 use std::process::Command;
 
+use crate::common::argument::ArgumentList;
 use crate::common::intrinsic::Intrinsic;
 
 use super::indentation::Indentation;
-use super::intrinsic::format_f16_return_value;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
-const PASSES: u32 = 20;
+pub(crate) const PASSES: u32 = 20;
+
+macro_rules! concatln {
+    ($($lines:expr),* $(,)?) => {
+        concat!($( $lines, "\n" ),*)
+    };
+}
 
 fn write_cargo_toml_header(w: &mut impl std::io::Write, name: &str) -> std::io::Result<()> {
     writeln!(
         w,
-        concat!(
-            "[package]\n",
-            "name = \"{name}\"\n",
-            "version = \"{version}\"\n",
-            "authors = [{authors}]\n",
-            "license = \"{license}\"\n",
-            "edition = \"2018\"\n",
+        concatln!(
+            "[package]",
+            "name = \"{name}\"",
+            "version = \"{version}\"",
+            "authors = [{authors}]",
+            "license = \"{license}\"",
+            "edition = \"2018\"",
         ),
         name = name,
         version = env!("CARGO_PKG_VERSION"),
@@ -37,6 +43,7 @@ pub fn write_bin_cargo_toml(
     write_cargo_toml_header(w, "intrinsic-test-programs")?;
 
     writeln!(w, "[dependencies]")?;
+    writeln!(w, "core_arch = {{ path = \"../crates/core_arch\" }}")?;
 
     for i in 0..module_count {
         writeln!(w, "mod_{i} = {{ path = \"mod_{i}/\" }}")?;
@@ -118,6 +125,20 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
 
     writeln!(w, "{definitions}")?;
 
+    let mut seen = std::collections::HashSet::new();
+
+    for intrinsic in intrinsics {
+        for arg in &intrinsic.arguments.args {
+            if !arg.has_constraint() && arg.ty.is_rust_vals_array_const() {
+                let name = arg.rust_vals_array_name().to_string();
+
+                if seen.insert(name) {
+                    ArgumentList::gen_arg_rust(arg, w, Indentation::default(), PASSES)?;
+                }
+            }
+        }
+    }
+
     for intrinsic in intrinsics {
         crate::common::gen_rust::create_rust_test_module(w, intrinsic)?;
     }
@@ -190,7 +211,7 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     intrinsic: &Intrinsic<T>,
     indentation: Indentation,
-    specializations: &[Vec<u8>],
+    specializations: &[Vec<i32>],
     passes: u32,
 ) -> std::io::Result<()> {
     let intrinsic_name = &intrinsic.name;
@@ -232,30 +253,30 @@ pub fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
         }
     }
 
-    let return_value = format_f16_return_value(intrinsic);
-    let indentation2 = indentation.nested();
-    let indentation3 = indentation2.nested();
-    writeln!(
+    write!(
         w,
-        "\
-            for (id, f) in specializations {{\n\
-                for i in 0..{passes} {{\n\
-                    unsafe {{\n\
-                        {loaded_args}\
-                        let __return_value = f({args});\n\
-                        println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});\n\
-                    }}\n\
-                }}\n\
-            }}",
-        loaded_args = intrinsic.arguments.load_values_rust(indentation3),
+        concatln!(
+            "    for (id, f) in specializations {{",
+            "        for i in 0..{passes} {{",
+            "            unsafe {{",
+            "{loaded_args}",
+            "                let __return_value = f({args});",
+            "                println!(\"Result {{id}}-{{}}: {{:?}}\", i + 1, {return_value});",
+            "            }}",
+            "        }}",
+            "    }}",
+        ),
+        loaded_args = intrinsic.arguments.load_values_rust(indentation.nest_by(4)),
         args = intrinsic.arguments.as_call_param_rust(),
+        return_value = intrinsic.results.print_result_rust(),
+        passes = passes,
     )
 }
 
 /// Generate the specializations (unique sequences of const-generic arguments) for this intrinsic.
 fn generate_rust_specializations(
     constraints: &mut impl Iterator<Item = impl Iterator<Item = i64>>,
-) -> Vec<Vec<u8>> {
+) -> Vec<Vec<i32>> {
     let mut specializations = vec![vec![]];
 
     for constraint in constraints {
@@ -263,7 +284,7 @@ fn generate_rust_specializations(
             .flat_map(|right| {
                 specializations.iter().map(move |left| {
                     let mut left = left.clone();
-                    left.push(u8::try_from(right).unwrap());
+                    left.push(i32::try_from(right).unwrap());
                     left
                 })
             })

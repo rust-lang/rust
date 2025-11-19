@@ -185,7 +185,7 @@ impl SourceCollector<'_, '_> {
         };
 
         // Remove the utf-8 BOM if any
-        let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
+        let contents = contents.trim_prefix('\u{feff}');
 
         let shared = &self.cx.shared;
         // Create the intermediate directories

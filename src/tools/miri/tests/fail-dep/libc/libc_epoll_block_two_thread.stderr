@@ -1,9 +1,4 @@
 error: the evaluated program deadlocked
-   |
-   = note: this thread got stuck here
-   = note: (no span available)
-
-error: the evaluated program deadlocked
   --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
@@ -16,22 +11,16 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
 note: inside `main`
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL |     thread1.join().unwrap();
+LL |     thread2.join().unwrap();
    |     ^^^^^^^^^^^^^^
 
 error: the evaluated program deadlocked
   --> tests/fail-dep/libc/libc_epoll_block_two_thread.rs:LL:CC
    |
-LL |         check_epoll_wait::<TAG>(epfd, &[(expected_event, expected_value)], -1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
-
-error: the evaluated program deadlocked
-   |
-   = note: this thread got stuck here
-   = note: (no span available)
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+LL |         check_epoll_wait::<TAG>(epfd, &expected, -1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this thread got stuck here
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

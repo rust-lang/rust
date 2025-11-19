@@ -1,15 +1,13 @@
-error: inherent impls cannot be const
-  --> $DIR/span-bug-issue-121418.rs:6:12
+error: redundant `const` fn marker in const impl
+  --> $DIR/span-bug-issue-121418.rs:7:9
    |
 LL | impl const dyn T {
-   |      ----- ^^^^^ inherent impl for this type
-   |      |
-   |      const because of this
-   |
-   = note: only trait implementations may be annotated with `const`
+   |      ----- this declares all associated functions implicitly const
+LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
+   |         ^^^^^^ help: remove the `const`
 
 error[E0277]: the size for values of type `(dyn T + 'static)` cannot be known at compilation time
-  --> $DIR/span-bug-issue-121418.rs:8:27
+  --> $DIR/span-bug-issue-121418.rs:7:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -20,7 +18,7 @@ note: required because it appears within the type `std::sync::Mutex<(dyn T + 'st
    = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
-  --> $DIR/span-bug-issue-121418.rs:8:27
+  --> $DIR/span-bug-issue-121418.rs:7:27
    |
 LL |     pub const fn new() -> std::sync::Mutex<dyn T> {}
    |                  ---      ^^^^^^^^^^^^^^^^^^^^^^^ expected `Mutex<dyn T>`, found `()`

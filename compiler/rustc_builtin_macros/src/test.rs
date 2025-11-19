@@ -207,30 +207,30 @@ pub(crate) fn expand_test_or_bench(
     };
 
     let test_fn = if is_bench {
-        // A simple ident for a lambda
-        let b = Ident::from_str_and_span("b", attr_sp);
-
+        // avoid name collisions by using the function name within the identifier, see bug #148275
+        let bencher_param =
+            Ident::from_str_and_span(&format!("__bench_{}", fn_.ident.name), attr_sp);
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
             thin_vec![
                 // #[coverage(off)]
-                // |b| self::test::assert_test_result(
+                // |__bench_fn_name| self::test::assert_test_result(
                 coverage_off(cx.lambda1(
                     sp,
                     cx.expr_call(
                         sp,
                         cx.expr_path(test_path("assert_test_result")),
                         thin_vec![
-                            // super::$test_fn(b)
+                            // super::$test_fn(__bench_fn_name)
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, b)],
+                                thin_vec![cx.expr_ident(sp, bencher_param)],
                             ),
                         ],
                     ),
-                    b,
+                    bencher_param,
                 )), // )
             ],
         )
@@ -289,7 +289,7 @@ pub(crate) fn expand_test_or_bench(
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     define_opaque: None,
                     // test::TestDescAndFn {
-                    expr: Some(
+                    rhs: Some(ast::ConstItemRhs::Body(
                         cx.expr_struct(
                             sp,
                             test_path("TestDescAndFn"),
@@ -371,7 +371,7 @@ pub(crate) fn expand_test_or_bench(
                         field("testfn", test_fn), // }
                     ],
                         ), // }
-                    ),
+                    )),
                 }
                 .into(),
             ),

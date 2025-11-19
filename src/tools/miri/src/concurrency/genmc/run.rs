@@ -1,8 +1,10 @@
+use std::num::NonZeroI32;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
 
 use genmc_sys::EstimationResult;
+use rustc_abi::Endian;
 use rustc_log::tracing;
 use rustc_middle::ty::TyCtxt;
 
@@ -24,10 +26,15 @@ pub(super) enum GenmcMode {
 ///
 /// Returns `None` is an error is detected, or `Some(return_value)` with the return value of the last run of the program.
 pub fn run_genmc_mode<'tcx>(
-    config: &MiriConfig,
-    eval_entry: impl Fn(Rc<GenmcCtx>) -> Option<i32>,
     tcx: TyCtxt<'tcx>,
-) -> Option<i32> {
+    config: &MiriConfig,
+    eval_entry: impl Fn(Rc<GenmcCtx>) -> Result<(), NonZeroI32>,
+) -> Result<(), NonZeroI32> {
+    // Check for supported target.
+    if tcx.data_layout.endian != Endian::Little || tcx.data_layout.pointer_size().bits() != 64 {
+        tcx.dcx().fatal("GenMC only supports 64bit little-endian targets");
+    }
+
     let genmc_config = config.genmc_config.as_ref().unwrap();
     // Run in Estimation mode if requested.
     if genmc_config.do_estimation {
@@ -41,10 +48,10 @@ pub fn run_genmc_mode<'tcx>(
 
 fn run_genmc_mode_impl<'tcx>(
     config: &MiriConfig,
-    eval_entry: &impl Fn(Rc<GenmcCtx>) -> Option<i32>,
+    eval_entry: &impl Fn(Rc<GenmcCtx>) -> Result<(), NonZeroI32>,
     tcx: TyCtxt<'tcx>,
     mode: GenmcMode,
-) -> Option<i32> {
+) -> Result<(), NonZeroI32> {
     let time_start = Instant::now();
     let genmc_config = config.genmc_config.as_ref().unwrap();
 
@@ -62,9 +69,9 @@ fn run_genmc_mode_impl<'tcx>(
         genmc_ctx.prepare_next_execution();
 
         // Execute the program until completion to get the return value, or return if an error happens:
-        let Some(return_code) = eval_entry(genmc_ctx.clone()) else {
+        if let Err(err) = eval_entry(genmc_ctx.clone()) {
             genmc_ctx.print_genmc_output(genmc_config, tcx);
-            return None;
+            return Err(err);
         };
 
         // We inform GenMC that the execution is complete.
@@ -80,18 +87,17 @@ fn run_genmc_mode_impl<'tcx>(
                     genmc_ctx.print_verification_output(genmc_config, elapsed_time_sec);
                 }
                 // Return the return code of the last execution.
-                return Some(return_code);
+                return Ok(());
             }
             ExecutionEndResult::Error(error) => {
                 // This can be reached for errors that affect the entire execution, not just a specific event.
                 // For instance, linearizability checking and liveness checking report their errors this way.
-                // Neither are supported by Miri-GenMC at the moment though. However, GenMC also
-                // treats races on deallocation as global errors, so this code path is still reachable.
+                // Neither are supported by Miri-GenMC at the moment though.
                 // Since we don't have any span information for the error at this point,
                 // we just print GenMC's error string, and the full GenMC output if requested.
                 eprintln!("(GenMC) Error detected: {error}");
                 genmc_ctx.print_genmc_output(genmc_config, tcx);
-                return None;
+                return Err(NonZeroI32::new(rustc_driver::EXIT_FAILURE).unwrap());
             }
         }
     }

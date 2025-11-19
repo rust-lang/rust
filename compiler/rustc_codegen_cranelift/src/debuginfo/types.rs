@@ -56,7 +56,7 @@ impl DebugContext {
             // ty::FnDef(..) | ty::FnPtr(..)
             // ty::Closure(..)
             // ty::Adt(def, ..)
-            ty::Tuple(components) => self.tuple_type(tcx, type_dbg, ty, *components),
+            ty::Tuple(components) => self.tuple_type(tcx, type_dbg, ty, components),
             // ty::Param(_)
             // FIXME implement remaining types and add unreachable!() to the fallback branch
             _ => self.placeholder_for_type(tcx, type_dbg, ty),
@@ -152,7 +152,7 @@ impl DebugContext {
         components: &'tcx [Ty<'tcx>],
     ) -> UnitEntryId {
         let components = components
-            .into_iter()
+            .iter()
             .map(|&ty| (ty, self.debug_type(tcx, type_dbg, ty)))
             .collect::<Vec<_>>();
 

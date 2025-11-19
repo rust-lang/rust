@@ -5,8 +5,8 @@ use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
 use super::{
-    ShiftOp, horizontal_bin_op, int_abs, mask_load, mask_store, mpsadbw, packssdw, packsswb,
-    packusdw, packuswb, pmulhrsw, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    ShiftOp, horizontal_bin_op, mask_load, mask_store, mpsadbw, packssdw, packsswb, packusdw,
+    packuswb, pmulhrsw, psadbw, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -25,29 +25,20 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx2.").unwrap();
 
         match unprefixed_name {
-            // Used to implement the _mm256_abs_epi{8,16,32} functions.
-            // Calculates the absolute value of packed 8/16/32-bit integers.
-            "pabs.b" | "pabs.w" | "pabs.d" => {
-                let [op] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                int_abs(this, op, dest)?;
-            }
-            // Used to implement the _mm256_h{add,adds,sub}_epi{16,32} functions.
-            // Horizontally add / add with saturation / subtract adjacent 16/32-bit
+            // Used to implement the _mm256_h{adds,subs}_epi16 functions.
+            // Horizontally add / subtract with saturation adjacent 16-bit
             // integer values in `left` and `right`.
-            "phadd.w" | "phadd.sw" | "phadd.d" | "phsub.w" | "phsub.sw" | "phsub.d" => {
+            "phadd.sw" | "phsub.sw" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (which, saturating) = match unprefixed_name {
-                    "phadd.w" | "phadd.d" => (mir::BinOp::Add, false),
-                    "phadd.sw" => (mir::BinOp::Add, true),
-                    "phsub.w" | "phsub.d" => (mir::BinOp::Sub, false),
-                    "phsub.sw" => (mir::BinOp::Sub, true),
+                let which = match unprefixed_name {
+                    "phadd.sw" => mir::BinOp::Add,
+                    "phsub.sw" => mir::BinOp::Sub,
                     _ => unreachable!(),
                 };
 
-                horizontal_bin_op(this, which, saturating, left, right, dest)?;
+                horizontal_bin_op(this, which, /*saturating*/ true, left, right, dest)?;
             }
             // Used to implement `_mm{,_mask}_{i32,i64}gather_{epi32,epi64,pd,ps}` functions
             // Gathers elements from `slice` using `offsets * scale` as indices.
@@ -108,42 +99,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 for i in actual_len..dest_len {
                     let dest = this.project_index(&dest, i)?;
                     this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-                }
-            }
-            // Used to implement the _mm256_madd_epi16 function.
-            // Multiplies packed signed 16-bit integers in `left` and `right`, producing
-            // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
-            // intermediate 32-bit integers, and pack the results in `dest`.
-            "pmadd.wd" => {
-                let [left, right] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(dest_len.strict_mul(2), left_len);
-
-                for i in 0..dest_len {
-                    let j1 = i.strict_mul(2);
-                    let left1 = this.read_scalar(&this.project_index(&left, j1)?)?.to_i16()?;
-                    let right1 = this.read_scalar(&this.project_index(&right, j1)?)?.to_i16()?;
-
-                    let j2 = j1.strict_add(1);
-                    let left2 = this.read_scalar(&this.project_index(&left, j2)?)?.to_i16()?;
-                    let right2 = this.read_scalar(&this.project_index(&right, j2)?)?.to_i16()?;
-
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Multiplications are i16*i16->i32, which will not overflow.
-                    let mul1 = i32::from(left1).strict_mul(right1.into());
-                    let mul2 = i32::from(left2).strict_mul(right2.into());
-                    // However, this addition can overflow in the most extreme case
-                    // (-0x8000)*(-0x8000)+(-0x8000)*(-0x8000) = 0x80000000
-                    let res = mul1.wrapping_add(mul2);
-
-                    this.write_scalar(Scalar::from_i32(res), &dest)?;
                 }
             }
             // Used to implement the _mm256_maddubs_epi16 function.
@@ -285,75 +240,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.copy_op(&left, &dest)?;
                 }
             }
-            // Used to implement the _mm256_permute2x128_si256 function.
-            // Shuffles 128-bit blocks of `a` and `b` using `imm` as pattern.
-            "vperm2i128" => {
-                let [left, right, imm] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-
-                assert_eq!(left.layout.size.bits(), 256);
-                assert_eq!(right.layout.size.bits(), 256);
-                assert_eq!(dest.layout.size.bits(), 256);
-
-                // Transmute to `[i128; 2]`
-
-                let array_layout =
-                    this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.i128, 2))?;
-                let left = left.transmute(array_layout, this)?;
-                let right = right.transmute(array_layout, this)?;
-                let dest = dest.transmute(array_layout, this)?;
-
-                let imm = this.read_scalar(imm)?.to_u8()?;
-
-                for i in 0..2 {
-                    let dest = this.project_index(&dest, i)?;
-                    let src = match (imm >> i.strict_mul(4)) & 0b11 {
-                        0 => this.project_index(&left, 0)?,
-                        1 => this.project_index(&left, 1)?,
-                        2 => this.project_index(&right, 0)?,
-                        3 => this.project_index(&right, 1)?,
-                        _ => unreachable!(),
-                    };
-
-                    this.copy_op(&src, &dest)?;
-                }
-            }
             // Used to implement the _mm256_sad_epu8 function.
-            // Compute the absolute differences of packed unsigned 8-bit integers
-            // in `left` and `right`, then horizontally sum each consecutive 8
-            // differences to produce four unsigned 16-bit integers, and pack
-            // these unsigned 16-bit integers in the low 16 bits of 64-bit elements
-            // in `dest`.
-            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8
             "psad.bw" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
-                let (left, left_len) = this.project_to_simd(left)?;
-                let (right, right_len) = this.project_to_simd(right)?;
-                let (dest, dest_len) = this.project_to_simd(dest)?;
-
-                assert_eq!(left_len, right_len);
-                assert_eq!(left_len, dest_len.strict_mul(8));
-
-                for i in 0..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-
-                    let mut acc: u16 = 0;
-                    for j in 0..8 {
-                        let src_index = i.strict_mul(8).strict_add(j);
-
-                        let left = this.project_index(&left, src_index)?;
-                        let left = this.read_scalar(&left)?.to_u8()?;
-
-                        let right = this.project_index(&right, src_index)?;
-                        let right = this.read_scalar(&right)?.to_u8()?;
-
-                        acc = acc.strict_add(left.abs_diff(right).into());
-                    }
-
-                    this.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
-                }
+                psadbw(this, left, right, dest)?
             }
             // Used to implement the _mm256_shuffle_epi8 intrinsic.
             // Shuffles bytes from `left` using `right` as pattern.

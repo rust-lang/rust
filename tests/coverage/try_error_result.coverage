@@ -17,7 +17,7 @@
    LL|       |    for
    LL|       |        _
    LL|       |    in
-   LL|      6|        0..10
+   LL|      1|        0..10
    LL|       |    {
    LL|      6|        countdown
    LL|      6|            -= 1
@@ -67,7 +67,7 @@
    LL|       |    for
    LL|       |        _
    LL|       |    in
-   LL|      6|        0..10
+   LL|      1|        0..10
    LL|       |    {
    LL|      6|        countdown
    LL|      6|            -= 1

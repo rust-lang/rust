@@ -2,8 +2,7 @@
 
 const fn foo() {}
 
-#[const_trait]
-trait Bar {
+const trait Bar {
     fn bar();
 }
 

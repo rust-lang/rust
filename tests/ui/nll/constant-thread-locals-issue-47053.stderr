@@ -1,6 +1,9 @@
 error[E0594]: cannot assign to immutable static item `FOO`
   --> $DIR/constant-thread-locals-issue-47053.rs:9:5
    |
+LL | static FOO: isize = 5;
+   | ----------------- this `static` cannot be written to
+...
 LL |     FOO = 6;
    |     ^^^^^^^ cannot assign
 

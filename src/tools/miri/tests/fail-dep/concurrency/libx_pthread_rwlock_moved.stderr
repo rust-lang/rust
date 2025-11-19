@@ -1,4 +1,4 @@
-error: Undefined Behavior: `pthread_rwlock_t` can't be moved after first use
+error: Undefined Behavior: `pthread_rwlock_t` was not properly initialized at this location, or it got overwritten
   --> tests/fail-dep/concurrency/libx_pthread_rwlock_moved.rs:LL:CC
    |
 LL |         libc::pthread_rwlock_unlock(&mut rw2 as *mut _);

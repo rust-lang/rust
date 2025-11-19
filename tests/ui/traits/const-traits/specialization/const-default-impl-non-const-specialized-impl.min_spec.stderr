@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Value` for type `FortyTwo`
-  --> $DIR/const-default-impl-non-const-specialized-impl.rs:22:1
+  --> $DIR/const-default-impl-non-const-specialized-impl.rs:21:1
    |
 LL | impl<T> const Value for T {
    | ------------------------- first implementation here

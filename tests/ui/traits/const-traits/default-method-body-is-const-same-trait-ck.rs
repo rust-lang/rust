@@ -1,8 +1,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait Tr {
+pub const trait Tr {
     fn a(&self) {}
 
     fn b(&self) {

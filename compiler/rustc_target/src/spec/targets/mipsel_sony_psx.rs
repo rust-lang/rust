@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+    Arch, Cc, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -13,14 +14,14 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
-        arch: "mips".into(),
+        arch: Arch::Mips,
 
         options: TargetOptions {
             // The Playstation 1 is mostly bare-metal, but the BIOS does provide some a slight bit
             // of functionality post load, so we still declare it as `cfg!(target_os = "psx")`.
             //
             // See <https://github.com/rust-lang/rust/pull/131168> for details.
-            os: "psx".into(),
+            os: Os::Psx,
             vendor: "sony".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             cpu: "mips1".into(),

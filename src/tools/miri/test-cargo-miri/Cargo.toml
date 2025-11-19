@@ -10,7 +10,6 @@ edition = "2024"
 
 [dependencies]
 byteorder = "1.0"
-cdylib = { path = "cdylib" }
 exported_symbol = { path = "exported-symbol" }
 proc_macro_crate = { path = "proc-macro-crate" }
 issue_1567 = { path = "issue-1567" }

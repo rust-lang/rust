@@ -1,6 +1,6 @@
 use crate::spec::{
-    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
-    TargetOptions, cvs,
+    Abi, Arch, Cc, Env, FloatAbi, LinkerFlavor, Lld, Os, PanicStrategy, RelocModel, Target,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -14,12 +14,12 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
-        arch: "arm".into(),
+        arch: Arch::Arm,
 
         options: TargetOptions {
-            os: "rtems".into(),
+            os: Os::Rtems,
             families: cvs!["unix"],
-            abi: "eabihf".into(),
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
             linker: None,
@@ -32,7 +32,7 @@ pub(crate) fn target() -> Target {
             c_enum_min_bits: Some(8),
             eh_frame_header: false,
             no_default_libraries: false,
-            env: "newlib".into(),
+            env: Env::Newlib,
             ..Default::default()
         },
     }

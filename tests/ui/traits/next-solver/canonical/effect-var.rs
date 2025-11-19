@@ -3,8 +3,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Foo {
+const trait Foo {
     fn foo();
 }
 

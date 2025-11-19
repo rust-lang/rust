@@ -329,7 +329,7 @@ impl AnnotateSnippetEmitter {
                     let substitutions = suggestion
                         .substitutions
                         .into_iter()
-                        .filter_map(|mut subst| {
+                        .filter(|subst| {
                             // Suggestions coming from macros can have malformed spans. This is a heavy
                             // handed approach to avoid ICEs by ignoring the suggestion outright.
                             let invalid =
@@ -337,35 +337,40 @@ impl AnnotateSnippetEmitter {
                             if invalid {
                                 debug!("suggestion contains an invalid span: {:?}", subst);
                             }
-
+                            !invalid
+                        })
+                        .filter_map(|mut subst| {
                             // Assumption: all spans are in the same file, and all spans
                             // are disjoint. Sort in ascending order.
                             subst.parts.sort_by_key(|part| part.span.lo());
                             // Verify the assumption that all spans are disjoint
-                            assert_eq!(
+                            debug_assert_eq!(
                                 subst.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
                                 None,
                                 "all spans must be disjoint",
                             );
+
+                            let lo = subst.parts.iter().map(|part| part.span.lo()).min()?;
+                            let lo_file = sm.lookup_source_file(lo);
+                            let hi = subst.parts.iter().map(|part| part.span.hi()).max()?;
+                            let hi_file = sm.lookup_source_file(hi);
+
+                            // The different spans might belong to different contexts, if so ignore suggestion.
+                            if lo_file.stable_id != hi_file.stable_id {
+                                return None;
+                            }
+
+                            // We can't splice anything if the source is unavailable.
+                            if !sm.ensure_source_file_source_present(&lo_file) {
+                                return None;
+                            }
 
                             // Account for cases where we are suggesting the same code that's already
                             // there. This shouldn't happen often, but in some cases for multipart
                             // suggestions it's much easier to handle it here than in the origin.
                             subst.parts.retain(|p| is_different(sm, &p.snippet, p.span));
 
-                            let item_span = subst.parts.first()?;
-                            let file = sm.lookup_source_file(item_span.span.lo());
-                            if !invalid
-                                && should_show_source_code(
-                                    &self.ignored_directories_in_source_blocks,
-                                    sm,
-                                    &file,
-                                )
-                            {
-                                Some(subst)
-                            } else {
-                                None
-                            }
+                            if subst.parts.is_empty() { None } else { Some(subst) }
                         })
                         .collect::<Vec<_>>();
 
@@ -745,14 +750,20 @@ fn shrink_file(
 ) -> Option<(Span, String, usize)> {
     let lo_byte = spans.iter().map(|s| s.lo()).min()?;
     let lo_loc = sm.lookup_char_pos(lo_byte);
-    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
 
     let hi_byte = spans.iter().map(|s| s.hi()).max()?;
     let hi_loc = sm.lookup_char_pos(hi_byte);
-    let hi = lo_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
+
+    if lo_loc.file.stable_id != hi_loc.file.stable_id {
+        // this may happen when spans cross file boundaries due to macro expansion.
+        return None;
+    }
+
+    let lo = lo_loc.file.line_bounds(lo_loc.line.saturating_sub(1)).start;
+    let hi = hi_loc.file.line_bounds(hi_loc.line.saturating_sub(1)).end;
 
     let bounding_span = Span::with_root_ctxt(lo, hi);
-    let source = sm.span_to_snippet(bounding_span).unwrap_or_default();
+    let source = sm.span_to_snippet(bounding_span).ok()?;
     let offset_line = sm.doctest_offset_line(file_name, lo_loc.line);
 
     Some((bounding_span, source, offset_line))

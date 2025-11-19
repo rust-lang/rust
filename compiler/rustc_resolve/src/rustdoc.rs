@@ -400,10 +400,10 @@ fn preprocess_link(link: &str) -> Box<str> {
     let link = link.split('#').next().unwrap();
     let link = link.trim();
     let link = link.rsplit('@').next().unwrap();
-    let link = link.strip_suffix("()").unwrap_or(link);
-    let link = link.strip_suffix("{}").unwrap_or(link);
-    let link = link.strip_suffix("[]").unwrap_or(link);
-    let link = if link != "!" { link.strip_suffix('!').unwrap_or(link) } else { link };
+    let link = link.trim_suffix("()");
+    let link = link.trim_suffix("{}");
+    let link = link.trim_suffix("[]");
+    let link = if link != "!" { link.trim_suffix('!') } else { link };
     let link = link.trim();
     strip_generics_from_path(link).unwrap_or_else(|_| link.into())
 }

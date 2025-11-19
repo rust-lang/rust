@@ -23,6 +23,9 @@ LL |         _y.push(&mut z);
 error[E0597]: `z` does not live long enough
   --> $DIR/regions-escape-loop-via-vec.rs:7:17
    |
+LL |     let mut _y = vec![&mut x];
+   |         ------ variable `_y` declared here
+LL |     while x < 10 {
 LL |         let mut z = x;
    |             ----- binding `z` declared here
 LL |         _y.push(&mut z);
@@ -32,6 +35,9 @@ LL |         _y.push(&mut z);
 ...
 LL |     }
    |     - `z` dropped here while still borrowed
+   |
+   = note: `_y` is a collection that stores borrowed references, but `z` does not live long enough to be stored in it
+   = help: buffer reuse with borrowed references requires unsafe code or restructuring
 
 error[E0503]: cannot use `x` because it was mutably borrowed
   --> $DIR/regions-escape-loop-via-vec.rs:9:9

@@ -6,6 +6,7 @@ use rustc_abi::{FieldIdx, Size};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_middle::ty::Ty;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -281,7 +282,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         tid_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-        this.assert_target_os("macos", "pthread_threadip_np");
+        this.assert_target_os(Os::MacOs, "pthread_threadip_np");
 
         let tid_dest = this.read_pointer(tid_op)?;
         if this.ptr_is_null(tid_dest)? {

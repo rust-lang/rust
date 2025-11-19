@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 //@ normalize-stderr-test: "(\n)ALLOC \(.*\) \{\n(.*\n)*\}(\n)" -> "${1}ALLOC DUMP${3}"
-//@ normalize-stderr-test: "\[0x[0-9a-z]..0x[0-9a-z]\]" -> "[0xX..0xY]"
+//@ normalize-stderr-test: "\[0x[0-9a-z]+..0x[0-9a-z]+\]" -> "[0xX..0xY]"
 
 /// Test that destroying a pthread_cond twice fails, even without a check for number validity
 

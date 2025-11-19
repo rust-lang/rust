@@ -387,6 +387,13 @@ impl CompletedProcess {
         self
     }
 
+    /// Checks that `stderr` doesn't contain the Internal Compiler Error message.
+    #[track_caller]
+    pub fn assert_not_ice(&self) -> &Self {
+        self.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug");
+        self
+    }
+
     /// Checks that `stderr` does not contain the regex pattern `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {

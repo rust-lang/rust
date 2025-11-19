@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    PanicStrategy, RelocModel, RelroLevel, SplitDebuginfo, StackProbeType, TargetOptions, cvs,
+    Os, PanicStrategy, RelocModel, RelroLevel, SplitDebuginfo, StackProbeType, TargetOptions, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "lynxos178".into(),
+        os: Os::LynxOs178,
         dynamic_linking: false,
         families: cvs!["unix"],
         position_independent_executables: false,

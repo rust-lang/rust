@@ -13,9 +13,6 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![allow(internal_features)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(rustc_private)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -75,10 +72,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::path::PathBuf;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::AtomicBool;
-#[cfg(not(feature = "master"))]
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
@@ -103,11 +97,11 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
-use rustc_target::spec::RelocModel;
+use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
-use crate::gcc_util::target_cpu;
+use crate::gcc_util::{target_cpu, to_gcc_features};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -170,7 +164,10 @@ impl LockedTargetInfo {
 #[derive(Clone)]
 pub struct GccCodegenBackend {
     target_info: LockedTargetInfo,
+    lto_supported: Arc<AtomicBool>,
 }
+
+static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
 impl CodegenBackend for GccCodegenBackend {
     fn locale_resource(&self) -> &'static str {
@@ -196,7 +193,13 @@ impl CodegenBackend for GccCodegenBackend {
         }
 
         #[cfg(feature = "master")]
-        gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        {
+            let lto_supported = gccjit::is_lto_supported();
+            LTO_SUPPORTED.store(lto_supported, Ordering::SeqCst);
+            self.lto_supported.store(lto_supported, Ordering::SeqCst);
+
+            gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
+        }
 
         #[cfg(not(feature = "master"))]
         {
@@ -220,7 +223,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
+        providers.global_backend_features = |tcx, ()| gcc_util::global_gcc_features(tcx.sess)
     }
 
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
@@ -249,7 +252,7 @@ impl CodegenBackend for GccCodegenBackend {
 
 fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     let context = Context::default();
-    if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+    if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64) {
         context.add_command_line_option("-masm=intel");
     }
     #[cfg(feature = "master")]
@@ -279,10 +282,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         module_name: &str,
         methods: &[AllocatorMethod],
     ) -> Self::Module {
+        let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
-            should_combine_object_files: false,
+            lto_mode: LtoMode::None,
+            lto_supported,
             temp_dir: None,
         };
 
@@ -297,7 +302,12 @@ impl ExtraBackendMethods for GccCodegenBackend {
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
     ) -> (ModuleCodegen<Self::Module>, u64) {
-        base::compile_codegen_unit(tcx, cgu_name, self.target_info.clone())
+        base::compile_codegen_unit(
+            tcx,
+            cgu_name,
+            self.target_info.clone(),
+            self.lto_supported.load(Ordering::SeqCst),
+        )
     }
 
     fn target_machine_factory(
@@ -311,12 +321,20 @@ impl ExtraBackendMethods for GccCodegenBackend {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum LtoMode {
+    None,
+    Thin,
+    Fat,
+}
+
 pub struct GccContext {
     context: Arc<SyncContext>,
     /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
     /// LTO.
     relocation_model: RelocModel,
-    should_combine_object_files: bool,
+    lto_mode: LtoMode,
+    lto_supported: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
 }
@@ -428,7 +446,10 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
         supports_128bit_integers: AtomicBool::new(false),
     })));
 
-    Box::new(GccCodegenBackend { target_info: LockedTargetInfo { info } })
+    Box::new(GccCodegenBackend {
+        lto_supported: Arc::new(AtomicBool::new(false)),
+        target_info: LockedTargetInfo { info },
+    })
 }
 
 fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
@@ -446,21 +467,25 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
-    let (unstable_target_features, target_features) = cfg_target_feature(sess, |feature| {
-        // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
-        if feature == "neon" {
-            return false;
-        }
-        target_info.cpu_supports(feature)
-        // cSpell:disable
-        /*
-          adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
-          avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
-          bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-          sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
-        */
-        // cSpell:enable
-    });
+    let (unstable_target_features, target_features) = cfg_target_feature(
+        sess,
+        |feature| to_gcc_features(sess, feature),
+        |feature| {
+            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+            if feature == "neon" {
+                return false;
+            }
+            target_info.cpu_supports(feature)
+            // cSpell:disable
+            /*
+              adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
+              avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+              bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+              sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
+            */
+            // cSpell:enable
+        },
+    );
 
     let has_reliable_f16 = target_info.supports_target_dependent_type(CType::Float16);
     let has_reliable_f128 = target_info.supports_target_dependent_type(CType::Float128);

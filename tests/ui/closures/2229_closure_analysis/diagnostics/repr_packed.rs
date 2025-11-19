@@ -19,7 +19,7 @@ fn test_missing_unsafe_warning_on_repr_packed() {
 
     let c = || {
         println!("{}", foo.x);
-        //~^ ERROR: reference to packed field is unaligned
+        //~^ ERROR: reference to field of packed struct is unaligned
         let _z = foo.x;
     };
 

@@ -68,6 +68,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
     }
 
+    pub(crate) fn add_func(&self, name: &str, ty: &'ll Type) -> &'ll Value {
+        let name = SmallCStr::new(name);
+        unsafe { llvm::LLVMAddFunction(self.llmod(), name.as_ptr(), ty) }
+    }
+
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(ty) as usize;

@@ -1,5 +1,5 @@
 use crate::spec::base::nto_qnx;
-use crate::spec::{RustcAbi, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{Arch, Env, RustcAbi, StackProbeType, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut meta = nto_qnx::meta();
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
             i128:128-f64:32:64-f80:32-n8:16:32-S128"
             .into(),
-        arch: "x86".into(),
+        arch: Arch::X86,
         options: TargetOptions {
             rustc_abi: Some(RustcAbi::X86Sse2),
             cpu: "pentium4".into(),
@@ -21,7 +21,7 @@ pub(crate) fn target() -> Target {
                 nto_qnx::ApiVariant::Default,
                 nto_qnx::Arch::I586,
             ),
-            env: "nto70".into(),
+            env: Env::Nto70,
             vendor: "pc".into(),
             stack_probes: StackProbeType::Inline,
             ..base::nto_qnx::opts()

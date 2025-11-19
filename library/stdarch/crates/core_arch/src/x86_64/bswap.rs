@@ -11,7 +11,7 @@ use stdarch_test::assert_instr;
 #[inline]
 #[cfg_attr(test, assert_instr(bswap))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _bswap64(x: i64) -> i64 {
+pub fn _bswap64(x: i64) -> i64 {
     x.swap_bytes()
 }
 
@@ -21,9 +21,7 @@ mod tests {
 
     #[test]
     fn test_bswap64() {
-        unsafe {
-            assert_eq!(_bswap64(0x0EADBEEFFADECA0E), 0x0ECADEFAEFBEAD0E);
-            assert_eq!(_bswap64(0x0000000000000000), 0x0000000000000000);
-        }
+        assert_eq!(_bswap64(0x0EADBEEFFADECA0E), 0x0ECADEFAEFBEAD0E);
+        assert_eq!(_bswap64(0x0000000000000000), 0x0000000000000000);
     }
 }

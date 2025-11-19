@@ -45,14 +45,14 @@ pub fn create_genmc_driver_handle(
 }
 
 impl GenmcScalar {
-    pub const UNINIT: Self = Self { value: 0, extra: 0, is_init: false };
+    pub const UNINIT: Self = Self { value: 0, provenance: 0, is_init: false };
 
     pub const fn from_u64(value: u64) -> Self {
-        Self { value, extra: 0, is_init: true }
+        Self { value, provenance: 0, is_init: true }
     }
 
     pub const fn has_provenance(&self) -> bool {
-        self.extra != 0
+        self.provenance != 0
     }
 }
 
@@ -172,8 +172,9 @@ mod ffi {
         value: u64,
         /// This is zero for integer values. For pointers, this encodes the provenance by
         /// storing the base address of the allocation that this pointer belongs to.
-        /// Operations on `SVal` in GenMC (e.g., `fetch_add`) preserve the `extra` of the left argument (`left.fetch_add(right, ...)`).
-        extra: u64,
+        /// Operations on `SVal` in GenMC (e.g., `fetch_add`) preserve the `provenance` of the left
+        /// argument (`left.fetch_add(right, ...)`).
+        provenance: u64,
         /// Indicates whether this value is initialized. If this is `false`, the other fields do not matter.
         /// (Ideally we'd use `std::optional` but CXX does not support that.)
         is_init: bool,

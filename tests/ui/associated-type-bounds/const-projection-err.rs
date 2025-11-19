@@ -1,10 +1,12 @@
 //@ revisions: stock gce
 
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(incomplete_features)]
+
 #![cfg_attr(gce, feature(generic_const_exprs))]
-//[gce]~^ WARN the feature `generic_const_exprs` is incomplete
 
 trait TraitWAssocConst {
+    #[type_const]
     const A: usize;
 }
 

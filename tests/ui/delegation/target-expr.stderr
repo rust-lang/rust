@@ -4,10 +4,12 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn bar<T: Default>(_: T) {
    |        - type parameter from outer item
 LL |     reuse Trait::static_method {
-   |                               - help: try introducing a local generic parameter here: `T,`
+   |                  ------------- generic parameter used in this inner delegated function
 LL |
 LL |         let _ = T::Default();
-   |                 ^^^^^^^^^^ use of generic parameter from outer item
+   |                 ^ use of generic parameter from outer item
+   |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
 
 error[E0434]: can't capture dynamic environment in a fn item
   --> $DIR/target-expr.rs:26:17

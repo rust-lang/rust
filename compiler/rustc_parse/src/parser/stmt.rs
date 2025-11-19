@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true },
+            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             force_collect,
         )? {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(Box::new(item)))

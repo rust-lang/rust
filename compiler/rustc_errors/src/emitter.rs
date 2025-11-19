@@ -47,15 +47,16 @@ const DEFAULT_COLUMN_WIDTH: usize = 140;
 /// Describes the way the content of the `rendered` field of the json output is generated
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HumanReadableErrorType {
-    Default,
-    Unicode,
-    AnnotateSnippet,
-    Short,
+    Default { short: bool },
+    AnnotateSnippet { short: bool, unicode: bool },
 }
 
 impl HumanReadableErrorType {
     pub fn short(&self) -> bool {
-        *self == HumanReadableErrorType::Short
+        match self {
+            HumanReadableErrorType::Default { short }
+            | HumanReadableErrorType::AnnotateSnippet { short, .. } => *short,
+        }
     }
 }
 
@@ -1703,7 +1704,7 @@ impl HumanEmitter {
             }
             // print out the span location and spacer before we print the annotated source
             // to do this, we need to know if this span will be primary
-            let is_primary = primary_lo.file.name == annotated_file.file.name;
+            let is_primary = primary_lo.file.stable_id == annotated_file.file.stable_id;
             if is_primary {
                 let loc = primary_lo.clone();
                 if !self.short_message {
@@ -2155,6 +2156,7 @@ impl HumanEmitter {
 
             let line_start = sm.lookup_char_pos(parts[0].original_span.lo()).line;
             let mut lines = complete.lines();
+            let lines_len = lines.clone().count();
             if lines.clone().next().is_none() {
                 // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
                 let line_end = sm.lookup_char_pos(parts[0].original_span.hi()).line;
@@ -2195,6 +2197,7 @@ impl HumanEmitter {
                 if highlight_parts.len() == 1
                     && line.trim().starts_with("#[")
                     && line.trim().ends_with(']')
+                    && lines_len == 1
                 {
                     is_item_attribute = true;
                 }
@@ -2319,11 +2322,6 @@ impl HumanEmitter {
                 show_code_change
             {
                 for part in parts {
-                    let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
-                        snippet
-                    } else {
-                        String::new()
-                    };
                     let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
                     let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
@@ -2399,7 +2397,7 @@ impl HumanEmitter {
                         // LL - REMOVED <- row_num - 2 - (newlines - first_i - 1)
                         // LL + NEWER
                         //    |         <- row_num
-
+                        let snippet = sm.span_to_snippet(part.span).unwrap_or_default();
                         let newlines = snippet.lines().count();
                         if newlines > 0 && row_num > newlines {
                             // Account for removals where the part being removed spans multiple
@@ -3105,7 +3103,7 @@ impl FileWithAnnotatedLines {
         ) {
             for slot in file_vec.iter_mut() {
                 // Look through each of our files for the one we're adding to
-                if slot.file.name == file.name {
+                if slot.file.stable_id == file.stable_id {
                     // See if we already have a line for it
                     for line_slot in &mut slot.lines {
                         if line_slot.line_index == line_index {
@@ -3468,14 +3466,9 @@ impl Drop for Buffy {
 
 pub fn stderr_destination(color: ColorConfig) -> Destination {
     let buffer_writer = std::io::stderr();
-    let choice = color.to_color_choice();
     // We need to resolve `ColorChoice::Auto` before `Box`ing since
     // `ColorChoice::Auto` on `dyn Write` will always resolve to `Never`
-    let choice = if matches!(choice, ColorChoice::Auto) {
-        AutoStream::choice(&buffer_writer)
-    } else {
-        choice
-    };
+    let choice = get_stderr_color_choice(color, &buffer_writer);
     // On Windows we'll be performing global synchronization on the entire
     // system for emitting rustc errors, so there's no need to buffer
     // anything.
@@ -3488,6 +3481,11 @@ pub fn stderr_destination(color: ColorConfig) -> Destination {
         let buffer = Vec::new();
         AutoStream::new(Box::new(Buffy { buffer_writer, buffer }), choice)
     }
+}
+
+pub fn get_stderr_color_choice(color: ColorConfig, stderr: &std::io::Stderr) -> ColorChoice {
+    let choice = color.to_color_choice();
+    if matches!(choice, ColorChoice::Auto) { AutoStream::choice(stderr) } else { choice }
 }
 
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.

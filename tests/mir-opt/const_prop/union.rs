@@ -1,6 +1,6 @@
 //! Tests that we can propagate into places that are projections into unions
 //@ test-mir-pass: GVN
-//@ compile-flags: -Zinline-mir
+//@ compile-flags: -Zinline-mir -Zdump-mir-exclude-alloc-bytes
 
 fn val() -> u32 {
     1

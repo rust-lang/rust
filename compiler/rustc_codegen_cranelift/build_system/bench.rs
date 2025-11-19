@@ -144,7 +144,7 @@ fn hyperfine_command(
     }
 
     for &(name, cmd) in cmds {
-        if name != "" {
+        if !name.is_empty() {
             bench.arg("-n").arg(name);
         }
         bench.arg(cmd);

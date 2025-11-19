@@ -886,9 +886,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         }
                     }
                 } else if let SyntaxExtensionKind::NonMacroAttr = ext {
-                    if let ast::Safety::Unsafe(span) = attr.get_normal_item().unsafety {
-                        self.cx.dcx().span_err(span, "unnecessary `unsafe` on safe attribute");
-                    }
                     // `-Zmacro-stats` ignores these because they don't do any real expansion.
                     self.cx.expanded_inert_attrs.mark(&attr);
                     item.visit_attrs(|attrs| attrs.insert(pos, attr));
@@ -2389,10 +2386,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
-            AssocCtxt::Impl { of_trait: false } => {
+            AssocCtxt::Impl { of_trait: false, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
             }
-            AssocCtxt::Impl { of_trait: true } => {
+            AssocCtxt::Impl { of_trait: true, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
             }
         }

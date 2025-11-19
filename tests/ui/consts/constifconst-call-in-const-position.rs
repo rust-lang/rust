@@ -3,8 +3,7 @@
 #![feature(const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]
 
-#[const_trait]
-pub trait Tr {
+pub const trait Tr {
     fn a() -> usize;
 }
 

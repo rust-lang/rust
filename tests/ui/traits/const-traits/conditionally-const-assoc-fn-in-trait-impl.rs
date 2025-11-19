@@ -3,8 +3,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Main {
+const trait Main {
     fn compute<T: [const] Aux>() -> u32;
 }
 
@@ -14,8 +13,7 @@ impl const Main for () {
     }
 }
 
-#[const_trait]
-trait Aux {
+const trait Aux {
     fn generate() -> u32;
 }
 

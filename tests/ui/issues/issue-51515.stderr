@@ -2,7 +2,7 @@ error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
   --> $DIR/issue-51515.rs:4:5
    |
 LL |     *foo = 32;
-   |     ^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
    |
 help: consider changing this to be a mutable reference
    |
@@ -13,7 +13,7 @@ error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
   --> $DIR/issue-51515.rs:8:5
    |
 LL |     *bar = 64;
-   |     ^^^^^^^^^ `bar` is a `&` reference, so the data it refers to cannot be written
+   |     ^^^^^^^^^ `bar` is a `&` reference, so it cannot be written to
    |
 help: consider specifying this binding's type
    |

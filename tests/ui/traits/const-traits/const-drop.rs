@@ -49,8 +49,7 @@ mod t {
     pub struct HasConstDrop(pub ConstDrop);
     pub struct TrivialFields(pub u8, pub i8, pub usize, pub isize);
 
-    #[const_trait]
-    pub trait SomeTrait {
+    pub const trait SomeTrait {
         fn foo();
     }
     impl const SomeTrait for () {

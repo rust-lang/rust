@@ -1,0 +1,61 @@
+error: expected expression, found `let` statement
+  --> $DIR/let-chains-assign-add-incorrect.rs:8:8
+   |
+LL |     if let _ = 1 && true && y += 2 {};
+   |        ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error: expected expression, found `let` statement
+  --> $DIR/let-chains-assign-add-incorrect.rs:22:8
+   |
+LL |     if let _ = 1 && y += 2 {};
+   |        ^^^^^^^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+
+error[E0308]: mismatched types
+  --> $DIR/let-chains-assign-add-incorrect.rs:8:29
+   |
+LL |     if let _ = 1 && true && y += 2 {};
+   |        -----------------    ^ expected `bool`, found integer
+   |        |
+   |        expected because this is `bool`
+
+error: binary assignment operation `+=` cannot be used in a let chain
+  --> $DIR/let-chains-assign-add-incorrect.rs:8:31
+   |
+LL |     if let _ = 1 && true && y += 2 {};
+   |        ---------------------- ^^ cannot use `+=` in a let chain
+   |        |
+   |        you are add-assigning the right-hand side expression to the result of this let-chain
+   |
+help: you might have meant to compare with `==` instead of assigning with `+=`
+   |
+LL -     if let _ = 1 && true && y += 2 {};
+LL +     if let _ = 1 && true && y == 2 {};
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/let-chains-assign-add-incorrect.rs:22:21
+   |
+LL |     if let _ = 1 && y += 2 {};
+   |                     ^ expected `bool`, found integer
+
+error: binary assignment operation `+=` cannot be used in a let chain
+  --> $DIR/let-chains-assign-add-incorrect.rs:22:23
+   |
+LL |     if let _ = 1 && y += 2 {};
+   |        -------------- ^^ cannot use `+=` in a let chain
+   |        |
+   |        you are add-assigning the right-hand side expression to the result of this let-chain
+   |
+help: you might have meant to compare with `==` instead of assigning with `+=`
+   |
+LL -     if let _ = 1 && y += 2 {};
+LL +     if let _ = 1 && y == 2 {};
+   |
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

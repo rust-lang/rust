@@ -1,5 +1,5 @@
 /// Configuration of cg_clif as passed in through `-Cllvm-args` and various env vars.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct BackendConfig {
     /// Should the crate be AOT compiled or JIT executed.
     ///

@@ -21,15 +21,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -48,6 +45,7 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
+mod function_cast_as_integer;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
 mod internal;
@@ -92,6 +90,7 @@ use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
+use function_cast_as_integer::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
 use internal::*;
@@ -244,6 +243,7 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            FunctionCastsAsInteger: FunctionCastsAsInteger,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
         ]

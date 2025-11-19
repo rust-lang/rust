@@ -43,7 +43,7 @@ fn grammar_to_json(grammar: &Grammar, mut obj: write_json::Object<'_>) {
     }
 }
 
-fn rule_to_json(grammar: &Grammar, rule: &Rule, mut obj: write_json::Object) {
+fn rule_to_json(grammar: &Grammar, rule: &Rule, mut obj: write_json::Object<'_>) {
     match rule {
         Rule::Labeled { label, rule } => {
             obj.string("label", label);

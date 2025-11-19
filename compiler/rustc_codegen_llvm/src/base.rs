@@ -20,7 +20,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::attrs::Linkage;
 use rustc_middle::dep_graph;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, SanitizerFnAttrs};
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
@@ -105,7 +105,7 @@ pub(crate) fn compile_codegen_unit(
             if let Some(entry) =
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
-                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerSet::empty());
+                let attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
@@ -191,10 +191,10 @@ pub(crate) fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
 }
 
 pub(crate) fn set_variable_sanitizer_attrs(llval: &Value, attrs: &CodegenFnAttrs) {
-    if attrs.no_sanitize.contains(SanitizerSet::ADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::ADDRESS) {
         unsafe { llvm::LLVMRustSetNoSanitizeAddress(llval) };
     }
-    if attrs.no_sanitize.contains(SanitizerSet::HWADDRESS) {
+    if attrs.sanitizers.disabled.contains(SanitizerSet::HWADDRESS) {
         unsafe { llvm::LLVMRustSetNoSanitizeHWAddress(llval) };
     }
 }

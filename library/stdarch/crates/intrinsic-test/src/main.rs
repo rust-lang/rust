@@ -3,10 +3,12 @@ extern crate log;
 
 mod arm;
 mod common;
+mod x86;
 
 use arm::ArmArchitectureTest;
 use common::SupportedArchitectureTest;
 use common::cli::{Cli, ProcessedCli};
+use x86::X86ArchitectureTest;
 
 fn main() {
     pretty_env_logger::init();
@@ -18,6 +20,7 @@ fn main() {
         | "armv7-unknown-linux-gnueabihf"
         | "aarch64_be-unknown-linux-gnu" => run(ArmArchitectureTest::create(processed_cli_options)),
 
+        "x86_64-unknown-linux-gnu" => run(X86ArchitectureTest::create(processed_cli_options)),
         _ => std::process::exit(0),
     }
 }

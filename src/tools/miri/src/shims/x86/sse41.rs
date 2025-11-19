@@ -157,20 +157,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 mpsadbw(this, left, right, imm, dest)?;
             }
-            // Used to implement the _mm_testz_si128, _mm_testc_si128
-            // and _mm_testnzc_si128 functions.
-            // Tests `(op & mask) == 0`, `(op & mask) == mask` or
-            // `(op & mask) != 0 && (op & mask) != mask`
-            "ptestz" | "ptestc" | "ptestnzc" => {
+            // Used to implement the _mm_testnzc_si128 function.
+            // Tests `(op & mask) != 0 && (op & mask) != mask`
+            "ptestnzc" => {
                 let [op, mask] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
                 let (all_zero, masked_set) = test_bits_masked(this, op, mask)?;
-                let res = match unprefixed_name {
-                    "ptestz" => all_zero,
-                    "ptestc" => masked_set,
-                    "ptestnzc" => !all_zero && !masked_set,
-                    _ => unreachable!(),
-                };
+                let res = !all_zero && !masked_set;
 
                 this.write_scalar(Scalar::from_i32(res.into()), dest)?;
             }

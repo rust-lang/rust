@@ -243,9 +243,9 @@
 
 use core::any::Any;
 use core::cell::{Cell, CloneFromCell};
-#[cfg(not(no_global_oom_handling))]
-use core::clone::CloneToUninit;
 use core::clone::UseCloned;
+#[cfg(not(no_global_oom_handling))]
+use core::clone::{CloneToUninit, TrivialClone};
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -1166,7 +1166,7 @@ impl<T> Rc<[T]> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
     pub fn into_array<const N: usize>(self) -> Option<Rc<[T; N]>> {
@@ -2224,7 +2224,8 @@ impl<T> Rc<[T]> {
 
     /// Copy elements from slice into newly allocated `Rc<[T]>`
     ///
-    /// Unsafe because the caller must either take ownership or bind `T: Copy`
+    /// Unsafe because the caller must either take ownership, bind `T: Copy` or
+    /// bind `T: TrivialClone`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         unsafe {
@@ -2314,9 +2315,11 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
+impl<T: TrivialClone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
+        // SAFETY: `T` implements `TrivialClone`, so this is sound and equivalent
+        // to the above.
         unsafe { Rc::copy_from_slice(v) }
     }
 }
@@ -4411,5 +4414,57 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
                 rc_inner_layout_for_value_layout(self.layout_for_value),
             );
         }
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
+    #[inline]
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate(layout)
+    }
+
+    #[inline]
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate_zeroed(layout)
+    }
+
+    #[inline]
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).deallocate(ptr, layout) }
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }

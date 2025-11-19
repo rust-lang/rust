@@ -1,0 +1,1356 @@
+DefId(offset_of::concrete):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 52
+        span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(52)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).52))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 52
+                        span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/offset_of.rs:36:19: 42:2 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 0}
+                                            init_scope: Node(2)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:37:9: 37:10 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "x"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::concrete).11))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 3
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(3)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).3))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 3
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::concrete::{constant#0})
+                                                                            args: [usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).10))
+                                            span: $DIR/offset_of.rs:37:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 1}
+                                            init_scope: Node(12)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:38:9: 38:10 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "y"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::concrete).21))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 13
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(13)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).13))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 13
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::concrete::{constant#1})
+                                                                            args: [usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).20))
+                                            span: $DIR/offset_of.rs:38:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 2}
+                                            init_scope: Node(22)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:39:9: 39:10 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "h"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::concrete).31))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 23
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(23)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).23))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 23
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::concrete::{constant#2})
+                                                                            args: [usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).30))
+                                            span: $DIR/offset_of.rs:39:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 3}
+                                            init_scope: Node(32)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:40:9: 40:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "z0"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::concrete).41))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 33
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(33)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).33))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 33
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::concrete::{constant#3})
+                                                                            args: [usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).40))
+                                            span: $DIR/offset_of.rs:40:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 4}
+                                            init_scope: Node(42)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:41:9: 41:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "z1"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::concrete).51))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 43
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(43)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).43))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 43
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::concrete::{constant#4})
+                                                                            args: [usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::concrete).50))
+                                            span: $DIR/offset_of.rs:41:5: 1430:57 (#0)
+                                        }
+                                    }
+                                ]
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::concrete::{constant#0}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 5
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+        kind: 
+            Scope {
+                region_scope: Node(5)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).5))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 5
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                region_scope: Node(6)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 7
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(7)
+                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).7))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 7
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::concrete::{constant#1}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 15
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+        kind: 
+            Scope {
+                region_scope: Node(15)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).15))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 15
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                region_scope: Node(16)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 17
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(17)
+                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).17))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 17
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                        temp_scope_id: 17
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 17
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 17
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000001
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::concrete::{constant#2}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 25
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+        kind: 
+            Scope {
+                region_scope: Node(25)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).25))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 25
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                region_scope: Node(26)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 27
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(27)
+                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).27))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 27
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Blah])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Blah])
+                                                                        temp_scope_id: 27
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 27
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000001
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 27
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000001
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::concrete::{constant#3}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 35
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+        kind: 
+            Scope {
+                region_scope: Node(35)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).35))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 35
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                region_scope: Node(36)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 37
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(37)
+                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).37))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 37
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                        kind: 
+                                                            Binary {
+                                                                op: Add
+                                                                lhs:
+                                                                    Expr {
+                                                                        ty: usize
+                                                                        temp_scope_id: 37
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                        kind: 
+                                                                            Call {
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                from_hir_call: false
+                                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                fun:
+                                                                                    Expr {
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            ZstLiteral(user_ty: None)
+                                                                                    }
+                                                                                args: [
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000000
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000002
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                    }
+                                                                rhs:
+                                                                    Expr {
+                                                                        ty: usize
+                                                                        temp_scope_id: 37
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                        kind: 
+                                                                            Call {
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                from_hir_call: false
+                                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                fun:
+                                                                                    Expr {
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            ZstLiteral(user_ty: None)
+                                                                                    }
+                                                                                args: [
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000000
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 37
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000000
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::concrete::{constant#4}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 45
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+        kind: 
+            Scope {
+                region_scope: Node(45)
+                lint_level: Explicit(HirId(DefId(offset_of::concrete).45))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 45
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                region_scope: Node(46)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 47
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(47)
+                                                lint_level: Explicit(HirId(DefId(offset_of::concrete).47))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 47
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                        kind: 
+                                                            Binary {
+                                                                op: Add
+                                                                lhs:
+                                                                    Expr {
+                                                                        ty: usize
+                                                                        temp_scope_id: 47
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                        kind: 
+                                                                            Call {
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                from_hir_call: false
+                                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                fun:
+                                                                                    Expr {
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            ZstLiteral(user_ty: None)
+                                                                                    }
+                                                                                args: [
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000000
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000002
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                    }
+                                                                rhs:
+                                                                    Expr {
+                                                                        ty: usize
+                                                                        temp_scope_id: 47
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                        kind: 
+                                                                            Call {
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                from_hir_call: false
+                                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                fun:
+                                                                                    Expr {
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            ZstLiteral(user_ty: None)
+                                                                                    }
+                                                                                args: [
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000000
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                    Expr {
+                                                                                        ty: u32
+                                                                                        temp_scope_id: 47
+                                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
+                                                                                        kind: 
+                                                                                            NonHirLiteral {
+                                                                                                lit: 0x00000001
+                                                                                                user_ty: None
+                                                                                            }
+                                                                                    }
+                                                                                ]
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::generic):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 50
+        span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(50)
+                lint_level: Explicit(HirId(DefId(offset_of::generic).50))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 50
+                        span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/offset_of.rs:44:21: 49:2 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 0}
+                                            init_scope: Node(2)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:45:9: 45:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "gx"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::generic).13))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 3
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(3)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).3))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 3
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::generic::{constant#0})
+                                                                            args: [T/#0, usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::generic).12))
+                                            span: $DIR/offset_of.rs:45:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 1}
+                                            init_scope: Node(14)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:46:9: 46:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "gy"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::generic).25))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 15
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(15)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).15))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 15
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::generic::{constant#1})
+                                                                            args: [T/#0, usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::generic).24))
+                                            span: $DIR/offset_of.rs:46:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 2}
+                                            init_scope: Node(26)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:47:9: 47:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "dx"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::generic).37))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 27
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(27)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).27))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 27
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::generic::{constant#2})
+                                                                            args: [T/#0, usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::generic).36))
+                                            span: $DIR/offset_of.rs:47:5: 1430:57 (#0)
+                                        }
+                                    }
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 3}
+                                            init_scope: Node(38)
+                                            pattern: 
+                                                Pat: {
+                                                    ty: usize
+                                                    span: $DIR/offset_of.rs:48:9: 48:11 (#0)
+                                                    kind: PatKind {
+                                                        Binding {
+                                                            name: "dy"
+                                                            mode: BindingMode(No, Not)
+                                                            var: LocalVarId(HirId(DefId(offset_of::generic).49))
+                                                            ty: usize
+                                                            is_primary: true
+                                                            is_shorthand: false
+                                                            subpattern: None
+                                                        }
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: usize
+                                                    temp_scope_id: 39
+                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(39)
+                                                            lint_level: Explicit(HirId(DefId(offset_of::generic).39))
+                                                            value:
+                                                                Expr {
+                                                                    ty: usize
+                                                                    temp_scope_id: 39
+                                                                    span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                                    kind: 
+                                                                        ConstBlock {
+                                                                            did: DefId(offset_of::generic::{constant#3})
+                                                                            args: [T/#0, usize]
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            lint_level: Explicit(HirId(DefId(offset_of::generic).48))
+                                            span: $DIR/offset_of.rs:48:5: 1430:57 (#0)
+                                        }
+                                    }
+                                ]
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::generic::{constant#0}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 5
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+        kind: 
+            Scope {
+                region_scope: Node(5)
+                lint_level: Explicit(HirId(DefId(offset_of::generic).5))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 5
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                region_scope: Node(6)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 7
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(7)
+                                                lint_level: Explicit(HirId(DefId(offset_of::generic).7))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 7
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 7
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::generic::{constant#1}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 17
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+        kind: 
+            Scope {
+                region_scope: Node(17)
+                lint_level: Explicit(HirId(DefId(offset_of::generic).17))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 17
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                region_scope: Node(18)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 19
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(19)
+                                                lint_level: Explicit(HirId(DefId(offset_of::generic).19))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 19
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                        temp_scope_id: 19
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 19
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 19
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000001
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::generic::{constant#2}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 29
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+        kind: 
+            Scope {
+                region_scope: Node(29)
+                lint_level: Explicit(HirId(DefId(offset_of::generic).29))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 29
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                region_scope: Node(30)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 31
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(31)
+                                                lint_level: Explicit(HirId(DefId(offset_of::generic).31))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 31
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                        temp_scope_id: 31
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 31
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 31
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000001
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(offset_of::generic::{constant#3}):
+params: [
+]
+body:
+    Expr {
+        ty: usize
+        temp_scope_id: 41
+        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+        kind: 
+            Scope {
+                region_scope: Node(41)
+                lint_level: Explicit(HirId(DefId(offset_of::generic).41))
+                value:
+                    Expr {
+                        ty: usize
+                        temp_scope_id: 41
+                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                region_scope: Node(42)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: usize
+                                        temp_scope_id: 43
+                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(43)
+                                                lint_level: Explicit(HirId(DefId(offset_of::generic).43))
+                                                value:
+                                                    Expr {
+                                                        ty: usize
+                                                        temp_scope_id: 43
+                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                        kind: 
+                                                            Call {
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                from_hir_call: false
+                                                                fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                                fun:
+                                                                    Expr {
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                        temp_scope_id: 43
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                                        kind: 
+                                                                            ZstLiteral(user_ty: None)
+                                                                    }
+                                                                args: [
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 43
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000000
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                    Expr {
+                                                                        ty: u32
+                                                                        temp_scope_id: 43
+                                                                        span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
+                                                                        kind: 
+                                                                            NonHirLiteral {
+                                                                                lit: 0x00000002
+                                                                                user_ty: None
+                                                                            }
+                                                                    }
+                                                                ]
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+

@@ -2,8 +2,7 @@
 
 //@ check-pass
 
-#[const_trait]
-trait Convert<T> {
+const trait Convert<T> {
     fn to(self) -> T;
 }
 

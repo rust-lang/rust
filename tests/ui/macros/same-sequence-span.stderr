@@ -17,14 +17,8 @@ LL |                $(= $z:tt)*
 error: `$x:expr` may be followed by `$y:tt`, which is not allowed for `expr` fragments
   --> $DIR/same-sequence-span.rs:20:1
    |
-LL | | // `proc_macro_sequence.rs`.
-   | |_____________________________^not allowed after `expr` fragments
-...
-LL |   proc_macro_sequence::make_foo!();
-   |   ^-------------------------------
-   |   |
-   |  _in this macro invocation
-   | |
+LL | proc_macro_sequence::make_foo!();
+   | -------------------------------- in this macro invocation
    |
    = note: allowed there are: `=>`, `,` or `;`
    = note: this error originates in the macro `proc_macro_sequence::make_foo` (in Nightly builds, run with -Z macro-backtrace for more info)

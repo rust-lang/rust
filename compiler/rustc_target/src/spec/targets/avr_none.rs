@@ -1,8 +1,8 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
-        arch: "avr".into(),
+        arch: Arch::Avr,
         metadata: crate::spec::TargetMetadata {
             description: None,
             tier: Some(3),

@@ -430,6 +430,7 @@ pub fn linker_flags(
         match builder.config.bootstrap_override_lld {
             BootstrapOverrideLld::External => {
                 args.push("-Clinker-features=+lld".to_string());
+                args.push("-Clink-self-contained=-linker".to_string());
                 args.push("-Zunstable-options".to_string());
             }
             BootstrapOverrideLld::SelfContained => {

@@ -1,12 +1,16 @@
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/issue-65035-static-with-parent-generics.rs:3:26
    |
-LL | fn f<T>() {
-   |      - type parameter from outer item
-LL |     extern "C" {
-LL |         static a: *const T;
-   |                          ^ use of generic parameter from outer item
+LL |   fn f<T>() {
+   |        - type parameter from outer item
+LL | /     extern "C" {
+LL | |         static a: *const T;
+   | |                          ^ use of generic parameter from outer item
+LL | |
+LL | |     }
+   | |_____- generic parameter used in this inner extern block
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
@@ -15,19 +19,26 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn g<T: Default>() {
    |      - type parameter from outer item
 LL |     static a: *const T = Default::default();
-   |                      ^ use of generic parameter from outer item
+   |            -         ^ use of generic parameter from outer item
+   |            |
+   |            generic parameter used in this inner static item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
   --> $DIR/issue-65035-static-with-parent-generics.rs:15:24
    |
-LL | fn h<const N: usize>() {
-   |            - const parameter from outer item
-LL |     extern "C" {
-LL |         static a: [u8; N];
-   |                        ^ use of generic parameter from outer item
+LL |   fn h<const N: usize>() {
+   |              - const parameter from outer item
+LL | /     extern "C" {
+LL | |         static a: [u8; N];
+   | |                        ^ use of generic parameter from outer item
+LL | |
+LL | |     }
+   | |_____- generic parameter used in this inner extern block
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
@@ -36,8 +47,11 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn i<const N: usize>() {
    |            - const parameter from outer item
 LL |     static a: [u8; N] = [0; N];
-   |                    ^ use of generic parameter from outer item
+   |            -       ^ use of generic parameter from outer item
+   |            |
+   |            generic parameter used in this inner static item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error[E0401]: can't use generic parameters from outer item
@@ -46,8 +60,11 @@ error[E0401]: can't use generic parameters from outer item
 LL | fn i<const N: usize>() {
    |            - const parameter from outer item
 LL |     static a: [u8; N] = [0; N];
-   |                             ^ use of generic parameter from outer item
+   |            -                ^ use of generic parameter from outer item
+   |            |
+   |            generic parameter used in this inner static item
    |
+   = note: nested items are independent from their parent item for everything except for privacy and name resolution
    = note: a `static` is a separate item from the item that contains it
 
 error: aborting due to 5 previous errors

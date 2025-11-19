@@ -30,7 +30,7 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
-  --> $DIR/invalid-suggest-deref-issue-127590.rs:13:54
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:14:54
    |
 LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
    |                        --------------                ^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
@@ -48,7 +48,7 @@ LL +     for (src, dest) in std::iter::zip(fields.iter(), variant.iter().clone()
    |
 
 error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
-  --> $DIR/invalid-suggest-deref-issue-127590.rs:13:24
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:14:24
    |
 LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
@@ -60,6 +60,30 @@ help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
    = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
    = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 4 previous errors
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:6:24
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
+   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:14:24
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+  --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
+   = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
+   = note: this error originates in the macro `iterator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

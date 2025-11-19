@@ -119753,5 +119753,28 @@
         "LUTI4"
       ]
     ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "__jcvt",
+    "arguments": [
+      "float64_t a"
+    ],
+    "return_type": {
+      "value": "int32_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Dn"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "FJCVTZS"
+      ]
+    ]
   }
 ]

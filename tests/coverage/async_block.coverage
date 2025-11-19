@@ -5,8 +5,8 @@
    LL|       |extern crate executor;
    LL|       |
    LL|      1|fn main() {
-   LL|     17|    for i in 0..16 {
-                      ^16
+   LL|     16|    for i in 0..16 {
+                           ^1
    LL|     16|        let future = async {
    LL|     16|            if i >= 12 {
    LL|      4|                println!("big");

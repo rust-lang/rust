@@ -33,6 +33,7 @@ use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::{Arch, Os};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -365,7 +366,7 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
     sess.target.is_like_wasm
-        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
+        && (sess.target.os != Os::Emscripten || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -499,7 +500,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`, or
         // `usize efi_main(void *handle, void *system_table)` depending on the target.
-        let llfty = if cx.sess().target.os.contains("uefi") {
+        let llfty = if cx.sess().target.os == Os::Uefi {
             cx.type_func(&[cx.type_ptr(), cx.type_ptr()], cx.type_isize())
         } else if cx.sess().target.main_needs_argc_argv {
             cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
@@ -561,7 +562,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
-        if cx.sess().target.os.contains("uefi") {
+        if cx.sess().target.os == Os::Uefi {
             bx.ret(result);
         } else {
             let cast = bx.intcast(result, cx.type_int(), true);
@@ -575,7 +576,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// Obtain the `argc` and `argv` values to pass to the rust start function
 /// (i.e., the "start" lang item).
 fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
-    if bx.cx().sess().target.os.contains("uefi") {
+    if bx.cx().sess().target.os == Os::Uefi {
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
@@ -982,9 +983,9 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let add_prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => |name: String, _: SymbolExportKind| format!("_{name}"),
-                (true, "arm64ec") => {
+            let add_prefix = match (target.is_like_windows, &target.arch) {
+                (true, Arch::X86) => |name: String, _: SymbolExportKind| format!("_{name}"),
+                (true, Arch::Arm64EC) => {
                     // Only functions are decorated for arm64ec.
                     |name: String, export_kind: SymbolExportKind| match export_kind {
                         SymbolExportKind::Text => format!("#{name}"),

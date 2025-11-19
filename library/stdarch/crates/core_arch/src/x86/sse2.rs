@@ -19,10 +19,10 @@ use crate::{
 #[inline]
 #[cfg_attr(all(test, target_feature = "sse2"), assert_instr(pause))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_pause() {
+pub fn _mm_pause() {
     // note: `pause` is guaranteed to be interpreted as a `nop` by CPUs without
     // the SSE2 target-feature - therefore it does not require any target features
-    pause()
+    unsafe { pause() }
 }
 
 /// Invalidates and flushes the cache line that contains `p` from all levels of
@@ -49,8 +49,8 @@ pub unsafe fn _mm_clflush(p: *const u8) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(lfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_lfence() {
-    lfence()
+pub fn _mm_lfence() {
+    unsafe { lfence() }
 }
 
 /// Performs a serializing operation on all load-from-memory and store-to-memory
@@ -65,8 +65,8 @@ pub unsafe fn _mm_lfence() {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(mfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_mfence() {
-    mfence()
+pub fn _mm_mfence() {
+    unsafe { mfence() }
 }
 
 /// Adds packed 8-bit integers in `a` and `b`.
@@ -201,7 +201,12 @@ pub fn _mm_avg_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaddwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(pmaddwd(a.as_i16x8(), b.as_i16x8())) }
+    unsafe {
+        let r: i32x8 = simd_mul(simd_cast(a.as_i16x8()), simd_cast(b.as_i16x8()));
+        let even: i32x4 = simd_shuffle!(r, r, [0, 2, 4, 6]);
+        let odd: i32x4 = simd_shuffle!(r, r, [1, 3, 5, 7]);
+        simd_add(even, odd).as_m128i()
+    }
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -1358,6 +1363,7 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movntdq))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntdq",  ",{a}"),
         p = in(reg) mem_addr,
@@ -1385,6 +1391,7 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
 #[cfg_attr(test, assert_instr(movnti))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movnti", ",{a:e}"), // `:e` for 32bit value
         p = in(reg) mem_addr,
@@ -2417,7 +2424,10 @@ pub fn _mm_cvtsd_f64(a: __m128d) -> f64 {
 #[cfg_attr(test, assert_instr(cvtss2sd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_cvtss_sd(a: __m128d, b: __m128) -> __m128d {
-    unsafe { cvtss2sd(a, b) }
+    unsafe {
+        let elt: f32 = simd_extract!(b, 0);
+        simd_insert!(a, 0, elt as f64)
+    }
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a` to
@@ -2619,6 +2629,7 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("movntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -3043,8 +3054,6 @@ unsafe extern "C" {
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
     fn mfence();
-    #[link_name = "llvm.x86.sse2.pmadd.wd"]
-    fn pmaddwd(a: i16x8, b: i16x8) -> i32x4;
     #[link_name = "llvm.x86.sse2.psad.bw"]
     fn psadbw(a: u8x16, b: u8x16) -> u64x2;
     #[link_name = "llvm.x86.sse2.psll.w"]
@@ -3115,8 +3124,6 @@ unsafe extern "C" {
     fn cvtsd2si(a: __m128d) -> i32;
     #[link_name = "llvm.x86.sse2.cvtsd2ss"]
     fn cvtsd2ss(a: __m128, b: __m128d) -> __m128;
-    #[link_name = "llvm.x86.sse2.cvtss2sd"]
-    fn cvtss2sd(a: __m128d, b: __m128) -> __m128d;
     #[link_name = "llvm.x86.sse2.cvttpd2dq"]
     fn cvttpd2dq(a: __m128d) -> i32x4;
     #[link_name = "llvm.x86.sse2.cvttsd2si"]
@@ -3142,7 +3149,7 @@ mod tests {
 
     #[test]
     fn test_mm_pause() {
-        unsafe { _mm_pause() }
+        _mm_pause()
     }
 
     #[simd_test(enable = "sse2")]
@@ -4066,6 +4073,7 @@ mod tests {
         );
         let mut r = _mm_set1_epi8(0);
         _mm_maskmoveu_si128(a, mask, ptr::addr_of_mut!(r) as *mut i8);
+        _mm_sfence();
         let e = _mm_set_epi8(0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m128i(r, e);
     }
@@ -4102,6 +4110,7 @@ mod tests {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let mut r = _mm_undefined_si128();
         _mm_stream_si128(ptr::addr_of_mut!(r), a);
+        _mm_sfence();
         assert_eq_m128i(r, a);
     }
 
@@ -4113,6 +4122,7 @@ mod tests {
         let a: i32 = 7;
         let mut mem = boxed::Box::<i32>::new(-1);
         _mm_stream_si32(ptr::addr_of_mut!(*mem), a);
+        _mm_sfence();
         assert_eq!(a, *mem);
     }
 
@@ -4809,6 +4819,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 2] };
 
         _mm_stream_pd(ptr::addr_of_mut!(mem.data[0]), a);
+        _mm_sfence();
         for i in 0..2 {
             assert_eq!(mem.data[i], get_m128d(a, i));
         }

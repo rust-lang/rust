@@ -5,6 +5,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
 use crate::*;
@@ -12,6 +13,7 @@ use crate::*;
 mod aesni;
 mod avx;
 mod avx2;
+mod avx512;
 mod bmi;
 mod gfni;
 mod sha;
@@ -41,7 +43,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
-                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
+                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
@@ -56,28 +58,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (sum, cb_out) = carrying_add(this, cb_in, a, b, op)?;
                 this.write_scalar(cb_out, &this.project_field(dest, FieldIdx::ZERO)?)?;
                 this.write_immediate(*sum, &this.project_field(dest, FieldIdx::ONE)?)?;
-            }
-
-            // Used to implement the `_addcarryx_u{32, 64}` functions. They are semantically identical with the `_addcarry_u{32, 64}` functions,
-            // except for a slightly different type signature and the requirement for the "adx" target feature.
-            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarryx-u32-addcarryx-u64.html
-            "addcarryx.u32" | "addcarryx.u64" => {
-                this.expect_target_feature_for_intrinsic(link_name, "adx")?;
-
-                let is_u64 = unprefixed_name.ends_with("64");
-                if is_u64 && this.tcx.sess.target.arch != "x86_64" {
-                    return interp_ok(EmulateItemResult::NotSupported);
-                }
-                let [c_in, a, b, out] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let out = this.deref_pointer_as(
-                    out,
-                    if is_u64 { this.machine.layouts.u64 } else { this.machine.layouts.u32 },
-                )?;
-
-                let (sum, c_out) = carrying_add(this, c_in, a, b, mir::BinOp::AddWithOverflow)?;
-                this.write_scalar(c_out, dest)?;
-                this.write_immediate(*sum, &out)?;
             }
 
             // Used to implement the `_mm_pause` function.
@@ -170,6 +150,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("avx512.") => {
+                return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
@@ -718,36 +703,6 @@ fn convert_float_to_int<'tcx>(
     interp_ok(())
 }
 
-/// Calculates absolute value of integers in `op` and stores the result in `dest`.
-///
-/// In case of overflow (when the operand is the minimum value), the operation
-/// will wrap around.
-fn int_abs<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = ecx.project_to_simd(op)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(op_len, dest_len);
-
-    let zero = ImmTy::from_int(0, op.layout.field(ecx, 0));
-
-    for i in 0..dest_len {
-        let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        let lt_zero = ecx.binary_op(mir::BinOp::Lt, &op, &zero)?;
-        let res =
-            if lt_zero.to_scalar().to_bool()? { ecx.unary_op(mir::UnOp::Neg, &op)? } else { op };
-
-        ecx.write_immediate(*res, &dest)?;
-    }
-
-    interp_ok(())
-}
-
 /// Splits `op` (which must be a SIMD vector) into 128-bit chunks.
 ///
 /// Returns a tuple where:
@@ -1078,6 +1033,54 @@ fn mpsadbw<'tcx>(
             }
             ecx.write_scalar(Scalar::from_u16(res), &ecx.project_index(&dest, j)?)?;
         }
+    }
+
+    interp_ok(())
+}
+
+/// Compute the absolute differences of packed unsigned 8-bit integers
+/// in `left` and `right`, then horizontally sum each consecutive 8
+/// differences to produce unsigned 16-bit integers, and pack
+/// these unsigned 16-bit integers in the low 16 bits of 64-bit elements
+/// in `dest`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_sad_epu8>
+fn psadbw<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn psadbw(a: u8x16, b: u8x16) -> u64x2;
+    // fn psadbw(a: u8x32, b: u8x32) -> u64x4;
+    // fn vpsadbw(a: u8x64, b: u8x64) -> u64x8;
+    assert_eq!(left_len, right_len);
+    assert_eq!(left_len, left.layout.layout.size().bytes());
+    assert_eq!(dest_len, left_len.strict_div(8));
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+
+        let mut acc: u16 = 0;
+        for j in 0..8 {
+            let src_index = i.strict_mul(8).strict_add(j);
+
+            let left = ecx.project_index(&left, src_index)?;
+            let left = ecx.read_scalar(&left)?.to_u8()?;
+
+            let right = ecx.project_index(&right, src_index)?;
+            let right = ecx.read_scalar(&right)?.to_u8()?;
+
+            acc = acc.strict_add(left.abs_diff(right).into());
+        }
+
+        ecx.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
     }
 
     interp_ok(())

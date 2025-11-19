@@ -32,11 +32,11 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     const NOTICE: &str = config::NOTICE;
 
     const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
-    const PLATFORM_C_DEFINITIONS: &str = config::POLY128_OSTREAM_DEF;
-    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::POLY128_OSTREAM_DECL;
+    const PLATFORM_C_DEFINITIONS: &str = config::PLATFORM_C_DEFINITIONS;
+    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::PLATFORM_C_FORWARD_DECLARATIONS;
 
-    const PLATFORM_RUST_DEFINITIONS: &str = config::F16_FORMATTING_DEF;
-    const PLATFORM_RUST_CFGS: &str = config::AARCH_CONFIGURATIONS;
+    const PLATFORM_RUST_DEFINITIONS: &str = config::PLATFORM_RUST_DEFINITIONS;
+    const PLATFORM_RUST_CFGS: &str = config::PLATFORM_RUST_CFGS;
 
     fn cpp_compilation(&self) -> Option<CppCompilation> {
         compile::build_cpp_compilation(&self.cli_options)

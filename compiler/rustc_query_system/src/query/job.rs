@@ -616,7 +616,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
     let mut count_total = 0;
 
     // Make use of a partial query map if we fail to take locks collecting active queries.
-    let query_map = match qcx.collect_active_jobs() {
+    let query_map = match qcx.collect_active_jobs(false) {
         Ok(query_map) => query_map,
         Err(query_map) => query_map,
     };

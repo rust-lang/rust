@@ -30,4 +30,4 @@ fn foo() {}
 #[cfg(target_feature = "pacg")]
 pub unsafe fn foo() {} //[pacg]~ ERROR the name `foo` is defined multiple times
 
-//[paca]~? ERROR the target features paca, pacg must all be either enabled or disabled together
+//~? ERROR the target features paca, pacg must all be either enabled or disabled together

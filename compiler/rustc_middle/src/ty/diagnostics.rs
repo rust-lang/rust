@@ -698,6 +698,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             }
 
             Closure(..)
+            | CoroutineClosure(..)
             | FnDef(..)
             | Infer(..)
             | Coroutine(..)

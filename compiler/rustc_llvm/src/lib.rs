@@ -1,9 +1,5 @@
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(extern_types)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::cell::RefCell;
