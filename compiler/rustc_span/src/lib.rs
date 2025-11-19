@@ -77,7 +77,7 @@ use std::cmp::{self, Ordering};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::{self, Read};
-use std::ops::{Add, Range, Sub};
+use std::ops::{Add, Bound, Range, RangeBounds, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -1175,6 +1175,37 @@ impl Span {
     #[inline]
     pub fn normalize_to_macro_rules(self) -> Span {
         self.map_ctxt(|ctxt| ctxt.normalize_to_macro_rules())
+    }
+
+    /// This function is similar to `Span::from_inner`, but it
+    /// will return `None` if the relative Range span exceeds
+    /// the bounds of span.
+    pub fn subspan<I: Copy, R: RangeBounds<I>>(self, subspan: R) -> Option<Span>
+    where
+        u32: TryFrom<I>,
+    {
+        let lo = self.lo().0;
+        let hi = self.hi().0;
+
+        let start = match subspan.start_bound() {
+            Bound::Included(s) => u32::try_from(*s).ok()?,
+            Bound::Excluded(s) => u32::try_from(*s).ok()?.checked_add(1)?,
+            Bound::Unbounded => 0,
+        };
+
+        let end = match subspan.end_bound() {
+            Bound::Included(e) => u32::try_from(*e).ok()?.checked_add(1)?,
+            Bound::Excluded(e) => u32::try_from(*e).ok()?,
+            Bound::Unbounded => hi - lo,
+        };
+
+        let new_lo = lo.checked_add(start)?;
+        let new_hi = lo.checked_add(end)?;
+        if new_lo > hi || new_hi > hi {
+            return None;
+        }
+
+        Some(self.with_lo(BytePos(new_lo)).with_hi(BytePos(new_hi)))
     }
 }
 
