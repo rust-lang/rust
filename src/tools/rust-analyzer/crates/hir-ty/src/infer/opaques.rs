@@ -109,7 +109,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
                     let expected =
                         EarlyBinder::bind(ty.ty).instantiate(interner, opaque_type_key.args);
-                    self.demand_eqtype(expected, hidden_type.ty);
+                    _ = self.demand_eqtype_fixme_no_diag(expected, hidden_type.ty);
                 }
 
                 self.result.type_of_opaque.insert(def_id, ty.ty);
