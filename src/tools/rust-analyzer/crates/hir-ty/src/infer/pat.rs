@@ -416,7 +416,7 @@ impl<'db> InferenceContext<'_, 'db> {
             .result
             .pat_adjustments
             .get(&pat)
-            .and_then(|it| it.first())
+            .and_then(|it| it.last())
             .unwrap_or(&self.result.type_of_pat[pat])
     }
 

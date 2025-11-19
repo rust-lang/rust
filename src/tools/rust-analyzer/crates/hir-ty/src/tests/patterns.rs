@@ -1259,3 +1259,22 @@ fn main() {
             "#,
     );
 }
+
+#[test]
+fn destructuring_assign_ref() {
+    check_no_mismatches(
+        r#"
+struct Foo;
+
+fn foo() -> (&'static Foo, u32) {
+    (&Foo, 0)
+}
+
+fn bar() {
+    let ext: &Foo;
+    let v;
+    (ext, v) = foo();
+}
+    "#,
+    );
+}
