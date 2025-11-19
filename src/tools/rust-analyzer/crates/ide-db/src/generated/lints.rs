@@ -10793,7 +10793,7 @@ pub fn is_it_the_answer(value: Value) -> bool {
 }
 ```
 
-[its `Deref` implementation]: https://doc.rust-lang.org/std/string/struct.String.html#impl-Deref-for-String
+[its `Deref` implementation]: https://doc.rust-lang.org/std/string/type.String.html#impl-Deref-for-String
 "##,
         default_severity: Severity::Allow,
         warn_since: None,

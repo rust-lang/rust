@@ -201,7 +201,7 @@ pub const fn identity<T>(x: T) -> T {
 /// [`Borrow`]: crate::borrow::Borrow
 /// [`Eq`]: crate::cmp::Eq
 /// [`Ord`]: crate::cmp::Ord
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 ///
 /// ```
 /// fn is_hello<T: AsRef<str>>(s: T) {
@@ -442,7 +442,7 @@ pub const trait AsMut<T: PointeeSized>: PointeeSized {
 /// is_hello(s);
 /// ```
 ///
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -573,7 +573,7 @@ pub const trait Into<T>: Sized {
 /// }
 /// ```
 ///
-/// [`String`]: ../../std/string/struct.String.html
+/// [`String`]: ../../std/string/type.String.html
 /// [`from`]: From::from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[rustc_diagnostic_item = "From"]
