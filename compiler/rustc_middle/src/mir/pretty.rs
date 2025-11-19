@@ -1255,7 +1255,7 @@ impl<'tcx> Debug for Operand<'tcx> {
             Constant(ref a) => write!(fmt, "{a:?}"),
             Copy(ref place) => write!(fmt, "copy {place:?}"),
             Move(ref place) => write!(fmt, "move {place:?}"),
-            RuntimeChecks(checks) => write!(fmt, "const {checks:?}"),
+            RuntimeChecks(checks) => write!(fmt, "{checks:?}"),
         }
     }
 }

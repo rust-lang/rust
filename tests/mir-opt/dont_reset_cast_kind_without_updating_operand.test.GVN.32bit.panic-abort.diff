@@ -94,7 +94,7 @@
           StorageLive(_21);
           StorageLive(_22);
           StorageLive(_23);
-          switchInt(const UbChecks) -> [0: bb6, otherwise: bb5];
+          switchInt(UbChecks) -> [0: bb6, otherwise: bb5];
       }
   
       bb1: {

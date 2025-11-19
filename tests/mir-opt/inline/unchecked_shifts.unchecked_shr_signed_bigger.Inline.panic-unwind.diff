@@ -22,7 +22,7 @@
           _4 = copy _2;
 -         _0 = core::num::<impl i64>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
 +         StorageLive(_5);
-+         switchInt(const UbChecks) -> [0: bb2, otherwise: bb1];
++         switchInt(UbChecks) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {

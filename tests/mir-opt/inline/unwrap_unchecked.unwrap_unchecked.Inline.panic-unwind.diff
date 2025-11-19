@@ -37,7 +37,7 @@
 -     bb2 (cleanup): {
 -         resume;
 +     bb2: {
-+         assume(const UbChecks);
++         assume(UbChecks);
 +         _4 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
 +     }
 + 
