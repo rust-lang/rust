@@ -459,7 +459,7 @@ pub unsafe fn unsafe_fn() {}
 pub fn safe_fn() {}
 
 #[repr(C)]
-pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
+pub struct WithGenerics<T: TraitWithNoDocblocks, S = std::string::generic::String, E = WhoLetTheDogOut, P = i8> {
     pub s: S,
     pub t: T,
     pub e: E,

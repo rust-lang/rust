@@ -3,10 +3,10 @@
   
   fn result_ok(_1: Result<String, ()>) -> Option<String> {
       debug result => _1;
-      let mut _0: std::option::Option<std::string::String>;
+      let mut _0: std::option::Option<std::string::generic::String>;
       let mut _2: isize;
-      let _3: std::string::String;
-      let mut _4: std::string::String;
+      let _3: std::string::generic::String;
+      let mut _4: std::string::generic::String;
 +     let mut _5: bool;
 +     let mut _6: isize;
 +     let mut _7: isize;
@@ -29,7 +29,7 @@
   
       bb2: {
           StorageLive(_3);
-          _3 = move ((_1 as Ok).0: std::string::String);
+          _3 = move ((_1 as Ok).0: std::string::generic::String);
           StorageLive(_4);
           _4 = move _3;
           _0 = Option::<String>::Some(move _4);

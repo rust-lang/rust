@@ -5,6 +5,9 @@ LL |     let x: usize = String::new();
    |            -----   ^^^^^^^^^^^^^ expected `usize`, found `String`
    |            |
    |            expected due to this
+   |
+   = note: expected type `usize`
+            found struct `String`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-suggestions.rs:9:19
@@ -14,6 +17,8 @@ LL |     let x: &str = String::new();
    |            |
    |            expected due to this
    |
+   = note: expected reference `&str`
+                 found struct `String`
 help: consider borrowing here
    |
 LL |     let x: &str = &String::new();
@@ -57,6 +62,8 @@ error[E0308]: mismatched types
 LL |     s = format!("foo");
    |         ^^^^^^^^^^^^^^ expected `&mut String`, found `String`
    |
+   = note: expected mutable reference `&mut String`
+                         found struct `String`
    = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors

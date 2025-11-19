@@ -10,6 +10,9 @@ LL | |     };
    | |_____- this block is missing a tail expression
 LL |       list
    |       ^^^^ expected `String`, found `()`
+   |
+   = note: expected struct `String`
+           found unit type `()`
 
 error[E0277]: a value of type `String` cannot be built from an iterator over elements of type `()`
   --> $DIR/semi-suggestion-when-stmt-and-expr-span-equal.rs:23:20

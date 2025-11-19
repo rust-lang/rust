@@ -22,6 +22,8 @@ LL |     let string: String = s.clone();
    |                 |
    |                 expected due to this
    |
+   = note: expected struct `String`
+           found reference `&str`
 help: try using a conversion method
    |
 LL -     let string: String = s.clone();

@@ -76,6 +76,9 @@ LL |     match "str".to_owned() {
    |           ---------------- this expression has type `String`
 LL |         "str" => {}
    |         ^^^^^ expected `String`, found `&str`
+   |
+   = note: expected struct `String`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/needs-gate.rs:52:12

@@ -29,6 +29,9 @@ LL |     let x: String;
    |            ------ expected due to this type
 LL |     (x,) = (1,);
    |      ^ expected `String`, found integer
+   |
+   = note: expected struct `String`
+                found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/issue-109991.rs:18:6
