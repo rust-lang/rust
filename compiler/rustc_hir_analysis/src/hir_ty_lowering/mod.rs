@@ -2263,8 +2263,79 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
-            hir::ConstArgKind::Struct(..) => {
-                span_bug!(const_arg.span(), "lowering `{:?}` is not yet implemented", const_arg)
+            hir::ConstArgKind::Struct(qpath, inits) => {
+                let (ty, variant_did) = match qpath {
+                    hir::QPath::Resolved(maybe_qself, path) => {
+                        debug!(?maybe_qself, ?path);
+                        let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                        let ty = self.lower_resolved_ty_path(
+                            opt_self_ty,
+                            path,
+                            hir_id,
+                            PermitVariants::Yes,
+                        );
+                        let variant_did = match path.res {
+                            Res::Def(DefKind::Variant | DefKind::Struct, did) => did,
+                            _ => todo!(),
+                        };
+
+                        (ty, variant_did)
+                    }
+                    hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                        debug!(?hir_self_ty, ?segment);
+                        let self_ty = self.lower_ty(hir_self_ty);
+                        let opt_res = self.lower_type_relative_ty_path(
+                            self_ty,
+                            hir_self_ty,
+                            segment,
+                            hir_id,
+                            const_arg.span(),
+                            PermitVariants::Yes,
+                        );
+
+                        let (ty, _, res_def_id) = match opt_res {
+                            Ok(r @ (_, DefKind::Variant | DefKind::Struct, _)) => r,
+                            Ok(_) => todo!(),
+                            Err(e) => return ty::Const::new_error(tcx, e),
+                        };
+
+                        (ty, res_def_id)
+                    }
+                };
+
+                let (adt_def, adt_args) = match ty.kind() {
+                    ty::Adt(adt_def, args) => (adt_def, args),
+                    _ => todo!(),
+                };
+
+                let variant_def = adt_def.variant_with_id(variant_did);
+                let variant_idx = adt_def.variant_index_with_id(variant_did).as_u32();
+
+                let fields = variant_def
+                    .fields
+                    .iter()
+                    .map(|field_def| {
+                        let init_expr = inits
+                            .iter()
+                            .find(|init_expr| init_expr.field.name == field_def.name)
+                            .unwrap();
+                        self.lower_const_arg(
+                            init_expr.expr,
+                            FeedConstTy::Param(field_def.did, adt_args),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+
+                let opt_discr_const = if adt_def.is_enum() {
+                    let valtree = ty::ValTree::from_scalar_int(tcx, variant_idx.into());
+                    Some(ty::Const::new_value(tcx, valtree, tcx.types.u32))
+                } else {
+                    None
+                };
+
+                let valtree =
+                    ty::ValTree::from_branches(tcx, opt_discr_const.into_iter().chain(fields));
+                ty::Const::new_value(tcx, valtree, ty)
             }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
