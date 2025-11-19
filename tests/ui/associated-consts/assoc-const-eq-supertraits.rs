@@ -20,6 +20,6 @@ trait SuperSuperTrait<T: ConstParamTy_> {
     const K: T;
 }
 
-fn take(_: impl Trait<K = 0>) {}
+fn take(_: impl Trait<K = const { 0 }>) {}
 
 fn main() {}

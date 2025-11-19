@@ -199,7 +199,7 @@ impl Trait for () {
     type Gat<T> = ();
 
     #[type_const]
-    const ASSOC: i32 = 3;
+    const ASSOC: i32 = const { 3 };
 
     fn foo() {}
 }
@@ -220,11 +220,13 @@ fn uncallable(_: impl Iterator<Item = i32, Item = u32>) {}
 
 fn callable(_: impl Iterator<Item = i32, Item = i32>) {}
 
-fn uncallable_const(_: impl Trait<ASSOC = 3, ASSOC = 4>) {}
+fn uncallable_const(_: impl Trait<ASSOC = const { 3 }, ASSOC = const { 4 }>) {}
 
-fn callable_const(_: impl Trait<ASSOC = 3, ASSOC = 3>) {}
+fn callable_const(_: impl Trait<ASSOC = const { 3 }, ASSOC = const { 3 }>) {}
 
-fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC = 4>>) {}
+fn uncallable_rtn(
+    _: impl Trait<foo(..): Trait<ASSOC = const { 3 }>, foo(..): Trait<ASSOC = const { 4 }>>
+) {}
 
 fn callable_rtn(_: impl Trait<foo(..): Send, foo(..): Send, foo(..): Eq>) {}
 

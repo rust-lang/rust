@@ -21,8 +21,8 @@ trait SuperTrait {
     const Q: &'static str;
 }
 
-fn take0(_: impl Trait<N = 0, N = ()>) {}
+fn take0(_: impl Trait<N = const { 0 }, N = ()>) {}
 
-fn take1(_: impl Trait<Q = "...", Q = [()]>) {}
+fn take1(_: impl Trait<Q = const { "..." }, Q = [()]>) {}
 
 fn main() {}

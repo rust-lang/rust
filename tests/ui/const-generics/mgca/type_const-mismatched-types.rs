@@ -2,7 +2,7 @@
 #![feature(min_generic_const_args)]
 
 #[type_const]
-const FREE: u32 = 5_usize;
+const FREE: u32 = const { 5_usize };
 //~^ ERROR mismatched types
 
 #[type_const]
@@ -16,7 +16,7 @@ trait Tr {
 
 impl Tr for () {
     #[type_const]
-    const N: usize = false;
+    const N: usize = const { false };
     //~^ ERROR mismatched types
 }
 

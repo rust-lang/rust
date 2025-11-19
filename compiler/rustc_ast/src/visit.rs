@@ -415,6 +415,7 @@ macro_rules! common_visitor_and_walkers {
             UnsafeBinderCastKind,
             BinOpKind,
             BlockCheckMode,
+            MgcaDisambiguation,
             BorrowKind,
             BoundAsyncness,
             BoundConstness,
