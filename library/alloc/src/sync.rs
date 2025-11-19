@@ -2502,19 +2502,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
         // deallocated.
         if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists, so we must clone.
-
-            let this_data_ref: &T = &**this;
-            // `in_progress` drops the allocation if we panic before finishing initializing it.
-            let mut in_progress: UniqueArcUninit<T, A> =
-                UniqueArcUninit::new(this_data_ref, this.alloc.clone());
-
-            let initialized_clone = unsafe {
-                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
-                // Cast type of pointer, now that it is initialized.
-                in_progress.into_arc()
-            };
-            *this = initialized_clone;
+            *this = Arc::clone_from_ref_in(&**this, this.alloc.clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
