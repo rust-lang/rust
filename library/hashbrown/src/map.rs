@@ -3034,10 +3034,10 @@ where
 /// }
 /// assert!(map["b"] == 20 && map.len() == 2);
 /// ```
-pub struct VacantEntryRef<'a, 'b, K, Q: ?Sized, V, S, A: Allocator = Global> {
+pub struct VacantEntryRef<'map, 'key, K, Q: ?Sized, V, S, A: Allocator = Global> {
     hash: u64,
-    key: &'b Q,
-    table: &'a mut HashMap<K, V, S, A>,
+    key: &'key Q,
+    table: &'map mut HashMap<K, V, S, A>,
 }
 
 impl<K, Q, V, S, A> Debug for VacantEntryRef<'_, '_, K, Q, V, S, A>
@@ -4448,7 +4448,7 @@ impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V
     }
 }
 
-impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S, A> {
+impl<'map, 'key, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'map, 'key, K, Q, V, S, A> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntryRef`.
     ///
@@ -4462,7 +4462,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     /// assert_eq!(map.entry_ref(key).key(), "poneyland");
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn key(&self) -> &'b Q {
+    pub fn key(&self) -> &'key Q {
         self.key
     }
 
@@ -4484,16 +4484,65 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self, value: V) -> &'a mut V
+    pub fn insert(self, value: V) -> &'map mut V
     where
         K: Hash,
-        &'b Q: Into<K>,
+        &'key Q: Into<K>,
         S: BuildHasher,
     {
         let table = &mut self.table.table;
         let entry = table.insert_entry(
             self.hash,
             (self.key.into(), value),
+            make_hasher::<_, V, S>(&self.table.hash_builder),
+        );
+        &mut entry.1
+    }
+
+    /// Sets the key and value of the entry and returns a mutable reference to
+    /// the inserted value.
+    ///
+    /// Unlike [`VacantEntryRef::insert`], this method allows the key to be
+    /// explicitly specified, which is useful for key types that don't implement
+    /// `K: From<&Q>`.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if `key` is not equivalent to the key used to create
+    /// the `VacantEntryRef`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use hashbrown::hash_map::EntryRef;
+    /// use hashbrown::HashMap;
+    ///
+    /// let mut map = HashMap::<(String, String), char>::new();
+    /// let k = ("c".to_string(), "C".to_string());
+    /// let v =  match map.entry_ref(&k) {
+    ///   // Insert cannot be used here because tuples do not implement From.
+    ///   // However this works because we can manually clone instead.
+    ///   EntryRef::Vacant(r) => r.insert_with_key(k.clone(), 'c'),
+    ///   // In this branch we avoid the clone.
+    ///   EntryRef::Occupied(r) => r.into_mut(),
+    /// };
+    /// assert_eq!(*v, 'c');
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn insert_with_key(self, key: K, value: V) -> &'map mut V
+    where
+        K: Hash,
+        Q: Equivalent<K>,
+        S: BuildHasher,
+    {
+        let table = &mut self.table.table;
+        assert!(
+            (self.key).equivalent(&key),
+            "key used for Entry creation is not equivalent to the one used for insertion"
+        );
+        let entry = table.insert_entry(
+            self.hash,
+            (key, value),
             make_hasher::<_, V, S>(&self.table.hash_builder),
         );
         &mut entry.1
@@ -4516,10 +4565,10 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> VacantEntryRef<'a, 'b, K, Q, V, S
     /// }
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert_entry(self, value: V) -> OccupiedEntry<'a, K, V, S, A>
+    pub fn insert_entry(self, value: V) -> OccupiedEntry<'map, K, V, S, A>
     where
         K: Hash,
-        &'b Q: Into<K>,
+        &'key Q: Into<K>,
         S: BuildHasher,
     {
         let elem = self.table.table.insert(
