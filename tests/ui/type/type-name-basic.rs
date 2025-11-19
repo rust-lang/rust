@@ -53,7 +53,7 @@ pub fn main() {
     t!(i128, "i128");
     t!(isize, "isize");
 
-    t!(String, "alloc::string::String");
+    t!(String, "alloc::string::generic::String");
     t!(str, "str");
     t!(&str, "&str");
     t!(&'static str, "&str");
