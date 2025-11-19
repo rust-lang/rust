@@ -1,9 +1,10 @@
 use core::{fmt, iter::FusedIterator, marker::PhantomData};
 
 use crate::{
+    control::Tag,
     raw::{
-        Allocator, Bucket, Global, RawDrain, RawExtractIf, RawIntoIter, RawIter, RawIterHash,
-        RawTable,
+        Allocator, Bucket, FullBucketsIndices, Global, RawDrain, RawExtractIf, RawIntoIter,
+        RawIter, RawIterHash, RawIterHashIndices, RawTable,
     },
     TryReserveError,
 };
@@ -303,11 +304,59 @@ where
     ) -> Result<OccupiedEntry<'_, T, A>, AbsentEntry<'_, T, A>> {
         match self.raw.find(hash, eq) {
             Some(bucket) => Ok(OccupiedEntry {
-                hash,
                 bucket,
                 table: self,
             }),
             None => Err(AbsentEntry { table: self }),
+        }
+    }
+
+    /// Returns the bucket index in the table for an entry with the given hash
+    /// and which satisfies the equality function passed.
+    ///
+    /// This can be used to store a borrow-free "reference" to the entry, later using
+    /// [`get_bucket`][Self::get_bucket], [`get_bucket_mut`][Self::get_bucket_mut], or
+    /// [`get_bucket_entry`][Self::get_bucket_entry] to access it again without hash probing.
+    ///
+    /// The index is only meaningful as long as the table is not resized and no entries are added
+    /// or removed. After such changes, it may end up pointing to a different entry or none at all.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 1), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 2), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 3), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 2)));
+    ///
+    /// // Mutation would invalidate any normal reference
+    /// for (_key, value) in &mut table {
+    ///     *value *= 11;
+    /// }
+    ///
+    /// // The index still reaches the same key with the updated value
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 22)));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn find_bucket_index(&self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<usize> {
+        match self.raw.find(hash, eq) {
+            Some(bucket) => Some(unsafe { self.raw.bucket_index(&bucket) }),
+            None => None,
         }
     }
 
@@ -364,16 +413,260 @@ where
     ) -> Entry<'_, T, A> {
         match self.raw.find_or_find_insert_index(hash, eq, hasher) {
             Ok(bucket) => Entry::Occupied(OccupiedEntry {
-                hash,
                 bucket,
                 table: self,
             }),
             Err(insert_index) => Entry::Vacant(VacantEntry {
-                hash,
+                tag: Tag::full(hash),
                 index: insert_index,
                 table: self,
             }),
         }
+    }
+
+    /// Returns an `OccupiedEntry` for the given bucket index in the table,
+    /// or `AbsentEntry` if it is unoccupied or out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    ///
+    /// assert!(table.get_bucket_entry(usize::MAX).is_err());
+    ///
+    /// let occupied_entry = table.get_bucket_entry(index).unwrap();
+    /// assert_eq!(occupied_entry.get(), &(2, 'b'));
+    /// assert_eq!(occupied_entry.remove().0, (2, 'b'));
+    ///
+    /// assert!(table.find(hasher(&2), |val| val.0 == 2).is_none());
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub fn get_bucket_entry(
+        &mut self,
+        index: usize,
+    ) -> Result<OccupiedEntry<'_, T, A>, AbsentEntry<'_, T, A>> {
+        match self.raw.checked_bucket(index) {
+            Some(bucket) => Ok(OccupiedEntry {
+                bucket,
+                table: self,
+            }),
+            None => Err(AbsentEntry { table: self }),
+        }
+    }
+
+    /// Returns an `OccupiedEntry` for the given bucket index in the table,
+    /// without checking whether the index is in-bounds or occupied.
+    ///
+    /// For a safe alternative, see [`get_bucket_entry`](Self::get_bucket_entry).
+    ///
+    /// # Safety
+    ///
+    /// It is *[undefined behavior]* to call this method with an index that is
+    /// out-of-bounds or unoccupied, even if the resulting entry is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert!(std::ptr::eq(
+    ///     table.get_bucket_entry(index).unwrap().into_mut(),
+    ///     unsafe { table.get_bucket_entry_unchecked(index).into_mut() },
+    /// ));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub unsafe fn get_bucket_entry_unchecked(&mut self, index: usize) -> OccupiedEntry<'_, T, A> {
+        OccupiedEntry {
+            bucket: self.raw.bucket(index),
+            table: self,
+        }
+    }
+
+    /// Gets a reference to an entry in the table at the given bucket index,
+    /// or `None` if it is unoccupied or out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 'b')));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub fn get_bucket(&self, index: usize) -> Option<&T> {
+        self.raw.get_bucket(index)
+    }
+
+    /// Gets a reference to an entry in the table at the given bucket index,
+    /// without checking whether the index is in-bounds or occupied.
+    ///
+    /// For a safe alternative, see [`get_bucket`](Self::get_bucket).
+    ///
+    /// # Safety
+    ///
+    /// It is *[undefined behavior]* to call this method with an index that is
+    /// out-of-bounds or unoccupied, even if the resulting reference is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert!(std::ptr::eq(
+    ///     table.get_bucket(index).unwrap(),
+    ///     unsafe { table.get_bucket_unchecked(index) },
+    /// ));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub unsafe fn get_bucket_unchecked(&self, index: usize) -> &T {
+        self.raw.bucket(index).as_ref()
+    }
+
+    /// Gets a mutable reference to an entry in the table at the given bucket index,
+    /// or `None` if it is unoccupied or out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 'b')));
+    /// if let Some((_key, value)) = table.get_bucket_mut(index) {
+    ///     *value = 'B';
+    /// }
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 'B')));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub fn get_bucket_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.raw.get_bucket_mut(index)
+    }
+
+    /// Gets a mutable reference to an entry in the table at the given bucket index,
+    /// without checking whether the index is in-bounds or occupied.
+    ///
+    /// For a safe alternative, see [`get_bucket_mut`](Self::get_bucket_mut).
+    ///
+    /// # Safety
+    ///
+    /// It is *[undefined behavior]* to call this method with an index that is
+    /// out-of-bounds or unoccupied, even if the resulting reference is not used.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// let index = table.find_bucket_index(hasher(&2), |val| val.0 == 2).unwrap();
+    /// assert!(std::ptr::eq(
+    ///     table.get_bucket_mut(index).unwrap(),
+    ///     unsafe { table.get_bucket_unchecked_mut(index) },
+    /// ));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[inline]
+    pub unsafe fn get_bucket_unchecked_mut(&mut self, index: usize) -> &mut T {
+        self.raw.bucket(index).as_mut()
     }
 
     /// Inserts an element into the `HashTable` with the given hash value, but
@@ -409,7 +702,6 @@ where
     ) -> OccupiedEntry<'_, T, A> {
         let bucket = self.raw.insert(hash, value, hasher);
         OccupiedEntry {
-            hash,
             bucket,
             table: self,
         }
@@ -591,6 +883,44 @@ where
         self.raw.try_reserve(additional, hasher)
     }
 
+    /// Returns the raw number of buckets allocated in the table.
+    ///
+    /// This is an upper bound on any methods that take or return a bucket index,
+    /// as opposed to the usable [`capacity`](Self::capacity) for entries which is
+    /// reduced by an unspecified load factor.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 'a'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 'b'), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 'c'), |val| hasher(&val.0));
+    ///
+    /// // Each entry is available at some index in the bucket range.
+    /// let count = (0..table.num_buckets())
+    ///     .filter_map(|i| table.get_bucket(i))
+    ///     .count();
+    /// assert_eq!(count, 3);
+    ///
+    /// assert_eq!(table.get_bucket(table.num_buckets()), None);
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn num_buckets(&self) -> usize {
+        self.raw.buckets()
+    }
+
     /// Returns the number of elements the table can hold without reallocating.
     ///
     /// # Examples
@@ -670,7 +1000,7 @@ where
     /// let mut table = HashTable::new();
     /// let hasher = DefaultHashBuilder::default();
     /// let hasher = |val: &_| hasher.hash_one(val);
-    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
     /// table.insert_unique(hasher(&"b"), "b", hasher);
     ///
     /// // Will print in an arbitrary order.
@@ -737,6 +1067,42 @@ where
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut {
             inner: unsafe { self.raw.iter() },
+            marker: PhantomData,
+        }
+    }
+
+    /// An iterator producing the `usize` indices of all occupied buckets.
+    ///
+    /// The order in which the iterator yields indices is unspecified
+    /// and may change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
+    /// table.insert_unique(hasher(&"b"), "b", hasher);
+    ///
+    /// // Will print in an arbitrary order.
+    /// for index in table.iter_buckets() {
+    ///     println!("{index}: {}", table.get_bucket(index).unwrap());
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_buckets(&self) -> IterBuckets<'_, T> {
+        IterBuckets {
+            inner: unsafe { self.raw.full_buckets_indices() },
             marker: PhantomData,
         }
     }
@@ -829,6 +1195,47 @@ where
     pub fn iter_hash_mut(&mut self, hash: u64) -> IterHashMut<'_, T> {
         IterHashMut {
             inner: unsafe { self.raw.iter_hash(hash) },
+            marker: PhantomData,
+        }
+    }
+
+    /// An iterator producing the `usize` indices of all buckets which may match a hash.
+    ///
+    /// This iterator may return indices from the table that have a hash value
+    /// different than the one provided. You should always validate the returned
+    /// values before using them.
+    ///
+    /// The order in which the iterator yields indices is unspecified
+    /// and may change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&"a"), "a", hasher);
+    /// table.insert_unique(hasher(&"a"), "b", hasher);
+    /// table.insert_unique(hasher(&"b"), "c", hasher);
+    ///
+    /// // Will print the indices with "a" and "b" (and possibly "c") in an arbitrary order.
+    /// for index in table.iter_hash_buckets(hasher(&"a")) {
+    ///     println!("{index}: {}", table.get_bucket(index).unwrap());
+    /// }
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn iter_hash_buckets(&self, hash: u64) -> IterHashBuckets<'_, T> {
+        IterHashBuckets {
+            inner: unsafe { self.raw.iter_hash_buckets(hash) },
             marker: PhantomData,
         }
     }
@@ -1569,7 +1976,6 @@ pub struct OccupiedEntry<'a, T, A = Global>
 where
     A: Allocator,
 {
-    hash: u64,
     bucket: Bucket<T>,
     table: &'a mut HashTable<T, A>,
 }
@@ -1638,11 +2044,11 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn remove(self) -> (T, VacantEntry<'a, T, A>) {
-        let (val, index) = unsafe { self.table.raw.remove(self.bucket) };
+        let (val, index, tag) = unsafe { self.table.raw.remove_tagged(self.bucket) };
         (
             val,
             VacantEntry {
-                hash: self.hash,
+                tag,
                 index,
                 table: self.table,
             },
@@ -1789,6 +2195,53 @@ where
     pub fn into_table(self) -> &'a mut HashTable<T, A> {
         self.table
     }
+
+    /// Returns the bucket index in the table for this entry.
+    ///
+    /// This can be used to store a borrow-free "reference" to the entry, later using
+    /// [`HashTable::get_bucket`], [`HashTable::get_bucket_mut`], or
+    /// [`HashTable::get_bucket_entry`] to access it again without hash probing.
+    ///
+    /// The index is only meaningful as long as the table is not resized and no entries are added
+    /// or removed. After such changes, it may end up pointing to a different entry or none at all.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |val: &_| hasher.hash_one(val);
+    /// table.insert_unique(hasher(&1), (1, 1), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&2), (2, 2), |val| hasher(&val.0));
+    /// table.insert_unique(hasher(&3), (3, 3), |val| hasher(&val.0));
+    ///
+    /// let index = table
+    ///     .entry(hasher(&2), |val| val.0 == 2, |val| hasher(&val.0))
+    ///     .or_insert((2, -2))
+    ///     .bucket_index();
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 2)));
+    ///
+    /// // Full mutation would invalidate any normal reference
+    /// for (_key, value) in &mut table {
+    ///     *value *= 11;
+    /// }
+    ///
+    /// // The index still reaches the same key with the updated value
+    /// assert_eq!(table.get_bucket(index), Some(&(2, 22)));
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    pub fn bucket_index(&self) -> usize {
+        unsafe { self.table.raw.bucket_index(&self.bucket) }
+    }
 }
 
 /// A view into a vacant entry in a `HashTable`.
@@ -1834,7 +2287,7 @@ pub struct VacantEntry<'a, T, A = Global>
 where
     A: Allocator,
 {
-    hash: u64,
+    tag: Tag,
     index: usize,
     table: &'a mut HashTable<T, A>,
 }
@@ -1882,9 +2335,12 @@ where
     /// ```
     #[inline]
     pub fn insert(self, value: T) -> OccupiedEntry<'a, T, A> {
-        let bucket = unsafe { self.table.raw.insert_at_index(self.hash, self.index, value) };
+        let bucket = unsafe {
+            self.table
+                .raw
+                .insert_tagged_at_index(self.tag, self.index, value)
+        };
         OccupiedEntry {
-            hash: self.hash,
             bucket,
             table: self.table,
         }
@@ -1897,10 +2353,11 @@ where
     }
 }
 
-/// Type representing the absence of an entry, as returned by [`HashTable::find_entry`].
+/// Type representing the absence of an entry, as returned by [`HashTable::find_entry`]
+/// and [`HashTable::get_bucket_entry`].
 ///
 /// This type only exists due to [limitations] in Rust's NLL borrow checker. In
-/// the future, `find_entry` will return an `Option<OccupiedEntry>` and this
+/// the future, those methods will return an `Option<OccupiedEntry>` and this
 /// type will be removed.
 ///
 /// [limitations]: https://smallcultfollowing.com/babysteps/blog/2018/06/15/mir-based-borrow-check-nll-status-update/#polonius
@@ -2104,6 +2561,68 @@ where
     }
 }
 
+/// An iterator producing the `usize` indices of all occupied buckets,
+/// within the range `0..table.num_buckets()`.
+///
+/// The order in which the iterator yields indices is unspecified
+/// and may change in the future.
+///
+/// This `struct` is created by the [`HashTable::iter_buckets`] method. See its
+/// documentation for more.
+pub struct IterBuckets<'a, T> {
+    inner: FullBucketsIndices,
+    marker: PhantomData<&'a T>,
+}
+
+impl<T> Clone for IterBuckets<'_, T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for IterBuckets<'_, T> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Iterator for IterBuckets<'_, T> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<usize> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for IterBuckets<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
+impl<T> FusedIterator for IterBuckets<'_, T> {}
+
+impl<T> fmt::Debug for IterBuckets<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
 /// An iterator over the entries of a `HashTable` that could match a given hash.
 /// The iterator element type is `&'a T`.
 ///
@@ -2227,6 +2746,52 @@ where
                 marker: PhantomData,
             })
             .finish()
+    }
+}
+
+/// An iterator producing the `usize` indices of all buckets which may match a hash.
+///
+/// This `struct` is created by the [`HashTable::iter_hash_buckets`] method. See its
+/// documentation for more.
+pub struct IterHashBuckets<'a, T> {
+    inner: RawIterHashIndices,
+    marker: PhantomData<&'a T>,
+}
+
+impl<T> Clone for IterHashBuckets<'_, T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for IterHashBuckets<'_, T> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Iterator for IterHashBuckets<'_, T> {
+    type Item = usize;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+impl<T> FusedIterator for IterHashBuckets<'_, T> {}
+
+impl<T> fmt::Debug for IterHashBuckets<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
