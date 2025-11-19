@@ -45,9 +45,8 @@ fn parse_char(s: &str) -> Result<Literal> {
     }
 }
 
-fn parse_plain_str(mut s: &str) -> Result<Symbol> {
-    s = s.strip_prefix("\"").ok_or(())?.strip_suffix('\"').ok_or(())?;
-    Ok(Symbol::new(s))
+fn parse_plain_str(s: &str) -> Result<Symbol> {
+    Ok(Symbol::new(s.strip_circumfix("\"", "\"").ok_or(())?))
 }
 
 const INT_SUFFIXES: &[&str] =
@@ -70,11 +69,18 @@ fn parse_numeral(s: &str) -> Result<Literal> {
     }
     for suffix in FLOAT_SUFFIXES {
         if s.ends_with(suffix) {
-            // return parse_float(s);
+            return parse_float(s);
         }
     }
-    let (s, suffix) = strip_number_suffix(s, FLOAT_SUFFIXES);
+    if s.contains('.') || s.contains('e') || s.contains('E') {
+        return parse_float(s);
+    }
 
+    parse_integer(s)
+}
+
+fn parse_float(symbol: &str) -> Result<Literal> {
+    let (s, suffix) = strip_number_suffix(symbol, FLOAT_SUFFIXES);
     Ok(Literal { kind: LitKind::Float, symbol: Symbol::new(s), suffix, span: Span })
 }
 
@@ -140,7 +146,7 @@ pub(super) fn literal_from_str(s: &str) -> Result<Literal> {
             }
         }
         'c' => parse_maybe_raw_str(rest, LitKind::CStrRaw, LitKind::CStr),
-        'r' => parse_maybe_raw_str(rest, LitKind::StrRaw, LitKind::Str),
+        'r' => parse_maybe_raw_str(s, LitKind::StrRaw, LitKind::Str),
         '0'..='9' | '-' => parse_numeral(s),
         '\'' => parse_char(s),
         '"' => Ok(make_literal(LitKind::Str, parse_plain_str(s)?)),

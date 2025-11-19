@@ -1,3 +1,5 @@
+Ok(Literal { kind: StrRaw(0), symbol: "g", suffix: None, span: Span })
+Ok(Literal { kind: StrRaw(1), symbol: "g", suffix: None, span: Span })
 Ok(Literal { kind: Integer, symbol: "123", suffix: None, span: Span })
 Ok(Literal { kind: Str, symbol: "ab", suffix: None, span: Span })
 Ok(Literal { kind: Char, symbol: "b", suffix: None, span: Span })

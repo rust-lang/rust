@@ -74,6 +74,8 @@ fn lit(s: &str, mode: Mode) {
 pub fn run() {
     assert_eq!("\'", "'");
     // returns Ok(valid instance)
+    lit("r\"g\"", NormalOk);
+    lit("r#\"g\"#", NormalOk);
     lit("123", NormalOk);
     lit("\"ab\"", NormalOk);
     lit("'b'", NormalOk);
