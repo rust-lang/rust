@@ -32,7 +32,7 @@
       }
   
       bb2: {
--         assume(const UbChecks);
+-         assume(UbChecks);
 +         assume(const false);
           _4 = unreachable_unchecked::precondition_check() -> [return: bb1, unwind unreachable];
       }
