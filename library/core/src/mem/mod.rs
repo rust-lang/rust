@@ -1283,7 +1283,12 @@ pub trait SizedTypeProperties: Sized {
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
-    const LAYOUT: Layout = Layout::new::<Self>();
+    const LAYOUT: Layout = {
+        // SAFETY: if the type is instantiated, rustc already ensures that its
+        // layout is valid. Use the unchecked constructor to avoid inserting a
+        // panicking codepath that needs to be optimized out.
+        unsafe { Layout::from_size_align_unchecked(Self::SIZE, Self::ALIGN) }
+    };
 
     /// The largest safe length for a `[Self]`.
     ///
