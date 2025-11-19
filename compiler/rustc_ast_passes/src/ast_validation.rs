@@ -48,15 +48,17 @@ enum SelfSemantic {
     No,
 }
 
-enum TraitOrTraitImpl {
+enum TraitOrImpl {
     Trait { vis: Span, constness: Const },
     TraitImpl { constness: Const, polarity: ImplPolarity, trait_ref_span: Span },
+    Impl { constness: Const },
 }
 
-impl TraitOrTraitImpl {
+impl TraitOrImpl {
     fn constness(&self) -> Option<Span> {
         match self {
             Self::Trait { constness: Const::Yes(span), .. }
+            | Self::Impl { constness: Const::Yes(span), .. }
             | Self::TraitImpl { constness: Const::Yes(span), .. } => Some(*span),
             _ => None,
         }
@@ -70,7 +72,7 @@ struct AstValidator<'a> {
     /// The span of the `extern` in an `extern { ... }` block, if any.
     extern_mod_span: Option<Span>,
 
-    outer_trait_or_trait_impl: Option<TraitOrTraitImpl>,
+    outer_trait_or_trait_impl: Option<TraitOrImpl>,
 
     has_proc_macro_decls: bool,
 
@@ -93,19 +95,12 @@ struct AstValidator<'a> {
 }
 
 impl<'a> AstValidator<'a> {
-    fn with_in_trait_impl(
+    fn with_in_trait_or_impl(
         &mut self,
-        trait_: Option<(Const, ImplPolarity, &'a TraitRef)>,
+        in_trait_or_impl: Option<TraitOrImpl>,
         f: impl FnOnce(&mut Self),
     ) {
-        let old = mem::replace(
-            &mut self.outer_trait_or_trait_impl,
-            trait_.map(|(constness, polarity, trait_ref)| TraitOrTraitImpl::TraitImpl {
-                constness,
-                polarity,
-                trait_ref_span: trait_ref.path.span,
-            }),
-        );
+        let old = mem::replace(&mut self.outer_trait_or_trait_impl, in_trait_or_impl);
         f(self);
         self.outer_trait_or_trait_impl = old;
     }
@@ -113,7 +108,7 @@ impl<'a> AstValidator<'a> {
     fn with_in_trait(&mut self, vis: Span, constness: Const, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(
             &mut self.outer_trait_or_trait_impl,
-            Some(TraitOrTraitImpl::Trait { vis, constness }),
+            Some(TraitOrImpl::Trait { vis, constness }),
         );
         f(self);
         self.outer_trait_or_trait_impl = old;
@@ -247,14 +242,28 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrTraitImpl) {
+    fn check_impl_fn_not_const(&self, constness: Const, parent_constness: Const) {
+        let Const::Yes(span) = constness else {
+            return;
+        };
+
+        let span = self.sess.source_map().span_extend_while_whitespace(span);
+
+        let Const::Yes(parent_constness) = parent_constness else {
+            return;
+        };
+
+        self.dcx().emit_err(errors::ImplFnConst { span, parent_constness });
+    }
+
+    fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrImpl) {
         let Const::Yes(span) = constness else {
             return;
         };
 
         let const_trait_impl = self.features.const_trait_impl();
         let make_impl_const_sugg = if const_trait_impl
-            && let TraitOrTraitImpl::TraitImpl {
+            && let TraitOrImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
                 trait_ref_span,
@@ -269,7 +278,7 @@ impl<'a> AstValidator<'a> {
         let map = self.sess.source_map();
 
         let make_trait_const_sugg = if const_trait_impl
-            && let &TraitOrTraitImpl::Trait { vis, constness: ast::Const::No } = parent
+            && let &TraitOrImpl::Trait { vis, constness: ast::Const::No } = parent
         {
             Some(map.span_extend_while_whitespace(vis).shrink_to_hi())
         } else {
@@ -279,7 +288,7 @@ impl<'a> AstValidator<'a> {
         let parent_constness = parent.constness();
         self.dcx().emit_err(errors::TraitFnConst {
             span,
-            in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
+            in_impl: matches!(parent, TraitOrImpl::TraitImpl { .. }),
             const_context_label: parent_constness,
             remove_const_sugg: (
                 map.span_extend_while_whitespace(span),
@@ -295,7 +304,7 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrTraitImpl) {
+    fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrImpl) {
         let Some(const_keyword) = parent.constness() else { return };
 
         let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
@@ -305,7 +314,7 @@ impl<'a> AstValidator<'a> {
 
         self.dcx().emit_err(errors::AsyncFnInConstTraitOrTraitImpl {
             async_keyword,
-            in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
+            in_impl: matches!(parent, TraitOrImpl::TraitImpl { .. }),
             const_keyword,
         });
     }
@@ -1070,14 +1079,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         match &item.kind {
             ItemKind::Impl(Impl {
                 generics,
+                constness,
                 of_trait:
-                    Some(box TraitImplHeader {
-                        safety,
-                        polarity,
-                        defaultness: _,
-                        constness,
-                        trait_ref: t,
-                    }),
+                    Some(box TraitImplHeader { safety, polarity, defaultness: _, trait_ref: t }),
                 self_ty,
                 items,
             }) => {
@@ -1105,24 +1109,46 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.visit_trait_ref(t);
                 self.visit_ty(self_ty);
 
-                self.with_in_trait_impl(Some((*constness, *polarity, t)), |this| {
-                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
-                });
+                self.with_in_trait_or_impl(
+                    Some(TraitOrImpl::TraitImpl {
+                        constness: *constness,
+                        polarity: *polarity,
+                        trait_ref_span: t.path.span,
+                    }),
+                    |this| {
+                        walk_list!(
+                            this,
+                            visit_assoc_item,
+                            items,
+                            AssocCtxt::Impl { of_trait: true }
+                        );
+                    },
+                );
             }
-            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items }) => {
+            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items, constness }) => {
                 self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
 
-                self.with_tilde_const(Some(TildeConstReason::Impl { span: item.span }), |this| {
-                    this.visit_generics(generics)
-                });
+                let disallowed = matches!(constness, ast::Const::No)
+                    .then(|| TildeConstReason::Impl { span: item.span });
+
+                self.with_tilde_const(disallowed, |this| this.visit_generics(generics));
+
                 self.visit_ty(self_ty);
-                self.with_in_trait_impl(None, |this| {
-                    walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: false });
-                });
+                self.with_in_trait_or_impl(
+                    Some(TraitOrImpl::Impl { constness: *constness }),
+                    |this| {
+                        walk_list!(
+                            this,
+                            visit_assoc_item,
+                            items,
+                            AssocCtxt::Impl { of_trait: false }
+                        );
+                    },
+                );
             }
             ItemKind::Fn(
                 func @ box Fn {
@@ -1240,7 +1266,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_generics(generics);
                     walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                 });
-                self.with_in_trait(item.vis.span, *constness, |this| {
+                self.with_in_trait(item.span, *constness, |this| {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
                 });
             }
@@ -1610,7 +1636,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     && self
                         .outer_trait_or_trait_impl
                         .as_ref()
-                        .and_then(TraitOrTraitImpl::constness)
+                        .and_then(TraitOrImpl::constness)
                         .is_some();
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
@@ -1677,12 +1703,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             );
         }
 
-        if let Some(parent) = &self.outer_trait_or_trait_impl {
-            self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
-            if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
-                self.check_trait_fn_not_const(sig.header.constness, parent);
-                self.check_async_fn_in_const_trait_or_impl(sig, parent);
+        match &self.outer_trait_or_trait_impl {
+            Some(parent @ (TraitOrImpl::Trait { .. } | TraitOrImpl::TraitImpl { .. })) => {
+                self.visibility_not_permitted(
+                    &item.vis,
+                    errors::VisibilityNotPermittedNote::TraitImpl,
+                );
+                if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+                    self.check_trait_fn_not_const(sig.header.constness, parent);
+                    self.check_async_fn_in_const_trait_or_impl(sig, parent);
+                }
             }
+            Some(TraitOrImpl::Impl { constness }) => {
+                if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
+                    self.check_impl_fn_not_const(sig.header.constness, *constness);
+                }
+            }
+            None => {}
         }
 
         if let AssocItemKind::Const(ci) = &item.kind {
@@ -1690,7 +1727,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         let parent_is_const =
-            self.outer_trait_or_trait_impl.as_ref().and_then(TraitOrTraitImpl::constness).is_some();
+            self.outer_trait_or_trait_impl.as_ref().and_then(TraitOrImpl::constness).is_some();
 
         match &item.kind {
             AssocItemKind::Fn(func)
@@ -1704,19 +1741,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             AssocItemKind::Type(_) => {
                 let disallowed = (!parent_is_const).then(|| match self.outer_trait_or_trait_impl {
-                    Some(TraitOrTraitImpl::Trait { .. }) => {
+                    Some(TraitOrImpl::Trait { .. }) => {
                         TildeConstReason::TraitAssocTy { span: item.span }
                     }
-                    Some(TraitOrTraitImpl::TraitImpl { .. }) => {
+                    Some(TraitOrImpl::TraitImpl { .. }) => {
                         TildeConstReason::TraitImplAssocTy { span: item.span }
                     }
-                    None => TildeConstReason::InherentAssocTy { span: item.span },
+                    Some(TraitOrImpl::Impl { .. }) | None => {
+                        TildeConstReason::InherentAssocTy { span: item.span }
+                    }
                 });
                 self.with_tilde_const(disallowed, |this| {
-                    this.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt))
+                    this.with_in_trait_or_impl(None, |this| {
+                        visit::walk_assoc_item(this, item, ctxt)
+                    })
                 })
             }
-            _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
+            _ => self.with_in_trait_or_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
         }
     }
 

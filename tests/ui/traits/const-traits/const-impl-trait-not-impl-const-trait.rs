@@ -1,6 +1,6 @@
 #![feature(const_trait_impl)]
 
-//@ check-pass
+//@check-pass
 
 const trait Foo {}
 
