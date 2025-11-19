@@ -757,22 +757,18 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     }
 
     match tcx.def_kind(def_id) {
-        def_kind @ (DefKind::Static { .. } | DefKind::Const) => {
+        DefKind::Static { .. } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            match def_kind {
-                DefKind::Static { .. } => {
-                    check_static_inhabited(tcx, def_id);
-                    check_static_linkage(tcx, def_id);
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    res = res.and(wfcheck::check_static_item(
-                        tcx, def_id, ty, /* should_check_for_sync */ true,
-                    ));
-                }
-                DefKind::Const => res = res.and(wfcheck::check_const_item(tcx, def_id)),
-                _ => unreachable!(),
-            }
+
+            check_static_inhabited(tcx, def_id);
+            check_static_linkage(tcx, def_id);
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            res = res.and(wfcheck::check_static_item(
+                tcx, def_id, ty, /* should_check_for_sync */ true,
+            ));
+
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
             // checks. Returning early here does not miss any checks and
             // avoids this query from having a direct dependency edge on the HIR
@@ -782,7 +778,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
-            crate::collect::lower_enum_variant_types(tcx, def_id.to_def_id());
+            crate::collect::lower_enum_variant_types(tcx, def_id);
             check_enum(tcx, def_id);
             check_variances_for_type_defn(tcx, def_id);
         }
@@ -900,6 +896,39 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
+        DefKind::Const => {
+            tcx.ensure_ok().generics_of(def_id);
+            tcx.ensure_ok().type_of(def_id);
+            tcx.ensure_ok().predicates_of(def_id);
+
+            res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                let ty = tcx.type_of(def_id).instantiate_identity();
+                let ty_span = tcx.ty_span(def_id);
+                let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
+                wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
+                wfcx.register_bound(
+                    traits::ObligationCause::new(
+                        ty_span,
+                        def_id,
+                        ObligationCauseCode::SizedConstOrStatic,
+                    ),
+                    tcx.param_env(def_id),
+                    ty,
+                    tcx.require_lang_item(LangItem::Sized, ty_span),
+                );
+                check_where_clauses(wfcx, def_id);
+
+                if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
+                    wfcheck::check_type_const(wfcx, def_id, ty, true)?;
+                }
+                Ok(())
+            }));
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
+        }
         DefKind::TyAlias => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
@@ -920,6 +949,11 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 }));
                 check_variances_for_type_defn(tcx, def_id);
             }
+
+            // Only `Node::Item` and `Node::ForeignItem` still have HIR based
+            // checks. Returning early here does not miss any checks and
+            // avoids this query from having a direct dependency edge on the HIR
+            return res;
         }
         DefKind::ForeignMod => {
             let it = tcx.hir_expect_item(def_id);
@@ -1508,22 +1542,10 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
     // For each field, figure out if it has "trivial" layout (i.e., is a 1-ZST).
-    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
-    // fields or `repr(C)`. We call those fields "unsuited".
     struct FieldInfo<'tcx> {
         span: Span,
         trivial: bool,
-        unsuited: Option<UnsuitedInfo<'tcx>>,
-    }
-    struct UnsuitedInfo<'tcx> {
-        /// The source of the problem, a type that is found somewhere within the field type.
         ty: Ty<'tcx>,
-        reason: UnsuitedReason,
-    }
-    enum UnsuitedReason {
-        NonExhaustive,
-        PrivateField,
-        ReprC,
     }
 
     let field_infos = adt.all_fields().map(|field| {
@@ -1532,60 +1554,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir_span_if_local(field.did).unwrap();
         let trivial = layout.is_ok_and(|layout| layout.is_1zst());
-        if !trivial {
-            // No need to even compute `unsuited`.
-            return FieldInfo { span, trivial, unsuited: None };
-        }
-
-        fn check_unsuited<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            typing_env: ty::TypingEnv<'tcx>,
-            ty: Ty<'tcx>,
-        ) -> ControlFlow<UnsuitedInfo<'tcx>> {
-            // We can encounter projections during traversal, so ensure the type is normalized.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
-            match ty.kind() {
-                ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
-                ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
-                ty::Adt(def, args) => {
-                    if !def.did().is_local()
-                        && !find_attr!(
-                            tcx.get_all_attrs(def.did()),
-                            AttributeKind::PubTransparent(_)
-                        )
-                    {
-                        let non_exhaustive = def.is_variant_list_non_exhaustive()
-                            || def
-                                .variants()
-                                .iter()
-                                .any(ty::VariantDef::is_field_list_non_exhaustive);
-                        let has_priv = def.all_fields().any(|f| !f.vis.is_public());
-                        if non_exhaustive || has_priv {
-                            return ControlFlow::Break(UnsuitedInfo {
-                                ty,
-                                reason: if non_exhaustive {
-                                    UnsuitedReason::NonExhaustive
-                                } else {
-                                    UnsuitedReason::PrivateField
-                                },
-                            });
-                        }
-                    }
-                    if def.repr().c() {
-                        return ControlFlow::Break(UnsuitedInfo {
-                            ty,
-                            reason: UnsuitedReason::ReprC,
-                        });
-                    }
-                    def.all_fields()
-                        .map(|field| field.ty(tcx, args))
-                        .try_for_each(|t| check_unsuited(tcx, typing_env, t))
-                }
-                _ => ControlFlow::Continue(()),
-            }
-        }
-
-        FieldInfo { span, trivial, unsuited: check_unsuited(tcx, typing_env, ty).break_value() }
+        FieldInfo { span, trivial, ty }
     });
 
     let non_trivial_fields = field_infos
@@ -1603,10 +1572,63 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         return;
     }
 
+    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
+    // fields or `repr(C)`. We call those fields "unsuited".
+    struct UnsuitedInfo<'tcx> {
+        /// The source of the problem, a type that is found somewhere within the field type.
+        ty: Ty<'tcx>,
+        reason: UnsuitedReason,
+    }
+    enum UnsuitedReason {
+        NonExhaustive,
+        PrivateField,
+        ReprC,
+    }
+
+    fn check_unsuited<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> ControlFlow<UnsuitedInfo<'tcx>> {
+        // We can encounter projections during traversal, so ensure the type is normalized.
+        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        match ty.kind() {
+            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
+            ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
+            ty::Adt(def, args) => {
+                if !def.did().is_local()
+                    && !find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::PubTransparent(_))
+                {
+                    let non_exhaustive = def.is_variant_list_non_exhaustive()
+                        || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
+                    let has_priv = def.all_fields().any(|f| !f.vis.is_public());
+                    if non_exhaustive || has_priv {
+                        return ControlFlow::Break(UnsuitedInfo {
+                            ty,
+                            reason: if non_exhaustive {
+                                UnsuitedReason::NonExhaustive
+                            } else {
+                                UnsuitedReason::PrivateField
+                            },
+                        });
+                    }
+                }
+                if def.repr().c() {
+                    return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
+                }
+                def.all_fields()
+                    .map(|field| field.ty(tcx, args))
+                    .try_for_each(|t| check_unsuited(tcx, typing_env, t))
+            }
+            _ => ControlFlow::Continue(()),
+        }
+    }
+
     let mut prev_unsuited_1zst = false;
     for field in field_infos {
-        if let Some(unsuited) = field.unsuited {
-            assert!(field.trivial);
+        if field.trivial
+            && let Some(unsuited) = check_unsuited(tcx, typing_env, field.ty).break_value()
+        {
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {

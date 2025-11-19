@@ -1,16 +1,15 @@
 # `minicore` test auxiliary: using `core` stubs
 
-<!-- date-check Oct 2024 -->
+<!-- date-check: Oct 2025 -->
 
-[`tests/auxiliary/minicore.rs`][`minicore`] is a test auxiliary for
-ui/codegen/assembly test suites. It provides `core` stubs for tests that need to
+[`tests/auxiliary/minicore.rs`][`minicore`] is a test auxiliary for ui/codegen/assembly test suites.
+It provides `core` stubs for tests that need to
 build for cross-compiled targets but do not need/want to run.
 
 <div class="warning">
 
 Please note that [`minicore`] is only intended for `core` items, and explicitly
-**not** `std` or `alloc` items because `core` items are applicable to a wider
-range of tests.
+**not** `std` or `alloc` items because `core` items are applicable to a wider range of tests.
 
 </div>
 
@@ -41,8 +40,8 @@ by more than one test.
 
 ## Staying in sync with `core`
 
-The `minicore` items must be kept up to date with `core`. For consistent
-diagnostic output between using `core` and `minicore`, any `diagnostic`
+The `minicore` items must be kept up to date with `core`.
+For consistent diagnostic output between using `core` and `minicore`, any `diagnostic`
 attributes (e.g. `on_unimplemented`) should be replicated exactly in `minicore`.
 
 ## Example codegen test that uses `minicore`

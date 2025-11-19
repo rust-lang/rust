@@ -3,10 +3,11 @@ use std::ops::ControlFlow;
 
 use clippy_utils::comparisons::{Rel, normalize_comparison};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace};
+use clippy_utils::higher::{If, Range};
+use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace, root_macro_call};
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{eq_expr_value, hash_expr, higher};
+use clippy_utils::{eq_expr_value, hash_expr};
 use rustc_ast::{BinOpKind, LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
@@ -15,7 +16,7 @@ use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -134,15 +135,15 @@ fn len_comparison<'hir>(
 fn assert_len_expr<'hir>(
     cx: &LateContext<'_>,
     expr: &'hir Expr<'hir>,
-) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
-    let (cmp, asserted_len, slice_len) = if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
+) -> Option<(LengthComparison, usize, &'hir Expr<'hir>, Symbol)> {
+    let ((cmp, asserted_len, slice_len), macro_call) = if let Some(If { cond, then, .. }) = If::hir(expr)
         && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
         && let ExprKind::Binary(bin_op, left, right) = &condition.kind
         // check if `then` block has a never type expression
         && let ExprKind::Block(Block { expr: Some(then_expr), .. }, _) = then.kind
         && cx.typeck_results().expr_ty(then_expr).is_never()
     {
-        len_comparison(bin_op.node, left, right)?
+        (len_comparison(bin_op.node, left, right)?, sym::assert_macro)
     } else if let Some((macro_call, bin_op)) = first_node_macro_backtrace(cx, expr).find_map(|macro_call| {
         match cx.tcx.get_diagnostic_name(macro_call.def_id) {
             Some(sym::assert_eq_macro) => Some((macro_call, BinOpKind::Eq)),
@@ -151,7 +152,12 @@ fn assert_len_expr<'hir>(
         }
     }) && let Some((left, right, _)) = find_assert_eq_args(cx, expr, macro_call.expn)
     {
-        len_comparison(bin_op, left, right)?
+        (
+            len_comparison(bin_op, left, right)?,
+            root_macro_call(expr.span)
+                .and_then(|macro_call| cx.tcx.get_diagnostic_name(macro_call.def_id))
+                .unwrap_or(sym::assert_macro),
+        )
     } else {
         return None;
     };
@@ -160,7 +166,7 @@ fn assert_len_expr<'hir>(
         && cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice()
         && method.ident.name == sym::len
     {
-        Some((cmp, asserted_len, recv))
+        Some((cmp, asserted_len, recv, macro_call))
     } else {
         None
     }
@@ -174,6 +180,7 @@ enum IndexEntry<'hir> {
         comparison: LengthComparison,
         assert_span: Span,
         slice: &'hir Expr<'hir>,
+        macro_call: Symbol,
     },
     /// `assert!` with indexing
     ///
@@ -187,6 +194,7 @@ enum IndexEntry<'hir> {
         slice: &'hir Expr<'hir>,
         indexes: Vec<Span>,
         comparison: LengthComparison,
+        macro_call: Symbol,
     },
     /// Indexing without an `assert!`
     IndexWithoutAssert {
@@ -225,9 +233,9 @@ fn upper_index_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<usize> {
         && let LitKind::Int(Pu128(index), _) = lit.node
     {
         Some(index as usize)
-    } else if let Some(higher::Range {
+    } else if let Some(Range {
         end: Some(end), limits, ..
-    }) = higher::Range::hir(cx, expr)
+    }) = Range::hir(cx, expr)
         && let ExprKind::Lit(lit) = &end.kind
         && let LitKind::Int(Pu128(index @ 1..), _) = lit.node
     {
@@ -258,6 +266,7 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Uni
                     comparison,
                     assert_span,
                     slice,
+                    macro_call,
                 } => {
                     if slice.span.lo() > assert_span.lo() {
                         *entry = IndexEntry::AssertWithIndex {
@@ -268,6 +277,7 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Uni
                             slice,
                             indexes: vec![expr.span],
                             comparison: *comparison,
+                            macro_call: *macro_call,
                         };
                     }
                 },
@@ -303,7 +313,7 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Uni
 
 /// Checks if the expression is an `assert!` expression and adds it to `asserts`
 fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnindexMap<u64, Vec<IndexEntry<'hir>>>) {
-    if let Some((comparison, asserted_len, slice)) = assert_len_expr(cx, expr) {
+    if let Some((comparison, asserted_len, slice, macro_call)) = assert_len_expr(cx, expr) {
         let hash = hash_expr(cx, slice);
         let indexes = map.entry(hash).or_default();
 
@@ -326,6 +336,7 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
                     assert_span: expr.span.source_callsite(),
                     comparison,
                     asserted_len,
+                    macro_call,
                 };
             }
         } else {
@@ -334,6 +345,7 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
                 comparison,
                 assert_span: expr.span.source_callsite(),
                 slice,
+                macro_call,
             });
         }
     }
@@ -362,6 +374,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>
                     comparison,
                     assert_span,
                     slice,
+                    macro_call,
                 } if indexes.len() > 1 && !is_first_highest => {
                     // if we have found an `assert!`, let's also check that it's actually right
                     // and if it covers the highest index and if not, suggest the correct length
@@ -382,11 +395,23 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>
                             snippet(cx, slice.span, "..")
                         )),
                         // `highest_index` here is rather a length, so we need to add 1 to it
-                        LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => Some(format!(
-                            "assert!({}.len() == {})",
-                            snippet(cx, slice.span, ".."),
-                            highest_index + 1
-                        )),
+                        LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => match macro_call {
+                            sym::assert_eq_macro => Some(format!(
+                                "assert_eq!({}.len(), {})",
+                                snippet(cx, slice.span, ".."),
+                                highest_index + 1
+                            )),
+                            sym::debug_assert_eq_macro => Some(format!(
+                                "debug_assert_eq!({}.len(), {})",
+                                snippet(cx, slice.span, ".."),
+                                highest_index + 1
+                            )),
+                            _ => Some(format!(
+                                "assert!({}.len() == {})",
+                                snippet(cx, slice.span, ".."),
+                                highest_index + 1
+                            )),
+                        },
                         _ => None,
                     };
 

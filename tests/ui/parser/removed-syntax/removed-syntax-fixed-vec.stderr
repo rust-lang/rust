@@ -4,11 +4,10 @@ error: expected `;` or `]`, found `*`
 LL | type v = [isize * 3];
    |                 ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
 LL - type v = [isize * 3];
-LL + type v = [isize ; 3];
+LL + type v = [isize; 3];
    |
 
 warning: type `v` should have an upper camel case name

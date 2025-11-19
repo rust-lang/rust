@@ -12,14 +12,8 @@
 //! This API is still completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::usage_of_ty_tykind)]
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
-    test(attr(allow(unused_variables), deny(warnings)))
-)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(sized_hierarchy)]
 #![feature(trait_alias)]
 // tidy-alphabetical-end

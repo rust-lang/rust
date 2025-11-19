@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `T` in this scope
-  --> $DIR/projection-error.rs:13:17
+  --> $DIR/projection-error.rs:14:17
    |
 LL | pub trait Tr<A> {
    | --------------- similarly named trait `Tr` defined here
@@ -17,7 +17,7 @@ LL | fn mk_array<T>(_x: T) -> [(); <T as Tr<bool>>::SIZE] {}
    |            +++
 
 error[E0412]: cannot find type `T` in this scope
-  --> $DIR/projection-error.rs:13:29
+  --> $DIR/projection-error.rs:14:29
    |
 LL | pub trait Tr<A> {
    | --------------- similarly named trait `Tr` defined here

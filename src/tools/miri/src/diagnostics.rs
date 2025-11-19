@@ -33,9 +33,6 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
-    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
-    /// No leak checks should be performed if this happens, since they would give false positives.
-    GenmcBlockedExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -80,8 +77,6 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcBlockedExecution =>
-                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -128,7 +123,7 @@ pub enum NonHaltingDiagnostic {
     PoppedPointerTag(Item, String),
     TrackingAlloc(AllocId, Size, Align),
     FreedAlloc(AllocId),
-    AccessedAlloc(AllocId, AllocRange, AccessKind),
+    AccessedAlloc(AllocId, AllocRange, borrow_tracker::AccessKind),
     RejectedIsolatedOp(String),
     ProgressReport {
         block_count: u64, // how many basic blocks have been run so far
@@ -187,16 +182,14 @@ pub fn prune_stacktrace<'tcx>(
         }
         BacktraceStyle::Short => {
             let original_len = stacktrace.len();
-            // Only prune frames if there is at least one local frame. This check ensures that if
-            // we get a backtrace that never makes it to the user code because it has detected a
-            // bug in the Rust runtime, we don't prune away every frame.
-            let has_local_frame = stacktrace.iter().any(|frame| machine.is_local(frame));
+            // Remove all frames marked with `caller_location` -- that attribute indicates we
+            // usually want to point at the caller, not them.
+            stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
+            // Only prune further frames if there is at least one local frame. This check ensures
+            // that if we get a backtrace that never makes it to the user code because it has
+            // detected a bug in the Rust runtime, we don't prune away every frame.
+            let has_local_frame = stacktrace.iter().any(|frame| machine.is_local(frame.instance));
             if has_local_frame {
-                // Remove all frames marked with `caller_location` -- that attribute indicates we
-                // usually want to point at the caller, not them.
-                stacktrace
-                    .retain(|frame| !frame.instance.def.requires_caller_location(machine.tcx));
-
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
                 // __rust_end_short_backtrace because the end symbol comes from a call to the default
@@ -216,7 +209,7 @@ pub fn prune_stacktrace<'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame))
+                    && stacktrace.last().is_some_and(|frame| !machine.is_local(frame.instance))
                 {
                     stacktrace.pop();
                 }
@@ -228,19 +221,20 @@ pub fn prune_stacktrace<'tcx>(
     }
 }
 
-/// Emit a custom diagnostic without going through the miri-engine machinery.
+/// Report the result of a Miri execution.
 ///
-/// Returns `Some` if this was regular program termination with a given exit code and a `bool` indicating whether a leak check should happen; `None` otherwise.
-pub fn report_error<'tcx>(
+/// Returns `Some` if this was regular program termination with a given exit code and a `bool`
+/// indicating whether a leak check should happen; `None` otherwise.
+pub fn report_result<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-    e: InterpErrorInfo<'tcx>,
+    res: InterpErrorInfo<'tcx>,
 ) -> Option<(i32, bool)> {
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
     let mut labels = vec![];
 
-    let (title, helps) = if let MachineStop(info) = e.kind() {
+    let (title, helps) = if let MachineStop(info) = res.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
@@ -254,13 +248,6 @@ pub fn report_error<'tcx>(
             Deadlock => {
                 labels.push(format!("this thread got stuck here"));
                 None
-            }
-            GenmcBlockedExecution => {
-                // This case should only happen in GenMC mode.
-                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                // The program got blocked by GenMC without finishing the execution.
-                // No cleanup code was executed, so we don't do any leak checks.
-                return Some((0, false));
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -336,7 +323,7 @@ pub fn report_error<'tcx>(
         };
         (title, helps)
     } else {
-        let title = match e.kind() {
+        let title = match res.kind() {
             UndefinedBehavior(ValidationError(validation_err))
                 if matches!(
                     validation_err.kind,
@@ -346,7 +333,7 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This validation error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
             UndefinedBehavior(_) => "Undefined Behavior",
@@ -365,12 +352,12 @@ pub fn report_error<'tcx>(
                 ecx.handle_ice(); // print interpreter backtrace (this is outside the eval `catch_unwind`)
                 bug!(
                     "This error should be impossible in Miri: {}",
-                    format_interp_error(ecx.tcx.dcx(), e)
+                    format_interp_error(ecx.tcx.dcx(), res)
                 );
             }
         };
         #[rustfmt::skip]
-        let helps = match e.kind() {
+        let helps = match res.kind() {
             Unsupported(_) =>
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
@@ -424,7 +411,7 @@ pub fn report_error<'tcx>(
     // We want to dump the allocation if this is `InvalidUninitBytes`.
     // Since `format_interp_error` consumes `e`, we compute the outut early.
     let mut extra = String::new();
-    match e.kind() {
+    match res.kind() {
         UndefinedBehavior(InvalidUninitBytes(Some((alloc_id, access)))) => {
             writeln!(
                 extra,
@@ -450,7 +437,7 @@ pub fn report_error<'tcx>(
     if let Some(title) = title {
         write!(primary_msg, "{title}: ").unwrap();
     }
-    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), res)).unwrap();
 
     if labels.is_empty() {
         labels.push(format!("{} occurred here", title.unwrap_or("error")));
@@ -470,7 +457,7 @@ pub fn report_error<'tcx>(
     eprint!("{extra}"); // newlines are already in the string
 
     if show_all_threads {
-        for (thread, stack) in ecx.machine.threads.all_stacks() {
+        for (thread, stack) in ecx.machine.threads.all_blocked_stacks() {
             if thread != ecx.active_thread() {
                 let stacktrace = Frame::generate_stacktrace_from_stack(stack);
                 let (stacktrace, was_pruned) = prune_stacktrace(stacktrace, &ecx.machine);
@@ -619,7 +606,7 @@ pub fn report_msg<'tcx>(
         write!(backtrace_title, ":").unwrap();
         err.note(backtrace_title);
         for (idx, frame_info) in stacktrace.iter().enumerate() {
-            let is_local = machine.is_local(frame_info);
+            let is_local = machine.is_local(frame_info.instance);
             // No span for non-local frames and the first frame (which is the error site).
             if is_local && idx > 0 {
                 err.subdiagnostic(frame_info.as_note(machine.tcx));

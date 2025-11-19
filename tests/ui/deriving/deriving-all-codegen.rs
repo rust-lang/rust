@@ -24,7 +24,7 @@ use std::from::From;
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Empty;
 
-// A basic struct. Note: because this derives `Copy`, it gets the simple
+// A basic struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Point {
@@ -32,7 +32,7 @@ struct Point {
     y: u32,
 }
 
-// A basic packed struct. Note: because this derives `Copy`, it gets the simple
+// A basic packed struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
@@ -49,7 +49,7 @@ struct SingleField {
     foo: bool,
 }
 
-// A large struct. Note: because this derives `Copy`, it gets the simple
+// A large struct. Note: because this derives `Copy`, it gets the trivial
 // `clone` implemention that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Big {
@@ -79,25 +79,25 @@ struct Reorder {
     b10: &'static *const bool,
 }
 
-// A struct that doesn't impl `Copy`, which means it gets the non-simple
+// A struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[derive(Clone)]
 struct NonCopy(u32);
 
-// A packed struct that doesn't impl `Copy`, which means it gets the non-simple
+// A packed struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[derive(Clone)]
 #[repr(packed)]
 struct PackedNonCopy(u32);
 
-// A struct that impls `Copy` manually, which means it gets the non-simple
+// A struct that impls `Copy` manually, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[derive(Clone)]
 struct ManualCopy(u32);
 impl Copy for ManualCopy {}
 
 // A packed struct that impls `Copy` manually, which means it gets the
-// non-simple `clone` implemention that clones the fields individually.
+// non-trivial `clone` implemention that clones the fields individually.
 #[derive(Clone)]
 #[repr(packed)]
 struct PackedManualCopy(u32);
@@ -218,3 +218,20 @@ pub union Union {
     pub u: u32,
     pub i: i32,
 }
+
+#[derive(Copy, Clone)]
+struct FooCopyClone(i32);
+
+#[derive(Clone, Copy)]
+struct FooCloneCopy(i32);
+
+#[derive(Copy)]
+#[derive(Clone)]
+struct FooCopyAndClone(i32);
+
+// FIXME(#124794): the previous three structs all have a trivial `Copy`-aware
+// `clone`. But this one doesn't because when the `clone` is generated the
+// `derive(Copy)` hasn't yet been seen.
+#[derive(Clone)]
+#[derive(Copy)]
+struct FooCloneAndCopy(i32);

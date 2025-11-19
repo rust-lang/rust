@@ -40,7 +40,7 @@ use tracing::{debug, instrument};
 use crate::callee::{self, DeferredCallResolution};
 use crate::errors::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
-use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, rvalue_scopes};
+use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
@@ -604,13 +604,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.normalize(span, field.ty(self.tcx, args))
     }
 
-    pub(crate) fn resolve_rvalue_scopes(&self, def_id: DefId) {
-        let scope_tree = self.tcx.region_scope_tree(def_id);
-        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, scope_tree, def_id) };
-        let mut typeck_results = self.typeck_results.borrow_mut();
-        typeck_results.rvalue_scopes = rvalue_scopes;
-    }
-
     /// Drain all obligations that are stalled on coroutines defined in this body.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn drain_stalled_coroutine_obligations(&self) {
@@ -1094,11 +1087,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span: path_span,
                     name: self.tcx.item_name(def.did()).to_ident_string(),
                 });
+                let item = match self
+                    .tcx
+                    .hir_node_by_def_id(self.tcx.hir_get_parent_item(hir_id).def_id)
+                {
+                    hir::Node::Item(item) => Some(errors::InnerItem {
+                        span: item.kind.ident().map(|i| i.span).unwrap_or(item.span),
+                    }),
+                    _ => None,
+                };
                 if ty.raw.has_param() {
                     let guar = self.dcx().emit_err(errors::SelfCtorFromOuterItem {
                         span: path_span,
                         impl_span: tcx.def_span(impl_def_id),
                         sugg,
+                        item,
                     });
                     return (Ty::new_error(self.tcx, guar), res);
                 } else {
@@ -1109,6 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         errors::SelfCtorFromOuterItemLint {
                             impl_span: tcx.def_span(impl_def_id),
                             sugg,
+                            item,
                         },
                     );
                 }

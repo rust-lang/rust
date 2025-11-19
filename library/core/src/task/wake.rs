@@ -584,6 +584,28 @@ impl Waker {
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
     }
+
+    /// Constructs a `Waker` from a function pointer.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_from_fn_ptr", issue = "148457")]
+    pub const fn from_fn_ptr(f: fn()) -> Self {
+        // SAFETY: Unsafe is used for transmutes, pointer came from `fn()` so it
+        //         is sound to transmute it back to `fn()`.
+        static VTABLE: RawWakerVTable = unsafe {
+            RawWakerVTable::new(
+                |this| RawWaker::new(this, &VTABLE),
+                |this| transmute::<*const (), fn()>(this)(),
+                |this| transmute::<*const (), fn()>(this)(),
+                |_| {},
+            )
+        };
+        let raw = RawWaker::new(f as *const (), &VTABLE);
+
+        // SAFETY: `clone` is just a copy, `drop` is a no-op while `wake` and
+        //         `wake_by_ref` just call the function pointer.
+        unsafe { Self::from_raw(raw) }
+    }
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
@@ -878,6 +900,28 @@ impl LocalWaker {
     #[unstable(feature = "local_waker", issue = "118959")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.waker.vtable
+    }
+
+    /// Constructs a `LocalWaker` from a function pointer.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "waker_from_fn_ptr", issue = "148457")]
+    pub const fn from_fn_ptr(f: fn()) -> Self {
+        // SAFETY: Unsafe is used for transmutes, pointer came from `fn()` so it
+        //         is sound to transmute it back to `fn()`.
+        static VTABLE: RawWakerVTable = unsafe {
+            RawWakerVTable::new(
+                |this| RawWaker::new(this, &VTABLE),
+                |this| transmute::<*const (), fn()>(this)(),
+                |this| transmute::<*const (), fn()>(this)(),
+                |_| {},
+            )
+        };
+        let raw = RawWaker::new(f as *const (), &VTABLE);
+
+        // SAFETY: `clone` is just a copy, `drop` is a no-op while `wake` and
+        //         `wake_by_ref` just call the function pointer.
+        unsafe { Self::from_raw(raw) }
     }
 }
 #[unstable(feature = "local_waker", issue = "118959")]

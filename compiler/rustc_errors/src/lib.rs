@@ -7,8 +7,6 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
@@ -18,7 +16,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -1208,6 +1205,10 @@ impl<'a> DiagCtxtHandle<'a> {
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
+    /// Trigger an ICE if there are any delayed bugs and no hard errors.
+    ///
+    /// This will panic if there are any stashed diagnostics. You can call
+    /// `emit_stashed_diagnostics` to emit those before calling `flush_delayed`.
     pub fn flush_delayed(&self) {
         self.inner.borrow_mut().flush_delayed();
     }

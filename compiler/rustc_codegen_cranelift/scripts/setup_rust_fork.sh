@@ -50,23 +50,24 @@ EOF
 
 cat <<EOF | git apply -
 diff --git a/src/bootstrap/src/core/config/config.rs b/src/bootstrap/src/core/config/config.rs
-index cf4ef4ee310..fe78560fcaf 100644
+index a656927b1f6..44fc5546fac 100644
 --- a/src/bootstrap/src/core/config/config.rs
 +++ b/src/bootstrap/src/core/config/config.rs
-@@ -3138,13 +3138,6 @@ fn parse_download_ci_llvm(
-                     );
-                 }
-
--                if b && self.is_running_on_ci {
--                    // On CI, we must always rebuild LLVM if there were any modifications to it
--                    panic!(
--                        "\`llvm.download-ci-llvm\` cannot be set to \`true\` on CI. Use \`if-unchanged\` instead."
--                    );
--                }
--
-                 // If download-ci-llvm=true we also want to check that CI llvm is available
-                 b && llvm::is_ci_llvm_available_for_target(self, asserts)
+@@ -2249,14 +2249,6 @@ pub fn parse_download_ci_llvm<'a>(
+                 );
              }
+
+-            #[cfg(not(test))]
+-            if b && dwn_ctx.is_running_on_ci && CiEnv::is_rust_lang_managed_ci_job() {
+-                // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
+-                panic!(
+-                    "\`llvm.download-ci-llvm\` cannot be set to \`true\` on CI. Use \`if-unchanged\` instead."
+-                );
+-            }
+-
+             // If download-ci-llvm=true we also want to check that CI llvm is available
+             b && llvm::is_ci_llvm_available_for_target(&dwn_ctx.host_target, asserts)
+         }
 EOF
 
 popd

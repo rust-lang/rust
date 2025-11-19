@@ -79,7 +79,6 @@ cargo_test() {
 
 CORE_ARCH="--manifest-path=crates/core_arch/Cargo.toml"
 STDARCH_EXAMPLES="--manifest-path=examples/Cargo.toml"
-INTRINSIC_TEST="--manifest-path=crates/intrinsic-test/Cargo.toml"
 
 cargo_test "${CORE_ARCH} ${PROFILE}"
 
@@ -130,59 +129,9 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+altivec"
         cargo_test "${PROFILE}"
         ;;
-
-    # Setup aarch64 & armv7 specific variables, the runner, along with some
-    # tests to skip
-    aarch64-unknown-linux-gnu*)
-        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/aarch64-linux-gnu/include/ -I/usr/aarch64-linux-gnu/include/c++/9/aarch64-linux-gnu/"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++"
-        TEST_RUNNER="${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_RUNNER}"
-        ;;
-
-    aarch64_be-unknown-linux-gnu*)
-        TEST_CPPFLAGS="-fuse-ld=lld"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_aarch64.txt
-        TEST_CXX_COMPILER="clang++"
-        TEST_RUNNER="${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_RUNNER}"
-        ;;
-
-    armv7-unknown-linux-gnueabihf*)
-        TEST_CPPFLAGS="-fuse-ld=lld -I/usr/arm-linux-gnueabihf/include/ -I/usr/arm-linux-gnueabihf/include/c++/9/arm-linux-gnueabihf/"
-        TEST_SKIP_INTRINSICS=crates/intrinsic-test/missing_arm.txt
-        TEST_CXX_COMPILER="clang++"
-        TEST_RUNNER="${CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_RUNNER}"
-        ;;
     *)
         ;;
 
-esac
-
-# Arm specific
-case "${TARGET}" in
-    aarch64-unknown-linux-gnu*|armv7-unknown-linux-gnueabihf*)
-        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=warn \
-            cargo run "${INTRINSIC_TEST}" "${PROFILE}" \
-            --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
-            --runner "${TEST_RUNNER}" \
-            --cppcompiler "${TEST_CXX_COMPILER}" \
-            --skip "${TEST_SKIP_INTRINSICS}" \
-            --target "${TARGET}"
-        ;;
-
-    aarch64_be-unknown-linux-gnu*)
-        CPPFLAGS="${TEST_CPPFLAGS}" RUSTFLAGS="${HOST_RUSTFLAGS}" RUST_LOG=warn \
-            cargo run "${INTRINSIC_TEST}" "${PROFILE}"  \
-            --bin intrinsic-test -- intrinsics_data/arm_intrinsics.json \
-            --runner "${TEST_RUNNER}" \
-            --cppcompiler "${TEST_CXX_COMPILER}" \
-            --skip "${TEST_SKIP_INTRINSICS}" \
-            --target "${TARGET}" \
-            --linker "${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_LINKER}" \
-            --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}"
-        ;;
-     *)
-        ;;
 esac
 
 if [ "$NORUN" != "1" ] && [ "$NOSTD" != 1 ]; then

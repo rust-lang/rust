@@ -1,5 +1,4 @@
 #![allow(rustc::symbol_intern_string_literal)]
-
 use std::assert_matches::assert_matches;
 use std::io::prelude::*;
 use std::iter::Peekable;
@@ -12,6 +11,7 @@ use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{self as ast, PatKind, visit};
 use rustc_ast_pretty::pprust::item_to_string;
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::translation::Translator;
 use rustc_errors::{AutoStream, DiagCtxt, MultiSpan, PResult};
@@ -43,12 +43,22 @@ fn create_test_handler(theme: OutputTheme) -> (DiagCtxt, Arc<SourceMap>, Arc<Mut
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let translator = Translator::with_fallback_bundle(vec![crate::DEFAULT_LOCALE_RESOURCE], false);
-    let mut emitter =
-        HumanEmitter::new(AutoStream::never(Box::new(Shared { data: output.clone() })), translator)
-            .sm(Some(source_map.clone()))
-            .diagnostic_width(Some(140));
-    emitter = emitter.theme(theme);
-    let dcx = DiagCtxt::new(Box::new(emitter));
+    let shared: Box<dyn Write + Send> = Box::new(Shared { data: output.clone() });
+    let auto_stream = AutoStream::never(shared);
+    let dcx = DiagCtxt::new(match theme {
+        OutputTheme::Ascii => Box::new(
+            HumanEmitter::new(auto_stream, translator)
+                .sm(Some(source_map.clone()))
+                .diagnostic_width(Some(140))
+                .theme(theme),
+        ),
+        OutputTheme::Unicode => Box::new(
+            AnnotateSnippetEmitter::new(auto_stream, translator)
+                .sm(Some(source_map.clone()))
+                .diagnostic_width(Some(140))
+                .theme(theme),
+        ),
+    });
     (dcx, source_map, output)
 }
 

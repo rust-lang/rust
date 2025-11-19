@@ -3,8 +3,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Func<T> {
+const trait Func<T> {
     type Output;
 
     fn call_once(self, arg: T) -> Self::Output;

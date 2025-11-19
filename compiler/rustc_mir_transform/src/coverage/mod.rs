@@ -9,6 +9,7 @@ use crate::coverage::mappings::ExtractedMappings;
 
 mod counters;
 mod expansion;
+mod from_mir;
 mod graph;
 mod hir_info;
 mod mappings;

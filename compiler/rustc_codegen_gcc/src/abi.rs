@@ -12,6 +12,8 @@ use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
+#[cfg(feature = "master")]
+use rustc_target::spec::Arch;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -88,7 +90,7 @@ impl GccType for Reg {
                 64 => cx.type_f64(),
                 _ => bug!("unsupported float: {:?}", self),
             },
-            RegKind::Vector => unimplemented!(), //cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
         }
     }
 }
@@ -238,7 +240,7 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 }
 
 #[cfg(feature = "master")]
-pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &str) -> Option<FnAttribute<'gcc>> {
+pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttribute<'gcc>> {
     let attribute = match conv {
         CanonAbi::C | CanonAbi::Rust => return None,
         CanonAbi::RustCold => FnAttribute::Cold,
@@ -251,15 +253,11 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &str) -> Option<FnAttrib
             ArmCall::CCmseNonSecureEntry => FnAttribute::ArmCmseNonsecureEntry,
             ArmCall::Aapcs => FnAttribute::ArmPcs("aapcs"),
         },
-        CanonAbi::GpuKernel => {
-            if arch == "amdgpu" {
-                FnAttribute::GcnAmdGpuHsaKernel
-            } else if arch == "nvptx64" {
-                FnAttribute::NvptxKernel
-            } else {
-                panic!("Architecture {} does not support GpuKernel calling convention", arch);
-            }
-        }
+        CanonAbi::GpuKernel => match arch {
+            &Arch::AmdGpu => FnAttribute::GcnAmdGpuHsaKernel,
+            &Arch::Nvptx64 => FnAttribute::NvptxKernel,
+            arch => panic!("Arch {arch} does not support GpuKernel calling convention"),
+        },
         // TODO(antoyo): check if those AVR attributes are mapped correctly.
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
             InterruptKind::Avr => FnAttribute::AvrSignal,

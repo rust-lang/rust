@@ -6,7 +6,7 @@ name: Post merge analysis
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   analysis:

@@ -249,6 +249,43 @@ jobs:
       env:
         TARGET: ${{ matrix.target.tuple }}
 
+  intrinsic-test:
+    needs: [style]
+    name: Intrinsic Test
+    runs-on: ubuntu-latest 
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-gnu
+          - aarch64_be-unknown-linux-gnu
+          - armv7-unknown-linux-gnueabihf
+          - arm-unknown-linux-gnueabihf
+          - x86_64-unknown-linux-gnu
+        profile: [dev, release]
+        include:
+          - target: aarch64_be-unknown-linux-gnu
+            build_std: true
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
+    - run: rustup target add ${{ matrix.target }}
+      if: ${{ (matrix.build_std || false) == false }}
+    - run: |
+        rustup component add rust-src
+        echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
+      if: ${{ matrix.build_std }}
+
+    # Configure some env vars based on matrix configuration
+    - run: echo "PROFILE=--profile=${{ matrix.profile }}" >> $GITHUB_ENV
+    - run: ./ci/intrinsic-test-docker.sh ${{ matrix.target }}
+      if: ${{ !startsWith(matrix.target, 'thumb') }}
+      env:
+        TARGET: ${{ matrix.target }}
+
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
     needs: [style]
@@ -276,6 +313,7 @@ jobs:
       - docs
       - verify
       - test
+      - intrinsic-test
       - check-stdarch-gen
     runs-on: ubuntu-latest
     # We need to ensure this job does *not* get skipped if its dependencies fail,

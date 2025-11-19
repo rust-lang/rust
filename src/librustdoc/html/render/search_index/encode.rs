@@ -78,16 +78,9 @@ pub fn read_postings_from_string(postings: &mut Vec<Vec<u32>>, mut buf: &[u8]) {
     while let Some(&c) = buf.get(0) {
         if c < 0x3a {
             buf = &buf[1..];
-            let mut slot = Vec::new();
-            for _ in 0..c {
-                slot.push(
-                    (buf[0] as u32)
-                        | ((buf[1] as u32) << 8)
-                        | ((buf[2] as u32) << 16)
-                        | ((buf[3] as u32) << 24),
-                );
-                buf = &buf[4..];
-            }
+            let buf = buf.split_off(..usize::from(c) * size_of::<u32>()).unwrap();
+            let (chunks, _) = buf.as_chunks();
+            let slot = chunks.iter().copied().map(u32::from_le_bytes).collect();
             postings.push(slot);
         } else {
             let (bitmap, consumed_bytes_len) =

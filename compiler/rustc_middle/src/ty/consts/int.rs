@@ -39,6 +39,15 @@ pub enum AtomicOrdering {
     SeqCst = 4,
 }
 
+/// An enum to represent the compiler-side view of `intrinsics::simd::SimdAlign`.
+#[derive(Debug, Copy, Clone)]
+pub enum SimdAlign {
+    // These values must match `intrinsics::simd::SimdAlign`!
+    Unaligned = 0,
+    Element = 1,
+    Vector = 2,
+}
+
 impl std::fmt::Debug for ConstInt {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { int, signed, is_ptr_sized_integral } = *self;
@@ -347,6 +356,21 @@ impl ScalarInt {
             SeqCst
         } else {
             panic!("not a valid atomic ordering")
+        }
+    }
+
+    #[inline]
+    pub fn to_simd_alignment(self) -> SimdAlign {
+        use SimdAlign::*;
+        let val = self.to_u32();
+        if val == Unaligned as u32 {
+            Unaligned
+        } else if val == Element as u32 {
+            Element
+        } else if val == Vector as u32 {
+            Vector
+        } else {
+            panic!("not a valid simd alignment")
         }
     }
 

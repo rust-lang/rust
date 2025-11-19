@@ -4,6 +4,11 @@ error[E0015]: cannot call non-const function `invalid` in constants
 LL |         invalid();
    |         ^^^^^^^^^
    |
+note: function `invalid` is not const
+  --> $DIR/issue-32829-2.rs:68:1
+   |
+LL | fn invalid() {}
+   | ^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const function `invalid` in statics
@@ -12,6 +17,11 @@ error[E0015]: cannot call non-const function `invalid` in statics
 LL |         invalid();
    |         ^^^^^^^^^
    |
+note: function `invalid` is not const
+  --> $DIR/issue-32829-2.rs:68:1
+   |
+LL | fn invalid() {}
+   | ^^^^^^^^^^^^
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 
@@ -21,6 +31,11 @@ error[E0015]: cannot call non-const function `invalid` in statics
 LL |         invalid();
    |         ^^^^^^^^^
    |
+note: function `invalid` is not const
+  --> $DIR/issue-32829-2.rs:68:1
+   |
+LL | fn invalid() {}
+   | ^^^^^^^^^^^^
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 

@@ -648,9 +648,10 @@ impl Pat {
             PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
-            PatKind::Ref(pat, mutbl) => {
-                pat.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
-            }
+            PatKind::Ref(pat, pinned, mutbl) => pat.to_ty().map(|ty| match pinned {
+                Pinnedness::Not => TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }),
+                Pinnedness::Pinned => TyKind::PinnedRef(None, MutTy { ty, mutbl: *mutbl }),
+            })?,
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
             PatKind::Slice(pats) if let [pat] = pats.as_slice() => {
@@ -696,7 +697,7 @@ impl Pat {
             // Trivial wrappers over inner patterns.
             PatKind::Box(s)
             | PatKind::Deref(s)
-            | PatKind::Ref(s, _)
+            | PatKind::Ref(s, _, _)
             | PatKind::Paren(s)
             | PatKind::Guard(s, _) => s.walk(it),
 
@@ -712,6 +713,15 @@ impl Pat {
             | PatKind::MacCall(_)
             | PatKind::Err(_) => {}
         }
+    }
+
+    /// Strip off all reference patterns (`&`, `&mut`) and return the inner pattern.
+    pub fn peel_refs(&self) -> &Pat {
+        let mut current = self;
+        while let PatKind::Ref(inner, _, _) = &current.kind {
+            current = inner;
+        }
+        current
     }
 
     /// Is this a `..` pattern?
@@ -756,7 +766,9 @@ impl Pat {
             PatKind::Missing => unreachable!(),
             PatKind::Wild => Some("_".to_string()),
             PatKind::Ident(BindingMode::NONE, ident, None) => Some(format!("{ident}")),
-            PatKind::Ref(pat, mutbl) => pat.descr().map(|d| format!("&{}{d}", mutbl.prefix_str())),
+            PatKind::Ref(pat, pinned, mutbl) => {
+                pat.descr().map(|d| format!("&{}{d}", pinned.prefix_str(*mutbl)))
+            }
             _ => None,
         }
     }
@@ -904,7 +916,7 @@ pub enum PatKind {
     Deref(Box<Pat>),
 
     /// A reference pattern (e.g., `&mut (a, b)`).
-    Ref(Box<Pat>, Mutability),
+    Ref(Box<Pat>, Pinnedness, Mutability),
 
     /// A literal, const block or path.
     Expr(Box<Expr>),
@@ -3687,6 +3699,7 @@ pub struct TyAlias {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Impl {
     pub generics: Generics,
+    pub constness: Const,
     pub of_trait: Option<Box<TraitImplHeader>>,
     pub self_ty: Box<Ty>,
     pub items: ThinVec<Box<AssocItem>>,
@@ -3696,7 +3709,6 @@ pub struct Impl {
 pub struct TraitImplHeader {
     pub defaultness: Defaultness,
     pub safety: Safety,
-    pub constness: Const,
     pub polarity: ImplPolarity,
     pub trait_ref: TraitRef,
 }
@@ -3759,8 +3771,27 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub expr: Option<Box<Expr>>,
+    pub rhs: Option<ConstItemRhs>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum ConstItemRhs {
+    TypeConst(AnonConst),
+    Body(Box<Expr>),
+}
+
+impl ConstItemRhs {
+    pub fn span(&self) -> Span {
+        self.expr().span
+    }
+
+    pub fn expr(&self) -> &Expr {
+        match self {
+            ConstItemRhs::TypeConst(anon_const) => &anon_const.value,
+            ConstItemRhs::Body(expr) => expr,
+        }
+    }
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
@@ -4072,9 +4103,9 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 64);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 72);
+    static_assert_size!(Impl, 80);
+    static_assert_size!(Item, 152);
+    static_assert_size!(ItemKind, 88);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
@@ -4085,7 +4116,7 @@ mod size_asserts {
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 80);
+    static_assert_size!(TraitImplHeader, 72);
     static_assert_size!(Ty, 64);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end

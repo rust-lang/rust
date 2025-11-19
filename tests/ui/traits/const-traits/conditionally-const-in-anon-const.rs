@@ -1,8 +1,7 @@
 #![feature(const_trait_impl, impl_trait_in_bindings)]
 
 struct S;
-#[const_trait]
-trait Trait<const N: u32> {}
+const trait Trait<const N: u32> {}
 
 impl const Trait<0> for () {}
 

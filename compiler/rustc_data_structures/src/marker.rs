@@ -53,13 +53,13 @@ impl !DynSend for std::env::VarsOs {}
 
 macro_rules! already_send {
     ($([$ty: ty])*) => {
-        $(unsafe impl DynSend for $ty where $ty: Send {})*
+        $(unsafe impl DynSend for $ty where Self: Send {})*
     };
 }
 
 // These structures are already `Send`.
 already_send!(
-    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File]
+    [std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr][std::io::Error][std::fs::File][std::panic::Location<'_>]
         [rustc_arena::DroplessArena][jobserver_crate::Client][jobserver_crate::HelperThread]
         [crate::memmap::Mmap][crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );
@@ -127,14 +127,14 @@ impl !DynSync for std::env::VarsOs {}
 
 macro_rules! already_sync {
     ($([$ty: ty])*) => {
-        $(unsafe impl DynSync for $ty where $ty: Sync {})*
+        $(unsafe impl DynSync for $ty where Self: Sync {})*
     };
 }
 
 // These structures are already `Sync`.
 already_sync!(
     [std::sync::atomic::AtomicBool][std::sync::atomic::AtomicUsize][std::sync::atomic::AtomicU8]
-        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File]
+        [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File][std::panic::Location<'_>]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
         [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
 );

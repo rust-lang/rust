@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, cvs};
+use crate::spec::{
+    Abi, Arch, Cc, Env, LinkerFlavor, Lld, Os, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(
@@ -55,10 +57,10 @@ pub(crate) fn target() -> Target {
         "TEXT_SIZE",
     ];
     let opts = TargetOptions {
-        os: "unknown".into(),
-        env: "sgx".into(),
+        os: Os::Unknown,
+        env: Env::Sgx,
         vendor: "fortanix".into(),
-        abi: "fortanix".into(),
+        abi: Abi::Fortanix,
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         max_atomic_width: Some(64),
@@ -83,7 +85,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: "x86_64".into(),
+        arch: Arch::X86_64,
         options: opts,
     }
 }

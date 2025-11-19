@@ -171,7 +171,7 @@ impl GlobalAsmConfig {
 pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
     cgu_name: &str,
-    global_asm: &str,
+    global_asm: String,
     invocation_temp: Option<&str>,
 ) -> Result<Option<PathBuf>, String> {
     if global_asm.is_empty() {
@@ -205,6 +205,9 @@ pub(crate) fn compile_global_asm(
             return Err(format!("Failed to assemble `{}`", global_asm));
         }
     } else {
+        // Escape { and }
+        let global_asm = global_asm.replace('{', "{{").replace('}', "}}");
+
         let mut child = Command::new(std::env::current_exe().unwrap())
             // Avoid a warning about the jobserver fd not being passed
             .env_remove("CARGO_MAKEFLAGS")

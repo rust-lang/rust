@@ -52,18 +52,6 @@ fn show_version() {
     println!();
 }
 
-fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut Command) {
-    cmd.arg("--extern"); // always forward flag, but adjust filename:
-    let path = args.next().expect("`--extern` should be followed by a filename");
-    if let Some(lib) = path.strip_suffix(".rlib") {
-        // If this is an rlib, make it an rmeta.
-        cmd.arg(format!("{lib}.rmeta"));
-    } else {
-        // Some other extern file (e.g. a `.so`). Forward unchanged.
-        cmd.arg(path);
-    }
-}
-
 pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // Require a subcommand before any flags.
     // We cannot know which of those flags take arguments and which do not,
@@ -276,7 +264,7 @@ pub enum RustcPhase {
     Rustdoc,
 }
 
-pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
+pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
     /// Determines if we are being invoked (as rustc) to build a crate for
     /// the "target" architecture, in contrast to the "host" architecture.
     /// Host crates are for build scripts and proc macros and still need to
@@ -444,7 +432,6 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     }
 
     let mut cmd = miri();
-    let mut emit_link_hack = false;
     // Arguments are treated very differently depending on whether this crate is
     // for interpretation by Miri, or for use by a build script / proc macro.
     if target_crate {
@@ -455,7 +442,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         }
 
         // Forward arguments, but patched.
-        let emit_flag = "--emit";
+
         // This hack helps bootstrap run standard library tests in Miri. The issue is as follows:
         // when running `cargo miri test` on libcore, cargo builds a local copy of core and makes it
         // a dependency of the integration test crate. This copy duplicates all the lang items, so
@@ -471,30 +458,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
         let replace_librs = env::var_os("MIRI_REPLACE_LIBRS_IF_NOT_TEST").is_some()
             && !runnable_crate
             && phase == RustcPhase::Build;
-        while let Some(arg) = args.next() {
-            // Patch `--emit`: remove "link" from "--emit" to make this a check-only build.
-            if let Some(val) = arg.strip_prefix(emit_flag) {
-                // Patch this argument. First, extract its value.
-                let val =
-                    val.strip_prefix('=').expect("`cargo` should pass `--emit=X` as one argument");
-                let mut val: Vec<_> = val.split(',').collect();
-                // Now make sure "link" is not in there, but "metadata" is.
-                if let Some(i) = val.iter().position(|&s| s == "link") {
-                    emit_link_hack = true;
-                    val.remove(i);
-                    if !val.contains(&"metadata") {
-                        val.push("metadata");
-                    }
-                }
-                cmd.arg(format!("{emit_flag}={}", val.join(",")));
-                continue;
-            }
-            // Patch `--extern` filenames, since Cargo sometimes passes stub `.rlib` files:
-            // https://github.com/rust-lang/miri/issues/1705
-            if arg == "--extern" {
-                forward_patched_extern_arg(&mut args, &mut cmd);
-                continue;
-            }
+        for arg in args {
             // If the REPLACE_LIBRS hack is enabled and we are building a `lib.rs` file, and a
             // `lib.miri.rs` file exists, then build that instead.
             if replace_librs {
@@ -541,17 +505,6 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
     // Run it.
     if verbose > 0 {
         eprintln!("[cargo-miri rustc] target_crate={target_crate} runnable_crate={runnable_crate}");
-    }
-
-    // Create a stub .rlib file if "link" was requested by cargo.
-    // This is necessary to prevent cargo from doing rebuilds all the time.
-    if emit_link_hack {
-        for filename in out_filenames() {
-            if verbose > 0 {
-                eprintln!("[cargo-miri rustc] creating fake lib file at `{}`", filename.display());
-            }
-            File::create(filename).expect("failed to create fake lib file");
-        }
     }
 
     debug_cmd("[cargo-miri rustc]", verbose, &cmd);
@@ -624,17 +577,11 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
         cmd.arg("--sysroot").arg(env::var_os("MIRI_SYSROOT").unwrap());
     }
     // Forward rustc arguments.
-    // We need to patch "--extern" filenames because we forced a check-only
-    // build without cargo knowing about that: replace `.rlib` suffix by
-    // `.rmeta`.
-    // We also need to remove `--error-format` as cargo specifies that to be JSON,
+    // We need to remove `--error-format` as cargo specifies that to be JSON,
     // but when we run here, cargo does not interpret the JSON any more. `--json`
     // then also needs to be dropped.
-    let mut args = info.args.iter();
-    while let Some(arg) = args.next() {
-        if arg == "--extern" {
-            forward_patched_extern_arg(&mut (&mut args).cloned(), &mut cmd);
-        } else if let Some(suffix) = arg.strip_prefix("--error-format") {
+    for arg in &info.args {
+        if let Some(suffix) = arg.strip_prefix("--error-format") {
             assert!(suffix.starts_with('='));
             // Drop this argument.
         } else if let Some(suffix) = arg.strip_prefix("--json") {
@@ -668,7 +615,7 @@ pub fn phase_runner(mut binary_args: impl Iterator<Item = String>, phase: Runner
     }
 }
 
-pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
+pub fn phase_rustdoc(args: impl Iterator<Item = String>) {
     let verbose = env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
 
@@ -676,15 +623,7 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     // of the old value into MIRI_ORIG_RUSTDOC. So that's what we have to invoke now.
     let rustdoc = env::var("MIRI_ORIG_RUSTDOC").unwrap_or("rustdoc".to_string());
     let mut cmd = Command::new(rustdoc);
-
-    while let Some(arg) = args.next() {
-        if arg == "--extern" {
-            // Patch --extern arguments to use *.rmeta files, since phase_cargo_rustc only creates stub *.rlib files.
-            forward_patched_extern_arg(&mut args, &mut cmd);
-        } else {
-            cmd.arg(arg);
-        }
-    }
+    cmd.args(args);
 
     // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
     // so we are not able to run them in Miri.

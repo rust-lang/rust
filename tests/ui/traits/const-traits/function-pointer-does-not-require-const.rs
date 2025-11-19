@@ -1,8 +1,7 @@
 //@ check-pass
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait Test {}
+pub const trait Test {}
 
 impl Test for () {}
 

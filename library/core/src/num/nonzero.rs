@@ -1,7 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use super::{IntErrorKind, ParseIntError};
-use crate::clone::UseCloned;
+use crate::clone::{TrivialClone, UseCloned};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Destruct, Freeze, StructuralPartialEq};
@@ -198,6 +198,10 @@ impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -660,12 +664,15 @@ macro_rules! nonzero_integer {
                         without modifying the original"]
             #[inline(always)]
             pub const fn isolate_highest_one(self) -> Self {
-                let n = self.get() & (((1 as $Int) << (<$Int>::BITS - 1)).wrapping_shr(self.leading_zeros()));
-
                 // SAFETY:
                 // `self` is non-zero, so masking to preserve only the most
                 // significant set bit will result in a non-zero `n`.
-                unsafe { NonZero::new_unchecked(n) }
+                // and self.leading_zeros() is always < $INT::BITS since
+                // at least one of the bits in the number is not zero
+                unsafe {
+                    let bit = (((1 as $Uint) << (<$Uint>::BITS - 1)).unchecked_shr(self.leading_zeros()));
+                    NonZero::new_unchecked(bit as $Int)
+                }
             }
 
             /// Returns `self` with only the least significant bit set.
@@ -708,9 +715,9 @@ macro_rules! nonzero_integer {
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1)?.highest_one(), 0);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x10)?.highest_one(), 4);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1f)?.highest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.highest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_0000)?.highest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_1111)?.highest_one(), 4);")]
             /// # Some(())
             /// # }
             /// ```
@@ -732,9 +739,9 @@ macro_rules! nonzero_integer {
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1)?.lowest_one(), 0);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x10)?.lowest_one(), 4);")]
-            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0x1f)?.lowest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.lowest_one(), 0);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_0000)?.lowest_one(), 4);")]
+            #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1_1111)?.lowest_one(), 0);")]
             /// # Some(())
             /// # }
             /// ```

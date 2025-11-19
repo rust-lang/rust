@@ -11,7 +11,7 @@ pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
 use either::Either;
 use polonius_engine::Atom;
 use rustc_abi::{FieldIdx, VariantIdx};
-pub use rustc_ast::Mutability;
+pub use rustc_ast::{Mutability, Pinnedness};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
@@ -649,7 +649,9 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => Some((tcx.sess.ub_checks() as u128, targets)),
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind)) => {
+                Some((kind.value(tcx.sess) as u128, targets))
+            }
             Rvalue::Use(Operand::Constant(constant)) => {
                 let bits = eval_mono_const(constant)?;
                 Some((bits, targets))

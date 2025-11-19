@@ -5,7 +5,7 @@ use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{higher, peel_blocks_with_stmt};
+use clippy_utils::{as_some_expr, higher, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
@@ -33,8 +33,7 @@ pub(super) fn check<'tcx>(
         && let [stmt] = block.stmts
         && let StmtKind::Semi(semi) = stmt.kind
         && let ExprKind::Ret(Some(ret_value)) = semi.kind
-        && let ExprKind::Call(ctor, [inner_ret]) = ret_value.kind
-        && ctor.res(cx).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+        && let Some(inner_ret) = as_some_expr(cx, ret_value)
         && inner_ret.res_local_id() == Some(binding_id)
         && !contains_return_break_continue_macro(cond)
         && let Some((last_stmt, last_ret)) = last_stmt_and_ret(cx, expr)
@@ -43,7 +42,7 @@ pub(super) fn check<'tcx>(
         let mut snippet = make_iterator_snippet(cx, arg, &mut applicability);
         // Checks if `pat` is a single reference to a binding (`&x`)
         let is_ref_to_binding =
-            matches!(pat.kind, PatKind::Ref(inner, _) if matches!(inner.kind, PatKind::Binding(..)));
+            matches!(pat.kind, PatKind::Ref(inner, _, _) if matches!(inner.kind, PatKind::Binding(..)));
         // If `pat` is not a binding or a reference to a binding (`x` or `&x`)
         // we need to map it to the binding returned by the function (i.e. `.map(|(x, _)| x)`)
         if !(matches!(pat.kind, PatKind::Binding(..)) || is_ref_to_binding) {

@@ -20,7 +20,7 @@ The detailed documentation for the `std::autodiff` module is available at [std::
 Differentiable programming is used in various fields like numerical computing, [solid mechanics][ratel], [computational chemistry][molpipx], [fluid dynamics][waterlily] or for Neural Network training via Backpropagation, [ODE solver][diffsol], [differentiable rendering][libigl], [quantum computing][catalyst], and climate simulations.
 
 [ratel]: https://gitlab.com/micromorph/ratel
-[molpipx]: https://arxiv.org/abs/2411.17011v
+[molpipx]: https://arxiv.org/abs/2411.17011
 [waterlily]: https://github.com/WaterLily-jl/WaterLily.jl
 [diffsol]: https://github.com/martinjrobins/diffsol
 [libigl]: https://github.com/alecjacobson/libigl-enzyme-example?tab=readme-ov-file#run

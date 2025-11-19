@@ -41,4 +41,7 @@ fn bar() {
     foo_const(x);
 }
 
+fn patterns<'a>(&pin mut x: Pin<&'_ mut i32>, &pin const y: Pin<&'a i32>,
+    ref pin mut z: i32, ref pin const w: i32) { }
+
 fn main() { }

@@ -42,8 +42,8 @@ pub fn is_zero_array(data: &[u8; 4]) -> bool {
 // equality for non-byte types also just emit a `bcmp`, not a loop.
 
 // CHECK-LABEL: @eq_slice_of_nested_u8(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
-// CHECK-SAME: [[USIZE]] noundef %y.1
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef range({{.+}}) %x.1
+// CHECK-SAME: [[USIZE]] noundef range({{.+}}) %y.1
 #[no_mangle]
 fn eq_slice_of_nested_u8(x: &[[u8; 3]], y: &[[u8; 3]]) -> bool {
     // CHECK: icmp eq [[USIZE]] %x.1, %y.1
@@ -54,8 +54,8 @@ fn eq_slice_of_nested_u8(x: &[[u8; 3]], y: &[[u8; 3]]) -> bool {
 }
 
 // CHECK-LABEL: @eq_slice_of_i32(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
-// CHECK-SAME: [[USIZE]] noundef %y.1
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef range({{.+}}) %x.1
+// CHECK-SAME: [[USIZE]] noundef range({{.+}}) %y.1
 #[no_mangle]
 fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
     // CHECK: icmp eq [[USIZE]] %x.1, %y.1
@@ -66,8 +66,8 @@ fn eq_slice_of_i32(x: &[i32], y: &[i32]) -> bool {
 }
 
 // CHECK-LABEL: @eq_slice_of_nonzero(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
-// CHECK-SAME: [[USIZE]] noundef %y.1
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef range({{.+}}) %x.1
+// CHECK-SAME: [[USIZE]] noundef range({{.+}}) %y.1
 #[no_mangle]
 fn eq_slice_of_nonzero(x: &[NonZero<i32>], y: &[NonZero<i32>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %x.1, %y.1
@@ -78,8 +78,8 @@ fn eq_slice_of_nonzero(x: &[NonZero<i32>], y: &[NonZero<i32>]) -> bool {
 }
 
 // CHECK-LABEL: @eq_slice_of_option_of_nonzero(
-// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef %x.1
-// CHECK-SAME: [[USIZE]] noundef %y.1
+// CHECK-SAME: [[USIZE:i16|i32|i64]] noundef range({{.+}}) %x.1
+// CHECK-SAME: [[USIZE]] noundef range({{.+}}) %y.1
 #[no_mangle]
 fn eq_slice_of_option_of_nonzero(x: &[Option<NonZero<i16>>], y: &[Option<NonZero<i16>>]) -> bool {
     // CHECK: icmp eq [[USIZE]] %x.1, %y.1

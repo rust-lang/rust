@@ -284,14 +284,12 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Deref { ref subpattern }
-            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::No } => {
-                if cfg!(debug_assertions) && matches!(pattern.kind, PatKind::DerefPattern { .. }) {
-                    // Only deref patterns on boxes can be lowered using a built-in deref.
-                    debug_assert!(pattern.ty.is_box());
-                }
-
+            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) }
+                if let Some(ref_ty) = pattern.ty.pinned_ty()
+                    && ref_ty.is_ref() =>
+            {
                 MatchPairTree::for_pattern(
-                    place_builder.deref(),
+                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
                     subpattern,
                     cx,
                     &mut subpairs,
@@ -300,12 +298,14 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(Pinnedness::Pinned, _) } => {
-                let Some(ref_ty) = pattern.ty.pinned_ty() else {
-                    rustc_middle::bug!("RefPin pattern on non-`Pin` type {:?}", pattern.ty);
-                };
+            PatKind::DerefPattern { borrow: ByRef::Yes(Pinnedness::Pinned, _), .. } => {
+                rustc_middle::bug!("RefPin pattern on non-`Pin` type {:?}", pattern.ty)
+            }
+
+            PatKind::Deref { ref subpattern }
+            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::No } => {
                 MatchPairTree::for_pattern(
-                    place_builder.field(FieldIdx::ZERO, ref_ty).deref(),
+                    place_builder.deref(),
                     subpattern,
                     cx,
                     &mut subpairs,

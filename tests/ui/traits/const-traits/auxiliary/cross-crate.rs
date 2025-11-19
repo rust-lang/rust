@@ -1,8 +1,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait MyTrait {
+pub const trait MyTrait {
     fn defaulted_func(&self) {}
     fn func(self);
 }

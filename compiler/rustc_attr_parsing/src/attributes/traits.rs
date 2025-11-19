@@ -66,7 +66,8 @@ pub(crate) struct TypeConstParser;
 impl<S: Stage> NoArgsAttributeParser<S> for TypeConstParser {
     const PATH: &[Symbol] = &[sym::type_const];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::AssocConst)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Const), Allow(Target::AssocConst)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TypeConst;
 }
 
@@ -99,17 +100,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for DoNotImplementViaObjectParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::DoNotImplementViaObject;
-}
-
-// FIXME(const_trait_impl): remove this
-// Const traits
-
-pub(crate) struct ConstTraitParser;
-impl<S: Stage> NoArgsAttributeParser<S> for ConstTraitParser {
-    const PATH: &[Symbol] = &[sym::const_trait];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::ConstTrait;
 }
 
 // Specialization

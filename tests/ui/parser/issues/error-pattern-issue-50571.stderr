@@ -4,7 +4,6 @@ error: expected `;` or `]`, found `,`
 LL |     fn foo([a, b]: [i32; 2]) {}
    |              ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
 LL -     fn foo([a, b]: [i32; 2]) {}

@@ -71,7 +71,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.foreigns.iter().map(|(item, renamed, import_id)| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed, *import_id);
         if let Some(name) = item.name
-            && (cx.render_options.document_hidden || !item.is_doc_hidden())
+            && (cx.document_hidden() || !item.is_doc_hidden())
         {
             inserted.insert((item.type_(), name));
         }
@@ -82,7 +82,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
             return None;
         }
         let item = clean_doc_module(x, cx);
-        if !cx.render_options.document_hidden && item.is_doc_hidden() {
+        if !cx.document_hidden() && item.is_doc_hidden() {
             // Hidden modules are stripped at a later stage.
             // If a hidden module has the same name as a visible one, we want
             // to keep both of them around.
@@ -104,7 +104,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         let v = clean_maybe_renamed_item(cx, item, *renamed, import_ids);
         for item in &v {
             if let Some(name) = item.name
-                && (cx.render_options.document_hidden || !item.is_doc_hidden())
+                && (cx.document_hidden() || !item.is_doc_hidden())
             {
                 inserted.insert((item.type_(), name));
             }
@@ -203,7 +203,7 @@ fn generate_item_with_correct_attrs(
                     .get_word_attr(sym::inline)
                     .is_some()
                     || (is_glob_import(cx.tcx, import_id)
-                        && (cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id)));
+                        && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -306,16 +306,23 @@ pub(crate) fn clean_precise_capturing_arg(
     }
 }
 
-pub(crate) fn clean_const<'tcx>(
-    constant: &hir::ConstArg<'tcx>,
-    _cx: &mut DocContext<'tcx>,
+pub(crate) fn clean_const_item_rhs<'tcx>(
+    ct_rhs: hir::ConstItemRhs<'tcx>,
+    parent: DefId,
 ) -> ConstantKind {
+    match ct_rhs {
+        hir::ConstItemRhs::Body(body) => ConstantKind::Local { def_id: parent, body },
+        hir::ConstItemRhs::TypeConst(ct) => clean_const(ct),
+    }
+}
+
+pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind {
     match &constant.kind {
         hir::ConstArgKind::Path(qpath) => {
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
         hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
-        hir::ConstArgKind::Infer(..) => ConstantKind::Infer,
+        hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => ConstantKind::Infer,
     }
 }
 
@@ -1194,7 +1201,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Const(ty, Some(default)) => {
                 ProvidedAssocConstItem(Box::new(Constant {
                     generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                    kind: ConstantKind::Local { def_id: local_did, body: default },
+                    kind: clean_const_item_rhs(default, local_did),
                     type_: clean_ty(ty, cx),
                 }))
             }
@@ -1244,7 +1251,7 @@ pub(crate) fn clean_impl_item<'tcx>(
         let inner = match impl_.kind {
             hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
-                kind: ConstantKind::Local { def_id: local_did, body: expr },
+                kind: clean_const_item_rhs(expr, local_did),
                 type_: clean_ty(ty, cx),
             })),
             hir::ImplItemKind::Fn(ref sig, body) => {
@@ -1581,9 +1588,9 @@ fn first_non_private<'tcx>(
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
                             continue;
                         }
-                        if (cx.render_options.document_hidden ||
+                        if (cx.document_hidden() ||
                             !cx.tcx.is_doc_hidden(use_def_id)) &&
-                            // We never check for "cx.render_options.document_private"
+                            // We never check for "cx.document_private()"
                             // because if a re-export is not fully public, it's never
                             // documented.
                             cx.tcx.local_visibility(local_use_def_id).is_public()
@@ -1799,7 +1806,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             // results in an ICE while manually constructing the constant and using `eval`
             // does nothing for `ConstKind::Param`.
             let length = match const_arg.kind {
-                hir::ConstArgKind::Infer(..) => "_".to_string(),
+                hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => "_".to_string(),
                 hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
                     let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
@@ -2516,7 +2523,7 @@ fn clean_generic_args<'tcx>(
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
                     hir::GenericArg::Const(ct) => {
-                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
+                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct())))
                     }
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })
@@ -2627,7 +2634,7 @@ fn get_all_import_attributes<'hir>(
             attrs = import_attrs.iter().map(|attr| (Cow::Borrowed(attr), Some(def_id))).collect();
             first = false;
         // We don't add attributes of an intermediate re-export if it has `#[doc(hidden)]`.
-        } else if cx.render_options.document_hidden || !cx.tcx.is_doc_hidden(def_id) {
+        } else if cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id) {
             add_without_unwanted_attributes(&mut attrs, import_attrs, is_inline, Some(def_id));
         }
     }
@@ -2785,10 +2792,10 @@ fn clean_maybe_renamed_item<'tcx>(
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(_, generics, ty, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, generics, ty, rhs) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
-                kind: ConstantKind::Local { body: body_id, def_id },
+                kind: clean_const_item_rhs(rhs, def_id),
             })),
             ItemKind::TyAlias(_, generics, ty) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
@@ -3068,8 +3075,7 @@ fn clean_use_statement_inner<'tcx>(
     // #[doc(no_inline)] attribute is present.
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
     let mut denied = cx.is_json_output()
-        || !(visibility.is_public()
-            || (cx.render_options.document_private && is_visible_from_parent_mod))
+        || !(visibility.is_public() || (cx.document_private() && is_visible_from_parent_mod))
         || pub_underscore
         || attrs.iter().any(|a| {
             a.has_name(sym::doc)

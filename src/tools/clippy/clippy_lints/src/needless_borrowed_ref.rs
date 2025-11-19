@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Mutability, Node, Pat, PatKind};
+use rustc_hir::{BindingMode, Mutability, Node, Pat, PatKind, Pinnedness};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -37,7 +37,7 @@ declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, ref_pat: &'tcx Pat<'_>) {
-        if let PatKind::Ref(pat, Mutability::Not) = ref_pat.kind
+        if let PatKind::Ref(pat, Pinnedness::Not, Mutability::Not) = ref_pat.kind
             && !ref_pat.span.from_expansion()
             && cx
                 .tcx

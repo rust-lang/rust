@@ -1,4 +1,4 @@
-warning: setting `sanitize` off will have no effect after inlining
+warning: non-default `sanitize` will have no effect after inlining
   --> $DIR/inline-always-sanitize.rs:7:1
    |
 LL | #[sanitize(address = "off")]

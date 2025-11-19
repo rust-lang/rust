@@ -179,6 +179,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             hir::ExprKind::AddrOf(..) => Some("borrow"),
             hir::ExprKind::OffsetOf(..) => Some("`offset_of` call"),
             hir::ExprKind::Unary(..) => Some("unary operation"),
+            // The `offset_of` macro wraps its contents inside a `const` block.
+            hir::ExprKind::ConstBlock(block) => {
+                let body = cx.tcx.hir_body(block.body);
+                if let hir::ExprKind::Block(block, _) = body.value.kind
+                    && let Some(expr) = block.expr
+                    && let hir::ExprKind::OffsetOf(..) = expr.kind
+                {
+                    Some("`offset_of` call")
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 
@@ -1032,19 +1044,22 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(box ast::ConstItem { expr: Some(expr), .. })
-        | Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind
-        {
-            self.check_unused_delims_expr(
-                cx,
-                expr,
-                UnusedDelimsCtx::AssignedValue,
-                false,
-                None,
-                None,
-                false,
-            );
-        }
+        let expr = if let Const(box ast::ConstItem { rhs: Some(rhs), .. }) = &item.kind {
+            rhs.expr()
+        } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
+            expr
+        } else {
+            return;
+        };
+        self.check_unused_delims_expr(
+            cx,
+            expr,
+            UnusedDelimsCtx::AssignedValue,
+            false,
+            None,
+            None,
+            false,
+        );
     }
 }
 
@@ -1304,7 +1319,8 @@ impl EarlyLintPass for UnusedParens {
             Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
+            // FIXME(pin_ergonomics): check pinned patterns
+            Ref(p, _, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
         }
     }
 

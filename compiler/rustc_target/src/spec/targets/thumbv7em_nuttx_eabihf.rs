@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
+use crate::spec::{Abi, Arch, FloatAbi, Os, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -21,12 +21,12 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
-        arch: "arm".into(),
+        arch: Arch::Arm,
 
         options: TargetOptions {
             families: cvs!["unix"],
-            os: "nuttx".into(),
-            abi: "eabihf".into(),
+            os: Os::NuttX,
+            abi: Abi::EabiHf,
             llvm_floatabi: Some(FloatAbi::Hard),
             // vfp4 is the lowest common denominator between the Cortex-M4F (vfp4) and the
             // Cortex-M7 (vfp5).

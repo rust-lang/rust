@@ -1,12 +1,21 @@
 // Regression test for issue #108271.
 // Detect and reject generic params in the type of assoc consts used in an equality bound.
-#![feature(associated_const_equality)]
+#![feature(
+    associated_const_equality,
+    min_generic_const_args,
+    adt_const_params,
+    unsized_const_params,
+)]
+#![allow(incomplete_features)]
 
-trait Trait<'a, T: 'a, const N: usize> {
+use std::marker::ConstParamTy_;
+
+trait Trait<'a, T: 'a + ConstParamTy_, const N: usize> {
+    #[type_const]
     const K: &'a [T; N];
 }
 
-fn take0<'r, A: 'r, const Q: usize>(_: impl Trait<'r, A, Q, K = { loop {} }>) {}
+fn take0<'r, A: 'r + ConstParamTy_, const Q: usize>(_: impl Trait<'r, A, Q, K = { loop {} }>) {}
 //~^ ERROR the type of the associated constant `K` must not depend on generic parameters
 //~| NOTE its type must not depend on the lifetime parameter `'r`
 //~| NOTE the lifetime parameter `'r` is defined here
@@ -20,7 +29,8 @@ fn take0<'r, A: 'r, const Q: usize>(_: impl Trait<'r, A, Q, K = { loop {} }>) {}
 //~| NOTE the const parameter `Q` is defined here
 //~| NOTE `K` has type `&'r [A; Q]`
 
-trait Project {
+trait Project: ConstParamTy_ {
+    #[type_const]
     const SELF: Self;
 }
 
@@ -35,7 +45,7 @@ fn take2<P: Project<SELF = {}>>(_: P) {}
 //~| NOTE the type parameter `P` is defined here
 //~| NOTE `SELF` has type `P`
 
-trait Iface<'r> {
+trait Iface<'r>: ConstParamTy_ {
     //~^ NOTE the lifetime parameter `'r` is defined here
     //~| NOTE the lifetime parameter `'r` is defined here
     type Assoc<const Q: usize>: Trait<'r, Self, Q, K = { loop {} }>

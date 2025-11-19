@@ -1,3 +1,4 @@
+use super::TrivialClone;
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;
 
@@ -49,9 +50,9 @@ unsafe impl<T: Clone> CopySpec for T {
     }
 }
 
-// Specialized implementation for types that are [`Copy`], not just [`Clone`],
+// Specialized implementation for types that are [`TrivialClone`], not just [`Clone`],
 // and can therefore be copied bitwise.
-unsafe impl<T: Copy> CopySpec for T {
+unsafe impl<T: TrivialClone> CopySpec for T {
     #[inline]
     unsafe fn clone_one(src: &Self, dst: *mut Self) {
         // SAFETY: The safety conditions of clone_to_uninit() are a superset of those of

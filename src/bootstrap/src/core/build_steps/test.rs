@@ -29,6 +29,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
+use crate::core::debuggers;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -37,8 +38,6 @@ use crate::utils::helpers::{
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, DocTests, GitRepo, Mode, PathSet, envify};
-
-const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1075,11 +1074,17 @@ impl Step for RustdocJSNotStd {
 
 fn get_browser_ui_test_version_inner(
     builder: &Builder<'_>,
-    npm: &Path,
+    yarn: &Path,
     global: bool,
 ) -> Option<String> {
-    let mut command = command(npm);
-    command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
+    let mut command = command(yarn);
+    command
+        .arg("--cwd")
+        .arg(&builder.build.out)
+        .arg("list")
+        .arg("--parseable")
+        .arg("--long")
+        .arg("--depth=0");
     if global {
         command.arg("--global");
     }
@@ -1090,9 +1095,9 @@ fn get_browser_ui_test_version_inner(
         .map(|v| v.to_owned())
 }
 
-fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<String> {
-    get_browser_ui_test_version_inner(builder, npm, false)
-        .or_else(|| get_browser_ui_test_version_inner(builder, npm, true))
+fn get_browser_ui_test_version(builder: &Builder<'_>, yarn: &Path) -> Option<String> {
+    get_browser_ui_test_version_inner(builder, yarn, false)
+        .or_else(|| get_browser_ui_test_version_inner(builder, yarn, true))
 }
 
 /// Run GUI tests on a given rustdoc.
@@ -1116,7 +1121,7 @@ impl Step for RustdocGUI {
                 && builder.doc_tests != DocTests::Only
                 && builder
                     .config
-                    .npm
+                    .yarn
                     .as_ref()
                     .map(|p| get_browser_ui_test_version(builder, p).is_some())
                     .unwrap_or(false)
@@ -1179,8 +1184,8 @@ impl Step for RustdocGUI {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        if let Some(ref npm) = builder.config.npm {
-            cmd.arg("--npm").arg(npm);
+        if let Some(ref yarn) = builder.config.yarn {
+            cmd.arg("--yarn").arg(yarn);
         }
 
         let _time = helpers::timeit(builder);
@@ -1223,11 +1228,11 @@ impl Step for Tidy {
             8 * std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
         });
         cmd.arg(jobs.to_string());
-        // pass the path to the npm command used for installing js deps.
-        if let Some(npm) = &builder.config.npm {
-            cmd.arg(npm);
+        // pass the path to the yarn command used for installing js deps.
+        if let Some(yarn) = &builder.config.yarn {
+            cmd.arg(yarn);
         } else {
-            cmd.arg("npm");
+            cmd.arg("yarn");
         }
         if builder.is_verbose() {
             cmd.arg("--verbose");
@@ -2076,29 +2081,32 @@ Please disable assertions with `rust.debug-assertions = false`.
             cmd.arg("--target-rustcflags").arg(flag);
         }
 
-        cmd.arg("--python").arg(builder.python());
+        cmd.arg("--python").arg(
+            builder.config.python.as_ref().expect("python is required for running rustdoc tests"),
+        );
 
-        if let Some(ref gdb) = builder.config.gdb {
-            cmd.arg("--gdb").arg(gdb);
+        // FIXME(#148099): Currently we set these Android-related flags in all
+        // modes, even though they should only be needed in "debuginfo" mode,
+        // because the GDB-discovery code in compiletest currently assumes that
+        // `--android-cross-path` is always set for Android targets.
+        if let Some(debuggers::Android { adb_path, adb_test_dir, android_cross_path }) =
+            debuggers::discover_android(builder, target)
+        {
+            cmd.arg("--adb-path").arg(adb_path);
+            cmd.arg("--adb-test-dir").arg(adb_test_dir);
+            cmd.arg("--android-cross-path").arg(android_cross_path);
         }
 
-        let lldb_exe = builder.config.lldb.clone().unwrap_or_else(|| PathBuf::from("lldb"));
-        let lldb_version = command(&lldb_exe)
-            .allow_failure()
-            .arg("--version")
-            .run_capture(builder)
-            .stdout_if_ok()
-            .and_then(|v| if v.trim().is_empty() { None } else { Some(v) });
-        if let Some(ref vers) = lldb_version {
-            cmd.arg("--lldb-version").arg(vers);
-            let lldb_python_dir = command(&lldb_exe)
-                .allow_failure()
-                .arg("-P")
-                .run_capture_stdout(builder)
-                .stdout_if_ok()
-                .map(|p| p.lines().next().expect("lldb Python dir not found").to_string());
-            if let Some(ref dir) = lldb_python_dir {
-                cmd.arg("--lldb-python-dir").arg(dir);
+        if mode == "debuginfo" {
+            if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder) {
+                cmd.arg("--gdb").arg(gdb);
+            }
+
+            if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
+                debuggers::discover_lldb(builder)
+            {
+                cmd.arg("--lldb").arg(lldb_exe);
+                cmd.arg("--lldb-version").arg(lldb_version);
             }
         }
 
@@ -2331,16 +2339,6 @@ Please disable assertions with `rust.debug-assertions = false`.
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.tempdir());
-
-        cmd.arg("--adb-path").arg("adb");
-        cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
-        if target.contains("android") && !builder.config.dry_run() {
-            // Assume that cc for this target comes from the android sysroot
-            cmd.arg("--android-cross-path")
-                .arg(builder.cc(target).parent().unwrap().parent().unwrap());
-        } else {
-            cmd.arg("--android-cross-path").arg("");
-        }
 
         if builder.config.cmd.rustfix_coverage() {
             cmd.arg("--rustfix-coverage");
@@ -3347,6 +3345,44 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
     builder.remove_dir(dir);
 }
 
+/// Runs unit tests in `bootstrap_test.py`, which test the Python parts of bootstrap.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct BootstrapPy;
+
+impl Step for BootstrapPy {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Bootstrap tests might not be perfectly self-contained and can depend
+        // on the environment, so only run them by default in CI, not locally.
+        // See `test::Bootstrap::should_run`.
+        let is_ci = run.builder.config.is_running_on_ci;
+        run.alias("bootstrap-py").default_condition(is_ci)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BootstrapPy)
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let mut check_bootstrap = command(
+            builder.config.python.as_ref().expect("python is required for running bootstrap tests"),
+        );
+        check_bootstrap
+            .args(["-m", "unittest", "bootstrap_test.py"])
+            // Forward command-line args after `--` to unittest, for filtering etc.
+            .args(builder.config.test_args())
+            .env("BUILD_DIR", &builder.out)
+            .env("BUILD_PLATFORM", builder.build.host_target.triple)
+            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
+            .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
+            .current_dir(builder.src.join("src/bootstrap/"));
+        check_bootstrap.delay_failure().run(builder);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bootstrap;
 
@@ -3362,18 +3398,6 @@ impl Step for Bootstrap {
 
         // Some tests require cargo submodule to be present.
         builder.build.require_submodule("src/tools/cargo", None);
-
-        let mut check_bootstrap = command(builder.python());
-        check_bootstrap
-            .args(["-m", "unittest", "bootstrap_test.py"])
-            .env("BUILD_DIR", &builder.out)
-            .env("BUILD_PLATFORM", builder.build.host_target.triple)
-            .env("BOOTSTRAP_TEST_RUSTC_BIN", &builder.initial_rustc)
-            .env("BOOTSTRAP_TEST_CARGO_BIN", &builder.initial_cargo)
-            .current_dir(builder.src.join("src/bootstrap/"));
-        // NOTE: we intentionally don't pass test_args here because the args for unittest and cargo test are mutually incompatible.
-        // Use `python -m unittest` manually if you want to pass arguments.
-        check_bootstrap.delay_failure().run(builder);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -3394,6 +3418,13 @@ impl Step for Bootstrap {
             // Needed for insta to correctly write pending snapshots to the right directories.
             .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
+
+        if builder.config.cmd.bless() {
+            // Tell `insta` to automatically bless any failing `.snap` files.
+            // Unlike compiletest blessing, the tests might still report failure.
+            // Does not bless inline snapshots.
+            cargo.env("INSTA_UPDATE", "always");
+        }
 
         run_cargo_test(cargo, &[], &[], None, host, builder);
     }

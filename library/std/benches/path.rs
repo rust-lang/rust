@@ -56,6 +56,30 @@ fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
 }
 
 #[bench]
+fn bench_path_components_iter(b: &mut test::Bencher) {
+    let p = Path::new("/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/");
+
+    b.iter(|| {
+        for c in black_box(p).components() {
+            black_box(c);
+        }
+    })
+}
+
+#[bench]
+fn bench_path_file_name(b: &mut test::Bencher) {
+    let p1 = Path::new("foo.bar");
+    let p2 = Path::new("foo/bar");
+    let p3 = Path::new("/bar");
+
+    b.iter(|| {
+        black_box(black_box(p1).file_name());
+        black_box(black_box(p2).file_name());
+        black_box(black_box(p3).file_name());
+    })
+}
+
+#[bench]
 #[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_path_hashset(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";

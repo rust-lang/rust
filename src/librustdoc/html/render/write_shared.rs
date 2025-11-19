@@ -44,6 +44,7 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
+use crate::html::format::{print_impl, print_path};
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
@@ -605,7 +606,7 @@ impl TypeAliasPart {
                                 .inner_impl()
                                 .trait_
                                 .as_ref()
-                                .map(|trait_| format!("{:#}", trait_.print(cx)));
+                                .map(|trait_| format!("{:#}", print_path(trait_, cx)));
                             ret = Some(AliasSerializableImpl {
                                 text,
                                 trait_,
@@ -704,7 +705,7 @@ impl TraitAliasPart {
                         None
                     } else {
                         Some(Implementor {
-                            text: imp.inner_impl().print(false, cx).to_string(),
+                            text: print_impl(imp.inner_impl(), false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
                             types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                         })

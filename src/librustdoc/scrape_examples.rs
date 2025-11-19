@@ -273,6 +273,7 @@ pub(crate) fn run(
     bin_crate: bool,
 ) {
     let inner = move || -> Result<(), String> {
+        let emit_dep_info = renderopts.dep_info().is_some();
         // Generates source files for examples
         renderopts.no_emit_shared = true;
         let (cx, _) = Context::init(krate, renderopts, cache, tcx, Default::default())
@@ -319,6 +320,10 @@ pub(crate) fn run(
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
         calls.encode(&mut encoder);
         encoder.finish().map_err(|(_path, e)| e.to_string())?;
+
+        if emit_dep_info {
+            rustc_interface::passes::write_dep_info(tcx);
+        }
 
         Ok(())
     };

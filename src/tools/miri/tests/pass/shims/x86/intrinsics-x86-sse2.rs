@@ -54,7 +54,7 @@ unsafe fn test_sse2() {
     }
 
     fn test_mm_pause() {
-        unsafe { _mm_pause() }
+        _mm_pause()
     }
     test_mm_pause();
 

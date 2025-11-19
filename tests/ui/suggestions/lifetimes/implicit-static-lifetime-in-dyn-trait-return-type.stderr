@@ -1,0 +1,53 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/implicit-static-lifetime-in-dyn-trait-return-type.rs:13:33
+   |
+LL | fn cc<R>(r: R) -> Box<dyn Foo + '_> {
+   |                                 ^^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
+   |
+LL - fn cc<R>(r: R) -> Box<dyn Foo + '_> {
+LL + fn cc<R>(r: R) -> Box<dyn Foo + 'static> {
+   |
+help: instead, you are more likely to want to change the argument to be borrowed
+   |
+LL | fn cc<R>(r: &R) -> Box<dyn Foo + '_> {
+   |             +
+
+error[E0310]: the parameter type `R` may not live long enough
+  --> $DIR/implicit-static-lifetime-in-dyn-trait-return-type.rs:10:5
+   |
+LL | fn bb<R>(r: R) -> Box<dyn Foo> {
+   |                       ------- this `dyn Trait` has an implicit `'static` lifetime bound
+LL |     Box::new(Bar(r))
+   |     ^^^^^^^^^^^^^^^^
+   |     |
+   |     the parameter type `R` must be valid for the static lifetime...
+   |     ...so that the type `R` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn bb<R: 'static>(r: R) -> Box<dyn Foo> {
+   |        +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implicit-static-lifetime-in-dyn-trait-return-type.rs:27:9
+   |
+LL |     fn baz(self) -> Box<dyn Baz> {
+   |                         ------- this `dyn Trait` has an implicit `'static` lifetime bound
+LL |         Box::new(Bazzzz(self.0))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         the parameter type `T` must be valid for the static lifetime...
+   |         ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | impl<T: 'static> Qux<T> {
+   |       +++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0106, E0310.
+For more information about an error, try `rustc --explain E0106`.

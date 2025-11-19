@@ -37,7 +37,9 @@ impl Step for BuildManifest {
     fn run(self, builder: &Builder<'_>) {
         // This gets called by `promote-release`
         // (https://github.com/rust-lang/promote-release).
-        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
+        let mut cmd = command(
+            builder.ensure(tool::BuildManifest::new(builder, builder.config.host_target)).tool_path,
+        );
         let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.sign-folder` in `bootstrap.toml`\n\n")
         });
@@ -374,7 +376,6 @@ impl Step for UnicodeTableGenerator {
     fn run(self, builder: &Builder<'_>) {
         let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
         cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
-        cmd.arg(builder.src.join("library/coretests/tests/unicode/test_data.rs"));
         cmd.run(builder);
     }
 }

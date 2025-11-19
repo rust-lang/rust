@@ -2,8 +2,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait MyTrait {
+const trait MyTrait {
     fn do_something(&self);
 }
 

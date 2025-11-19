@@ -89,3 +89,13 @@ extern "cmse-nonsecure-entry" fn identity_impl_trait_nested(
     //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
     v
 }
+
+const extern "cmse-nonsecure-entry" fn const_fn_works(x: u8) -> u8 {
+    x
+}
+
+const CONST: u8 = const_fn_works(0);
+
+fn fn_ptr_works(f: extern "cmse-nonsecure-entry" fn(_: u8) -> u8) -> u8 {
+    f(0)
+}

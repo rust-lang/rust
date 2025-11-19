@@ -1,8 +1,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-pub trait Plus {
+pub const trait Plus {
     fn plus(self, rhs: Self) -> Self;
 }
 

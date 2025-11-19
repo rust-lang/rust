@@ -3,12 +3,9 @@
 //! by `rustc_ast_lowering`.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_is_partitioned)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 pub mod ast_validation;

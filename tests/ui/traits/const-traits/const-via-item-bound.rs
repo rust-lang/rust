@@ -5,8 +5,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Bar {}
+const trait Bar {}
 
 trait Baz: const Bar {}
 

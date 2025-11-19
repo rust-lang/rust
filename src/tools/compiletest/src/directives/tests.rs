@@ -1,13 +1,30 @@
+use std::collections::BTreeSet;
+
 use camino::Utf8Path;
 use semver::Version;
 
 use crate::common::{Config, Debugger, TestMode};
 use crate::directives::{
-    AuxProps, DirectivesCache, EarlyProps, Edition, EditionRange, FileDirectives,
-    extract_llvm_version, extract_version_range, iter_directives, line_directive, parse_edition,
-    parse_normalize_rule,
+    self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
+    line_directive, parse_edition, parse_normalize_rule,
 };
 use crate::executor::{CollectedTestDesc, ShouldFail};
+
+/// All directive handlers should have a name that is also in `KNOWN_DIRECTIVE_NAMES_SET`.
+#[test]
+fn handler_names() {
+    let unknown_names = DIRECTIVE_HANDLERS_MAP
+        .keys()
+        .copied()
+        .filter(|name| !KNOWN_DIRECTIVE_NAMES_SET.contains(name))
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive handler names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
 
 fn make_test_description(
     config: &Config,
@@ -691,20 +708,16 @@ fn pointer_width() {
 #[test]
 fn wasm_special() {
     let ignores = [
-        ("wasm32-unknown-unknown", "emscripten", true),
+        ("wasm32-unknown-unknown", "emscripten", false),
         ("wasm32-unknown-unknown", "wasm32", true),
-        ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
-        ("wasm32-unknown-emscripten", "wasm32-bare", false),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
-        ("wasm32-wasip1", "wasm32-bare", false),
         ("wasm32-wasip1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
-        ("wasm64-unknown-unknown", "wasm32-bare", false),
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
     for (target, pattern, ignore) in ignores {
@@ -712,8 +725,13 @@ fn wasm_special() {
         assert_eq!(
             check_ignore(&config, &format!("//@ ignore-{pattern}")),
             ignore,
-            "{target} {pattern}"
+            "target `{target}` vs `//@ ignore-{pattern}`"
         );
+        assert_eq!(
+            check_ignore(&config, &format!("//@ only-{pattern}")),
+            !ignore,
+            "target `{target}` vs `//@ only-{pattern}`"
+        )
     }
 }
 
@@ -749,6 +767,29 @@ fn ignore_coverage() {
 }
 
 #[test]
+fn only_ignore_elf() {
+    let cases = &[
+        ("aarch64-apple-darwin", false),
+        ("aarch64-unknown-linux-gnu", true),
+        ("powerpc64-ibm-aix", false),
+        ("wasm32-unknown-unknown", false),
+        ("wasm32-wasip1", false),
+        ("x86_64-apple-darwin", false),
+        ("x86_64-pc-windows-msvc", false),
+        ("x86_64-unknown-freebsd", true),
+        ("x86_64-unknown-illumos", true),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-unknown-none", true),
+        ("x86_64-unknown-uefi", false),
+    ];
+    for &(target, is_elf) in cases {
+        let config = &cfg().target(target).build();
+        assert_eq!(is_elf, check_ignore(config, "//@ ignore-elf"), "`//@ ignore-elf` for {target}");
+        assert_eq!(is_elf, !check_ignore(config, "//@ only-elf"), "`//@ only-elf` for {target}");
+    }
+}
+
+#[test]
 fn threads_support() {
     let threads = [
         ("x86_64-unknown-linux-gnu", true),
@@ -767,7 +808,10 @@ fn threads_support() {
 
 fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
-    iter_directives(TestMode::Ui, poisoned, &file_directives, &mut |_| {});
+    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
+    if result.is_err() {
+        *poisoned = true;
+    }
 }
 
 #[test]

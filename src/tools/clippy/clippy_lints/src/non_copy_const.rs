@@ -18,7 +18,7 @@
 // definitely contains interior mutability.
 
 use clippy_config::Conf;
-use clippy_utils::consts::{ConstEvalCtxt, Constant};
+use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;
@@ -28,7 +28,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, StructTailExpr, TraitItem, TraitItemKind, UnOp,
+    ConstArgKind, ConstItemRhs, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, Node, StructTailExpr,
+    TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
@@ -272,6 +273,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
     /// Checks if a value of the given type is `Freeze`, or may be depending on the value.
     fn is_ty_freeze(&mut self, tcx: TyCtxt<'tcx>, typing_env: TypingEnv<'tcx>, ty: Ty<'tcx>) -> IsFreeze {
+        // FIXME: this should probably be using the trait solver
         let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
         match self.freeze_tys.entry(ty) {
             Entry::Occupied(e) => *e.get(),
@@ -695,7 +697,7 @@ impl<'tcx> NonCopyConst<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Const(ident, .., body_id) = item.kind
+        if let ItemKind::Const(ident, .., ct_rhs) = item.kind
             && !ident.is_special()
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
@@ -703,13 +705,14 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 IsFreeze::Yes => false,
                 IsFreeze::Maybe => match cx.tcx.const_eval_poly(item.owner_id.to_def_id()) {
                     Ok(val) if let Ok(is_freeze) = self.is_value_freeze(cx.tcx, cx.typing_env(), ty, val) => !is_freeze,
-                    _ => !self.is_init_expr_freeze(
+                    // FIXME: we just assume mgca rhs's are freeze
+                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| !self.is_init_expr_freeze(
                         cx.tcx,
                         cx.typing_env(),
                         cx.tcx.typeck(item.owner_id),
                         GenericArgs::identity_for_item(cx.tcx, item.owner_id),
-                        cx.tcx.hir_body(body_id).value,
-                    ),
+                        e
+                    )),
                 },
             }
             && !item.span.in_external_macro(cx.sess().source_map())
@@ -736,22 +739,25 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
-        if let TraitItemKind::Const(_, body_id_opt) = item.kind
+        if let TraitItemKind::Const(_, ct_rhs_opt) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
-                IsFreeze::Maybe if let Some(body_id) = body_id_opt => {
+                IsFreeze::Maybe if let Some(ct_rhs) = ct_rhs_opt => {
                     match cx.tcx.const_eval_poly(item.owner_id.to_def_id()) {
                         Ok(val) if let Ok(is_freeze) = self.is_value_freeze(cx.tcx, cx.typing_env(), ty, val) => {
                             !is_freeze
                         },
-                        _ => !self.is_init_expr_freeze(
-                            cx.tcx,
-                            cx.typing_env(),
-                            cx.tcx.typeck(item.owner_id),
-                            GenericArgs::identity_for_item(cx.tcx, item.owner_id),
-                            cx.tcx.hir_body(body_id).value,
-                        ),
+                        // FIXME: we just assume mgca rhs's are freeze
+                        _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| {
+                            !self.is_init_expr_freeze(
+                                cx.tcx,
+                                cx.typing_env(),
+                                cx.tcx.typeck(item.owner_id),
+                                GenericArgs::identity_for_item(cx.tcx, item.owner_id),
+                                e,
+                            )
+                        }),
                     }
                 },
                 IsFreeze::Yes | IsFreeze::Maybe => false,
@@ -768,7 +774,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Const(_, body_id) = item.kind
+        if let ImplItemKind::Const(_, ct_rhs) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::Yes => false,
@@ -799,13 +805,16 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 // interior mutability.
                 IsFreeze::Maybe => match cx.tcx.const_eval_poly(item.owner_id.to_def_id()) {
                     Ok(val) if let Ok(is_freeze) = self.is_value_freeze(cx.tcx, cx.typing_env(), ty, val) => !is_freeze,
-                    _ => !self.is_init_expr_freeze(
-                        cx.tcx,
-                        cx.typing_env(),
-                        cx.tcx.typeck(item.owner_id),
-                        GenericArgs::identity_for_item(cx.tcx, item.owner_id),
-                        cx.tcx.hir_body(body_id).value,
-                    ),
+                    // FIXME: we just assume mgca rhs's are freeze
+                    _ => const_item_rhs_to_expr(cx.tcx, ct_rhs).is_some_and(|e| {
+                        !self.is_init_expr_freeze(
+                            cx.tcx,
+                            cx.typing_env(),
+                            cx.tcx.typeck(item.owner_id),
+                            GenericArgs::identity_for_item(cx.tcx, item.owner_id),
+                            e,
+                        )
+                    }),
                 },
             }
             && !item.span.in_external_macro(cx.sess().source_map())
@@ -913,20 +922,26 @@ fn get_const_hir_value<'tcx>(
     args: GenericArgsRef<'tcx>,
 ) -> Option<(&'tcx TypeckResults<'tcx>, &'tcx Expr<'tcx>)> {
     let did = did.as_local()?;
-    let (did, body_id) = match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
-        Node::Item(item) if let ItemKind::Const(.., body_id) = item.kind => (did, body_id),
-        Node::ImplItem(item) if let ImplItemKind::Const(.., body_id) = item.kind => (did, body_id),
+    let (did, ct_rhs) = match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
+        Node::Item(item) if let ItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
+        Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
         Node::TraitItem(_)
             if let Ok(Some(inst)) = Instance::try_resolve(tcx, typing_env, did.into(), args)
                 && let Some(did) = inst.def_id().as_local() =>
         {
             match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {
-                Node::ImplItem(item) if let ImplItemKind::Const(.., body_id) = item.kind => (did, body_id),
-                Node::TraitItem(item) if let TraitItemKind::Const(.., Some(body_id)) = item.kind => (did, body_id),
+                Node::ImplItem(item) if let ImplItemKind::Const(.., ct_rhs) = item.kind => (did, ct_rhs),
+                Node::TraitItem(item) if let TraitItemKind::Const(.., Some(ct_rhs)) = item.kind => (did, ct_rhs),
                 _ => return None,
             }
         },
         _ => return None,
     };
-    Some((tcx.typeck(did), tcx.hir_body(body_id).value))
+    match ct_rhs {
+        ConstItemRhs::Body(body_id) => Some((tcx.typeck(did), tcx.hir_body(body_id).value)),
+        ConstItemRhs::TypeConst(ct_arg) => match ct_arg.kind {
+            ConstArgKind::Anon(anon_const) => Some((tcx.typeck(did), tcx.hir_body(anon_const.body).value)),
+            _ => None,
+        },
+    }
 }

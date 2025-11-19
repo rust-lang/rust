@@ -18,7 +18,6 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_session::Session;
 use rustc_span::Span;
 
-use super::RvalueScopes;
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
 use crate::mir::FakeReadCause;
@@ -198,11 +197,6 @@ pub struct TypeckResults<'tcx> {
     /// issue by fake reading `t`.
     pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, HirId)>>,
 
-    /// Tracks the rvalue scoping rules which defines finer scoping for rvalue expressions
-    /// by applying extended parameter rules.
-    /// Details may be found in `rustc_hir_analysis::check::rvalue_scopes`.
-    pub rvalue_scopes: RvalueScopes,
-
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
@@ -227,7 +221,7 @@ pub struct TypeckResults<'tcx> {
     pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
 
     /// Container types and field indices of `offset_of!` expressions
-    offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
+    offset_of_data: ItemLocalMap<Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -254,7 +248,6 @@ impl<'tcx> TypeckResults<'tcx> {
             hidden_types: Default::default(),
             closure_min_captures: Default::default(),
             closure_fake_reads: Default::default(),
-            rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
             potentially_region_dependent_goals: Default::default(),
             closure_size_eval: Default::default(),
@@ -560,15 +553,13 @@ impl<'tcx> TypeckResults<'tcx> {
         &self.coercion_casts
     }
 
-    pub fn offset_of_data(
-        &self,
-    ) -> LocalTableInContext<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
+    pub fn offset_of_data(&self) -> LocalTableInContext<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.offset_of_data }
     }
 
     pub fn offset_of_data_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
+    ) -> LocalTableInContextMut<'_, Vec<(Ty<'tcx>, VariantIdx, FieldIdx)>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
     }
 }

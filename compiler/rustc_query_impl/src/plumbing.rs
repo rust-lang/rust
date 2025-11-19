@@ -88,17 +88,25 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    /// Returns a query map representing active query jobs.
-    /// It returns an incomplete map as an error if it fails
-    /// to take locks.
+    /// Returns a map of currently active query jobs.
+    ///
+    /// If `require_complete` is `true`, this function locks all shards of the
+    /// query results to produce a complete map, which always returns `Ok`.
+    /// Otherwise, it may return an incomplete map as an error if any shard
+    /// lock cannot be acquired.
+    ///
+    /// Prefer passing `false` to `require_complete` to avoid potential deadlocks,
+    /// especially when called from within a deadlock handler, unless a
+    /// complete map is needed and no deadlock is possible at this call site.
     fn collect_active_jobs(
         self,
+        require_complete: bool,
     ) -> Result<QueryMap<QueryStackDeferred<'tcx>>, QueryMap<QueryStackDeferred<'tcx>>> {
         let mut jobs = QueryMap::default();
         let mut complete = true;
 
-        for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
-            if collect(self.tcx, &mut jobs).is_none() {
+        for collect in super::COLLECT_ACTIVE_JOBS.iter() {
+            if collect(self.tcx, &mut jobs, require_complete).is_none() {
                 complete = false;
             }
         }
@@ -163,11 +171,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     }
 
     fn depth_limit_error(self, job: QueryJobId) {
-        // FIXME: `collect_active_jobs` expects no locks to be held, which doesn't hold for this call.
-        let query_map = match self.collect_active_jobs() {
-            Ok(query_map) => query_map,
-            Err(query_map) => query_map,
-        };
+        let query_map = self.collect_active_jobs(true).expect("failed to collect active queries");
         let (info, depth) = job.find_dep_kind_root(query_map);
 
         let suggested_limit = match self.recursion_limit() {
@@ -731,19 +735,21 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn try_collect_active_jobs<'tcx>(
+            pub(crate) fn collect_active_jobs<'tcx>(
                 tcx: TyCtxt<'tcx>,
                 qmap: &mut QueryMap<QueryStackDeferred<'tcx>>,
+                require_complete: bool,
             ) -> Option<()> {
                 let make_query = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
                     $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                 };
-                let res = tcx.query_system.states.$name.try_collect_active_jobs(
+                let res = tcx.query_system.states.$name.collect_active_jobs(
                     tcx,
                     make_query,
                     qmap,
+                    require_complete,
                 );
                 // this can be called during unwinding, and the function has a `try_`-prefix, so
                 // don't `unwrap()` here, just manually check for `None` and do best-effort error
@@ -814,10 +820,10 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const TRY_COLLECT_ACTIVE_JOBS: &[
-            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<QueryStackDeferred<'tcx>>) -> Option<()>
+        const COLLECT_ACTIVE_JOBS: &[
+            for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap<QueryStackDeferred<'tcx>>, bool) -> Option<()>
         ] =
-            &[$(query_impl::$name::try_collect_active_jobs),*];
+            &[$(query_impl::$name::collect_active_jobs),*];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[
             for<'tcx> fn(TyCtxt<'tcx>, &mut QueryKeyStringCache)

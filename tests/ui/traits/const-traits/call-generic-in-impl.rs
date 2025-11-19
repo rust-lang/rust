@@ -1,8 +1,7 @@
 //@ check-pass
 #![feature(const_trait_impl, const_cmp)]
 
-#[const_trait]
-trait MyPartialEq {
+const trait MyPartialEq {
     fn eq(&self, other: &Self) -> bool;
 }
 

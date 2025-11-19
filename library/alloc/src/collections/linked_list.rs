@@ -1943,7 +1943,8 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
 
 /// An iterator produced by calling `extract_if` on LinkedList.
 #[stable(feature = "extract_if", since = "1.87.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `extract_if().for_each(drop)` to remove and discard elements"]
 pub struct ExtractIf<
     'a,
     T: 'a,

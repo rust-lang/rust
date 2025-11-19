@@ -217,6 +217,7 @@ pub struct Config {
     pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
+    pub rust_annotate_moves_size_limit: Option<u64>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
@@ -271,7 +272,7 @@ pub struct Config {
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
-    pub npm: Option<PathBuf>,
+    pub yarn: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
@@ -462,6 +463,8 @@ impl Config {
             gdb: build_gdb,
             lldb: build_lldb,
             nodejs: build_nodejs,
+
+            yarn: build_yarn,
             npm: build_npm,
             python: build_python,
             windows_rc: build_windows_rc,
@@ -559,6 +562,7 @@ impl Config {
             control_flow_guard: rust_control_flow_guard,
             ehcont_guard: rust_ehcont_guard,
             new_symbol_mangling: rust_new_symbol_mangling,
+            annotate_moves_size_limit: rust_annotate_moves_size_limit,
             profile_generate: rust_profile_generate,
             profile_use: rust_profile_use,
             download_rustc: rust_download_rustc,
@@ -829,6 +833,12 @@ impl Config {
                 read_file_by_commit(&dwn_ctx, &rust_info, Path::new("src/ci/channel"), commit)
                     .trim()
                     .to_owned();
+        }
+
+        if build_npm.is_some() {
+            println!(
+                "WARNING: `build.npm` set in bootstrap.toml, this option no longer has any effect. . Use `build.yarn` instead to provide a path to a `yarn` binary."
+            );
         }
 
         let mut lld_enabled = rust_lld_enabled.unwrap_or(false);
@@ -1382,7 +1392,6 @@ impl Config {
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
-            npm: build_npm.map(PathBuf::from),
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
@@ -1398,6 +1407,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_annotate_moves_size_limit,
             rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
@@ -1468,6 +1478,7 @@ impl Config {
             vendor,
             verbose_tests,
             windows_rc: build_windows_rc.map(PathBuf::from),
+            yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end
         }
     }

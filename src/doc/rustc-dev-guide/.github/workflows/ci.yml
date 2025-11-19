@@ -82,3 +82,9 @@ jobs:
           git add .
           git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
           git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
+
+      - name: Check if files comply with semantic line breaks
+        continue-on-error: true
+        run: |
+          # using split_inclusive that uses regex feature that uses an unstable feature
+          RUSTC_BOOTSTRAP=1 cargo run --manifest-path ci/sembr/Cargo.toml src

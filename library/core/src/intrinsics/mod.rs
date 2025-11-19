@@ -56,7 +56,7 @@
 
 use crate::ffi::va_list::{VaArgSafe, VaListImpl};
 use crate::marker::{ConstParamTy, Destruct, DiscriminantKind, PointeeSized, Tuple};
-use crate::ptr;
+use crate::{mem, ptr};
 
 mod bounds;
 pub mod fallback;
@@ -622,7 +622,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// // Crucially, we `as`-cast to a raw pointer before `transmute`ing to a function pointer.
 /// // This avoids an integer-to-pointer `transmute`, which can be problematic.
 /// // Transmuting between raw pointers and function pointers (i.e., two pointer types) is fine.
-/// let pointer = foo as *const ();
+/// let pointer = foo as fn() -> i32 as *const ();
 /// let function = unsafe {
 ///     std::mem::transmute::<*const (), fn() -> i32>(pointer)
 /// };
@@ -769,13 +769,9 @@ pub const fn forget<T: ?Sized>(_: T);
 /// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
 /// // this has all the same caveats. Besides the information provided above, also consult the
 /// // [`from_raw_parts`] documentation.
+/// let (ptr, len, capacity) = v_clone.into_raw_parts();
 /// let v_from_raw = unsafe {
-// FIXME Update this when vec_into_raw_parts is stabilized
-///     // Ensure the original vector is not dropped.
-///     let mut v_clone = std::mem::ManuallyDrop::new(v_clone);
-///     Vec::from_raw_parts(v_clone.as_mut_ptr() as *mut Option<&i32>,
-///                         v_clone.len(),
-///                         v_clone.capacity())
+///     Vec::from_raw_parts(ptr.cast::<*mut Option<&i32>>(), len, capacity)
 /// };
 /// ```
 ///
@@ -2017,7 +2013,14 @@ pub const unsafe fn unchecked_mul<T: Copy>(x: T, y: T) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
+#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn rotate_left<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
+    // Make sure to call the intrinsic for `funnel_shl`, not the fallback impl.
+    // SAFETY: we modulo `shift` so that the result is definitely less than the size of
+    // `T` in bits.
+    unsafe { unchecked_funnel_shl(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+}
 
 /// Performs rotate right.
 ///
@@ -2032,7 +2035,14 @@ pub const fn rotate_left<T: Copy>(x: T, shift: u32) -> T;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn rotate_right<T: Copy>(x: T, shift: u32) -> T;
+#[rustc_allow_const_fn_unstable(const_trait_impl, funnel_shifts)]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> T {
+    // Make sure to call the intrinsic for `funnel_shr`, not the fallback impl.
+    // SAFETY: we modulo `shift` so that the result is definitely less than the size of
+    // `T` in bits.
+    unsafe { unchecked_funnel_shr(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+}
 
 /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
 ///
@@ -2589,6 +2599,24 @@ pub const fn ub_checks() -> bool {
     cfg!(ub_checks)
 }
 
+/// Returns whether we should perform some overflow-checking at runtime. This eventually evaluates to
+/// `cfg!(overflow_checks)`, but behaves different from `cfg!` when mixing crates built with different
+/// flags: if the crate has overflow checks enabled or carries the `#[rustc_inherit_overflow_checks]`
+/// attribute, evaluation is delayed until monomorphization (or until the call gets inlined into
+/// a crate that does not delay evaluation further); otherwise it can happen any time.
+///
+/// The common case here is a user program built with overflow_checks linked against the distributed
+/// sysroot which is built without overflow_checks but with `#[rustc_inherit_overflow_checks]`.
+/// For code that gets monomorphized in the user crate (i.e., generic functions and functions with
+/// `#[inline]`), gating assertions on `overflow_checks()` rather than `cfg!(overflow_checks)` means that
+/// assertions are enabled whenever the *user crate* has overflow checks enabled. However if the
+/// user has overflow checks disabled, the checks will still get optimized out.
+#[inline(always)]
+#[rustc_intrinsic]
+pub const fn overflow_checks() -> bool {
+    cfg!(debug_assertions)
+}
+
 /// Allocates a block of memory at compile time.
 /// At runtime, just returns a null pointer.
 ///
@@ -2762,6 +2790,26 @@ pub const fn size_of<T>() -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn align_of<T>() -> usize;
+
+/// The offset of a field inside a type.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic can only be evaluated at compile-time, and should only appear in
+/// constants or inline const blocks.
+///
+/// The stabilized version of this intrinsic is [`core::mem::offset_of`].
+/// This intrinsic is also a lang item so `offset_of!` can desugar to calls to it.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_intrinsic]
+#[lang = "offset_of"]
+pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.

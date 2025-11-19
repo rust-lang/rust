@@ -610,20 +610,35 @@ pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedIdentifier,
 }
 
+/// A description of a thing that can be parsed using an attribute parser.
+#[derive(Copy, Clone)]
+pub enum ParsedDescription {
+    /// Used when parsing attributes.
+    Attribute,
+    /// Used when parsing some macros, such as the `cfg!()` macro.
+    Macro,
+}
+
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
     pub(crate) attr_span: Span,
     pub(crate) template: AttributeTemplate,
-    pub(crate) attribute: AttrPath,
+    pub(crate) path: AttrPath,
+    pub(crate) description: ParsedDescription,
     pub(crate) reason: AttributeParseErrorReason<'a>,
     pub(crate) suggestions: Vec<String>,
 }
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let name = self.attribute.to_string();
+        let name = self.path.to_string();
 
-        let mut diag = Diag::new(dcx, level, format!("malformed `{name}` attribute input"));
+        let description = match self.description {
+            ParsedDescription::Attribute => "attribute",
+            ParsedDescription::Macro => "macro",
+        };
+
+        let mut diag = Diag::new(dcx, level, format!("malformed `{name}` {description} input"));
         diag.span(self.attr_span);
         diag.code(E0539);
         match self.reason {
@@ -724,12 +739,12 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                         diag.span_label(
                             self.span,
                             format!(
-                                "this attribute is only valid with {quote}{x}{quote} as an argument"
+                                "this {description} is only valid with {quote}{x}{quote} as an argument"
                             ),
                         );
                     }
                     [first, second] => {
-                        diag.span_label(self.span, format!("this attribute is only valid with either {quote}{first}{quote} or {quote}{second}{quote} as an argument"));
+                        diag.span_label(self.span, format!("this {description} is only valid with either {quote}{first}{quote} or {quote}{second}{quote} as an argument"));
                     }
                     [first @ .., second_to_last, last] => {
                         let mut res = String::new();
@@ -740,7 +755,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                             "{quote}{second_to_last}{quote} or {quote}{last}{quote}"
                         ));
 
-                        diag.span_label(self.span, format!("this attribute is only valid with one of the following arguments: {res}"));
+                        diag.span_label(self.span, format!("this {description} is only valid with one of the following arguments: {res}"));
                     }
                 }
             }
@@ -756,9 +771,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         diag.span_suggestions(
             self.attr_span,
             if self.suggestions.len() == 1 {
-                "must be of the form"
+                "must be of the form".to_string()
             } else {
-                "try changing it to one of the following valid forms of the attribute"
+                format!("try changing it to one of the following valid forms of the {description}")
             },
             self.suggestions,
             Applicability::HasPlaceholders,

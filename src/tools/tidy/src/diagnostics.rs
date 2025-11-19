@@ -1,9 +1,10 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use termcolor::{Color, WriteColor};
+use termcolor::Color;
 
 #[derive(Clone, Default)]
 ///CLI flags used by tidy.
@@ -245,30 +246,63 @@ pub const COLOR_WARNING: Color = Color::Yellow;
 /// Output a message to stderr.
 /// The message can be optionally scoped to a certain check, and it can also have a certain color.
 pub fn output_message(msg: &str, id: Option<&CheckId>, color: Option<Color>) {
-    use std::io::Write;
+    use termcolor::{ColorChoice, ColorSpec};
 
-    use termcolor::{ColorChoice, ColorSpec, StandardStream};
+    let stderr: &mut dyn termcolor::WriteColor = if cfg!(test) {
+        &mut StderrForUnitTests
+    } else {
+        &mut termcolor::StandardStream::stderr(ColorChoice::Auto)
+    };
 
-    let mut stderr = StandardStream::stderr(ColorChoice::Auto);
     if let Some(color) = &color {
         stderr.set_color(ColorSpec::new().set_fg(Some(*color))).unwrap();
     }
 
     match id {
         Some(id) => {
-            write!(&mut stderr, "tidy [{}", id.name).unwrap();
+            write!(stderr, "tidy [{}", id.name).unwrap();
             if let Some(path) = &id.path {
-                write!(&mut stderr, " ({})", path.display()).unwrap();
+                write!(stderr, " ({})", path.display()).unwrap();
             }
-            write!(&mut stderr, "]").unwrap();
+            write!(stderr, "]").unwrap();
         }
         None => {
-            write!(&mut stderr, "tidy").unwrap();
+            write!(stderr, "tidy").unwrap();
         }
     }
     if color.is_some() {
         stderr.set_color(&ColorSpec::new()).unwrap();
     }
 
-    writeln!(&mut stderr, ": {msg}").unwrap();
+    writeln!(stderr, ": {msg}").unwrap();
+}
+
+/// An implementation of `io::Write` and `termcolor::WriteColor` that writes
+/// to stderr via `eprint!`, so that the output can be properly captured when
+/// running tidy's unit tests.
+struct StderrForUnitTests;
+
+impl io::Write for StderrForUnitTests {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        eprint!("{}", String::from_utf8_lossy(buf));
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl termcolor::WriteColor for StderrForUnitTests {
+    fn supports_color(&self) -> bool {
+        false
+    }
+
+    fn set_color(&mut self, _spec: &termcolor::ColorSpec) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reset(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }

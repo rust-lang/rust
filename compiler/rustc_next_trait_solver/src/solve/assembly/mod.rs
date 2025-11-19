@@ -454,7 +454,16 @@ where
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
-            AssembleCandidatesFrom::EnvAndBounds => {}
+            AssembleCandidatesFrom::EnvAndBounds => {
+                // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
+                // However, it matches the behavior of the old solver. See
+                // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
+                if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
+                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                {
+                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                }
+            }
         }
 
         (candidates, failed_candidate_info)
@@ -538,9 +547,11 @@ where
                 Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
                 }
-                Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
-                    G::consider_builtin_copy_clone_candidate(self, goal)
-                }
+                Some(
+                    SolverTraitLangItem::Copy
+                    | SolverTraitLangItem::Clone
+                    | SolverTraitLangItem::TrivialClone,
+                ) => G::consider_builtin_copy_clone_candidate(self, goal),
                 Some(SolverTraitLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
@@ -1114,11 +1125,12 @@ where
     /// treat the alias as rigid.
     ///
     /// See trait-system-refactor-initiative#124 for more details.
-    #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
+    #[instrument(level = "debug", skip_all, fields(proven_via, goal), ret)]
     pub(super) fn assemble_and_merge_candidates<G: GoalKind<D>>(
         &mut self,
         proven_via: Option<TraitGoalProvenVia>,
         goal: Goal<I, G>,
+        inject_forced_ambiguity_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> Option<QueryResult<I>>,
         inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         let Some(proven_via) = proven_via else {
@@ -1138,15 +1150,24 @@ where
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
                 let (mut candidates, _) = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
+                debug!(?candidates);
+
+                // If the trait goal has been proven by using the environment, we want to treat
+                // aliases as rigid if there are no applicable projection bounds in the environment.
+                if candidates.is_empty() {
+                    return inject_normalize_to_rigid_candidate(self);
+                }
+
+                // If we're normalizing an GAT, we bail if using a where-bound would constrain
+                // its generic arguments.
+                if let Some(result) = inject_forced_ambiguity_candidate(self) {
+                    return result;
+                }
 
                 // We still need to prefer where-bounds over alias-bounds however.
                 // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
                 if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
                     candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
-                } else if candidates.is_empty() {
-                    // If the trait goal has been proven by using the environment, we want to treat
-                    // aliases as rigid if there are no applicable projection bounds in the environment.
-                    return inject_normalize_to_rigid_candidate(self);
                 }
 
                 if let Some((response, _)) = self.try_merge_candidates(&candidates) {

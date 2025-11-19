@@ -13,18 +13,19 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
+use rustc_target::spec::Os;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
-use crate::errors::AutoDiffWithoutEnable;
+use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLto};
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -377,8 +378,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::ctpop
             | sym::bswap
             | sym::bitreverse
-            | sym::rotate_left
-            | sym::rotate_right
             | sym::saturating_add
             | sym::saturating_sub
             | sym::unchecked_funnel_shl
@@ -423,19 +422,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::bitreverse => {
                         self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
                     }
-                    sym::rotate_left
-                    | sym::rotate_right
-                    | sym::unchecked_funnel_shl
-                    | sym::unchecked_funnel_shr => {
-                        let is_left = name == sym::rotate_left || name == sym::unchecked_funnel_shl;
+                    sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
+                        let is_left = name == sym::unchecked_funnel_shl;
                         let lhs = args[0].immediate();
-                        let (rhs, raw_shift) =
-                            if name == sym::rotate_left || name == sym::rotate_right {
-                                // rotate = funnel shift with first two args the same
-                                (lhs, args[1].immediate())
-                            } else {
-                                (args[1].immediate(), args[2].immediate())
-                            };
+                        let rhs = args[1].immediate();
+                        let raw_shift = args[2].immediate();
                         let llvm_name = format!("llvm.fsh{}", if is_left { 'l' } else { 'r' });
 
                         // llvm expects shift to be the same type as the values, but rust
@@ -681,7 +672,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
         codegen_msvc_try(bx, try_func, data, catch_func, dest);
     } else if wants_wasm_eh(bx.sess()) {
         codegen_wasm_try(bx, try_func, data, catch_func, dest);
-    } else if bx.sess().target.os == "emscripten" {
+    } else if bx.sess().target.os == Os::Emscripten {
         codegen_emcc_try(bx, try_func, data, catch_func, dest);
     } else {
         codegen_gnu_try(bx, try_func, data, catch_func, dest);
@@ -1144,6 +1135,9 @@ fn codegen_autodiff<'ll, 'tcx>(
 ) {
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
+    }
+    if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
     }
 
     let fn_args = instance.args;
@@ -1840,14 +1834,31 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(call);
     }
 
+    fn llvm_alignment<'ll, 'tcx>(
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        alignment: SimdAlign,
+        vector_ty: Ty<'tcx>,
+        element_ty: Ty<'tcx>,
+    ) -> u64 {
+        match alignment {
+            SimdAlign::Unaligned => 1,
+            SimdAlign::Element => bx.align_of(element_ty).bytes(),
+            SimdAlign::Vector => bx.align_of(vector_ty).bytes(),
+        }
+    }
+
     if name == sym::simd_masked_load {
-        // simd_masked_load(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
+        // simd_masked_load<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
         // Loads contiguous elements from memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .unwrap_leaf()
+            .to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -1905,7 +1916,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = llvm_alignment(bx, alignment, values_ty, values_elem);
 
         let llvm_pointer = bx.type_ptr();
 
@@ -1932,13 +1943,17 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_masked_store {
-        // simd_masked_store(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
+        // simd_masked_store<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
         // * N: number of elements in the input vectors
         // * T: type of the element to load
         // * M: any integer width is supported, will be truncated to i1
         // Stores contiguous elements to memory behind `pointer`, but only for
         // those lanes whose `mask` bit is enabled.
         // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .unwrap_leaf()
+            .to_simd_alignment();
 
         // The element type of the "mask" argument must be a signed integer type of any width
         let mask_ty = in_ty;
@@ -1990,7 +2005,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = llvm_alignment(bx, alignment, values_ty, values_elem);
 
         let llvm_pointer = bx.type_ptr();
 

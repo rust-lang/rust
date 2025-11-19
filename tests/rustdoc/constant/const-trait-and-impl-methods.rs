@@ -1,5 +1,4 @@
-// check that we don't render `#[const_trait]` methods as `const` - even for
-// const `trait`s and `impl`s.
+// check that we don't render assoc fns as `const` - even for const `trait`s and `impl`s.
 #![crate_name = "foo"]
 #![feature(const_trait_impl)]
 
@@ -8,8 +7,7 @@
 //@ !has - '//*[@id="tymethod.required"]' 'const'
 //@ has - '//*[@id="method.defaulted"]' 'fn defaulted()'
 //@ !has - '//*[@id="method.defaulted"]' 'const'
-#[const_trait]
-pub trait Tr {
+pub const trait Tr {
     fn required();
     fn defaulted() {}
 }

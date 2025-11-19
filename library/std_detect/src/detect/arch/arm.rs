@@ -5,7 +5,10 @@ features! {
     @CFG: target_arch = "arm";
     @MACRO_NAME: is_arm_feature_detected;
     @MACRO_ATTRS:
-    /// Checks if `arm` feature is enabled.
+    /// Check for the presence of a CPU feature at runtime.
+    ///
+    /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
+    /// the macro expands to `true`.
     #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
     @NO_RUNTIME_DETECTION: "v7";
     @NO_RUNTIME_DETECTION: "vfp2";

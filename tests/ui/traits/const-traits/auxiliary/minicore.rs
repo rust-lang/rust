@@ -35,8 +35,7 @@ impl Copy for u8 {}
 impl<T: PointeeSized> Copy for &T {}
 
 #[lang = "add"]
-#[const_trait]
-pub trait Add<Rhs = Self> {
+pub const trait Add<Rhs = Self> {
     type Output;
 
     fn add(self, rhs: Rhs) -> Self::Output;
@@ -58,8 +57,7 @@ const fn bar() {
 }
 
 #[lang = "Try"]
-#[const_trait]
-pub trait Try: FromResidual<Self::Residual> {
+pub const trait Try: FromResidual<Self::Residual> {
     type Output;
     type Residual;
 
@@ -70,8 +68,7 @@ pub trait Try: FromResidual<Self::Residual> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
-#[const_trait]
-pub trait FromResidual<R = <Self as Try>::Residual> {
+pub const trait FromResidual<R = <Self as Try>::Residual> {
     #[lang = "from_residual"]
     fn from_residual(residual: R) -> Self;
 }
@@ -83,24 +80,21 @@ enum ControlFlow<B, C = ()> {
     Break(B),
 }
 
-#[const_trait]
 #[lang = "fn"]
 #[rustc_paren_sugar]
-pub trait Fn<Args: Tuple>: [const] FnMut<Args> {
+pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
-#[const_trait]
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
-pub trait FnMut<Args: Tuple>: [const] FnOnce<Args> {
+pub const trait FnMut<Args: Tuple>: [const] FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
-#[const_trait]
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
-pub trait FnOnce<Args: Tuple> {
+pub const trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
@@ -128,20 +122,17 @@ impl<T: Deref + MetaSized> Receiver for T {
 }
 
 #[lang = "destruct"]
-#[const_trait]
-pub trait Destruct {}
+pub const trait Destruct {}
 
 #[lang = "freeze"]
 pub unsafe auto trait Freeze {}
 
 #[lang = "drop"]
-#[const_trait]
-pub trait Drop {
+pub const trait Drop {
     fn drop(&mut self);
 }
 
-#[const_trait]
-pub trait Residual<O> {
+pub const trait Residual<O> {
     type TryType: [const] Try<Output = O, Residual = Self> + Try<Output = O, Residual = Self>;
 }
 
@@ -168,15 +159,13 @@ const fn panic_display() {
 fn panic_fmt() {}
 
 #[lang = "index"]
-#[const_trait]
-pub trait Index<Idx: PointeeSized> {
+pub const trait Index<Idx: PointeeSized> {
     type Output: MetaSized;
 
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
-#[const_trait]
-pub unsafe trait SliceIndex<T: PointeeSized> {
+pub const unsafe trait SliceIndex<T: PointeeSized> {
     type Output: MetaSized;
     fn index(self, slice: &T) -> &Self::Output;
 }
@@ -214,8 +203,7 @@ pub trait CoerceUnsized<T: PointeeSized> {}
 impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "deref"]
-#[const_trait]
-pub trait Deref {
+pub const trait Deref {
     #[lang = "deref_target"]
     type Target: MetaSized;
 
@@ -273,13 +261,11 @@ where
     }
 }
 
-#[const_trait]
-pub trait Into<T>: Sized {
+pub const trait Into<T>: Sized {
     fn into(self) -> T;
 }
 
-#[const_trait]
-pub trait From<T>: Sized {
+pub const trait From<T>: Sized {
     fn from(value: T) -> Self;
 }
 
@@ -313,8 +299,7 @@ fn from_str(s: &str) -> Result<bool, ()> {
 }
 
 #[lang = "eq"]
-#[const_trait]
-pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
+pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
@@ -337,8 +322,7 @@ impl PartialEq for str {
 }
 
 #[lang = "not"]
-#[const_trait]
-pub trait Not {
+pub const trait Not {
     type Output;
     fn not(self) -> Self::Output;
 }
@@ -462,8 +446,7 @@ impl<T: MetaSized> Deref for Ref<'_, T> {
 
 #[lang = "clone"]
 #[rustc_trivial_field_reads]
-#[const_trait]
-pub trait Clone: Sized {
+pub const trait Clone: Sized {
     fn clone(&self) -> Self;
     fn clone_from(&mut self, source: &Self)
     where

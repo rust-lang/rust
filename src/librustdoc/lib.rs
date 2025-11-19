@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -8,7 +9,6 @@
 #![feature(assert_matches)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
-#![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
 #![feature(formatting_options)]
 #![feature(if_let_guard)]
@@ -17,6 +17,7 @@
 #![feature(iter_order_by)]
 #![feature(rustc_private)]
 #![feature(test)]
+#![feature(trim_prefix_suffix)]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
 
@@ -896,7 +897,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         // Register the loaded external files in the source map so they show up in depinfo.
         // We can't load them via the source map because it gets created after we process the options.
         for external_path in &loaded_paths {
-            let _ = sess.source_map().load_file(external_path);
+            let _ = sess.source_map().load_binary_file(external_path);
         }
 
         if sess.opts.describe_lints {

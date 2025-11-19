@@ -21,14 +21,18 @@ async unsafe extern "cmse-nonsecure-entry" fn async_and_c_variadic(_: ...) {
     //~| ERROR functions cannot be both `async` and C-variadic
 }
 
+// Async on its own is also not allowed.
+async unsafe extern "cmse-nonsecure-entry" fn async_is_not_allowed() {
+    //~^ ERROR `impl Trait` is not allowed in `extern "cmse-nonsecure-entry"` signatures
+}
+
 // Below are the lang items that are required for a program that defines an `async` function.
 // Without them, the ICE that is tested for here is not reached for this target. For now they are in
 // this file, but they may be moved into `minicore` if/when other `#[no_core]` tests want to use
 // them.
 
-// NOTE: in `core` this type uses `NonNull`.
 #[lang = "ResumeTy"]
-pub struct ResumeTy(*mut Context<'static>);
+pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[lang = "future_trait"]
 pub trait Future {

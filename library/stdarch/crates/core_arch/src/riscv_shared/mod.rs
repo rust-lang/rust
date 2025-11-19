@@ -44,9 +44,14 @@ use crate::arch::asm;
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn pause() {
+    // Use `.option` directives to expose this HINT instruction
+    // (no-op if not supported by the hardware) without `#[target_feature]`.
     unsafe {
         asm!(
-            ".insn i 0x0F, 0, x0, x0, 0x010",
+            ".option push",
+            ".option arch, +zihintpause",
+            "pause",
+            ".option pop",
             options(nomem, nostack, preserves_flags)
         );
     }

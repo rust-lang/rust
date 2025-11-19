@@ -937,6 +937,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
+        // FIXME expr and stmt have the same span if expr comes from expansion
+        // cc: https://github.com/rust-lang/rust/pull/147416#discussion_r2499407523
+        if stmt.span.from_expansion() {
+            return;
+        }
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else {
             return;
         };

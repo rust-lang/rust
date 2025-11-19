@@ -13,7 +13,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use rustc_span::{ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
@@ -924,7 +924,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; new_unchecked, get_context],
                 ),
             };
-            self.arena.alloc(self.expr_unsafe(call))
+            self.arena.alloc(self.expr_unsafe(span, call))
         };
 
         // `::std::task::Poll::Ready(result) => break result`
@@ -1771,8 +1771,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let pat = self.lower_pat(pat);
         let for_span =
             self.mark_span_with_reason(DesugaringKind::ForLoop, self.lower_span(e.span), None);
-        let head_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
-        let pat_span = self.mark_span_with_reason(DesugaringKind::ForLoop, pat.span, None);
+        let for_ctxt = for_span.ctxt();
+
+        // Try to point both the head and pat spans to their position in the for loop
+        // rather than inside a macro.
+        let head_span =
+            head.span.find_ancestor_in_same_ctxt(e.span).unwrap_or(head.span).with_ctxt(for_ctxt);
+        let pat_span =
+            pat.span.find_ancestor_in_same_ctxt(e.span).unwrap_or(pat.span).with_ctxt(for_ctxt);
 
         let loop_hir_id = self.lower_node_id(e.id);
         let label = self.lower_label(opt_label, e.id, loop_hir_id);
@@ -1826,7 +1832,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         arena_vec![self; iter],
                     ));
                     // `unsafe { ... }`
-                    let iter = self.arena.alloc(self.expr_unsafe(iter));
+                    let iter = self.arena.alloc(self.expr_unsafe(head_span, iter));
                     let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
                     self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
                 }
@@ -1881,7 +1887,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; iter],
                 ));
                 // `unsafe { ... }`
-                let iter = self.arena.alloc(self.expr_unsafe(iter));
+                let iter = self.arena.alloc(self.expr_unsafe(head_span, iter));
                 let inner_match_expr = self.arena.alloc(self.expr_match(
                     for_span,
                     iter,
@@ -1923,7 +1929,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     ControlFlow::Break(residual) =>
     ///         #[allow(unreachable_code)]
     ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Try::from_residual(residual),
+    ///         break 'catch_target Residual::into_try_type(residual),
     ///         // Otherwise:
     ///         return Try::from_residual(residual),
     /// }
@@ -1973,7 +1979,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
             let residual_expr = self.expr_ident_mut(try_span, residual_ident, residual_local_nid);
             let from_residual_expr = self.wrap_in_try_constructor(
-                hir::LangItem::TryTraitFromResidual,
+                if self.catch_scope.is_some() {
+                    hir::LangItem::ResidualIntoTryType
+                } else {
+                    hir::LangItem::TryTraitFromResidual
+                },
                 try_span,
                 self.arena.alloc(residual_expr),
                 unstable_span,
@@ -2097,30 +2107,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    fn expr_uint(&mut self, sp: Span, ty: ast::UintTy, value: u128) -> hir::Expr<'hir> {
-        let lit = hir::Lit {
-            span: self.lower_span(sp),
-            node: ast::LitKind::Int(value.into(), ast::LitIntType::Unsigned(ty)),
-        };
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::Usize, value as u128)
-    }
-
-    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U32, value as u128)
-    }
-
-    pub(super) fn expr_u16(&mut self, sp: Span, value: u16) -> hir::Expr<'hir> {
-        self.expr_uint(sp, ast::UintTy::U16, value as u128)
-    }
-
     pub(super) fn expr_str(&mut self, sp: Span, value: Symbol) -> hir::Expr<'hir> {
         let lit = hir::Lit {
             span: self.lower_span(sp),
             node: ast::LitKind::Str(value, ast::StrStyle::Cooked),
+        };
+        self.expr(sp, hir::ExprKind::Lit(lit))
+    }
+
+    pub(super) fn expr_byte_str(&mut self, sp: Span, value: ByteSymbol) -> hir::Expr<'hir> {
+        let lit = hir::Lit {
+            span: self.lower_span(sp),
+            node: ast::LitKind::ByteStr(value, ast::StrStyle::Cooked),
         };
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
@@ -2256,9 +2254,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, expr_path)
     }
 
-    fn expr_unsafe(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
+    pub(super) fn expr_unsafe(
+        &mut self,
+        span: Span,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
-        let span = expr.span;
         self.expr(
             span,
             hir::ExprKind::Block(
@@ -2294,15 +2295,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir hir::Expr<'hir> {
         let b = self.block_expr(expr);
         self.arena.alloc(self.expr_block(b))
-    }
-
-    pub(super) fn expr_array_ref(
-        &mut self,
-        span: Span,
-        elements: &'hir [hir::Expr<'hir>],
-    ) -> hir::Expr<'hir> {
-        let array = self.arena.alloc(self.expr(span, hir::ExprKind::Array(elements)));
-        self.expr_ref(span, array)
     }
 
     pub(super) fn expr_ref(&mut self, span: Span, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {

@@ -27,7 +27,6 @@ dependencies = [
  "autocfg",
  "byteorder 0.5.3",
  "byteorder 1.5.0",
- "cdylib",
  "exported_symbol",
  "eyre",
  "issue_1567",
@@ -36,13 +35,6 @@ dependencies = [
  "issue_rust_86261",
  "proc-macro2",
  "proc_macro_crate",
-]
-
-[[package]]
-name = "cdylib"
-version = "0.1.0"
-dependencies = [
- "byteorder 1.5.0",
 ]
 
 [[package]]

@@ -1,0 +1,18 @@
+error: `repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`
+  --> $DIR/repr-c-big-discriminant2.rs:24:5
+   |
+LL |     B, // +1
+   |     ^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #124403 <https://github.com/rust-lang/rust/issues/124403>
+   = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+   = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+note: the lint level is defined here
+  --> $DIR/repr-c-big-discriminant2.rs:8:9
+   |
+LL | #![deny(repr_c_enums_larger_than_int)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

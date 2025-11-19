@@ -1,12 +1,15 @@
 // Regression test for #140571. The compiler used to ICE
 
-#![feature(associated_const_equality, specialization)]
+#![feature(associated_const_equality, min_generic_const_args, specialization)]
 //~^ WARN the feature `specialization` is incomplete
+//~| WARN the feature `min_generic_const_args` is incomplete
 
 pub trait IsVoid {
+    #[type_const]
     const IS_VOID: bool;
 }
 impl<T> IsVoid for T {
+    #[type_const]
     default const IS_VOID: bool = false;
 }
 

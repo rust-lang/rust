@@ -1,4 +1,6 @@
-use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{
+    Abi, Arch, Cc, FloatAbi, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base,
+};
 
 // This target if is for the Android v7a ABI in thumb mode with
 // NEON unconditionally enabled and, therefore, with 32 FPU registers
@@ -21,9 +23,9 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
-        arch: "arm".into(),
+        arch: Arch::Arm,
         options: TargetOptions {
-            abi: "eabi".into(),
+            abi: Abi::Eabi,
             llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),

@@ -17,7 +17,7 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
+use rustc_target::spec::{Abi, Arch, Cc, LinkOutputKind, LinkerFlavor, Lld, Os};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -53,7 +53,7 @@ pub(crate) fn get_linker<'a>(
     target_cpu: &'a str,
     codegen_backend: &'static str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = find_msvc_tools::find_tool(&sess.target.arch, "link.exe");
+    let msvc_tool = find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -83,15 +83,15 @@ pub(crate) fn get_linker<'a>(
     // To comply with the Windows App Certification Kit,
     // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target;
-    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.vendor == "uwp" {
+    if matches!(flavor, LinkerFlavor::Msvc(..)) && t.abi == Abi::Uwp {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(root_lib_path) = original_path.ancestors().nth(4) {
-                let arch = match t.arch.as_ref() {
-                    "x86_64" => Some("x64"),
-                    "x86" => Some("x86"),
-                    "aarch64" => Some("arm64"),
-                    "arm" => Some("arm"),
+                let arch = match t.arch {
+                    Arch::X86_64 => Some("x64"),
+                    Arch::X86 => Some("x86"),
+                    Arch::AArch64 => Some("arm64"),
+                    Arch::Arm => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
@@ -134,12 +134,12 @@ pub(crate) fn get_linker<'a>(
 
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
-    assert!(cmd.get_args().is_empty() || sess.target.vendor == "uwp");
+    assert!(cmd.get_args().is_empty() || sess.target.abi == Abi::Uwp);
     match flavor {
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == "l4re" => {
+        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::L4Re => {
             Box::new(L4Bender::new(cmd, sess)) as Box<dyn Linker>
         }
-        LinkerFlavor::Unix(Cc::No) if sess.target.os == "aix" => {
+        LinkerFlavor::Unix(Cc::No) if sess.target.os == Os::Aix => {
             Box::new(AixLinker::new(cmd, sess)) as Box<dyn Linker>
         }
         LinkerFlavor::WasmLld(Cc::No) => Box::new(WasmLd::new(cmd, sess)) as Box<dyn Linker>,
@@ -573,7 +573,7 @@ impl<'a> Linker for GccLinker<'a> {
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
         // FIXME: Switch to using `#[link]` attributes in the `libc` crate
         // similarly to other targets.
-        if self.sess.target.os == "vxworks"
+        if self.sess.target.os == Os::VxWorks
             && matches!(
                 output_kind,
                 LinkOutputKind::StaticNoPicExe
@@ -589,13 +589,13 @@ impl<'a> Linker for GccLinker<'a> {
         //
         // Currently this makes sense only when using avr-gcc as a linker, since
         // it brings a couple of hand-written important intrinsics from libgcc.
-        if self.sess.target.arch == "avr" && !self.uses_lld {
+        if self.sess.target.arch == Arch::Avr && !self.uses_lld {
             self.verbatim_arg(format!("-mmcu={}", self.target_cpu));
         }
     }
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, as_needed: bool) {
-        if self.sess.target.os == "illumos" && name == "c" {
+        if self.sess.target.os == Os::Illumos && name == "c" {
             // libc will be added via late_link_args on illumos so that it will
             // appear last in the library search order.
             // FIXME: This should be replaced by a more complete and generic
@@ -1439,7 +1439,7 @@ impl<'a> Linker for WasmLd<'a> {
         // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of wasm32-unknown-unknown tooling use
         // this, so be sure these symbols make their way out of the linker as well.
-        if self.sess.target.os == "unknown" || self.sess.target.os == "none" {
+        if matches!(self.sess.target.os, Os::Unknown | Os::None) {
             self.link_args(&["--export=__heap_base", "--export=__data_end"]);
         }
     }

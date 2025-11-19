@@ -8,7 +8,6 @@ mod math;
 #[cfg(all(unix, feature = "native-lib"))]
 mod native_lib;
 mod unix;
-mod wasi;
 mod windows;
 mod x86;
 

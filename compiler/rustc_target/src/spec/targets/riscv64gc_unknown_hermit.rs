@@ -1,4 +1,6 @@
-use crate::spec::{CodeModel, RelocModel, Target, TargetMetadata, TargetOptions, TlsModel, base};
+use crate::spec::{
+    Arch, CodeModel, RelocModel, Target, TargetMetadata, TargetOptions, TlsModel, base,
+};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -10,7 +12,7 @@ pub(crate) fn target() -> Target {
             std: Some(true),
         },
         pointer_width: 64,
-        arch: "riscv64".into(),
+        arch: Arch::RiscV64,
         data_layout: "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128".into(),
         options: TargetOptions {
             cpu: "generic-rv64".into(),

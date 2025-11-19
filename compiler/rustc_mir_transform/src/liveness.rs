@@ -164,45 +164,6 @@ fn is_capture(place: PlaceRef<'_>) -> bool {
     }
 }
 
-/// Give a diagnostic when any of the string constants look like a naked format string that would
-/// interpolate our dead local.
-fn maybe_suggest_literal_matching_name(
-    body: &Body<'_>,
-    name: Symbol,
-) -> Vec<errors::UnusedVariableStringInterp> {
-    struct LiteralFinder<'body, 'tcx> {
-        body: &'body Body<'tcx>,
-        name: String,
-        name_colon: String,
-        found: Vec<errors::UnusedVariableStringInterp>,
-    }
-
-    impl<'tcx> Visitor<'tcx> for LiteralFinder<'_, 'tcx> {
-        fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, loc: Location) {
-            if let ty::Ref(_, ref_ty, _) = constant.ty().kind()
-                && ref_ty.kind() == &ty::Str
-            {
-                let rendered_constant = constant.const_.to_string();
-                if rendered_constant.contains(&self.name)
-                    || rendered_constant.contains(&self.name_colon)
-                {
-                    let lit = self.body.source_info(loc).span;
-                    self.found.push(errors::UnusedVariableStringInterp { lit });
-                }
-            }
-        }
-    }
-
-    let mut finder = LiteralFinder {
-        body,
-        name: format!("{{{name}}}"),
-        name_colon: format!("{{{name}:"),
-        found: vec![],
-    };
-    finder.visit_body(body);
-    finder.found
-}
-
 /// Give a diagnostic when an unused variable may be a typo of a unit variant or a struct.
 fn maybe_suggest_unit_pattern_typo<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -879,6 +840,44 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
     fn report_fully_unused(&mut self) {
         let tcx = self.tcx;
 
+        // Give a diagnostic when any of the string constants look like a naked format string that
+        // would interpolate our dead local.
+        let mut string_constants_in_body = None;
+        let mut maybe_suggest_literal_matching_name = |name: Symbol| {
+            // Visiting MIR to enumerate string constants can be expensive, so cache the result.
+            let string_constants_in_body = string_constants_in_body.get_or_insert_with(|| {
+                struct LiteralFinder {
+                    found: Vec<(Span, String)>,
+                }
+
+                impl<'tcx> Visitor<'tcx> for LiteralFinder {
+                    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, _: Location) {
+                        if let ty::Ref(_, ref_ty, _) = constant.ty().kind()
+                            && ref_ty.kind() == &ty::Str
+                        {
+                            let rendered_constant = constant.const_.to_string();
+                            self.found.push((constant.span, rendered_constant));
+                        }
+                    }
+                }
+
+                let mut finder = LiteralFinder { found: vec![] };
+                finder.visit_body(self.body);
+                finder.found
+            });
+
+            let brace_name = format!("{{{name}");
+            string_constants_in_body
+                .iter()
+                .filter(|(_, rendered_constant)| {
+                    rendered_constant
+                        .split(&brace_name)
+                        .any(|c| matches!(c.chars().next(), Some('}' | ':')))
+                })
+                .map(|&(lit, _)| errors::UnusedVariableStringInterp { lit })
+                .collect::<Vec<_>>()
+        };
+
         // First, report fully unused locals.
         for (index, place) in self.checked_places.iter() {
             if self.ever_live.contains(index) {
@@ -940,7 +939,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     def_span,
                     errors::UnusedVariable {
                         name,
-                        string_interp: maybe_suggest_literal_matching_name(self.body, name),
+                        string_interp: maybe_suggest_literal_matching_name(name),
                         sugg,
                     },
                 );
@@ -1030,7 +1029,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 spans,
                 errors::UnusedVariable {
                     name,
-                    string_interp: maybe_suggest_literal_matching_name(self.body, name),
+                    string_interp: maybe_suggest_literal_matching_name(name),
                     sugg,
                 },
             );

@@ -264,9 +264,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  </pre>\
                              </div>",
                                 added_classes = added_classes.join(" "),
-                                text = Escape(
-                                    original_text.strip_suffix('\n').unwrap_or(&original_text)
-                                ),
+                                text = Escape(original_text.trim_suffix('\n')),
                             )
                             .into(),
                         ));

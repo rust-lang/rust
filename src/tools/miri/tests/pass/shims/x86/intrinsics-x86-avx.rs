@@ -829,15 +829,16 @@ unsafe fn test_avx() {
 
     #[target_feature(enable = "avx")]
     unsafe fn test_mm256_permute2f128_ps() {
-        let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
-        let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
-        let r = _mm256_permute2f128_ps::<0x13>(a, b);
-        let e = _mm256_setr_ps(5., 6., 7., 8., 1., 2., 3., 4.);
+        let a = _mm256_setr_ps(11., 12., 13., 14., 15., 16., 17., 18.);
+        let b = _mm256_setr_ps(21., 22., 23., 24., 25., 26., 27., 28.);
+        let r = _mm256_permute2f128_ps::<0b0001_0011>(a, b);
+        let e = _mm256_setr_ps(25., 26., 27., 28., 15., 16., 17., 18.);
         assert_eq_m256(r, e);
 
-        let r = _mm256_permute2f128_ps::<0x44>(a, b);
-        let e = _mm256_setr_ps(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-        assert_eq_m256(r, e);
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_ps::<0b1001_1011>(a, b);
+        let z = _mm256_setr_ps(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        assert_eq_m256(r, z);
     }
     test_mm256_permute2f128_ps();
 
@@ -845,11 +846,12 @@ unsafe fn test_avx() {
     unsafe fn test_mm256_permute2f128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
-        let r = _mm256_permute2f128_pd::<0x31>(a, b);
+        let r = _mm256_permute2f128_pd::<0b0011_0001>(a, b);
         let e = _mm256_setr_pd(3., 4., 7., 8.);
         assert_eq_m256d(r, e);
 
-        let r = _mm256_permute2f128_pd::<0x44>(a, b);
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_pd::<0b1011_1001>(a, b);
         let e = _mm256_setr_pd(0.0, 0.0, 0.0, 0.0);
         assert_eq_m256d(r, e);
     }
@@ -857,13 +859,14 @@ unsafe fn test_avx() {
 
     #[target_feature(enable = "avx")]
     unsafe fn test_mm256_permute2f128_si256() {
-        let a = _mm256_setr_epi32(1, 2, 3, 4, 1, 2, 3, 4);
-        let b = _mm256_setr_epi32(5, 6, 7, 8, 5, 6, 7, 8);
-        let r = _mm256_permute2f128_si256::<0x20>(a, b);
-        let e = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let a = _mm256_setr_epi32(11, 12, 13, 14, 15, 16, 17, 18);
+        let b = _mm256_setr_epi32(21, 22, 23, 24, 25, 26, 27, 28);
+        let r = _mm256_permute2f128_si256::<0b0010_0000>(a, b);
+        let e = _mm256_setr_epi32(11, 12, 13, 14, 21, 22, 23, 24);
         assert_eq_m256i(r, e);
 
-        let r = _mm256_permute2f128_si256::<0x44>(a, b);
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_si256::<0b1010_1000>(a, b);
         let e = _mm256_setr_epi32(0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m256i(r, e);
     }

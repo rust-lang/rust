@@ -7,6 +7,7 @@ use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
 
 use rustc_middle::ty::Ty;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -329,7 +330,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Below we assume that everything non-Windows works like Unix, at least
         // when it comes to file system path conventions.
         #[cfg(windows)]
-        return if target_os == "windows" {
+        return if *target_os == Os::Windows {
             // Windows-on-Windows, all fine.
             os_str
         } else {
@@ -346,7 +347,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Cow::Owned(OsString::from_wide(&path))
         };
         #[cfg(unix)]
-        return if target_os == "windows" {
+        return if *target_os == Os::Windows {
             // Windows target, Unix host.
             let mut path: Vec<u8> = os_str.into_owned().into_encoded_bytes();
             match direction {

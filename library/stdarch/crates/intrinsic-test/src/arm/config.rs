@@ -3,13 +3,24 @@ pub const NOTICE: &str = "\
 // test are derived from a JSON specification, published under the same license as the
 // `intrinsic-test` crate.\n";
 
-pub const POLY128_OSTREAM_DECL: &str = r#"
+pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value);
 #endif
+
+std::ostream& operator<<(std::ostream& os, float16_t value);
+std::ostream& operator<<(std::ostream& os, uint8_t value);
+
+// T1 is the `To` type, T2 is the `From` type
+template<typename T1, typename T2> T1 cast(T2 x) {
+  static_assert(sizeof(T1) == sizeof(T2), "sizeof T1 and T2 must be the same");
+  T1 ret{};
+  memcpy(&ret, &x, sizeof(T1));
+  return ret;
+}
 "#;
 
-pub const POLY128_OSTREAM_DEF: &str = r#"
+pub const PLATFORM_C_DEFINITIONS: &str = r#"
 #ifdef __aarch64__
 std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::stringstream temp;
@@ -23,11 +34,26 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {
     os << res;
     return os;
 }
+
 #endif
+
+std::ostream& operator<<(std::ostream& os, float16_t value) {
+    uint16_t temp = 0;
+    memcpy(&temp, &value, sizeof(float16_t));
+    std::stringstream ss;
+    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
+    os << ss.str();
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, uint8_t value) {
+    os << (unsigned int) value;
+    return os;
+}
 "#;
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
-pub const F16_FORMATTING_DEF: &str = r#"
+pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
 /// Used to continue `Debug`ging SIMD types as `MySimd(1, 2, 3, 4)`, as they
 /// were before moving to array-based simd.
 #[inline]
@@ -113,7 +139,7 @@ impl DebugHexF16 for float16x8x4_t {
 }
  "#;
 
-pub const AARCH_CONFIGURATIONS: &str = r#"
+pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
 #![cfg_attr(target_arch = "arm", feature(stdarch_aarch32_crc32))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fcma))]
@@ -121,12 +147,13 @@ pub const AARCH_CONFIGURATIONS: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_i8mm))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_sm4))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_aarch64_jscvt))]
 #![feature(fmt_helpers_for_derive)]
 #![feature(stdarch_neon_f16)]
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
-use core::arch::aarch64::*;
+use core_arch::arch::aarch64::*;
 
 #[cfg(target_arch = "arm")]
-use core::arch::arm::*;
+use core_arch::arch::arm::*;
 "#;

@@ -14,7 +14,7 @@ cfg_select! {
         pub use unix::chroot;
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(any(target_os = "linux", target_os = "android"))]
-        pub(crate) use unix::CachedFileMetadata;
+        pub(super) use unix::CachedFileMetadata;
         use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
     }
     target_os = "windows" => {
@@ -122,7 +122,7 @@ pub fn set_permissions(path: &Path, perm: FilePermissions) -> io::Result<()> {
     with_native_path(path, &|path| imp::set_perm(path, perm.clone()))
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "vxworks")))]
 pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io::Result<()> {
     use crate::fs::OpenOptions;
 
@@ -139,7 +139,7 @@ pub fn set_permissions_nofollow(path: &Path, perm: crate::fs::Permissions) -> io
     options.open(path)?.set_permissions(perm)
 }
 
-#[cfg(not(unix))]
+#[cfg(any(not(unix), target_os = "vxworks"))]
 pub fn set_permissions_nofollow(_path: &Path, _perm: crate::fs::Permissions) -> io::Result<()> {
     crate::unimplemented!(
         "`set_permissions_nofollow` is currently only implemented on Unix platforms"

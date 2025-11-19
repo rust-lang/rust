@@ -41,7 +41,7 @@ jobs:
     # TODO: remove when we have binutils version 2.43 in the repo.
     - name: Install more recent binutils
       run: |
-        echo "deb http://archive.ubuntu.com/ubuntu oracular main universe" | sudo tee /etc/apt/sources.list.d/oracular-copies.list
+        echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
         sudo apt-get update
         sudo apt-get install binutils
 
