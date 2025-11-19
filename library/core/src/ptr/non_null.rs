@@ -1377,6 +1377,35 @@ impl<T> NonNull<T> {
     pub const fn cast_uninit(self) -> NonNull<MaybeUninit<T>> {
         self.cast()
     }
+
+    /// Creates a non-null raw slice from a thin pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// This function is safe, but dereferencing the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(ptr_cast_slice)]
+    /// use std::ptr::NonNull;
+    ///
+    /// // create a slice pointer when starting out with a pointer to the first element
+    /// let mut x = [5, 6, 7];
+    /// let nonnull_pointer = NonNull::new(x.as_mut_ptr()).unwrap();
+    /// let slice = nonnull_pointer.cast_slice(3);
+    /// assert_eq!(unsafe { slice.as_ref()[2] }, 7);
+    /// ```
+    ///
+    /// (Note that this example artificially demonstrates a use of this method,
+    /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    pub const fn cast_slice(self, len: usize) -> NonNull<[T]> {
+        NonNull::slice_from_raw_parts(self, len)
+    }
 }
 impl<T> NonNull<MaybeUninit<T>> {
     /// Casts from a maybe-uninitialized type to its initialized version.
