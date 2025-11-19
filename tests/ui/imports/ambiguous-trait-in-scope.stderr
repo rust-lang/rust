@@ -1,5 +1,5 @@
-warning: Usage of ambiguously imported trait `Trait`
-  --> $DIR/ambiguous-trait-in-scope.rs:20:9
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:18:9
    |
 LL |     use m1::*;
    |         -- `Trait`imported ambiguously here
@@ -7,32 +7,53 @@ LL |     use m2::*;
 LL |     0u8.method1();
    |         ^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
    = help: Import `Trait` explicitly
-   = note: `#[warn(ambiguous_trait_glob_imports)]` on by default
+   = note: `#[warn(ambiguous_trait_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-warning: Usage of ambiguously imported trait `Trait`
-  --> $DIR/ambiguous-trait-in-scope.rs:21:9
+error[E0599]: no method named `method2` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:20:9
    |
-LL |     use m2::*;
-   |         -- `Trait`imported ambiguously here
-LL |     0u8.method1();
+LL |         fn method2(&self) {}
+   |            ------- the method is available for `u8` here
+...
 LL |     0u8.method2();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
-
-warning: Usage of ambiguously imported trait `Trait`
-  --> $DIR/ambiguous-trait-in-scope.rs:28:9
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method2` is implemented but not in scope; perhaps you want to import it
    |
-LL |     use m1::*;
-   |         -- `Trait`imported ambiguously here
+LL + use m2::Trait;
+   |
+help: there is a method `method1` with a similar name
+   |
+LL -     0u8.method2();
+LL +     0u8.method1();
+   |
+
+error[E0599]: no method named `method1` found for type `u8` in the current scope
+  --> $DIR/ambiguous-trait-in-scope.rs:27:9
+   |
+LL |         fn method1(&self) {}
+   |            ------- the method is available for `u8` here
+...
 LL |     0u8.method1();
    |         ^^^^^^^
    |
-   = help: Import `Trait` explicitly
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Trait` which provides `method1` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use m1::Trait;
+   |
+help: there is a method `method2` with a similar name
+   |
+LL -     0u8.method1();
+LL +     0u8.method2();
+   |
 
-warning: Usage of ambiguously imported trait `Trait`
-  --> $DIR/ambiguous-trait-in-scope.rs:29:9
+warning: Use of ambiguously glob imported trait `Trait`
+  --> $DIR/ambiguous-trait-in-scope.rs:28:9
    |
 LL |     use m2::*;
    |         -- `Trait`imported ambiguously here
@@ -40,7 +61,10 @@ LL |     use m2::*;
 LL |     0u8.method2();
    |         ^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147992 <https://github.com/rust-lang/rust/issues/147992>
    = help: Import `Trait` explicitly
 
-warning: 4 warnings emitted
+error: aborting due to 2 previous errors; 2 warnings emitted
 
+For more information about this error, try `rustc --explain E0599`.

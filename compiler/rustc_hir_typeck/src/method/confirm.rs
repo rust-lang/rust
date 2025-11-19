@@ -151,7 +151,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.lint_shadowed_supertrait_items(pick, segment);
 
         // Lint when a trait is ambiguously imported
-        self.lint_ambiguously_imported_trait(pick, segment);
+        self.lint_ambiguously_glob_imported_trait(pick, segment);
 
         // Add any trait/regions obligations specified on the method's type parameters.
         // We won't add these if we encountered an illegal sized bound, so that we can use
@@ -720,7 +720,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         );
     }
 
-    fn lint_ambiguously_imported_trait(
+    fn lint_ambiguously_glob_imported_trait(
         &self,
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
@@ -733,7 +733,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
         self.tcx.node_lint(AMBIGUOUS_TRAIT_GLOB_IMPORTS, segment.hir_id, |diag| {
-            diag.primary_message(format!("Usage of ambiguously imported trait `{trait_name}`"))
+            diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}`imported ambiguously here"))
                 .help(format!("Import `{trait_name}` explicitly"));

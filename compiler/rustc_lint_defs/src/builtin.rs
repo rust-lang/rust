@@ -4439,8 +4439,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `ambiguous_trait_glob_imports` lint report traits that are imported ambiguously by glob imports,
-    /// but this wasn't done previously due to a rustc bug.
+    /// The `ambiguous_trait_glob_imports` lint reports uses of traits that are
+    /// imported ambiguously via glob imports. Previously, this was not enforced
+    /// due to a bug in rustc.
     ///
     /// ### Example
     ///
@@ -4471,12 +4472,25 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust compile this wrong and actually report that `method2`
-    /// can't be found. Now both traits are imported but a warning is emitted that they are ambiguous.
+    /// When multiple traits with the same name are brought into scope through glob imports,
+    /// one trait becomes the "primary" one while the others are shadowed. Methods from the
+    /// shadowed traits (e.g. `method2`) become inaccessible, while methods from the "primary"
+    /// trait (e.g. `method1`) still resolve. Ideally, none of the ambiguous traits would be in scope,
+    /// but we have to allow this for now because of backwards compatibility.
+    /// This lint reports uses of these "primary" traits that are ambiguous.
     ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub AMBIGUOUS_TRAIT_GLOB_IMPORTS,
     Warn,
-    "detects certain glob imports that import traits ambiguously and reports them.",
+    "detects usages of ambiguously glob imported traits",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #147992 <https://github.com/rust-lang/rust/issues/147992>",
+        report_in_deps: false,
+    };
 }
 
 declare_lint! {

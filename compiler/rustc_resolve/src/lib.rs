@@ -712,29 +712,17 @@ impl<'ra> Module<'ra> {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |r, name, ns, mut binding| {
+            self.for_each_child(resolver, |r, name, ns, binding| {
                 if ns != TypeNS {
                     return;
                 }
-                let lint_ambiguous = binding.is_ambiguity_recursive();
-                loop {
-                    // Add to collected_traits if it's a trait
-                    if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                        collected_traits.push((
-                            name,
-                            binding,
-                            r.as_ref().get_module(def_id),
-                            lint_ambiguous,
-                        ));
-                    }
-
-                    // Break if no ambiguity
-                    let Some((ambiguous_binding, AmbiguityKind::GlobVsGlob)) = binding.ambiguity
-                    else {
-                        break;
-                    };
-
-                    binding = ambiguous_binding;
+                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
+                    collected_traits.push((
+                        name,
+                        binding,
+                        r.as_ref().get_module(def_id),
+                        binding.is_ambiguity_recursive(),
+                    ));
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
