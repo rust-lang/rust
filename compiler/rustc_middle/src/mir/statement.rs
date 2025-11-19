@@ -694,6 +694,7 @@ impl<'tcx> Operand<'tcx> {
                 local_decls.local_decls()[l.local].source_info.span
             }
             Operand::Constant(c) => c.span,
+            // User code should not contain this operand, so we should not need this span.
             Operand::RuntimeChecks(_) => DUMMY_SP,
         }
     }

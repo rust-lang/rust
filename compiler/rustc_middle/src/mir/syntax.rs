@@ -1328,8 +1328,8 @@ pub enum Operand<'tcx> {
     /// Constants are already semantically values, and remain unchanged.
     Constant(Box<ConstOperand<'tcx>>),
 
-    /// Special constants whose value depends on the evaluation context. Their value depends on a
-    /// flag on the crate being codegenned.
+    /// Query the compilation session of the current crate for a particular flag. This is not quite
+    /// a const since its value can differ across crates within a single crate graph.
     RuntimeChecks(RuntimeChecks),
 }
 
