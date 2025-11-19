@@ -280,7 +280,8 @@ macro_rules! test_transparent_unsized {
     };
 }
 
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
+// NOTE: non-rustic ABIs do not support unsized types: they are skipped during ABI generation, and
+// will trigger an error if they make it to rustc_monomorphize/src/mono_checks/abi_check.rs
 mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
