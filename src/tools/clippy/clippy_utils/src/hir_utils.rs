@@ -477,11 +477,18 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ConstArgKind::Path(l_p), ConstArgKind::Path(r_p)) => self.eq_qpath(l_p, r_p),
             (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
             (ConstArgKind::Infer(..), ConstArgKind::Infer(..)) => true,
+            (ConstArgKind::Struct(path_a, inits_a), ConstArgKind::Struct(path_b, inits_b)) => {
+                self.eq_qpath(path_a, path_b)
+                && inits_a.iter().zip(*inits_b).all(|(init_a, init_b)| {
+                    self.eq_const_arg(init_a.expr, init_b.expr)
+                })
+            }
             // Use explicit match for now since ConstArg is undergoing flux.
-            (ConstArgKind::Path(..), ConstArgKind::Anon(..))
-            | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
-            | (ConstArgKind::Infer(..) | ConstArgKind::Error(..), _)
-            | (_, ConstArgKind::Infer(..) | ConstArgKind::Error(..)) => false,
+            (ConstArgKind::Path(..), _)
+            | (ConstArgKind::Anon(..), _)
+            | (ConstArgKind::Infer(..), _)
+            | (ConstArgKind::Struct(..), _)
+            | (ConstArgKind::Error(..), _) => false,
         }
     }
 
@@ -1332,6 +1339,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         match &const_arg.kind {
             ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
+            ConstArgKind::Struct(path, inits) => {
+                self.hash_qpath(path);
+                for init in *inits {
+                    self.hash_const_arg(init.expr);
+                }
+            }
             ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
         }
     }

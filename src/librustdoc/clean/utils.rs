@@ -12,7 +12,9 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt, ValTreeKindExt,
+};
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
