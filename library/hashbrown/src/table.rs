@@ -1100,7 +1100,7 @@ where
     /// #     test()
     /// # }
     /// ```
-    pub fn iter_buckets(&self) -> IterBuckets<'_> {
+    pub fn iter_buckets(&self) -> IterBuckets<'_, T> {
         IterBuckets {
             inner: unsafe { self.raw.full_buckets_indices() },
             marker: PhantomData,
@@ -1233,7 +1233,7 @@ where
     /// #     test()
     /// # }
     /// ```
-    pub fn iter_hash_buckets(&self, hash: u64) -> IterHashBuckets<'_> {
+    pub fn iter_hash_buckets(&self, hash: u64) -> IterHashBuckets<'_, T> {
         IterHashBuckets {
             inner: unsafe { self.raw.iter_hash_buckets(hash) },
             marker: PhantomData,
@@ -2569,33 +2569,55 @@ where
 ///
 /// This `struct` is created by the [`HashTable::iter_buckets`] method. See its
 /// documentation for more.
-#[derive(Clone, Default)]
-pub struct IterBuckets<'a> {
+pub struct IterBuckets<'a, T> {
     inner: FullBucketsIndices,
-    marker: PhantomData<&'a ()>,
+    marker: PhantomData<&'a T>,
 }
 
-impl Iterator for IterBuckets<'_> {
+impl<T> Clone for IterBuckets<'_, T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for IterBuckets<'_, T> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Iterator for IterBuckets<'_, T> {
     type Item = usize;
 
+    #[inline]
     fn next(&mut self) -> Option<usize> {
         self.inner.next()
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
 }
 
-impl ExactSizeIterator for IterBuckets<'_> {
+impl<T> ExactSizeIterator for IterBuckets<'_, T> {
+    #[inline]
     fn len(&self) -> usize {
         self.inner.len()
     }
 }
 
-impl FusedIterator for IterBuckets<'_> {}
+impl<T> FusedIterator for IterBuckets<'_, T> {}
 
-impl fmt::Debug for IterBuckets<'_> {
+impl<T> fmt::Debug for IterBuckets<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
@@ -2731,23 +2753,43 @@ where
 ///
 /// This `struct` is created by the [`HashTable::iter_hash_buckets`] method. See its
 /// documentation for more.
-#[derive(Clone, Default)]
-pub struct IterHashBuckets<'a> {
+pub struct IterHashBuckets<'a, T> {
     inner: RawIterHashIndices,
-    marker: PhantomData<&'a ()>,
+    marker: PhantomData<&'a T>,
 }
 
-impl Iterator for IterHashBuckets<'_> {
+impl<T> Clone for IterHashBuckets<'_, T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for IterHashBuckets<'_, T> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            inner: Default::default(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T> Iterator for IterHashBuckets<'_, T> {
     type Item = usize;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next()
     }
 }
 
-impl FusedIterator for IterHashBuckets<'_> {}
+impl<T> FusedIterator for IterHashBuckets<'_, T> {}
 
-impl fmt::Debug for IterHashBuckets<'_> {
+impl<T> fmt::Debug for IterHashBuckets<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
