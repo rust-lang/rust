@@ -1,6 +1,6 @@
 use rustc_abi::WrappingRange;
 use rustc_middle::mir::SourceInfo;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, ValTreeKindExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
@@ -102,7 +102,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let parse_atomic_ordering = |ord: ty::Value<'tcx>| {
-            let discr = ord.valtree.unwrap_branch()[0].unwrap_leaf();
+            let discr = ord.valtree.unwrap_branch()[0].to_value().valtree.unwrap_leaf();
             discr.to_atomic_ordering()
         };
 

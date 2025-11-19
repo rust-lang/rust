@@ -13,7 +13,9 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv, ValTreeKindExt,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
@@ -1459,7 +1461,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             .iter()
             .enumerate()
             .map(|(arg_idx, val)| {
-                let idx = val.unwrap_leaf().to_i32();
+                let idx = val.to_value().valtree.unwrap_leaf().to_i32();
                 if idx >= i32::try_from(total_len).unwrap() {
                     bx.sess().dcx().emit_err(InvalidMonomorphization::SimdIndexOutOfBounds {
                         span,
@@ -1857,6 +1859,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
         let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .to_value()
+            .valtree
             .unwrap_leaf()
             .to_simd_alignment();
 
@@ -1952,6 +1956,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // The memory addresses corresponding to the “off” lanes are not accessed.
 
         let alignment = fn_args[3].expect_const().to_value().valtree.unwrap_branch()[0]
+            .to_value()
+            .valtree
             .unwrap_leaf()
             .to_simd_alignment();
 

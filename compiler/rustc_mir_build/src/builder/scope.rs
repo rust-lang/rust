@@ -897,7 +897,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             self.tcx,
                             ValTree::from_branches(
                                 self.tcx,
-                                [ValTree::from_scalar_int(self.tcx, variant_index.as_u32().into())],
+                                [ty::Const::new_value(
+                                    self.tcx,
+                                    ValTree::from_scalar_int(
+                                        self.tcx,
+                                        variant_index.as_u32().into(),
+                                    ),
+                                    self.tcx.types.u32,
+                                )],
                             ),
                             self.thir[value].ty,
                         ),

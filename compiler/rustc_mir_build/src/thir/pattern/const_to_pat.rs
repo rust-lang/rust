@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::span_bug;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree, ValTreeKindExt,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -240,13 +240,14 @@ impl<'tcx> ConstToPat<'tcx> {
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
+                let variant_index =
+                    VariantIdx::from_u32(variant_index.to_value().valtree.unwrap_leaf().to_u32());
                 PatKind::Variant {
                     adt_def: *adt_def,
                     args,
                     variant_index,
                     subpatterns: self.field_pats(
-                        fields.iter().copied().zip(
+                        fields.iter().map(|ct| ct.to_value().valtree).zip(
                             adt_def.variants()[variant_index]
                                 .fields
                                 .iter()
@@ -258,19 +259,23 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Adt(def, args) => {
                 assert!(!def.is_union()); // Valtree construction would never succeed for unions.
                 PatKind::Leaf {
-                    subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(
-                        def.non_enum_variant().fields.iter().map(|field| field.ty(tcx, args)),
-                    )),
+                    subpatterns: self.field_pats(
+                        cv.unwrap_branch().iter().map(|ct| ct.to_value().valtree).zip(
+                            def.non_enum_variant().fields.iter().map(|field| field.ty(tcx, args)),
+                        ),
+                    ),
                 }
             }
             ty::Tuple(fields) => PatKind::Leaf {
-                subpatterns: self.field_pats(cv.unwrap_branch().iter().copied().zip(fields.iter())),
+                subpatterns: self.field_pats(
+                    cv.unwrap_branch().iter().map(|ct| ct.to_value().valtree).zip(fields.iter()),
+                ),
             },
             ty::Slice(elem_ty) => PatKind::Slice {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(val.to_value().valtree, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -279,7 +284,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(val.to_value().valtree, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),

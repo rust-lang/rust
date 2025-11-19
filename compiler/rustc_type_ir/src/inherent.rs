@@ -292,6 +292,11 @@ pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
     fn valtree(self) -> I::ValTree;
 }
 
+pub trait ValTree<I: Interner<ValTree = Self>>: Copy + Debug + Hash + Eq {
+    // This isnt' `IntoKind` because then we can't return a reference
+    fn kind(&self) -> &ty::ValTreeKind<I>;
+}
+
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }

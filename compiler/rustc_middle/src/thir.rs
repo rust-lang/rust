@@ -33,7 +33,7 @@ use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, Ty,
-    TyCtxt, UpvarArgs,
+    TyCtxt, UpvarArgs, ValTreeKindExt,
 };
 
 pub mod visit;
