@@ -2067,22 +2067,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
 
         if Rc::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs.
-
-            let this_data_ref: &T = &**this;
-            // `in_progress` drops the allocation if we panic before finishing initializing it.
-            let mut in_progress: UniqueRcUninit<T, A> =
-                UniqueRcUninit::new(this_data_ref, this.alloc.clone());
-
-            // Initialize with clone of this.
-            let initialized_clone = unsafe {
-                // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
-                // Cast type of pointer, now that it is initialized.
-                in_progress.into_rc()
-            };
-
-            // Replace `this` with newly constructed Rc.
-            *this = initialized_clone;
+            *this = Rc::clone_from_ref_in(&**this, this.alloc.clone());
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
 
