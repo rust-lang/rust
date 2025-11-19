@@ -907,6 +907,12 @@ enum AmbiguityErrorMisc {
     None,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum AmbiguityWarning {
+    GlobImport,
+    PanicImport,
+}
+
 struct AmbiguityError<'ra> {
     kind: AmbiguityKind,
     ident: Ident,
@@ -914,7 +920,7 @@ struct AmbiguityError<'ra> {
     b2: NameBinding<'ra>,
     misc1: AmbiguityErrorMisc,
     misc2: AmbiguityErrorMisc,
-    warning: bool,
+    warning: Option<AmbiguityWarning>,
 }
 
 impl<'ra> NameBindingData<'ra> {
@@ -2042,7 +2048,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
-                warning: warn_ambiguity,
+                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out

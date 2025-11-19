@@ -3,7 +3,6 @@
 //@ pp-exact:hir-fn-variadic.pp
 
 #![feature(c_variadic)]
-#[attr = MacroUse {arguments: UseAll}]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;

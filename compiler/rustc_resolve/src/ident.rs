@@ -6,6 +6,7 @@ use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRe
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
 use rustc_span::{Ident, Span, kw, sym};
 use tracing::{debug, instrument};
@@ -17,10 +18,10 @@ use crate::late::{
 };
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
-    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
-    Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot,
-    NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Used, Weak, errors,
+    AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver,
+    Determinacy, Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res,
+    ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Used, Weak, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -705,13 +706,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 // Skip ambiguity errors for extern flag bindings "overridden"
                                 // by extern item bindings.
                                 // FIXME: Remove with lang team approval.
-                                let issue_145575_hack = Some(binding)
-                                    == extern_prelude_flag_binding
-                                    && extern_prelude_item_binding.is_some()
-                                    && extern_prelude_item_binding != Some(innermost_binding);
+                                let is_issue_145575_hack = || {
+                                    Some(binding) == extern_prelude_flag_binding
+                                        && extern_prelude_item_binding.is_some()
+                                        && extern_prelude_item_binding != Some(innermost_binding)
+                                };
+
                                 if let Some(kind) = ambiguity_error_kind
-                                    && !issue_145575_hack
+                                    && !is_issue_145575_hack()
                                 {
+                                    // Turn ambiguity errors for core vs std panic into warnings.
+                                    // FIXME: Remove with lang team approval.
+                                    let is_issue_147319_hack = ctxt.edition()
+                                        <= Edition::Edition2024
+                                        && matches!(orig_ident.name, sym::panic)
+                                        && this.is_builtin_macro(binding.res())
+                                        && this.is_builtin_macro(innermost_binding.res());
+
+                                    let warning = if is_issue_147319_hack {
+                                        Some(AmbiguityWarning::PanicImport)
+                                    } else {
+                                        None
+                                    };
+
                                     let misc = |f: Flags| {
                                         if f.contains(Flags::MISC_SUGGEST_CRATE) {
                                             AmbiguityErrorMisc::SuggestCrate
@@ -728,7 +745,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         ident: orig_ident,
                                         b1: innermost_binding,
                                         b2: binding,
-                                        warning: false,
+                                        warning,
                                         misc1: misc(innermost_flags),
                                         misc2: misc(flags),
                                     });
@@ -1072,7 +1089,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 b1: binding,
                 b2: shadowed_glob,
-                warning: false,
+                warning: None,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
             });

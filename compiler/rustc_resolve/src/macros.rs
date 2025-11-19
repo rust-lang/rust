@@ -838,10 +838,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                  res: Res| {
             if let Some(initial_res) = initial_res {
                 if res != initial_res {
-                    // Make sure compilation does not succeed if preferred macro resolution
-                    // has changed after the macro had been expanded. In theory all such
-                    // situations should be reported as errors, so this is a bug.
-                    this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    // Delayed versions of the #147319 workaround are inconsistent, but not really
+                    // problematic and already seen as a bug.
+                    // FIXME: Remove with lang team approval.
+                    if !this
+                        .ambiguity_errors
+                        .iter()
+                        .all(|ambiguity_error| ambiguity_error.warning.is_some())
+                    {
+                        // Make sure compilation does not succeed if preferred macro resolution
+                        // has changed after the macro had been expanded. In theory all such
+                        // situations should be reported as errors, so this is a bug.
+                        this.dcx().span_delayed_bug(span, "inconsistent resolution for a macro");
+                    }
                 }
             } else if this.tcx.dcx().has_errors().is_none() && this.privacy_errors.is_empty() {
                 // It's possible that the macro was unresolved (indeterminate) and silently
