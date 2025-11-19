@@ -1499,6 +1499,55 @@ pub(crate) mod builtin {
     /// - `INPUT_ACTIVITIES`: Specifies one valid activity for each input parameter.
     /// - `OUTPUT_ACTIVITY`: Must not be set if the function implicitly returns nothing
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
+    ///
+    /// ACTIVITIES might either be `Dual` or `Const`, more options will be exposed later.
+    ///
+    /// `Const` should be used on non-float arguments, or float-based arguments as an optimization
+    /// if we are not interested in computing the derivatives with respect to this argument.
+    ///
+    /// `Dual` can be used for float scalar values or for references, raw pointers, or other
+    /// indirect input arguments. It can also be used on a scalar float return value.
+    /// If used on a return value, the generated function will return a tuple of two float scalars.
+    /// If used on an input argument, a new shadow argument of the same type will be created,
+    /// directly following the original argument.
+    ///
+    /// ### Usage examples:
+    ///
+    /// ```rust,ignore (autodiff requires a -Z flag as well as fat-lto for testing)
+    /// #![feature(autodiff)]
+    /// use std::autodiff::*;
+    /// #[autodiff_forward(rb_fwd1, Dual, Const, Dual)]
+    /// #[autodiff_forward(rb_fwd2, Const, Dual, Dual)]
+    /// #[autodiff_forward(rb_fwd3, Dual, Dual, Dual)]
+    /// fn rosenbrock(x: f64, y: f64) -> f64 {
+    ///     (1.0 - x).powi(2) + 100.0 * (y - x.powi(2)).powi(2)
+    /// }
+    /// #[autodiff_forward(rb_inp_fwd, Dual, Dual, Dual)]
+    /// fn rosenbrock_inp(x: f64, y: f64, out: &mut f64) {
+    ///     *out = (1.0 - x).powi(2) + 100.0 * (y - x.powi(2)).powi(2);
+    /// }
+    ///
+    /// fn main() {
+    ///   let x0 = rosenbrock(1.0, 3.0); // 400.0
+    ///   let (x1, dx1) = rb_fwd1(1.0, 1.0, 3.0); // (400.0, -800.0)
+    ///   let (x2, dy1) = rb_fwd2(1.0, 3.0, 1.0); // (400.0, 400.0)
+    ///   // When seeding both arguments at once the tangent return is the sum of both.
+    ///   let (x3, dxy) = rb_fwd3(1.0, 1.0, 3.0, 1.0); // (400.0, -400.0)
+    ///
+    ///   let mut out = 0.0;
+    ///   let mut dout = 0.0;
+    ///   rb_inp_fwd(1.0, 1.0, 3.0, 1.0, &mut out, &mut dout);
+    ///   // (out, dout) == (400.0, -400.0)
+    /// }
+    /// ```
+    ///
+    /// We might want to track how one input float affects one or more output floats. In this case,
+    /// the shadow of one input should be initialized to `1.0`, while the shadows of the other
+    /// inputs should be initialized to `0.0`. The shadow of the output(s) should be initialized to
+    /// `0.0`. After calling the generated function, the shadow of the input will be zeroed,
+    /// while the shadow(s) of the output(s) will contain the derivatives. Forward mode is generally
+    /// more efficient if we have more output floats marked as `Dual` than input floats.
+    /// Related information can also be found under the term "Vector-Jacobian product" (VJP).
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[allow_internal_unstable(core_intrinsics)]
@@ -1518,6 +1567,60 @@ pub(crate) mod builtin {
     /// - `INPUT_ACTIVITIES`: Specifies one valid activity for each input parameter.
     /// - `OUTPUT_ACTIVITY`: Must not be set if the function implicitly returns nothing
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
+    ///
+    /// ACTIVITIES might either be `Active`, `Duplicated` or `Const`, more options will be exposed later.
+    ///
+    /// `Active` can be used for float scalar values.
+    /// If used on an input, a new float will be appended to the return tuple of the generated
+    /// function. If the function returns a float scalar, `Active` can be used for the return as
+    /// well. In this case a float scalar will be appended to the argument list, it works as seed.
+    ///
+    /// `Duplicated` can be used on references, raw pointers, or other indirect input
+    /// arguments. It creates a new shadow argument of the same type, following the original argument.
+    /// A const reference or pointer argument will receive a mutable reference or pointer as shadow.
+    ///
+    /// `Const` should be used on non-float arguments, or float-based arguments as an optimization
+    /// if we are not interested in computing the derivatives with respect to this argument.
+    ///
+    /// ### Usage examples:
+    ///
+    /// ```rust,ignore (autodiff requires a -Z flag as well as fat-lto for testing)
+    /// #![feature(autodiff)]
+    /// use std::autodiff::*;
+    /// #[autodiff_reverse(rb_rev, Active, Active, Active)]
+    /// fn rosenbrock(x: f64, y: f64) -> f64 {
+    ///     (1.0 - x).powi(2) + 100.0 * (y - x.powi(2)).powi(2)
+    /// }
+    /// #[autodiff_reverse(rb_inp_rev, Active, Active, Duplicated)]
+    /// fn rosenbrock_inp(x: f64, y: f64, out: &mut f64) {
+    ///     *out = (1.0 - x).powi(2) + 100.0 * (y - x.powi(2)).powi(2);
+    /// }
+    ///
+    /// fn main() {
+    ///     let (output1, dx1, dy1) = rb_rev(1.0, 3.0, 1.0);
+    ///     dbg!(output1, dx1, dy1); // (400.0, -800.0, 400.0)
+    ///     let mut output2 = 0.0;
+    ///     let mut seed = 1.0;
+    ///     let (dx2, dy2) = rb_inp_rev(1.0, 3.0, &mut output2, &mut seed);
+    ///     // (dx2, dy2, output2, seed) == (-800.0, 400.0, 400.0, 0.0)
+    /// }
+    /// ```
+    ///
+    ///
+    /// We often want to track how one or more input floats affect one output float. This output can
+    /// be a scalar return value, or a mutable reference or pointer argument. In the latter case, the
+    /// mutable input should be marked as duplicated and its shadow initialized to `0.0`. The shadow of
+    /// the output should be marked as active or duplicated and initialized to `1.0`. After calling
+    /// the generated function, the shadow(s) of the input(s) will contain the derivatives. The
+    /// shadow of the outputs ("seed") will be reset to zero.
+    /// If the function has more than one output float marked as active or duplicated, users might want to
+    /// set one of them to `1.0` and the others to `0.0` to compute partial derivatives.
+    /// Unlike forward-mode, a call to the generated function does not reset the shadow of the
+    /// inputs.
+    /// Reverse mode is generally more efficient if we have more active/duplicated input than
+    /// output floats.
+    ///
+    /// Related information can also be found under the term "Jacobian-Vector Product" (JVP).
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[allow_internal_unstable(core_intrinsics)]
