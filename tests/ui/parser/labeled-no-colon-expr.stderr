@@ -81,10 +81,10 @@ LL |     'l4: 0;
    |        +
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/labeled-no-colon-expr.rs:11:17
+  --> $DIR/labeled-no-colon-expr.rs:11:19
    |
 LL |             'l5 $b;
-   |             ----^^
+   |             ------^
    |             |
    |             the `block` fragment is within this context
 ...
@@ -94,8 +94,8 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
-LL |             'l5 { $b };
-   |                 +    +
+LL |             'l5 $b{  };
+   |                   +  +
 
 error: labeled expression must be followed by `:`
   --> $DIR/labeled-no-colon-expr.rs:14:8
@@ -109,8 +109,9 @@ LL |     m!({});
    = note: labels are used before loops and blocks, allowing e.g., `break 'label` to them
 help: add `:` after the label
    |
-LL |             'l5: $b;
-   |                +
+LL -             'l5 $b;
+LL +             'l5: ;
+   |
 
 error: aborting due to 8 previous errors
 

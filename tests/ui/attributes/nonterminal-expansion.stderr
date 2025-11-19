@@ -1,8 +1,8 @@
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/nonterminal-expansion.rs:7:22
+  --> $DIR/nonterminal-expansion.rs:7:24
    |
 LL |         #[repr(align($n))]
-   |                      ^^
+   |                        ^
 ...
 LL | pass_nonterminal!(n!());
    | ----------------------- in this macro invocation

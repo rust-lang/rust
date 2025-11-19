@@ -66,7 +66,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/half-open-range-pats-inclusive-dotdotdot-bad-syntax.rs:25:17
    |
 LL |             let ...$e;
-   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
+   |                 ^^^ pattern `1_i32..=i32::MAX` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation

@@ -51,10 +51,10 @@ LL |     my_recursive_macro!();
    = note: to `my_recursive_macro! ();`
 
 error: expected expression, found `pat` metavariable
-  --> $DIR/trace_faulty_macros.rs:16:9
+  --> $DIR/trace_faulty_macros.rs:16:11
    |
 LL |         $a
-   |         ^^ expected expression
+   |           ^ expected expression
 ...
 LL |     let a = pat_macro!();
    |             ------------ in this macro invocation
@@ -70,10 +70,10 @@ LL | fn use_derive_macro_as_attr() {}
    | -------------------------------- not a `struct`, `enum` or `union`
 
 error: expected expression, found `pat` metavariable
-  --> $DIR/trace_faulty_macros.rs:49:37
+  --> $DIR/trace_faulty_macros.rs:49:39
    |
 LL |     (($p:pat, $e:pat)) => {let $p = $e;};
-   |                                     ^^ expected expression
+   |                                       ^ expected expression
 ...
 LL |     test!(let x = 1+1);
    |     ------------------ in this macro invocation

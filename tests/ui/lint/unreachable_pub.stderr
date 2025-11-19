@@ -112,10 +112,10 @@ LL |     pub type Oxygen = bool;
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub.rs:44:47
+  --> $DIR/unreachable_pub.rs:44:58
    |
 LL |         ($visibility: vis, $name: ident) => { $visibility struct $name {} }
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                          ^^^^^^^^^^^^^^^^
 ...
 LL |     define_empty_struct_with_visibility!(pub, Fluorine);
    |     ---------------------------------------------------
