@@ -8935,3 +8935,195 @@ pub fn svqsub_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
 pub fn svqsub_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
     svqsub_u64(op1, svdup_n_u64(op2))
 }
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f32_m(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fsubr.nxv4f32")]
+        fn _svsubr_f32_m(pg: svbool4_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svsubr_f32_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f32_m(pg: svbool_t, op1: svfloat32_t, op2: f32) -> svfloat32_t {
+    svsubr_f32_m(pg, op1, svdup_n_f32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f32_x(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
+    svsubr_f32_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f32_x(pg: svbool_t, op1: svfloat32_t, op2: f32) -> svfloat32_t {
+    svsubr_f32_x(pg, op1, svdup_n_f32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f32_z(pg: svbool_t, op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
+    svsubr_f32_m(pg, svsel_f32(pg, op1, svdup_n_f32(0.0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f32_z(pg: svbool_t, op1: svfloat32_t, op2: f32) -> svfloat32_t {
+    svsubr_f32_z(pg, op1, svdup_n_f32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f64_m(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.fsubr.nxv2f64")]
+        fn _svsubr_f64_m(pg: svbool2_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svsubr_f64_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f64_m(pg: svbool_t, op1: svfloat64_t, op2: f64) -> svfloat64_t {
+    svsubr_f64_m(pg, op1, svdup_n_f64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f64_x(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
+    svsubr_f64_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f64_x(pg: svbool_t, op1: svfloat64_t, op2: f64) -> svfloat64_t {
+    svsubr_f64_x(pg, op1, svdup_n_f64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_f64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_f64_z(pg: svbool_t, op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
+    svsubr_f64_m(pg, svsel_f64(pg, op1, svdup_n_f64(0.0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_f64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(fsubr))]
+pub fn svsubr_n_f64_z(pg: svbool_t, op1: svfloat64_t, op2: f64) -> svfloat64_t {
+    svsubr_f64_z(pg, op1, svdup_n_f64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.subr.nxv16i8")]
+        fn _svsubr_s8_m(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t;
+    }
+    unsafe { _svsubr_s8_m(pg, op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s8_m(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svsubr_s8_m(pg, op1, svdup_n_s8(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s8_x(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    svsubr_s8_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s8_x(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svsubr_s8_x(pg, op1, svdup_n_s8(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
+    svsubr_s8_m(pg, svsel_s8(pg, op1, svdup_n_s8(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
+    svsubr_s8_z(pg, op1, svdup_n_s8(op2))
+}
