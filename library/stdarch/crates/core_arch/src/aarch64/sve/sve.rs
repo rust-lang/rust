@@ -9127,3 +9127,985 @@ pub fn svsubr_s8_z(pg: svbool_t, op1: svint8_t, op2: svint8_t) -> svint8_t {
 pub fn svsubr_n_s8_z(pg: svbool_t, op1: svint8_t, op2: i8) -> svint8_t {
     svsubr_s8_z(pg, op1, svdup_n_s8(op2))
 }
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.subr.nxv8i16")]
+        fn _svsubr_s16_m(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t;
+    }
+    unsafe { _svsubr_s16_m(pg, op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s16_m(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svsubr_s16_m(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s16_x(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    svsubr_s16_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s16_x(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svsubr_s16_x(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s16_z(pg: svbool_t, op1: svint16_t, op2: svint16_t) -> svint16_t {
+    svsubr_s16_m(pg, svsel_s16(pg, op1, svdup_n_s16(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s16_z(pg: svbool_t, op1: svint16_t, op2: i16) -> svint16_t {
+    svsubr_s16_z(pg, op1, svdup_n_s16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.subr.nxv4i32")]
+        fn _svsubr_s32_m(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t;
+    }
+    unsafe { _svsubr_s32_m(pg, op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s32_m(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svsubr_s32_m(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s32_x(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svsubr_s32_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s32_x(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svsubr_s32_x(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s32_z(pg: svbool_t, op1: svint32_t, op2: svint32_t) -> svint32_t {
+    svsubr_s32_m(pg, svsel_s32(pg, op1, svdup_n_s32(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s32_z(pg: svbool_t, op1: svint32_t, op2: i32) -> svint32_t {
+    svsubr_s32_z(pg, op1, svdup_n_s32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s64_m(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.subr.nxv2i64")]
+        fn _svsubr_s64_m(pg: svbool2_t, op1: svint64_t, op2: svint64_t) -> svint64_t;
+    }
+    unsafe { _svsubr_s64_m(simd_cast(pg), op1, op2) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s64_m(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svsubr_s64_m(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s64_x(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    svsubr_s64_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s64_x(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svsubr_s64_x(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_s64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_s64_z(pg: svbool_t, op1: svint64_t, op2: svint64_t) -> svint64_t {
+    svsubr_s64_m(pg, svsel_s64(pg, op1, svdup_n_s64(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_s64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_s64_z(pg: svbool_t, op1: svint64_t, op2: i64) -> svint64_t {
+    svsubr_s64_z(pg, op1, svdup_n_s64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u8_m(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    let op1_s: svint8_t = unsafe { core::mem::transmute(op1) };
+    let op2_s: svint8_t = unsafe { core::mem::transmute(op2) };
+    
+    let res_s: svint8_t = svsubr_s8_m(pg, op1_s, op2_s);
+    
+    unsafe { core::mem::transmute::<svint8_t, svuint8_t>(res_s) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u8]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u8_m(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svsubr_u8_m(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u8_x(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    svsubr_u8_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u8]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u8_x(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svsubr_u8_x(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u8_z(pg: svbool_t, op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    svsubr_u8_m(pg, svsel_u8(pg, op1, svdup_n_u8(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u8]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u8_z(pg: svbool_t, op1: svuint8_t, op2: u8) -> svuint8_t {
+    svsubr_u8_z(pg, op1, svdup_n_u8(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u16_m(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    let op1_s: svint16_t = unsafe { core::mem::transmute(op1) };
+    let op2_s: svint16_t = unsafe { core::mem::transmute(op2) };
+    let res_s: svint16_t = svsubr_s16_m(pg, op1_s, op2_s);
+    unsafe { core::mem::transmute::<svint16_t, svuint16_t>(res_s) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u16]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u16_m(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svsubr_u16_m(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u16_x(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    svsubr_u16_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u16]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u16_x(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svsubr_u16_x(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u16_z(pg: svbool_t, op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    svsubr_u16_m(pg, svsel_u16(pg, op1, svdup_n_u16(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u16]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u16_z(pg: svbool_t, op1: svuint16_t, op2: u16) -> svuint16_t {
+    svsubr_u16_z(pg, op1, svdup_n_u16(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u32_m(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    let op1_s: svint32_t = unsafe { core::mem::transmute(op1) };
+    let op2_s: svint32_t = unsafe { core::mem::transmute(op2) };
+    let res_s: svint32_t = svsubr_s32_m(pg, op1_s, op2_s);
+    unsafe { core::mem::transmute::<svint32_t, svuint32_t>(res_s) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u32_m(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svsubr_u32_m(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u32_x(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    svsubr_u32_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u32_x(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svsubr_u32_x(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u32_z(pg: svbool_t, op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    svsubr_u32_m(pg, svsel_u32(pg, op1, svdup_n_u32(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u32_z(pg: svbool_t, op1: svuint32_t, op2: u32) -> svuint32_t {
+    svsubr_u32_z(pg, op1, svdup_n_u32(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u64_m(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    let op1_s: svint64_t = unsafe { core::mem::transmute(op1) };
+    let op2_s: svint64_t = unsafe { core::mem::transmute(op2) };
+    let res_s: svint64_t = svsubr_s64_m(pg, op1_s, op2_s);
+    unsafe { core::mem::transmute::<svint64_t, svuint64_t>(res_s) }
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u64_m(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svsubr_u64_m(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u64_x(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    svsubr_u64_m(pg, op1, op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u64_x(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svsubr_u64_x(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_u64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    svsubr_u64_m(pg, svsel_u64(pg, op1, svdup_n_u64(0)), op2)
+}
+#[doc = "Subtract reversed"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svsubr[_n_u64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(subr))]
+pub fn svsubr_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
+    svsubr_u64_z(pg, op1, svdup_n_u64(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_s8(op1: svint8_t, op2: svint8_t) -> svint8_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv16i8")]
+        fn _svqadd_s8(op1: svint8_t, op2: svint8_t) -> svint8_t;
+    }
+    unsafe { _svqadd_s8(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_n_s8(op1: svint8_t, op2: i8) -> svint8_t {
+    svqadd_s8(op1, svdup_n_s8(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_s16(op1: svint16_t, op2: svint16_t) -> svint16_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv8i16")]
+        fn _svqadd_s16(op1: svint16_t, op2: svint16_t) -> svint16_t;
+    }
+    unsafe { _svqadd_s16(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_n_s16(op1: svint16_t, op2: i16) -> svint16_t {
+    svqadd_s16(op1, svdup_n_s16(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_s32(op1: svint32_t, op2: svint32_t) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv4i32")]
+        fn _svqadd_s32(op1: svint32_t, op2: svint32_t) -> svint32_t;
+    }
+    unsafe { _svqadd_s32(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_n_s32(op1: svint32_t, op2: i32) -> svint32_t {
+    svqadd_s32(op1, svdup_n_s32(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_s64(op1: svint64_t, op2: svint64_t) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.sqadd.x.nxv2i64")]
+        fn _svqadd_s64(op1: svint64_t, op2: svint64_t) -> svint64_t;
+    }
+    unsafe { _svqadd_s64(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(sqadd))]
+pub fn svqadd_n_s64(op1: svint64_t, op2: i64) -> svint64_t {
+    svqadd_s64(op1, svdup_n_s64(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv16i8")]
+        fn _svqadd_u8(op1: svuint8_t, op2: svuint8_t) -> svuint8_t;
+    }
+    unsafe { _svqadd_u8(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_n_u8(op1: svuint8_t, op2: u8) -> svuint8_t {
+    svqadd_u8(op1, svdup_n_u8(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv8i16")]
+        fn _svqadd_u16(op1: svuint16_t, op2: svuint16_t) -> svuint16_t;
+    }
+    unsafe { _svqadd_u16(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_n_u16(op1: svuint16_t, op2: u16) -> svuint16_t {
+    svqadd_u16(op1, svdup_n_u16(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv4i32")]
+        fn _svqadd_u32(op1: svuint32_t, op2: svuint32_t) -> svuint32_t;
+    }
+    unsafe { _svqadd_u32(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_n_u32(op1: svuint32_t, op2: u32) -> svuint32_t {
+    svqadd_u32(op1, svdup_n_u32(op2))
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.uqadd.x.nxv2i64")]
+        fn _svqadd_u64(op1: svuint64_t, op2: svuint64_t) -> svuint64_t;
+    }
+    unsafe { _svqadd_u64(op1, op2) }
+}
+#[doc = "Saturating add"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svqadd[_n_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(uqadd))]
+pub fn svqadd_n_u64(op1: svuint64_t, op2: u64) -> svuint64_t {
+    svqadd_u64(op1, svdup_n_u64(op2))
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_f32(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv4f32")]
+        fn _svcompact_f32(pg: svbool_t, op: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svcompact_f32(pg, op) }
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_f64(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv2f64")]
+        fn _svcompact_f64(pg: svbool2_t, op: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svcompact_f64(simd_cast(pg), op) }
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_s32(pg: svbool_t, op: svint32_t) -> svint32_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv4i32")]
+        fn _svcompact_s32(pg: svbool_t, op: svint32_t) -> svint32_t;
+    }
+    unsafe { _svcompact_s32(pg, op) }
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_s64(pg: svbool_t, op: svint64_t) -> svint64_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.compact.nxv2i64")]
+        fn _svcompact_s64(pg: svbool2_t, op: svint64_t) -> svint64_t;
+    }
+    unsafe { _svcompact_s64(simd_cast(pg), op) }
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_u32(pg: svbool_t, op: svuint32_t) -> svuint32_t {
+    let op_s: svint32_t = unsafe { core::mem::transmute(op) };
+    let res_s: svint32_t = svcompact_s32(pg, op_s);
+    unsafe { core::mem::transmute::<svint32_t, svuint32_t>(res_s) }
+}
+#[doc = "Shuffle active elements of vector to the right and fill with zero"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svcompact[_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(compact))]
+pub fn svcompact_u64(pg: svbool_t, op: svuint64_t) -> svuint64_t {
+    let op_s: svint64_t = unsafe { core::mem::transmute(op) };
+    let res_s: svint64_t = svcompact_s64(pg, op_s);
+    unsafe { core::mem::transmute::<svint64_t, svuint64_t>(res_s) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv4f32")]
+        fn _svlasta_f32(pg: svbool_t, op: svfloat32_t) -> f32;
+    }
+    unsafe { _svlasta_f32(pg, op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_f64(pg: svbool_t, op: svfloat64_t) -> f64 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv2f64")]
+        fn _svlasta_f64(pg: svbool2_t, op: svfloat64_t) -> f64;
+    }
+    unsafe { _svlasta_f64(simd_cast(pg), op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_s8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_s8(pg: svbool_t, op: svint8_t) -> i8 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv16i8")]
+        fn _svlasta_s8(pg: svbool_t, op: svint8_t) -> i8;
+    }
+    unsafe { _svlasta_s8(pg, op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_s16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_s16(pg: svbool_t, op: svint16_t) -> i16 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv8i16")]
+        fn _svlasta_s16(pg: svbool_t, op: svint16_t) -> i16;
+    }
+    unsafe { _svlasta_s16(pg, op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_s32(pg: svbool_t, op: svint32_t) -> i32 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv4i32")]
+        fn _svlasta_s32(pg: svbool_t, op: svint32_t) -> i32;
+    }
+    unsafe { _svlasta_s32(pg, op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_s64(pg: svbool_t, op: svint64_t) -> i64 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lasta.nxv2i64")]
+        fn _svlasta_s64(pg: svbool2_t, op: svint64_t) -> i64;
+    }
+    unsafe { _svlasta_s64(simd_cast(pg), op) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_u8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_u8(pg: svbool_t, op: svuint8_t) -> u8 {
+    let op_s: svint8_t = unsafe { core::mem::transmute(op) };
+    let res_s: i8 = svlasta_s8(pg, op_s);
+    unsafe { core::mem::transmute::<i8, u8>(res_s) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_u16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_u16(pg: svbool_t, op: svuint16_t) -> u16 {
+    let op_s: svint16_t = unsafe { core::mem::transmute(op) };
+    let res_s: i16 = svlasta_s16(pg, op_s);
+    unsafe { core::mem::transmute::<i16, u16>(res_s) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_u32(pg: svbool_t, op: svuint32_t) -> u32 {
+    let op_s: svint32_t = unsafe { core::mem::transmute(op) };
+    let res_s: i32 = svlasta_s32(pg, op_s);
+    unsafe { core::mem::transmute::<i32, u32>(res_s) }
+}
+#[doc = "Extract element after last"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlasta[_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lasta))]
+pub fn svlasta_u64(pg: svbool_t, op: svuint64_t) -> u64 {
+    let op_s: svint64_t = unsafe { core::mem::transmute(op) };
+    let res_s: i64 = svlasta_s64(pg, op_s);
+    unsafe { core::mem::transmute::<i64, u64>(res_s) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_f32(pg: svbool_t, op: svfloat32_t) -> f32 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv4f32")]
+        fn _svlastb_f32(pg: svbool_t, op: svfloat32_t) -> f32;
+    }
+    unsafe { _svlastb_f32(pg, op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_f64(pg: svbool_t, op: svfloat64_t) -> f64 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv2f64")]
+        fn _svlastb_f64(pg: svbool2_t, op: svfloat64_t) -> f64;
+    }
+    unsafe { _svlastb_f64(simd_cast(pg), op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_s8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_s8(pg: svbool_t, op: svint8_t) -> i8 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv16i8")]
+        fn _svlastb_s8(pg: svbool_t, op: svint8_t) -> i8;
+    }
+    unsafe { _svlastb_s8(pg, op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_s16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_s16(pg: svbool_t, op: svint16_t) -> i16 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv8i16")]
+        fn _svlastb_s16(pg: svbool_t, op: svint16_t) -> i16;
+    }
+    unsafe { _svlastb_s16(pg, op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_s32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_s32(pg: svbool_t, op: svint32_t) -> i32 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv4i32")]
+        fn _svlastb_s32(pg: svbool_t, op: svint32_t) -> i32;
+    }
+    unsafe { _svlastb_s32(pg, op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_s64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_s64(pg: svbool_t, op: svint64_t) -> i64 {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.lastb.nxv2i64")]
+        fn _svlastb_s64(pg: svbool2_t, op: svint64_t) -> i64;
+    }
+    unsafe { _svlastb_s64(simd_cast(pg), op) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_u8])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_u8(pg: svbool_t, op: svuint8_t) -> u8 {
+    let op_s: svint8_t = unsafe { core::mem::transmute(op) };
+    let res_s: i8 = svlastb_s8(pg, op_s);
+    unsafe { core::mem::transmute::<i8, u8>(res_s) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_u16])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_u16(pg: svbool_t, op: svuint16_t) -> u16 {
+    let op_s: svint16_t = unsafe { core::mem::transmute(op) };
+    let res_s: i16 = svlastb_s16(pg, op_s);
+    unsafe { core::mem::transmute::<i16, u16>(res_s) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_u32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_u32(pg: svbool_t, op: svuint32_t) -> u32 {
+    let op_s: svint32_t = unsafe { core::mem::transmute(op) };
+    let res_s: i32 = svlastb_s32(pg, op_s);
+    unsafe { core::mem::transmute::<i32, u32>(res_s) }
+}
+#[doc = "Extract last element"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svlastb[_u64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(lastb))]
+pub fn svlastb_u64(pg: svbool_t, op: svuint64_t) -> u64 {
+    let op_s: svint64_t = unsafe { core::mem::transmute(op) };
+    let res_s: i64 = svlastb_s64(pg, op_s);
+    unsafe { core::mem::transmute::<i64, u64>(res_s) }
+}
