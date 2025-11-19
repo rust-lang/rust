@@ -9,8 +9,8 @@ use super::simd_cast;
 
 /// SVE谓词类型
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(1)]
+#[repr(C)]
 pub struct svbool_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -22,8 +22,8 @@ impl Clone for svbool_t {
 
 /// SVE双宽度谓词类型
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(2)]
+#[repr(C)]
 pub struct svbool2_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -35,8 +35,8 @@ impl Clone for svbool2_t {
 
 /// SVE四宽度谓词类型
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svbool4_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -48,8 +48,8 @@ impl Clone for svbool4_t {
 
 /// SVE八宽度谓词类型
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svbool8_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -65,8 +65,8 @@ impl Clone for svbool8_t {
 
 /// SVE 8位有符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svint8_t(i8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -78,8 +78,8 @@ impl Clone for svint8_t {
 
 /// SVE 16位有符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svint16_t(i16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -91,8 +91,8 @@ impl Clone for svint16_t {
 
 /// SVE 32位有符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svint32_t(i32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -104,8 +104,8 @@ impl Clone for svint32_t {
 
 /// SVE 64位有符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(2)]
+#[repr(C)]
 pub struct svint64_t(i64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -117,8 +117,8 @@ impl Clone for svint64_t {
 
 /// SVE 8位无符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svuint8_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -130,8 +130,8 @@ impl Clone for svuint8_t {
 
 /// SVE 16位无符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svuint16_t(u16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -143,8 +143,8 @@ impl Clone for svuint16_t {
 
 /// SVE 32位无符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svuint32_t(u32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -156,8 +156,8 @@ impl Clone for svuint32_t {
 
 /// SVE 64位无符号整数向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(2)]
+#[repr(C)]
 pub struct svuint64_t(u64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -169,8 +169,8 @@ impl Clone for svuint64_t {
 
 /// SVE 32位浮点向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svfloat32_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -182,8 +182,8 @@ impl Clone for svfloat32_t {
 
 /// SVE 64位浮点向量
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(2)]
+#[repr(C)]
 pub struct svfloat64_t(f64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -195,8 +195,8 @@ impl Clone for svfloat64_t {
 
 /// SVE 16位浮点向量 (使用 f32 作为底层类型)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svfloat16_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -212,8 +212,8 @@ impl Clone for svfloat16_t {
 
 /// SVE 8位有符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(32)]
+#[repr(C)]
 pub struct svint8x2_t(i8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -225,8 +225,8 @@ impl Clone for svint8x2_t {
 
 /// SVE 8位无符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(32)]
+#[repr(C)]
 pub struct svuint8x2_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -238,8 +238,8 @@ impl Clone for svuint8x2_t {
 
 /// SVE 16位有符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svint16x2_t(i16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -251,8 +251,8 @@ impl Clone for svint16x2_t {
 
 /// SVE 16位无符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svuint16x2_t(u16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -264,8 +264,8 @@ impl Clone for svuint16x2_t {
 
 /// SVE 32位浮点双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svfloat32x2_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -277,8 +277,8 @@ impl Clone for svfloat32x2_t {
 
 /// SVE 32位有符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svint32x2_t(i32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -290,8 +290,8 @@ impl Clone for svint32x2_t {
 
 /// SVE 32位无符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svuint32x2_t(u32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -303,8 +303,8 @@ impl Clone for svuint32x2_t {
 
 /// SVE 64位浮点双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svfloat64x2_t(f64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -316,8 +316,8 @@ impl Clone for svfloat64x2_t {
 
 /// SVE 64位有符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svint64x2_t(i64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -329,8 +329,8 @@ impl Clone for svint64x2_t {
 
 /// SVE 64位无符号整数双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(4)]
+#[repr(C)]
 pub struct svuint64x2_t(u64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -342,8 +342,8 @@ impl Clone for svuint64x2_t {
 
 /// SVE 8位有符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(48)]
+#[repr(C)]
 pub struct svint8x3_t(i8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -355,8 +355,8 @@ impl Clone for svint8x3_t {
 
 /// SVE 8位无符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(48)]
+#[repr(C)]
 pub struct svuint8x3_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -368,8 +368,8 @@ impl Clone for svuint8x3_t {
 
 /// SVE 16位有符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(24)]
+#[repr(C)]
 pub struct svint16x3_t(i16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -381,8 +381,8 @@ impl Clone for svint16x3_t {
 
 /// SVE 16位无符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(24)]
+#[repr(C)]
 pub struct svuint16x3_t(u16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -394,8 +394,8 @@ impl Clone for svuint16x3_t {
 
 /// SVE 32位浮点三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(12)]
+#[repr(C)]
 pub struct svfloat32x3_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -407,8 +407,8 @@ impl Clone for svfloat32x3_t {
 
 /// SVE 32位有符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(12)]
+#[repr(C)]
 pub struct svint32x3_t(i32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -420,8 +420,8 @@ impl Clone for svint32x3_t {
 
 /// SVE 32位无符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(12)]
+#[repr(C)]
 pub struct svuint32x3_t(u32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -433,8 +433,8 @@ impl Clone for svuint32x3_t {
 
 /// SVE 64位浮点三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(6)]
+#[repr(C)]
 pub struct svfloat64x3_t(f64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -446,8 +446,8 @@ impl Clone for svfloat64x3_t {
 
 /// SVE 64位有符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(6)]
+#[repr(C)]
 pub struct svint64x3_t(i64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -459,8 +459,8 @@ impl Clone for svint64x3_t {
 
 /// SVE 64位无符号整数三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(6)]
+#[repr(C)]
 pub struct svuint64x3_t(u64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -472,8 +472,8 @@ impl Clone for svuint64x3_t {
 
 /// SVE 8位有符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(64)]
+#[repr(C)]
 pub struct svint8x4_t(i8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -485,8 +485,8 @@ impl Clone for svint8x4_t {
 
 /// SVE 8位无符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(64)]
+#[repr(C)]
 pub struct svuint8x4_t(u8);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -498,8 +498,8 @@ impl Clone for svuint8x4_t {
 
 /// SVE 16位有符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(32)]
+#[repr(C)]
 pub struct svint16x4_t(i16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -511,8 +511,8 @@ impl Clone for svint16x4_t {
 
 /// SVE 16位无符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(32)]
+#[repr(C)]
 pub struct svuint16x4_t(u16);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -524,8 +524,8 @@ impl Clone for svuint16x4_t {
 
 /// SVE 32位浮点四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svfloat32x4_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -537,8 +537,8 @@ impl Clone for svfloat32x4_t {
 
 /// SVE 32位有符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svint32x4_t(i32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -550,8 +550,8 @@ impl Clone for svint32x4_t {
 
 /// SVE 32位无符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svuint32x4_t(u32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -563,8 +563,8 @@ impl Clone for svuint32x4_t {
 
 /// SVE 64位浮点四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svfloat64x4_t(f64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -576,8 +576,8 @@ impl Clone for svfloat64x4_t {
 
 /// SVE 64位有符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svint64x4_t(i64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -589,8 +589,8 @@ impl Clone for svint64x4_t {
 
 /// SVE 64位无符号整数四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(8)]
+#[repr(C)]
 pub struct svuint64x4_t(u64);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -602,8 +602,8 @@ impl Clone for svuint64x4_t {
 
 /// SVE 16位浮点双向量 (x2)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(16)]
+#[repr(C)]
 pub struct svfloat16x2_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -615,8 +615,8 @@ impl Clone for svfloat16x2_t {
 
 /// SVE 16位浮点三向量 (x3)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(24)]
+#[repr(C)]
 pub struct svfloat16x3_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -628,8 +628,8 @@ impl Clone for svfloat16x3_t {
 
 /// SVE 16位浮点四向量 (x4)
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
-#[repr(C)]
 #[rustc_scalable_vector(32)]
+#[repr(C)]
 pub struct svfloat16x4_t(f32);
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]

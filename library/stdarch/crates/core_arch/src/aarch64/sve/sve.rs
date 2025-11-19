@@ -4764,6 +4764,216 @@ pub fn svmul_u64_z(pg: svbool_t, op1: svuint64_t, op2: svuint64_t) -> svuint64_t
 pub fn svmul_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
     svmul_u64_z(pg, op1, svdup_n_u64(op2))
 }
+#[doc = "Reciprocal estimate"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpe[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpe))]
+pub fn svrecpe_f32(op: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecpe.x.nxv4f32"
+        )]
+        fn _svrecpe_f32(op: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svrecpe_f32(op) }
+}
+#[doc = "Reciprocal estimate"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpe[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpe))]
+pub fn svrecpe_f64(op: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecpe.x.nxv2f64"
+        )]
+        fn _svrecpe_f64(op: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svrecpe_f64(op) }
+}
+#[doc = "Reciprocal step"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecps[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecps))]
+pub fn svrecps_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecps.x.nxv4f32"
+        )]
+        fn _svrecps_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svrecps_f32(op1, op2) }
+}
+#[doc = "Reciprocal step"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecps[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecps))]
+pub fn svrecps_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecps.x.nxv2f64"
+        )]
+        fn _svrecps_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svrecps_f64(op1, op2) }
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f32]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f32_m(inactive: svfloat32_t, pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecpx.x.nxv4f32"
+        )]
+        fn _svrecpx_f32_m(inactive: svfloat32_t, pg: svbool4_t, op: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svrecpx_f32_m(inactive, simd_cast(pg), op) }
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f32]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f32_x(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
+    svrecpx_f32_m(op, pg, op)
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f32]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f32_z(pg: svbool_t, op: svfloat32_t) -> svfloat32_t {
+    svrecpx_f32_m(svdup_n_f32(0.0), pg, op)
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f64]_m)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f64_m(inactive: svfloat64_t, pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frecpx.x.nxv2f64"
+        )]
+        fn _svrecpx_f64_m(inactive: svfloat64_t, pg: svbool2_t, op: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svrecpx_f64_m(inactive, simd_cast(pg), op) }
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f64]_x)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f64_x(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
+    svrecpx_f64_m(op, pg, op)
+}
+#[doc = "Reciprocal exponent"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrecpx[_f64]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frecpx))]
+pub fn svrecpx_f64_z(pg: svbool_t, op: svfloat64_t) -> svfloat64_t {
+    svrecpx_f64_m(svdup_n_f64(0.0), pg, op)
+}
+#[doc = "Reciprocal square root estimate"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrte[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frsqrte))]
+pub fn svrsqrte_f32(op: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frsqrte.x.nxv4f32"
+        )]
+        fn _svrsqrte_f32(op: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svrsqrte_f32(op) }
+}
+#[doc = "Reciprocal square root estimate"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrte[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frsqrte))]
+pub fn svrsqrte_f64(op: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frsqrte.x.nxv2f64"
+        )]
+        fn _svrsqrte_f64(op: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svrsqrte_f64(op) }
+}
+#[doc = "Reciprocal square root step"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrts[_f32])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frsqrts))]
+pub fn svrsqrts_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frsqrts.x.nxv4f32"
+        )]
+        fn _svrsqrts_f32(op1: svfloat32_t, op2: svfloat32_t) -> svfloat32_t;
+    }
+    unsafe { _svrsqrts_f32(op1, op2) }
+}
+#[doc = "Reciprocal square root step"]
+#[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svrsqrts[_f64])"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(frsqrts))]
+pub fn svrsqrts_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t {
+    unsafe extern "C" {
+        #[cfg_attr(
+            target_arch = "aarch64",
+            link_name = "llvm.aarch64.sve.frsqrts.x.nxv2f64"
+        )]
+        fn _svrsqrts_f64(op1: svfloat64_t, op2: svfloat64_t) -> svfloat64_t;
+    }
+    unsafe { _svrsqrts_f64(op1, op2) }
+}
 #[doc = "Bitwise inclusive OR"]
 #[doc = ""]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svorr[_s8]_m)"]
