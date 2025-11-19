@@ -1624,105 +1624,23 @@ pub(crate) fn trait_environment_query<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
 ) -> Arc<TraitEnvironment<'db>> {
-    let generics = generics(db, def);
-    if generics.has_no_predicates() && generics.is_empty() {
-        return TraitEnvironment::empty(def.krate(db));
-    }
-
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        generics.store(),
-        def,
-        LifetimeElisionKind::AnonymousReportError,
-    );
-    let mut traits_in_scope = Vec::new();
-    let mut clauses = Vec::new();
-    for maybe_parent_generics in
-        std::iter::successors(Some(&generics), |generics| generics.parent_generics())
-    {
-        ctx.store = maybe_parent_generics.store();
-        for pred in maybe_parent_generics.where_predicates() {
-            for pred in ctx.lower_where_predicate(pred, false, &generics, PredicateFilter::All) {
-                if let rustc_type_ir::ClauseKind::Trait(tr) = pred.kind().skip_binder() {
-                    traits_in_scope.push((tr.self_ty(), tr.def_id().0));
-                }
-                clauses.push(pred);
-            }
-        }
-
-        push_const_arg_has_type_predicates(db, &mut clauses, maybe_parent_generics);
-    }
-
-    if let Some(trait_id) = def.assoc_trait_container(db) {
-        // add `Self: Trait<T1, T2, ...>` to the environment in trait
-        // function default implementations (and speculative code
-        // inside consts or type aliases)
-        cov_mark::hit!(trait_self_implements_self);
-        let trait_ref = TraitRef::identity(ctx.interner, trait_id.into());
-        let clause = Clause(Predicate::new(
-            ctx.interner,
-            Binder::dummy(rustc_type_ir::PredicateKind::Clause(rustc_type_ir::ClauseKind::Trait(
-                TraitPredicate { trait_ref, polarity: rustc_type_ir::PredicatePolarity::Positive },
-            ))),
-        ));
-        clauses.push(clause);
-    }
-
-    let explicitly_unsized_tys = ctx.unsized_types;
-
-    let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
-    if let Some(sized_trait) = sized_trait {
-        let (mut generics, mut def_id) =
-            (crate::next_solver::generics::generics(db, def.into()), def);
-        loop {
-            let self_idx = trait_self_param_idx(db, def_id);
-            for (idx, p) in generics.own_params.iter().enumerate() {
-                if let Some(self_idx) = self_idx
-                    && p.index() as usize == self_idx
-                {
-                    continue;
-                }
-                let GenericParamId::TypeParamId(param_id) = p.id else {
-                    continue;
-                };
-                let idx = idx as u32 + generics.parent_count as u32;
-                let param_ty = Ty::new_param(ctx.interner, param_id, idx);
-                if explicitly_unsized_tys.contains(&param_ty) {
-                    continue;
-                }
-                let trait_ref = TraitRef::new_from_args(
-                    ctx.interner,
-                    sized_trait.into(),
-                    GenericArgs::new_from_iter(ctx.interner, [param_ty.into()]),
-                );
-                let clause = Clause(Predicate::new(
-                    ctx.interner,
-                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                        rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                            trait_ref,
-                            polarity: rustc_type_ir::PredicatePolarity::Positive,
-                        }),
-                    )),
-                ));
-                clauses.push(clause);
-            }
-
-            if let Some(g) = generics.parent {
-                generics = crate::next_solver::generics::generics(db, g.into());
-                def_id = g;
-            } else {
-                break;
-            }
-        }
-    }
-
-    let clauses = rustc_type_ir::elaborate::elaborate(ctx.interner, clauses);
-    let clauses = Clauses::new_from_iter(ctx.interner, clauses);
+    let module = def.module(db);
+    let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+    let predicates = GenericPredicates::query_all(db, def);
+    let traits_in_scope = predicates
+        .iter_identity_copied()
+        .filter_map(|pred| match pred.kind().skip_binder() {
+            ClauseKind::Trait(tr) => Some((tr.self_ty(), tr.def_id().0)),
+            _ => None,
+        })
+        .collect();
+    let clauses = rustc_type_ir::elaborate::elaborate(interner, predicates.iter_identity_copied());
+    let clauses = Clauses::new_from_iter(interner, clauses);
     let env = ParamEnv { clauses };
 
-    TraitEnvironment::new(resolver.krate(), None, traits_in_scope.into_boxed_slice(), env)
+    // FIXME: We should normalize projections here, like rustc does.
+
+    TraitEnvironment::new(module.krate(), module.containing_block(), traits_in_scope, env)
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
