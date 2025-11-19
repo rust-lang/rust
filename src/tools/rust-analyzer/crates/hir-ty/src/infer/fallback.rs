@@ -160,7 +160,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         debug!("fallback_if_possible(ty={:?}): defaulting to `{:?}`", ty, fallback);
 
-        self.demand_eqtype(ty, fallback);
+        _ = self.demand_eqtype_fixme_no_diag(ty, fallback);
         true
     }
 

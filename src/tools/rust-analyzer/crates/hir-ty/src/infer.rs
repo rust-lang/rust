@@ -759,7 +759,6 @@ struct InternedStandardTypes<'db> {
     re_erased: Region<'db>,
 
     empty_args: GenericArgs<'db>,
-    empty_tys: Tys<'db>,
 }
 
 impl<'db> InternedStandardTypes<'db> {
@@ -795,7 +794,6 @@ impl<'db> InternedStandardTypes<'db> {
             re_erased: Region::new_erased(interner),
 
             empty_args: GenericArgs::new_from_iter(interner, []),
-            empty_tys: Tys::new_from_iter(interner, []),
         }
     }
 }
@@ -1475,15 +1473,30 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.resolve_associated_type_with_params(inner_ty, assoc_ty, &[])
     }
 
-    fn demand_eqtype(&mut self, expected: Ty<'db>, actual: Ty<'db>) {
+    fn demand_eqtype(
+        &mut self,
+        id: ExprOrPatId,
+        expected: Ty<'db>,
+        actual: Ty<'db>,
+    ) -> Result<(), ()> {
+        let result = self.demand_eqtype_fixme_no_diag(expected, actual);
+        if result.is_err() {
+            self.result.type_mismatches.insert(id, TypeMismatch { expected, actual });
+        }
+        result
+    }
+
+    fn demand_eqtype_fixme_no_diag(
+        &mut self,
+        expected: Ty<'db>,
+        actual: Ty<'db>,
+    ) -> Result<(), ()> {
         let result = self
             .table
             .at(&ObligationCause::new())
             .eq(expected, actual)
             .map(|infer_ok| self.table.register_infer_ok(infer_ok));
-        if let Err(_err) = result {
-            // FIXME: Emit diagnostic.
-        }
+        result.map_err(drop)
     }
 
     fn demand_suptype(&mut self, expected: Ty<'db>, actual: Ty<'db>) {

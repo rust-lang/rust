@@ -108,7 +108,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 {
                     let builtin_return_ty =
                         self.enforce_builtin_binop_types(lhs_ty, rhs_ty, category);
-                    self.demand_eqtype(builtin_return_ty, return_ty);
+                    _ = self.demand_eqtype(expr.into(), builtin_return_ty, return_ty);
                     builtin_return_ty
                 } else {
                     return_ty

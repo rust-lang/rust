@@ -1,6 +1,6 @@
 //! Type inference for patterns.
 
-use std::iter::repeat_with;
+use std::{cmp, iter};
 
 use hir_def::{
     HasModule,
@@ -19,7 +19,7 @@ use crate::{
         AllowTwoPhase, BindingMode, Expectation, InferenceContext, TypeMismatch, expr::ExprIsRead,
     },
     lower::lower_mutability,
-    next_solver::{GenericArgs, Ty, TyKind},
+    next_solver::{GenericArgs, Ty, TyKind, Tys, infer::traits::ObligationCause},
 };
 
 impl<'db> InferenceContext<'_, 'db> {
@@ -183,42 +183,61 @@ impl<'db> InferenceContext<'_, 'db> {
     /// Ellipses found in the original pattern or expression must be filtered out.
     pub(super) fn infer_tuple_pat_like(
         &mut self,
+        pat: PatId,
         expected: Ty<'db>,
         default_bm: BindingMode,
         ellipsis: Option<u32>,
-        subs: &[PatId],
+        elements: &[PatId],
         decl: Option<DeclContext>,
     ) -> Ty<'db> {
-        let expected = self.table.structurally_resolve_type(expected);
-        let expectations = match expected.kind() {
-            TyKind::Tuple(parameters) => parameters,
-            _ => self.types.empty_tys,
-        };
-
-        let ((pre, post), n_uncovered_patterns) = match ellipsis {
-            Some(idx) => {
-                (subs.split_at(idx as usize), expectations.len().saturating_sub(subs.len()))
+        let mut expected_len = elements.len();
+        if ellipsis.is_some() {
+            // Require known type only when `..` is present.
+            if let TyKind::Tuple(tys) = self.table.structurally_resolve_type(expected).kind() {
+                expected_len = tys.len();
             }
-            None => ((subs, &[][..]), 0),
+        }
+        let max_len = cmp::max(expected_len, elements.len());
+
+        let element_tys_iter = (0..max_len).map(|_| self.table.next_ty_var());
+        let element_tys = Tys::new_from_iter(self.interner(), element_tys_iter);
+        let pat_ty = Ty::new(self.interner(), TyKind::Tuple(element_tys));
+        if self.demand_eqtype(pat.into(), expected, pat_ty).is_err()
+            && let TyKind::Tuple(expected) = expected.kind()
+        {
+            // Equate expected type with the infer vars, for better diagnostics.
+            for (expected, elem_ty) in iter::zip(expected, element_tys) {
+                _ = self
+                    .table
+                    .at(&ObligationCause::dummy())
+                    .eq(expected, elem_ty)
+                    .map(|infer_ok| self.table.register_infer_ok(infer_ok));
+            }
+        }
+        let (before_ellipsis, after_ellipsis) = match ellipsis {
+            Some(ellipsis) => {
+                let element_tys = element_tys.as_slice();
+                // Don't check patterns twice.
+                let from_end_start = cmp::max(
+                    element_tys.len().saturating_sub(elements.len() - ellipsis as usize),
+                    ellipsis as usize,
+                );
+                (
+                    element_tys.get(..ellipsis as usize).unwrap_or(element_tys),
+                    element_tys.get(from_end_start..).unwrap_or_default(),
+                )
+            }
+            None => (element_tys.as_slice(), &[][..]),
         };
-        let mut expectations_iter =
-            expectations.iter().chain(repeat_with(|| self.table.next_ty_var()));
-
-        let mut inner_tys = Vec::with_capacity(n_uncovered_patterns + subs.len());
-
-        inner_tys.extend(expectations_iter.by_ref().take(n_uncovered_patterns + subs.len()));
-
-        // Process pre
-        for (ty, pat) in inner_tys.iter_mut().zip(pre) {
-            *ty = self.infer_pat(*pat, *ty, default_bm, decl);
+        for (&elem, &elem_ty) in iter::zip(elements, before_ellipsis.iter().chain(after_ellipsis)) {
+            self.infer_pat(elem, elem_ty, default_bm, decl);
         }
-
-        // Process post
-        for (ty, pat) in inner_tys.iter_mut().skip(pre.len() + n_uncovered_patterns).zip(post) {
-            *ty = self.infer_pat(*pat, *ty, default_bm, decl);
+        if let Some(uncovered) = elements.get(element_tys.len()..) {
+            for &elem in uncovered {
+                self.infer_pat(elem, self.types.error, default_bm, decl);
+            }
         }
-
-        Ty::new_tup_from_iter(self.interner(), inner_tys.into_iter())
+        pat_ty
     }
 
     /// The resolver needs to be updated to the surrounding expression when inside assignment
@@ -272,7 +291,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let ty = match &self.body[pat] {
             Pat::Tuple { args, ellipsis } => {
-                self.infer_tuple_pat_like(expected, default_bm, *ellipsis, args, decl)
+                self.infer_tuple_pat_like(pat, expected, default_bm, *ellipsis, args, decl)
             }
             Pat::Or(pats) => {
                 for pat in pats.iter() {
@@ -356,7 +375,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         GenericArgs::fill_with_defaults(
                             self.interner(),
                             box_adt.into(),
-                            std::iter::once(inner_ty.into()).chain(alloc_ty.map(Into::into)),
+                            iter::once(inner_ty.into()).chain(alloc_ty.map(Into::into)),
                             |_, id, _| self.table.next_var_for_param(id),
                         ),
                     )
@@ -416,7 +435,7 @@ impl<'db> InferenceContext<'_, 'db> {
             .result
             .pat_adjustments
             .get(&pat)
-            .and_then(|it| it.first())
+            .and_then(|it| it.last())
             .unwrap_or(&self.result.type_of_pat[pat])
     }
 
@@ -469,9 +488,9 @@ impl<'db> InferenceContext<'_, 'db> {
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
                 let inner_lt = self.table.next_region_var();
-                Ty::new_ref(self.interner(), inner_lt, inner_ty, mutability)
+                Ty::new_ref(self.interner(), inner_lt, expected, mutability)
             }
-            BindingMode::Move => inner_ty,
+            BindingMode::Move => expected,
         };
         self.write_pat_ty(pat, inner_ty);
         self.write_binding_ty(binding, bound_ty);

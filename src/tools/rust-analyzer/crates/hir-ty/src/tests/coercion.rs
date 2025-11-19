@@ -833,11 +833,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 }
         "#,
     );
