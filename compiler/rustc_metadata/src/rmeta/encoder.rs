@@ -1753,7 +1753,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item = tcx.associated_item(def_id);
 
         if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
-            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+            self.tables.defaultness.set(def_id.index, item.defaultness(tcx));
         }
 
         record!(self.tables.assoc_container[def_id] <- item.container);
@@ -2155,7 +2155,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
-                self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
+                self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(
