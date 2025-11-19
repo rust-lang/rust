@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1](https://github.com/rust-lang/hashbrown/compare/v0.16.0...v0.16.1) - 2025-11-19
+
+### Other
+
+- Add `T` to bucket iterators and inline their methods
+- Add `HashTable::iter_buckets` and `iter_hash_buckets`
+- Add `HashTable::get_bucket_entry_unchecked`
+- `get_bucket_entry -> Result<OccupiedEntry, AbsentEntry>`
+- Add `get_bucket_unchecked` and `get_bucket_unchecked_mut`
+- Make `HashTable` entries use `Tag` instead of a full hash
+- Rename `HashTable::buckets` to `num_buckets`
+- Add `HashTable` methods related to the raw bucket index
+- Merge pull request #579 from djugei/master
+- Clean up doc comment for `VacantEntryRef::insert_with_key`
+- Add insert_with_key, allowing the user to provide the key at insertion time.
+
 - The `get_many_mut` family of methods have been renamed to `get_disjoint_mut`
   to match the standard library. The old names are still present for now, but
   deprecated.
