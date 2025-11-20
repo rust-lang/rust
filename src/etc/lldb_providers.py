@@ -1,5 +1,4 @@
 from __future__ import annotations
-import re
 import sys
 from typing import List, TYPE_CHECKING, Generator
 
@@ -94,11 +93,14 @@ class DefaultSyntheticProvider:
         # logger = Logger.Logger()
         # logger >> "Default synthetic provider for " + str(valobj.GetName())
         self.valobj = valobj
+        self.is_ptr = valobj.GetType().IsPointerType()
 
     def num_children(self) -> int:
         return self.valobj.GetNumChildren()
 
     def get_child_index(self, name: str) -> int:
+        if self.is_ptr and name == "$$dereference$$":
+            return self.valobj.Dereference().GetSyntheticValue()
         return self.valobj.GetIndexOfChildWithName(name)
 
     def get_child_at_index(self, index: int) -> SBValue:
@@ -109,6 +111,36 @@ class DefaultSyntheticProvider:
 
     def has_children(self) -> bool:
         return self.valobj.MightHaveChildren()
+
+    def get_value(self):
+        return self.valobj.value
+
+
+class IndirectionSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+
+    def num_children(self) -> int:
+        return 1
+
+    def get_child_index(self, name: str) -> int:
+        if self.is_ptr and name == "$$dereference$$":
+            return 0
+        return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        if index == 0:
+            return self.valobj.Dereference().GetSyntheticValue()
+        return None
+
+    def update(self):
+        pass
+
+    def has_children(self) -> bool:
+        return True
+
+    def get_value(self):
+        return self.valobj.value
 
 
 class EmptySyntheticProvider:
@@ -220,7 +252,7 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
-def StdStringSummaryProvider(valobj, dict):
+def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     inner_vec = (
         valobj.GetNonSyntheticValue()
         .GetChildMemberWithName("vec")
@@ -460,8 +492,12 @@ def _getVariantName(variant) -> str:
     we can extract `TheVariantName` from it for display purpose.
     """
     s = variant.GetType().GetName()
-    match = re.search(r"::([^:]+)\$Variant$", s)
-    return match.group(1) if match else ""
+    if not s.endswith("$Variant"):
+        return ""
+
+    # trim off path and "$Variant"
+    # len("$Variant") == 8
+    return s.rsplit("::", 1)[1][:-8]
 
 
 class ClangEncodedEnumProvider:
