@@ -22,7 +22,7 @@ jobs:
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
@@ -83,8 +83,18 @@ jobs:
           git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
           git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
 
+      - name: Cache sembr build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ci/sembr/target/
+          key: sembr-${{ hashFiles('ci/sembr/Cargo.lock') }}
+
       - name: Check if files comply with semantic line breaks
         continue-on-error: true
         run: |
           # using split_inclusive that uses regex feature that uses an unstable feature
-          RUSTC_BOOTSTRAP=1 cargo run --manifest-path ci/sembr/Cargo.toml src
+          RUSTC_BOOTSTRAP=1 cargo run --release --manifest-path ci/sembr/Cargo.toml src

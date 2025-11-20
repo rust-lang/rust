@@ -57,9 +57,9 @@ useful when contributing to other repositories in the Rust project.
 Below is the normal procedure that you're likely to use for most minor changes
 and PRs:
 
- 1. Ensure that you're making your changes on top of master:
- `git checkout master`.
- 2. Get the latest changes from the Rust repo: `git pull upstream master --ff-only`.
+ 1. Ensure that you're making your changes on top of `main`:
+ `git checkout main`.
+ 2. Get the latest changes from the Rust repo: `git pull upstream main --ff-only`.
  (see [No-Merge Policy][no-merge-policy] for more info about this).
  3. Make a new branch for your change: `git checkout -b issue-12345-fix`.
  4. Make some changes to the repo and test them.
@@ -72,7 +72,7 @@ and PRs:
  6. Push your changes to your fork: `git push --set-upstream origin issue-12345-fix`
  (After adding commits, you can use `git push` and after rebasing or
 pulling-and-rebasing, you can use `git push --force-with-lease`).
- 7. [Open a PR][ghpullrequest] from your fork to `rust-lang/rust`'s master branch.
+ 7. [Open a PR][ghpullrequest] from your fork to `rust-lang/rust`'s `main` branch.
 
 [ghpullrequest]: https://guides.github.com/activities/forking/#making-a-pull-request
 
@@ -101,7 +101,7 @@ Here are some common issues you might run into:
 
 Git has two ways to update your branch with the newest changes: merging and rebasing.
 Rust [uses rebasing][no-merge-policy]. If you make a merge commit, it's not too hard to fix:
-`git rebase -i upstream/master`.
+`git rebase -i upstream/main`.
 
 See [Rebasing](#rebasing) for more about rebasing.
 
@@ -151,7 +151,7 @@ replace `src/tools/cargo` with the path to that submodule):
     - If you modified the submodule in several different commits, you will need to repeat steps 1-3
     for each commit you modified. You'll know when to stop when the `git log` command shows a commit
     that's not authored by you.
-5. Squash your changes into the existing commits: `git rebase --autosquash -i upstream/master`
+5. Squash your changes into the existing commits: `git rebase --autosquash -i upstream/main`
 6. [Push your changes](#standard-process).
 
 ### I see "error: cannot rebase" when I try to rebase
@@ -197,7 +197,7 @@ and just want to get a clean copy of the repository back, you can use `git reset
 
 ```console
 # WARNING: this throws out any local changes you've made! Consider resolving the conflicts instead.
-git reset --hard master
+git reset --hard main
 ```
 
 ### failed to push some refs
@@ -222,12 +222,12 @@ rebase! Use `git push --force-with-lease` instead.
 
 If you see many commits in your rebase list, or merge commits, or commits by other people that you
 didn't write, it likely means you're trying to rebase over the wrong branch. For example, you may
-have a `rust-lang/rust` remote `upstream`, but ran `git rebase origin/master` instead of `git rebase
-upstream/master`. The fix is to abort the rebase and use the correct branch instead:
+have a `rust-lang/rust` remote `upstream`, but ran `git rebase origin/main` instead of `git rebase
+upstream/main`. The fix is to abort the rebase and use the correct branch instead:
 
 ```console
 git rebase --abort
-git rebase -i upstream/master
+git rebase --interactive upstream/main
 ```
 
 <details><summary>Click here to see an example of rebasing over the wrong branch</summary>
@@ -243,8 +243,8 @@ Git says you have modified some files that you have never edited. For example,
 running `git status` gives you something like (note the `new commits` mention):
 
 ```console
-On branch master
-Your branch is up to date with 'origin/master'.
+On branch main
+Your branch is up to date with 'origin/main'.
 
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
@@ -277,11 +277,11 @@ merged. To do that, you need to rebase your work on top of rust-lang/rust.
 
 ### Rebasing
 
-To rebase your feature branch on top of the newest version of the master branch
+To rebase your feature branch on top of the newest version of the `main` branch
 of rust-lang/rust, checkout your branch, and then run this command:
 
 ```console
-git pull --rebase https://github.com/rust-lang/rust.git master
+git pull --rebase https://github.com/rust-lang/rust.git main
 ```
 
 > If you are met with the following error:
@@ -293,10 +293,10 @@ git pull --rebase https://github.com/rust-lang/rust.git master
 > case, run `git stash` before rebasing, and then `git stash pop` after you
 > have rebased and fixed all conflicts.
 
-When you rebase a branch on master, all the changes on your branch are
-reapplied to the most recent version of master. In other words, Git tries to
-pretend that the changes you made to the old version of master were instead
-made to the new version of master. During this process, you should expect to
+When you rebase a branch on main, all the changes on your branch are
+reapplied to the most recent version of `main`. In other words, Git tries to
+pretend that the changes you made to the old version of `main` were instead
+made to the new version of `main`. During this process, you should expect to
 encounter at least one "rebase conflict." This happens when Git's attempt to
 reapply the changes fails because your changes conflicted with other changes
 that have been made. You can tell that this happened because you'll see
@@ -318,9 +318,9 @@ Your code
 
 This represents the lines in the file that Git could not figure out how to
 rebase. The section between `<<<<<<< HEAD` and `=======` has the code from
-master, while the other side has your version of the code. You'll need to
+`main`, while the other side has your version of the code. You'll need to
 decide how to deal with the conflict. You may want to keep your changes,
-keep the changes on master, or combine the two.
+keep the changes on `main`, or combine the two.
 
 Generally, resolving the conflict consists of two steps: First, fix the
 particular conflict. Edit the file to make the changes you want and remove the
@@ -343,15 +343,15 @@ guide on rebasing work and dealing with merge conflicts.
 Here is some general advice about how to keep your local repo
 up-to-date with upstream changes:
 
-Using `git pull upstream master` while on your local master branch regularly
+Using `git pull upstream main` while on your local `main` branch regularly
 will keep it up-to-date. You will also want to keep your feature branches
 up-to-date as well. After pulling, you can checkout the feature branches
 and rebase them:
 
 ```console
-git checkout master
-git pull upstream master --ff-only # to make certain there are no merge commits
-git rebase master feature_branch
+git checkout main
+git pull upstream main --ff-only # to make certain there are no merge commits
+git rebase main feature_branch
 git push --force-with-lease # (set origin to be the same as local)
 ```
 
@@ -360,7 +360,7 @@ To avoid merges as per the [No-Merge Policy](#no-merge-policy), you may want to 
 to ensure that Git doesn't create merge commits when `git pull`ing, without
 needing to pass `--ff-only` or `--rebase` every time.
 
-You can also `git push --force-with-lease` from master to double-check that your
+You can also `git push --force-with-lease` from main to double-check that your
 feature branches are in sync with their state on the Github side.
 
 ## Advanced Rebasing
@@ -373,14 +373,14 @@ On the one hand, you lose track of the steps in which changes were made, but
 the history becomes easier to work with.
 
 If there are no conflicts and you are just squashing to clean up the history,
-use `git rebase --interactive --keep-base master`. This keeps the fork point
+use `git rebase --interactive --keep-base main`. This keeps the fork point
 of your PR the same, making it easier to review the diff of what happened
 across your rebases.
 
 Squashing can also be useful as part of conflict resolution.
 If your branch contains multiple consecutive rewrites of the same code, or if
 the rebase conflicts are extremely severe, you can use
-`git rebase --interactive master` to gain more control over the process. This
+`git rebase --interactive main` to gain more control over the process. This
 allows you to choose to skip commits, edit the commits that you do not skip,
 change the order in which they are applied, or "squash" them into each other.
 
@@ -388,8 +388,8 @@ Alternatively, you can sacrifice the commit history like this:
 
 ```console
 # squash all the changes into one commit so you only have to worry about conflicts once
-git rebase -i --keep-base master  # and squash all changes along the way
-git rebase master
+git rebase --interactive --keep-base main  # and squash all changes along the way
+git rebase main
 # fix all merge conflicts
 git rebase --continue
 ```
@@ -402,9 +402,9 @@ because they only represent "fixups" and not real changes. For example,
 
 After completing a rebase, and before pushing up your changes, you may want to
 review the changes between your old branch and your new one. You can do that
-with `git range-diff master @{upstream} HEAD`.
+with `git range-diff main @{upstream} HEAD`.
 
-The first argument to `range-diff`, `master` in this case, is the base revision
+The first argument to `range-diff`, `main` in this case, is the base revision
 that you're comparing your old and new branch against. The second argument is
 the old version of your branch; in this case, `@upstream` means the version that
 you've pushed to GitHub, which is the same as what people will see in your pull
@@ -413,7 +413,7 @@ your branch; in this case, it is `HEAD`, which is the commit that is currently
 checked-out in your local repo.
 
 Note that you can also use the equivalent, abbreviated form `git range-diff
-master @{u} HEAD`.
+main @{u} HEAD`.
 
 Unlike in regular Git diffs, you'll see a `-` or `+` next to another `-` or `+`
 in the range-diff output. The marker on the left indicates a change between the
@@ -481,7 +481,7 @@ to follow and understand.
 ### Hiding whitespace
 
 Github has a button for disabling whitespace changes that may be useful.
-You can also use `git diff -w origin/master` to view changes locally.
+You can also use `git diff -w origin/main` to view changes locally.
 
 ![hide whitespace](./img/github-whitespace-changes.png)
 
