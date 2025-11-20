@@ -401,7 +401,7 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                             indexes,
                             "indexing into a slice multiple times with an `assert` that does not cover the highest index",
                             |diag| {
-                                diag.span_suggestion(
+                                diag.span_suggestion_verbose(
                                     assert_span,
                                     "provide the highest index that is indexed with",
                                     sugg,
