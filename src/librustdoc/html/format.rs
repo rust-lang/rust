@@ -833,26 +833,27 @@ fn print_higher_ranked_params_with_space(
     })
 }
 
-pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> String {
-    let def_kind = tcx.def_kind(did);
-    match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
-            let item_type = ItemType::from_def_id(did, tcx);
-            format!("#{}.{}", item_type.as_str(), tcx.item_name(did))
+pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
+    fmt::from_fn(move |f| {
+        let def_kind = tcx.def_kind(did);
+        match def_kind {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+                let item_type = ItemType::from_def_id(did, tcx);
+                write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
+            }
+            DefKind::Field => {
+                let parent_def_id = tcx.parent(did);
+                f.write_char('#')?;
+                if tcx.def_kind(parent_def_id) == DefKind::Variant {
+                    write!(f, "variant.{}.field", tcx.item_name(parent_def_id).as_str())?;
+                } else {
+                    f.write_str("structfield")?;
+                };
+                write!(f, ".{}", tcx.item_name(did))
+            }
+            _ => Ok(()),
         }
-        DefKind::Field => {
-            let parent_def_id = tcx.parent(did);
-            let s;
-            let kind = if tcx.def_kind(parent_def_id) == DefKind::Variant {
-                s = format!("variant.{}.field", tcx.item_name(parent_def_id).as_str());
-                &s
-            } else {
-                "structfield"
-            };
-            format!("#{kind}.{}", tcx.item_name(did))
-        }
-        _ => String::new(),
-    }
+    })
 }
 
 pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {

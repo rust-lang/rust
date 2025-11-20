@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -524,7 +525,8 @@ impl Item {
                     debug!(?url);
                     match fragment {
                         Some(UrlFragment::Item(def_id)) => {
-                            url.push_str(&crate::html::format::fragment(*def_id, cx.tcx()))
+                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
+                                .unwrap();
                         }
                         Some(UrlFragment::UserWritten(raw)) => {
                             url.push('#');
