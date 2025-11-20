@@ -76,7 +76,7 @@ where
         for span in indexes {
             diag.span_note(span, "slice indexed here");
         }
-        diag.note("asserting the length before indexing will elide bounds checks");
+        diag.note_once("asserting the length before indexing will elide bounds checks");
     });
 }
 

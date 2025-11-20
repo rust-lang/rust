@@ -68,7 +68,6 @@ note: slice indexed here
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                                 ^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:42:5
@@ -103,7 +102,6 @@ note: slice indexed here
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                                 ^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:48:5
@@ -138,7 +136,6 @@ note: slice indexed here
    |
 LL |     v[0] + v[1] + v[2] + v[3] + v[4]
    |                                 ^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:66:13
@@ -161,7 +158,6 @@ note: slice indexed here
    |
 LL |     let _ = v[1..4];
    |             ^^^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:81:13
@@ -184,7 +180,6 @@ note: slice indexed here
    |
 LL |     let _ = v[1..=4];
    |             ^^^^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:97:13
@@ -205,7 +200,6 @@ note: slice indexed here
    |
 LL |     let _ = v1[0] + v1[12];
    |                     ^^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:100:13
@@ -226,7 +220,6 @@ note: slice indexed here
    |
 LL |     let _ = v2[5] + v2[15];
    |                     ^^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:106:13
@@ -247,7 +240,6 @@ note: slice indexed here
    |
 LL |     let _ = v1[0] + v1[12];
    |                     ^^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:131:13
@@ -273,7 +265,6 @@ note: slice indexed here
    |
 LL |     let _ = v1[0] + v1[1] + v1[2];
    |                             ^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:136:13
@@ -299,7 +290,6 @@ note: slice indexed here
    |
 LL |     let _ = v3[0] + v3[1] + v3[2];
    |                             ^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:158:13
@@ -325,7 +315,6 @@ note: slice indexed here
    |
 LL |     let _ = v1[0] + v1[1] + v1[2];
    |                             ^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:163:13
@@ -351,7 +340,6 @@ note: slice indexed here
    |
 LL |     let _ = v3[0] + v3[1] + v3[2];
    |                             ^^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:172:17
@@ -376,7 +364,6 @@ note: slice indexed here
    |
 LL |         let _ = v[0] + v[1] + v[2];
    |                               ^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: indexing into a slice multiple times with an `assert` that does not cover the highest index
   --> tests/ui/missing_asserts_for_indexing.rs:178:17
@@ -401,7 +388,6 @@ note: slice indexed here
    |
 LL |         let _ = v[0] + v[1] + v[2];
    |                               ^^^^
-   = note: asserting the length before indexing will elide bounds checks
 
 error: aborting due to 15 previous errors
 
