@@ -42,7 +42,7 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
         F: FnMut(B, Self::Item) -> B,
     {
         // `fold` needs ownership, so this can't forward directly.
-        I::try_fold(self.0, init, NeverShortCircuit::wrap_mut_2(f)).0
+        I::try_fold(self.0, init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]
@@ -78,7 +78,7 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
         F: FnMut(B, Self::Item) -> B,
     {
         // `rfold` needs ownership, so this can't forward directly.
-        I::try_rfold(self.0, init, NeverShortCircuit::wrap_mut_2(f)).0
+        I::try_rfold(self.0, init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]

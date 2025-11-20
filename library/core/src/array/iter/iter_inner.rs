@@ -199,7 +199,7 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
 
     #[inline]
     pub(super) fn fold<B>(&mut self, init: B, f: impl FnMut(B, T) -> B) -> B {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]
@@ -257,7 +257,7 @@ impl<T> PolymorphicIter<[MaybeUninit<T>]> {
 
     #[inline]
     pub(super) fn rfold<B>(&mut self, init: B, f: impl FnMut(B, T) -> B) -> B {
-        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]

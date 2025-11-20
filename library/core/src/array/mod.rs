@@ -109,7 +109,7 @@ pub fn from_fn<T, const N: usize, F>(f: F) -> [T; N]
 where
     F: FnMut(usize) -> T,
 {
-    try_from_fn(NeverShortCircuit::wrap_mut_1(f)).0
+    try_from_fn(NeverShortCircuit::wrap_mut_1(f)).into_continue()
 }
 
 /// Creates an array `[T; N]` where each fallible array element `T` is returned by the `cb` call.
@@ -553,7 +553,7 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T) -> U,
     {
-        self.try_map(NeverShortCircuit::wrap_mut_1(f)).0
+        self.try_map(NeverShortCircuit::wrap_mut_1(f)).into_continue()
     }
 
     /// A fallible function `f` applied to each element on array `self` in order to
@@ -848,7 +848,7 @@ impl<T, const N: usize> [T; N] {
 /// it easily optimizes away) so it doesn't impact the loop that fills the array.
 #[inline]
 fn from_trusted_iterator<T, const N: usize>(iter: impl UncheckedIterator<Item = T>) -> [T; N] {
-    try_from_trusted_iterator(iter.map(NeverShortCircuit)).0
+    try_from_trusted_iterator(iter.map(NeverShortCircuit::Continue)).into_continue()
 }
 
 #[inline]

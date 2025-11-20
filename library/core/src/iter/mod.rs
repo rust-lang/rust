@@ -377,7 +377,7 @@ macro_rules! impl_fold_via_try_fold {
         {
             use crate::ops::NeverShortCircuit;
 
-            self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
+            self.$try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).into_continue()
         }
     };
 }

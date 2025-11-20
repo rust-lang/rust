@@ -212,7 +212,7 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 }
 

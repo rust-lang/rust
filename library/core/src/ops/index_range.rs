@@ -150,7 +150,7 @@ impl Iterator for IndexRange {
 
     #[inline]
     fn fold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
-        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]
@@ -192,7 +192,7 @@ impl DoubleEndedIterator for IndexRange {
 
     #[inline]
     fn rfold<B, F: FnMut(B, usize) -> B>(mut self, init: B, f: F) -> B {
-        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).into_continue()
     }
 
     #[inline]

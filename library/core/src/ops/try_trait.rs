@@ -1,3 +1,4 @@
+use crate::convert::Infallible;
 use crate::ops::ControlFlow;
 
 /// The `?` operator and `try {}` blocks.
@@ -384,15 +385,8 @@ pub fn residual_into_try_type<R: Residual<O>, O>(r: R) -> <R as Residual<O>>::Tr
 pub(crate) type ChangeOutputType<T: Try<Residual: Residual<V>>, V> =
     <T::Residual as Residual<V>>::TryType;
 
-/// An adapter for implementing non-try methods via the `Try` implementation.
-///
-/// Conceptually the same as `Result<T, !>`, but requiring less work in trait
-/// solving and inhabited-ness checking and such, by being an obvious newtype
-/// and not having `From` bounds lying around.
-///
-/// Not currently planned to be exposed publicly, so just `pub(crate)`.
-#[repr(transparent)]
-pub(crate) struct NeverShortCircuit<T>(pub T);
+/// A helper alias for implementing non-try methods via the `Try` implementation.
+pub(crate) type NeverShortCircuit<T> = ControlFlow<Infallible, T>;
 
 impl<T> NeverShortCircuit<T> {
     /// Wraps a unary function to produce one that wraps the output into a `NeverShortCircuit`.
@@ -403,41 +397,19 @@ impl<T> NeverShortCircuit<T> {
     pub(crate) fn wrap_mut_1<A>(
         mut f: impl FnMut(A) -> T,
     ) -> impl FnMut(A) -> NeverShortCircuit<T> {
-        move |a| NeverShortCircuit(f(a))
+        move |a| NeverShortCircuit::Continue(f(a))
     }
 
     #[inline]
     pub(crate) fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
-        move |a, b| NeverShortCircuit(f(a, b))
-    }
-}
-
-pub(crate) enum NeverShortCircuitResidual {}
-
-impl<T> Try for NeverShortCircuit<T> {
-    type Output = T;
-    type Residual = NeverShortCircuitResidual;
-
-    #[inline]
-    fn branch(self) -> ControlFlow<NeverShortCircuitResidual, T> {
-        ControlFlow::Continue(self.0)
+        move |a, b| NeverShortCircuit::Continue(f(a, b))
     }
 
     #[inline]
-    fn from_output(x: T) -> Self {
-        NeverShortCircuit(x)
+    pub(crate) fn into_continue(self) -> T {
+        let NeverShortCircuit::Continue(v) = self;
+        v
     }
-}
-
-impl<T> FromResidual for NeverShortCircuit<T> {
-    #[inline]
-    fn from_residual(never: NeverShortCircuitResidual) -> Self {
-        match never {}
-    }
-}
-
-impl<T> Residual<T> for NeverShortCircuitResidual {
-    type TryType = NeverShortCircuit<T>;
 }
 
 /// Implement `FromResidual<Yeet<T>>` on your type to enable
