@@ -11,7 +11,7 @@ use core::{cmp, hint};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
-use crate::alloc::{Allocator, Global, Layout};
+use crate::alloc::{Allocator, Global, Layout, LayoutError};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
@@ -456,7 +456,7 @@ impl<A: Allocator> RawVecInner<A> {
         // LLVM IR generated.
         let layout = match layout_array(capacity, elem_layout) {
             Ok(layout) => layout,
-            Err(_) => return Err(CapacityOverflow.into()),
+            Err(LayoutError { .. }) => return Err(CapacityOverflow.into()),
         };
 
         // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
@@ -523,14 +523,11 @@ impl<A: Allocator> RawVecInner<A> {
         if elem_layout.size() == 0 || self.cap.as_inner() == 0 {
             None
         } else {
-            // We could use Layout::array here which ensures the absence of isize and usize overflows
-            // and could hypothetically handle differences between stride and size, but this memory
-            // has already been allocated so we know it can't overflow and currently Rust does not
-            // support such types. So we can do better by skipping some checks and avoid an unwrap.
+            let layout = layout_array(self.cap.as_inner(), elem_layout);
+            // SAFETY: this memory has already been allocated so we know it can't overflow.
+            // Use the checked-then-unchecked to communicate the length restriction to the optimizer.
             unsafe {
-                let alloc_size = elem_layout.size().unchecked_mul(self.cap.as_inner());
-                let layout = Layout::from_size_align_unchecked(alloc_size, elem_layout.align());
-                Some((self.ptr.into(), layout))
+                Some((self.ptr.into(), layout.unwrap_unchecked()))
             }
         }
     }
@@ -742,7 +739,9 @@ impl<A: Allocator> RawVecInner<A> {
         cap: usize,
         elem_layout: Layout,
     ) -> Result<NonNull<[u8]>, TryReserveError> {
-        let new_layout = layout_array(cap, elem_layout)?;
+        let Ok(new_layout) = layout_array(cap, elem_layout) else {
+            return Err(CapacityOverflow.into());
+        };
 
         let memory = if let Some((ptr, old_layout)) = unsafe { self.current_memory(elem_layout) } {
             debug_assert_eq!(old_layout.align(), new_layout.align());
@@ -849,6 +848,7 @@ fn handle_error(e: TryReserveError) -> ! {
 }
 
 #[inline]
-fn layout_array(cap: usize, elem_layout: Layout) -> Result<Layout, TryReserveError> {
-    elem_layout.repeat(cap).map(|(layout, _pad)| layout).map_err(|_| CapacityOverflow.into())
+fn layout_array(cap: usize, elem_layout: Layout) -> Result<Layout, LayoutError> {
+    debug_assert_eq!(elem_layout, elem_layout.pad_to_align());
+    elem_layout.repeat_packed(cap)
 }
