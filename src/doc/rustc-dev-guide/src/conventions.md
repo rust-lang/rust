@@ -165,7 +165,7 @@ individually using `./x fmt`.
 
 **No merges.** We do not allow merge commits into our history, other
 than those by bors. If you get a merge conflict, rebase instead via a
-command like `git rebase -i rust-lang/master` (presuming you use the
+command like `git rebase --interactive rust-lang/main` (presuming you use the
 name `rust-lang` for your remote).
 
 **Individual commits do not have to build (but it's nice).** We do not

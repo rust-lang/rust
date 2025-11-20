@@ -1,6 +1,6 @@
 # Testing with CI
 
-The primary goal of our CI system is to ensure that the `master` branch of
+The primary goal of our CI system is to ensure that the `main` branch of
 `rust-lang/rust` is always in a valid state by passing our test suite.
 
 From a high-level point of view, when you open a pull request at
@@ -16,7 +16,7 @@ From a high-level point of view, when you open a pull request at
   combines multiple PRs together, to reduce CI costs and merge delays.
 - Once the whole test suite finishes, two things can happen. Either CI fails
   with an error that needs to be addressed by the developer, or CI succeeds and
-  the merge commit is then pushed to the `master` branch.
+  the merge commit is then pushed to the `main` branch.
 
 If you want to modify what gets executed on CI, see [Modifying CI jobs](#modifying-ci-jobs).
 
@@ -93,7 +93,7 @@ directly on the PR, in the "CI checks" section at the bottom of the PR page.
 
 ### Auto builds
 
-Before a commit can be merged into the `master` branch, it needs to pass our complete test suite.
+Before a commit can be merged into the `main` branch, it needs to pass our complete test suite.
 We call this an `auto` build.
 This build runs tens of CI jobs that exercise various tests across operating systems and targets.
 The full test suite is quite slow;
@@ -169,9 +169,14 @@ the `@bors jobs=` parameter.
 The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
 of [`jobs.yml`]:
 
-- `auto` jobs are executed before a commit is merged into the `master` branch.
+- `auto` jobs are executed before a commit is merged into the `main` branch.
 - `optional` jobs are executed only when explicitly requested via a try build.
   They are typically used for tier 2 and tier 3 targets.
+
+One reason to do a try build is to do a perf run, as described above, with `@rust-timer queue`.
+This perf build then compares against some commit on main.
+With `@bors try parent=<sha>` you can base your try build and subsequent perf run on a specific commit on `main`,
+to help make the perf comparison as fair as possible.
 
 > **Using `try-job` PR description directives**
 >
@@ -270,12 +275,12 @@ one or two should be sufficient in most cases.
 ## Merging PRs serially with bors
 
 CI services usually test the last commit of a branch merged with the last commit
-in `master`, and while that’s great to check if the feature works in isolation,
+in `main`, and while that’s great to check if the feature works in isolation,
 it doesn’t provide any guarantee the code is going to work once it’s merged.
 Breakages like these usually happen when another, incompatible PR is merged
 after the build happened.
 
-To ensure a `master` branch that works all the time, we forbid manual merges.
+To ensure a `main` branch that works all the time, we forbid manual merges.
 Instead, all PRs have to be approved through our bot, [bors] (the software
 behind it is called [homu]).
 All the approved PRs are put in a [merge queue]
@@ -288,8 +293,8 @@ merge commit it wants to test to specific branches (like `auto` or `try`), which
 are configured to execute CI checks.
 Bors then detects the outcome of the build by listening for either Commit Statuses or Check Runs.
 Since the merge commit is
-based on the latest `master` and only one can be tested at the same time, when
-the results are green, `master` is fast-forwarded to that merge commit.
+based on the latest `main` and only one can be tested at the same time, when
+the results are green, `main` is fast-forwarded to that merge commit.
 
 Unfortunately, testing a single PR at a time, combined with our long CI (~2
 hours for a full run), means we can’t merge a lot of PRs in a single day, and a
@@ -359,7 +364,7 @@ caching], with the intermediate artifacts being stored on [ghcr.io].
 We also push the built Docker images to ghcr, so that they can be reused by other tools
 (rustup) or by developers running the Docker build locally (to speed up their build).
 
-Since we test multiple, diverged branches (`master`, `beta` and `stable`), we
+Since we test multiple, diverged branches (`main`, `beta` and `stable`), we
 can’t rely on a single cache for the images, otherwise builds on a branch would
 override the cache for the others.
 Instead, we store the images under different
