@@ -1,4 +1,5 @@
 use rustc_abi::ExternAbi;
+use rustc_ast::InlineAsmOptions;
 use rustc_hir::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_middle::mir::*;
 use rustc_middle::query::{LocalCrate, Providers};
@@ -46,6 +47,34 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             continue;
         }
         let Some(terminator) = &block.terminator else { continue };
+
+        if let TerminatorKind::InlineAsm { options, .. } = &terminator.kind {
+            if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                // We have detected an inline asm block that can possibly leak foreign unwind.
+                //
+                // Because the function body itself can unwind, we are not aborting this function call
+                // upon unwind, so this call can possibly leak foreign unwind into Rust code if the
+                // panic runtime linked is panic-abort.
+
+                let lint_root = body.source_scopes[terminator.source_info.scope]
+                    .local_data
+                    .as_ref()
+                    .unwrap_crate_local()
+                    .lint_root;
+                let span = terminator.source_info.span;
+
+                tcx.emit_node_span_lint(
+                    FFI_UNWIND_CALLS,
+                    lint_root,
+                    span,
+                    errors::AsmUnwindCall { span },
+                );
+
+                tainted = true;
+            }
+            continue;
+        }
+
         let TerminatorKind::Call { func, .. } = &terminator.kind else { continue };
 
         let ty = func.ty(body, tcx);
