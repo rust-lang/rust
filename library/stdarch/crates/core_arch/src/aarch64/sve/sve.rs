@@ -814,6 +814,20 @@ pub fn svadd_n_u64_z(pg: svbool_t, op1: svuint64_t, op2: u64) -> svuint64_t {
 }
 #[doc = "Bitwise AND"]
 #[doc = ""]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svand[_b]_z)"]
+#[inline]
+#[target_feature(enable = "sve")]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+#[cfg_attr(test, assert_instr(and))]
+pub fn svand_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t {
+    unsafe extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.and.z.nvx16i1")]
+        fn _svand_b_z(pg: svbool_t, op1: svbool_t, op2: svbool_t) -> svbool_t;
+    }
+    unsafe { _svand_b_z(pg, op1, op2) }
+}
+#[doc = "Bitwise AND"]
+#[doc = ""]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/svand[_s8]_m)"]
 #[inline]
 #[target_feature(enable = "sve")]
