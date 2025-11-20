@@ -67,14 +67,14 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
-fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &'static str, indexes: &[Span], f: F)
+fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &'static str, indexes: Vec<Span>, f: F)
 where
     F: FnOnce(&mut Diag<'_, ()>),
 {
     span_lint_and_then(cx, MISSING_ASSERTS_FOR_INDEXING, full_span, msg, |diag| {
         f(diag);
         for span in indexes {
-            diag.span_note(*span, "slice indexed here");
+            diag.span_note(span, "slice indexed here");
         }
         diag.note("asserting the length before indexing will elide bounds checks");
     });
@@ -354,8 +354,8 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
 /// Inspects indexes and reports lints.
 ///
 /// Called at the end of this lint after all indexing and `assert!` expressions have been collected.
-fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>>>) {
-    for bucket in map.values() {
+fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>>) {
+    for bucket in map.into_values() {
         for entry in bucket {
             let Some(full_span) = entry
                 .index_spans()
@@ -365,12 +365,12 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>
                 continue;
             };
 
-            match *entry {
+            match entry {
                 IndexEntry::AssertWithIndex {
                     highest_index,
                     is_first_highest,
                     asserted_len,
-                    ref indexes,
+                    indexes,
                     comparison,
                     assert_span,
                     slice,
@@ -433,7 +433,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>
                     }
                 },
                 IndexEntry::IndexWithoutAssert {
-                    ref indexes,
+                    indexes,
                     highest_index,
                     is_first_highest,
                     slice,
@@ -469,6 +469,6 @@ impl LateLintPass<'_> for MissingAssertsForIndexing {
             ControlFlow::<!, ()>::Continue(())
         });
 
-        report_indexes(cx, &map);
+        report_indexes(cx, map);
     }
 }
