@@ -1,7 +1,8 @@
 //@ run-pass
 //@ ignore-backends: gcc
+//@ compile-flags: --cfg minisimd_const
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -11,7 +12,7 @@ use std::intrinsics::simd::simd_as;
 
 type V<T> = Simd<T, 2>;
 
-fn main() {
+const fn as_simd() {
     unsafe {
         let u: V::<u32> = Simd([u32::MIN, u32::MAX]);
         let i: V<i16> = simd_as(u);
@@ -46,4 +47,9 @@ fn main() {
         assert_eq!(u[0], f[0] as usize);
         assert_eq!(u[1], f[1] as usize);
     }
+}
+
+fn main() {
+    const { as_simd() };
+    as_simd();
 }

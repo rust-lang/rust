@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask/", "lib/*", "crates/*"]
+members = ["xtask/", "lib/*", "lib/ungrammar/ungrammar2json", "crates/*"]
 exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
@@ -42,7 +42,7 @@ debug = 2
 # lsp-server = { path = "lib/lsp-server" }
 
 
-# ungrammar = { path = "../ungrammar" }
+# ungrammar = { path = "lin/ungrammar" }
 
 # salsa = { path = "../salsa" }
 # salsa-macros = { path = "../salsa/components/salsa-macros" }

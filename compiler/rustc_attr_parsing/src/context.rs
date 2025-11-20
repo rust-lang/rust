@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use private::Sealed;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level};
-use rustc_feature::AttributeTemplate;
+use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrPath, CRATE_HIR_ID, HirId};
@@ -637,9 +637,15 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn suggestions(&self) -> Vec<String> {
-        // If the outer and inner spans are equal, we are parsing an attribute from `cfg_attr`,
-        // So don't display an attribute style in the suggestions
-        let style = (self.attr_span != self.inner_span).then_some(self.attr_style);
+        let style = match self.parsed_description {
+            // If the outer and inner spans are equal, we are parsing an embedded attribute
+            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
+                AttrSuggestionStyle::EmbeddedAttribute
+            }
+            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
+            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
+        };
+
         self.template.suggestions(style, &self.attr_path)
     }
 }

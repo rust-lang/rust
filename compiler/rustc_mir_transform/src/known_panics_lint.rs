@@ -605,17 +605,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             Ref(..) | RawPtr(..) => return None,
 
-            NullaryOp(ref null_op, ty) => {
-                let op_layout = self.ecx.layout_of(ty).ok()?;
-                let val = match null_op {
-                    NullOp::OffsetOf(fields) => self
-                        .tcx
-                        .offset_of_subfield(self.typing_env, op_layout, fields.iter())
-                        .bytes(),
-                    NullOp::RuntimeChecks(_) => return None,
-                };
-                ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
-            }
+            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
 
             ShallowInitBox(..) => return None,
 

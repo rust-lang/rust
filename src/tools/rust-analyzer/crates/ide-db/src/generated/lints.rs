@@ -10723,9 +10723,9 @@ The tracking issue for this feature is: [#99108]
         label: "strict_provenance_lints",
         description: r##"# `strict_provenance_lints`
 
-The tracking issue for this feature is: [#95228]
+The tracking issue for this feature is: [#130351]
 
-[#95228]: https://github.com/rust-lang/rust/issues/95228
+[#130351]: https://github.com/rust-lang/rust/issues/130351
 -----
 
 The `strict_provenance_lints` feature allows to enable the `fuzzy_provenance_casts` and `lossy_provenance_casts` lints.

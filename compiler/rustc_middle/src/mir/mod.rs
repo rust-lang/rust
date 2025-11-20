@@ -649,7 +649,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind), _) => {
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(kind)) => {
                 Some((kind.value(tcx.sess) as u128, targets))
             }
             Rvalue::Use(Operand::Constant(constant)) => {

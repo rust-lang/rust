@@ -710,18 +710,14 @@ fn wasm_special() {
     let ignores = [
         ("wasm32-unknown-unknown", "emscripten", false),
         ("wasm32-unknown-unknown", "wasm32", true),
-        ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
-        ("wasm32-unknown-emscripten", "wasm32-bare", false),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
-        ("wasm32-wasip1", "wasm32-bare", false),
         ("wasm32-wasip1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
-        ("wasm64-unknown-unknown", "wasm32-bare", false),
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
     for (target, pattern, ignore) in ignores {
@@ -768,6 +764,29 @@ fn ignore_coverage() {
     let config = cfg().mode("coverage-run").profiler_runtime(true).build();
     assert!(!check_ignore(&config, "//@ ignore-coverage-map"));
     assert!(check_ignore(&config, "//@ ignore-coverage-run"));
+}
+
+#[test]
+fn only_ignore_elf() {
+    let cases = &[
+        ("aarch64-apple-darwin", false),
+        ("aarch64-unknown-linux-gnu", true),
+        ("powerpc64-ibm-aix", false),
+        ("wasm32-unknown-unknown", false),
+        ("wasm32-wasip1", false),
+        ("x86_64-apple-darwin", false),
+        ("x86_64-pc-windows-msvc", false),
+        ("x86_64-unknown-freebsd", true),
+        ("x86_64-unknown-illumos", true),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-unknown-none", true),
+        ("x86_64-unknown-uefi", false),
+    ];
+    for &(target, is_elf) in cases {
+        let config = &cfg().target(target).build();
+        assert_eq!(is_elf, check_ignore(config, "//@ ignore-elf"), "`//@ ignore-elf` for {target}");
+        assert_eq!(is_elf, !check_ignore(config, "//@ only-elf"), "`//@ only-elf` for {target}");
+    }
 }
 
 #[test]

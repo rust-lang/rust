@@ -2386,10 +2386,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
-            AssocCtxt::Impl { of_trait: false } => {
+            AssocCtxt::Impl { of_trait: false, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
             }
-            AssocCtxt::Impl { of_trait: true } => {
+            AssocCtxt::Impl { of_trait: true, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
             }
         }

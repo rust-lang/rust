@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => {}
+            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
@@ -1633,8 +1633,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
+            | Rvalue::Discriminant(..) => {}
         }
     }
 

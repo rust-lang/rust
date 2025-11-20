@@ -179,6 +179,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             hir::ExprKind::AddrOf(..) => Some("borrow"),
             hir::ExprKind::OffsetOf(..) => Some("`offset_of` call"),
             hir::ExprKind::Unary(..) => Some("unary operation"),
+            // The `offset_of` macro wraps its contents inside a `const` block.
+            hir::ExprKind::ConstBlock(block) => {
+                let body = cx.tcx.hir_body(block.body);
+                if let hir::ExprKind::Block(block, _) = body.value.kind
+                    && let Some(expr) = block.expr
+                    && let hir::ExprKind::OffsetOf(..) = expr.kind
+                {
+                    Some("`offset_of` call")
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 

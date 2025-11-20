@@ -232,9 +232,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                     )
                 }
             }
-            NullaryOp(null_op, ty) => {
-                crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx), ty.stable(tables, cx))
-            }
+            NullaryOp(null_op) => crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx)),
             UnaryOp(un_op, op) => {
                 crate::mir::Rvalue::UnaryOp(un_op.stable(tables, cx), op.stable(tables, cx))
             }
@@ -314,19 +312,16 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::NullOp {
     type T = crate::mir::NullOp;
     fn stable<'cx>(
         &self,
-        tables: &mut Tables<'cx, BridgeTys>,
-        cx: &CompilerCtxt<'cx, BridgeTys>,
+        _: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::mir::NullOp::*;
         use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
-                indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
-            ),
             RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
                 UbChecks => crate::mir::RuntimeChecks::UbChecks,
                 ContractChecks => crate::mir::RuntimeChecks::ContractChecks,

@@ -1,17 +1,25 @@
-error: expected identifier, found keyword `impl`
+error: expected type, found `}`
+  --> $DIR/issue-81806.rs:4:1
+   |
+LL | trait T {
+   |         - while parsing this item list starting here
+...
+LL | }
+   | ^
+   | |
+   | expected type
+   | the item list ends here
+
+error[E0658]: const trait impls are experimental
   --> $DIR/issue-81806.rs:2:1
    |
-LL | trait T { const
-   |         - while parsing this item list starting here
-LL | impl
-   | ^^^^ expected identifier, found keyword
-LL | }
-   | - the item list ends here
+LL | const
+   | ^^^^^
    |
-help: escape `impl` to use it as an identifier
-   |
-LL | r#impl
-   | ++
+   = note: see issue #143874 <https://github.com/rust-lang/rust/issues/143874> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

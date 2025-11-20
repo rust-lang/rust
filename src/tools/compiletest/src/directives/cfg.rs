@@ -147,14 +147,6 @@ fn parse_cfg_name_directive<'a>(
         message: "when the target family is {name}"
     }
 
-    // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
-    // (in contrast to `wasm32` which also matches non-bare targets)
-    condition! {
-        name: "wasm32-bare",
-        condition: config.target == "wasm32-unknown-unknown",
-        message: "when the target is WASM"
-    }
-
     condition! {
         name: "thumb",
         condition: config.target.starts_with("thumb"),
@@ -177,11 +169,7 @@ fn parse_cfg_name_directive<'a>(
 
     condition! {
         name: "elf",
-        condition: !config.target.contains("windows")
-            && !config.target.contains("wasm")
-            && !config.target.contains("apple")
-            && !config.target.contains("aix")
-            && !config.target.contains("uefi"),
+        condition: target_cfg.binary_format == "elf",
         message: "when the target binary format is ELF"
     }
 

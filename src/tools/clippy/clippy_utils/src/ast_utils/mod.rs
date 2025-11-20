@@ -495,12 +495,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 of_trait: lot,
                 self_ty: lst,
                 items: li,
+                constness: lc,
             }),
             Impl(ast::Impl {
                 generics: rg,
                 of_trait: rot,
                 self_ty: rst,
                 items: ri,
+                constness: rc,
             }),
         ) => {
             eq_generics(lg, rg)
@@ -508,7 +510,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                     matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
                         && matches!(l.polarity, ImplPolarity::Positive) == matches!(r.polarity, ImplPolarity::Positive)
                         && eq_defaultness(l.defaultness, r.defaultness)
-                        && matches!(l.constness, ast::Const::No) == matches!(r.constness, ast::Const::No)
+                        && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
                         && eq_path(&l.trait_ref.path, &r.trait_ref.path)
                 })
                 && eq_ty(lst, rst)

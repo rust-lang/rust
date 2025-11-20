@@ -34,7 +34,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
 
         let expr = &this.thir[expr_id];
         let expr_span = expr.span;
