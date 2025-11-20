@@ -1,5 +1,6 @@
 #![allow(clippy::enum_clike_unportable_variant)]
 
+use crate::marker::MetaSized;
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -48,6 +49,79 @@ impl Alignment {
     pub const fn of<T>() -> Self {
         // This can't actually panic since type alignment is always a power of two.
         const { Alignment::new(align_of::<T>()).unwrap() }
+    }
+
+    /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+    ///
+    /// Every reference to a value of the type `T` must be a multiple of this number.
+    ///
+    /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// use std::ptr::Alignment;
+    ///
+    /// assert_eq!(Alignment::of_val(&5i32).as_usize(), 4);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    pub const fn of_val<T: MetaSized>(val: &T) -> Self {
+        let align = mem::align_of_val(val);
+        // SAFETY: `align_of_val` returns valid alignment
+        unsafe { Alignment::new_unchecked(align) }
+    }
+
+    /// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+    ///
+    /// Every reference to a value of the type `T` must be a multiple of this number.
+    ///
+    /// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+    ///
+    /// # Safety
+    ///
+    /// This function is only safe to call if the following conditions hold:
+    ///
+    /// - If `T` is `Sized`, this function is always safe to call.
+    /// - If the unsized tail of `T` is:
+    ///     - a [slice], then the length of the slice tail must be an initialized
+    ///       integer, and the size of the *entire value*
+    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///       For the special case where the dynamic tail length is 0, this function
+    ///       is safe to call.
+    ///     - a [trait object], then the vtable part of the pointer must point
+    ///       to a valid vtable acquired by an unsizing coercion, and the size
+    ///       of the *entire value* (dynamic tail length + statically sized prefix)
+    ///       must fit in `isize`.
+    ///     - an (unstable) [extern type], then this function is always safe to
+    ///       call, but may panic or otherwise return the wrong value, as the
+    ///       extern type's layout is not known. This is the same behavior as
+    ///       [`Alignment::of_val`] on a reference to a type with an extern type tail.
+    ///     - otherwise, it is conservatively not allowed to call this function.
+    ///
+    /// [trait object]: ../../book/ch17-02-trait-objects.html
+    /// [extern type]: ../../unstable-book/language-features/extern-types.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// #![feature(layout_for_ptr)]
+    /// use std::ptr::Alignment;
+    ///
+    /// assert_eq!(unsafe { Alignment::of_val_raw(&5i32) }.as_usize(), 4);
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    // #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    pub const unsafe fn of_val_raw<T: MetaSized>(val: *const T) -> Self {
+        // SAFETY: precondition propagated to the caller
+        let align = unsafe { mem::align_of_val_raw(val) };
+        // SAFETY: `align_of_val_raw` returns valid alignment
+        unsafe { Alignment::new_unchecked(align) }
     }
 
     /// Creates an `Alignment` from a `usize`, or returns `None` if it's
