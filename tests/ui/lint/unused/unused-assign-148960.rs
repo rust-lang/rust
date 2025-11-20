@@ -1,5 +1,6 @@
 //@ check-fail
 #![deny(unused)]
+#![allow(dead_code)]
 
 fn test_one_extra_assign() {
     let mut value = b"0".to_vec(); //~ ERROR value assigned to `value` is never read
@@ -26,8 +27,16 @@ fn test_indirect_assign() {
     println!("{}", p.y);
 }
 
-fn main() {
-    test_one_extra_assign();
-    test_two_extra_assign();
-    test_indirect_assign();
+struct Foo;
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
 }
+
+// testcase for issue #148418
+fn test_unused_variable() {
+    let mut foo = Foo; //~ ERROR variable `foo` is assigned to, but never used
+    foo = Foo; //~ ERROR value assigned to `foo` is never read
+}
+
+fn main() {}
