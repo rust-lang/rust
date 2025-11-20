@@ -312,9 +312,15 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
+        let context = match parent {
+            TraitOrImpl::Trait { .. } => "trait",
+            TraitOrImpl::TraitImpl { .. } => "trait_impl",
+            TraitOrImpl::Impl { .. } => "impl",
+        };
+
         self.dcx().emit_err(errors::AsyncFnInConstTraitOrTraitImpl {
             async_keyword,
-            in_impl: matches!(parent, TraitOrImpl::TraitImpl { .. }),
+            context,
             const_keyword,
         });
     }
@@ -1714,9 +1720,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_async_fn_in_const_trait_or_impl(sig, parent);
                 }
             }
-            Some(TraitOrImpl::Impl { constness }) => {
+            Some(parent @ TraitOrImpl::Impl { constness }) => {
                 if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                     self.check_impl_fn_not_const(sig.header.constness, *constness);
+                    self.check_async_fn_in_const_trait_or_impl(sig, parent);
                 }
             }
             None => {}

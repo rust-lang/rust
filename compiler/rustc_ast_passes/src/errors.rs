@@ -76,7 +76,7 @@ pub(crate) struct TraitFnConst {
 pub(crate) struct AsyncFnInConstTraitOrTraitImpl {
     #[primary_span]
     pub async_keyword: Span,
-    pub in_impl: bool,
+    pub context: &'static str,
     #[label]
     pub const_keyword: Span,
 }
