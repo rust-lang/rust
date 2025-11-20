@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed specialization for `Copy` types (#662)
 - The `get_many_mut` family of methods have been renamed to `get_disjoint_mut`
   to match the standard library. The old names are still present for now, but
-  deprecated.
+  deprecated. (#648)
 - Recognize and use over-sized allocations when using custom allocators. (#523)
 - Depend on `serde_core` instead of `serde`. (#649)
 - Optimized `collect` on rayon parallel iterators. (#652) 
