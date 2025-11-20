@@ -67,7 +67,7 @@
 // lldb-check:[...] size=2 { [0] = 3 [1] = 4 }
 
 // lldb-command:v padded_tuple
-// lldb-check:[...] size=2 { [0] = { 0 = 6 1 = 7 } [1] = { 0 = 8 1 = 9 } }
+// lldb-check:[...] size=2 { [0] = (6, 7) { 0 = 6 1 = 7 } [1] = (8, 9) { 0 = 8 1 = 9 } }
 
 // lldb-command:v padded_struct
 // lldb-check:[...] size=2 { [0] = { x = 10 y = 11 z = 12 } [1] = { x = 13 y = 14 z = 15 } }

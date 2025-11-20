@@ -27,7 +27,7 @@
 
 // lldb-command:run
 // lldb-command:v b
-// lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = { value = { _ref__a = 0x[...] } $discr$ = [...] }
+// lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = 0{_ref__a:0x[...]} { _ref__a = 0x[...] }
 
 // === CDB TESTS ===================================================================================
 
