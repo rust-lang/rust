@@ -388,6 +388,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 size,
                 // The maximum value of ilog2 is 31 which will always fit in a u8.
                 align_shift: align.ilog2().try_into().unwrap(),
+                key: None,
             });
             Pointer::stack_slot(stack_slot)
         } else {
@@ -397,6 +398,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 kind: StackSlotKind::ExplicitSlot,
                 size: size + align,
                 align_shift: abi_align.ilog2().try_into().unwrap(),
+                key: None,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
             let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
