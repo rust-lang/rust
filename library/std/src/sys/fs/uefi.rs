@@ -81,7 +81,7 @@ impl FileAttr {
         unsafe {
             Self {
                 attr: (*info.as_ptr()).attribute,
-                size: (*info.as_ptr()).size,
+                size: (*info.as_ptr()).file_size,
                 modified: uefi_fs::uefi_to_systemtime((*info.as_ptr()).modification_time),
                 accessed: uefi_fs::uefi_to_systemtime((*info.as_ptr()).last_access_time),
                 created: uefi_fs::uefi_to_systemtime((*info.as_ptr()).create_time),
