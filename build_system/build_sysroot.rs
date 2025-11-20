@@ -234,6 +234,10 @@ fn build_clif_sysroot_for_triple(
     if compiler.triple.contains("apple") {
         build_cmd.env("CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO", "packed");
     }
+    // Use incr comp despite release mode unless incremental builds are explicitly disabled
+    if env::var_os("CARGO_BUILD_INCREMENTAL").is_none() {
+        build_cmd.env("CARGO_BUILD_INCREMENTAL", "true");
+    }
     spawn_and_wait(build_cmd);
 
     for entry in fs::read_dir(build_dir.join("deps")).unwrap() {
