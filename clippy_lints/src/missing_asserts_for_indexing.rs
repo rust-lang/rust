@@ -5,7 +5,7 @@ use clippy_utils::comparisons::{Rel, normalize_comparison};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::{If, Range};
 use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace, root_macro_call};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{eq_expr_value, hash_expr};
 use rustc_ast::{BinOpKind, LitKind, RangeLimits};
@@ -356,41 +356,33 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                     slice,
                     macro_call,
                 } if indexes.len() > 1 && !is_first_highest => {
+                    let mut app = Applicability::MachineApplicable;
+                    let slice_str = snippet_with_applicability(cx, slice.span, "_", &mut app);
                     // if we have found an `assert!`, let's also check that it's actually right
                     // and if it covers the highest index and if not, suggest the correct length
                     let sugg = match comparison {
                         // `v.len() < 5` and `v.len() <= 5` does nothing in terms of bounds checks.
                         // The user probably meant `v.len() > 5`
-                        LengthComparison::LengthLessThanInt | LengthComparison::LengthLessThanOrEqualInt => Some(
-                            format!("assert!({}.len() > {highest_index})", snippet(cx, slice.span, "..")),
-                        ),
+                        LengthComparison::LengthLessThanInt | LengthComparison::LengthLessThanOrEqualInt => {
+                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                        },
                         // `5 < v.len()` == `v.len() > 5`
-                        LengthComparison::IntLessThanLength if asserted_len < highest_index => Some(format!(
-                            "assert!({}.len() > {highest_index})",
-                            snippet(cx, slice.span, "..")
-                        )),
+                        LengthComparison::IntLessThanLength if asserted_len < highest_index => {
+                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                        },
                         // `5 <= v.len() == `v.len() >= 5`
-                        LengthComparison::IntLessThanOrEqualLength if asserted_len <= highest_index => Some(format!(
-                            "assert!({}.len() > {highest_index})",
-                            snippet(cx, slice.span, "..")
-                        )),
+                        LengthComparison::IntLessThanOrEqualLength if asserted_len <= highest_index => {
+                            Some(format!("assert!({slice_str}.len() > {highest_index})",))
+                        },
                         // `highest_index` here is rather a length, so we need to add 1 to it
                         LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => match macro_call {
-                            sym::assert_eq_macro => Some(format!(
-                                "assert_eq!({}.len(), {})",
-                                snippet(cx, slice.span, ".."),
-                                highest_index + 1
-                            )),
-                            sym::debug_assert_eq_macro => Some(format!(
-                                "debug_assert_eq!({}.len(), {})",
-                                snippet(cx, slice.span, ".."),
-                                highest_index + 1
-                            )),
-                            _ => Some(format!(
-                                "assert!({}.len() == {})",
-                                snippet(cx, slice.span, ".."),
-                                highest_index + 1
-                            )),
+                            sym::assert_eq_macro => {
+                                Some(format!("assert_eq!({slice_str}.len(), {})", highest_index + 1))
+                            },
+                            sym::debug_assert_eq_macro => {
+                                Some(format!("debug_assert_eq!({slice_str}.len(), {})", highest_index + 1))
+                            },
+                            _ => Some(format!("assert!({slice_str}.len() == {})", highest_index + 1)),
                         },
                         _ => None,
                     };
@@ -405,7 +397,7 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                                     assert_span,
                                     "provide the highest index that is indexed with",
                                     sugg,
-                                    Applicability::MachineApplicable,
+                                    app,
                                 );
                             },
                         );
