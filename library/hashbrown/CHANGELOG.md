@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1](https://github.com/rust-lang/hashbrown/compare/v0.16.0...v0.16.1) - 2025-11-20
+
+### Added
+
+- Added `HashTable` methods related to the raw bucket index (#657)
+- Added `VacantEntryRef::insert_with_key` (#579)
+
+### Changed
+
+- Removed specialization for `Copy` types (#662)
 - The `get_many_mut` family of methods have been renamed to `get_disjoint_mut`
   to match the standard library. The old names are still present for now, but
-  deprecated.
+  deprecated. (#648)
+- Recognize and use over-sized allocations when using custom allocators. (#523)
+- Depend on `serde_core` instead of `serde`. (#649)
+- Optimized `collect` on rayon parallel iterators. (#652) 
 
 ## [0.16.0](https://github.com/rust-lang/hashbrown/compare/v0.15.5...v0.16.0) - 2025-08-28
 
