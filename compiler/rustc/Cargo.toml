@@ -20,6 +20,13 @@ rustc_public = { path = "../rustc_public" }
 rustc_public_bridge = { path = "../rustc_public_bridge" }
 # tidy-alphabetical-end
 
+# Pin these to avoid pulling in a package with a binary blob
+# <https://github.com/rust-lang/rust/pull/136395#issuecomment-2692769062>
+[target.'cfg(target_os = "wasi")'.dependencies]
+getrandom = "=0.3.3"
+wasi = "=0.14.2"
+
+
 [dependencies.tikv-jemalloc-sys]
 version = "0.6.0"
 optional = true
