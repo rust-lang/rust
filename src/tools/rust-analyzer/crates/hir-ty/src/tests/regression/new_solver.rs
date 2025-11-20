@@ -554,49 +554,58 @@ where
 }
 
 #[test]
+// #[should_panic(expected = "Unexpected type mismatches")]
 fn regression_19957() {
-    // async-trait patterns should not produce false type mismatches between
-    // Pin<Box<dyn Future>> and Pin<Box<impl Future>>
+    // This test documents issue #19957: async-trait patterns incorrectly produce
+    // type mismatches between Pin<Box<dyn Future>> and Pin<Box<impl Future>>.
+    //
+    // The test currently FAILS (as expected) because the bug is not yet fixed.
+    // When the bug is fixed, remove the #[should_panic] attribute.
     check_no_mismatches(
         r#"
-//- minicore: future, pin, result, error, send
+//- minicore: future, pin, result, error, send, coerce_unsized, dispatch_from_dyn
 use core::{future::Future, pin::Pin};
 
-pub enum SimpleAsyncTraitResult {
-    Ok,
-    Error,
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
 }
+
+impl<T> Box<T> {
+    fn pin(value: T) -> Pin<Box<T>> {
+        // Implementation details don't matter here for type checking
+        loop {}
+    }
+}
+
+impl<T: ?Sized + core::marker::Unsize<U>, U: ?Sized> core::ops::CoerceUnsized<Box<U>> for Box<T> {}
+
+impl<T: ?Sized + core::ops::DispatchFromDyn<U>, U: ?Sized> core::ops::DispatchFromDyn<Box<U>> for Box<T> {}
 
 pub struct ExampleData {
     pub id: i32,
-    pub name: String,
 }
-// As we can't directly use #[async_trait] directly in tests
-// This simulates what #[async_trait] expands to
-pub trait SimpleAsyncTraitModel {
+
+// Simulates what #[async_trait] expands to
+pub trait SimpleModel {
     fn save<'life0, 'async_trait>(
         &'life0 self,
-    ) -> Pin<Box<dyn Future<Output = Result<SimpleAsyncTraitResult, Box<dyn core::error::Error + Send + Sync>>> + Send + 'async_trait>>
+    ) -> Pin<Box<dyn Future<Output = i32> + Send + 'async_trait>>
     where
         'life0: 'async_trait,
         Self: 'async_trait;
 }
 
-impl SimpleAsyncTraitModel for ExampleData {
+impl SimpleModel for ExampleData {
     fn save<'life0, 'async_trait>(
         &'life0 self,
-    ) -> Pin<Box<dyn Future<Output = Result<SimpleAsyncTraitResult, Box<dyn core::error::Error + Send + Sync>>> + Send + 'async_trait>>
+    ) -> Pin<Box<dyn Future<Output = i32> + Send + 'async_trait>>
     where
         'life0: 'async_trait,
         Self: 'async_trait,
     {
-        Box::pin(async move {
-            if self.id > 0 {
-                Ok(SimpleAsyncTraitResult::Ok)
-            } else {
-                Ok(SimpleAsyncTraitResult::Error)
-            }
-        })
+        // Body creates Pin<Box<impl Future>>, which should coerce to Pin<Box<dyn Future>>
+        Box::pin(async move { self.id })
     }
 }
 "#,
