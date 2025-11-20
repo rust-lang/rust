@@ -4557,7 +4557,7 @@ pub struct TraitCandidate {
     pub import_ids: SmallVec<[LocalDefId; 1]>,
     // Indicates whether this trait candidate is ambiguously glob imported
     // in it's scope. Related to the AMBIGUOUS_GLOB_IMPORTED_TRAIT lint.
-    // If this is set to true and the trait is used as a result of methdo lookup, this
+    // If this is set to true and the trait is used as a result of method lookup, this
     // lint is thrown.
     pub lint_ambiguous: bool,
 }
