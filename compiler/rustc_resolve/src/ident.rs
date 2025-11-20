@@ -3,7 +3,8 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::{bug, span_bug};
+use rustc_hir::def_id::DefId;
+use rustc_middle::{bug, span_bug, ty};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -664,17 +665,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        let significant_visibility = match finalize {
+                        let (significant_visibility, import_vis) = match finalize {
                             None | Some(Finalize { stage: Stage::Late, .. }) => {
                                 return Some(Ok(binding));
                             }
-                            Some(Finalize { significant_visibility, .. }) => significant_visibility,
+                            Some(Finalize { significant_visibility, import_vis, .. }) => {
+                                (significant_visibility, import_vis)
+                            }
                         };
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
                             // Found another solution, if the first one was "weak", report an error.
                             let (res, innermost_res) = (binding.res(), innermost_binding.res());
-                            if res != innermost_res || significant_visibility {
+
+                            let vis_min = |v1: ty::Visibility<DefId>, v2: ty::Visibility<DefId>| {
+                                if v1.is_at_least(v2, this.tcx) { v2 } else { v1 }
+                            };
+                            let bad_vis = significant_visibility
+                                && vis_min(binding.vis, import_vis.unwrap().to_def_id())
+                                    != vis_min(
+                                        innermost_binding.vis,
+                                        import_vis.unwrap().to_def_id(),
+                                    );
+
+                            if res != innermost_res || bad_vis {
                                 let is_builtin = |res| {
                                     matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)))
                                 };

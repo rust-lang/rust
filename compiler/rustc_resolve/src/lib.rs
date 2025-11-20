@@ -2511,6 +2511,8 @@ struct Finalize {
     /// Ambiguous bindings with different visibilities need to be reported
     /// even if they have the same `Res`olutions.
     significant_visibility: bool = true,
+    /// Tralala
+    import_vis: Option<Visibility> = None,
 }
 
 impl Finalize {
