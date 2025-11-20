@@ -739,6 +739,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(_) => node_str("const"),
             Node::Expr(_) => node_str("expr"),
             Node::ExprField(_) => node_str("expr field"),
+            Node::ConstArgExprField(_) => node_str("const arg expr field"),
             Node::Stmt(_) => node_str("stmt"),
             Node::PathSegment(_) => node_str("path segment"),
             Node::Ty(_) => node_str("type"),
@@ -1007,6 +1008,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
+            Node::ConstArgExprField(field) => field.span,
             Node::Stmt(stmt) => stmt.span,
             Node::PathSegment(seg) => {
                 let ident_span = seg.ident.span;

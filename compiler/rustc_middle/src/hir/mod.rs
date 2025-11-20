@@ -315,6 +315,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Block(_)
             | Node::Arm(_)
             | Node::ExprField(_)
+            | Node::ConstArgExprField(_)
             | Node::AnonConst(_)
             | Node::ConstBlock(_)
             | Node::ConstArg(_)
