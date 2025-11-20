@@ -2473,33 +2473,31 @@ impl b::Checker for MyChecker {
 
     #[test]
     fn test_parameter_names_matching_macros_not_qualified() {
+        // Parameter names that match macro names should not be qualified
         check_assist(
             add_missing_impl_members,
             r#"
-trait Foo {
-    fn foo(&self, vec: usize);
-    fn bar(&self, format: String, panic: bool);
+//- /lib.rs crate:dep
+#[macro_export]
+macro_rules! my_macro {
+    () => {}
 }
 
+pub trait Foo {
+    fn foo(&self, my_macro: usize);
+}
+
+//- /main.rs crate:main deps:dep
 struct Bar;
 
-impl Foo for Bar {$0}
+impl dep::Foo for Bar {$0}
 "#,
             r#"
-trait Foo {
-    fn foo(&self, vec: usize);
-    fn bar(&self, format: String, panic: bool);
-}
-
 struct Bar;
 
-impl Foo for Bar {
-    fn foo(&self, vec: usize) {
+impl dep::Foo for Bar {
+    fn foo(&self, my_macro: usize) {
         ${0:todo!()}
-    }
-
-    fn bar(&self, format: String, panic: bool) {
-        todo!()
     }
 }
 "#,
