@@ -88,6 +88,47 @@ fn test(a: A<[u8; 2]>, b: B<[u8; 2]>, c: C<[u8; 2]>) {
 }
 
 #[test]
+fn unsized_from_keeps_type_info() {
+    check_types(
+        r#"
+//- minicore: coerce_unsized, from
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct MyBox<T: ?Sized> {
+    ptr: *const T,
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyBox<U>> for MyBox<T> {}
+
+struct MyRc<T: ?Sized> {
+    ptr: *const T,
+}
+
+impl<T: ?Sized> core::convert::From<MyBox<T>> for MyRc<T> {
+    fn from(_: MyBox<T>) -> MyRc<T> {
+        loop {}
+    }
+}
+
+fn make_box() -> MyBox<[i32; 2]> {
+    loop {}
+}
+
+fn take<T: ?Sized>(value: MyRc<T>) -> MyRc<T> {
+    value
+}
+
+fn test() {
+    let boxed: MyBox<[i32]> = make_box();
+    let rc = MyRc::from(boxed);
+      //^^ MyRc<[i32]>
+    let _: MyRc<[i32]> = take(rc);
+}
+"#,
+    );
+}
+
+#[test]
 fn if_coerce() {
     check_no_mismatches(
         r#"
