@@ -772,8 +772,7 @@ impl<'db> InferenceContext<'_, 'db> {
             Expr::Range { lhs, rhs, range_type } => {
                 let lhs_ty =
                     lhs.map(|e| self.infer_expr_inner(e, &Expectation::none(), ExprIsRead::Yes));
-                let rhs_expect =
-                    lhs_ty.as_ref().map_or_else(Expectation::none, |ty| Expectation::has_type(*ty));
+                let rhs_expect = lhs_ty.map_or_else(Expectation::none, Expectation::has_type);
                 let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect, ExprIsRead::Yes));
                 let single_arg_adt = |adt, ty: Ty<'db>| {
                     Ty::new_adt(

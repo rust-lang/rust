@@ -207,7 +207,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                     mode,
                 )?
             }
-            Pat::Range { start, end } => {
+            Pat::Range { start, end, range_type: _ } => {
                 let mut add_check = |l: &ExprId, binop| -> Result<'db, ()> {
                     let lv = self.lower_literal_or_const_to_operand(self.infer[pattern], l)?;
                     let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
