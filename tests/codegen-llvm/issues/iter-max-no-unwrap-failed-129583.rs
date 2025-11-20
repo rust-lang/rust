@@ -2,7 +2,7 @@
 // The iterator may unroll for values smaller than a certain threshold so we
 // use a larger value to prevent unrolling.
 
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 --crate-name=test
 
 #![crate_type = "lib"]
 

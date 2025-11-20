@@ -9,35 +9,35 @@
 
 // lldb-command:run
 // lldb-command:v B
-// lldb-check: ::B::[...] = false
+// lldb-check: ::B = false
 // lldb-command:v I
-// lldb-check: ::I::[...] = -1
+// lldb-check: ::I = -1
 // lldb-command:v --format=d C
-// lldb-check: ::C::[...] = 97
+// lldb-check: ::C = 97
 // lldb-command:v --format=d I8
-// lldb-check: ::I8::[...] = 68
+// lldb-check: ::I8 = 68
 // lldb-command:v I16
-// lldb-check: ::I16::[...] = -16
+// lldb-check: ::I16 = -16
 // lldb-command:v I32
-// lldb-check: ::I32::[...] = -32
+// lldb-check: ::I32 = -32
 // lldb-command:v I64
-// lldb-check: ::I64::[...] = -64
+// lldb-check: ::I64 = -64
 // lldb-command:v U
-// lldb-check: ::U::[...] = 1
+// lldb-check: ::U = 1
 // lldb-command:v --format=d U8
-// lldb-check: ::U8::[...] = 100
+// lldb-check: ::U8 = 100
 // lldb-command:v U16
-// lldb-check: ::U16::[...] = 16
+// lldb-check: ::U16 = 16
 // lldb-command:v U32
-// lldb-check: ::U32::[...] = 32
+// lldb-check: ::U32 = 32
 // lldb-command:v U64
-// lldb-check: ::U64::[...] = 64
+// lldb-check: ::U64 = 64
 // lldb-command:v F16
-// lldb-check: ::F16::[...] = 1.5
+// lldb-check: ::F16 = 1.5
 // lldb-command:v F32
-// lldb-check: ::F32::[...] = 2.5
+// lldb-check: ::F32 = 2.5
 // lldb-command:v F64
-// lldb-check: ::F64::[...] = 3.5
+// lldb-check: ::F64 = 3.5
 
 // gdb-command:run
 // gdb-command:print B
@@ -103,4 +103,6 @@ fn main() {
     let b = unsafe { F16 };
 }
 
-fn _zzz() {()}
+fn _zzz() {
+    ()
+}
