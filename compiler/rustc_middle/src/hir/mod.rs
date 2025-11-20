@@ -359,6 +359,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | Node::Infer(_)
             | Node::WherePredicate(_)
             | Node::PreciseCapturingNonLifetimeArg(_)
+            | Node::ConstArgExprField(_)
             | Node::OpaqueTy(_) => {
                 unreachable!("no sub-expr expected for {parent_node:?}")
             }
