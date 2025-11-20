@@ -140,7 +140,7 @@ You can find the list of such PRs [here][abandoned-prs].
 If the PR has been implemented in some other way in the meantime, the `S-inactive` label
 should be removed from it.
 If not, and it seems that there is still interest in the change,
-you can try to rebase the pull request on top of the latest `master` branch and send a new
+you can try to rebase the pull request on top of the latest `main` branch and send a new
 pull request, continuing the work on the feature.
 
 [abandoned-prs]: https://github.com/rust-lang/rust/pulls?q=is%3Apr+label%3AS-inactive+is%3Aclosed
