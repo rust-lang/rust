@@ -57,6 +57,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::ForeignFn),
         Allow(Target::Closure),

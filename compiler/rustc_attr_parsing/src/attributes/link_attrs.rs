@@ -472,6 +472,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Error(Target::Method(MethodKind::Trait { body: false })),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
@@ -592,7 +593,7 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignFn),
-        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
+        Error(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
 
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
