@@ -1651,6 +1651,17 @@ fn extract_if_unconsumed() {
 }
 
 #[test]
+fn extract_if_debug() {
+    let mut vec = vec![1, 2];
+    let mut drain = vec.extract_if(.., |&mut x| x % 2 != 0);
+    assert!(format!("{drain:?}").contains("Some(1)"));
+    drain.next();
+    assert!(format!("{drain:?}").contains("Some(2)"));
+    drain.next();
+    assert!(format!("{drain:?}").contains("None"));
+}
+
+#[test]
 fn test_reserve_exact() {
     // This is all the same as test_reserve
 
