@@ -1,4 +1,7 @@
 mir_transform_arithmetic_overflow = this arithmetic operation will overflow
+
+mir_transform_asm_unwind_call = call to inline assembly that may unwind
+
 mir_transform_const_defined_here = `const` item defined here
 
 mir_transform_const_modify = attempting to modify a `const` item
