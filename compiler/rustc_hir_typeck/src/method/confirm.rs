@@ -13,7 +13,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
-use rustc_lint::builtin::{AMBIGUOUS_TRAIT_GLOB_IMPORTS, SUPERTRAIT_ITEM_SHADOWING_USAGE};
+use rustc_lint::builtin::{AMBIGUOUS_GLOB_IMPORTED_TRAIT, SUPERTRAIT_ITEM_SHADOWING_USAGE};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
@@ -725,14 +725,13 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         pick: &probe::Pick<'_>,
         segment: &hir::PathSegment<'tcx>,
     ) {
-        if let probe::PickKind::TraitPick(true) = pick.kind {
-        } else {
+        if pick.kind != probe::PickKind::TraitPick(true) {
             return;
-        };
+        }
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
-        self.tcx.node_lint(AMBIGUOUS_TRAIT_GLOB_IMPORTS, segment.hir_id, |diag| {
+        self.tcx.node_lint(AMBIGUOUS_GLOB_IMPORTED_TRAIT, segment.hir_id, |diag| {
             diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}`imported ambiguously here"))

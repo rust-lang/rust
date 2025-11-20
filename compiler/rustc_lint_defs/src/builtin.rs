@@ -19,9 +19,9 @@ declare_lint_pass! {
         AARCH64_SOFTFLOAT_NEON,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
+        AMBIGUOUS_GLOB_IMPORTED_TRAIT,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
-        AMBIGUOUS_TRAIT_GLOB_IMPORTS,
         ARITHMETIC_OVERFLOW,
         ASM_SUB_REGISTER,
         BAD_ASM_STYLE,
@@ -4483,7 +4483,7 @@ declare_lint! {
     /// hard error in the future.
     ///
     /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub AMBIGUOUS_TRAIT_GLOB_IMPORTS,
+    pub AMBIGUOUS_GLOB_IMPORTED_TRAIT,
     Warn,
     "detects usages of ambiguously glob imported traits",
     @future_incompatible = FutureIncompatibleInfo {
