@@ -2522,3 +2522,43 @@ fn foo() {
     "#,
     );
 }
+
+#[test]
+fn issue_9881_super_trait_blanket_impl() {
+    check_types(
+        r#"
+pub trait TryStream: Stream {
+    fn try_poll_next(&self) {}
+}
+
+pub trait Stream {
+    type Item;
+    fn poll_next(&self) {}
+}
+
+trait StreamAlias: Stream<Item = ()> {}
+
+impl<S: Stream<Item = ()>> TryStream for S {}
+
+impl<S: Stream<Item = ()>> StreamAlias for S {}
+
+struct StreamImpl;
+
+impl Stream for StreamImpl {
+    type Item = ();
+}
+
+fn foo() -> impl StreamAlias {
+    StreamImpl
+}
+
+fn main() {
+    let alias = foo();
+    let _: () = alias.try_poll_next();
+     // ^ ()
+    let _: () = alias.poll_next();
+     // ^ ()
+}
+        "#,
+    );
+}
