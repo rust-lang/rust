@@ -173,6 +173,7 @@ impl StaticIndex<'_> {
                     adjustment_hints_mode: AdjustmentHintsMode::Prefix,
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
+                    implied_dyn_trait_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
                     hide_closure_parameter_hints: false,
