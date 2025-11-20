@@ -982,8 +982,10 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     self.checked_places,
                     self.body,
                 ) {
-                    statements.clear();
-                    continue;
+                    statements.retain(|_, access| access.is_direct);
+                    if statements.is_empty() {
+                        continue;
+                    }
                 }
 
                 let typo = maybe_suggest_typo();
