@@ -170,6 +170,14 @@ impl KernelArgsTy {
     }
 }
 
+// Contains LLVM values needed to manage offloading for a single kernel.
+pub(crate) struct OffloadKernelData<'ll> {
+    pub offload_sizes: &'ll llvm::Value,
+    pub memtransfer_types: &'ll llvm::Value,
+    pub region_id: &'ll llvm::Value,
+    pub offload_entry: &'ll llvm::Value,
+}
+
 fn gen_tgt_data_mappers<'ll>(
     cx: &'ll SimpleCx<'_>,
 ) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Type) {
@@ -238,7 +246,7 @@ pub(crate) fn gen_define_handling<'ll>(
     metadata: &[OffloadMetadata],
     types: &[&Type],
     symbol: &str,
-) -> (&'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value, &'ll llvm::Value) {
+) -> OffloadKernelData<'ll> {
     // It seems like non-pointer values are automatically mapped. So here, we focus on pointer (or
     // reference) types.
     let ptr_meta = types.iter().zip(metadata).filter_map(|(&x, meta)| match cx.type_kind(x) {
@@ -290,7 +298,7 @@ pub(crate) fn gen_define_handling<'ll>(
     let c_section_name = CString::new("llvm_offload_entries").unwrap();
     llvm::set_section(offload_entry, &c_section_name);
 
-    (offload_sizes, memtransfer_types, region_id, offload_entry)
+    OffloadKernelData { offload_sizes, memtransfer_types, region_id, offload_entry }
 }
 
 fn declare_offload_fn<'ll>(
@@ -330,14 +338,13 @@ fn declare_offload_fn<'ll>(
 pub(crate) fn gen_call_handling<'ll>(
     cx: &SimpleCx<'ll>,
     bb: &BasicBlock,
-    offload_sizes: &'ll llvm::Value,
-    offload_entry: &'ll llvm::Value,
-    memtransfer_types: &'ll llvm::Value,
-    region_id: &'ll llvm::Value,
+    offload_data: &OffloadKernelData<'ll>,
     args: &[&'ll Value],
     types: &[&Type],
     metadata: &[OffloadMetadata],
 ) {
+    let OffloadKernelData { offload_sizes, offload_entry, memtransfer_types, region_id } =
+        offload_data;
     let (tgt_decl, tgt_target_kernel_ty) = generate_launcher(&cx);
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
     let tptr = cx.type_ptr();
@@ -351,7 +358,11 @@ pub(crate) fn gen_call_handling<'ll>(
 
     let mut builder = SBuilder::build(cx, bb);
 
-    // prevent these globals from being optimized away
+    let num_args = types.len() as u64;
+    let ip = unsafe { llvm::LLVMRustGetInsertPoint(&builder.llbuilder) };
+
+    // FIXME(Sa4dUs): dummy loads are a temp workaround, we should find a proper way to prevent these
+    // variables from being optimized away
     for val in [offload_sizes, offload_entry] {
         unsafe {
             let dummy = llvm::LLVMBuildLoad2(
@@ -364,11 +375,13 @@ pub(crate) fn gen_call_handling<'ll>(
         }
     }
 
-    let num_args = types.len() as u64;
-
     // Step 0)
     // %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
     // %6 = alloca %struct.__tgt_bin_desc, align 8
+    let llfn = unsafe { llvm::LLVMGetBasicBlockParent(bb) };
+    unsafe {
+        llvm::LLVMRustPositionBuilderPastAllocas(&builder.llbuilder, llfn);
+    }
     let tgt_bin_desc_alloca = builder.direct_alloca(tgt_bin_desc, Align::EIGHT, "EmptyDesc");
 
     let ty = cx.type_array(cx.type_ptr(), num_args);
@@ -384,6 +397,9 @@ pub(crate) fn gen_call_handling<'ll>(
     let a5 = builder.direct_alloca(tgt_kernel_decl, Align::EIGHT, "kernel_args");
 
     // Step 1)
+    unsafe {
+        llvm::LLVMRustRestoreInsertPoint(&builder.llbuilder, ip);
+    }
     builder.memset(tgt_bin_desc_alloca, cx.get_const_i8(0), cx.get_const_i64(32), Align::EIGHT);
 
     // Now we allocate once per function param, a copy to be passed to one of our maps.
@@ -458,9 +474,17 @@ pub(crate) fn gen_call_handling<'ll>(
 
     // Step 2)
     let s_ident_t = generate_at_one(&cx);
-    let o = memtransfer_types;
     let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
-    generate_mapper_call(&mut builder, &cx, geps, o, begin_mapper_decl, fn_ty, num_args, s_ident_t);
+    generate_mapper_call(
+        &mut builder,
+        &cx,
+        geps,
+        memtransfer_types,
+        begin_mapper_decl,
+        fn_ty,
+        num_args,
+        s_ident_t,
+    );
     let values = KernelArgsTy::new(&cx, num_args, memtransfer_types, geps);
 
     // Step 3)
@@ -485,7 +509,16 @@ pub(crate) fn gen_call_handling<'ll>(
 
     // Step 4)
     let geps = get_geps(&mut builder, &cx, ty, ty2, a1, a2, a4);
-    generate_mapper_call(&mut builder, &cx, geps, o, end_mapper_decl, fn_ty, num_args, s_ident_t);
+    generate_mapper_call(
+        &mut builder,
+        &cx,
+        geps,
+        memtransfer_types,
+        end_mapper_decl,
+        fn_ty,
+        num_args,
+        s_ident_t,
+    );
 
     builder.call(mapper_fn_ty, unregister_lib_decl, &[tgt_bin_desc_alloca], None);
 

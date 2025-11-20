@@ -51,13 +51,13 @@ fn main() {
 
 // CHECK:      define{{( dso_local)?}} void @kernel_1(ptr noalias noundef align 4 dereferenceable(1024) %x)
 // CHECK-NEXT: start:
-// CHECK-NEXT:   %dummy = load volatile ptr, ptr @.offload_sizes._kernel_1, align 8
-// CHECK-NEXT:   %dummy1 = load volatile ptr, ptr @.offloading.entry._kernel_1, align 8
 // CHECK-NEXT:   %EmptyDesc = alloca %struct.__tgt_bin_desc, align 8
 // CHECK-NEXT:   %.offload_baseptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_ptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_sizes = alloca [1 x i64], align 8
 // CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
+// CHECK-NEXT:   %dummy = load volatile ptr, ptr @.offload_sizes._kernel_1, align 8
+// CHECK-NEXT:   %dummy1 = load volatile ptr, ptr @.offloading.entry._kernel_1, align 8
 // CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %EmptyDesc, i8 0, i64 32, i1 false)
 // CHECK-NEXT:   call void @__tgt_register_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   call void @__tgt_init_all_rtls()

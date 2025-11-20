@@ -1253,6 +1253,10 @@ fn codegen_autodiff<'ll, 'tcx>(
     );
 }
 
+// Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).
+// For each kernel call, it generates the necessary globals (including metadata such as
+// size and pass mode), manages memory mapping to and from the device, handles all
+// data transfers, and launches the kernel on the target device.
 fn codegen_offload<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     tcx: TyCtxt<'tcx>,
@@ -1292,27 +1296,17 @@ fn codegen_offload<'ll, 'tcx>(
 
     let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
 
-    let (offload_sizes, memtransfer_types, region_id, offload_entry) =
-        crate::builder::gpu_offload::gen_define_handling(
-            cx,
-            offload_entry_ty,
-            &metadata,
-            &types,
-            &target_symbol,
-        );
-
-    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
-    crate::builder::gpu_offload::gen_call_handling(
+    let offload_data = crate::builder::gpu_offload::gen_define_handling(
         cx,
-        bb,
-        offload_sizes,
-        offload_entry,
-        memtransfer_types,
-        region_id,
-        &args,
-        &types,
+        offload_entry_ty,
         &metadata,
+        &types,
+        &target_symbol,
     );
+
+    // FIXME(Sa4dUs): pass the original builder once we separate kernel launch logic from globals
+    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
+    crate::builder::gpu_offload::gen_call_handling(cx, bb, &offload_data, &args, &types, &metadata);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
