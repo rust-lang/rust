@@ -27,9 +27,9 @@ impl Instant {
 }
 
 impl SystemTime {
-    pub const MAX: SystemTime = Duration::ZERO;
+    pub const MAX: SystemTime = Duration::MAX;
 
-    pub const MIN: SystemTime = Duration::MAX;
+    pub const MIN: SystemTime = Duration::ZERO;
 
     pub fn now() -> SystemTime {
         panic!("time not implemented on this platform")
