@@ -2470,4 +2470,39 @@ impl b::Checker for MyChecker {
 }"#,
         );
     }
+
+    #[test]
+    fn test_parameter_names_matching_macros_not_qualified() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Foo {
+    fn foo(&self, vec: usize);
+    fn bar(&self, format: String, panic: bool);
+}
+
+struct Bar;
+
+impl Foo for Bar {$0}
+"#,
+            r#"
+trait Foo {
+    fn foo(&self, vec: usize);
+    fn bar(&self, format: String, panic: bool);
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn foo(&self, vec: usize) {
+        ${0:todo!()}
+    }
+
+    fn bar(&self, format: String, panic: bool) {
+        todo!()
+    }
+}
+"#,
+        );
+    }
 }
