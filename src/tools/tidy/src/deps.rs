@@ -42,6 +42,7 @@ const LICENSES: &[&str] = &[
     "MIT/Apache-2.0",
     "Unlicense OR MIT",
     "Unlicense/MIT",
+    "Zlib",                                                // foldhash (FIXME: see PERMITTED_STDLIB_DEPENDENCIES)
     // tidy-alphabetical-end
 ];
 
@@ -509,6 +510,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "compiler_builtins",
     "dlmalloc",
+    "foldhash", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "fortanix-sgx-abi",
     "getopts",
     "gimli",
