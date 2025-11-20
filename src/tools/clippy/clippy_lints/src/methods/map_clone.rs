@@ -10,7 +10,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::mir::{Mutability, Pinnedness};
 use rustc_middle::ty;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, sym};
 
@@ -73,7 +73,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                 && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
                                 && !cx.typeck_results().expr_adjustments(obj).iter()
-                                    .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+                                    .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
                                 {
                                     let obj_ty = cx.typeck_results().expr_ty(obj);
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {

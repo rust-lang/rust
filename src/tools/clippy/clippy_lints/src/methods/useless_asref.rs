@@ -6,7 +6,7 @@ use clippy_utils::{get_parent_expr, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
-use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_span::{Span, Symbol, sym};
 
@@ -137,7 +137,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                         && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
-                            .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+                            .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
                         && obj.res_local_id() == Some(local_id)
                     {
                         true

@@ -1,0 +1,155 @@
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:9:36
+   |
+LL |     |x: Pin<&mut T>| -> &mut T { x.get_mut() };
+   |                                    ^^^^^^^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+note: required by a bound in `Pin::<&'a mut T>::get_mut`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn get<T: std::marker::Unpin, U: Unpin>() {
+   |         ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:18:34
+   |
+LL |     |x: Pin<&mut T>| -> &mut T { x };
+   |                                  ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&mut T>` to `&mut T`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:21:30
+   |
+LL |     |x: Pin<&mut T>| -> &T { x };
+   |                              ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&mut T>` to `&T`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:24:26
+   |
+LL |     |x: Pin<&T>| -> &T { x };
+   |                          ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `Pin<&T>` to `&T`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn pin_to_ref<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/pin-coercion-check.rs:27:30
+   |
+LL |     |x: Pin<&T>| -> &mut T { x };
+   |                     ------   ^ expected `&mut T`, found `Pin<&T>`
+   |                     |
+   |                     expected `&mut T` because of return type
+   |
+   = note: expected mutable reference `&mut T`
+                         found struct `Pin<&T>`
+help: consider mutably borrowing here
+   |
+LL |     |x: Pin<&T>| -> &mut T { &mut x };
+   |                              ++++
+
+error[E0308]: mismatched types
+  --> $DIR/pin-coercion-check.rs:37:30
+   |
+LL |     |x: Pin<&U>| -> &mut U { x };
+   |                     ------   ^ expected `&mut U`, found `Pin<&U>`
+   |                     |
+   |                     expected `&mut U` because of return type
+   |
+   = note: expected mutable reference `&mut U`
+                         found struct `Pin<&U>`
+help: consider mutably borrowing here
+   |
+LL |     |x: Pin<&U>| -> &mut U { &mut x };
+   |                              ++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:43:34
+   |
+LL |     |x: &mut T| -> Pin<&mut T> { x };
+   |                                  ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&mut T` to `Pin<&mut T>`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:46:30
+   |
+LL |     |x: &mut T| -> Pin<&T> { x };
+   |                              ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&mut T` to `Pin<&T>`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0277]: `T` cannot be unpinned
+  --> $DIR/pin-coercion-check.rs:49:26
+   |
+LL |     |x: &T| -> Pin<&T> { x };
+   |                          ^ the trait `Unpin` is not implemented for `T`
+   |
+   = note: consider using the `pin!` macro
+           consider using `Box::pin` if you need to access the pinned value outside of the current scope
+   = note: required for the cast from `&T` to `Pin<&T>`
+help: consider restricting type parameter `T` with trait `Unpin`
+   |
+LL | fn ref_to_pin<T: std::marker::Unpin, U: Unpin>() {
+   |                ++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/pin-coercion-check.rs:52:30
+   |
+LL |     |x: &T| -> Pin<&mut T> { x };
+   |                -----------   ^ types differ in mutability
+   |                |
+   |                expected `Pin<&mut T>` because of return type
+   |
+   = note: expected struct `Pin<&mut T>`
+           found reference `&T`
+
+error[E0308]: mismatched types
+  --> $DIR/pin-coercion-check.rs:62:30
+   |
+LL |     |x: &U| -> Pin<&mut U> { x };
+   |                -----------   ^ types differ in mutability
+   |                |
+   |                expected `Pin<&mut U>` because of return type
+   |
+   = note: expected struct `Pin<&mut U>`
+           found reference `&U`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
