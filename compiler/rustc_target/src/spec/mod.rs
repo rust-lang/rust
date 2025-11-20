@@ -1490,6 +1490,7 @@ supported_targets! {
     ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
     ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
+    ("hexagon-unknown-qurt", hexagon_unknown_qurt),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
@@ -1958,6 +1959,7 @@ crate::target_spec_enum! {
         OpenBsd = "openbsd",
         Psp = "psp",
         Psx = "psx",
+        Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",
         Solaris = "solaris",
