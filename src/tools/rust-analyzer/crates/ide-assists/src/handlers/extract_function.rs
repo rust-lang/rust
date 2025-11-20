@@ -2060,7 +2060,7 @@ fn fix_param_usages(
             .filter_map(|reference| path_element_of_reference(syntax, reference))
             .map(|expr| tm.make_mut(&expr));
 
-        usages_for_param.push((param, usages.dedup().collect()));
+        usages_for_param.push((param, usages.unique().collect()));
     }
 
     let res = tm.make_syntax_mut(syntax);
