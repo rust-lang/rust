@@ -473,9 +473,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Deref { subpattern } => {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
-                ctor = match ty.pinned_ref() {
-                    None if ty.is_ref() => Ref,
-                    Some((inner_ty, _)) => {
+                ctor = match ty.maybe_pinned_ref() {
+                    Some((_, ty::Pinnedness::Not, _, _)) => Ref,
+                    Some((inner_ty, ty::Pinnedness::Pinned, _, _)) => {
                         self.internal_state.has_lowered_deref_pat.set(true);
                         DerefPattern(RevealedTy(inner_ty))
                     }

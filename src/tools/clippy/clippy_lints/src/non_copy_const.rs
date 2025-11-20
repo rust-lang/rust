@@ -33,7 +33,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
     self, AliasTyKind, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
     TypeckResults, TypingEnv,
@@ -907,7 +907,7 @@ fn does_adjust_borrow(adjust: &Adjustment<'_>) -> Option<BorrowCause> {
     match adjust.kind {
         Adjust::Borrow(_) => Some(BorrowCause::AutoBorrow),
         // Custom deref calls `<T as Deref>::deref(&x)` resulting in a borrow.
-        Adjust::Deref(Some(_)) => Some(BorrowCause::AutoDeref),
+        Adjust::Deref(DerefAdjustKind::Overloaded(_)) => Some(BorrowCause::AutoDeref),
         // All other adjustments read the value.
         _ => None,
     }
