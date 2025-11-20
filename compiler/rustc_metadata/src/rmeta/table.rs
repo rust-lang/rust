@@ -25,6 +25,24 @@ impl IsDefault for bool {
     }
 }
 
+impl IsDefault for ty::Asyncness {
+    fn is_default(&self) -> bool {
+        match self {
+            ty::Asyncness::Yes => false,
+            ty::Asyncness::No => true,
+        }
+    }
+}
+
+impl IsDefault for hir::Constness {
+    fn is_default(&self) -> bool {
+        match self {
+            rustc_hir::Constness::Const => false,
+            rustc_hir::Constness::NotConst => true,
+        }
+    }
+}
+
 impl IsDefault for u32 {
     fn is_default(&self) -> bool {
         *self == 0
@@ -55,8 +73,10 @@ impl IsDefault for UnusedGenericParams {
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
 /// Used mainly for Lazy positions and lengths.
-/// Unchecked invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
+///
+/// Invariant: `Self::default()` should encode as `[0; BYTE_LEN]`,
 /// but this has no impact on safety.
+/// In debug builds, this invariant is checked in `[TableBuilder::set]`
 pub(super) trait FixedSizeEncoding: IsDefault {
     /// This should be `[u8; BYTE_LEN]`;
     /// Cannot use an associated `const BYTE_LEN: usize` instead due to const eval limitations.
@@ -293,6 +313,50 @@ impl FixedSizeEncoding for bool {
     }
 }
 
+impl FixedSizeEncoding for ty::Asyncness {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => ty::Asyncness::No,
+            1 => ty::Asyncness::Yes,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            ty::Asyncness::No => 0,
+            ty::Asyncness::Yes => 1,
+        }
+    }
+}
+
+impl FixedSizeEncoding for hir::Constness {
+    type ByteArray = [u8; 1];
+
+    #[inline]
+    fn from_bytes(b: &[u8; 1]) -> Self {
+        match b[0] {
+            0 => hir::Constness::NotConst,
+            1 => hir::Constness::Const,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8; 1]) {
+        debug_assert!(!self.is_default());
+        b[0] = match self {
+            hir::Constness::NotConst => 0,
+            hir::Constness::Const => 1,
+        }
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `LazyValue<T>` impl, but in the general case we might not need / want
 // to fit every `usize` in `u32`.
@@ -432,6 +496,13 @@ impl<I: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>> TableBui
     /// arises in the future then a new method (e.g. `clear` or `reset`) will need to be introduced
     /// for doing that explicitly.
     pub(crate) fn set(&mut self, i: I, value: T) {
+        #[cfg(debug_assertions)]
+        {
+            debug_assert!(
+                T::from_bytes(&[0; N]).is_default(),
+                "expected all-zeroes to decode to the default value, as per the invariant of FixedSizeEncoding"
+            );
+        }
         if !value.is_default() {
             // FIXME(eddyb) investigate more compact encodings for sparse tables.
             // On the PR @michaelwoerister mentioned:

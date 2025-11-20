@@ -35,6 +35,15 @@ pub(crate) enum VisibilityNotPermittedNote {
     #[note(ast_passes_individual_foreign_items)]
     IndividualForeignItems,
 }
+#[derive(Diagnostic)]
+#[diag(ast_passes_impl_fn_const)]
+pub(crate) struct ImplFnConst {
+    #[primary_span]
+    #[suggestion(ast_passes_label, code = "", applicability = "machine-applicable")]
+    pub span: Span,
+    #[label(ast_passes_parent_constness)]
+    pub parent_constness: Span,
+}
 
 #[derive(Diagnostic)]
 #[diag(ast_passes_trait_fn_const, code = E0379)]

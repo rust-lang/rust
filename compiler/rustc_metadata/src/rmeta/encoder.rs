@@ -1315,7 +1315,11 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
 
 fn should_encode_constness(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(_, CtorKind::Fn) => true,
+        DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Closure
+        | DefKind::Ctor(_, CtorKind::Fn)
+        | DefKind::Impl { of_trait: false } => true,
 
         DefKind::Struct
         | DefKind::Union
@@ -1519,10 +1523,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
             if should_encode_constness(def_kind) {
-                self.tables.constness.set_some(def_id.index, self.tcx.constness(def_id));
+                let constness = self.tcx.constness(def_id);
+                match constness {
+                    hir::Constness::Const => self.tables.constness.set(def_id.index, constness),
+                    hir::Constness::NotConst => {}
+                }
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
-                self.tables.asyncness.set_some(def_id.index, tcx.asyncness(def_id));
+                let asyncness = tcx.asyncness(def_id);
+                match asyncness {
+                    ty::Asyncness::Yes => self.tables.asyncness.set(def_id.index, asyncness),
+                    ty::Asyncness::No => {}
+                }
                 record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {

@@ -344,6 +344,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 of_trait,
                 self_ty: ty,
                 items: impl_items,
+                constness,
             }) => {
                 // Lower the "impl header" first. This ordering is important
                 // for in-band lifetimes! Consider `'a` here:
@@ -377,11 +378,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .arena
                     .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
 
+                let constness = self.lower_constness(*constness);
+
                 hir::ItemKind::Impl(hir::Impl {
                     generics,
                     of_trait,
                     self_ty: lowered_ty,
                     items: new_impl_items,
+                    constness,
                 })
             }
             ItemKind::Trait(box Trait {
@@ -954,9 +958,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         trait_impl_header: &TraitImplHeader,
     ) -> &'hir hir::TraitImplHeader<'hir> {
-        let TraitImplHeader { constness, safety, polarity, defaultness, ref trait_ref } =
-            *trait_impl_header;
-        let constness = self.lower_constness(constness);
+        let TraitImplHeader { safety, polarity, defaultness, ref trait_ref } = *trait_impl_header;
         let safety = self.lower_safety(safety, hir::Safety::Safe);
         let polarity = match polarity {
             ImplPolarity::Positive => ImplPolarity::Positive,
@@ -979,7 +981,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         self.arena.alloc(hir::TraitImplHeader {
-            constness,
             safety,
             polarity,
             defaultness,

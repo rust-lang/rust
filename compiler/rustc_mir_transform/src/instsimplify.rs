@@ -170,7 +170,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
 
     fn simplify_ub_check(&self, rvalue: &mut Rvalue<'tcx>) {
         // FIXME: Should we do the same for overflow checks?
-        let Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks), _) = *rvalue else {
+        let Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks)) = *rvalue else {
             return;
         };
 

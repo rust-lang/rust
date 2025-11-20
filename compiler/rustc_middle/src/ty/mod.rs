@@ -250,9 +250,10 @@ pub struct ImplTraitHeader<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable, Default)]
 pub enum Asyncness {
     Yes,
+    #[default]
     No,
 }
 
@@ -2153,6 +2154,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 header.constness == hir::Constness::Const
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
+            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
@@ -2191,7 +2193,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 false
             }
             DefKind::Ctor(_, CtorKind::Const)
-            | DefKind::Impl { of_trait: false }
             | DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

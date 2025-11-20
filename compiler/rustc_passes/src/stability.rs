@@ -589,7 +589,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), self_ty, items, .. }) => {
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(of_trait),
+                self_ty,
+                items,
+                constness,
+                ..
+            }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir_attrs(item.hir_id());
@@ -652,7 +658,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
 
                     if features.const_trait_impl()
-                        && let hir::Constness::Const = of_trait.constness
+                        && let hir::Constness::Const = constness
                     {
                         let stable_or_implied_stable = match const_stab {
                             None => true,
@@ -696,7 +702,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                if let hir::Constness::Const = of_trait.constness
+                if let hir::Constness::Const = constness
                     && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 {
                     // FIXME(const_trait_impl): Improve the span here.

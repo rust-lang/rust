@@ -1205,6 +1205,10 @@ impl<'a> DiagCtxtHandle<'a> {
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
+    /// Trigger an ICE if there are any delayed bugs and no hard errors.
+    ///
+    /// This will panic if there are any stashed diagnostics. You can call
+    /// `emit_stashed_diagnostics` to emit those before calling `flush_delayed`.
     pub fn flush_delayed(&self) {
         self.inner.borrow_mut().flush_delayed();
     }

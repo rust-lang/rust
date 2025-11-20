@@ -1097,19 +1097,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => {
-                let t = with_no_trimmed_paths!(format!("{}", t));
-                match op {
-                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                    NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                        write!(fmt, "ContractChecks()")
-                    }
-                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                        write!(fmt, "OverflowChecks()")
-                    }
+            NullaryOp(ref op) => match op {
+                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
+                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
+                    write!(fmt, "ContractChecks()")
                 }
-            }
+                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                    write!(fmt, "OverflowChecks()")
+                }
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))

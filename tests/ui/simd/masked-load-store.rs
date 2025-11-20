@@ -1,6 +1,7 @@
 //@ ignore-backends: gcc
+//@ compile-flags: --cfg minisimd_const
 //@ run-pass
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -8,7 +9,7 @@ use minisimd::*;
 
 use std::intrinsics::simd::{SimdAlign, simd_masked_load, simd_masked_store};
 
-fn main() {
+const fn masked_load_store() {
     unsafe {
         let a = Simd::<u8, 4>([0, 1, 2, 3]);
         let b_src = [4u8, 5, 6, 7];
@@ -36,4 +37,9 @@ fn main() {
         );
         assert_eq!(&output, &[0, 1, 9, 6, u8::MAX]);
     }
+}
+
+fn main() {
+    const { masked_load_store() };
+    masked_load_store();
 }

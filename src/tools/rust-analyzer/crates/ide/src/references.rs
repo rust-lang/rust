@@ -1058,7 +1058,7 @@ use self$0;
 use self$0;
 "#,
             expect![[r#"
-                Module FileId(0) 0..10
+                _ Module FileId(0) 0..10
 
                 FileId(0) 4..8 import
             "#]],
@@ -3130,7 +3130,7 @@ fn foo<'r#fn>(s: &'r#fn str) {
 }
         "#,
             expect![[r#"
-                'r#break Label FileId(0) 87..96 87..95
+                'break Label FileId(0) 87..96 87..95
 
                 FileId(0) 113..121
             "#]],
@@ -3146,7 +3146,7 @@ fn foo<'r#fn$0>(s: &'r#fn str) {
 }
         "#,
             expect![[r#"
-                'r#fn LifetimeParam FileId(0) 7..12
+                'fn LifetimeParam FileId(0) 7..12
 
                 FileId(0) 18..23
                 FileId(0) 44..49

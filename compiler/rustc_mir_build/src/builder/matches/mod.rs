@@ -109,7 +109,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr_id: ExprId,   // Condition expression to lower
         args: ThenElseArgs,
     ) -> BlockAnd<()> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
         let expr_span = expr.span;
 

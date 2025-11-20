@@ -305,7 +305,7 @@ impl<'a> State<'a> {
                 let (cb, ib) = self.head(visibility_qualified(&item.vis, "union"));
                 self.print_struct(struct_def, generics, *ident, item.span, true, cb, ib);
             }
-            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items }) => {
+            ast::ItemKind::Impl(ast::Impl { generics, of_trait, self_ty, items, constness }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
 
@@ -321,17 +321,12 @@ impl<'a> State<'a> {
                 };
 
                 if let Some(box of_trait) = of_trait {
-                    let ast::TraitImplHeader {
-                        defaultness,
-                        safety,
-                        constness,
-                        polarity,
-                        ref trait_ref,
-                    } = *of_trait;
+                    let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
+                        *of_trait;
                     self.print_defaultness(defaultness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(constness);
+                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }
@@ -339,6 +334,7 @@ impl<'a> State<'a> {
                     self.space();
                     self.word_space("for");
                 } else {
+                    self.print_constness(*constness);
                     impl_generics(self);
                 }
 

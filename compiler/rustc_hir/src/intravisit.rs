@@ -594,10 +594,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
-        ItemKind::Impl(Impl { generics, of_trait, self_ty, items }) => {
+        ItemKind::Impl(Impl { generics, of_trait, self_ty, items, constness: _ }) => {
             try_visit!(visitor.visit_generics(generics));
             if let Some(TraitImplHeader {
-                constness: _,
                 safety: _,
                 polarity: _,
                 defaultness: _,

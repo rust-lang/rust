@@ -185,12 +185,12 @@ than building it.
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.npm = build
+    build.config.yarn = build
         .config
-        .npm
+        .yarn
         .take()
         .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("npm"));
+        .or_else(|| cmd_finder.maybe_have("yarn"));
 
     build.config.gdb = build
         .config

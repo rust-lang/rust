@@ -524,3 +524,31 @@ fn g(it: *const (dyn Trait)) {
 "#,
     );
 }
+
+#[test]
+fn regression_20951() {
+    check_infer(
+        r#"
+//- minicore: async_fn
+trait DoesSomething {
+    fn do_something(&self) -> impl Future<Output = usize>;
+}
+
+impl<F> DoesSomething for F
+where
+    F: AsyncFn() -> usize,
+{
+    fn do_something(&self) -> impl Future<Output = usize> {
+        self()
+    }
+}
+"#,
+        expect![[r#"
+            43..47 'self': &'? Self
+            168..172 'self': &'? F
+            205..227 '{     ...     }': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+            215..219 'self': &'? F
+            215..221 'self()': <F as AsyncFnMut<()>>::CallRefFuture<'<erased>>
+        "#]],
+    );
+}

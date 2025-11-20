@@ -13,7 +13,7 @@ use ide_db::{
 };
 use stdx::never;
 use syntax::{
-    SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
+    SyntaxKind::{EXPR_STMT, STMT_LIST},
     T, TextRange, TextSize,
     ast::{self, AstNode, AstToken},
     match_ast,
@@ -253,18 +253,15 @@ pub(crate) fn complete_postfix(
         }
     }
 
-    let mut block_should_be_wrapped = true;
-    if dot_receiver.syntax().kind() == BLOCK_EXPR {
-        block_should_be_wrapped = false;
-        if let Some(parent) = dot_receiver.syntax().parent()
-            && matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR)
-        {
-            block_should_be_wrapped = true;
-        }
+    let block_should_be_wrapped = if let ast::Expr::BlockExpr(block) = dot_receiver {
+        block.modifier().is_some() || !block.is_standalone()
+    } else {
+        true
     };
     {
         let (open_brace, close_brace) =
             if block_should_be_wrapped { ("{ ", " }") } else { ("", "") };
+        // FIXME: Why add parentheses
         let (open_paren, close_paren) = if is_in_cond { ("(", ")") } else { ("", "") };
         let unsafe_completion_string =
             format!("{open_paren}unsafe {open_brace}{receiver_text}{close_brace}{close_paren}");
@@ -841,6 +838,20 @@ fn main() {
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
             &format!("fn main() {{ let x = {kind} {{ if true {{1}} else {{2}} }} }}"),
         );
+
+        if kind == "const" {
+            check_edit(
+                kind,
+                r#"fn main() { unsafe {1}.$0 }"#,
+                &format!("fn main() {{ {kind} {{ unsafe {{1}} }} }}"),
+            );
+        } else {
+            check_edit(
+                kind,
+                r#"fn main() { const {1}.$0 }"#,
+                &format!("fn main() {{ {kind} {{ const {{1}} }} }}"),
+            );
+        }
 
         // completion will not be triggered
         check_edit(

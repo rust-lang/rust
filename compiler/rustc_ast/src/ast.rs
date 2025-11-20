@@ -3699,6 +3699,7 @@ pub struct TyAlias {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Impl {
     pub generics: Generics,
+    pub constness: Const,
     pub of_trait: Option<Box<TraitImplHeader>>,
     pub self_ty: Box<Ty>,
     pub items: ThinVec<Box<AssocItem>>,
@@ -3708,7 +3709,6 @@ pub struct Impl {
 pub struct TraitImplHeader {
     pub defaultness: Defaultness,
     pub safety: Safety,
-    pub constness: Const,
     pub polarity: ImplPolarity,
     pub trait_ref: TraitRef,
 }
@@ -4103,9 +4103,9 @@ mod size_asserts {
     static_assert_size!(GenericArg, 24);
     static_assert_size!(GenericBound, 88);
     static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 64);
-    static_assert_size!(Item, 136);
-    static_assert_size!(ItemKind, 72);
+    static_assert_size!(Impl, 80);
+    static_assert_size!(Item, 152);
+    static_assert_size!(ItemKind, 88);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
@@ -4116,7 +4116,7 @@ mod size_asserts {
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 80);
+    static_assert_size!(TraitImplHeader, 72);
     static_assert_size!(Ty, 64);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end
