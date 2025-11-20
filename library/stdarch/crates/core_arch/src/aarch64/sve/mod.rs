@@ -309,17 +309,12 @@ pub use types::*;
 
 // a) 外部内建
 unsafe extern "C" {
-    #[link_name = "llvm.aarch64.sve.cntw"]
-    fn __llvm_sve_cntw() -> i32;
-
     #[link_name = "llvm.aarch64.sve.whilelt"]
     fn __llvm_sve_whilelt_i32(i: i32, n: i32) -> svbool_t;
 }
 
 // b) 对外 API
-#[inline]
-#[target_feature(enable = "sve")]
-pub unsafe fn svcntw() -> i32 { __llvm_sve_cntw() }
+// 注意：svcntw() 函数在 sve.rs 中定义，使用正确的 LLVM 内建函数签名
 
 #[inline]
 #[target_feature(enable = "sve")]

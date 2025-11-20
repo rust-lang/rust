@@ -722,6 +722,31 @@ impl svprfop {
     pub const fn as_raw(self) -> u8 {
         self.0
     }
+
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL1KEEP: svprfop = svprfop(0);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL1STRM: svprfop = svprfop(1);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL2KEEP: svprfop = svprfop(2);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL2STRM: svprfop = svprfop(3);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL3KEEP: svprfop = svprfop(4);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PLDL3STRM: svprfop = svprfop(5);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL1KEEP: svprfop = svprfop(8);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL1STRM: svprfop = svprfop(9);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL2KEEP: svprfop = svprfop(10);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL2STRM: svprfop = svprfop(11);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL3KEEP: svprfop = svprfop(12);
+    #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+    pub const SV_PSTL3STRM: svprfop = svprfop(13);
 }
 
 // ============================================================================
@@ -917,6 +942,36 @@ impl svbool8_t {
     #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
     pub unsafe fn from_svbool4(x: svbool4_t) -> Self {
         simd_cast(x)
+    }
+}
+
+// ============================================================================
+// From trait 实现 - 用于生成的代码中的 .into() 调用
+// ============================================================================
+// 注意：这些实现不使用 target_feature，因为 From trait 不能有该属性
+// 类型转换本身是安全的，不涉及实际的 SIMD 操作
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl From<svbool_t> for svbool2_t {
+    #[inline(always)]
+    fn from(x: svbool_t) -> Self {
+        unsafe { simd_cast(x) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl From<svbool_t> for svbool4_t {
+    #[inline(always)]
+    fn from(x: svbool_t) -> Self {
+        unsafe { simd_cast(x) }
+    }
+}
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+impl From<svbool_t> for svbool8_t {
+    #[inline(always)]
+    fn from(x: svbool_t) -> Self {
+        unsafe { simd_cast(x) }
     }
 }
 
@@ -1454,5 +1509,48 @@ impl AsSigned for svint64x4_t {
     #[inline(always)]
     fn as_signed(self) -> Self::Signed { self }
 }
+
+// ============================================================================
+// LLVM 类型别名 - 用于生成的代码
+// ============================================================================
+// 这些类型别名将 LLVM 机器表示映射到 Rust 类型，用于代码生成器生成的代码
+
+// 有符号整数类型别名
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv8i8 = svint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv4i8 = svint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv4i16 = svint16_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2i8 = svint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2i16 = svint16_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2i32 = svint32_t;
+
+// 无符号整数类型别名
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv8u8 = svuint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv4u8 = svuint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv4u16 = svuint16_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2u8 = svuint8_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2u16 = svuint16_t;
+
+#[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
+pub type nxv2u32 = svuint32_t;
 
 // ============================================================================
