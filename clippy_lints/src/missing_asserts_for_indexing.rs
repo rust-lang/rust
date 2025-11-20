@@ -67,15 +67,12 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(MissingAssertsForIndexing => [MISSING_ASSERTS_FOR_INDEXING]);
 
-fn report_lint<F>(cx: &LateContext<'_>, full_span: Span, msg: &'static str, indexes: Vec<Span>, f: F)
+fn report_lint<F>(cx: &LateContext<'_>, index_spans: Vec<Span>, msg: &'static str, f: F)
 where
     F: FnOnce(&mut Diag<'_, ()>),
 {
-    span_lint_and_then(cx, MISSING_ASSERTS_FOR_INDEXING, full_span, msg, |diag| {
+    span_lint_and_then(cx, MISSING_ASSERTS_FOR_INDEXING, index_spans, msg, |diag| {
         f(diag);
-        for span in indexes {
-            diag.span_note(span, "slice indexed here");
-        }
         diag.note_once("asserting the length before indexing will elide bounds checks");
     });
 }
@@ -213,15 +210,6 @@ impl<'hir> IndexEntry<'hir> {
             | IndexEntry::IndexWithoutAssert { slice, .. } => slice,
         }
     }
-
-    pub fn index_spans(&self) -> Option<&[Span]> {
-        match self {
-            IndexEntry::StrayAssert { .. } => None,
-            IndexEntry::AssertWithIndex { indexes, .. } | IndexEntry::IndexWithoutAssert { indexes, .. } => {
-                Some(indexes)
-            },
-        }
-    }
 }
 
 /// Extracts the upper index of a slice indexing expression.
@@ -357,14 +345,6 @@ fn check_assert<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Un
 fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>>) {
     for bucket in map.into_values() {
         for entry in bucket {
-            let Some(full_span) = entry
-                .index_spans()
-                .and_then(|spans| spans.first().zip(spans.last()))
-                .map(|(low, &high)| low.to(high))
-            else {
-                continue;
-            };
-
             match entry {
                 IndexEntry::AssertWithIndex {
                     highest_index,
@@ -418,9 +398,8 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                     if let Some(sugg) = sugg {
                         report_lint(
                             cx,
-                            full_span,
-                            "indexing into a slice multiple times with an `assert` that does not cover the highest index",
                             indexes,
+                            "indexing into a slice multiple times with an `assert` that does not cover the highest index",
                             |diag| {
                                 diag.span_suggestion(
                                     assert_span,
@@ -442,9 +421,8 @@ fn report_indexes(cx: &LateContext<'_>, map: UnindexMap<u64, Vec<IndexEntry<'_>>
                     // adding an `assert!` that covers the highest index
                     report_lint(
                         cx,
-                        full_span,
-                        "indexing into a slice multiple times without an `assert`",
                         indexes,
+                        "indexing into a slice multiple times without an `assert`",
                         |diag| {
                             diag.help(format!(
                                 "consider asserting the length before indexing: `assert!({}.len() > {highest_index});`",
