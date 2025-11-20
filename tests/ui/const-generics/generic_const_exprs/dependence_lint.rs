@@ -10,8 +10,8 @@ fn foo<T>() {
     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_exprs`
     //[gce]~^ ERROR unconstrained
     //[gce]~| ERROR unconstrained generic constant
-    //[full]~^^^ WARNING cannot use constants
-    //[full]~| WARNING this was previously accepted
+    //[full]~^^^ ERROR constant expression depends on a generic parameter
+    //[full]~| ERROR constant expression depends on a generic parameter
     let _: [u8; size_of::<*mut T>()]; // error on stable, error with gce
     //[full]~^ ERROR generic parameters may not be used
     //[gce]~^^ ERROR unconstrained generic

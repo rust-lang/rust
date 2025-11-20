@@ -1,12 +1,18 @@
-warning: cannot use constants which depend on generic parameters in types
+error: constant expression depends on a generic parameter
   --> $DIR/const-evaluatable-unchecked.rs:6:9
    |
 LL |     [0; std::mem::size_of::<*mut T>()];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
-   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/const-evaluatable-unchecked.rs:6:5
+   |
+LL |     [0; std::mem::size_of::<*mut T>()];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
 
 warning: cannot use constants which depend on generic parameters in types
   --> $DIR/const-evaluatable-unchecked.rs:17:21
@@ -16,6 +22,7 @@ LL |         let _ = [0; Self::ASSOC];
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: cannot use constants which depend on generic parameters in types
   --> $DIR/const-evaluatable-unchecked.rs:29:21
@@ -26,5 +33,5 @@ LL |         let _ = [0; Self::ASSOC];
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
 
-warning: 3 warnings emitted
+error: aborting due to 2 previous errors; 2 warnings emitted
 

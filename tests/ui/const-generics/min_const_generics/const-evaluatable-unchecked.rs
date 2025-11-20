@@ -1,11 +1,11 @@
-//@ check-pass
+//
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 #![allow(dead_code)]
 
 fn foo<T>() {
     [0; std::mem::size_of::<*mut T>()];
-    //~^ WARN cannot use constants which depend on generic parameters in types
-    //~| WARN this was previously accepted by the compiler but is being phased out
+    //~^ ERROR constant expression depends on a generic parameter
+    //~| ERROR constant expression depends on a generic parameter
 }
 
 struct Foo<T>(T);

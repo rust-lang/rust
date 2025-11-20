@@ -61,15 +61,21 @@ LL |     let _: [u8; size_of::<*mut T>() + 1];
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-warning: cannot use constants which depend on generic parameters in types
+error: constant expression depends on a generic parameter
   --> $DIR/complex-expression.rs:38:17
    |
 LL |     let _ = [0; size_of::<*mut T>() + 1];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
-   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: this may fail depending on what value the parameter takes
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: constant expression depends on a generic parameter
+  --> $DIR/complex-expression.rs:38:13
+   |
+LL |     let _ = [0; size_of::<*mut T>() + 1];
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 9 previous errors
 

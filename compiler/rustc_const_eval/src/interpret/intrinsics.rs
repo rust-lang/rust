@@ -187,6 +187,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::size_of => {
                 let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
                 let layout = self.layout_of(tp_ty)?;
                 if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `size_of`");
@@ -196,6 +197,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::align_of => {
                 let tp_ty = instance.args.type_at(0);
+                ensure_monomorphic_enough(tcx, tp_ty)?;
                 let layout = self.layout_of(tp_ty)?;
                 if !layout.is_sized() {
                     span_bug!(self.cur_span(), "unsized type for `align_of`");

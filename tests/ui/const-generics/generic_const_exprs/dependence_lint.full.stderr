@@ -16,15 +16,21 @@ LL |     let _: [u8; if true { size_of::<T>() } else { 3 }]; // error on stable,
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-warning: cannot use constants which depend on generic parameters in types
+error: constant expression depends on a generic parameter
   --> $DIR/dependence_lint.rs:10:9
    |
 LL |     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_exprs`
    |         ^^^^^^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
-   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/dependence_lint.rs:10:5
+   |
+LL |     [0; size_of::<*mut T>()]; // lint on stable, error with `generic_const_exprs`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
 
 warning: cannot use constants which depend on generic parameters in types
   --> $DIR/dependence_lint.rs:18:9
@@ -34,6 +40,7 @@ LL |     [0; if false { size_of::<T>() } else { 3 }]; // lint on stable, error w
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
