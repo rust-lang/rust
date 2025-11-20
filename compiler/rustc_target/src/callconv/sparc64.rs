@@ -216,11 +216,14 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    if !fn_abi.ret.is_ignore() {
+    if !fn_abi.ret.is_ignore() && fn_abi.ret.layout.is_sized() {
         classify_arg(cx, &mut fn_abi.ret, Size::from_bytes(32));
     }
 
     for arg in fn_abi.args.iter_mut() {
+        if !arg.layout.is_sized() {
+            continue;
+        }
         if arg.is_ignore() {
             // sparc64-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
             if cx.target_spec().os == Os::Linux
