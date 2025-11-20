@@ -55,6 +55,8 @@ pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwi
             // unwinding for llvm intrinsics complicates things in the backend.
             core::arch::asm!("
                 .tagtype __cpp_exception i32
+                .globl __cpp_exception
+                .weak __cpp_exception
                 local.get {exc}
                 throw __cpp_exception
             ", exc = in(local) exception, options(may_unwind, noreturn, nostack));
