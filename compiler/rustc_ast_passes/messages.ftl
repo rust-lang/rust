@@ -37,9 +37,10 @@ ast_passes_assoc_type_without_body =
     .suggestion = provide a definition for the type
 
 ast_passes_async_fn_in_const_trait_or_trait_impl =
-    async functions are not allowed in `const` {$in_impl ->
-        [true] trait impls
-        *[false] traits
+    async functions are not allowed in `const` {$context ->
+        [trait_impl] trait impls
+        [impl] impls
+        *[trait] traits
     }
     .label = associated functions of `const` cannot be declared `async`
 
