@@ -3336,6 +3336,7 @@ dependencies = [
  "libc",
  "object 0.37.3",
  "regex",
+ "rustdoc-json-types",
  "serde_json",
  "similar",
  "wasmparser 0.236.1",
