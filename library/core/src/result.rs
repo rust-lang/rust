@@ -1246,7 +1246,6 @@ impl<T, E> Result<T, E> {
         self.unwrap()
     }
 
-
     /// Returns the contained [`Ok`] value or a default
     ///
     /// Consumes the `self` argument then, if [`Ok`], returns the contained
