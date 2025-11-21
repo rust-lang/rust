@@ -708,6 +708,12 @@
 # desired in distributions, for example.
 #rust.rpath = true
 
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags but not over per target rustflags nor env. vars. like RUSTFLAGS.
+# Applies to all stages and targets.
+#
+#rust.rustflags = []
+
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #rust.strip = false
 
@@ -1012,6 +1018,12 @@
 # This option supports enable `rpath` in each target independently,
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
+
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags and `rust.rustflags` but not over env. vars. like RUSTFLAGS.
+# Applies to all stages.
+#
+#rustflags = rust.rustflags
 
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the
