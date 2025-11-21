@@ -458,14 +458,14 @@ fn generate_item_def_id_path(
     let fqp: Vec<Symbol> = once(crate_name).chain(relative).collect();
 
     let def_kind = tcx.def_kind(def_id);
-    let shortty = def_kind.into();
+    let shortty = ItemType::from_def_kind(def_kind, None)[0];
     let module_fqp = to_module_fqp(shortty, &fqp);
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
     let mut url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
     if def_id != original_def_id {
-        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind))[0];
         url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
     };
     Ok(HrefInfo { url: url_parts, kind: shortty, rust_path: fqp })

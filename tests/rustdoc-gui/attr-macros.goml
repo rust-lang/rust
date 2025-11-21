@@ -1,0 +1,89 @@
+// This test ensures that a bang macro which is also an attribute macro is listed correctly in
+// the sidebar and in the module.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.b.html"
+// We check that the current item in the sidebar is the correct one.
+assert-text: ("#rustdoc-modnav .block.macro .current", "b")
+
+define-function: (
+    "check_macro",
+    [name, kind],
+    block {
+        // It should be present twice in the sidebar.
+        assert-count: ("#rustdoc-modnav a[href='macro." + |name| + ".html']", 1)
+        assert-count: ("#rustdoc-modnav a[href='" + |kind| + "." + |name| + ".html']", 1)
+        assert-count: ("//*[@id='rustdoc-modnav']//a[text()='" + |name| + "']", 2)
+
+        // We now go to the macro page.
+        click: "#rustdoc-modnav a[href='macro." + |name| + ".html']"
+        // It should be present twice in the sidebar.
+        assert-count: ("#rustdoc-modnav a[href='macro." + |name| + ".html']", 1)
+        assert-count: ("#rustdoc-modnav a[href='" + |kind| + "." + |name| + ".html']", 1)
+        assert-count: ("//*[@id='rustdoc-modnav']//a[text()='" + |name| + "']", 2)
+        // We check that the current item is the macro.
+        assert-text: ("#rustdoc-modnav .block.macro .current", |name|)
+        // This is still only one page, and should only activate one of them.
+        assert-count: ("#rustdoc-modnav .current", 1)
+
+        // We now go to the |kind| page.
+        click: "#rustdoc-modnav a[href='" + |kind| + "." + |name| + ".html']"
+        // It should be present twice in the sidebar.
+        assert-count: ("#rustdoc-modnav a[href='macro." + |name| + ".html']", 1)
+        assert-count: ("#rustdoc-modnav a[href='" + |kind| + "." + |name| + ".html']", 1)
+        assert-count: ("//*[@id='rustdoc-modnav']//a[text()='" + |name| + "']", 2)
+        // We check that the current item is the macro.
+        assert-text: ("#rustdoc-modnav .block." + |kind| + " .current", |name|)
+        // This is still only one page, and should only activate one of them.
+        assert-count: ("#rustdoc-modnav .current", 1)
+    }
+)
+
+call-function: ("check_macro", {"name": "attr_macro", "kind": "attr"})
+call-function: ("check_macro", {"name": "derive_macro", "kind": "derive"})
+
+define-function: (
+    "crate_page",
+    [name, kind, section_id],
+    block {
+        // It should be only present twice.
+        assert-count: ("#main-content a[href='macro." + |name| + ".html']", 1)
+        assert-count: ("#main-content a[href='" + |kind| + "." + |name| + ".html']", 1)
+        // First in the "Macros" section.
+        assert-text: ("#macros + .item-table a[href='macro." + |name| + ".html']", |name|)
+        // Then in the other macro section.
+        assert-text: (
+            "#" + |section_id| + " + .item-table a[href='" + |kind| + "." + |name| + ".html']",
+            |name|,
+        )
+    }
+)
+
+// Now we check it's correctly listed in the crate page.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+call-function: ("crate_page", {"name": "attr_macro", "kind": "attr", "section_id": "attribute-macros"})
+call-function: ("crate_page", {"name": "derive_macro", "kind": "derive", "section_id": "derives"})
+// We also check we don't have duplicated sections.
+assert-count: ("//*[@id='main-content']/h2[text()='Attribute Macros']", 1)
+assert-count: ("//*[@id='main-content']/h2[text()='Derive Macros']", 1)
+
+define-function: (
+    "all_items_page",
+    [name, kind, section_id],
+    block {
+        // It should be only present twice.
+        assert-count: ("#main-content a[href='macro." + |name| + ".html']", 1)
+        assert-count: ("#main-content a[href='" + |kind| + "." + |name| + ".html']", 1)
+        // First in the "Macros" section.
+        assert-text: ("#macros + .all-items a[href='macro." + |name| + ".html']", |name|)
+        // Then in the "Attribute Macros" section.
+        assert-text: (
+            "#" + |section_id| + " + .all-items a[href='" + |kind| + "." + |name| + ".html']",
+            |name|,
+        )
+    }
+)
+
+// And finally we check it's correctly listed in the "all items" page.
+go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
+call-function: ("all_items_page", {"name": "attr_macro", "kind": "attr", "section_id": "attribute-macros"})
+call-function: ("all_items_page", {"name": "derive_macro", "kind": "derive", "section_id": "derives"})

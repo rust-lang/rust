@@ -46,6 +46,27 @@ pub(crate) fn try_inline(
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
+    fn try_inline_inner(
+        cx: &mut DocContext<'_>,
+        kind: clean::ItemKind,
+        did: DefId,
+        name: Symbol,
+        import_def_id: Option<LocalDefId>,
+    ) -> clean::Item {
+        cx.inlined.insert(did.into());
+        let mut item = crate::clean::generate_item_with_correct_attrs(
+            cx,
+            kind,
+            did,
+            name,
+            import_def_id.as_slice(),
+            None,
+        );
+        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
+        item.inner.inline_stmt_id = import_def_id;
+        item
+    }
+
     let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
@@ -138,34 +159,37 @@ pub(crate) fn try_inline(
             })
         }
         Res::Def(DefKind::Macro(kinds), did) => {
-            let mac = build_macro(cx, did, name, kinds);
-
-            // FIXME: handle attributes and derives that aren't proc macros, and macros with
-            // multiple kinds
-            let type_kind = match kinds {
-                MacroKinds::BANG => ItemType::Macro,
-                MacroKinds::ATTR => ItemType::ProcAttribute,
-                MacroKinds::DERIVE => ItemType::ProcDerive,
-                _ => todo!("Handle macros with multiple kinds"),
-            };
-            record_extern_fqn(cx, did, type_kind);
-            mac
+            for mac_kind in kinds {
+                let kind = build_macro(
+                    cx,
+                    did,
+                    name,
+                    match mac_kind {
+                        MacroKinds::BANG => MacroKind::Bang,
+                        MacroKinds::ATTR => MacroKind::Attr,
+                        MacroKinds::DERIVE => MacroKind::Derive,
+                        _ => unreachable!(
+                            "Iterating over macro kinds always yields one kind at a time"
+                        ),
+                    },
+                );
+                let type_kind = match mac_kind {
+                    MacroKinds::BANG => ItemType::Macro,
+                    MacroKinds::ATTR => ItemType::MacroAttribute,
+                    MacroKinds::DERIVE => ItemType::MacroDerive,
+                    _ => {
+                        unreachable!("Iterating over macro kinds always yields one kind at a time")
+                    }
+                };
+                record_extern_fqn(cx, did, type_kind);
+                ret.push(try_inline_inner(cx, kind, did, name, import_def_id));
+            }
+            return Some(ret);
         }
         _ => return None,
     };
 
-    cx.inlined.insert(did.into());
-    let mut item = crate::clean::generate_item_with_correct_attrs(
-        cx,
-        kind,
-        did,
-        name,
-        import_def_id.as_slice(),
-        None,
-    );
-    // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-    item.inner.inline_stmt_id = import_def_id;
-    ret.push(item);
+    ret.push(try_inline_inner(cx, kind, did, name, import_def_id));
     Some(ret)
 }
 
@@ -770,26 +794,14 @@ fn build_macro(
     cx: &mut DocContext<'_>,
     def_id: DefId,
     name: Symbol,
-    macro_kinds: MacroKinds,
+    kind: MacroKind,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
-        // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
-        // kinds
-        LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::BANG => clean::MacroItem(clean::Macro {
-                source: utils::display_macro_source(cx, name, &def),
-                macro_rules: def.macro_rules,
-            }),
-            MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
-                kind: MacroKind::Derive,
-                helpers: Vec::new(),
-            }),
-            MacroKinds::ATTR => clean::ProcMacroItem(clean::ProcMacro {
-                kind: MacroKind::Attr,
-                helpers: Vec::new(),
-            }),
-            _ => todo!("Handle macros with multiple kinds"),
-        },
+        LoadedMacro::MacroDef { def, .. } => clean::MacroItem(clean::Macro {
+            source: utils::display_macro_source(cx, name, &def),
+            macro_rules: def.macro_rules,
+            kind,
+        }),
         LoadedMacro::ProcMacro(ext) => {
             // Proc macros can only have a single kind
             let kind = match ext.macro_kinds() {

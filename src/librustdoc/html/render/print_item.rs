@@ -163,7 +163,11 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::UnionItem(..) => "Union ",
             clean::EnumItem(..) => "Enum ",
             clean::TypeAliasItem(..) => "Type Alias ",
-            clean::MacroItem(..) => "Macro ",
+            clean::MacroItem(ref mac) => match mac.kind {
+                MacroKind::Bang => "Macro ",
+                MacroKind::Attr => "Attribute Macro ",
+                MacroKind::Derive => "Derive Macro ",
+            },
             clean::ProcMacroItem(ref mac) => match mac.kind {
                 MacroKind::Bang => "Macro ",
                 MacroKind::Attr => "Attribute Macro ",

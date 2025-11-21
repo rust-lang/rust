@@ -523,10 +523,10 @@ impl AllTypes {
                 ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => {
+                ItemType::MacroAttribute => {
                     self.attribute_macros.insert(ItemEntry::new(new_url, name))
                 }
-                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
+                ItemType::MacroDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
@@ -2554,7 +2554,7 @@ impl ItemSection {
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
             Self::Attributes => "attributes",
-            Self::AttributeMacros => "attributes",
+            Self::AttributeMacros => "attribute-macros",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
         }
@@ -2615,8 +2615,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ForeignType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::Attribute => ItemSection::Attributes,
-        ItemType::ProcAttribute => ItemSection::AttributeMacros,
-        ItemType::ProcDerive => ItemSection::DeriveMacros,
+        ItemType::MacroAttribute => ItemSection::AttributeMacros,
+        ItemType::MacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
     }
 }

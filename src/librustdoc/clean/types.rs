@@ -2368,6 +2368,7 @@ pub(crate) struct Macro {
     pub(crate) source: String,
     /// Whether the macro was defined via `macro_rules!` as opposed to `macro`.
     pub(crate) macro_rules: bool,
+    pub(crate) kind: MacroKind,
 }
 
 #[derive(Clone, Debug)]

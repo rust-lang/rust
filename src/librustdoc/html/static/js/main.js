@@ -792,7 +792,7 @@ function preLoadCss(cssUrl) {
             block("foreigntype", "foreign-types", "Foreign Types");
             block("keyword", "keywords", "Keywords");
             block("attribute", "attributes", "Attributes");
-            block("attr", "attributes", "Attribute Macros");
+            block("attr", "attribute-macros", "Attribute Macros");
             block("derive", "derives", "Derive Macros");
             block("traitalias", "trait-aliases", "Trait Aliases");
         }
