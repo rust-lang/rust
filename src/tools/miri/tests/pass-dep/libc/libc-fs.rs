@@ -42,6 +42,7 @@ fn main() {
     test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
+    test_fstat();
     test_isatty();
     test_read_and_uninit();
     test_nofollow_not_symlink();
@@ -450,6 +451,39 @@ fn test_sync_file_range() {
     remove_file(&path).unwrap();
     assert_eq!(result_1, 0);
     assert_eq!(result_2, 0);
+}
+
+fn test_fstat() {
+    use std::mem::MaybeUninit;
+    use std::os::unix::io::AsRawFd;
+
+    let path = utils::prepare_with_content("miri_test_libc_fstat.txt", b"hello");
+    let file = File::open(&path).unwrap();
+    let fd = file.as_raw_fd();
+
+    let mut stat: libc::stat = unsafe { MaybeUninit::zeroed().assume_init() };
+    let res = unsafe { libc::fstat(fd, &mut stat) };
+    assert_eq!(res, 0);
+
+    assert_eq!(stat.st_size, 5);
+    assert_eq!(stat.st_mode & libc::S_IFMT, libc::S_IFREG);
+
+    let _st_nlink = stat.st_nlink;
+    let _st_blksize = stat.st_blksize;
+    let _st_blocks = stat.st_blocks;
+    let _st_ino = stat.st_ino;
+    let _st_dev = stat.st_dev;
+    let _st_uid = stat.st_uid;
+    let _st_gid = stat.st_gid;
+    let _st_rdev = stat.st_rdev;
+    let _st_atime = stat.st_atime;
+    let _st_mtime = stat.st_mtime;
+    let _st_ctime = stat.st_ctime;
+    let _st_atime_nsec = stat.st_atime_nsec;
+    let _st_mtime_nsec = stat.st_mtime_nsec;
+    let _st_ctime_nsec = stat.st_ctime_nsec;
+
+    remove_file(&path).unwrap();
 }
 
 fn test_isatty() {
