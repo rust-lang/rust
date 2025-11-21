@@ -205,6 +205,9 @@ impl<'a> State<'a> {
                     define_opaque.as_deref(),
                 );
             }
+            ast::ItemKind::ConstBlock(ast::ConstBlockItem { body }) => {
+                self.print_expr(body, FixupContext::default())
+            }
             ast::ItemKind::Const(box ast::ConstItem {
                 defaultness,
                 ident,
