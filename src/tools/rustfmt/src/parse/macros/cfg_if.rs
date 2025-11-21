@@ -61,7 +61,7 @@ fn parse_cfg_if_inner<'a>(
         }
 
         while parser.token != TokenKind::CloseBrace && parser.token.kind != TokenKind::Eof {
-            let item = match parser.parse_item(ForceCollect::No) {
+            let item = match parser.parse_item(ForceCollect::No, AllowConstBlockItems::Yes) {
                 Ok(Some(item_ptr)) => *item_ptr,
                 Ok(None) => continue,
                 Err(err) => {

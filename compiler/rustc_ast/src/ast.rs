@@ -3808,6 +3808,7 @@ impl ConstItemRhs {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct ConstBlockItem {
+    // FIXME(const_block_items): current invariant is body.kind == InlineConst
     pub body: Box<Expr>,
 }
 

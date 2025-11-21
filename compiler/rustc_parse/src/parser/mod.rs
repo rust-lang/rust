@@ -146,10 +146,11 @@ pub enum ForceCollect {
 }
 
 /// Whether to accept `const { ... }` as a shorthand for `const _: () = const { ... }`.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum ConstBlockItemsAllowed {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AllowConstBlockItems {
     Yes,
     No,
+    DoesNotMatter,
 }
 
 /// If the next tokens are ill-formed `$ty::` recover them as `<$ty>::`.
