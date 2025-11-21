@@ -192,8 +192,12 @@ impl Sysroot {
 
                 cmd.arg("which");
                 cmd.arg(tool.name());
-                (|| Some(Utf8PathBuf::from(String::from_utf8(cmd.output().ok()?.stdout).ok()?)))()
-                    .unwrap_or_else(|| Utf8PathBuf::from(tool.name()))
+                (|| {
+                    Some(Utf8PathBuf::from(
+                        String::from_utf8(cmd.output().ok()?.stdout).ok()?.trim_end(),
+                    ))
+                })()
+                .unwrap_or_else(|| Utf8PathBuf::from(tool.name()))
             }
             _ => tool.path(),
         }
