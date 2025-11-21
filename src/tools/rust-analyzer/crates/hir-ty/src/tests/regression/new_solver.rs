@@ -557,8 +557,6 @@ where
 fn regression_19957() {
     // This test documents issue #19957: async-trait patterns incorrectly produce
     // type mismatches between Pin<Box<dyn Future>> and Pin<Box<impl Future>>.
-    //
-    // The test currently FAILS (as expected) because the bug is not yet fixed.
     check_no_mismatches(
         r#"
 //- minicore: future, pin, result, error, send, coerce_unsized, dispatch_from_dyn
