@@ -68,6 +68,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
         (&Arch::X86 | &Arch::X86_64, "rdrand") => smallvec!["rdrnd"],
         (&Arch::X86 | &Arch::X86_64, "bmi1") => smallvec!["bmi"],
         (&Arch::X86 | &Arch::X86_64, "cmpxchg16b") => smallvec!["cx16"],
+        (&Arch::X86 | &Arch::X86_64, "lahfsahf") => smallvec!["sahf"],
         (&Arch::X86 | &Arch::X86_64, "avx512vaes") => smallvec!["vaes"],
         (&Arch::X86 | &Arch::X86_64, "avx512gfni") => smallvec!["gfni"],
         (&Arch::X86 | &Arch::X86_64, "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
