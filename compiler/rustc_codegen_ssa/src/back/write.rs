@@ -1208,6 +1208,7 @@ pub struct CguMessage;
 // - `is_lint`: lints aren't relevant during codegen.
 // - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
+    span: Vec<SpanData>,
     level: Level,
     messages: Vec<(DiagMessage, Style)>,
     code: Option<ErrCode>,
@@ -1218,7 +1219,7 @@ struct Diagnostic {
 // A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
 // missing the following fields from `rustc_errors::Subdiag`.
 // - `span`: it doesn't impl `Send`.
-pub(crate) struct Subdiagnostic {
+struct Subdiagnostic {
     level: Level,
     messages: Vec<(DiagMessage, Style)>,
 }
@@ -1941,7 +1942,7 @@ impl Emitter for SharedEmitter {
     ) {
         // Check that we aren't missing anything interesting when converting to
         // the cut-down local `DiagInner`.
-        assert_eq!(diag.span, MultiSpan::new());
+        assert!(!diag.span.has_span_labels());
         assert_eq!(diag.suggestions, Suggestions::Enabled(vec![]));
         assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
         assert_eq!(diag.is_lint, None);
@@ -1950,6 +1951,7 @@ impl Emitter for SharedEmitter {
         let args = mem::replace(&mut diag.args, DiagArgMap::default());
         drop(
             self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+                span: diag.span.primary_spans().iter().map(|span| span.data()).collect::<Vec<_>>(),
                 level: diag.level(),
                 messages: diag.messages,
                 code: diag.code,
@@ -1994,6 +1996,9 @@ impl SharedEmitterMain {
                     let dcx = sess.dcx();
                     let mut d =
                         rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
+                    d.span = MultiSpan::from_spans(
+                        diag.span.into_iter().map(|span| span.span()).collect(),
+                    );
                     d.code = diag.code; // may be `None`, that's ok
                     d.children = diag
                         .children
