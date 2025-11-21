@@ -66,7 +66,7 @@ pub(crate) fn target() -> Target {
         max_atomic_width: Some(64),
         cpu: "x86-64".into(),
         plt_by_default: false,
-        features: "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
+        features: "+rdrand,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
         llvm_args: cvs!["--x86-experimental-lvi-inline-asm-hardening"],
         position_independent_executables: true,
         pre_link_args,

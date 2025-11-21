@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
     // It would be nice if this were not the case, but fixing it seems tricky
     // (and given that the main use-case for this target is for use in universal
     // binaries, probably not that important).
-    opts.features = "-rdrnd,-aes,-pclmul,-rtm,-fsgsbase".into();
+    opts.features = "-rdrand,-aes,-pclmulqdq,-rtm,-fsgsbase".into();
     // Double-check that the `cpu` is what we expect (if it's not the list above
     // may need updating).
     assert_eq!(

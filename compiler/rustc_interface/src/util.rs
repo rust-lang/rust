@@ -370,8 +370,8 @@ impl CodegenBackend for DummyCodegenBackend {
             |feature| {
                 // This is a standin for the list of features a backend is expected to enable.
                 // It would be better to parse target.features instead and handle implied features,
-                // but target.features is a list of LLVM target features, not Rust target features.
-                // The dummy backend doesn't know the mapping between LLVM and Rust target features.
+                // but target.features doesn't contain features that are enabled by default for an
+                // architecture or target cpu.
                 sess.target.abi_required_features().required.contains(&feature)
             },
         );

@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     base.plt_by_default = false;
     // See https://fuchsia.dev/fuchsia-src/contribute/governance/rfcs/0073_x86_64_platform_requirement,
     // which corresponds to x86-64-v2.
-    base.features = "+cx16,+sahf,+popcnt,+sse3,+sse4.1,+sse4.2,+ssse3".into();
+    base.features = "+cmpxchg16b,+lahfsahf,+popcnt,+sse3,+sse4.1,+sse4.2,+ssse3".into();
     base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK;
