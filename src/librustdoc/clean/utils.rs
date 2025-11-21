@@ -267,7 +267,7 @@ pub(crate) fn build_deref_target_impls(
 
     for item in items {
         let target = match item.kind {
-            ItemKind::AssocTypeItem(ref t, _) => &t.type_,
+            ItemKind::AssocTypeItem { ref ty, .. } => &ty.type_,
             _ => continue,
         };
 

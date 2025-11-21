@@ -545,7 +545,7 @@ pub(crate) fn build_impl(
                 })
                 .map(|item| clean_impl_item(item, cx))
                 .collect::<Vec<_>>(),
-            clean_generics(impl_.generics, cx),
+            clean_generics(impl_.generics, did, cx),
         ),
         None => (
             tcx.associated_items(did)

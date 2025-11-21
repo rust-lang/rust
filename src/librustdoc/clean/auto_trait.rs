@@ -103,6 +103,7 @@ fn synthesize_auto_trait_impl<'tcx>(
             // regardless of the choice of `T`.
             let mut generics = clean_ty_generics_inner(
                 cx,
+                item_def_id,
                 tcx.generics_of(item_def_id),
                 ty::GenericPredicates::default(),
             );

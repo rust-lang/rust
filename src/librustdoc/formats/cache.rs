@@ -379,8 +379,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
             | clean::ImplAssocConstItem(..)
-            | clean::RequiredAssocTypeItem(..)
-            | clean::AssocTypeItem(..)
+            | clean::RequiredAssocTypeItem { .. }
+            | clean::AssocTypeItem { .. }
             | clean::StrippedItem(..)
             | clean::KeywordItem
             | clean::AttributeItem => {
@@ -487,7 +487,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::StrippedItem(..) => return,
         clean::ProvidedAssocConstItem(..)
         | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..)
+        | clean::AssocTypeItem { .. }
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
@@ -495,7 +495,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         }
         clean::RequiredMethodItem(..)
         | clean::RequiredAssocConstItem(..)
-        | clean::RequiredAssocTypeItem(..)
+        | clean::RequiredAssocTypeItem { .. }
         | clean::StructFieldItem(..)
         | clean::VariantItem(..) => {
             // Don't index if containing module is stripped (i.e., private),
@@ -514,7 +514,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::MethodItem(..)
         | clean::ProvidedAssocConstItem(..)
         | clean::ImplAssocConstItem(..)
-        | clean::AssocTypeItem(..) => {
+        | clean::AssocTypeItem { .. } => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }

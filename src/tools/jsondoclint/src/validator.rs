@@ -115,9 +115,10 @@ impl<'a> Validator<'a> {
                 // FIXME: Why don't these have their own structs?
                 ItemEnum::ExternCrate { .. } => {}
                 ItemEnum::AssocConst { type_, value: _ } => self.check_type(type_),
-                ItemEnum::AssocType { generics, bounds, type_ } => {
+                ItemEnum::AssocType { generics, bounds, implied_bounds, type_ } => {
                     self.check_generics(generics);
                     bounds.iter().for_each(|b| self.check_generic_bound(b));
+                    implied_bounds.iter().for_each(|b| self.check_generic_bound(b));
                     if let Some(ty) = type_ {
                         self.check_type(ty);
                     }
@@ -266,7 +267,10 @@ impl<'a> Validator<'a> {
             Type::Tuple(tys) => tys.iter().for_each(|ty| self.check_type(ty)),
             Type::Slice(inner) => self.check_type(&**inner),
             Type::Array { type_, len: _ } => self.check_type(&**type_),
-            Type::ImplTrait(bounds) => bounds.iter().for_each(|b| self.check_generic_bound(b)),
+            Type::ImplTrait { bounds, implied_bounds } => {
+                bounds.iter().for_each(|b| self.check_generic_bound(b));
+                implied_bounds.iter().for_each(|b| self.check_generic_bound(b));
+            }
             Type::Infer => {}
             Type::RawPointer { is_mutable: _, type_ } => self.check_type(&**type_),
             Type::BorrowedRef { lifetime: _, is_mutable: _, type_ } => self.check_type(&**type_),
@@ -332,8 +336,14 @@ impl<'a> Validator<'a> {
     fn check_generic_param_def(&mut self, gpd: &'a GenericParamDef) {
         match &gpd.kind {
             rustdoc_json_types::GenericParamDefKind::Lifetime { outlives: _ } => {}
-            rustdoc_json_types::GenericParamDefKind::Type { bounds, default, is_synthetic: _ } => {
+            rustdoc_json_types::GenericParamDefKind::Type {
+                bounds,
+                implied_bounds,
+                default,
+                is_synthetic: _,
+            } => {
                 bounds.iter().for_each(|b| self.check_generic_bound(b));
+                implied_bounds.iter().for_each(|b| self.check_generic_bound(b));
                 if let Some(ty) = default {
                     self.check_type(ty);
                 }

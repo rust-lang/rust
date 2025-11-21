@@ -344,7 +344,7 @@ mod size_asserts {
     static_assert_size!(GenericArg, 80);
     static_assert_size!(GenericArgs, 104);
     static_assert_size!(GenericBound, 72);
-    static_assert_size!(GenericParamDef, 136);
+    static_assert_size!(GenericParamDef, 160);
     static_assert_size!(Impl, 304);
     // `Item` contains a `PathBuf`, which is different sizes on different OSes.
     static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());

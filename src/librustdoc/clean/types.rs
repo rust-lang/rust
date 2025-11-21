@@ -574,10 +574,10 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     pub(crate) fn is_associated_type(&self) -> bool {
-        matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+        matches!(self.kind, AssocTypeItem { .. } | StrippedItem(box AssocTypeItem { .. }))
     }
     pub(crate) fn is_required_associated_type(&self) -> bool {
-        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
+        matches!(self.kind, RequiredAssocTypeItem { .. } | StrippedItem(box RequiredAssocTypeItem { .. }))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
         matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
@@ -773,8 +773,8 @@ impl Item {
             RequiredAssocConstItem(..)
             | ProvidedAssocConstItem(..)
             | ImplAssocConstItem(..)
-            | AssocTypeItem(..)
-            | RequiredAssocTypeItem(..)
+            | AssocTypeItem { .. }
+            | RequiredAssocTypeItem { .. }
             | RequiredMethodItem(..)
             | MethodItem(..) => {
                 match tcx.associated_item(def_id).container {
@@ -848,9 +848,17 @@ pub(crate) enum ItemKind {
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
+    RequiredAssocTypeItem {
+        generics: Generics,
+        bounds: Vec<GenericBound>,
+        implied_bounds: Vec<GenericBound>,
+    },
     /// An associated type in a trait impl or a provided one in a trait declaration.
-    AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
+    AssocTypeItem {
+        ty: Box<TypeAlias>,
+        bounds: Vec<GenericBound>,
+        implied_bounds: Vec<GenericBound>,
+    },
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     /// This item represents a module with a `#[doc(keyword = "...")]` attribute which is used
@@ -896,8 +904,8 @@ impl ItemKind {
             | RequiredAssocConstItem(..)
             | ProvidedAssocConstItem(..)
             | ImplAssocConstItem(..)
-            | RequiredAssocTypeItem(..)
-            | AssocTypeItem(..)
+            | RequiredAssocTypeItem { .. }
+            | AssocTypeItem { .. }
             | StrippedItem(_)
             | KeywordItem
             | AttributeItem => [].iter(),
@@ -1114,6 +1122,18 @@ impl GenericBound {
         self.is_bounded_by_lang_item(cx, LangItem::MetaSized)
     }
 
+    pub(crate) fn is_maybe_sized_bound(&self, cx: &DocContext<'_>) -> bool {
+        if let GenericBound::TraitBound(
+            PolyTrait { ref trait_, .. },
+            rustc_hir::TraitBoundModifiers { polarity: rustc_hir::BoundPolarity::Maybe(_), .. },
+        ) = *self
+            && cx.tcx.is_lang_item(trait_.def_id(), LangItem::Sized)
+        {
+            return true;
+        }
+        false
+    }
+
     fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {
         if let GenericBound::TraitBound(
             PolyTrait { ref trait_, .. },
@@ -1182,10 +1202,20 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: ThinVec<Lifetime> },
-    Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Lifetime {
+        outlives: ThinVec<Lifetime>,
+    },
+    Type {
+        bounds: ThinVec<GenericBound>,
+        implied_bounds: ThinVec<GenericBound>,
+        default: Option<Box<Type>>,
+        synthetic: bool,
+    },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>> },
+    Const {
+        ty: Box<Type>,
+        default: Option<Box<String>>,
+    },
 }
 
 impl GenericParamDefKind {
@@ -1354,7 +1384,22 @@ pub(crate) enum Type {
     Infer,
 
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
-    ImplTrait(Vec<GenericBound>),
+    ImplTrait {
+        /// The bounds that are syntactically present:
+        /// ```rust
+        /// impl TraitA + TraitB
+        /// //   ^^^^^^   ^^^^^^
+        /// ```
+        bounds: Vec<GenericBound>,
+        /// Additional bounds implied by the syntactically present bounds:
+        /// ```rust
+        /// trait SizedAndStatic: Sized + 'static {}
+        ///
+        /// fn example(_: impl SizedAndStatic) {}
+        /// //            ^^^^ + Sized + 'static (implied)
+        /// ```
+        implied_bounds: Vec<GenericBound>,
+    },
 
     UnsafeBinder(Box<UnsafeBinderTy>),
 }
@@ -1482,8 +1527,8 @@ impl Type {
     /// This function will panic if the return type does not match the expected sugaring for async
     /// functions.
     pub(crate) fn sugared_async_return_type(self) -> Type {
-        if let Type::ImplTrait(mut v) = self
-            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = v.pop()
+        if let Type::ImplTrait { mut bounds, .. } = self
+            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = bounds.pop()
             && let Some(segment) = trait_.segments.pop()
             && let GenericArgs::AngleBracketed { mut constraints, .. } = segment.args
             && let Some(constraint) = constraints.pop()
@@ -1553,7 +1598,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
+            Generic(_) | SelfTy | Infer | ImplTrait { .. } | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
     }
@@ -2408,14 +2453,14 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Crate, 16); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
-    static_assert_size!(GenericArg, 32);
+    static_assert_size!(GenericArg, 48);
     static_assert_size!(GenericArgs, 24);
-    static_assert_size!(GenericParamDef, 40);
+    static_assert_size!(GenericParamDef, 48);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 8);
-    static_assert_size!(ItemInner, 144);
-    static_assert_size!(ItemKind, 48);
+    static_assert_size!(ItemInner, 160);
+    static_assert_size!(ItemKind, 64);
     static_assert_size!(PathSegment, 32);
-    static_assert_size!(Type, 32);
+    static_assert_size!(Type, 48);
     // tidy-alphabetical-end
 }
