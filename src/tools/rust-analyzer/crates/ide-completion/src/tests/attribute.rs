@@ -983,6 +983,34 @@ mod cfg {
     }
 
     #[test]
+    fn complete_key_attr() {
+        check_edit(
+            "test",
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0)]
+"#,
+            r#"
+#[cfg(test)]
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_key_value_attr() {
+        check_edit(
+            "opt_level",
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg($0)]
+"#,
+            r#"
+#[cfg(opt_level = $0)]
+"#,
+        );
+    }
+
+    #[test]
     fn cfg_target_endian() {
         check(
             r#"#[cfg(target_endian = $0"#,
