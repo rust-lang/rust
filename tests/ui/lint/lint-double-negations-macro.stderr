@@ -2,7 +2,7 @@ warning: use of a double negation
   --> $DIR/lint-double-negations-macro.rs:9:9
    |
 LL |         --$e
-   |         ^^
+   |         ^^^^
 ...
 LL |     bad_macro!(1);
    |     ------------- in this macro invocation
@@ -13,8 +13,8 @@ LL |     bad_macro!(1);
    = note: this warning originates in the macro `bad_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add parentheses for clarity
    |
-LL |         -(-)$e
-   |          + +
+LL |         -(-$e)
+   |          +   +
 
 warning: 1 warning emitted
 

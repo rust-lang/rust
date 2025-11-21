@@ -1,8 +1,8 @@
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:5:17
+  --> $DIR/bad-interpolated-block.rs:5:15
    |
 LL |         'lab: $b;
-   |         --------^
+   |         ------^^
    |         |
    |         the `block` fragment is within this context
 ...
@@ -12,14 +12,14 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
-LL |         'lab: $b{  };
-   |                 +  +
+LL |         'lab: { $b };
+   |               +    +
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:6:18
+  --> $DIR/bad-interpolated-block.rs:6:16
    |
 LL |         unsafe $b;
-   |         ---------^
+   |         -------^^
    |         |
    |         the `block` fragment is within this context
 ...
@@ -29,14 +29,14 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
-LL |         unsafe $b{  };
-   |                  +  +
+LL |         unsafe { $b };
+   |                +    +
 
 error: cannot use a `block` macro fragment here
-  --> $DIR/bad-interpolated-block.rs:7:25
+  --> $DIR/bad-interpolated-block.rs:7:23
    |
 LL |         |x: u8| -> () $b;
-   |                         ^ the `block` fragment is within this context
+   |                       ^^ the `block` fragment is within this context
 ...
 LL |     m!({});
    |     ------ in this macro invocation
@@ -44,8 +44,8 @@ LL |     m!({});
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this in another block
    |
-LL |         |x: u8| -> () $b{  };
-   |                         +  +
+LL |         |x: u8| -> () { $b };
+   |                       +    +
 
 error: aborting due to 3 previous errors
 

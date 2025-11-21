@@ -15,8 +15,8 @@ LL | #![deny(break_with_label_and_loop)]
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap this expression in parentheses
    |
-LL |             break '_l $f();
-   |                         ++
+LL |             break '_l ($f);
+   |                       +  +
 
 error: aborting due to 1 previous error
 

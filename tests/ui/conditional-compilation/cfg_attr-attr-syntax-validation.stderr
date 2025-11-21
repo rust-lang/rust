@@ -92,10 +92,10 @@ LL | #[cfg_attr(true)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/cfg_attr-attr-syntax-validation.rs:30:35
+  --> $DIR/cfg_attr-attr-syntax-validation.rs:30:30
    |
 LL |         #[cfg_attr(feature = $expr)]
-   |         --------------------------^- help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
+   |         ---------------------^^^^^-- help: must be of the form: `#[cfg_attr(predicate, attr1, attr2, ...)]`
 ...
 LL | generate_s10!(concat!("nonexistent"));
    | ------------------------------------- in this macro invocation

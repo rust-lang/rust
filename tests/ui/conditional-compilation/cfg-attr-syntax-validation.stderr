@@ -92,10 +92,10 @@ LL | #[cfg(a = b"hi")]
    = note: expected a normal string literal, not a byte string literal
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
-  --> $DIR/cfg-attr-syntax-validation.rs:51:30
+  --> $DIR/cfg-attr-syntax-validation.rs:51:25
    |
 LL |         #[cfg(feature = $expr)]
-   |                              ^
+   |                         ^^^^^
 ...
 LL | generate_s10!(concat!("nonexistent"));
    | ------------------------------------- in this macro invocation

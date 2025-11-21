@@ -609,10 +609,10 @@ LL |     if let ....3 = 0 {}
    |               expected integer, found floating-point number
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:135:20
+  --> $DIR/recover-range-pats.rs:135:17
    |
 LL |             let $e1..$e2;
-   |                    ^^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
+   |                 ^^^^^^^^ patterns `i32::MIN..=-1_i32` and `1_i32..=i32::MAX` not covered
 ...
 LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
@@ -623,10 +623,10 @@ LL |     mac2!(0, 1);
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:137:20
+  --> $DIR/recover-range-pats.rs:137:17
    |
 LL |             let $e1...$e2;
-   |                    ^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
 ...
 LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
@@ -637,10 +637,10 @@ LL |     mac2!(0, 1);
    = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:141:20
+  --> $DIR/recover-range-pats.rs:141:17
    |
 LL |             let $e1..=$e2;
-   |                    ^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
+   |                 ^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `2_i32..=i32::MAX` not covered
 ...
 LL |     mac2!(0, 1);
    |     ----------- in this macro invocation
@@ -654,7 +654,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:150:17
    |
 LL |             let ..$e;
-   |                 ^^ pattern `0_i32..=i32::MAX` not covered
+   |                 ^^^^ pattern `0_i32..=i32::MAX` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
@@ -668,7 +668,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:152:17
    |
 LL |             let ...$e;
-   |                 ^^^ pattern `1_i32..=i32::MAX` not covered
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
@@ -682,7 +682,7 @@ error[E0005]: refutable pattern in local binding
   --> $DIR/recover-range-pats.rs:155:17
    |
 LL |             let ..=$e;
-   |                 ^^^ pattern `1_i32..=i32::MAX` not covered
+   |                 ^^^^^ pattern `1_i32..=i32::MAX` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
@@ -693,10 +693,10 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:157:19
+  --> $DIR/recover-range-pats.rs:157:17
    |
 LL |             let $e..;
-   |                   ^^ pattern `i32::MIN..=-1_i32` not covered
+   |                 ^^^^ pattern `i32::MIN..=-1_i32` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
@@ -707,10 +707,10 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:159:19
+  --> $DIR/recover-range-pats.rs:159:17
    |
 LL |             let $e...;
-   |                   ^^^ pattern `i32::MIN..=-1_i32` not covered
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation
@@ -721,10 +721,10 @@ LL |     mac!(0);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/recover-range-pats.rs:161:19
+  --> $DIR/recover-range-pats.rs:161:17
    |
 LL |             let $e..=;
-   |                   ^^^ pattern `i32::MIN..=-1_i32` not covered
+   |                 ^^^^^ pattern `i32::MIN..=-1_i32` not covered
 ...
 LL |     mac!(0);
    |     ------- in this macro invocation

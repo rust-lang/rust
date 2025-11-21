@@ -1,11 +1,14 @@
 error: no rules expected `[`
-  --> $DIR/macro-doc-comments-2.rs:6:14
+  --> $DIR/macro-doc-comments-2.rs:6:5
    |
 LL | macro_rules! inner {
    | ------------------ when calling this macro
 ...
 LL |     /// Outer
-   |              ^ no rules expected this token in macro call
+   |     ^^^^^^^^^
+   |     |
+   |     no rules expected this token in macro call
+   |     outer doc comments expand to `#[doc = "..."]`, which is what this macro attempted to match
    |
 note: while trying to match `!`
   --> $DIR/macro-doc-comments-2.rs:2:7
