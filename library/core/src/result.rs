@@ -1239,6 +1239,7 @@ impl<T, E> Result<T, E> {
     /// This is in light of recent unwrap()'s
     #[inline(always)]
     #[track_caller]
+    #[unstable(feature = "result_yolo", issue = "none")]
     pub fn yolo(self) -> T
     where
         E: fmt::Debug,
