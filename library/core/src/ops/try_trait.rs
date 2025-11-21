@@ -371,11 +371,14 @@ pub const trait Residual<O>: Sized {
 /// but importantly not on the contextual type the way it would be if
 /// we called `<_ as FromResidual>::from_residual(r)` directly.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[rustc_const_unstable(feature = "const_try_residual", issue = "91285")]
 // needs to be `pub` to avoid `private type` errors
 #[expect(unreachable_pub)]
 #[inline] // FIXME: force would be nice, but fails -- see #148915
 #[lang = "into_try_type"]
-pub fn residual_into_try_type<R: Residual<O>, O>(r: R) -> <R as Residual<O>>::TryType {
+pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
+    r: R,
+) -> <R as Residual<O>>::TryType {
     FromResidual::from_residual(r)
 }
 
