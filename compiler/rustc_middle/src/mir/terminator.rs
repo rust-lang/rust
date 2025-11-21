@@ -84,7 +84,14 @@ impl SwitchTargets {
     /// branch if there's not a specific match for the value.
     #[inline]
     pub fn target_for_value(&self, value: u128) -> BasicBlock {
-        self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
+        let value = Pu128(value);
+        if let Some(idx) = self.values.iter().position(|&v| v == value) {
+            // SAFETY: Invariant ensures targets.len() == values.len() + 1.
+            // If index is in values, it is valid in targets.
+            unsafe { *self.targets.get_unchecked(idx) }
+        } else {
+            self.otherwise()
+        }
     }
 
     /// Adds a new target to the switch. Panics if you add an already present value.
