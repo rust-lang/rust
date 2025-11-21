@@ -1,6 +1,6 @@
-//@ check-pass
-
 use crate::a::HeaderMap;
+//~^ ERROR `HeaderMap` is ambiguous
+//~| WARN this was previously accepted
 
 mod b {
     pub mod http {
@@ -19,4 +19,6 @@ mod a {
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;
+    //~^ ERROR `HeaderMap` is ambiguous
+    //~| WARN this was previously accepted
 }

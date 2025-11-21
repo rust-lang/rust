@@ -1,0 +1,49 @@
+error: `H` is ambiguous
+  --> $DIR/import-after-macro-expand-11.rs:14:33
+   |
+LL |            let h: crate::p::H = H;
+   |                                 ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `H` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+note: `H` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: `H` is ambiguous
+  --> $DIR/import-after-macro-expand-11.rs:14:33
+   |
+LL |            let h: crate::p::H = H;
+   |                                 ^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `H` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+note: `H` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
+
