@@ -275,6 +275,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             | ast::ItemKind::Use(..)
             | ast::ItemKind::Static(..)
             | ast::ItemKind::Const(..)
+            | ast::ItemKind::ConstBlock(..)
             | ast::ItemKind::GlobalAsm(..)
             | ast::ItemKind::TyAlias(..)
             | ast::ItemKind::TraitAlias(..)

@@ -279,28 +279,7 @@ impl<'a> Parser<'a> {
         {
             // CONST BLOCK ITEM
             self.psess.gated_spans.gate(sym::const_block_items, self.token.span);
-            let block = self.parse_const_block(DUMMY_SP)?;
-            ItemKind::Const(Box::new(ConstItem {
-                defaultness: Defaultness::Final,
-                ident: Ident { name: kw::Underscore, span: DUMMY_SP },
-                generics: Generics {
-                    params: thin_vec![],
-                    where_clause: WhereClause {
-                        has_where_token: false,
-                        predicates: thin_vec![],
-                        span: DUMMY_SP,
-                    },
-                    span: DUMMY_SP,
-                },
-                ty: Box::new(Ty {
-                    id: DUMMY_NODE_ID,
-                    kind: TyKind::Tup(thin_vec![]),
-                    span: DUMMY_SP,
-                    tokens: None,
-                }),
-                rhs: Some(ConstItemRhs::Body(block)),
-                define_opaque: None,
-            }))
+            ItemKind::ConstBlock(ConstBlockItem { body: self.parse_expr()? })
         } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
             self.recover_const_mut(const_span);

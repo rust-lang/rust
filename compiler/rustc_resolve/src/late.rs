@@ -2727,8 +2727,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         debug!("(resolving item) resolving {:?} ({:?})", item.kind.ident(), item.kind);
 
         let def_kind = self.r.local_def_kind(item.id);
-        match item.kind {
-            ItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
+        match &item.kind {
+            ItemKind::TyAlias(box TyAlias { generics, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -2739,7 +2739,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::Fn(box Fn { ref generics, ref define_opaque, .. }) => {
+            ItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(HasGenericParams::Yes(generics.span), def_kind),
@@ -2751,19 +2751,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_define_opaques(define_opaque);
             }
 
-            ItemKind::Enum(_, ref generics, _)
-            | ItemKind::Struct(_, ref generics, _)
-            | ItemKind::Union(_, ref generics, _) => {
+            ItemKind::Enum(_, generics, _)
+            | ItemKind::Struct(_, generics, _)
+            | ItemKind::Union(_, generics, _) => {
                 self.resolve_adt(item, generics);
             }
 
-            ItemKind::Impl(Impl {
-                ref generics,
-                ref of_trait,
-                ref self_ty,
-                items: ref impl_items,
-                ..
-            }) => {
+            ItemKind::Impl(Impl { generics, of_trait, self_ty, items: impl_items, .. }) => {
                 self.diag_metadata.current_impl_items = Some(impl_items);
                 self.resolve_implementation(
                     &item.attrs,
@@ -2776,7 +2770,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.diag_metadata.current_impl_items = None;
             }
 
-            ItemKind::Trait(box Trait { ref generics, ref bounds, ref items, .. }) => {
+            ItemKind::Trait(box Trait { generics, bounds, items, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2795,7 +2789,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::TraitAlias(box TraitAlias { ref generics, ref bounds, .. }) => {
+            ItemKind::TraitAlias(box TraitAlias { generics, bounds, .. }) => {
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(
                     &generics.params,
@@ -2835,13 +2829,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.parent_scope.module = orig_module;
             }
 
-            ItemKind::Static(box ast::StaticItem {
-                ident,
-                ref ty,
-                ref expr,
-                ref define_opaque,
-                ..
-            }) => {
+            ItemKind::Static(box ast::StaticItem { ident, ty, expr, define_opaque, .. }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
@@ -2849,7 +2837,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     if let Some(expr) = expr {
                         // We already forbid generic params because of the above item rib,
                         // so it doesn't matter whether this is a trivial constant.
-                        this.resolve_static_body(expr, Some((ident, ConstantItemKind::Static)));
+                        this.resolve_static_body(expr, Some((*ident, ConstantItemKind::Static)));
                     }
                 });
                 self.resolve_define_opaques(define_opaque);
@@ -2857,11 +2845,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             ItemKind::Const(box ast::ConstItem {
                 ident,
-                ref generics,
-                ref ty,
-                ref rhs,
-                ref define_opaque,
-                ..
+                generics,
+                ty,
+                rhs,
+                define_opaque,
+                defaultness: _,
             }) => {
                 let is_type_const = attr::contains_name(&item.attrs, sym::type_const);
                 self.with_generic_param_rib(
@@ -2903,15 +2891,32 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         if let Some(rhs) = rhs {
                             this.resolve_const_item_rhs(
                                 rhs,
-                                Some((ident, ConstantItemKind::Const)),
+                                Some((*ident, ConstantItemKind::Const)),
                             );
                         }
                     },
                 );
                 self.resolve_define_opaques(define_opaque);
             }
+            ItemKind::ConstBlock(ConstBlockItem { body }) => self.with_generic_param_rib(
+                &[],
+                RibKind::Item(HasGenericParams::No, def_kind),
+                item.id,
+                LifetimeBinderKind::ConstItem,
+                DUMMY_SP,
+                |this| {
+                    this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Infer), |this| {
+                        this.with_constant_rib(
+                            IsRepeatExpr::No,
+                            ConstantHasGenerics::Yes,
+                            Some((ConstBlockItem::IDENT, ConstantItemKind::Const)),
+                            |this| this.visit_expr(body),
+                        );
+                    })
+                },
+            ),
 
-            ItemKind::Use(ref use_tree) => {
+            ItemKind::Use(use_tree) => {
                 let maybe_exported = match use_tree.kind {
                     UseTreeKind::Simple(_) | UseTreeKind::Glob => MaybeExported::Ok(item.id),
                     UseTreeKind::Nested { .. } => MaybeExported::NestedUse(&item.vis),
@@ -2921,7 +2926,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.future_proof_import(use_tree);
             }
 
-            ItemKind::MacroDef(_, ref macro_def) => {
+            ItemKind::MacroDef(_, macro_def) => {
                 // Maintain macro_rules scopes in the same way as during early resolution
                 // for diagnostics and doc links.
                 if macro_def.macro_rules {
@@ -2945,7 +2950,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 visit::walk_item(self, item);
             }
 
-            ItemKind::Delegation(ref delegation) => {
+            ItemKind::Delegation(delegation) => {
                 let span = delegation.path.segments.last().unwrap().ident.span;
                 self.with_generic_param_rib(
                     &[],
@@ -5477,6 +5482,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 
             ItemKind::Mod(..)
             | ItemKind::Static(..)
+            | ItemKind::ConstBlock(..)
             | ItemKind::Use(..)
             | ItemKind::ExternCrate(..)
             | ItemKind::MacroDef(..)
