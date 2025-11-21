@@ -1,0 +1,6 @@
+error: `Self` cannot be a raw identifier
+  |
+  = note: this occurred on the command line: `--cfg=r#Self`
+
+error: invalid `--cfg` argument: `r#Self` (expected `key` or `key="value"`)
+

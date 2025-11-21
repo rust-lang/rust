@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -522,8 +523,16 @@ impl Item {
                 debug!(?id);
                 if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
                     debug!(?url);
-                    if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut url, cx.tcx())
+                    match fragment {
+                        Some(UrlFragment::Item(def_id)) => {
+                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
+                                .unwrap();
+                        }
+                        Some(UrlFragment::UserWritten(raw)) => {
+                            url.push('#');
+                            url.push_str(raw);
+                        }
+                        None => {}
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
