@@ -552,3 +552,58 @@ where
         "#]],
     );
 }
+
+#[test]
+fn regression_19957() {
+    // This test documents issue #19957: async-trait patterns incorrectly produce
+    // type mismatches between Pin<Box<dyn Future>> and Pin<Box<impl Future>>.
+    check_no_mismatches(
+        r#"
+//- minicore: future, pin, result, error, send, coerce_unsized, dispatch_from_dyn
+use core::{future::Future, pin::Pin};
+
+#[lang = "owned_box"]
+pub struct Box<T: ?Sized> {
+    inner: *mut T,
+}
+
+impl<T> Box<T> {
+    fn pin(value: T) -> Pin<Box<T>> {
+        // Implementation details don't matter here for type checking
+        loop {}
+    }
+}
+
+impl<T: ?Sized + core::marker::Unsize<U>, U: ?Sized> core::ops::CoerceUnsized<Box<U>> for Box<T> {}
+
+impl<T: ?Sized + core::ops::DispatchFromDyn<U>, U: ?Sized> core::ops::DispatchFromDyn<Box<U>> for Box<T> {}
+
+pub struct ExampleData {
+    pub id: i32,
+}
+
+// Simulates what #[async_trait] expands to
+pub trait SimpleModel {
+    fn save<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> Pin<Box<dyn Future<Output = i32> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait;
+}
+
+impl SimpleModel for ExampleData {
+    fn save<'life0, 'async_trait>(
+        &'life0 self,
+    ) -> Pin<Box<dyn Future<Output = i32> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        Self: 'async_trait,
+    {
+        // Body creates Pin<Box<impl Future>>, which should coerce to Pin<Box<dyn Future>>
+        Box::pin(async move { self.id })
+    }
+}
+"#,
+    );
+}

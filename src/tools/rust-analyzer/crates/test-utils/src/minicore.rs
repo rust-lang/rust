@@ -1518,6 +1518,12 @@ pub mod pin {
     {
     }
     // endregion:dispatch_from_dyn
+    // region:coerce_unsized
+    impl<Ptr, U> crate::ops::CoerceUnsized<Pin<U>> for Pin<Ptr> where
+        Ptr: crate::ops::CoerceUnsized<U>
+    {
+    }
+    // endregion:coerce_unsized
 }
 // endregion:pin
 
