@@ -18,6 +18,7 @@
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
+#![feature(vec_into_raw_parts)]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
 
@@ -981,5 +982,21 @@ fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
         // default metrics" to only produce a warning when metrics are enabled by default and emit
         // an error only when the user manually enables metrics
         tcxt.dcx().err(format!("cannot emit feature usage metrics: {error}"));
+    }
+}
+
+#[inline]
+fn push_str_slice(s: &mut String, slice: &[&str]) {
+    use std::ptr::copy_nonoverlapping;
+    let additional = slice.iter().map(|x| x.len()).sum();
+    s.reserve(additional);
+    let (ptr, len, cap) = std::mem::take(s).into_raw_parts();
+    unsafe {
+        let mut dst = ptr.add(len);
+        for new in slice {
+            copy_nonoverlapping(new.as_ptr(), dst, new.len());
+            dst = dst.add(new.len());
+        }
+        *s = String::from_raw_parts(ptr, len + additional, cap);
     }
 }

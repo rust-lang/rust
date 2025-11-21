@@ -1097,6 +1097,22 @@ impl String {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    #[unstable(feature = "string_push_str_slice", issue = "none")]
+    #[inline]
+    pub fn push_str_slice(&mut self, slice: &[&str]) {
+        let additional = slice.iter().map(|x| x.len()).sum();
+        self.reserve(additional);
+        let (ptr, len, cap) = core::mem::take(self).into_raw_parts();
+        unsafe {
+            let mut dst = ptr.add(len);
+            for new in slice {
+                core::ptr::copy_nonoverlapping(new.as_ptr(), dst, new.len());
+                dst = dst.add(new.len());
+            }
+            *self = String::from_raw_parts(ptr, len + additional, cap);
+        }
+    }
+
     /// Copies elements from `src` range to the end of the string.
     ///
     /// # Panics

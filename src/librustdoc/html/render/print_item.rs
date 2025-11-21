@@ -2258,8 +2258,7 @@ pub(crate) fn compare_names(left: &str, right: &str) -> Ordering {
 
 pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     let mut s = join_path_syms(&cx.current);
-    s.push_str("::");
-    s.push_str(item.name.unwrap().as_str());
+    crate::push_str_slice(&mut s, &["::", item.name.unwrap().as_str()]);
     s
 }
 

@@ -223,8 +223,10 @@ impl UrlFragment {
                     DefKind::Field => {
                         let parent_id = tcx.parent(def_id);
                         if tcx.def_kind(parent_id) == DefKind::Variant {
-                            s.push_str("variant.");
-                            s.push_str(tcx.item_name(parent_id).as_str());
+                            crate::push_str_slice(
+                                s,
+                                &["variant.", tcx.item_name(parent_id).as_str()],
+                            );
                             ".field."
                         } else {
                             "structfield."
@@ -232,8 +234,7 @@ impl UrlFragment {
                     }
                     kind => bug!("unexpected associated item kind: {kind:?}"),
                 };
-                s.push_str(kind);
-                s.push_str(tcx.item_name(def_id).as_str());
+                crate::push_str_slice(s, &[kind, tcx.item_name(def_id).as_str()]);
             }
             UrlFragment::UserWritten(raw) => s.push_str(raw),
         }
