@@ -1563,7 +1563,7 @@ float_test! {
     test<Float> {
         assert_biteq!(1.0, (0.0 as Float).exp());
         assert_approx_eq!(2.718281828459045, (1.0 as Float).exp(), Float::EXP_APPROX);
-        assert_approx_eq!(148.413159, (5.0 as Float).exp(), Float::EXP_APPROX);
+        assert_approx_eq!(148.41315910257660342111558004055227962348775, (5.0 as Float).exp(), Float::EXP_APPROX);
 
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
@@ -1612,7 +1612,7 @@ float_test! {
         assert!((-2.3 as Float).ln().is_nan());
         assert_biteq!((-0.0 as Float).ln(), neg_inf);
         assert_biteq!((0.0 as Float).ln(), neg_inf);
-        assert_approx_eq!((4.0 as Float).ln(), 1.3862943611198906, Float::LN_APPROX);
+        assert_approx_eq!((4.0 as Float).ln(), 1.3862943611198906188344642429163531366, Float::LN_APPROX);
     }
 }
 
@@ -1628,7 +1628,7 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((10.0 as Float).log(10.0), 1.0);
-        assert_approx_eq!((2.3 as Float).log(3.5), 0.664858, Float::LOG_APPROX);
+        assert_approx_eq!((2.3 as Float).log(3.5),  0.66485771361478710036766645911922010272, Float::LOG_APPROX);
         assert_approx_eq!((1.0 as Float).exp().log((1.0 as Float).exp()), 1.0, Float::LOG_APPROX);
         assert!((1.0 as Float).log(1.0).is_nan());
         assert!((1.0 as Float).log(-13.9).is_nan());
@@ -1652,9 +1652,9 @@ float_test! {
         let nan: Float = Float::NAN;
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
-        assert_approx_eq!((10.0 as Float).log2(), 3.321928, Float::LOG2_APPROX);
-        assert_approx_eq!((2.3 as Float).log2(), 1.201634, Float::LOG2_APPROX);
-        assert_approx_eq!((1.0 as Float).exp().log2(), 1.442695, Float::LOG2_APPROX);
+        assert_approx_eq!((10.0 as Float).log2(), 3.32192809488736234787031942948939017, Float::LOG2_APPROX);
+        assert_approx_eq!((2.3 as Float).log2(), 1.2016338611696504130002982471978765921, Float::LOG2_APPROX);
+        assert_approx_eq!((1.0 as Float).exp().log2(), 1.4426950408889634073599246810018921381, Float::LOG2_APPROX);
         assert!(nan.log2().is_nan());
         assert_biteq!(inf.log2(), inf);
         assert!(neg_inf.log2().is_nan());
@@ -1676,8 +1676,8 @@ float_test! {
         let inf: Float = Float::INFINITY;
         let neg_inf: Float = Float::NEG_INFINITY;
         assert_biteq!((10.0 as Float).log10(), 1.0);
-        assert_approx_eq!((2.3 as Float).log10(), 0.361728, Float::LOG10_APPROX);
-        assert_approx_eq!((1.0 as Float).exp().log10(), 0.43429448, Float::LOG10_APPROX);
+        assert_approx_eq!((2.3 as Float).log10(), 0.36172783601759284532595218865859309898, Float::LOG10_APPROX);
+        assert_approx_eq!((1.0 as Float).exp().log10(), 0.43429448190325182765112891891660508222, Float::LOG10_APPROX);
         assert_biteq!((1.0 as Float).log10(), 0.0);
         assert!(nan.log10().is_nan());
         assert_biteq!(inf.log10(), inf);
@@ -1706,8 +1706,8 @@ float_test! {
         assert_biteq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
         assert!((-0.0 as Float).asinh().is_sign_negative());
-        assert_approx_eq!((2.0 as Float).asinh(), 1.4436354751788103, Float::ASINH_APPROX);
-        assert_approx_eq!((-2.0 as Float).asinh(), -1.4436354751788103, Float::ASINH_APPROX);
+        assert_approx_eq!((2.0 as Float).asinh(), 1.443635475178810342493276740273105f128, Float::ASINH_APPROX);
+        assert_approx_eq!((-2.0 as Float).asinh(), -1.443635475178810342493276740273105f128, Float::ASINH_APPROX);
     }
 }
 
@@ -1728,8 +1728,8 @@ float_test! {
         assert_biteq!(inf.acosh(), inf);
         assert!(neg_inf.acosh().is_nan());
         assert!(nan.acosh().is_nan());
-        assert_approx_eq!((2.0 as Float).acosh(), 1.3169578969248167, Float::ACOSH_APPROX);
-        assert_approx_eq!((3.0 as Float).acosh(), 1.762747174039086, Float::ACOSH_APPROX);
+        assert_approx_eq!((2.0 as Float).acosh(), 1.31695789692481670862504634730796844f128, Float::ACOSH_APPROX);
+        assert_approx_eq!((3.0 as Float).acosh(), 1.76274717403908605046521864995958461f128, Float::ACOSH_APPROX);
     }
 }
 
@@ -1754,8 +1754,8 @@ float_test! {
         assert!(neg_inf.atanh().is_nan());
         assert!(nan.atanh().is_nan());
 
-        assert_approx_eq!((0.5 as Float).atanh(), 0.5493061443340548, Float::ATANH_APPROX);
-        assert_approx_eq!((-0.5 as Float).atanh(), -0.5493061443340548, Float::ATANH_APPROX);
+        assert_approx_eq!((0.5 as Float).atanh(), 0.54930614433405484569762261846126285f128, Float::ATANH_APPROX);
+        assert_approx_eq!((-0.5 as Float).atanh(), -0.54930614433405484569762261846126285f128, Float::ATANH_APPROX);
     }
 }
 
