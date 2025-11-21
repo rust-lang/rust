@@ -1,9 +1,9 @@
 //@ has 'glob_shadowing/index.html'
-//@ count - '//dt' 6
-//@ !has - '//dd' 'sub1::describe'
+//@ count - '//dt' 7
+//@ !has - '//dd' 'sub1::describe1'
 //@ has - '//dd' 'sub2::describe'
 
-//@ !has - '//dd' 'sub1::describe2'
+//@ has - '//dd' 'sub1::describe2'
 
 //@ !has - '//dd' 'sub1::prelude'
 //@ has - '//dd' 'mod::prelude'
@@ -18,7 +18,7 @@
 
 mod sub1 {
     // this should be shadowed by sub2::describe
-    /// sub1::describe
+    /// sub1::describe1
     pub fn describe() -> &'static str {
         "sub1::describe"
     }
@@ -33,7 +33,9 @@ mod sub1 {
     pub struct Foo;
 
     // this should be shadowed,
-    // because both sub1::describe2 and sub3::describe2 are from glob reexport
+    // because both sub1::describe2 and sub3::describe2 are from glob reexport,
+    // but it is still usable from other crates under the `ambiguous_glob_imports` lint,
+    // so it is reachable and documented
     /// sub1::describe2
     pub fn describe2() -> &'static str {
         "sub1::describe2"
