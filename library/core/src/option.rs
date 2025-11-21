@@ -1010,6 +1010,7 @@ impl<T> Option<T> {
     #[rustc_diagnostic_item = "option_unwrap"]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    #[unstable(feature = "option_yolo", issue = "none")]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
@@ -1022,6 +1023,7 @@ impl<T> Option<T> {
     /// This is in light of recent unwrap()'s
     #[inline(always)]
     #[track_caller]
+    #[unstable(feature = "option_yolo", issue = "none")]
     pub const fn yolo(self) -> T {
         self.unwrap()
     }
