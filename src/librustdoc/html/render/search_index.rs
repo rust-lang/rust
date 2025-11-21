@@ -1864,48 +1864,50 @@ pub(crate) fn build_index(
                 // unoccupied size.
                 if item.ty.is_fn_like() { 0 } else { 16 };
             serialized_index.function_data[new_entry_id] = Some(search_type.clone());
-            for index in used_in_function_inputs {
-                let postings = if index >= 0 {
-                    assert!(serialized_index.path_data[index as usize].is_some());
-                    &mut serialized_index.type_data[index as usize]
-                        .as_mut()
-                        .unwrap()
-                        .inverted_function_inputs_index
-                } else {
-                    let generic_id = usize::try_from(-index).unwrap() - 1;
-                    for _ in serialized_index.generic_inverted_index.len()..=generic_id {
-                        serialized_index.generic_inverted_index.push(Vec::new());
+
+            #[derive(Clone, Copy)]
+            enum InvertedIndexType {
+                Inputs,
+                Output,
+            }
+            impl InvertedIndexType {
+                fn from_type_data(self, type_data: &mut TypeData) -> &mut Vec<Vec<u32>> {
+                    match self {
+                        Self::Inputs => &mut type_data.inverted_function_inputs_index,
+                        Self::Output => &mut type_data.inverted_function_output_index,
                     }
-                    &mut serialized_index.generic_inverted_index[generic_id]
-                };
-                while postings.len() <= search_type_size {
-                    postings.push(Vec::new());
-                }
-                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
-                    postings[search_type_size].push(new_entry_id as u32);
                 }
             }
-            for index in used_in_function_output {
-                let postings = if index >= 0 {
-                    assert!(serialized_index.path_data[index as usize].is_some());
-                    &mut serialized_index.type_data[index as usize]
-                        .as_mut()
-                        .unwrap()
-                        .inverted_function_output_index
-                } else {
-                    let generic_id = usize::try_from(-index).unwrap() - 1;
-                    for _ in serialized_index.generic_inverted_index.len()..=generic_id {
-                        serialized_index.generic_inverted_index.push(Vec::new());
+
+            let mut process_used_in_function =
+                |used_in_function: BTreeSet<isize>, index_type: InvertedIndexType| {
+                    for index in used_in_function {
+                        let postings = if index >= 0 {
+                            assert!(serialized_index.path_data[index as usize].is_some());
+                            index_type.from_type_data(
+                                serialized_index.type_data[index as usize].as_mut().unwrap(),
+                            )
+                        } else {
+                            let generic_id = index.unsigned_abs() - 1;
+                            if generic_id >= serialized_index.generic_inverted_index.len() {
+                                serialized_index
+                                    .generic_inverted_index
+                                    .resize(generic_id + 1, Vec::new());
+                            }
+                            &mut serialized_index.generic_inverted_index[generic_id]
+                        };
+                        if search_type_size >= postings.len() {
+                            postings.resize(search_type_size + 1, Vec::new());
+                        }
+                        let posting = &mut postings[search_type_size];
+                        if posting.last() != Some(&(new_entry_id as u32)) {
+                            posting.push(new_entry_id as u32);
+                        }
                     }
-                    &mut serialized_index.generic_inverted_index[generic_id]
                 };
-                while postings.len() <= search_type_size {
-                    postings.push(Vec::new());
-                }
-                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
-                    postings[search_type_size].push(new_entry_id as u32);
-                }
-            }
+
+            process_used_in_function(used_in_function_inputs, InvertedIndexType::Inputs);
+            process_used_in_function(used_in_function_output, InvertedIndexType::Output);
         }
     }
 
