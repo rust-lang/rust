@@ -9,8 +9,9 @@ use crate::ty::{Ty, TyCtxt};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCoercion {
-    /// Go from a fn-item type to a fn-pointer type.
-    ReifyFnPointer,
+    /// Go from a fn-item type to a fn pointer or an unsafe fn pointer.
+    /// It cannot convert an unsafe fn-item to a safe fn pointer.
+    ReifyFnPointer(hir::Safety),
 
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,

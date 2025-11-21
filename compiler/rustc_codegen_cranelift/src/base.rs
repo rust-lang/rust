@@ -689,7 +689,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::Cast(
-                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, _),
+                    CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _),
                     ref operand,
                     to_ty,
                 ) => {
