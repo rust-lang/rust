@@ -155,12 +155,23 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
             && let token::MetaVarKind::Ty { .. } = mv_kind
             && $self.check_noexpect_past_close_delim(&token::PathSep)
         {
+            // We want the span before it eat gets eaten.
+            // For example the current token has an OpenInvisible
+            // After being eaten the parsers previous token will
+            // then become a CloseInvisible which only has the
+            // close span and the current token will just be a
+            // a path separator.
+
+            // Probably only need `$self.token.span` here because the Span::until(...)
+            let sp = $self.parent_tree_span().unwrap_or($self.token.span);
+
             // Reparse the type, then move to recovery.
             let ty = $self
                 .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
                 .expect("metavar seq ty");
 
-            return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
+            let span = sp.until($self.token.span);
+            return $self.maybe_recover_from_bad_qpath_stage_2(span, ty);
         }
     };
 }
@@ -1663,6 +1674,24 @@ impl<'a> Parser<'a> {
             token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
             token::OpenInvisible(InvisibleOrigin::MetaVar(_)) => self.look_ahead(0, |t| t.span),
             _ => self.prev_token.span,
+        }
+    }
+
+    /// Returns the full `Span` of the parent enclosing delimited construct, if any.
+    ///
+    /// The span covers both the opening and closing delimiters as well as everything
+    /// in between.
+    ///
+    /// This is primarily used fo improve diagnostics that need the outer syntactic context.
+    /// (e.g full span of `∅ ... ∅`, `( ... )`, `{ ... }`, or `[ ... ]`).
+    ///
+    /// Returns `None` if the parser is not currently inside a delimited group.
+    pub fn parent_tree_span(&self) -> Option<Span> {
+        //println!("{:#?}", self.token_cursor.stack.last()?);
+        match self.token_cursor.stack.last()?.curr()? {
+            TokenTree::Delimited(dspan, _, _, _) => return Some(dspan.entire()),
+            // I don't think this case is possible
+            _ => None,
         }
     }
 }
