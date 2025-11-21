@@ -21,8 +21,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
-    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS,
-    MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+    ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
 use rustc_session::utils::was_invoked_from_cargo;
@@ -144,21 +143,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         for ambiguity_error in &self.ambiguity_errors {
             let diag = self.ambiguity_diagnostics(ambiguity_error);
-            if ambiguity_error.warning {
-                let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
-                    unreachable!()
-                };
-                self.lint_buffer.buffer_lint(
-                    AMBIGUOUS_GLOB_IMPORTS,
-                    import.root_id,
-                    ambiguity_error.ident.span,
-                    BuiltinLintDiag::AmbiguousGlobImports { diag },
-                );
-            } else {
-                let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
-                report_ambiguity_error(&mut err, diag);
-                err.emit();
-            }
+            let mut err = struct_span_code_err!(self.dcx(), diag.span, E0659, "{}", diag.msg);
+            report_ambiguity_error(&mut err, diag);
+            err.emit();
         }
 
         let mut reported_spans = FxHashSet::default();

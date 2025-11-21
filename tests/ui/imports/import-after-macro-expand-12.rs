@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/issues/115377
 
 use module::*;
@@ -26,6 +25,8 @@ fn main() {
     let a: u16 = {
         use self::*;
         B::ASSOC
+        //~^ ERROR `B` is ambiguous
+        //~| ERROR mismatched types
     };
     let b: u16 = m!({
         use self::*;

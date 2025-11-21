@@ -1,0 +1,44 @@
+error[E0659]: `H` is ambiguous
+  --> $DIR/import-after-macro-expand-11.rs:14:33
+   |
+LL |            let h: crate::p::H = H;
+   |                                 ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `H` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+note: `H` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-11.rs:11:13
+   |
+LL |         use super::*;
+   |             ^^^^^^^^
+   = help: consider adding an explicit import of `H` to disambiguate
+
+error[E0308]: mismatched types
+  --> $DIR/import-after-macro-expand-11.rs:14:33
+   |
+LL |            let h: crate::p::H = H;
+   |                   -----------   ^ expected `p::H`, found `H`
+   |                   |
+   |                   expected due to this
+   |
+   = note: `H` and `p::H` have similar names, but are actually distinct types
+note: `H` is defined in module `crate` of the current crate
+  --> $DIR/import-after-macro-expand-11.rs:2:1
+   |
+LL | struct H;
+   | ^^^^^^^^
+note: `p::H` is defined in module `crate::p` of the current crate
+  --> $DIR/import-after-macro-expand-11.rs:8:5
+   |
+LL |     struct H;
+   |     ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0659.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,8 +1,9 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1633574396
 
 pub mod a {
     pub use crate::b::*;
+    //~^ WARN ambiguous glob re-exports
+    //~| WARN ambiguous glob re-exports
 }
 
 mod b {
@@ -16,7 +17,10 @@ mod b {
 }
 
 use crate::a::HeaderMap;
+//~^ ERROR `HeaderMap` is ambiguous
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;
+    //~^ ERROR `HeaderMap` is ambiguous
+    //~| ERROR mismatched types
 }
