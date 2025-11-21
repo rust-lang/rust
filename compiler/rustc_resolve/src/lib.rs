@@ -848,10 +848,7 @@ impl<'ra> fmt::Debug for Module<'ra> {
 #[derive(Clone, Debug)]
 struct DeclData<'ra> {
     kind: DeclKind<'ra>,
-    ambiguity: CmCell<Option<Decl<'ra>>>,
-    /// Produce a warning instead of an error when reporting ambiguities inside this binding.
-    /// May apply to indirect ambiguities under imports, so `ambiguity.is_some()` is not required.
-    warn_ambiguity: CmCell<bool>,
+    ambiguity: CmCell<Option<(Decl<'ra>, bool /*warning*/)>>,
     expansion: LocalExpnId,
     span: Span,
     vis: CmCell<Visibility<DefId>>,
@@ -992,7 +989,7 @@ impl<'ra> DeclData<'ra> {
 
     fn descent_to_ambiguity(self: Decl<'ra>) -> Option<(Decl<'ra>, Decl<'ra>)> {
         match self.ambiguity.get() {
-            Some(ambig_binding) => Some((self, ambig_binding)),
+            Some((ambig_binding, _)) => Some((self, ambig_binding)),
             None => match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.descent_to_ambiguity(),
                 _ => None,
@@ -1004,14 +1001,6 @@ impl<'ra> DeclData<'ra> {
         self.ambiguity.get().is_some()
             || match self.kind {
                 DeclKind::Import { source_decl, .. } => source_decl.is_ambiguity_recursive(),
-                _ => false,
-            }
-    }
-
-    fn warn_ambiguity_recursive(&self) -> bool {
-        self.warn_ambiguity.get()
-            || match self.kind {
-                DeclKind::Import { source_decl, .. } => source_decl.warn_ambiguity_recursive(),
                 _ => false,
             }
     }
@@ -1403,7 +1392,6 @@ impl<'ra> ResolverArenas<'ra> {
         self.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(None),
-            warn_ambiguity: CmCell::new(false),
             vis: CmCell::new(vis),
             span,
             expansion,
@@ -2067,17 +2055,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn record_use(&mut self, ident: Ident, used_decl: Decl<'ra>, used: Used) {
-        self.record_use_inner(ident, used_decl, used, used_decl.warn_ambiguity.get());
-    }
-
-    fn record_use_inner(
-        &mut self,
-        ident: Ident,
-        used_decl: Decl<'ra>,
-        used: Used,
-        warn_ambiguity: bool,
-    ) {
-        if let Some(b2) = used_decl.ambiguity.get() {
+        if let Some((b2, warning)) = used_decl.ambiguity.get() {
             let ambiguity_error = AmbiguityError {
                 kind: AmbiguityKind::GlobVsGlob,
                 ident,
@@ -2085,7 +2063,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 b2,
                 scope1: Scope::ModuleGlobs(used_decl.parent_module.unwrap(), None),
                 scope2: Scope::ModuleGlobs(b2.parent_module.unwrap(), None),
-                warning: if warn_ambiguity { Some(AmbiguityWarning::GlobImport) } else { None },
+                warning: if warning { Some(AmbiguityWarning::GlobImport) } else { None },
             };
             if !self.matches_previous_ambiguity_error(&ambiguity_error) {
                 // avoid duplicated span information to be emit out
@@ -2135,12 +2113,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.used_imports.insert(id);
             }
             self.add_to_glob_map(import, ident.name);
-            self.record_use_inner(
-                ident,
-                source_decl,
-                Used::Other,
-                warn_ambiguity || source_decl.warn_ambiguity.get(),
-            );
+            self.record_use(ident, source_decl, Used::Other);
         }
     }
 

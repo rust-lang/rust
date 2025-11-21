@@ -54,7 +54,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
     ) {
         if let Err(old_decl) =
-            self.try_plant_decl_into_local_module(ident, orig_ident_span, ns, decl, false)
+            self.try_plant_decl_into_local_module(ident, orig_ident_span, ns, decl)
         {
             self.report_conflict(ident, ns, old_decl, decl);
         }
@@ -88,13 +88,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis: Visibility<DefId>,
         span: Span,
         expansion: LocalExpnId,
-        ambiguity: Option<Decl<'ra>>,
+        ambiguity: Option<(Decl<'ra>, bool)>,
     ) {
         let decl = self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(ambiguity),
-            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
-            warn_ambiguity: CmCell::new(true),
             vis: CmCell::new(vis),
             span,
             expansion,
@@ -292,7 +290,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
-            self.arenas.new_def_decl(res, vis, span, expansion, Some(parent))
+            // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
+            (self.arenas.new_def_decl(res, vis, span, expansion, Some(parent)), true)
         });
 
         // Record primary definitions.

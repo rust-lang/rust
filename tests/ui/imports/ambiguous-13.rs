@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1637022296
-//@ check-pass
+
 pub mod object {
     #[derive(Debug)]
     pub struct Rect;
@@ -16,6 +16,6 @@ use crate::object::*;
 use crate::content::*;
 
 fn a(_: Rect) {}
-//~^ WARN `Rect` is ambiguous
-//~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+//~^ ERROR `Rect` is ambiguous
+
 fn main() { }

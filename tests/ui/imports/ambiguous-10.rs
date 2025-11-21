@@ -1,5 +1,5 @@
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1637022296
-//@ check-pass
+
 mod a {
     pub enum Token {}
 }
@@ -13,6 +13,6 @@ mod b {
 use crate::a::*;
 use crate::b::*;
 fn c(_: Token) {}
-//~^ WARN `Token` is ambiguous
-//~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+//~^ ERROR `Token` is ambiguous
+
 fn main() { }

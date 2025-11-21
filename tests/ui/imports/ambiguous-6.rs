@@ -1,11 +1,10 @@
 //@ edition: 2021
 // https://github.com/rust-lang/rust/issues/112713
-//@ check-pass
+
 pub fn foo() -> u32 {
     use sub::*;
     C
-    //~^ WARN `C` is ambiguous
-    //~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~^ ERROR `C` is ambiguous
 }
 
 mod sub {
