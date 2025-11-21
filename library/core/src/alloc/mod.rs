@@ -103,8 +103,7 @@ impl fmt::Display for AllocError {
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-#[const_trait]
-pub unsafe trait Allocator {
+pub const unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///
     /// On success, returns a [`NonNull<[u8]>`][NonNull] meeting the size and alignment guarantees of `layout`.
