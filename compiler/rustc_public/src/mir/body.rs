@@ -978,7 +978,7 @@ pub enum Safety {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
-    ReifyFnPointer,
+    ReifyFnPointer(Safety),
 
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,

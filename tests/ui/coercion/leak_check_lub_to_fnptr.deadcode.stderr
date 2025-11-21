@@ -1,0 +1,128 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:21:21
+   |
+LL |     lub!(lhs_fnptr, rhs_fnptr);
+   |          ---------  ^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn pointer `for<'a> fn(&'a (), &())`
+              found fn pointer `for<'a> fn(&(), &'a ())`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:27:21
+   |
+LL |     lub!(lhs_fndef, rhs_fndef);
+   |          ---------  ^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn item `for<'a> fn(&'a (), &'static ()) {lub_to_fnptr_leak_checking::lhs_fndef}`
+              found fn item `for<'a> fn(&'static (), &'a ()) {lub_to_fnptr_leak_checking::rhs_fndef}`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:33:23
+   |
+LL |     let lhs_closure = |_: &(), _: &'static ()| {};
+   |                       ------------------------ the expected closure
+LL |     let rhs_closure = |_: &'static (), _: &()| {};
+   |                       ------------------------ the found closure
+LL |     lub!(lhs_closure, rhs_closure);
+   |          -----------  ^^^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:31:23: 31:47}`
+              found closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:32:23: 32:47}`
+   = note: closure has signature: `for<'a> fn(&'static (), &'a ())`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:42:15
+   |
+LL |     lub!(lhs, rhs_fndef);
+   |          ---  ^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn pointer `for<'a> fn(&'a (), &())`
+                 found fn item `for<'a> fn(&'static (), &'a ()) {lub_with_fnptr_leak_checking::rhs_fndef}`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:47:15
+   |
+LL |     let rhs_closure = |_: &'static (), _: &()| {};
+   |                       ------------------------ the found closure
+LL |     lub!(lhs, rhs_closure);
+   |          ---  ^^^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn pointer `for<'a> fn(&'a (), &())`
+                 found closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:46:23: 46:47}`
+   = note: closure has signature: `for<'a> fn(&'static (), &'a ())`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:59:23
+   |
+LL |     let lhs_closure = |_: &(), _: &'static (), _: &()| {};
+   |                       -------------------------------- the expected closure
+LL |     let rhs_closure = |_: &'static (), _: &'static (), _: &()| {};
+   |                       ---------------------------------------- the found closure
+LL |
+LL |     lub!(lhs_closure, rhs_closure);
+   |          -----------  ^^^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:56:23: 56:55}`
+              found closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:57:23: 57:63}`
+   = note: closure has signature: `for<'a> fn(&'static (), &'static (), &'a ())`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:61:23
+   |
+LL |     let lhs_closure = |_: &(), _: &'static (), _: &()| {};
+   |                       -------------------------------- the found closure
+LL |     let rhs_closure = |_: &'static (), _: &'static (), _: &()| {};
+   |                       ---------------------------------------- the expected closure
+...
+LL |     lub!(rhs_closure, lhs_closure);
+   |          -----------  ^^^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:57:23: 57:63}`
+              found closure `{closure@$DIR/leak_check_lub_to_fnptr.rs:56:23: 56:55}`
+   = note: closure has signature: `for<'a, 'b> fn(&'a (), &'static (), &'b ())`
+   = note: no two closures, even if identical, have the same type
+   = help: consider boxing your closure and/or using it as a trait object
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:73:21
+   |
+LL |     lub!(lhs_fndef, rhs_fndef);
+   |          ---------  ^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn item `for<'a, 'b> fn(&'a (), &'static (), &'b ()) {order_dependence_fndefs::lhs_fndef}`
+              found fn item `for<'a> fn(&'static (), &'static (), &'a ()) {order_dependence_fndefs::rhs_fndef}`
+
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/leak_check_lub_to_fnptr.rs:75:21
+   |
+LL |     lub!(rhs_fndef, lhs_fndef);
+   |          ---------  ^^^^^^^^^ one type is more general than the other
+   |          |
+   |          expected because of this
+   |
+   = note: expected fn item `for<'a> fn(&'static (), &'static (), &'a ()) {order_dependence_fndefs::rhs_fndef}`
+              found fn item `for<'a, 'b> fn(&'a (), &'static (), &'b ()) {order_dependence_fndefs::lhs_fndef}`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
