@@ -1163,6 +1163,15 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
     }
 }
 
+pub(crate) fn is_selected(
+    it: &impl AstNode,
+    selection: syntax::TextRange,
+    allow_empty: bool,
+) -> bool {
+    selection.intersect(it.syntax().text_range()).is_some_and(|it| !it.is_empty())
+        || allow_empty && it.syntax().text_range().contains_range(selection)
+}
+
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
     let mut is_const = true;
     preorder_expr(expr, &mut |ev| {
