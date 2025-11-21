@@ -16,7 +16,7 @@ use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagArgMap, DiagCtxt, DiagCtxtHandle, DiagMessage, ErrCode, FatalError, FatalErrorMarker,
-    Level, MultiSpan, Style, Suggestions,
+    Level, MultiSpan, Style, Suggestions, catch_fatal_errors,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_incremental::{
@@ -401,6 +401,29 @@ fn generate_thin_lto_work<B: ExtraBackendMethods>(
 struct CompiledModules {
     modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
+}
+
+enum MaybeLtoModules<B: WriteBackendMethods> {
+    NoLto {
+        modules: Vec<CompiledModule>,
+        allocator_module: Option<CompiledModule>,
+    },
+    FatLto {
+        cgcx: CodegenContext<B>,
+        exported_symbols_for_lto: Arc<Vec<String>>,
+        each_linked_rlib_file_for_lto: Vec<PathBuf>,
+        needs_fat_lto: Vec<FatLtoInput<B>>,
+        lto_import_only_modules:
+            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
+    },
+    ThinLto {
+        cgcx: CodegenContext<B>,
+        exported_symbols_for_lto: Arc<Vec<String>>,
+        each_linked_rlib_file_for_lto: Vec<PathBuf>,
+        needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ThinBuffer)>,
+        lto_import_only_modules:
+            Vec<(SerializedModule<<B as WriteBackendMethods>::ModuleBuffer>, WorkProduct)>,
+    },
 }
 
 fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
@@ -1239,7 +1262,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     allocator_config: Arc<ModuleConfig>,
     mut allocator_module: Option<ModuleCodegen<B::Module>>,
     coordinator_send: Sender<Message<B>>,
-) -> thread::JoinHandle<Result<CompiledModules, ()>> {
+) -> thread::JoinHandle<Result<MaybeLtoModules<B>, ()>> {
     let sess = tcx.sess;
 
     let mut each_linked_rlib_for_lto = Vec::new();
@@ -1740,43 +1763,43 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 needs_fat_lto.push(FatLtoInput::InMemory(allocator_module));
             }
 
-            // This uses the implicit token
-            let module = do_fat_lto(
-                &cgcx,
-                shared_emitter.clone(),
-                &exported_symbols_for_lto,
-                &each_linked_rlib_file_for_lto,
+            return Ok(MaybeLtoModules::FatLto {
+                cgcx,
+                exported_symbols_for_lto,
+                each_linked_rlib_file_for_lto,
                 needs_fat_lto,
                 lto_import_only_modules,
-            );
-            compiled_modules.push(module);
+            });
         } else if !needs_thin_lto.is_empty() || !lto_import_only_modules.is_empty() {
             assert!(compiled_modules.is_empty());
             assert!(needs_fat_lto.is_empty());
 
-            if cgcx.lto != Lto::ThinLocal {
+            if cgcx.lto == Lto::ThinLocal {
+                compiled_modules.extend(do_thin_lto(
+                    &cgcx,
+                    shared_emitter.clone(),
+                    exported_symbols_for_lto,
+                    each_linked_rlib_file_for_lto,
+                    needs_thin_lto,
+                    lto_import_only_modules,
+                ));
+            } else {
                 if let Some(allocator_module) = allocator_module.take() {
                     let (name, thin_buffer) = B::prepare_thin(allocator_module);
                     needs_thin_lto.push((name, thin_buffer));
                 }
-            }
 
-            compiled_modules.extend(do_thin_lto(
-                &cgcx,
-                shared_emitter.clone(),
-                exported_symbols_for_lto,
-                each_linked_rlib_file_for_lto,
-                needs_thin_lto,
-                lto_import_only_modules,
-            ));
+                return Ok(MaybeLtoModules::ThinLto {
+                    cgcx,
+                    exported_symbols_for_lto,
+                    each_linked_rlib_file_for_lto,
+                    needs_thin_lto,
+                    lto_import_only_modules,
+                });
+            }
         }
 
-        // Regardless of what order these modules completed in, report them to
-        // the backend in the same order every time to ensure that we're handing
-        // out deterministic results.
-        compiled_modules.sort_by(|a, b| a.name.cmp(&b.name));
-
-        Ok(CompiledModules {
+        Ok(MaybeLtoModules::NoLto {
             modules: compiled_modules,
             allocator_module: allocator_module.map(|allocator_module| {
                 B::codegen(&cgcx, &shared_emitter, allocator_module, &allocator_config)
@@ -2074,13 +2097,13 @@ impl SharedEmitterMain {
 
 pub struct Coordinator<B: ExtraBackendMethods> {
     sender: Sender<Message<B>>,
-    future: Option<thread::JoinHandle<Result<CompiledModules, ()>>>,
+    future: Option<thread::JoinHandle<Result<MaybeLtoModules<B>, ()>>>,
     // Only used for the Message type.
     phantom: PhantomData<B>,
 }
 
 impl<B: ExtraBackendMethods> Coordinator<B> {
-    fn join(mut self) -> std::thread::Result<Result<CompiledModules, ()>> {
+    fn join(mut self) -> std::thread::Result<Result<MaybeLtoModules<B>, ()>> {
         self.future.take().unwrap().join()
     }
 }
@@ -2111,8 +2134,9 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
     pub fn join(self, sess: &Session) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
-        let compiled_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
-            Ok(Ok(compiled_modules)) => compiled_modules,
+
+        let maybe_lto_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
+            Ok(Ok(maybe_lto_modules)) => maybe_lto_modules,
             Ok(Err(())) => {
                 sess.dcx().abort_if_errors();
                 panic!("expected abort due to worker thread errors")
@@ -2123,6 +2147,62 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         });
 
         sess.dcx().abort_if_errors();
+
+        let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+
+        // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
+        let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
+            MaybeLtoModules::NoLto { modules, allocator_module } => {
+                drop(shared_emitter);
+                CompiledModules { modules, allocator_module }
+            }
+            MaybeLtoModules::FatLto {
+                cgcx,
+                exported_symbols_for_lto,
+                each_linked_rlib_file_for_lto,
+                needs_fat_lto,
+                lto_import_only_modules,
+            } => CompiledModules {
+                modules: vec![do_fat_lto(
+                    &cgcx,
+                    shared_emitter,
+                    &exported_symbols_for_lto,
+                    &each_linked_rlib_file_for_lto,
+                    needs_fat_lto,
+                    lto_import_only_modules,
+                )],
+                allocator_module: None,
+            },
+            MaybeLtoModules::ThinLto {
+                cgcx,
+                exported_symbols_for_lto,
+                each_linked_rlib_file_for_lto,
+                needs_thin_lto,
+                lto_import_only_modules,
+            } => CompiledModules {
+                modules: do_thin_lto(
+                    &cgcx,
+                    shared_emitter,
+                    exported_symbols_for_lto,
+                    each_linked_rlib_file_for_lto,
+                    needs_thin_lto,
+                    lto_import_only_modules,
+                ),
+                allocator_module: None,
+            },
+        });
+
+        shared_emitter_main.check(sess, true);
+
+        sess.dcx().abort_if_errors();
+
+        let mut compiled_modules =
+            compiled_modules.expect("fatal error emitted but not sent to SharedEmitter");
+
+        // Regardless of what order these modules completed in, report them to
+        // the backend in the same order every time to ensure that we're handing
+        // out deterministic results.
+        compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
 
         let work_products =
             copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
