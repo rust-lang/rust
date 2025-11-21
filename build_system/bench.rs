@@ -111,13 +111,18 @@ pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
 
     let bench_run_markdown = dirs.build_dir.join("bench_run.md");
 
-    let bench_run = hyperfine_command(
+    let mut bench_run = hyperfine_command(
         0,
         bench_runs,
         None,
-        &[("", &raytracer_cg_llvm), ("", &raytracer_cg_clif), ("", &raytracer_cg_clif_opt)],
+        &[
+            ("build/raytracer_cg_llvm", &raytracer_cg_llvm),
+            ("build/raytracer_cg_clif", &raytracer_cg_clif),
+            ("build/raytracer_cg_clif_opt", &raytracer_cg_clif_opt),
+        ],
         &bench_run_markdown,
     );
+    bench_run.current_dir(&dirs.build_dir);
     spawn_and_wait(bench_run);
 
     if let Some(gha_step_summary) = gha_step_summary.as_mut() {
