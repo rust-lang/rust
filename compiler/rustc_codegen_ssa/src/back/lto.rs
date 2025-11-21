@@ -2,6 +2,7 @@ use std::ffi::CString;
 use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
+use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::ty::TyCtxt;
@@ -124,13 +125,14 @@ pub(super) fn exported_symbols_for_lto(
     symbols_below_threshold
 }
 
-pub(super) fn check_lto_allowed<B: WriteBackendMethods>(cgcx: &CodegenContext<B>) {
+pub(super) fn check_lto_allowed<B: WriteBackendMethods>(
+    cgcx: &CodegenContext<B>,
+    dcx: DiagCtxtHandle<'_>,
+) {
     if cgcx.lto == Lto::ThinLocal {
         // Crate local LTO is always allowed
         return;
     }
-
-    let dcx = cgcx.create_dcx();
 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
