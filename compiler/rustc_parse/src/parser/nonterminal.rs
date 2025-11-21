@@ -7,7 +7,7 @@ use rustc_span::{Ident, kw};
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use crate::parser::{
-    ConstBlockItemsAllowed, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle,
+    AllowConstBlockItems, FollowedByType, ForceCollect, ParseNtResult, Parser, PathStyle,
 };
 
 impl<'a> Parser<'a> {
@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self
-                .parse_item(ForceCollect::Yes, ConstBlockItemsAllowed::Yes)?
+                .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
             {
                 Some(item) => Ok(ParseNtResult::Item(item)),
                 None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
