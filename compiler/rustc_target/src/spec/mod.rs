@@ -2248,8 +2248,8 @@ pub struct TargetOptions {
     pub need_explicit_cpu: bool,
     /// Default target features to pass to LLVM. These features overwrite
     /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
-    /// Corresponds to `llc -mattr=$features`.
-    /// Note that these are LLVM feature names, not Rust feature names!
+    /// Corresponds to `llc -mattr=$llvm_features` where `$llvm_features` is the result of mapping
+    /// the Rust features in this field to LLVM features.
     ///
     /// Generally it is a bad idea to use negative target features because they often interact very
     /// poorly with how `-Ctarget-cpu` works. Instead, try to use a lower "base CPU" and enable the
