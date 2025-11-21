@@ -4362,7 +4362,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 // There are two different error messages user might receive at
                 // this point:
-                // - E0425 cannot find `{}` in this scope
+                // - E0425 cannot find type `{}` in this scope
                 // - E0433 failed to resolve: use of undeclared type or module `{}`
                 //
                 // The first one is emitted for paths in type-position, and the
