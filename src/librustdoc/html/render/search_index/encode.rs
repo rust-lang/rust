@@ -52,6 +52,9 @@ pub fn read_signed_vlqhex_from_string(string: &[u8]) -> Option<(i32, usize)> {
 }
 
 pub fn write_postings_to_string(postings: &[Vec<u32>], buf: &mut Vec<u8>) {
+    // there's gonna be at least 1 byte pushed for every posting
+    buf.reserve(postings.len());
+
     for list in postings {
         if list.is_empty() {
             buf.push(0);
@@ -63,19 +66,14 @@ pub fn write_postings_to_string(postings: &[Vec<u32>], buf: &mut Vec<u8>) {
         if len_after - len_before > 1 + (4 * list.len()) && list.len() < 0x3a {
             buf.truncate(len_before);
             buf.push(list.len() as u8);
-            for &item in list {
-                buf.push(item as u8);
-                buf.push((item >> 8) as u8);
-                buf.push((item >> 16) as u8);
-                buf.push((item >> 24) as u8);
-            }
+            buf.extend(list.iter().copied().map(u32::to_le_bytes).flatten());
         }
     }
 }
 
 pub fn read_postings_from_string(postings: &mut Vec<Vec<u32>>, mut buf: &[u8]) {
     use stringdex::internals::decode::RoaringBitmap;
-    while let Some(&c) = buf.get(0) {
+    while let Some(&c) = buf.first() {
         if c < 0x3a {
             buf = &buf[1..];
             let buf = buf.split_off(..usize::from(c) * size_of::<u32>()).unwrap();
@@ -83,9 +81,7 @@ pub fn read_postings_from_string(postings: &mut Vec<Vec<u32>>, mut buf: &[u8]) {
             let slot = chunks.iter().copied().map(u32::from_le_bytes).collect();
             postings.push(slot);
         } else {
-            let (bitmap, consumed_bytes_len) =
-                RoaringBitmap::from_bytes(buf).unwrap_or_else(|| (RoaringBitmap::default(), 0));
-            assert_ne!(consumed_bytes_len, 0);
+            let (bitmap, consumed_bytes_len) = RoaringBitmap::from_bytes(buf).unwrap();
             postings.push(bitmap.to_vec());
             buf = &buf[consumed_bytes_len..];
         }

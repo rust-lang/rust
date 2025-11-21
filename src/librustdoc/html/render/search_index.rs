@@ -3,9 +3,9 @@ mod serde;
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
-use std::io;
 use std::path::Path;
 use std::string::FromUtf8Error;
+use std::{io, iter};
 
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
@@ -256,10 +256,14 @@ impl SerializedSearchIndex {
     /// The returned ID can be used to attach more data to the search result.
     fn add_entry(&mut self, name: Symbol, entry_data: EntryData, desc: String) -> usize {
         let fqp = if let Some(module_path_index) = entry_data.module_path {
-            let mut fqp = self.path_data[module_path_index].as_ref().unwrap().module_path.clone();
-            fqp.push(Symbol::intern(&self.names[module_path_index]));
-            fqp.push(name);
-            fqp
+            self.path_data[module_path_index]
+                .as_ref()
+                .unwrap()
+                .module_path
+                .iter()
+                .copied()
+                .chain([Symbol::intern(&self.names[module_path_index]), name])
+                .collect()
         } else {
             vec![name]
         };
@@ -306,13 +310,13 @@ impl SerializedSearchIndex {
 
     pub(crate) fn union(mut self, other: &SerializedSearchIndex) -> SerializedSearchIndex {
         let other_entryid_offset = self.names.len();
-        let mut map_other_pathid_to_self_pathid: Vec<usize> = Vec::new();
+        let mut map_other_pathid_to_self_pathid = Vec::with_capacity(other.path_data.len());
         let mut skips = FxHashSet::default();
         for (other_pathid, other_path_data) in other.path_data.iter().enumerate() {
             if let Some(other_path_data) = other_path_data {
-                let mut fqp = other_path_data.module_path.clone();
                 let name = Symbol::intern(&other.names[other_pathid]);
-                fqp.push(name);
+                let fqp =
+                    other_path_data.module_path.iter().copied().chain(iter::once(name)).collect();
                 let self_pathid = other_entryid_offset + other_pathid;
                 let self_pathid = match self.crate_paths_index.entry((other_path_data.ty, fqp)) {
                     Entry::Vacant(slot) => {
@@ -555,19 +559,19 @@ impl SerializedSearchIndex {
                 );
             }
         }
-        for (i, other_generic_inverted_index) in other.generic_inverted_index.iter().enumerate() {
-            for (size, other_list) in other_generic_inverted_index.iter().enumerate() {
-                let self_generic_inverted_index = match self.generic_inverted_index.get_mut(i) {
-                    Some(self_generic_inverted_index) => self_generic_inverted_index,
-                    None => {
-                        self.generic_inverted_index.push(Vec::new());
-                        self.generic_inverted_index.last_mut().unwrap()
-                    }
-                };
-                while self_generic_inverted_index.len() <= size {
-                    self_generic_inverted_index.push(Vec::new());
-                }
-                self_generic_inverted_index[size].extend(
+        if other.generic_inverted_index.len() > self.generic_inverted_index.len() {
+            self.generic_inverted_index.resize(other.generic_inverted_index.len(), Vec::new());
+        }
+        for (other_generic_inverted_index, self_generic_inverted_index) in
+            iter::zip(&other.generic_inverted_index, &mut self.generic_inverted_index)
+        {
+            if other_generic_inverted_index.len() > self_generic_inverted_index.len() {
+                self_generic_inverted_index.resize(other_generic_inverted_index.len(), Vec::new());
+            }
+            for (other_list, self_list) in
+                iter::zip(other_generic_inverted_index, self_generic_inverted_index)
+            {
+                self_list.extend(
                     other_list
                         .iter()
                         .copied()
@@ -1237,6 +1241,26 @@ impl<'de> Deserialize<'de> for SerializedOptional32 {
     }
 }
 
+trait VecExt<T> {
+    fn get_mut_ensured(&mut self, index: usize) -> &mut T
+    where
+        T: Default + Clone;
+}
+
+impl<T> VecExt<T> for Vec<T> {
+    fn get_mut_ensured(&mut self, index: usize) -> &mut T
+    where
+        T: Default,
+    {
+        if self.len() <= index {
+            &mut self[index]
+        } else {
+            self.resize_with(index, T::default);
+            self.push_mut(T::default())
+        }
+    }
+}
+
 /// Builds the search index from the collected metadata
 pub(crate) fn build_index(
     krate: &clean::Crate,
@@ -1819,20 +1843,23 @@ pub(crate) fn build_index(
                     tcx,
                 );
             }
-            let mut used_in_constraints = Vec::new();
-            for constraint in &mut search_type.where_clause {
-                let mut used_in_constraint = BTreeSet::new();
-                for trait_ in &mut constraint[..] {
-                    convert_render_type(
-                        trait_,
-                        cache,
-                        &mut serialized_index,
-                        &mut used_in_constraint,
-                        tcx,
-                    );
-                }
-                used_in_constraints.push(used_in_constraint);
-            }
+            let used_in_constraints = search_type
+                .where_clause
+                .iter_mut()
+                .map(|constraint| {
+                    let mut used_in_constraint = BTreeSet::new();
+                    for trait_ in constraint {
+                        convert_render_type(
+                            trait_,
+                            cache,
+                            &mut serialized_index,
+                            &mut used_in_constraint,
+                            tcx,
+                        );
+                    }
+                    used_in_constraint
+                })
+                .collect::<Vec<_>>();
             loop {
                 let mut inserted_any = false;
                 for (i, used_in_constraint) in used_in_constraints.iter().enumerate() {
@@ -1873,16 +1900,11 @@ pub(crate) fn build_index(
                         .inverted_function_inputs_index
                 } else {
                     let generic_id = usize::try_from(-index).unwrap() - 1;
-                    for _ in serialized_index.generic_inverted_index.len()..=generic_id {
-                        serialized_index.generic_inverted_index.push(Vec::new());
-                    }
-                    &mut serialized_index.generic_inverted_index[generic_id]
+                    serialized_index.generic_inverted_index.get_mut_ensured(generic_id)
                 };
-                while postings.len() <= search_type_size {
-                    postings.push(Vec::new());
-                }
-                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
-                    postings[search_type_size].push(new_entry_id as u32);
+                let posting = postings.get_mut_ensured(search_type_size);
+                if posting.last() != Some(&(new_entry_id as u32)) {
+                    posting.push(new_entry_id as u32);
                 }
             }
             for index in used_in_function_output {
@@ -1899,11 +1921,9 @@ pub(crate) fn build_index(
                     }
                     &mut serialized_index.generic_inverted_index[generic_id]
                 };
-                while postings.len() <= search_type_size {
-                    postings.push(Vec::new());
-                }
-                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
-                    postings[search_type_size].push(new_entry_id as u32);
+                let posting = postings.get_mut_ensured(search_type_size);
+                if posting.last() != Some(&(new_entry_id as u32)) {
+                    posting.push(new_entry_id as u32);
                 }
             }
         }
