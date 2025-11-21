@@ -3,7 +3,10 @@ use std::ops::FnMut;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
-use std::sync::{Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard, TryLockError};
+use std::sync::{
+    Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, MutexGuard, RwLock, RwLockReadGuard,
+    RwLockWriteGuard, TryLockError,
+};
 use std::{hint, mem, thread};
 
 use rand::Rng;
@@ -880,7 +883,6 @@ fn test_rwlock_with_mut() {
     assert_eq!(*rwlock.read(), 5);
     assert_eq!(result, 10);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Non-poison Tests

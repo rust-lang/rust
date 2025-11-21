@@ -450,10 +450,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> MutexGuard<'mutex, T> {
-        MutexGuard {
-            lock,
-            unlocked: false,
-        }
+        MutexGuard { lock, unlocked: false, }
     }
 }
 
@@ -534,13 +531,13 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     #[unstable(feature = "unlockable_guards", issue = "148568")]
     pub fn unlocked<F>(self: &mut Self, func: F) -> ()
     where
-        F: FnOnce() -> ()
+        F: FnOnce() -> (),
     {
         self.unlocked = true;
         unsafe { self.lock.inner.unlock() };
 
         func();
-        
+
         self.lock.inner.lock();
         self.unlocked = false;
     }

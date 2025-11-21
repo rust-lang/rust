@@ -691,10 +691,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// `lock.inner.write()`, `lock.inner.try_write()`, or `lock.inner.try_upgrade` before
     /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> RwLockWriteGuard<'rwlock, T> {
-        RwLockWriteGuard {
-            lock,
-            unlocked: false,
-        }
+        RwLockWriteGuard { lock, unlocked: false }
     }
 
     /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
@@ -1183,7 +1180,7 @@ impl<'rw_lock, T: ?Sized> RwLockReadGuard<'rw_lock, T> {
     #[unstable(feature = "unlockable_guards", issue = "148568")]
     pub fn unlocked<F>(self: &mut Self, func: F) -> ()
     where
-        F: FnOnce() -> ()
+        F: FnOnce() -> (),
     {
         self.unlocked = true;
         unsafe { self.inner_lock.read_unlock() };
@@ -1225,7 +1222,7 @@ impl<'rw_lock, T: ?Sized> RwLockWriteGuard<'rw_lock, T> {
     #[unstable(feature = "unlockable_guards", issue = "148568")]
     pub fn unlocked<F>(self: &mut Self, func: F) -> ()
     where
-        F: FnOnce() -> ()
+        F: FnOnce() -> (),
     {
         self.unlocked = true;
         unsafe { self.lock.inner.write_unlock() };
