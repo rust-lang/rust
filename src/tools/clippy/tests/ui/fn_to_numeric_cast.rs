@@ -1,6 +1,6 @@
-//@revisions: 32bit 64bit
-//@[32bit]ignore-bitwidth: 64
-//@[64bit]ignore-bitwidth: 32
+//@revisions: r32bit r64bit
+//@[r32bit]ignore-bitwidth: 64
+//@[r64bit]ignore-bitwidth: 32
 //@no-rustfix
 #![warn(clippy::fn_to_numeric_cast, clippy::fn_to_numeric_cast_with_truncation)]
 #![allow(function_casts_as_integer)]
@@ -15,8 +15,8 @@ fn test_function_to_numeric_cast() {
     let _ = foo as i16;
     //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as i32;
-    //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ fn_to_numeric_cast
+    //~[r64bit]^ fn_to_numeric_cast_with_truncation
+    //~[r32bit]^^ fn_to_numeric_cast
     let _ = foo as i64;
     //~^ fn_to_numeric_cast
     let _ = foo as i128;
@@ -29,8 +29,8 @@ fn test_function_to_numeric_cast() {
     let _ = foo as u16;
     //~^ fn_to_numeric_cast_with_truncation
     let _ = foo as u32;
-    //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ fn_to_numeric_cast
+    //~[r64bit]^ fn_to_numeric_cast_with_truncation
+    //~[r32bit]^^ fn_to_numeric_cast
     let _ = foo as u64;
     //~^ fn_to_numeric_cast
     let _ = foo as u128;
@@ -52,8 +52,8 @@ fn test_function_var_to_numeric_cast() {
     let _ = abc as i16;
     //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as i32;
-    //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ fn_to_numeric_cast
+    //~[r64bit]^ fn_to_numeric_cast_with_truncation
+    //~[r32bit]^^ fn_to_numeric_cast
     let _ = abc as i64;
     //~^ fn_to_numeric_cast
     let _ = abc as i128;
@@ -66,8 +66,8 @@ fn test_function_var_to_numeric_cast() {
     let _ = abc as u16;
     //~^ fn_to_numeric_cast_with_truncation
     let _ = abc as u32;
-    //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ fn_to_numeric_cast
+    //~[r64bit]^ fn_to_numeric_cast_with_truncation
+    //~[r32bit]^^ fn_to_numeric_cast
     let _ = abc as u64;
     //~^ fn_to_numeric_cast
     let _ = abc as u128;
@@ -79,8 +79,8 @@ fn test_function_var_to_numeric_cast() {
 
 fn fn_with_fn_args(f: fn(i32) -> i32) -> i32 {
     f as i32
-    //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ fn_to_numeric_cast
+    //~[r64bit]^ fn_to_numeric_cast_with_truncation
+    //~[r32bit]^^ fn_to_numeric_cast
 }
 
 fn main() {}
