@@ -284,17 +284,6 @@ impl<'db> InferenceTable<'db> {
         self.at(&ObligationCause::new()).deeply_normalize(ty.clone()).unwrap_or(ty)
     }
 
-    /// Works almost same as [`Self::normalize_associated_types_in`], but this also resolves shallow
-    /// the inference variables
-    pub(crate) fn eagerly_normalize_and_resolve_shallow_in<T>(&mut self, ty: T) -> T
-    where
-        T: TypeFoldable<DbInterner<'db>>,
-    {
-        let ty = self.resolve_vars_with_obligations(ty);
-        let ty = self.normalize_associated_types_in(ty);
-        self.resolve_vars_with_obligations(ty)
-    }
-
     pub(crate) fn normalize_alias_ty(&mut self, alias: Ty<'db>) -> Ty<'db> {
         self.infer_ctxt
             .at(&ObligationCause::new(), self.trait_env.env)
@@ -651,7 +640,7 @@ impl<'db> InferenceTable<'db> {
         }
 
         let mut ty = ty;
-        ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+        ty = self.try_structurally_resolve_type(ty);
         if let Some(sized) = short_circuit_trivial_tys(ty) {
             return sized;
         }
@@ -673,7 +662,7 @@ impl<'db> InferenceTable<'db> {
                     // Structs can have DST as its last field and such cases are not handled
                     // as unsized by the chalk, so we do this manually.
                     ty = last_field_ty;
-                    ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+                    ty = self.try_structurally_resolve_type(ty);
                     if let Some(sized) = short_circuit_trivial_tys(ty) {
                         return sized;
                     }
