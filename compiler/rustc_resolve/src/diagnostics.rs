@@ -1995,6 +1995,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
+    pub(crate) fn remove_same_import(
+        b1: NameBinding<'ra>,
+        b2: NameBinding<'ra>,
+    ) -> (NameBinding<'ra>, NameBinding<'ra>) {
+        if let NameBindingKind::Import { import: import1, binding: b1_next } = b1.kind
+            && let NameBindingKind::Import { import: import2, binding: b2_next } = b2.kind
+            && import1 == import2
+            && b1.ambiguity == b2.ambiguity
+        {
+            assert!(b1.ambiguity.is_none());
+            assert_eq!(b1.expansion, b2.expansion);
+            assert_eq!(b1.span, b2.span);
+            assert_eq!(b1.vis, b2.vis);
+            Self::remove_same_import(b1_next, b2_next)
+        } else {
+            (b1, b2)
+        }
+    }
+
     fn ambiguity_diagnostic(&self, ambiguity_error: &AmbiguityError<'ra>) -> errors::Ambiguity {
         let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
         let extern_prelude_ambiguity = || {
@@ -2003,6 +2022,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && entry.flag_binding.as_ref().and_then(|pb| pb.get().0.binding()) == Some(b2)
             })
         };
+        let (b1, b2) = Self::remove_same_import(b1, b2);
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
             // We have to print the span-less alternative first, otherwise formatting looks bad.
             (b2, b1, misc2, misc1, true)
