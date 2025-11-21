@@ -4594,7 +4594,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,ignore (needs extern crate)
     /// #![deny(ambiguous_glob_imports)]
     /// pub fn foo() -> u32 {
     ///     use sub::*;
@@ -4609,8 +4609,6 @@ declare_lint! {
     ///     pub use mod2::*;
     /// }
     /// ```
-    ///
-    /// {{produces}}
     ///
     /// ### Explanation
     ///

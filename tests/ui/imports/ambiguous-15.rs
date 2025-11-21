@@ -21,6 +21,5 @@ mod t3 {
 use self::t3::*;
 fn a<E: Error>(_: E) {}
 //~^ ERROR `Error` is ambiguous
-//~| WARNING this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 fn main() {}
