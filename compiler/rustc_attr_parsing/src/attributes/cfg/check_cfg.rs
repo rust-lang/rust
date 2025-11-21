@@ -6,7 +6,7 @@ use rustc_session::config::ExpectedValues;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{ExpnKind, Ident, Span, Symbol, sym};
 
-use crate::lints;
+use crate::session_diagnostics as lints;
 
 const MAX_CHECK_CFG_NAMES_OR_VALUES: usize = 35;
 
@@ -109,7 +109,7 @@ fn cargo_macro_help(
     }
 }
 
-pub(super) fn unexpected_cfg_name(
+pub fn unexpected_cfg_name(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
@@ -266,7 +266,7 @@ pub(super) fn unexpected_cfg_name(
     lints::UnexpectedCfgName { code_sugg, invocation_help, name }
 }
 
-pub(super) fn unexpected_cfg_value(
+pub fn unexpected_cfg_value(
     sess: &Session,
     tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
@@ -353,7 +353,7 @@ pub(super) fn unexpected_cfg_value(
         // basic heuristic, we use the "cheat" unstable feature enable method and the
         // non-ui-testing enabled option.
         || (matches!(sess.psess.unstable_features, rustc_feature::UnstableFeatures::Cheat)
-            && !sess.opts.unstable_opts.ui_testing);
+        && !sess.opts.unstable_opts.ui_testing);
 
     let inst = |escape_quotes| {
         to_check_cfg_arg(Ident::new(name, name_span), value.map(|(v, _s)| v), escape_quotes)
