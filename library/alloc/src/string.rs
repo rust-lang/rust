@@ -938,6 +938,97 @@ impl String {
 }
 
 impl<A: Allocator> generic::String<A> {
+    /// Creates a new empty `String`.
+    ///
+    /// Given that the `String` is empty, this will not allocate any initial
+    /// buffer. While that means that this initial operation is very
+    /// inexpensive, it may cause excessive allocation later when you add
+    /// data. If you have an idea of how much data the `String` will hold,
+    /// consider the [`with_capacity_in`] method to prevent excessive
+    /// re-allocation.
+    ///
+    /// [`with_capacity_in`]: String::with_capacity_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::string::generic::String;
+    ///
+    /// # #[allow(unused_mut)]
+    /// let mut s = String::new_in(System);
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub const fn new_in(alloc: A) -> Self {
+        generic::String { vec: Vec::new_in(alloc) }
+    }
+
+    /// Creates a new empty `String` with at least the specified capacity in the specified allocator.
+    ///
+    /// `String`s have an internal buffer to hold their data. The capacity is
+    /// the length of that buffer, and can be queried with the [`capacity`]
+    /// method. This method creates an empty `String`, but one with an initial
+    /// buffer that can hold at least `capacity` bytes. This is useful when you
+    /// may be appending a bunch of data to the `String`, reducing the number of
+    /// reallocations it needs to do.
+    ///
+    /// [`capacity`]: String::capacity
+    ///
+    /// If the given capacity is `0`, no allocation will occur, and this method
+    /// is identical to the [`new_in`] method.
+    ///
+    /// [`new_in`]: String::new_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::string::generic::String;
+    ///
+    /// let mut s = String::with_capacity_in(10, System);
+    ///
+    /// // The String contains no chars, even though it has capacity for more
+    /// assert_eq!(s.len(), 0);
+    ///
+    /// // These are all done without reallocating...
+    /// let cap = s.capacity();
+    /// for _ in 0..10 {
+    ///     s.push('a');
+    /// }
+    ///
+    /// assert_eq!(s.capacity(), cap);
+    ///
+    /// // ...but this may make the string reallocate
+    /// s.push('a');
+    /// ```
+    #[inline]
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
+        generic::String { vec: Vec::with_capacity_in(capacity, alloc) }
+    }
+
+    /// Creates a new empty `String` with at least the specified capacity, in the specified allocator.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Err`] if the capacity exceeds `isize::MAX` bytes,
+    /// or if the memory allocator reports failure.
+    ///
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "try_with_capacity", issue = "91913")]
+    pub fn try_with_capacity_in(capacity: usize, alloc: A) -> Result<Self, TryReserveError> {
+        Ok(generic::String { vec: Vec::try_with_capacity_in(capacity, alloc)? })
+    }
+
     /// Converts a vector of bytes to a `String`.
     ///
     /// A string ([`String`]) is made of bytes ([`u8`]), and a vector of bytes
@@ -2200,6 +2291,94 @@ impl<A: Allocator> generic::String<A> {
     pub fn into_boxed_str(self) -> Box<str, A> {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
+    }
+
+    /// Decomposes a `String` into its raw components: `(pointer, length, capacity, allocator)`.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the string (in bytes), the allocated capacity of the data
+    /// (in bytes), and the allocator storing the bytes. These are the same arguments in the same order as
+    /// the arguments to [`from_raw_parts_in`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `String`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `String` with the [`from_raw_parts_in`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts_in`]: String::from_raw_parts_in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::string::generic::String;
+    ///
+    /// let mut s = String::new_in(System);
+    /// s.push_str("hello");
+    ///
+    /// let (ptr, len, cap, alloc) = s.into_raw_parts_with_alloc();
+    ///
+    /// let rebuilt = unsafe { String::from_raw_parts_in(ptr, len, cap, alloc) };
+    /// assert_eq!(rebuilt, "hello");
+    /// ```
+    #[inline]
+    #[must_use = "losing the pointer will leak memory"]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn into_raw_parts_with_alloc(self) -> (*mut u8, usize, usize, A) {
+        self.vec.into_raw_parts_with_alloc()
+    }
+
+    /// Creates a new `String` from a pointer, a length, a capacity, and an allocator.
+    ///
+    /// # Safety
+    ///
+    /// This is highly unsafe, due to the number of invariants that aren't
+    /// checked:
+    ///
+    /// * all safety requirements for [`Vec::<u8>::from_raw_parts_in`].
+    /// * all safety requirements for [`String::from_utf8_unchecked`].
+    ///
+    /// Violating these may cause problems like corrupting the allocator's
+    /// internal data structures. For example, it is normally **not** safe to
+    /// build a `String` from a pointer to a C `char` array containing UTF-8
+    /// _unless_ you are certain that array is [*currently allocated*] via the given allocator `alloc`.
+    ///
+    /// The ownership of `buf` is effectively transferred to the
+    /// `String` which may then deallocate, reallocate or change the
+    /// contents of memory pointed to by the pointer at will. Ensure
+    /// that nothing else uses the pointer after calling this
+    /// function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    /// use std::string::generic::String;
+    ///
+    /// let mut s = String::new_in(System);
+    /// s.push_str("hello");
+    ///
+    /// // Deconstruct the String into parts.
+    /// let (ptr, len, capacity, alloc) = s.into_raw_parts_with_alloc();
+    ///
+    /// let rebuilt = unsafe { String::from_raw_parts_in(ptr, len, capacity, alloc) };
+    /// assert_eq!(rebuilt, "hello");
+    /// ```
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub unsafe fn from_raw_parts_in(
+        ptr: *mut u8,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
+        let vec = unsafe { Vec::from_raw_parts_in(ptr, length, capacity, alloc) };
+        generic::String { vec }
     }
 
     /// Consumes and leaks the `String`, returning a mutable reference to the contents,
