@@ -276,7 +276,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
-            ast::ItemKind::Const(_) => Target::Const,
+            ast::ItemKind::Const(_) | ast::ItemKind::ConstBlock(_) => Target::Const,
             ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
             ast::ItemKind::Mod(..) => Target::Mod,
             ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
