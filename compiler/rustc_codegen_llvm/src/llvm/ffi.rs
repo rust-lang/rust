@@ -1641,6 +1641,9 @@ unsafe extern "C" {
         Name: *const c_char,
     ) -> &'a Value;
 
+    /// Processes the module and writes it in an offload compatible way into a "host.out" file.
+    pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
+
     /// Writes a module to the specified path. Returns 0 on success.
     pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
