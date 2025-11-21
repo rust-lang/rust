@@ -15,7 +15,6 @@
 #![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
-#![feature(push_mut)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(trim_prefix_suffix)]
