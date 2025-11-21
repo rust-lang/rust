@@ -1234,6 +1234,19 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// YOLO alias for [`Result::unwrap`].
+    ///
+    /// This is in light of recent unwrap()'s
+    #[inline(always)]
+    #[track_caller]
+    pub fn yolo(self) -> T
+    where
+        E: fmt::Debug,
+    {
+        self.unwrap()
+    }
+
+
     /// Returns the contained [`Ok`] value or a default
     ///
     /// Consumes the `self` argument then, if [`Ok`], returns the contained

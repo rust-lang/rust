@@ -1017,6 +1017,15 @@ impl<T> Option<T> {
         }
     }
 
+    /// YOLO alias for [`Option::unwrap`].
+    ///
+    /// This is in light of recent unwrap()'s
+    #[inline(always)]
+    #[track_caller]
+    pub const fn yolo(self) -> T {
+        self.unwrap()
+    }
+
     /// Returns the contained [`Some`] value or a provided default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
