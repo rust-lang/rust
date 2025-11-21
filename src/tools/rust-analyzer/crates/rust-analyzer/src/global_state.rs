@@ -781,6 +781,14 @@ impl GlobalStateSnapshot {
 
     pub(crate) fn target_spec_for_crate(&self, crate_id: Crate) -> Option<TargetSpec> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
+        self.target_spec_for_file(file_id, crate_id)
+    }
+
+    pub(crate) fn target_spec_for_file(
+        &self,
+        file_id: FileId,
+        crate_id: Crate,
+    ) -> Option<TargetSpec> {
         let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;
 
