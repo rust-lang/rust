@@ -22,8 +22,8 @@ use tracing::debug;
 use super::diagnostics::{ConsumeClosingDelim, dummy_arg};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, ConstBlockItemsAllowed, ExpKeywordPair, ExpTokenPair, FollowedByType,
-    ForceCollect, Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
+    AllowConstBlockItems, AttrWrapper, ExpKeywordPair, ExpTokenPair, FollowedByType, ForceCollect,
+    Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
 };
 use crate::errors::{self, FnPointerCannotBeAsync, FnPointerCannotBeConst, MacroExpandsToAdtField};
 use crate::{exp, fluent_generated as fluent};
@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
         // `parse_item` consumes the appropriate semicolons so any leftover is an error.
         loop {
             while self.maybe_consume_incorrect_semicolon(items.last().map(|x| &**x)) {} // Eat all bad semicolons
-            let Some(item) = self.parse_item(ForceCollect::No, ConstBlockItemsAllowed::Yes)? else {
+            let Some(item) = self.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)? else {
                 break;
             };
             items.push(item);
@@ -121,11 +121,11 @@ impl<'a> Parser<'a> {
     pub fn parse_item(
         &mut self,
         force_collect: ForceCollect,
-        const_block_items_allowed: ConstBlockItemsAllowed,
+        allow_const_block_items: AllowConstBlockItems,
     ) -> PResult<'a, Option<Box<Item>>> {
         let fn_parse_mode =
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
-        self.parse_item_(fn_parse_mode, force_collect, const_block_items_allowed)
+        self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
             .map(|i| i.map(Box::new))
     }
 
@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
         &mut self,
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
-        const_block_items_allowed: ConstBlockItemsAllowed,
+        const_block_items_allowed: AllowConstBlockItems,
     ) -> PResult<'a, Option<Item>> {
         self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
@@ -155,10 +155,10 @@ impl<'a> Parser<'a> {
         attrs_allowed: bool,
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
-        const_block_items_allowed: ConstBlockItemsAllowed,
+        allow_const_block_items: AllowConstBlockItems,
     ) -> PResult<'a, Option<Item>> {
         if let Some(item) = self.eat_metavar_seq(MetaVarKind::Item, |this| {
-            this.parse_item(ForceCollect::Yes, const_block_items_allowed)
+            this.parse_item(ForceCollect::Yes, allow_const_block_items)
         }) {
             let mut item = item.expect("an actual item");
             attrs.prepend_to_nt_inner(&mut item.attrs);
@@ -172,7 +172,7 @@ impl<'a> Parser<'a> {
             let kind = this.parse_item_kind(
                 &mut attrs,
                 mac_allowed,
-                const_block_items_allowed,
+                allow_const_block_items,
                 lo,
                 &vis,
                 &mut def,
@@ -219,7 +219,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &mut AttrVec,
         macros_allowed: bool,
-        const_block_items_allowed: ConstBlockItemsAllowed,
+        allow_const_block_items: AllowConstBlockItems,
         lo: Span,
         vis: &Visibility,
         def: &mut Defaultness,
@@ -267,12 +267,16 @@ impl<'a> Parser<'a> {
         } else if self.check_impl_frontmatter() {
             // IMPL ITEM
             self.parse_item_impl(attrs, def_())?
-        } else if let ConstBlockItemsAllowed::Yes = const_block_items_allowed
+        } else if let AllowConstBlockItems::Yes | AllowConstBlockItems::DoesNotMatter =
+            allow_const_block_items
             && self.token.is_keyword(kw::Const)
             && self.look_ahead(1, |t| *t == token::OpenBrace || t.is_metavar_block())
         {
             // CONST BLOCK ITEM
             self.psess.gated_spans.gate(sym::const_block_items, self.token.span);
+            if let AllowConstBlockItems::DoesNotMatter = allow_const_block_items {
+                debug!("Parsing a const block item that does not matter: {:?}", self.token.span);
+            };
             ItemKind::ConstBlock(ConstBlockItem { body: self.parse_expr()? })
         } else if let Const::Yes(const_span) = self.parse_constness(case) {
             // CONST ITEM
@@ -333,7 +337,7 @@ impl<'a> Parser<'a> {
             return self.parse_item_kind(
                 attrs,
                 macros_allowed,
-                const_block_items_allowed,
+                allow_const_block_items,
                 lo,
                 vis,
                 def,
@@ -1014,8 +1018,13 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
-        Ok(self.parse_item_(fn_parse_mode, force_collect, ConstBlockItemsAllowed::No)?.map(
-            |Item { attrs, id, span, vis, kind, tokens }| {
+        Ok(self
+            .parse_item_(
+                fn_parse_mode,
+                force_collect,
+                AllowConstBlockItems::DoesNotMatter, // due to `AssocItemKind::try_from` below
+            )?
+            .map(|Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
@@ -1042,8 +1051,7 @@ impl<'a> Parser<'a> {
                     },
                 };
                 Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
-            },
-        ))
+            }))
     }
 
     /// Parses a `type` alias with the following grammar:
@@ -1266,8 +1274,13 @@ impl<'a> Parser<'a> {
             context: FnContext::Free,
             req_body: false,
         };
-        Ok(self.parse_item_(fn_parse_mode, force_collect, ConstBlockItemsAllowed::No)?.map(
-            |Item { attrs, id, span, vis, kind, tokens }| {
+        Ok(self
+            .parse_item_(
+                fn_parse_mode,
+                force_collect,
+                AllowConstBlockItems::DoesNotMatter, // due to `ForeignItemKind::try_from` below
+            )?
+            .map(|Item { attrs, id, span, vis, kind, tokens }| {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
@@ -1294,8 +1307,7 @@ impl<'a> Parser<'a> {
                     },
                 };
                 Some(Box::new(Item { attrs, id, span, vis, kind, tokens }))
-            },
-        ))
+            }))
     }
 
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &'static str) -> Option<T> {
@@ -2331,7 +2343,10 @@ impl<'a> Parser<'a> {
         {
             let kw_token = self.token;
             let kw_str = pprust::token_to_string(&kw_token);
-            let item = self.parse_item(ForceCollect::No, ConstBlockItemsAllowed::No)?;
+            let item = self.parse_item(
+                ForceCollect::No,
+                AllowConstBlockItems::DoesNotMatter, // self.token != kw::Const
+            )?;
             let mut item = item.unwrap().span;
             if self.token == token::Comma {
                 item = item.to(self.token.span);
