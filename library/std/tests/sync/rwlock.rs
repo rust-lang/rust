@@ -4,8 +4,8 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
 use std::sync::{
-    Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, Mutex, MutexGuard, RwLock, RwLockReadGuard,
-    RwLockWriteGuard, TryLockError,
+    Arc, MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+    TryLockError
 };
 use std::{hint, mem, thread};
 
@@ -890,12 +890,12 @@ fn test_rwlock_with_mut() {
 
 #[test]
 fn test_read_guard_unlocked() {
-    let rw_lock = RwLock::new(1usize);
+    let rw_lock = std::sync::nonpoison::RwLock::new(1usize);
     let mut read_guard = rw_lock.read();
 
     assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
 
-    RwLockWriteGuard::unlocked(&mut read_guard, || {
+    RwLockReadGuard::unlocked(&mut read_guard, || {
         assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Ok(_)));
     });
 
@@ -904,7 +904,7 @@ fn test_read_guard_unlocked() {
 
 #[test]
 fn test_write_guard_unlocked() {
-    let rw_lock = RwLock::new(1usize);
+    let rw_lock = std::sync::nonpoison::RwLock::new(1usize);
     let mut write_guard = rw_lock.write();
 
     assert!(matches!(rw_lock.try_write(), std::sync::nonpoison::TryLockResult::Err(_)));
