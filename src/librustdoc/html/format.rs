@@ -431,7 +431,6 @@ fn generate_item_def_id_path(
     original_def_id: DefId,
     cx: &Context<'_>,
     root_path: Option<&str>,
-    original_def_kind: DefKind,
 ) -> Result<HrefInfo, HrefError> {
     use rustc_middle::traits::ObligationCause;
     use rustc_trait_selection::infer::TyCtxtInferExt;
@@ -457,15 +456,14 @@ fn generate_item_def_id_path(
     let relative = clean::inline::item_relative_path(tcx, def_id);
     let fqp: Vec<Symbol> = once(crate_name).chain(relative).collect();
 
-    let def_kind = tcx.def_kind(def_id);
-    let shortty = def_kind.into();
+    let shortty = ItemType::from_def_id(def_id, tcx);
     let module_fqp = to_module_fqp(shortty, &fqp);
     let mut is_remote = false;
 
     let url_parts = url_parts(cx.cache(), def_id, module_fqp, &cx.current, &mut is_remote)?;
     let mut url_parts = make_href(root_path, shortty, url_parts, &fqp, is_remote);
     if def_id != original_def_id {
-        let kind = ItemType::from_def_kind(original_def_kind, Some(def_kind));
+        let kind = ItemType::from_def_id(original_def_id, tcx);
         url_parts = format!("{url_parts}#{kind}.{}", tcx.item_name(original_def_id))
     };
     Ok(HrefInfo { url: url_parts, kind: shortty, rust_path: fqp })
@@ -605,7 +603,7 @@ pub(crate) fn href_with_root_path(
             } else if did.is_local() {
                 return Err(HrefError::Private);
             } else {
-                return generate_item_def_id_path(did, original_did, cx, root_path, def_kind);
+                return generate_item_def_id_path(did, original_did, cx, root_path);
             }
         }
     };
@@ -835,26 +833,36 @@ fn print_higher_ranked_params_with_space(
     })
 }
 
+pub(crate) fn fragment(did: DefId, tcx: TyCtxt<'_>) -> impl Display {
+    fmt::from_fn(move |f| {
+        let def_kind = tcx.def_kind(did);
+        match def_kind {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+                let item_type = ItemType::from_def_id(did, tcx);
+                write!(f, "#{}.{}", item_type.as_str(), tcx.item_name(did))
+            }
+            DefKind::Field => {
+                let parent_def_id = tcx.parent(did);
+                f.write_char('#')?;
+                if tcx.def_kind(parent_def_id) == DefKind::Variant {
+                    write!(f, "variant.{}.field", tcx.item_name(parent_def_id).as_str())?;
+                } else {
+                    f.write_str("structfield")?;
+                };
+                write!(f, ".{}", tcx.item_name(did))
+            }
+            _ => Ok(()),
+        }
+    })
+}
+
 pub(crate) fn print_anchor(did: DefId, text: Symbol, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
         if let Ok(HrefInfo { url, kind, rust_path }) = href(did, cx) {
-            let tcx = cx.tcx();
-            let def_kind = tcx.def_kind(did);
-            let anchor = if matches!(
-                def_kind,
-                DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant
-            ) {
-                let parent_def_id = tcx.parent(did);
-                let item_type =
-                    ItemType::from_def_kind(def_kind, Some(tcx.def_kind(parent_def_id)));
-                format!("#{}.{}", item_type.as_str(), tcx.item_name(did))
-            } else {
-                String::new()
-            };
-
             write!(
                 f,
                 r#"<a class="{kind}" href="{url}{anchor}" title="{kind} {path}">{text}</a>"#,
+                anchor = fragment(did, cx.tcx()),
                 path = join_path_syms(rust_path),
                 text = EscapeBodyText(text.as_str()),
             )
