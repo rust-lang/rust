@@ -2339,7 +2339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 applicability = Applicability::HasPlaceholders;
                 "(...)".to_owned()
             };
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 sugg_span,
                 "use associated function syntax instead",
                 format!("{ty_str}::{item_name}{args}"),
