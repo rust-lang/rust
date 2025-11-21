@@ -1675,7 +1675,8 @@ pub unsafe fn _mm256_storeu_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d {
-    maskloadpd256(mem_addr as *const i8, mask.as_i64x4())
+    let mask = simd_shr(mask.as_i64x4(), i64x4::splat(63));
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm256_setzero_pd())
 }
 
 /// Stores packed double-precision (64-bit) floating-point elements from `a`
@@ -1687,7 +1688,8 @@ pub unsafe fn _mm256_maskload_pd(mem_addr: *const f64, mask: __m256i) -> __m256d
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d) {
-    maskstorepd256(mem_addr as *mut i8, mask.as_i64x4(), a);
+    let mask = simd_shr(mask.as_i64x4(), i64x4::splat(63));
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
 
 /// Loads packed double-precision (64-bit) floating-point elements from memory
@@ -1700,7 +1702,8 @@ pub unsafe fn _mm256_maskstore_pd(mem_addr: *mut f64, mask: __m256i, a: __m256d)
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
-    maskloadpd(mem_addr as *const i8, mask.as_i64x2())
+    let mask = simd_shr(mask.as_i64x2(), i64x2::splat(63));
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm_setzero_pd())
 }
 
 /// Stores packed double-precision (64-bit) floating-point elements from `a`
@@ -1712,7 +1715,8 @@ pub unsafe fn _mm_maskload_pd(mem_addr: *const f64, mask: __m128i) -> __m128d {
 #[cfg_attr(test, assert_instr(vmaskmovpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
-    maskstorepd(mem_addr as *mut i8, mask.as_i64x2(), a);
+    let mask = simd_shr(mask.as_i64x2(), i64x2::splat(63));
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
 
 /// Loads packed single-precision (32-bit) floating-point elements from memory
@@ -1725,7 +1729,8 @@ pub unsafe fn _mm_maskstore_pd(mem_addr: *mut f64, mask: __m128i, a: __m128d) {
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 {
-    maskloadps256(mem_addr as *const i8, mask.as_i32x8())
+    let mask = simd_shr(mask.as_i32x8(), i32x8::splat(31));
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm256_setzero_ps())
 }
 
 /// Stores packed single-precision (32-bit) floating-point elements from `a`
@@ -1737,7 +1742,8 @@ pub unsafe fn _mm256_maskload_ps(mem_addr: *const f32, mask: __m256i) -> __m256 
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) {
-    maskstoreps256(mem_addr as *mut i8, mask.as_i32x8(), a);
+    let mask = simd_shr(mask.as_i32x8(), i32x8::splat(31));
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
 
 /// Loads packed single-precision (32-bit) floating-point elements from memory
@@ -1750,7 +1756,8 @@ pub unsafe fn _mm256_maskstore_ps(mem_addr: *mut f32, mask: __m256i, a: __m256) 
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
-    maskloadps(mem_addr as *const i8, mask.as_i32x4())
+    let mask = simd_shr(mask.as_i32x4(), i32x4::splat(31));
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, _mm_setzero_ps())
 }
 
 /// Stores packed single-precision (32-bit) floating-point elements from `a`
@@ -1762,7 +1769,8 @@ pub unsafe fn _mm_maskload_ps(mem_addr: *const f32, mask: __m128i) -> __m128 {
 #[cfg_attr(test, assert_instr(vmaskmovps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
-    maskstoreps(mem_addr as *mut i8, mask.as_i32x4(), a);
+    let mask = simd_shr(mask.as_i32x4(), i32x4::splat(31));
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a)
 }
 
 /// Duplicate odd-indexed single-precision (32-bit) floating-point elements
@@ -3147,22 +3155,6 @@ unsafe extern "C" {
     fn vpermilpd256(a: __m256d, b: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.vpermilvar.pd"]
     fn vpermilpd(a: __m128d, b: i64x2) -> __m128d;
-    #[link_name = "llvm.x86.avx.maskload.pd.256"]
-    fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> __m256d;
-    #[link_name = "llvm.x86.avx.maskstore.pd.256"]
-    fn maskstorepd256(mem_addr: *mut i8, mask: i64x4, a: __m256d);
-    #[link_name = "llvm.x86.avx.maskload.pd"]
-    fn maskloadpd(mem_addr: *const i8, mask: i64x2) -> __m128d;
-    #[link_name = "llvm.x86.avx.maskstore.pd"]
-    fn maskstorepd(mem_addr: *mut i8, mask: i64x2, a: __m128d);
-    #[link_name = "llvm.x86.avx.maskload.ps.256"]
-    fn maskloadps256(mem_addr: *const i8, mask: i32x8) -> __m256;
-    #[link_name = "llvm.x86.avx.maskstore.ps.256"]
-    fn maskstoreps256(mem_addr: *mut i8, mask: i32x8, a: __m256);
-    #[link_name = "llvm.x86.avx.maskload.ps"]
-    fn maskloadps(mem_addr: *const i8, mask: i32x4) -> __m128;
-    #[link_name = "llvm.x86.avx.maskstore.ps"]
-    fn maskstoreps(mem_addr: *mut i8, mask: i32x4, a: __m128);
     #[link_name = "llvm.x86.avx.ldu.dq.256"]
     fn vlddqu(mem_addr: *const i8) -> i8x32;
     #[link_name = "llvm.x86.avx.rcp.ps.256"]
@@ -3928,28 +3920,43 @@ mod tests {
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_ps() {
-        let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
-        let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
-        let r = _mm256_permute2f128_ps::<0x13>(a, b);
-        let e = _mm256_setr_ps(5., 6., 7., 8., 1., 2., 3., 4.);
+        let a = _mm256_setr_ps(11., 12., 13., 14., 15., 16., 17., 18.);
+        let b = _mm256_setr_ps(21., 22., 23., 24., 25., 26., 27., 28.);
+        let r = _mm256_permute2f128_ps::<0b0001_0011>(a, b);
+        let e = _mm256_setr_ps(25., 26., 27., 28., 15., 16., 17., 18.);
         assert_eq_m256(r, e);
+
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_ps::<0b1001_1011>(a, b);
+        let z = _mm256_setr_ps(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        assert_eq_m256(r, z);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
-        let r = _mm256_permute2f128_pd::<0x31>(a, b);
+        let r = _mm256_permute2f128_pd::<0b0011_0001>(a, b);
         let e = _mm256_setr_pd(3., 4., 7., 8.);
+        assert_eq_m256d(r, e);
+
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_pd::<0b1011_1001>(a, b);
+        let e = _mm256_setr_pd(0.0, 0.0, 0.0, 0.0);
         assert_eq_m256d(r, e);
     }
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_si256() {
-        let a = _mm256_setr_epi32(1, 2, 3, 4, 1, 2, 3, 4);
-        let b = _mm256_setr_epi32(5, 6, 7, 8, 5, 6, 7, 8);
-        let r = _mm256_permute2f128_si256::<0x20>(a, b);
-        let e = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
+        let a = _mm256_setr_epi32(11, 12, 13, 14, 15, 16, 17, 18);
+        let b = _mm256_setr_epi32(21, 22, 23, 24, 25, 26, 27, 28);
+        let r = _mm256_permute2f128_si256::<0b0010_0000>(a, b);
+        let e = _mm256_setr_epi32(11, 12, 13, 14, 21, 22, 23, 24);
+        assert_eq_m256i(r, e);
+
+        // Setting bits 3 or 7 (zero-indexed) zeroes the corresponding field.
+        let r = _mm256_permute2f128_si256::<0b1010_1000>(a, b);
+        let e = _mm256_setr_epi32(0, 0, 0, 0, 0, 0, 0, 0);
         assert_eq_m256i(r, e);
     }
 

@@ -78,7 +78,7 @@ pub(crate) fn disassemble_myself() -> HashSet<Function> {
     let objdump = env::var("OBJDUMP").unwrap_or_else(|_| "objdump".to_string());
     let add_args = if cfg!(target_vendor = "apple") && cfg!(target_arch = "aarch64") {
         // Target features need to be enabled for LLVM objdump on Darwin ARM64
-        vec!["--mattr=+v8.6a,+crypto,+tme"]
+        vec!["--mattr=+v8.6a,+crypto"]
     } else if cfg!(any(target_arch = "riscv32", target_arch = "riscv64")) {
         vec!["--mattr=+zk,+zks,+zbc,+zbb"]
     } else {
