@@ -126,6 +126,14 @@ passes_doc_alias_not_string_literal =
 passes_doc_alias_start_end =
     {$attr_str} cannot start or end with ' '
 
+passes_doc_attr_expects_no_value =
+    `doc({$attr_name})` does not accept a value
+    .suggestion = use `doc({$attr_name})`
+
+passes_doc_attr_expects_string =
+    `doc({$attr_name})` expects a string value
+    .suggestion = use `doc({$attr_name} = "...")`
+
 passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
