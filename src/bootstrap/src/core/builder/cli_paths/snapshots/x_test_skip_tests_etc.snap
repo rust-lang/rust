@@ -1,5 +1,6 @@
 ---
 source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+assertion_line: 68
 expression: test --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
 ---
 [Test] test::Tidy
@@ -100,6 +101,9 @@ expression: test --skip=tests --skip=coverage-map --skip=coverage-run --skip=lib
     - Set({test::src/tools/coverage-dump})
     - Set({test::src/tools/jsondoclint})
     - Set({test::src/tools/replace-version-placeholder})
+[Test] test::RemoteTestClientTests
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::src/tools/remote-test-client})
 [Test] test::Linkcheck
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/tools/linkchecker})

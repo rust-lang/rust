@@ -12,7 +12,7 @@
 extern crate breakpoint_panic_handler;
 
 // Verify function name doesn't contain unacceaptable characters.
-// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:[a-zA-Z0-9$_]+square[a-zA-Z0-9$_]+]]
+// CHECK: .func (.param .b32 func_retval0) [[IMPL_FN:[a-zA-Z0-9$_]+square]]
 
 // CHECK-LABEL: .visible .entry top_kernel(
 #[no_mangle]

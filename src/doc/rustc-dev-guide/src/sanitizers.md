@@ -2,8 +2,8 @@
 
 The rustc compiler contains support for following sanitizers:
 
-* [AddressSanitizer][clang-asan] a faster memory error detector. Can
-  detect out-of-bounds access to heap, stack, and globals, use after free, use
+* [AddressSanitizer][clang-asan] a faster memory error detector.
+  Can detect out-of-bounds access to heap, stack, and globals, use after free, use
   after return, double free, invalid free, memory leaks.
 * [ControlFlowIntegrity][clang-cfi] LLVM Control Flow Integrity (CFI) provides
   forward-edge control flow protection.

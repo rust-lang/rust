@@ -4003,3 +4003,40 @@ impl Step for CollectLicenseMetadata {
         dest
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RemoteTestClientTests {
+    host: TargetSelection,
+}
+
+impl Step for RemoteTestClientTests {
+    type Output = ();
+    const IS_HOST: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/remote-test-client")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self { host: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.host_target;
+        let compiler = builder.compiler(0, bootstrap_host);
+
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            Kind::Test,
+            "src/tools/remote-test-client",
+            SourceType::InTree,
+            &[],
+        );
+
+        run_cargo_test(cargo, &[], &[], "remote-test-client", bootstrap_host, builder);
+    }
+}

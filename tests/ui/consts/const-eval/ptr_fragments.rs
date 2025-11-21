@@ -68,6 +68,7 @@ const _PARTIAL_OVERWRITE: () = {
 };
 
 #[allow(dead_code)]
+#[cfg(not(target_arch = "s390x"))] // u128 is less aligned on s390x, removing the padding
 fn fragment_in_dst_padding_gets_overwritten() {
     #[repr(C)]
     struct Pair {
