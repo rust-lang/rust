@@ -618,7 +618,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                _ => {
+                Some(ty::AnonConstKind::MCG) | Some(ty::AnonConstKind::NonTypeSystem) | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
                     // - GCEConsts have been handled separately
                     // - Repeat expr count back compat consts have also been handled separately
