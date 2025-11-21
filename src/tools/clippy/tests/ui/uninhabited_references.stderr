@@ -11,7 +11,7 @@ error: dereferencing a reference to an uninhabited type would be undefined behav
   --> tests/ui/uninhabited_references.rs:12:30
    |
 LL |         fn $name(x: &$ty) -> &$ty {
-   |                              ^
+   |                              ^^^^
 ...
 LL | ret_something!(id_never, !);
    | --------------------------- in this macro invocation
