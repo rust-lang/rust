@@ -10,7 +10,7 @@ use std::collections::VecDeque;
 
 // CHECK-LABEL: @clear
 // CHECK-NOT: call
-// CHECK-NOT: br
+// CHECK-NOT: br {{.*}}
 // CHECK: getelementptr inbounds
 // CHECK-NEXT: {{call void @llvm.memset|store}}
 // CHECK-NEXT: ret void
@@ -21,15 +21,15 @@ pub fn clear(v: &mut VecDeque<i32>) {
 
 // CHECK-LABEL: @truncate
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK-NOT: br
+// CHECK-NOT: br {{.*}}
 // CHECK: ret void
 #[no_mangle]
 pub fn truncate(v: &mut VecDeque<i32>, n: usize) {
@@ -40,17 +40,17 @@ pub fn truncate(v: &mut VecDeque<i32>, n: usize) {
 
 // CHECK-LABEL: @advance
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK: br
+// CHECK: br {{.*}}
 // CHECK-NOT: call
-// CHECK-NOT: br
+// CHECK-NOT: br {{.*}}
 // CHECK: ret void
 #[no_mangle]
 pub fn advance(v: &mut VecDeque<i32>, n: usize) {
