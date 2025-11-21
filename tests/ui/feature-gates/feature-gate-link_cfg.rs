@@ -1,4 +1,4 @@
-#[link(name = "foo", cfg(foo))]
+#[link(name = "foo", cfg(false))]
 //~^ ERROR: is unstable
 extern "C" {}
 

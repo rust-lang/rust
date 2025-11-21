@@ -3,11 +3,17 @@ use std::borrow::Cow;
 use rustc_errors::{DiagArgValue, LintEmitter};
 use rustc_hir::Target;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_session::Session;
 use rustc_span::sym;
 
-use crate::session_diagnostics;
+use crate::{session_diagnostics, unexpected_cfg_name, unexpected_cfg_value};
 
-pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emitter: L) {
+//tcx: TyCtxt<'_>
+pub fn emit_attribute_lint<L: LintEmitter>(
+    lint: &AttributeLint<L::Id>,
+    lint_emitter: L,
+    sess: &Session,
+) {
     let AttributeLint { id, span, kind } = lint;
 
     match kind {
@@ -98,5 +104,19 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
                 },
             )
         }
+        &AttributeLintKind::UnexpectedCfgName { name, name_span, value } => lint_emitter
+            .emit_node_span_lint(
+                rustc_session::lint::builtin::UNEXPECTED_CFGS,
+                *id,
+                *span,
+                unexpected_cfg_name(sess, None, (name, name_span), value),
+            ),
+        &AttributeLintKind::UnexpectedCfgValue { name, name_span, value } => lint_emitter
+            .emit_node_span_lint(
+                rustc_session::lint::builtin::UNEXPECTED_CFGS,
+                *id,
+                *span,
+                unexpected_cfg_value(sess, None, (name, name_span), value),
+            ),
     }
 }

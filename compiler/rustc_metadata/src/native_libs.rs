@@ -2,8 +2,7 @@ use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
-use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
+use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{AttributeKind, NativeLibKind, PeImportNameType};
 use rustc_hir::find_attr;
@@ -188,9 +187,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
-        }
+        Some(ref cfg) => eval_config_entry(sess, cfg).as_bool(),
         None => true,
     }
 }
