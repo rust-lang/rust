@@ -3,9 +3,9 @@ mod serde;
 
 use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
-use std::io;
 use std::path::Path;
 use std::string::FromUtf8Error;
+use std::{io, iter};
 
 use ::serde::de::{self, Deserializer, Error as _};
 use ::serde::ser::{SerializeSeq, Serializer};
@@ -555,19 +555,19 @@ impl SerializedSearchIndex {
                 );
             }
         }
-        for (i, other_generic_inverted_index) in other.generic_inverted_index.iter().enumerate() {
-            for (size, other_list) in other_generic_inverted_index.iter().enumerate() {
-                let self_generic_inverted_index = match self.generic_inverted_index.get_mut(i) {
-                    Some(self_generic_inverted_index) => self_generic_inverted_index,
-                    None => {
-                        self.generic_inverted_index.push(Vec::new());
-                        self.generic_inverted_index.last_mut().unwrap()
-                    }
-                };
-                while self_generic_inverted_index.len() <= size {
-                    self_generic_inverted_index.push(Vec::new());
-                }
-                self_generic_inverted_index[size].extend(
+        if other.generic_inverted_index.len() > self.generic_inverted_index.len() {
+            self.generic_inverted_index.resize(other.generic_inverted_index.len(), Vec::new());
+        }
+        for (other_generic_inverted_index, self_generic_inverted_index) in
+            iter::zip(&other.generic_inverted_index, &mut self.generic_inverted_index)
+        {
+            if other_generic_inverted_index.len() > self_generic_inverted_index.len() {
+                self_generic_inverted_index.resize(other_generic_inverted_index.len(), Vec::new());
+            }
+            for (other_list, self_list) in
+                iter::zip(other_generic_inverted_index, self_generic_inverted_index)
+            {
+                self_list.extend(
                     other_list
                         .iter()
                         .copied()
