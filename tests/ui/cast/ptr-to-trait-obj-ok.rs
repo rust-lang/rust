@@ -16,7 +16,7 @@ fn cast_away_higher_ranked<'a>(x: *mut dyn for<'b> Trait<'b>) -> *mut dyn Trait<
     x as _
 }
 
-fn unprincipled<'a, 'b>(x: *mut (dyn Send + 'a)) -> *mut (dyn Sync + 'b) {
+fn unprincipled<'a: 'b, 'b>(x: *mut (dyn Send + 'a)) -> *mut (dyn Sync + 'b) {
     x as _
 }
 
@@ -41,7 +41,7 @@ fn cast_away_higher_ranked_wrap<'a>(x: *mut dyn for<'b> Trait<'b>) -> *mut Wrapp
     x as _
 }
 
-fn unprincipled_wrap<'a, 'b>(x: *mut (dyn Send + 'a)) -> *mut Wrapper<dyn Sync + 'b> {
+fn unprincipled_wrap<'a: 'b, 'b>(x: *mut (dyn Send + 'a)) -> *mut Wrapper<dyn Sync + 'b> {
     x as _
 }
 

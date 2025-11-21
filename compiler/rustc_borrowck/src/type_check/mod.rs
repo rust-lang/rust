@@ -1563,15 +1563,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             //
                             // We must not allow freely casting lifetime bounds of dyn-types as it
                             // may allow for inaccessible VTable methods being callable: #136702
-                            //
-                            // We don't enforce this for casts of principal-less dyn types as their
-                            // VTables do not contain any functions with `Self: 'a` bounds that
-                            // could start holding after a pointer cast.
-                            //
-                            // We also don't enforce this for casts of pointers to pointers to dyn
-                            // types. E.g. `*mut *mut dyn Trait + 'a -> *mut *mut dyn Trait +
-                            // 'static` is allowed. This is fine because there is no actual VTable
-                            // in play.
                             self.sub_types(
                                 src_obj,
                                 dst_obj,
@@ -1583,6 +1574,28 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 },
                             )
                             .unwrap();
+                        } else if let ty::Dynamic(src_tty, src_lt) =
+                            *self.struct_tail(src.ty, location).kind()
+                            && let ty::Dynamic(dst_tty, dst_lt) =
+                                *self.struct_tail(dst.ty, location).kind()
+                            && src_tty.principal().is_none()
+                            && dst_tty.principal().is_none()
+                        {
+                            // The principalless (no non-auto traits) case:
+                            // You can only cast `dyn Send + 'long` to `dyn Send + 'short`.
+                            self.constraints.outlives_constraints.push(OutlivesConstraint {
+                                sup: src_lt.as_var(),
+                                sub: dst_lt.as_var(),
+                                locations: location.to_locations(),
+                                span: location.to_locations().span(self.body),
+                                category: ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: true,
+                                    is_implicit_coercion: false,
+                                    unsize_to: None,
+                                },
+                                variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
+                            });
                         }
                     }
                     CastKind::Transmute => {
