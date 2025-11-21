@@ -9,7 +9,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::{
-    AttrWrapper, Capturing, ConstBlockItemsAllowed, FnParseMode, ForceCollect, Parser, PathStyle,
+    AllowConstBlockItems, AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle,
     Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
@@ -204,7 +204,7 @@ impl<'a> Parser<'a> {
             false,
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             ForceCollect::No,
-            ConstBlockItemsAllowed::No,
+            AllowConstBlockItems::Yes,
         ) {
             Ok(Some(item)) => {
                 // FIXME(#100717)

@@ -541,7 +541,7 @@ fn parse_source(
     let not_crate_attrs = &[sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
     let parsed = parser.parse_item(
         rustc_parse::parser::ForceCollect::No,
-        rustc_parse::parser::ConstBlockItemsAllowed::No,
+        rustc_parse::parser::AllowConstBlockItems::No,
     );
 
     let result = match parsed {

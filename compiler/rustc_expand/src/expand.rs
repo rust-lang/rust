@@ -25,7 +25,7 @@ use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
 use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
-    AttemptLocalParseRecovery, CommaRecoveryMode, ConstBlockItemsAllowed, ForceCollect, Parser,
+    AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, token_descr,
 };
 use rustc_session::Session;
@@ -1099,7 +1099,7 @@ pub fn parse_ast_fragment<'a>(
     Ok(match kind {
         AstFragmentKind::Items => {
             let mut items = SmallVec::new();
-            while let Some(item) = this.parse_item(ForceCollect::No, ConstBlockItemsAllowed::No)? {
+            while let Some(item) = this.parse_item(ForceCollect::No, AllowConstBlockItems::Yes)? {
                 items.push(item);
             }
             AstFragment::Items(items)
