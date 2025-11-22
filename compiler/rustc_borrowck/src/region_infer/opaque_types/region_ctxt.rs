@@ -8,6 +8,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 
 use crate::BorrowckInferCtxt;
 use crate::constraints::ConstraintSccIndex;
+use crate::diagnostics::RegionErrors;
 use crate::handle_placeholders::{SccAnnotations, region_definitions};
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::RegionValues;
@@ -64,6 +65,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             &scc_annotations,
             universal_regions.fr_static,
             &mut outlives_constraints,
+            &mut RegionErrors::new(infcx.tcx),
+            &definitions,
         );
 
         if added_constraints {
@@ -74,10 +77,8 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let scc_annotations = scc_annotations.scc_to_annotation;
 
         // Unlike the `RegionInferenceContext`, we only care about free regions
-        // and fully ignore liveness and placeholders.
-        let placeholder_indices = Default::default();
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        // and fully ignore liveness.
+        let mut scc_values = RegionValues::new(location_map, universal_regions.len());
         for variable in definitions.indices() {
             let scc = constraint_sccs.scc(variable);
             match definitions[variable].origin {
