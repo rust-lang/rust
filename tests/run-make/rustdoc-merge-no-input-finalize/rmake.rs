@@ -16,7 +16,7 @@ fn main() {
         .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
         .arg("--merge=none")
         .run();
-    assert!(parts_out_dir.join("crate-info").exists());
+    assert!(parts_out_dir.join("sierra.json").exists());
 
     let output = rustdoc()
         .arg("-Zunstable-options")
