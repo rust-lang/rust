@@ -34,10 +34,12 @@
 //! as we don't have bincode in Cargo.toml yet, lets stick with serde_json for
 //! the time being.
 
+#[cfg(feature = "sysroot-abi")]
+use proc_macro_srv::TokenStream;
+
 use std::collections::VecDeque;
 
 use intern::Symbol;
-use proc_macro_srv::TokenStream;
 use rustc_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
 use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange};
@@ -162,6 +164,39 @@ impl FlatTree {
         }
     }
 
+    pub fn to_subtree_resolved(
+        self,
+        version: u32,
+        span_data_table: &SpanDataIndexMap,
+    ) -> tt::TopSubtree<Span> {
+        Reader::<Span> {
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
+            } else {
+                read_vec(self.subtree, SubtreeRepr::read)
+            },
+            literal: if version >= EXTENDED_LEAF_DATA {
+                read_vec(self.literal, LiteralRepr::read_with_kind)
+            } else {
+                read_vec(self.literal, LiteralRepr::read)
+            },
+            punct: read_vec(self.punct, PunctRepr::read),
+            ident: if version >= EXTENDED_LEAF_DATA {
+                read_vec(self.ident, IdentRepr::read_with_rawness)
+            } else {
+                read_vec(self.ident, IdentRepr::read)
+            },
+            token_tree: self.token_tree,
+            text: self.text,
+            span_data_table,
+            version,
+        }
+        .read_subtree()
+    }
+}
+
+#[cfg(feature = "sysroot-abi")]
+impl FlatTree {
     pub fn from_tokenstream(
         tokenstream: proc_macro_srv::TokenStream<Span>,
         version: u32,
@@ -265,37 +300,6 @@ impl FlatTree {
         }
     }
 
-    pub fn to_subtree_resolved(
-        self,
-        version: u32,
-        span_data_table: &SpanDataIndexMap,
-    ) -> tt::TopSubtree<Span> {
-        Reader::<Span> {
-            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
-                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
-            } else {
-                read_vec(self.subtree, SubtreeRepr::read)
-            },
-            literal: if version >= EXTENDED_LEAF_DATA {
-                read_vec(self.literal, LiteralRepr::read_with_kind)
-            } else {
-                read_vec(self.literal, LiteralRepr::read)
-            },
-            punct: read_vec(self.punct, PunctRepr::read),
-            ident: if version >= EXTENDED_LEAF_DATA {
-                read_vec(self.ident, IdentRepr::read_with_rawness)
-            } else {
-                read_vec(self.ident, IdentRepr::read)
-            },
-            token_tree: self.token_tree,
-            text: self.text,
-            span_data_table,
-            version,
-        }
-        .read_subtree()
-    }
-}
-impl FlatTree {
     pub fn to_tokenstream_unresolved<T: SpanTransformer<Table = ()>>(
         self,
         version: u32,
@@ -836,6 +840,7 @@ impl<T: SpanTransformer> Reader<'_, T> {
     }
 }
 
+#[cfg(feature = "sysroot-abi")]
 impl<T: SpanTransformer> Reader<'_, T> {
     pub(crate) fn read_tokenstream(self) -> proc_macro_srv::TokenStream<T::Span> {
         let mut res: Vec<Option<proc_macro_srv::Group<T::Span>>> = vec![None; self.subtree.len()];

@@ -1,3 +1,5 @@
+//! The proc-macro server token stream implementation.
+
 use core::fmt;
 use std::sync::Arc;
 
@@ -587,7 +589,7 @@ fn debug_token_tree<S: fmt::Debug>(
         }
         TokenTree::Literal(Literal { kind, symbol, suffix, span }) => write!(
             f,
-            "LITER {span:#?} {kind:?} {symbol}{} ",
+            "LITER {span:#?} {kind:?} {symbol}{}",
             match suffix {
                 Some(suffix) => suffix.clone(),
                 None => Symbol::intern(""),

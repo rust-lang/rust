@@ -10,11 +10,16 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
-#![cfg(any(feature = "sysroot-abi", rust_analyzer))]
-#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
+#![cfg(feature = "sysroot-abi")]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![allow(
+    unreachable_pub,
+    internal_features,
+    clippy::disallowed_types,
+    clippy::print_stderr,
+    unused_crate_dependencies
+)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
 extern crate proc_macro;

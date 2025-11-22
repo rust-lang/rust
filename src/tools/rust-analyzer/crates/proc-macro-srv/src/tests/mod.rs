@@ -41,7 +41,7 @@ fn test_derive_error() {
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
             GROUP () 1 1 1
-              LITER 1 Str #[derive(DeriveError)] struct S {field 58 u32 } 
+              LITER 1 Str #[derive(DeriveError)] struct S {field 58 u32 }
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
@@ -56,7 +56,7 @@ fn test_derive_error() {
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
             GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@64..65#ROOT2024 42:Root[0000, 0]@14..65#ROOT2024
-              LITER 42:Root[0000, 0]@15..64#ROOT2024 Str #[derive(DeriveError)] struct S {field 58 u32 } 
+              LITER 42:Root[0000, 0]@15..64#ROOT2024 Str #[derive(DeriveError)] struct S {field 58 u32 }
             PUNCT 42:Root[0000, 0]@65..66#ROOT2024 ; [alone]
         "#]],
     );
@@ -70,36 +70,36 @@ fn test_fn_like_macro_noop() {
         expect![[r#"
             IDENT 1 ident
             PUNCT 1 , [alone]
-            LITER 1 Integer 0 
+            LITER 1 Integer 0
             PUNCT 1 , [alone]
-            LITER 1 Integer 1 
+            LITER 1 Integer 1
             PUNCT 1 , [alone]
             GROUP [] 1 1 1
 
 
             IDENT 1 ident
             PUNCT 1 , [alone]
-            LITER 1 Integer 0 
+            LITER 1 Integer 0
             PUNCT 1 , [alone]
-            LITER 1 Integer 1 
+            LITER 1 Integer 1
             PUNCT 1 , [alone]
             GROUP [] 1 1 1
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0 
+            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0
             PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1 
+            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
             GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
 
 
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0 
+            LITER 42:Root[0000, 0]@7..8#ROOT2024 Integer 0
             PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1 
+            LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
             GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
         "#]],
@@ -212,36 +212,36 @@ fn test_fn_like_mk_literals() {
         expect![[r#"
 
 
-            LITER 1 ByteStr byte_string 
-            LITER 1 Char c 
-            LITER 1 Str string 
-            LITER 1 Str -string 
-            LITER 1 CStr cstring 
-            LITER 1 Float 3.14f64 
-            LITER 1 Float -3.14f64 
-            LITER 1 Float 3.14 
-            LITER 1 Float -3.14 
-            LITER 1 Integer 123i64 
-            LITER 1 Integer -123i64 
-            LITER 1 Integer 123 
-            LITER 1 Integer -123 
+            LITER 1 ByteStr byte_string
+            LITER 1 Char c
+            LITER 1 Str string
+            LITER 1 Str -string
+            LITER 1 CStr cstring
+            LITER 1 Float 3.14f64
+            LITER 1 Float -3.14f64
+            LITER 1 Float 3.14
+            LITER 1 Float -3.14
+            LITER 1 Integer 123i64
+            LITER 1 Integer -123i64
+            LITER 1 Integer 123
+            LITER 1 Integer -123
         "#]],
         expect![[r#"
 
 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 ByteStr byte_string 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Char c 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str string 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str -string 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 CStr cstring 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14f64 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14f64 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123i64 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123i64 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123 
-            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123 
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 ByteStr byte_string
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Char c
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str string
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Str -string
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 CStr cstring
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14f64
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14f64
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float 3.14
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Float -3.14
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123i64
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123i64
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer 123
+            LITER 42:Root[0000, 0]@0..100#ROOT2024 Integer -123
         "#]],
     );
 }
@@ -272,92 +272,92 @@ fn test_fn_like_macro_clone_literals() {
         "fn_like_clone_tokens",
         r###"1u16, 2_u32, -4i64, 3.14f32, "hello bridge", "suffixed"suffix, r##"raw"##, 'a', b'b', c"null""###,
         expect![[r#"
-            LITER 1 Integer 1u16 
+            LITER 1 Integer 1u16
             PUNCT 1 , [alone]
-            LITER 1 Integer 2_u32 
-            PUNCT 1 , [alone]
-            PUNCT 1 - [alone]
-            LITER 1 Integer 4i64 
-            PUNCT 1 , [alone]
-            LITER 1 Float 3.14f32 
-            PUNCT 1 , [alone]
-            LITER 1 Str hello bridge 
-            PUNCT 1 , [alone]
-            LITER 1 Str suffixedsuffix 
-            PUNCT 1 , [alone]
-            LITER 1 StrRaw(2) raw 
-            PUNCT 1 , [alone]
-            LITER 1 Char a 
-            PUNCT 1 , [alone]
-            LITER 1 Byte b 
-            PUNCT 1 , [alone]
-            LITER 1 CStr null 
-
-
-            LITER 1 Integer 1u16 
-            PUNCT 1 , [alone]
-            LITER 1 Integer 2_u32 
+            LITER 1 Integer 2_u32
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Integer 4i64 
+            LITER 1 Integer 4i64
             PUNCT 1 , [alone]
-            LITER 1 Float 3.14f32 
+            LITER 1 Float 3.14f32
             PUNCT 1 , [alone]
-            LITER 1 Str hello bridge 
+            LITER 1 Str hello bridge
             PUNCT 1 , [alone]
-            LITER 1 Str suffixedsuffix 
+            LITER 1 Str suffixedsuffix
             PUNCT 1 , [alone]
-            LITER 1 StrRaw(2) raw 
+            LITER 1 StrRaw(2) raw
             PUNCT 1 , [alone]
-            LITER 1 Char a 
+            LITER 1 Char a
             PUNCT 1 , [alone]
-            LITER 1 Byte b 
+            LITER 1 Byte b
             PUNCT 1 , [alone]
-            LITER 1 CStr null 
+            LITER 1 CStr null
+
+
+            LITER 1 Integer 1u16
+            PUNCT 1 , [alone]
+            LITER 1 Integer 2_u32
+            PUNCT 1 , [alone]
+            PUNCT 1 - [alone]
+            LITER 1 Integer 4i64
+            PUNCT 1 , [alone]
+            LITER 1 Float 3.14f32
+            PUNCT 1 , [alone]
+            LITER 1 Str hello bridge
+            PUNCT 1 , [alone]
+            LITER 1 Str suffixedsuffix
+            PUNCT 1 , [alone]
+            LITER 1 StrRaw(2) raw
+            PUNCT 1 , [alone]
+            LITER 1 Char a
+            PUNCT 1 , [alone]
+            LITER 1 Byte b
+            PUNCT 1 , [alone]
+            LITER 1 CStr null
         "#]],
         expect![[r#"
-            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16 
+            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16
             PUNCT 42:Root[0000, 0]@4..5#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32 
+            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64 
+            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64
             PUNCT 42:Root[0000, 0]@18..19#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32 
+            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32
             PUNCT 42:Root[0000, 0]@27..28#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge 
+            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge
             PUNCT 42:Root[0000, 0]@43..44#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix 
+            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix
             PUNCT 42:Root[0000, 0]@61..62#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw 
+            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw
             PUNCT 42:Root[0000, 0]@73..74#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a 
+            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a
             PUNCT 42:Root[0000, 0]@78..79#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b 
+            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b
             PUNCT 42:Root[0000, 0]@84..85#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null 
+            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null
 
 
-            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16 
+            LITER 42:Root[0000, 0]@0..4#ROOT2024 Integer 1u16
             PUNCT 42:Root[0000, 0]@4..5#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32 
+            LITER 42:Root[0000, 0]@6..11#ROOT2024 Integer 2_u32
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64 
+            LITER 42:Root[0000, 0]@14..18#ROOT2024 Integer 4i64
             PUNCT 42:Root[0000, 0]@18..19#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32 
+            LITER 42:Root[0000, 0]@20..27#ROOT2024 Float 3.14f32
             PUNCT 42:Root[0000, 0]@27..28#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge 
+            LITER 42:Root[0000, 0]@29..43#ROOT2024 Str hello bridge
             PUNCT 42:Root[0000, 0]@43..44#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix 
+            LITER 42:Root[0000, 0]@45..61#ROOT2024 Str suffixedsuffix
             PUNCT 42:Root[0000, 0]@61..62#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw 
+            LITER 42:Root[0000, 0]@63..73#ROOT2024 StrRaw(2) raw
             PUNCT 42:Root[0000, 0]@73..74#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a 
+            LITER 42:Root[0000, 0]@75..78#ROOT2024 Char a
             PUNCT 42:Root[0000, 0]@78..79#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b 
+            LITER 42:Root[0000, 0]@80..84#ROOT2024 Byte b
             PUNCT 42:Root[0000, 0]@84..85#ROOT2024 , [alone]
-            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null 
+            LITER 42:Root[0000, 0]@86..93#ROOT2024 CStr null
         "#]],
     );
 }
@@ -369,55 +369,55 @@ fn test_fn_like_macro_negative_literals() {
         r###"-1u16, - 2_u32, -3.14f32, - 2.7"###,
         expect![[r#"
             PUNCT 1 - [alone]
-            LITER 1 Integer 1u16 
+            LITER 1 Integer 1u16
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Integer 2_u32 
+            LITER 1 Integer 2_u32
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Float 3.14f32 
+            LITER 1 Float 3.14f32
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Float 2.7 
+            LITER 1 Float 2.7
 
 
             PUNCT 1 - [alone]
-            LITER 1 Integer 1u16 
+            LITER 1 Integer 1u16
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Integer 2_u32 
+            LITER 1 Integer 2_u32
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Float 3.14f32 
+            LITER 1 Float 3.14f32
             PUNCT 1 , [alone]
             PUNCT 1 - [alone]
-            LITER 1 Float 2.7 
+            LITER 1 Float 2.7
         "#]],
         expect![[r#"
             PUNCT 42:Root[0000, 0]@0..1#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16 
+            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@7..8#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32 
+            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32
             PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@16..17#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32 
+            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32
             PUNCT 42:Root[0000, 0]@24..25#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@26..27#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7 
+            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7
 
 
             PUNCT 42:Root[0000, 0]@0..1#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16 
+            LITER 42:Root[0000, 0]@1..5#ROOT2024 Integer 1u16
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@7..8#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32 
+            LITER 42:Root[0000, 0]@9..14#ROOT2024 Integer 2_u32
             PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@16..17#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32 
+            LITER 42:Root[0000, 0]@17..24#ROOT2024 Float 3.14f32
             PUNCT 42:Root[0000, 0]@24..25#ROOT2024 , [alone]
             PUNCT 42:Root[0000, 0]@26..27#ROOT2024 - [alone]
-            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7 
+            LITER 42:Root[0000, 0]@28..31#ROOT2024 Float 2.7
         "#]],
     );
 }
@@ -444,7 +444,7 @@ fn test_attr_macro() {
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
             GROUP () 1 1 1
-              LITER 1 Str #[attr_error(some arguments )] mod m {} 
+              LITER 1 Str #[attr_error(some arguments )] mod m {}
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
@@ -460,7 +460,7 @@ fn test_attr_macro() {
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
             GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@56..57#ROOT2024 42:Root[0000, 0]@14..57#ROOT2024
-              LITER 42:Root[0000, 0]@15..56#ROOT2024 Str #[attr_error(some arguments )] mod m {} 
+              LITER 42:Root[0000, 0]@15..56#ROOT2024 Str #[attr_error(some arguments )] mod m {}
             PUNCT 42:Root[0000, 0]@57..58#ROOT2024 ; [alone]
         "#]],
     );

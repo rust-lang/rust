@@ -36,7 +36,7 @@ expect-test.workspace = true
 proc-macro-test.path = "./proc-macro-test"
 
 [features]
-default = ["sysroot-abi"]
+default = []
 sysroot-abi = []
 in-rust-tree = ["sysroot-abi"]
 
