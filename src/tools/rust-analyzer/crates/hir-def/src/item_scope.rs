@@ -1,7 +1,7 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
-use std::sync::LazyLock;
+use std::{fmt, sync::LazyLock};
 
 use base_db::Crate;
 use hir_expand::{AstId, MacroCallId, attrs::AttrId, db::ExpandDatabase, name::Name};
@@ -740,35 +740,35 @@ impl ItemScope {
         entries.sort_by_key(|(name, _)| name.clone());
 
         for (name, def) in entries {
-            format_to!(
-                buf,
-                "{}:",
-                name.map_or("_".to_owned(), |name| name.display(db, Edition::LATEST).to_string())
-            );
+            let display_name: &dyn fmt::Display = match &name {
+                Some(name) => &name.display(db, Edition::LATEST),
+                None => &"_",
+            };
+            format_to!(buf, "- {display_name} :");
 
             if let Some(Item { import, .. }) = def.types {
-                buf.push_str(" t");
+                buf.push_str(" type");
                 match import {
-                    Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
-                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
-                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
+                    Some(ImportOrExternCrate::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push_str(" (glob)"),
+                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push_str(" (extern)"),
                     None => (),
                 }
             }
             if let Some(Item { import, .. }) = def.values {
-                buf.push_str(" v");
+                buf.push_str(" value");
                 match import {
-                    Some(ImportOrGlob::Import(_)) => buf.push('i'),
-                    Some(ImportOrGlob::Glob(_)) => buf.push('g'),
+                    Some(ImportOrGlob::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrGlob::Glob(_)) => buf.push_str(" (glob)"),
                     None => (),
                 }
             }
             if let Some(Item { import, .. }) = def.macros {
-                buf.push_str(" m");
+                buf.push_str(" macro");
                 match import {
-                    Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
-                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
-                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
+                    Some(ImportOrExternCrate::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push_str(" (glob)"),
+                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push_str(" (extern)"),
                     None => (),
                 }
             }

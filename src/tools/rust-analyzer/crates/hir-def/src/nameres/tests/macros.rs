@@ -23,12 +23,12 @@ structs!(Bar, Baz);
 "#,
         expect![[r#"
             crate
-            Foo: t
-            nested: t
+            - Foo : type
+            - nested : type
 
             crate::nested
-            Bar: t
-            Baz: t
+            - Bar : type
+            - Baz : type
         "#]],
     );
 }
@@ -53,20 +53,20 @@ struct Y;
 "#,
         expect![[r#"
             crate
-            m: t
-            n1: t
+            - m : type
+            - n1 : type
 
             crate::m
-            n3: t
+            - n3 : type
 
             crate::m::n3
-            Y: t v
+            - Y : type value
 
             crate::n1
-            n2: t
+            - n2 : type
 
             crate::n1::n2
-            X: t v
+            - X : type value
         "#]],
     );
 }
@@ -92,14 +92,14 @@ macro_rules! structs {
 "#,
         expect![[r#"
             crate
-            Bar: t
-            Foo: t
-            bar: t
+            - Bar : type
+            - Foo : type
+            - bar : type
 
             crate::bar
-            Bar: tg
-            Foo: tg
-            bar: tg
+            - Bar : type (glob)
+            - Foo : type (glob)
+            - bar : type (glob)
         "#]],
     );
 }
@@ -125,14 +125,14 @@ macro_rules! structs {
 "#,
         expect![[r#"
             crate
-            Bar: t
-            Foo: t
-            bar: t
+            - Bar : type
+            - Foo : type
+            - bar : type
 
             crate::bar
-            Bar: tg
-            Foo: tg
-            bar: tg
+            - Bar : type (glob)
+            - Foo : type (glob)
+            - bar : type (glob)
         "#]],
     );
 }
@@ -164,14 +164,14 @@ macro_rules! inner {
 "#,
         expect![[r#"
             crate
-            Bar: t
-            Foo: t
-            bar: t
+            - Bar : type
+            - Foo : type
+            - bar : type
 
             crate::bar
-            Bar: tg
-            Foo: tg
-            bar: tg
+            - Bar : type (glob)
+            - Foo : type (glob)
+            - bar : type (glob)
         "#]],
     );
 }
@@ -206,9 +206,9 @@ macro_rules! bar {
 "#,
         expect![[r#"
             crate
-            Foo: t
-            bar: mi
-            foo: mi
+            - Foo : type
+            - bar : macro (import)
+            - foo : macro (import)
         "#]],
     );
 }
@@ -252,13 +252,13 @@ mod priv_mod {
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Foo: t v
-            bar: t
-            foo: te
+            - Bar : type value
+            - Foo : type value
+            - bar : type
+            - foo : type (extern)
 
             crate::bar
-            Baz: t v
+            - Baz : type value
         "#]],
     );
 }
@@ -316,15 +316,15 @@ macro_rules! baz3 { () => { struct OkBaz3; } }
 "#,
         expect![[r#"
             crate
-            OkBar1: t v
-            OkBar2: t v
-            OkBar3: t v
-            OkBaz1: t v
-            OkBaz2: t v
-            OkBaz3: t v
-            all: te
-            empty: te
-            multiple: te
+            - OkBar1 : type value
+            - OkBar2 : type value
+            - OkBar3 : type value
+            - OkBaz1 : type value
+            - OkBaz2 : type value
+            - OkBaz3 : type value
+            - all : type (extern)
+            - empty : type (extern)
+            - multiple : type (extern)
         "#]],
     );
 }
@@ -370,13 +370,13 @@ macro_rules! structs_outside {
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Foo: t v
-            Out: t v
-            bar: t
+            - Bar : type value
+            - Foo : type value
+            - Out : type value
+            - bar : type
 
             crate::bar
-            Baz: t v
+            - Baz : type value
         "#]],
     );
 }
@@ -398,7 +398,7 @@ mod prelude {
 "#,
         expect![[r#"
             crate
-            prelude: t
+            - prelude : type
 
             crate::prelude
         "#]],
@@ -419,7 +419,7 @@ macro_rules! m {
 "#,
         expect![[r#"
             crate
-            S: t v
+            - S : type value
         "#]],
     );
     // FIXME: should not expand. legacy macro scoping is not implemented.
@@ -499,36 +499,36 @@ macro_rules! baz {
 "#,
         expect![[r#"
             crate
-            NotFoundBefore: t v
-            Ok: t v
-            OkAfter: t v
-            OkShadowStop: t v
-            m1: t
-            m2: t
-            m3: t
-            m5: t
-            m7: t
-            ok_double_macro_use_shadow: v
+            - NotFoundBefore : type value
+            - Ok : type value
+            - OkAfter : type value
+            - OkShadowStop : type value
+            - m1 : type
+            - m2 : type
+            - m3 : type
+            - m5 : type
+            - m7 : type
+            - ok_double_macro_use_shadow : value
 
             crate::m1
 
             crate::m2
 
             crate::m3
-            OkAfterInside: t v
-            OkMacroUse: t v
-            OkMacroUseInner: t v
-            m4: t
-            m5: t
-            ok_shadow: v
+            - OkAfterInside : type value
+            - OkMacroUse : type value
+            - OkMacroUseInner : type value
+            - m4 : type
+            - m5 : type
+            - ok_shadow : value
 
             crate::m3::m4
-            ok_shadow_deep: v
+            - ok_shadow_deep : value
 
             crate::m3::m5
 
             crate::m5
-            m6: t
+            - m6 : type
 
             crate::m5::m6
 
@@ -555,9 +555,9 @@ fn baz() {}
 "#,
         expect![[r#"
             crate
-            bar: ti mi
-            baz: ti v mi
-            foo: t m
+            - bar : type (import) macro (import)
+            - baz : type (import) value macro (import)
+            - foo : type macro
         "#]],
     );
 }
@@ -585,9 +585,9 @@ mod m {
 "#,
         expect![[r#"
             crate
-            Alias: t v
-            Direct: t v
-            foo: te
+            - Alias : type value
+            - Direct : type value
+            - foo : type (extern)
         "#]],
     );
 }
@@ -623,19 +623,19 @@ mod m {
 "#,
         expect![[r#"
             crate
-            OkAliasCrate: t v
-            OkAliasPlain: t v
-            OkAliasSuper: t v
-            OkCrate: t v
-            OkPlain: t v
-            bar: m
-            m: t
+            - OkAliasCrate : type value
+            - OkAliasPlain : type value
+            - OkAliasSuper : type value
+            - OkCrate : type value
+            - OkPlain : type value
+            - bar : macro
+            - m : type
 
             crate::m
-            alias1: mi
-            alias2: mi
-            alias3: mi
-            not_found: _
+            - alias1 : macro (import)
+            - alias2 : macro (import)
+            - alias3 : macro (import)
+            - not_found : _
         "#]],
     );
 }
@@ -686,12 +686,12 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Bar: ti vi
-            Baz: ti vi
-            Foo: t v
-            FooSelf: ti vi
-            foo: te
-            m: t
+            - Bar : type (import) value (import)
+            - Baz : type (import) value (import)
+            - Foo : type value
+            - FooSelf : type (import) value (import)
+            - foo : type (extern)
+            - m : type
 
             crate::m
         "#]],
@@ -729,7 +729,7 @@ pub struct bar;
 "#,
         expect![[r#"
             crate
-            bar: ti vi
+            - bar : type (import) value (import)
         "#]],
     );
 }
@@ -794,7 +794,7 @@ pub trait Clone {}
 "#,
         expect![[r#"
             crate
-            Clone: tg mg
+            - Clone : type (glob) macro (glob)
         "#]],
     );
 }
@@ -842,11 +842,11 @@ fn unresolved_attributes_fall_back_track_per_file_moditems() {
         "#,
         expect![[r#"
             crate
-            Foo: t v
-            submod: t
+            - Foo : type value
+            - submod : type
 
             crate::submod
-            Bar: t v
+            - Bar : type value
         "#]],
     );
 }
@@ -863,9 +863,9 @@ extern "C" {
 }
     "#,
         expect![[r#"
-        crate
-        f: v
-    "#]],
+            crate
+            - f : value
+        "#]],
     );
 }
 
@@ -883,7 +883,7 @@ extern {
     "#,
         expect![[r#"
             crate
-            S: v
+            - S : value
         "#]],
     );
 }
@@ -909,8 +909,8 @@ fn derive() {}
         "#,
         expect![[r#"
             crate
-            S: t v
-            derive: m
+            - S : type value
+            - derive : macro
         "#]],
     );
 }
@@ -932,7 +932,7 @@ enum E {
 "#,
         expect![[r#"
             crate
-            E: t
+            - E : type
         "#]],
     );
 }
@@ -947,7 +947,7 @@ struct S;
         "#,
         expect![[r#"
             crate
-            S: t v
+            - S : type value
         "#]],
     );
 }
@@ -995,7 +995,7 @@ indirect_macro!();
     "#,
         expect![[r#"
             crate
-            S: t
+            - S : type
         "#]],
     );
 }
@@ -1029,13 +1029,13 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 "#,
         expect![[r#"
             crate
-            AnotherTrait: m
-            DummyTrait: m
-            TokenStream: t v
-            attribute_macro: v m
-            derive_macro: v
-            derive_macro_2: v
-            function_like_macro: v m
+            - AnotherTrait : macro
+            - DummyTrait : macro
+            - TokenStream : type value
+            - attribute_macro : value macro
+            - derive_macro : value
+            - derive_macro_2 : value
+            - function_like_macro : value macro
         "#]],
     );
 }
@@ -1075,9 +1075,9 @@ macro_rules! mbe {
 "#,
         expect![[r#"
             crate
-            DummyTrait: mg
-            attribute_macro: mg
-            function_like_macro: mg
+            - DummyTrait : macro (glob)
+            - attribute_macro : macro (glob)
+            - function_like_macro : macro (glob)
         "#]],
     );
 }
@@ -1119,8 +1119,8 @@ structs!(Foo);
 "#,
         expect![[r#"
             crate
-            Foo: t
-            structs: m
+            - Foo : type
+            - structs : macro
         "#]],
     );
 }
@@ -1143,7 +1143,7 @@ pub mod prelude {
         "#,
         expect![[r#"
             crate
-            S: t v
+            - S : type value
         "#]],
     )
 }
@@ -1193,12 +1193,12 @@ struct A;
 struct B;
 "#,
         expect![[r#"
-        crate
-        A: t v
-        B: t v
-        inner_a: m
-        inner_b: m
-    "#]],
+            crate
+            - A : type value
+            - B : type value
+            - inner_a : macro
+            - inner_b : macro
+        "#]],
     );
 }
 
@@ -1227,8 +1227,8 @@ struct A;
 "#,
         expect![[r#"
             crate
-            A: t v
-            inner: m
+            - A : type value
+            - inner : macro
         "#]],
     );
     // eager -> MBE -> $crate::mbe
@@ -1256,8 +1256,8 @@ struct A;
 "#,
         expect![[r#"
             crate
-            A: t v
-            inner: m
+            - A : type value
+            - inner : macro
         "#]],
     );
 }
@@ -1292,20 +1292,20 @@ pub mod ip_address {
 "#,
         expect![[r#"
             crate
-            company_name: t
+            - company_name : type
 
             crate::company_name
-            network: t
+            - network : type
 
             crate::company_name::network
-            v1: t
+            - v1 : type
 
             crate::company_name::network::v1
-            IpAddress: t
-            ip_address: t
+            - IpAddress : type
+            - ip_address : type
 
             crate::company_name::network::v1::ip_address
-            IpType: t
+            - IpType : type
         "#]],
     );
 }
@@ -1338,20 +1338,20 @@ pub mod ip_address {
 "#,
         expect![[r#"
             crate
-            company_name: t
+            - company_name : type
 
             crate::company_name
-            network: t
+            - network : type
 
             crate::company_name::network
-            v1: t
+            - v1 : type
 
             crate::company_name::network::v1
-            IpAddress: t
-            ip_address: t
+            - IpAddress : type
+            - ip_address : type
 
             crate::company_name::network::v1::ip_address
-            IpType: t
+            - IpType : type
         "#]],
     );
 }
@@ -1392,30 +1392,30 @@ pub struct Url {}
 "#,
         expect![[r#"
             crate
-            nested: t
+            - nested : type
 
             crate::nested
-            company_name: t
-            different_company: t
-            util: t
+            - company_name : type
+            - different_company : type
+            - util : type
 
             crate::nested::company_name
-            network: t
+            - network : type
 
             crate::nested::company_name::network
-            v1: t
+            - v1 : type
 
             crate::nested::company_name::network::v1
-            IpAddress: t
+            - IpAddress : type
 
             crate::nested::different_company
-            network: t
+            - network : type
 
             crate::nested::different_company::network
-            Url: t
+            - Url : type
 
             crate::nested::util
-            Helper: t
+            - Helper : type
         "#]],
     );
 }
@@ -1500,11 +1500,11 @@ pub mod prelude {
         "#,
         expect![[r#"
             crate
-            Ok: t v
-            bar: m
-            dep: te
-            foo: m
-            ok: v
+            - Ok : type value
+            - bar : macro
+            - dep : type (extern)
+            - foo : macro
+            - ok : value
         "#]],
     );
 }
@@ -1533,11 +1533,11 @@ macro_rules! mk_foo {
     "#,
         expect![[r#"
             crate
-            a: t
-            lib: te
+            - a : type
+            - lib : type (extern)
 
             crate::a
-            Ok: t v
+            - Ok : type value
         "#]],
     );
 }
@@ -1588,10 +1588,10 @@ pub mod prelude {
     "#,
         expect![[r#"
             crate
-            Ok: t v
-            bar: mi
-            foo: mi
-            ok: v
+            - Ok : type value
+            - bar : macro (import)
+            - foo : macro (import)
+            - ok : value
         "#]],
     );
 }
