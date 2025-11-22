@@ -2680,18 +2680,6 @@ fn assert_coerce_unsized(
 }
 
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UnsafeCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for SyncUnsafeCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for Cell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for RefCell<T> {}
-
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<'b, T: ?Sized> PinCoerceUnsized for Ref<'b, T> {}
 
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
