@@ -1,6 +1,6 @@
 //! See [`HtmlWithLimit`].
 
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::ops::ControlFlow;
 
 use crate::html::escape::Escape;
@@ -51,7 +51,7 @@ impl HtmlWithLimit {
     /// Finish using the buffer and get the written output.
     /// This function will close all unclosed tags for you.
     pub(super) fn finish(mut self) -> String {
-        self.close_all_tags();
+        self.close_all_tags().unwrap();
         self.buf
     }
 
@@ -64,7 +64,7 @@ impl HtmlWithLimit {
             return ControlFlow::Break(());
         }
 
-        self.flush_queue();
+        self.flush_queue().unwrap();
         write!(self.buf, "{}", Escape(text)).unwrap();
         self.len += text.len();
 
@@ -84,32 +84,35 @@ impl HtmlWithLimit {
     }
 
     /// Close the most recently opened HTML tag.
-    pub(super) fn close_tag(&mut self) {
+    pub(super) fn close_tag(&mut self) -> fmt::Result {
         if let Some(tag_name) = self.unclosed_tags.pop() {
             // Close the most recently opened tag.
-            write!(self.buf, "</{tag_name}>").unwrap()
+            write!(self.buf, "</{tag_name}>")?
         }
         // There are valid cases where `close_tag()` is called without
         // there being any tags to close. For example, this occurs when
         // a tag is opened after the length limit is exceeded;
         // `flush_queue()` will never be called, and thus, the tag will
         // not end up being added to `unclosed_tags`.
+        Ok(())
     }
 
     /// Write all queued tags and add them to the `unclosed_tags` list.
-    fn flush_queue(&mut self) {
+    fn flush_queue(&mut self) -> fmt::Result {
         for tag_name in self.queued_tags.drain(..) {
-            write!(self.buf, "<{tag_name}>").unwrap();
+            write!(self.buf, "<{tag_name}>")?;
 
             self.unclosed_tags.push(tag_name);
         }
+        Ok(())
     }
 
     /// Close all unclosed tags.
-    fn close_all_tags(&mut self) {
+    fn close_all_tags(&mut self) -> fmt::Result {
         while !self.unclosed_tags.is_empty() {
-            self.close_tag();
+            self.close_tag()?;
         }
+        Ok(())
     }
 }
 

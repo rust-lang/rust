@@ -1570,7 +1570,7 @@ fn markdown_summary_with_limit(
                 if r.is_break() {
                     stopped_early = true;
                 } else {
-                    buf.close_tag();
+                    buf.close_tag().unwrap();
                 }
                 return r;
             }
@@ -1581,7 +1581,7 @@ fn markdown_summary_with_limit(
                 _ => {}
             },
             Event::End(tag) => match tag {
-                TagEnd::Emphasis | TagEnd::Strong => buf.close_tag(),
+                TagEnd::Emphasis | TagEnd::Strong => buf.close_tag().unwrap(),
                 TagEnd::Paragraph | TagEnd::Heading(_) => return ControlFlow::Break(()),
                 _ => {}
             },

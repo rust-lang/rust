@@ -12,7 +12,7 @@ fn basic() {
     let _ = buf.push("Hello ");
     buf.open_tag("em");
     let _ = buf.push("world");
-    buf.close_tag();
+    buf.close_tag().unwrap();
     let _ = buf.push("!");
     assert_eq!(buf.finish(), "Hello <em>world</em>!");
 }
@@ -31,7 +31,7 @@ fn limit_0() {
     let _ = buf.push("Hello ");
     buf.open_tag("em");
     let _ = buf.push("world");
-    buf.close_tag();
+    buf.close_tag().unwrap();
     let _ = buf.push("!");
     assert_eq!(buf.finish(), "");
 }
@@ -42,7 +42,7 @@ fn exactly_limit() {
     let _ = buf.push("Hello ");
     buf.open_tag("em");
     let _ = buf.push("world");
-    buf.close_tag();
+    buf.close_tag().unwrap();
     let _ = buf.push("!");
     assert_eq!(buf.finish(), "Hello <em>world</em>!");
 }
@@ -56,9 +56,9 @@ fn multiple_nested_tags() {
     let _ = buf.push("paragraph");
     buf.open_tag("strong");
     let _ = buf.push("!");
-    buf.close_tag();
-    buf.close_tag();
-    buf.close_tag();
+    buf.close_tag().unwrap();
+    buf.close_tag().unwrap();
+    buf.close_tag().unwrap();
     assert_eq!(buf.finish(), "<p>This is a <em>paragraph<strong>!</strong></em></p>");
 }
 
@@ -82,10 +82,10 @@ fn past_the_limit() {
         buf.open_tag("strong");
         let _ = buf.push("word#")?;
         let _ = buf.push(&n.to_string())?;
-        buf.close_tag();
+        buf.close_tag().unwrap();
         ControlFlow::Continue(())
     });
-    buf.close_tag();
+    buf.close_tag().unwrap();
     assert_eq!(
         buf.finish(),
         "<p>\
@@ -111,10 +111,10 @@ fn close_too_many() {
     let mut buf = HtmlWithLimit::new(60);
     buf.open_tag("p");
     let _ = buf.push("Hello");
-    buf.close_tag();
+    buf.close_tag().unwrap();
     // This call does not panic because there are valid cases
     // where `close_tag()` is called with no tags left to close.
     // So `close_tag()` does nothing in this case.
-    buf.close_tag();
+    buf.close_tag().unwrap();
     assert_eq!(buf.finish(), "<p>Hello</p>");
 }
