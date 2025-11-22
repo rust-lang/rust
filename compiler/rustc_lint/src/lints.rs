@@ -784,6 +784,39 @@ pub(crate) enum InvalidFromUtf8Diag {
     },
 }
 
+// interior_mutable_consts.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_const_item_interior_mutations)]
+#[note(lint_temporary)]
+#[note(lint_never_original)]
+#[help]
+pub(crate) struct ConstItemInteriorMutationsDiag<'tcx> {
+    pub method_name: Ident,
+    pub const_name: Ident,
+    pub const_ty: Ty<'tcx>,
+    #[label]
+    pub receiver_span: Span,
+    #[subdiagnostic]
+    pub sugg_static: Option<ConstItemInteriorMutationsSuggestionStatic>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ConstItemInteriorMutationsSuggestionStatic {
+    #[suggestion(
+        lint_suggestion_static,
+        code = "{before}static ",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Spanful {
+        #[primary_span]
+        const_: Span,
+        before: &'static str,
+    },
+    #[help(lint_suggestion_static)]
+    Spanless,
+}
+
 // reference_casting.rs
 #[derive(LintDiagnostic)]
 pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
