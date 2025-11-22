@@ -67,7 +67,7 @@ pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
-use crate::display::{Joined as _, MaybeDisplay as _};
+use crate::display::{Joined as _, MaybeDisplay as _, fmt_json};
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::cache::Cache;
@@ -1730,10 +1730,14 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", print_type(ty, cx)), out)
 }
 
-fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Context<'_>) -> String {
+fn notable_traits_json<'a>(
+    f: &mut fmt::Formatter<'_>,
+    tys: impl Iterator<Item = &'a clean::Type>,
+    cx: &Context<'_>,
+) {
     let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
     mp.sort_unstable_keys();
-    serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
+    fmt_json(f, &mp).expect("serialize (string, string) -> json object cannot fail");
 }
 
 #[derive(Clone, Copy, Debug)]
