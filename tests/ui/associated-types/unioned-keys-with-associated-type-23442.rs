@@ -1,6 +1,7 @@
 // https://github.com/rust-lang/rust/issues/23442
 //@ check-pass
 #![allow(dead_code)]
+#![allow(unconstructable_pub_struct)]
 use std::marker::PhantomData;
 
 pub struct UnionedKeys<'a,K>

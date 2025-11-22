@@ -1,4 +1,6 @@
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
+
 pub trait Backend {
     type DescriptorSetLayout;
 }

@@ -1,6 +1,7 @@
 //@ run-rustfix
 #![allow(unused_mut)]
 #![allow(dead_code)]
+#![allow(unconstructable_pub_struct)]
 
 pub trait Layer {
     fn process(&mut self) -> u32;

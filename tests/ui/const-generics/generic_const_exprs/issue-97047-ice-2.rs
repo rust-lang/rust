@@ -4,6 +4,8 @@
 //~^ WARN the feature `unsized_const_params` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 //~^^ WARN the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes [incomplete_features]
 
+#![allow(unconstructable_pub_struct)]
+
 pub struct Changes<const CHANGES: &'static [&'static str]>
 where
     [(); CHANGES.len()]:,

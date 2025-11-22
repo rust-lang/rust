@@ -5,6 +5,7 @@
 
 #![feature(decl_macro, staged_api)]
 #![stable(feature = "test", since = "1.0.0")]
+#![allow(unconstructable_pub_struct)]
 
 extern crate std as local_std;
 use local_std::marker::Copy as LocalCopy;

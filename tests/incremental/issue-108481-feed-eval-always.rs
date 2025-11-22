@@ -2,6 +2,7 @@
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
+#![allow(unconstructable_pub_struct)]
 
 use std::fmt::Debug;
 

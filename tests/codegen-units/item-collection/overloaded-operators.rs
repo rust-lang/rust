@@ -5,6 +5,7 @@
 
 use std::ops::{Add, Deref, Index, IndexMut};
 
+#[allow(unconstructable_pub_struct)]
 pub struct Indexable {
     data: [u8; 3],
 }
@@ -27,6 +28,7 @@ impl IndexMut<usize> for Indexable {
 
 //~ MONO_ITEM fn <Equatable as std::cmp::PartialEq>::eq
 //~ MONO_ITEM fn <Equatable as std::cmp::PartialEq>::ne
+#[allow(unconstructable_pub_struct)]
 #[derive(PartialEq)]
 pub struct Equatable(u32);
 

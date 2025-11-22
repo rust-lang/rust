@@ -7,6 +7,7 @@
 //@ compile-flags:-C link-dead-code
 
 #![crate_type = "rlib"]
+#![allow(unconstructable_pub_struct)]
 
 pub struct DecodeUtf16<I>(I);
 

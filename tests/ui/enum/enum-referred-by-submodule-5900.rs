@@ -1,6 +1,7 @@
 // https://github.com/rust-lang/rust/issues/5900
 //@ check-pass
 #![allow(dead_code)]
+#![allow(unconstructable_pub_struct)]
 
 pub mod foo {
     use super::Bar;

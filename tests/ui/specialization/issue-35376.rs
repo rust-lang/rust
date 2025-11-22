@@ -1,6 +1,7 @@
 //@ check-pass
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
+#![allow(unconstructable_pub_struct)]
 
 fn main() {}
 

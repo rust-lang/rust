@@ -1,5 +1,6 @@
 // ICEs if checking if there is a significant destructor causes a query cycle
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
 
 #![warn(rust_2021_incompatible_closure_captures)]
 pub struct Foo(Bar);

@@ -3,6 +3,8 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
+#![allow(unconstructable_pub_struct)]
+
 use std::ops::Deref;
 
 pub struct TypeFieldIterator<'a, T: 'a> {

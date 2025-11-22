@@ -1,5 +1,6 @@
 //@ check-pass
 // Verify that we do not ICE when anonymous lifetimes appear inside an AnonConst.
+#![allow(unconstructable_pub_struct)]
 
 pub struct EntriesBuffer(Box<[[u8; HashesEntry::LEN]; 5]>);
 

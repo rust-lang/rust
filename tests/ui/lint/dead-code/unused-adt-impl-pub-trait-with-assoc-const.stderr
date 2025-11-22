@@ -21,16 +21,29 @@ LL | pub struct T2(i32);
    = help: consider removing this field
 
 error: struct `T3` is never constructed
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:5:8
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:6:8
    |
 LL | struct T3;
    |        ^^
 
 error: trait `Trait1` is never used
-  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:7:7
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:8:7
    |
 LL | trait Trait1 {
    |       ^^^^^^
 
-error: aborting due to 4 previous errors
+error: pub struct `T2` is unconstructable externally and never constructed locally
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:1
+   |
+LL | pub struct T2(i32);
+   | ^^^^^^^^^^^^^
+   |
+help: this struct may be unused locally and also externally, consider removing it
+  --> $DIR/unused-adt-impl-pub-trait-with-assoc-const.rs:4:1
+   |
+LL | pub struct T2(i32);
+   | ^^^
+   = note: `#[deny(unconstructable_pub_struct)]` on by default
+
+error: aborting due to 5 previous errors
 

@@ -22,6 +22,7 @@ impl<T> Struct<T> {
     }
 }
 
+#[allow(unconstructable_pub_struct)]
 pub struct LifeTimeOnly<'a> {
     _a: &'a u32,
 }

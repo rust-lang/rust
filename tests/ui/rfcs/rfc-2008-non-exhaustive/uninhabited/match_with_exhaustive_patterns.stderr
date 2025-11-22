@@ -5,7 +5,7 @@ LL |     match x {}
    |           ^
    |
 note: `UninhabitedEnum` defined here
-  --> $DIR/auxiliary/uninhabited.rs:5:1
+  --> $DIR/auxiliary/uninhabited.rs:6:1
    |
 LL | pub enum UninhabitedEnum {
    | ^^^^^^^^^^^^^^^^^^^^^^^^

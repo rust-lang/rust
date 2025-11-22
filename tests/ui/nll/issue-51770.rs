@@ -1,6 +1,7 @@
 //@ check-pass
 
 #![crate_type = "lib"]
+#![allow(unconstructable_pub_struct)]
 
 // In an older version, when NLL was still a feature, the following previously did not compile
 

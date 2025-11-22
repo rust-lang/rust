@@ -2,6 +2,7 @@
 
 #![feature(trivial_bounds)]
 #![allow(trivial_bounds)]
+#![allow(unconstructable_pub_struct)]
 
 // Make sure that we still use the where-clauses from the struct when checking
 // if it may implement `Copy` unconditionally.

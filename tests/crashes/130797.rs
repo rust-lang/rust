@@ -1,5 +1,7 @@
 //@ known-bug: #130797
 
+#![allow(unconstructable_pub_struct)]
+
 trait Transform {
     type Output<'a>;
 }

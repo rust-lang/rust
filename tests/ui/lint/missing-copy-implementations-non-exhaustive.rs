@@ -5,6 +5,7 @@
 //@ check-pass
 
 #![deny(missing_copy_implementations)]
+#![allow(unconstructable_pub_struct)]
 
 #[non_exhaustive]
 pub enum MyEnum {

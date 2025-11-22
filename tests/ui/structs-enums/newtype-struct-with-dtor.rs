@@ -1,6 +1,7 @@
 //@ run-pass
 #![allow(unused_unsafe)]
 #![allow(unused_variables)]
+#![allow(unconstructable_pub_struct)]
 
 pub struct Fd(u32);
 

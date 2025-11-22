@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(unconstructable_pub_struct)]
 
 // Some trait with a function that returns a slice:
 pub trait AsSlice {

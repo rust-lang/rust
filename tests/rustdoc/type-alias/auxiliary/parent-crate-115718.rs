@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 pub struct MyStruct<T>(T);
 
 pub trait MyTrait1 {

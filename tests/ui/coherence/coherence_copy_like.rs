@@ -5,6 +5,8 @@
 
 //@ aux-build:coherence_copy_like_lib.rs
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate coherence_copy_like_lib as lib;
 
 struct MyType { x: i32 }
