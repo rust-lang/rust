@@ -5,6 +5,13 @@ use crate::{AssistContext, AssistId, Assists, GroupLabel};
 // Assist: convert_char_literal
 //
 // Converts character literals between different representations. Currently supports normal character -> ASCII / Unicode escape.
+// ```
+// const _: char = 'a'$0;
+// ```
+// ->
+// ```
+// const _: char = '\x61';
+// ```
 pub(crate) fn convert_char_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if !ctx.has_empty_selection() {
         return None;
@@ -17,7 +24,7 @@ pub(crate) fn convert_char_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -
     };
 
     let value = literal.value().ok()?;
-    let text = literal.syntax().text().to_string();
+    let text = literal.syntax().text().to_owned();
     let range = literal.syntax().text_range();
     let group_id = GroupLabel("Convert char representation".into());
 

@@ -425,6 +425,19 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_char_literal() {
+    check_doc_test(
+        "convert_char_literal",
+        r#####"
+const _: char = 'a'$0;
+"#####,
+        r#####"
+const _: char = '\x61';
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_closure_to_fn() {
     check_doc_test(
         "convert_closure_to_fn",
