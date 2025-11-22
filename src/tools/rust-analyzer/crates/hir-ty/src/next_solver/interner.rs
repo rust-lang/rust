@@ -214,6 +214,10 @@ macro_rules! _interned_vec_db {
         }
 
         impl<'db> $name<'db> {
+            pub fn empty(interner: DbInterner<'db>) -> Self {
+                $name::new_(interner.db(), smallvec::SmallVec::new())
+            }
+
             pub fn new_from_iter(
                 interner: DbInterner<'db>,
                 data: impl IntoIterator<Item = $ty<'db>>,

@@ -1917,24 +1917,32 @@ impl<'db> Evaluator<'db> {
         let value = match konst.kind() {
             ConstKind::Value(value) => value,
             ConstKind::Unevaluated(UnevaluatedConst { def: const_id, args: subst }) => 'b: {
-                let mut const_id = match const_id {
+                let mut id = match const_id {
                     SolverDefId::ConstId(it) => GeneralConstId::from(it),
                     SolverDefId::StaticId(it) => it.into(),
                     _ => unreachable!("unevaluated consts should be consts or statics"),
                 };
                 let mut subst = subst;
-                if let hir_def::GeneralConstId::ConstId(c) = const_id {
+                if let hir_def::GeneralConstId::ConstId(c) = id {
                     let (c, s) = lookup_impl_const(&self.infcx, self.trait_env.clone(), c, subst);
-                    const_id = hir_def::GeneralConstId::ConstId(c);
+                    id = hir_def::GeneralConstId::ConstId(c);
                     subst = s;
                 }
-                result_owner = self
-                    .db
-                    .const_eval(const_id, subst, Some(self.trait_env.clone()))
-                    .map_err(|e| {
-                        let name = const_id.name(self.db);
-                        MirEvalError::ConstEvalError(name, Box::new(e))
-                    })?;
+                result_owner = match id {
+                    GeneralConstId::ConstId(const_id) => self
+                        .db
+                        .const_eval(const_id, subst, Some(self.trait_env.clone()))
+                        .map_err(|e| {
+                            let name = id.name(self.db);
+                            MirEvalError::ConstEvalError(name, Box::new(e))
+                        })?,
+                    GeneralConstId::StaticId(static_id) => {
+                        self.db.const_eval_static(static_id).map_err(|e| {
+                            let name = id.name(self.db);
+                            MirEvalError::ConstEvalError(name, Box::new(e))
+                        })?
+                    }
+                };
                 if let ConstKind::Value(value) = result_owner.kind() {
                     break 'b value;
                 }
