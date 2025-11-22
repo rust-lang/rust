@@ -1960,6 +1960,7 @@ symbols! {
         str_inherent_from_utf8_unchecked_mut,
         strict_provenance_lints,
         string_deref_patterns,
+        string_in_global,
         stringify,
         struct_field_attributes,
         struct_inherit,
