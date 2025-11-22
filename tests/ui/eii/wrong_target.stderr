@@ -1,0 +1,110 @@
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:7:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:9:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:13:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:15:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:21:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:23:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:27:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:29:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:32:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:34:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:39:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:41:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:44:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:46:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:51:1
+   |
+LL | #[foo]
+   | ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:53:1
+   |
+LL | #[eii]
+   | ^^^^^^
+
+error: `#[foo]` is only valid on functions
+  --> $DIR/wrong_target.rs:56:5
+   |
+LL |     #[foo]
+   |     ^^^^^^
+
+error: `#[eii]` is only valid on functions
+  --> $DIR/wrong_target.rs:58:5
+   |
+LL |     #[eii]
+   |     ^^^^^^
+
+error: aborting due to 18 previous errors
+
