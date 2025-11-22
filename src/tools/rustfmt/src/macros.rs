@@ -19,6 +19,8 @@ use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
 use tracing::debug;
 
+use crate::Config;
+use crate::attr::rewrite_meta_item_inner_result;
 use crate::comment::{
     CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment,
 };
@@ -27,6 +29,7 @@ use crate::config::lists::*;
 use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
 use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
+use crate::parse::macros::cfg_select::parse_cfg_select;
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{ParsedMacroArgs, parse_expr, parse_macro_args};
 use crate::rewrite::{
@@ -236,6 +239,20 @@ fn rewrite_macro_inner(
                     if kind == MacroErrorKind::ParseFailure => {}
                 // If formatting fails even though parsing succeeds, return the err early
                 _ => return Err(err),
+            },
+        }
+    }
+
+    if macro_name.ends_with("cfg_select!") {
+        match format_cfg_select(context, shape, ts.clone(), mac.span()) {
+            Ok(rw) => return Ok(rw),
+            Err(err) => match err {
+                // We will move on to parsing macro args just like other macros
+                // if we could not parse cfg_select! with known syntax
+                RewriteError::MacroFailure { kind, span: _ }
+                    if kind == MacroErrorKind::ParseFailure => {}
+                // If formatting fails even though parsing succeeds, return the err early
+                other => return Err(other),
             },
         }
     }
@@ -1288,17 +1305,19 @@ impl MacroBranch {
 
         let old_body = context.snippet(self.body).trim();
         let has_block_body = old_body.starts_with('{');
-        let mut prefix_width = 5; // 5 = " => {"
-        if context.config.style_edition() >= StyleEdition::Edition2024 {
-            if has_block_body {
-                prefix_width = 6; // 6 = " => {{"
-            }
-        }
+
+        let prefix =
+            if context.config.style_edition() >= StyleEdition::Edition2024 && has_block_body {
+                " => {{"
+            } else {
+                " => {"
+            };
+
         let mut result = format_macro_args(
             context,
             self.args.clone(),
             shape
-                .sub_width(prefix_width)
+                .sub_width(prefix.len())
                 .max_width_error(shape.width, self.span)?,
         )?;
 
@@ -1321,10 +1340,63 @@ impl MacroBranch {
         let (body_str, substs) =
             replace_names(old_body).macro_error(MacroErrorKind::ReplaceMacroVariable, self.span)?;
 
-        let mut config = context.config.clone();
-        config.set().show_parse_errors(false);
+        let mut new_body =
+            Self::try_format_rhs(&context.config, shape, has_block_body, &body_str, self.span)?;
 
-        result += " {";
+        // Undo our replacement of macro variables.
+        // FIXME: this could be *much* more efficient.
+        for (old, new) in &substs {
+            if old_body.contains(new) {
+                debug!("rewrite_macro_def: bailing matching variable: `{}`", new);
+                return Err(RewriteError::MacroFailure {
+                    kind: MacroErrorKind::ReplaceMacroVariable,
+                    span: self.span,
+                });
+            }
+            new_body = new_body.replace(new, old);
+        }
+
+        Self::emit_formatted_body(
+            &context.config,
+            &shape,
+            &mut result,
+            has_block_body,
+            &new_body,
+        );
+
+        Ok(result)
+    }
+
+    fn emit_formatted_body(
+        config: &Config,
+        shape: &Shape,
+        result: &mut String,
+        has_block_body: bool,
+        body: &str,
+    ) {
+        *result += " {";
+
+        if has_block_body {
+            *result += body.trim();
+        } else if !body.is_empty() {
+            *result += "\n";
+            *result += &body;
+            *result += &shape.indent.to_string(&config);
+        }
+
+        *result += "}";
+    }
+
+    fn try_format_rhs(
+        config: &Config,
+        shape: Shape,
+        has_block_body: bool,
+        body_str: &str,
+        span: Span,
+    ) -> RewriteResult {
+        // This is a best-effort, reporting parse errors is not helpful.
+        let mut config = config.clone();
+        config.set().show_parse_errors(false);
 
         let body_indent = if has_block_body {
             shape.indent
@@ -1335,33 +1407,34 @@ impl MacroBranch {
         config.set().max_width(new_width);
 
         // First try to format as items, then as statements.
-        let new_body_snippet = match crate::format_snippet(&body_str, &config, true) {
-            Some(new_body) => new_body,
-            None => {
-                let new_width = new_width + config.tab_spaces();
-                config.set().max_width(new_width);
-                match crate::format_code_block(&body_str, &config, true) {
-                    Some(new_body) => new_body,
-                    None => {
-                        return Err(RewriteError::MacroFailure {
-                            kind: MacroErrorKind::Unknown,
-                            span: self.span,
-                        });
-                    }
-                }
+        let new_body_snippet = 'blk: {
+            if let Some(new_body) = crate::format_snippet(&body_str, &config, true) {
+                break 'blk new_body;
             }
+
+            let new_width = config.max_width() + config.tab_spaces();
+            config.set().max_width(new_width);
+
+            if let Some(new_body) = crate::format_code_block(&body_str, &config, true) {
+                break 'blk new_body;
+            }
+
+            return Err(RewriteError::MacroFailure {
+                kind: MacroErrorKind::Unknown,
+                span,
+            });
         };
 
         if !filtered_str_fits(&new_body_snippet.snippet, config.max_width(), shape) {
             return Err(RewriteError::ExceedsMaxWidth {
                 configured_width: shape.width,
-                span: self.span,
+                span,
             });
         }
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);
-        let mut new_body = LineClasses::new(new_body_snippet.snippet.trim_end())
+        let new_body = LineClasses::new(new_body_snippet.snippet.trim_end())
             .enumerate()
             .fold(
                 (String::new(), true),
@@ -1377,30 +1450,7 @@ impl MacroBranch {
             )
             .0;
 
-        // Undo our replacement of macro variables.
-        // FIXME: this could be *much* more efficient.
-        for (old, new) in &substs {
-            if old_body.contains(new) {
-                debug!("rewrite_macro_def: bailing matching variable: `{}`", new);
-                return Err(RewriteError::MacroFailure {
-                    kind: MacroErrorKind::ReplaceMacroVariable,
-                    span: self.span,
-                });
-            }
-            new_body = new_body.replace(new, old);
-        }
-
-        if has_block_body {
-            result += new_body.trim();
-        } else if !new_body.is_empty() {
-            result += "\n";
-            result += &new_body;
-            result += &shape.indent.to_string(&config);
-        }
-
-        result += "}";
-
-        Ok(result)
+        Ok(new_body)
     }
 }
 
@@ -1460,6 +1510,120 @@ fn format_lazy_static(
 
     result.push_str(&shape.indent.to_string_with_newline(context.config));
     result.push('}');
+
+    Ok(result)
+}
+
+fn format_cfg_select_rule(
+    rule: &ast::MetaItemInner,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    span: Span,
+) -> RewriteResult {
+    let mut result = String::with_capacity(128);
+
+    // The cfg plus ` => {` should stay within the line length.
+    let rule_shape = shape
+        .sub_width(" => {".len())
+        .max_width_error(shape.width, span)?;
+
+    let formatted = rewrite_meta_item_inner_result(rule, context, rule_shape, true)?;
+    result.push_str(&formatted);
+
+    let is_key_value = match rule {
+        ast::MetaItemInner::MetaItem(ref meta_item) => {
+            matches!(meta_item.kind, ast::MetaItemKind::NameValue(_))
+        }
+        _ => false,
+    };
+
+    if is_key_value && formatted.contains('\n') {
+        result.push_str(&shape.indent.to_string_with_newline(context.config));
+        result.push_str("=>");
+    } else {
+        result.push_str(" =>");
+    }
+
+    Ok(result)
+}
+
+fn format_cfg_select(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    ts: TokenStream,
+    span: Span,
+) -> RewriteResult {
+    let mut result = String::with_capacity(1024);
+
+    result.push_str("cfg_select! {");
+
+    let branches = parse_cfg_select(context, ts).macro_error(MacroErrorKind::ParseFailure, span)?;
+
+    let shape = shape
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config);
+
+    result.push_str(&shape.indent.to_string_with_newline(context.config));
+
+    for (rule, rhs, _) in branches.reachable {
+        result.push_str(&format_cfg_select_rule(&rule, context, shape, span)?);
+        result.push_str(&format_cfg_select_rhs(context, shape, rhs)?);
+    }
+
+    if let Some((_, rhs, _)) = branches.wildcard {
+        result.push_str("_ =>");
+        result.push_str(&format_cfg_select_rhs(context, shape, rhs)?);
+    }
+
+    for (lhs, rhs, _) in branches.unreachable {
+        use rustc_parse::parser::cfg_select::CfgSelectPredicate;
+
+        match lhs {
+            CfgSelectPredicate::Cfg(rule) => {
+                result.push_str(&format_cfg_select_rule(&rule, context, shape, span)?);
+            }
+            CfgSelectPredicate::Wildcard(_) => {
+                result.push_str("_ =>");
+            }
+        }
+
+        result.push_str(&format_cfg_select_rhs(context, shape, rhs)?);
+    }
+
+    // Emit the final `}` at the correct indentation level.
+    result.truncate(result.len() - context.config.tab_spaces());
+    result.push('}');
+
+    Ok(result)
+}
+
+fn format_cfg_select_rhs(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    ts: TokenStream,
+) -> RewriteResult {
+    let has_block_body = false;
+
+    let span = ts
+        .iter()
+        .map(|tt| tt.span())
+        .reduce(Span::to)
+        .unwrap_or_default();
+
+    let old_body = context.snippet(span).trim();
+    let new_body =
+        MacroBranch::try_format_rhs(&context.config, shape, has_block_body, old_body, span)?;
+
+    let mut result = String::new();
+    MacroBranch::emit_formatted_body(
+        &context.config,
+        &shape,
+        &mut result,
+        has_block_body,
+        &new_body,
+    );
+
+    result.push_str(&shape.indent.to_string_with_newline(context.config));
 
     Ok(result)
 }
