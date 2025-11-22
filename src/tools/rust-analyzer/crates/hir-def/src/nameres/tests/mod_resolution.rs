@@ -965,6 +965,7 @@ pub trait Trait {
 
             crate::module
             - Trait : type
+            - (legacy) m : macro!
         "#]],
     );
     check(
@@ -991,6 +992,7 @@ pub trait Trait {
 
             crate::module
             - Trait : type
+            - (legacy) m : macro!
         "#]],
     );
 }

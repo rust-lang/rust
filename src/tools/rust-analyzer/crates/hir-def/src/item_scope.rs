@@ -786,6 +786,21 @@ impl ItemScope {
 
             buf.push('\n');
         }
+
+        // Also dump legacy-textual-scope macros visible at the _end_ of the scope.
+        //
+        // For tests involving a cursor position, this might include macros that
+        // are _not_ visible at the cursor position.
+        let mut legacy_macros = self.legacy_macros().collect::<Vec<_>>();
+        legacy_macros.sort_by(|(a, _), (b, _)| Ord::cmp(a, b));
+        for (name, macros) in legacy_macros {
+            format_to!(buf, "- (legacy) {} :", name.display(db, Edition::LATEST));
+            for &macro_id in macros {
+                buf.push_str(" macro");
+                print_macro_sub_ns(buf, macro_id);
+            }
+            buf.push('\n');
+        }
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {

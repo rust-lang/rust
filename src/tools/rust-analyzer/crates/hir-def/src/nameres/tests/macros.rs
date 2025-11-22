@@ -25,10 +25,12 @@ structs!(Bar, Baz);
             crate
             - Foo : type
             - nested : type
+            - (legacy) structs : macro!
 
             crate::nested
             - Bar : type
             - Baz : type
+            - (legacy) structs : macro!
         "#]],
     );
 }
@@ -55,18 +57,23 @@ struct Y;
             crate
             - m : type
             - n1 : type
+            - (legacy) m : macro!
 
             crate::m
             - n3 : type
+            - (legacy) m : macro!
 
             crate::m::n3
             - Y : type value
+            - (legacy) m : macro!
 
             crate::n1
             - n2 : type
+            - (legacy) m : macro!
 
             crate::n1::n2
             - X : type value
+            - (legacy) m : macro!
         "#]],
     );
 }
@@ -209,6 +216,7 @@ macro_rules! bar {
             - Foo : type
             - bar : macro! (import)
             - foo : macro! (import)
+            - (legacy) baz : macro!
         "#]],
     );
 }
@@ -401,6 +409,7 @@ mod prelude {
             - prelude : type
 
             crate::prelude
+            - (legacy) declare_mod : macro!
         "#]],
     );
 }
@@ -420,6 +429,7 @@ macro_rules! m {
         expect![[r#"
             crate
             - S : type value
+            - (legacy) m : macro!
         "#]],
     );
     // FIXME: should not expand. legacy macro scoping is not implemented.
@@ -509,8 +519,11 @@ macro_rules! baz {
             - m5 : type
             - m7 : type
             - ok_double_macro_use_shadow : value
+            - (legacy) baz : macro!
+            - (legacy) foo : macro! macro! macro!
 
             crate::m1
+            - (legacy) bar : macro!
 
             crate::m2
 
@@ -521,18 +534,30 @@ macro_rules! baz {
             - m4 : type
             - m5 : type
             - ok_shadow : value
+            - (legacy) bar : macro! macro!
+            - (legacy) baz : macro!
+            - (legacy) foo : macro! macro! macro! macro!
 
             crate::m3::m4
             - ok_shadow_deep : value
+            - (legacy) bar : macro!
+            - (legacy) foo : macro! macro!
 
             crate::m3::m5
+            - (legacy) bar : macro!
+            - (legacy) baz : macro!
+            - (legacy) foo : macro! macro! macro!
 
             crate::m5
             - m6 : type
+            - (legacy) foo : macro! macro!
 
             crate::m5::m6
+            - (legacy) foo : macro! macro!
 
             crate::m7
+            - (legacy) baz : macro!
+            - (legacy) foo : macro! macro!
         "#]],
     );
     // FIXME: should not see `NotFoundBefore`
@@ -558,6 +583,7 @@ fn baz() {}
             - bar : type (import) macro! (import)
             - baz : type (import) value macro! (import)
             - foo : type macro!
+            - (legacy) foo : macro!
         "#]],
     );
 }
@@ -630,12 +656,15 @@ mod m {
             - OkPlain : type value
             - bar : macro!
             - m : type
+            - (legacy) foo : macro!
 
             crate::m
             - alias1 : macro! (import)
             - alias2 : macro! (import)
             - alias3 : macro! (import)
             - not_found : _
+            - (legacy) bar : macro!
+            - (legacy) foo : macro!
         "#]],
     );
 }
@@ -692,8 +721,10 @@ pub struct Baz;
             - FooSelf : type (import) value (import)
             - foo : type (extern)
             - m : type
+            - (legacy) current : macro!
 
             crate::m
+            - (legacy) current : macro!
         "#]],
     );
 }
@@ -884,6 +915,7 @@ extern {
         expect![[r#"
             crate
             - S : value
+            - (legacy) m : macro!
         "#]],
     );
 }
@@ -975,6 +1007,8 @@ b! { static = #[] ();}
 "#,
         expect![[r#"
             crate
+            - (legacy) a : macro!
+            - (legacy) b : macro!
         "#]],
     );
 }
@@ -996,6 +1030,8 @@ indirect_macro!();
         expect![[r#"
             crate
             - S : type
+            - (legacy) indirect_macro : macro!
+            - (legacy) item : macro!
         "#]],
     );
 }
@@ -1161,6 +1197,7 @@ m!(
 "#,
         expect![[r#"
             crate
+            - (legacy) m : macro!
         "#]],
     )
 }
@@ -1198,6 +1235,9 @@ struct B;
             - B : type value
             - inner_a : macro!
             - inner_b : macro!
+            - (legacy) include : macro!
+            - (legacy) inner_a : macro!
+            - (legacy) inner_b : macro!
         "#]],
     );
 }
@@ -1229,6 +1269,9 @@ struct A;
             crate
             - A : type value
             - inner : macro!
+            - (legacy) include : macro!
+            - (legacy) inner : macro!
+            - (legacy) m : macro!
         "#]],
     );
     // eager -> MBE -> $crate::mbe
@@ -1258,6 +1301,9 @@ struct A;
             crate
             - A : type value
             - inner : macro!
+            - (legacy) include : macro!
+            - (legacy) inner : macro!
+            - (legacy) n : macro!
         "#]],
     );
 }
@@ -1393,29 +1439,37 @@ pub struct Url {}
         expect![[r#"
             crate
             - nested : type
+            - (legacy) include : macro!
 
             crate::nested
             - company_name : type
             - different_company : type
             - util : type
+            - (legacy) include : macro!
 
             crate::nested::company_name
             - network : type
+            - (legacy) include : macro!
 
             crate::nested::company_name::network
             - v1 : type
+            - (legacy) include : macro!
 
             crate::nested::company_name::network::v1
             - IpAddress : type
+            - (legacy) include : macro!
 
             crate::nested::different_company
             - network : type
+            - (legacy) include : macro!
 
             crate::nested::different_company::network
             - Url : type
+            - (legacy) include : macro!
 
             crate::nested::util
             - Helper : type
+            - (legacy) include : macro!
         "#]],
     );
 }
@@ -1535,9 +1589,11 @@ macro_rules! mk_foo {
             crate
             - a : type
             - lib : type (extern)
+            - (legacy) foo : macro!
 
             crate::a
             - Ok : type value
+            - (legacy) foo : macro!
         "#]],
     );
 }

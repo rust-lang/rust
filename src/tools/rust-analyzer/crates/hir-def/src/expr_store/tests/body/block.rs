@@ -255,6 +255,7 @@ fn f() {
 
             crate
             - f : value
+            - (legacy) mark : macro!
         "#]],
     );
 }
@@ -328,6 +329,8 @@ fn main() {
             crate
             - foo : macro!
             - main : value
+            - (legacy) bar : macro!
+            - (legacy) foo : macro!
         "#]],
     );
 }
@@ -362,6 +365,7 @@ fn f() {
 
             crate::module
             - f : value
+            - (legacy) m : macro!
         "#]],
     )
 }
@@ -449,6 +453,8 @@ fn foo() {
 
             crate
             - foo : value
+            - (legacy) declare : macro!
+            - (legacy) inner_declare : macro!
         "#]],
     )
 }
@@ -501,6 +507,7 @@ fn foo() {
 
             crate
             - foo : value
+            - (legacy) mac : macro!
         "#]],
     )
 }
@@ -523,6 +530,7 @@ fn f() {$0
 
             crate
             - f : value
+            - (legacy) foo : macro!
         "#]],
     )
 }
