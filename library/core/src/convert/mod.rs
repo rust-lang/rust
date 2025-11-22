@@ -580,7 +580,7 @@ pub const trait Into<T>: Sized {
 #[lang = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
-    all(Self = "&str", T = "alloc::string::String"),
+    all(Self = "&str", T = "alloc::string::generic::String<A>"),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 #[doc(search_unbox)]

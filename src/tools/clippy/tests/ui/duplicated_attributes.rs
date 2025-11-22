@@ -21,7 +21,7 @@ fn foo() {}
 fn bar() {}
 
 // No warning:
-#[rustc_on_unimplemented(on(Self = "&str", label = "`a"), on(Self = "alloc::string::String", label = "a"))]
+#[rustc_on_unimplemented(on(Self = "&str", label = "`a"), on(Self = "alloc::string::generic::String<A>", label = "a"))]
 trait Abc {}
 
 #[proc_macro_attr::duplicated_attr()] // Should not warn!

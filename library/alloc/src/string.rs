@@ -371,6 +371,7 @@ pub mod generic {
 /// [Deref]: core::ops::Deref "ops::Deref"
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
+#[rustc_diagnostic_item = "string_in_global"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type String = generic::String;
 
