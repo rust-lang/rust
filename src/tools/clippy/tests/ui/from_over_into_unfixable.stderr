@@ -4,7 +4,7 @@ error: an implementation of `From` is preferred since it gives you `Into<_>` for
 LL | impl Into<InMacro> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: replace the `Into` implementation with `From<std::string::String>`
+   = help: replace the `Into` implementation with `From<std::string::generic::String>`
    = note: `-D clippy::from-over-into` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::from_over_into)]`
 

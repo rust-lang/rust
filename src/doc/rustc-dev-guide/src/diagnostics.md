@@ -954,7 +954,7 @@ You can match on the following names and values, using `name = "value"`:
  - `from_desugaring`: Match against a particular variant of the `DesugaringKind`
    enum. The desugaring is identified by its variant name, for example
    `"QuestionMark"` for `?` desugaring or `"TryBlock"` for `try` blocks.
- - `Self` and any generic arguments of the trait, like `Self = "alloc::string::String"`
+ - `Self` and any generic arguments of the trait, like `Self = "alloc::string::generic::String<A>"`
    or `Rhs="i32"`.
    
 The compiler can provide several values to match on, for example:
@@ -1006,7 +1006,7 @@ The `on` filter accepts `all`, `any` and `not` predicates similar to the `cfg` a
 
 ```rust,ignore
 #[rustc_on_unimplemented(on(
-    all(Self = "&str", T = "alloc::string::String"),
+    all(Self = "&str", T = "alloc::string::generic::String<A>"),
     note = "you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
 ))]
 pub trait From<T>: Sized {
