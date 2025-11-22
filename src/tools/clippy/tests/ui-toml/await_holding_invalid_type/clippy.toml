@@ -1,4 +1,4 @@
 await-holding-invalid-types = [
-    { path = "std::string::String", reason = "strings are bad" },
+    { path = "std::string::generic::String", reason = "strings are bad" },
     "std::net::Ipv4Addr",
 ]

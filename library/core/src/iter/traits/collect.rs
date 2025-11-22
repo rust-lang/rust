@@ -261,7 +261,7 @@ pub trait FromIterator<A>: Sized {
     ),
     on(Self = "&str", label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"),
     on(
-        Self = "alloc::string::String",
+        Self = "alloc::string::generic::String<A>",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(

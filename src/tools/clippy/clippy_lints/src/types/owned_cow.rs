@@ -31,7 +31,9 @@ pub(super) fn check(cx: &LateContext<'_>, qpath: &hir::QPath<'_>, def_id: DefId)
 }
 
 fn replacement(cx: &LateContext<'_>, cty: &hir::Ty<'_>) -> Option<(Span, String)> {
-    if cty.basic_res().is_lang_item(cx, hir::LangItem::String) {
+    if cty.basic_res().is_lang_item(cx, hir::LangItem::String)
+        || cty.basic_res().is_diag_item(cx, sym::string_in_global)
+    {
         return Some((cty.span, "str".into()));
     }
     if cty.basic_res().is_diag_item(cx, sym::Vec) {

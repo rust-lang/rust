@@ -383,6 +383,21 @@ pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     }
 }
 
+/// Checks if the given `QPath` is the `String<Global>` type alias
+pub fn is_string_in_global_ty_alias(cx: &LateContext<'_>, qpath: &QPath<'_>) -> bool {
+    match *qpath {
+        QPath::Resolved(_, path) => {
+            if let Res::Def(_, id) = path.res {
+                cx.tcx.get_diagnostic_name(id) == Some(sym::string_in_global)
+            } else {
+                false
+            }
+        },
+        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_string_in_global_ty_alias(cx, &qpath),
+        _ => false,
+    }
+}
+
 /// Checks if the `def_id` belongs to a function that is part of a trait impl.
 pub fn is_def_id_trait_method(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
     if let Node::Item(item) = cx.tcx.parent_hir_node(cx.tcx.local_def_id_to_hir_id(def_id))

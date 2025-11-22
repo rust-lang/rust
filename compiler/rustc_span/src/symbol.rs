@@ -2222,6 +2222,7 @@ symbols! {
         string_as_str,
         string_deref_patterns,
         string_from_utf8,
+        string_in_global,
         string_insert_str,
         string_new,
         string_push_str,

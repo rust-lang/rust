@@ -30,7 +30,7 @@ error: usage of `mem::forget` on type with `Drop` fields
 LL |     std::mem::forget(string);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: argument has type `std::string::String`
+   = note: argument has type `std::string::generic::String`
 
 error: aborting due to 4 previous errors
 
