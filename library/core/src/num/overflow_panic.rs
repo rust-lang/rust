@@ -34,6 +34,12 @@ pub(super) const fn rem() -> ! {
 
 #[cold]
 #[track_caller]
+pub(super) const fn pow() -> ! {
+    panic!("attempt to calculate the power with overflow")
+}
+
+#[cold]
+#[track_caller]
 pub(super) const fn neg() -> ! {
     panic!("attempt to negate with overflow")
 }
