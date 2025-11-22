@@ -2357,13 +2357,11 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.is_metavar_block() {
+            let sp = self.token_diag_span();
             self.dcx().emit_err(errors::InvalidBlockMacroSegment {
-                span: self.token.span,
-                context: lo.to(self.token.span),
-                wrap: errors::WrapInExplicitBlock {
-                    lo: self.token.span.shrink_to_lo(),
-                    hi: self.token.span.shrink_to_hi(),
-                },
+                span: sp,
+                context: lo.to(sp),
+                wrap: errors::WrapInExplicitBlock { lo: sp.shrink_to_lo(), hi: sp.shrink_to_hi() },
             });
         }
 
