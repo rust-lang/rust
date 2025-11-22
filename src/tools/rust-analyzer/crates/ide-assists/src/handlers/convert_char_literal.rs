@@ -44,3 +44,47 @@ pub(crate) fn convert_char_literal(acc: &mut Assists, ctx: &AssistContext<'_>) -
 
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::tests::check_assist_by_label;
+
+    use super::convert_char_literal;
+
+    #[test]
+    fn ascii_char_to_ascii_and_unicode() {
+        let before = "const _: char = 'a'$0;";
+        check_assist_by_label(
+            convert_char_literal,
+            before,
+            "const _: char = '\\x61';",
+            "Convert 'a' to '\\x61'",
+        );
+        check_assist_by_label(
+            convert_char_literal,
+            before,
+            "const _: char = '\\u{61}';",
+            "Convert 'a' to '\\u{61}'",
+        );
+    }
+
+    #[test]
+    fn non_ascii_char_only_unicode() {
+        check_assist_by_label(
+            convert_char_literal,
+            "const _: char = '😀'$0;",
+            "const _: char = '\\u{1f600}';",
+            "Convert '😀' to '\\u{1f600}'",
+        );
+    }
+
+    #[test]
+    fn ascii_escape_can_convert_to_unicode() {
+        check_assist_by_label(
+            convert_char_literal,
+            "const _: char = '\\x61'$0;",
+            "const _: char = '\\u{61}';",
+            "Convert '\\x61' to '\\u{61}'",
+        );
+    }
+}
