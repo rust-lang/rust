@@ -538,14 +538,6 @@ impl Ctx<'_> {
         editor: &mut SyntaxEditor,
         ident_pat: &ast::IdentPat,
     ) -> Option<()> {
-        // Check if IdentPat is inside a function parameter.
-        // Parameter names are bindings, not references, thus should not be qualified.
-        for ancestor in ident_pat.syntax().ancestors() {
-            if ast::Param::can_cast(ancestor.kind()) {
-                return None;
-            }
-        }
-
         let name = ident_pat.name()?;
 
         let temp_path = make::path_from_text(&name.text());
@@ -554,7 +546,9 @@ impl Ctx<'_> {
 
         match resolution {
             hir::PathResolution::Def(def) if def.as_assoc_item(self.source_scope.db).is_none() => {
-                // Don't qualify macros - they can't be used in pattern position
+                // Macros cannot be used in pattern position, and identifiers that happen
+                // to have the same name as macros (like parameter names `vec`, `format`, etc.)
+                // are bindings, not references. Don't qualify them.
                 if matches!(def, hir::ModuleDef::Macro(_)) {
                     return None;
                 }
