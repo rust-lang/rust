@@ -114,16 +114,10 @@ impl<'a, T> InitializingSlice<'a, T> {
 impl<'a, T> Drop for InitializingSlice<'a, T> {
     #[cold] // will only be invoked on unwind
     fn drop(&mut self) {
-        let initialized_slice = ptr::slice_from_raw_parts_mut(
-            MaybeUninit::slice_as_mut_ptr(self.data),
-            self.initialized_len,
-        );
         // SAFETY:
         // * the pointer is valid because it was made from a mutable reference
         // * `initialized_len` counts the initialized elements as an invariant of this type,
         //   so each of the pointed-to elements is initialized and may be dropped.
-        unsafe {
-            ptr::drop_in_place::<[T]>(initialized_slice);
-        }
+        unsafe { self.data[..self.initialized_len].assume_init_drop() };
     }
 }
