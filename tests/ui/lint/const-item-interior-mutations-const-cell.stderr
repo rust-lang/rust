@@ -1,0 +1,377 @@
+warning: mutation of an interior mutable `const` item with call to `force`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:16:13
+   |
+LL |     let _ = LazyCell::force(&A);
+   |             ^^^^^^^^^^^^^^^^^-^
+   |                              |
+   |                              `A` is a interior mutable `const` item of type `LazyCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: `#[warn(const_item_interior_mutations)]` on by default
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: LazyCell<i32> = LazyCell::new(|| 0);
+LL +     static A: LazyCell<i32> = LazyCell::new(|| 0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:23:13
+   |
+LL |     let _ = A.set(10);
+   |             -^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceCell<i32> = OnceCell::new();
+LL +     static A: OnceCell<i32> = OnceCell::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_insert`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:26:13
+   |
+LL |     let _ = A.try_insert(20);
+   |             -^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceCell<i32> = OnceCell::new();
+LL +     static A: OnceCell<i32> = OnceCell::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get_or_init`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:29:13
+   |
+LL |     let _ = A.get_or_init(|| 30);
+   |             -^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceCell<i32> = OnceCell::new();
+LL +     static A: OnceCell<i32> = OnceCell::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get_or_try_init`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:32:13
+   |
+LL |     let _ = A.get_or_try_init(|| Ok::<_, ()>(40));
+   |             -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `OnceCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: OnceCell<i32> = OnceCell::new();
+LL +     static A: OnceCell<i32> = OnceCell::new();
+   |
+
+warning: mutation of an interior mutable `const` item with call to `set`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:39:13
+   |
+LL |     let _ = A.set(1);
+   |             -^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Cell<i32> = Cell::new(0);
+LL +     static A: Cell<i32> = Cell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `swap`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:42:13
+   |
+LL |     let _ = A.swap(&A);
+   |             -^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Cell<i32> = Cell::new(0);
+LL +     static A: Cell<i32> = Cell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:45:13
+   |
+LL |     let _ = A.replace(2);
+   |             -^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Cell<i32> = Cell::new(0);
+LL +     static A: Cell<i32> = Cell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:48:13
+   |
+LL |     let _ = A.get();
+   |             -^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Cell<i32> = Cell::new(0);
+LL +     static A: Cell<i32> = Cell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `update`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:51:13
+   |
+LL |     let _ = A.update(|x| x + 1);
+   |             -^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `Cell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: Cell<i32> = Cell::new(0);
+LL +     static A: Cell<i32> = Cell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:58:13
+   |
+LL |     let _ = A.replace(1);
+   |             -^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace_with`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:61:13
+   |
+LL |     let _ = A.replace_with(|x| *x + 2);
+   |             -^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `swap`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:64:13
+   |
+LL |     let _ = A.swap(&A);
+   |             -^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `borrow`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:67:13
+   |
+LL |     let _ = A.borrow();
+   |             -^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_borrow`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:70:13
+   |
+LL |     let _ = A.try_borrow();
+   |             -^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `borrow_mut`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:73:13
+   |
+LL |     let _ = A.borrow_mut();
+   |             -^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_borrow_mut`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:76:13
+   |
+LL |     let _ = A.try_borrow_mut();
+   |             -^^^^^^^^^^^^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `RefCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: RefCell<i32> = RefCell::new(0);
+LL +     static A: RefCell<i32> = RefCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `replace`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:83:22
+   |
+LL |     let _ = unsafe { A.replace(1) };
+   |                      -^^^^^^^^^^^
+   |                      |
+   |                      `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
+LL +     static A: UnsafeCell<i32> = UnsafeCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:86:13
+   |
+LL |     let _ = A.get();
+   |             -^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
+LL +     static A: UnsafeCell<i32> = UnsafeCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `as_ref_unchecked`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:90:17
+   |
+LL |         let _ = A.as_ref_unchecked();
+   |                 -^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
+LL +     static A: UnsafeCell<i32> = UnsafeCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `as_mut_unchecked`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:93:17
+   |
+LL |         let _ = A.as_mut_unchecked();
+   |                 -^^^^^^^^^^^^^^^^^^^
+   |                 |
+   |                 `A` is a interior mutable `const` item of type `UnsafeCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: UnsafeCell<i32> = UnsafeCell::new(0);
+LL +     static A: UnsafeCell<i32> = UnsafeCell::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `get`
+  --> $DIR/const-item-interior-mutations-const-cell.rs:101:13
+   |
+LL |     let _ = A.get();
+   |             -^^^^^^
+   |             |
+   |             `A` is a interior mutable `const` item of type `SyncUnsafeCell<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: SyncUnsafeCell<i32> = SyncUnsafeCell::new(0);
+LL +     static A: SyncUnsafeCell<i32> = SyncUnsafeCell::new(0);
+   |
+
+warning: 22 warnings emitted
+
