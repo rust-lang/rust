@@ -109,14 +109,14 @@ pub fn emit_attribute_lint<L: LintEmitter>(
                 rustc_session::lint::builtin::UNEXPECTED_CFGS,
                 *id,
                 *span,
-                unexpected_cfg_name(sess, None, (name, name_span), value),
+                unexpected_cfg_name(sess, (name, name_span), value),
             ),
         &AttributeLintKind::UnexpectedCfgValue { name, name_span, value } => lint_emitter
             .emit_node_span_lint(
                 rustc_session::lint::builtin::UNEXPECTED_CFGS,
                 *id,
                 *span,
-                unexpected_cfg_value(sess, None, (name, name_span), value),
+                unexpected_cfg_value(sess, (name, name_span), value),
             ),
     }
 }

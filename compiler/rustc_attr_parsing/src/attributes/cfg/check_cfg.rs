@@ -1,6 +1,5 @@
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
-use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -89,21 +88,13 @@ fn rustc_macro_help(span: Span) -> Option<lints::UnexpectedCfgRustcMacroHelp> {
     }
 }
 
-fn cargo_macro_help(
-    tcx: Option<TyCtxt<'_>>,
-    span: Span,
-) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
+fn cargo_macro_help(span: Span) -> Option<lints::UnexpectedCfgCargoMacroHelp> {
     let oexpn = span.ctxt().outer_expn_data();
     if let Some(def_id) = oexpn.macro_def_id
         && let ExpnKind::Macro(macro_kind, macro_name) = oexpn.kind
         && def_id.krate != LOCAL_CRATE
-        && let Some(tcx) = tcx
     {
-        Some(lints::UnexpectedCfgCargoMacroHelp {
-            macro_kind: macro_kind.descr(),
-            macro_name,
-            crate_name: tcx.crate_name(def_id.krate),
-        })
+        Some(lints::UnexpectedCfgCargoMacroHelp { macro_kind: macro_kind.descr(), macro_name })
     } else {
         None
     }
@@ -111,7 +102,6 @@ fn cargo_macro_help(
 
 pub fn unexpected_cfg_name(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgName {
@@ -253,7 +243,7 @@ pub fn unexpected_cfg_name(
         };
         lints::unexpected_cfg_name::InvocationHelp::Cargo {
             help,
-            macro_help: cargo_macro_help(tcx, name_span),
+            macro_help: cargo_macro_help(name_span),
         }
     } else {
         let help = lints::UnexpectedCfgRustcHelp::new(&inst(EscapeQuotes::No));
@@ -268,7 +258,6 @@ pub fn unexpected_cfg_name(
 
 pub fn unexpected_cfg_value(
     sess: &Session,
-    tcx: Option<TyCtxt<'_>>,
     (name, name_span): (Symbol, Span),
     value: Option<(Symbol, Span)>,
 ) -> lints::UnexpectedCfgValue {
@@ -373,7 +362,7 @@ pub fn unexpected_cfg_value(
         };
         lints::unexpected_cfg_value::InvocationHelp::Cargo {
             help,
-            macro_help: cargo_macro_help(tcx, name_span),
+            macro_help: cargo_macro_help(name_span),
         }
     } else {
         let help = if can_suggest_adding_value {

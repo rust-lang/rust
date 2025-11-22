@@ -1050,11 +1050,9 @@ pub struct UnexpectedCfgRustcMacroHelp {
 #[derive(Subdiagnostic)]
 #[note(attr_parsing_unexpected_cfg_from_external_macro_origin)]
 #[help(attr_parsing_unexpected_cfg_from_external_macro_refer)]
-#[help(attr_parsing_unexpected_cfg_cargo_update)]
 pub struct UnexpectedCfgCargoMacroHelp {
     pub macro_kind: &'static str,
     pub macro_name: Symbol,
-    pub crate_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
