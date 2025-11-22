@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:5
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:5:5
    |
 LL |   fn test(x: &i32) -> Lazy<i32> {
    |              - let's call the lifetime of this reference `'1`
@@ -17,7 +17,7 @@ LL + type Lazy<'a, T> = Box<dyn Fn() -> T + 'a>;
    |
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
-  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:14
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:5:14
    |
 LL |     Box::new(|| {
    |              ^^ may outlive borrowed value `x`
@@ -26,7 +26,7 @@ LL |         *x
    |         -- `x` is borrowed here
    |
 note: closure is returned here
-  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:5
+  --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:5:5
    |
 LL | /     Box::new(|| {
 LL | |

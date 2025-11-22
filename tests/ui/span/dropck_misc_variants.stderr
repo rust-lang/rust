@@ -1,5 +1,5 @@
 error[E0597]: `bomb` does not live long enough
-  --> $DIR/dropck_misc_variants.rs:23:36
+  --> $DIR/dropck_misc_variants.rs:24:36
    |
 LL |     let (_w, bomb);
    |              ---- binding `bomb` declared here
@@ -15,7 +15,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `v` does not live long enough
-  --> $DIR/dropck_misc_variants.rs:31:27
+  --> $DIR/dropck_misc_variants.rs:32:27
    |
 LL |     let (_w,v);
    |             - binding `v` declared here

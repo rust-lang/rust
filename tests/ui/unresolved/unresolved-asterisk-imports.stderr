@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `not_existing_crate`
-  --> $DIR/unresolved-asterisk-imports.rs:1:5
+  --> $DIR/unresolved-asterisk-imports.rs:2:5
    |
 LL | use not_existing_crate::*;
    |     ^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `not_existing_crate`

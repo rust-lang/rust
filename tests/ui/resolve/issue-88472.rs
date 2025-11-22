@@ -1,3 +1,4 @@
+//@ edition:2015
 // Regression test for #88472, where a suggestion was issued to
 // import an inaccessible struct.
 

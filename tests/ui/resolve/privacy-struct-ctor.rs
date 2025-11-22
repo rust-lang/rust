@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:privacy-struct-ctor.rs
 
 extern crate privacy_struct_ctor as xcrate;

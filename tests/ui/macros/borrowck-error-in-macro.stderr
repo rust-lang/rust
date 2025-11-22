@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow value as mutable, as it is not declared as mutable
-  --> $DIR/borrowck-error-in-macro.rs:7:1
+  --> $DIR/borrowck-error-in-macro.rs:8:1
    |
 LL | a::ice! {}
    | ^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | a::ice! {}
    |
    = note: this error originates in the macro `a::ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider changing this to be mutable
-  --> $DIR/auxiliary/borrowck-error-in-macro.rs:6:17
+  --> $DIR/auxiliary/borrowck-error-in-macro.rs:7:17
    |
 LL |             let mut c = || *d += 1;
    |                 +++

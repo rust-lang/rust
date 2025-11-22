@@ -1,11 +1,11 @@
 error[E0432]: unresolved import `crate::two::foo::Foo`
-  --> $DIR/show-private-items-issue-138626.rs:16:13
+  --> $DIR/show-private-items-issue-138626.rs:17:13
    |
 LL |     pub use crate::two::foo::Foo;
    |             ^^^^^^^^^^^^^^^^^^^^ no `Foo` in `two::foo`
    |
 note: struct `two::foo::bar::Foo` exists but is inaccessible
-  --> $DIR/show-private-items-issue-138626.rs:12:13
+  --> $DIR/show-private-items-issue-138626.rs:13:13
    |
 LL |             pub struct Foo;
    |             ^^^^^^^^^^^^^^^ not accessible

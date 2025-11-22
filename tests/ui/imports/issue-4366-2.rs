@@ -1,3 +1,4 @@
+//@ edition:2015
 // ensures that 'use foo:*' doesn't import non-public item
 
 use m1::*;

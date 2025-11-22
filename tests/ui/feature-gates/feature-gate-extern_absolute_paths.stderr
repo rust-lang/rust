@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `core`
-  --> $DIR/feature-gate-extern_absolute_paths.rs:1:5
+  --> $DIR/feature-gate-extern_absolute_paths.rs:2:5
    |
 LL | use core::default;
    |     ^^^^
@@ -8,7 +8,7 @@ LL | use core::default;
    |     help: try using `std` instead of `core`: `std`
 
 error[E0433]: failed to resolve: you might be missing crate `core`
-  --> $DIR/feature-gate-extern_absolute_paths.rs:4:19
+  --> $DIR/feature-gate-extern_absolute_paths.rs:5:19
    |
 LL |     let _: u8 = ::core::default::Default();
    |                   ^^^^ you might be missing crate `core`

@@ -1,5 +1,5 @@
 error: no rules expected `@`
-  --> $DIR/no-matching-rule.rs:2:12
+  --> $DIR/no-matching-rule.rs:3:12
    |
 LL |     panic!(@);
    |            ^ no rules expected this token in macro call

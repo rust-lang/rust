@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `something`
-  --> $DIR/E0432.rs:1:5
+  --> $DIR/E0432.rs:2:5
    |
 LL | use something::Foo;
    |     ^^^^^^^^^ use of unresolved module or unlinked crate `something`

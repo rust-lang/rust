@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `z` in this scope
-  --> $DIR/suggest-import-without-clobbering-attrs.rs:13:5
+  --> $DIR/suggest-import-without-clobbering-attrs.rs:14:5
    |
 LL |     z();
    |     ^ not found in this scope

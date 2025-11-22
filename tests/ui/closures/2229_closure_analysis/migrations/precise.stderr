@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/precise.rs:20:13
+  --> $DIR/precise.rs:21:13
    |
 LL |     let c = || {
    |             ^^
@@ -12,7 +12,7 @@ LL | }
    |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
-  --> $DIR/precise.rs:3:9
+  --> $DIR/precise.rs:4:9
    |
 LL | #![deny(rust_2021_incompatible_closure_captures)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL +         let _ = &t;
    |
 
 error: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/precise.rs:45:13
+  --> $DIR/precise.rs:46:13
    |
 LL |     let c = || {
    |             ^^

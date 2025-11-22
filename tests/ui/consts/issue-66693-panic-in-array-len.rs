@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // This is a separate test from `issue-66693.rs` because array lengths are evaluated
 // in a separate stage before `const`s and `statics` and so the error below is hit and
 // the compiler exits before generating errors for the others.

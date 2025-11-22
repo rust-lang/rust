@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
-  --> $DIR/field-attributes-vis-unresolved.rs:17:12
+  --> $DIR/field-attributes-vis-unresolved.rs:18:12
    |
 LL |     pub(in nonexistent) field: u8
    |            ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`
@@ -10,7 +10,7 @@ LL + extern crate nonexistent;
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `nonexistent`
-  --> $DIR/field-attributes-vis-unresolved.rs:22:12
+  --> $DIR/field-attributes-vis-unresolved.rs:23:12
    |
 LL |     pub(in nonexistent) u8
    |            ^^^^^^^^^^^ use of unresolved module or unlinked crate `nonexistent`

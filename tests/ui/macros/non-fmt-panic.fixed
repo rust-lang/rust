@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //! The non_fmt_panics lint detects panic!(..) invocations where
 //! the first argument is not a formatting string.
 //!

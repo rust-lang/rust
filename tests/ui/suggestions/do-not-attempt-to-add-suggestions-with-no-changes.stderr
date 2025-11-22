@@ -1,5 +1,5 @@
 error[E0573]: expected type, found module `result`
-  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:2:6
+  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:3:6
    |
 LL | impl result {
    |      ^^^^^^ help: an enum with a similar name exists: `Result`
@@ -9,7 +9,7 @@ LL | impl result {
    = note: similarly named enum `Result` defined here
 
 error[E0573]: expected type, found variant `Err`
-  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:3:25
+  --> $DIR/do-not-attempt-to-add-suggestions-with-no-changes.rs:4:25
    |
 LL |     fn into_future() -> Err {}
    |                         ^^^ not a type

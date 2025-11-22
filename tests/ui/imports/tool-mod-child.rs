@@ -1,3 +1,4 @@
+//@ edition:2015
 use clippy::a; //~ ERROR unresolved import `clippy`
 use clippy::a::b; //~ ERROR failed to resolve: use of unresolved module or unlinked crate `clippy`
 

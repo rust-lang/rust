@@ -1,3 +1,4 @@
+//@ edition:2015
 //! Test global scope resolution with :: operator
 
 //@ run-pass

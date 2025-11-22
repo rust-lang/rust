@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // rust-lang/rust#55492: errors detected during MIR-borrowck's
 // analysis of a closure body may only be caught when AST-borrowck
 // looks at some parent.

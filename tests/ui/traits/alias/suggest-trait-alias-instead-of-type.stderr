@@ -1,5 +1,5 @@
 error[E0404]: expected trait, found type alias `Strings`
-  --> $DIR/suggest-trait-alias-instead-of-type.rs:10:18
+  --> $DIR/suggest-trait-alias-instead-of-type.rs:11:18
    |
 LL | struct Struct<S: Strings>(S);
    |                  ^^^^^^^ type aliases cannot be used as traits

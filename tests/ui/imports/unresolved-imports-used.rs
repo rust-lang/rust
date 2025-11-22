@@ -1,3 +1,4 @@
+//@ edition:2015
 // There should be *one* unused import error.
 #![deny(unused_imports)]
 

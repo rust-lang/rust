@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Apple` in this scope
-  --> $DIR/issue-35675.rs:7:29
+  --> $DIR/issue-35675.rs:8:29
    |
 LL | fn should_return_fruit() -> Apple {
    |                             ^^^^^ not found in this scope
@@ -11,7 +11,7 @@ LL + fn should_return_fruit() -> Fruit {
    |
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
-  --> $DIR/issue-35675.rs:9:5
+  --> $DIR/issue-35675.rs:10:5
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
@@ -22,7 +22,7 @@ LL + use Fruit::Apple;
    |
 
 error[E0573]: expected type, found variant `Fruit::Apple`
-  --> $DIR/issue-35675.rs:13:33
+  --> $DIR/issue-35675.rs:14:33
    |
 LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 ^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | fn should_return_fruit_too() -> Fruit::Apple {
    |                                 help: try using the variant's enum: `Fruit`
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
-  --> $DIR/issue-35675.rs:15:5
+  --> $DIR/issue-35675.rs:16:5
    |
 LL |     Apple(5)
    |     ^^^^^ not found in this scope
@@ -42,7 +42,7 @@ LL + use Fruit::Apple;
    |
 
 error[E0573]: expected type, found variant `Ok`
-  --> $DIR/issue-35675.rs:19:13
+  --> $DIR/issue-35675.rs:20:13
    |
 LL | fn foo() -> Ok {
    |             ^^
@@ -51,7 +51,7 @@ LL | fn foo() -> Ok {
    |             help: try using the variant's enum: `std::result::Result`
 
 error[E0412]: cannot find type `Variant3` in this scope
-  --> $DIR/issue-35675.rs:24:13
+  --> $DIR/issue-35675.rs:25:13
    |
 LL | fn bar() -> Variant3 {
    |             ^^^^^^^^ not found in this scope
@@ -63,7 +63,7 @@ LL + fn bar() -> x::Enum {
    |
 
 error[E0573]: expected type, found variant `Some`
-  --> $DIR/issue-35675.rs:28:13
+  --> $DIR/issue-35675.rs:29:13
    |
 LL | fn qux() -> Some {
    |             ^^^^

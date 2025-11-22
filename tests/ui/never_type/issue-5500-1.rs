@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // MIR doesn't generate an error because the assignment isn't reachable. This
 // is OK because the test is here to check that the compiler doesn't ICE (cf.
 // #5500).

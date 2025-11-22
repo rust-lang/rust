@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![feature(associated_type_defaults)]
 
 // This used to cause an ICE because assoc. type defaults weren't properly

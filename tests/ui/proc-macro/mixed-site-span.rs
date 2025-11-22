@@ -1,3 +1,4 @@
+//@ edition:2015
 // Proc macros using `mixed_site` spans exhibit usual properties of `macro_rules` hygiene.
 
 //@ aux-build: token-site-span.rs

@@ -1,3 +1,4 @@
+//@ edition:2015
 trait Trait<'a> {}
 
 trait Obj {}

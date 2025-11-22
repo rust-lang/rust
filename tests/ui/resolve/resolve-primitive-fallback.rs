@@ -1,3 +1,4 @@
+//@ edition:2015
 fn main() {
     // Make sure primitive type fallback doesn't work in value namespace
     std::mem::size_of(u16);

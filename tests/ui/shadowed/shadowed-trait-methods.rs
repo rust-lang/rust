@@ -1,3 +1,4 @@
+//@ edition:2015
 // Test that methods from shadowed traits cannot be used
 
 mod foo {

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_mut)]

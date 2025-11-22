@@ -1,3 +1,4 @@
+//@ edition:2015
 //! Regression test for ICE #113379. Liveness linting assumes that `continue`s all point to loops.
 //! This tests that if a `continue` points to a block, we don't run liveness lints.
 

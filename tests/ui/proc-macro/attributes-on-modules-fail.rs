@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ proc-macro: test-macros.rs
 
 #[macro_use]

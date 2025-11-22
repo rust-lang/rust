@@ -1,5 +1,5 @@
 error[E0599]: no method named `pick` found for struct `Chaenomeles` in the current scope
-  --> $DIR/dont-wrap-ambiguous-receivers.rs:18:25
+  --> $DIR/dont-wrap-ambiguous-receivers.rs:19:25
    |
 LL |     pub struct Chaenomeles;
    |     ---------------------- method `pick` not found for this struct

@@ -1,3 +1,4 @@
+//@ edition:2015
 enum PutDown { Set }
 enum AffixHeart { Set }
 enum CauseToBe { Set }

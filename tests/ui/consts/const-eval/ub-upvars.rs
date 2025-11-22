@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ stderr-per-bitwidth
 #![allow(invalid_value)] // make sure we cannot allow away the errors tested here
 

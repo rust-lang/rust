@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/lint-group-allowed-warn-by-default-lint.rs:10:25
+  --> $DIR/lint-group-allowed-warn-by-default-lint.rs:11:25
    |
 LL | pub fn function(_x: Box<SomeTrait>) {}
    |                         ^^^^^^^^^

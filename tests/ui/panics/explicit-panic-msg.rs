@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
 #![allow(non_fmt_panics)]

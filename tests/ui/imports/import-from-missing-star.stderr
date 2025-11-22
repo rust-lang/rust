@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `spam`
-  --> $DIR/import-from-missing-star.rs:1:5
+  --> $DIR/import-from-missing-star.rs:2:5
    |
 LL | use spam::*;
    |     ^^^^ use of unresolved module or unlinked crate `spam`

@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/spurious-dyn-compat-errors-58734.rs:21:5
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:22:5
    |
 LL |     Trait::nonexistent(());
    |     ^^^^^
@@ -13,14 +13,14 @@ LL |     <dyn Trait>::nonexistent(());
    |     ++++      +
 
 error[E0038]: the trait `Trait` is not dyn compatible
-  --> $DIR/spurious-dyn-compat-errors-58734.rs:21:5
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:22:5
    |
 LL |     Trait::nonexistent(());
    |     ^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/spurious-dyn-compat-errors-58734.rs:5:8
+  --> $DIR/spurious-dyn-compat-errors-58734.rs:6:8
    |
 LL | trait Trait {
    |       ----- this trait is not dyn compatible...

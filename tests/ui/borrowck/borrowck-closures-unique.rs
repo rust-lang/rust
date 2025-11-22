@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Tests that a closure which requires mutable access to the referent
 // of an `&mut` requires a "unique" borrow -- that is, the variable to
 // be borrowed (here, `x`) will not be borrowed *mutably*, but

@@ -1,35 +1,35 @@
 error[E0425]: cannot find function `fpriv` in this scope
-  --> $DIR/glob-resolve1.rs:26:5
+  --> $DIR/glob-resolve1.rs:27:5
    |
 LL |     fpriv();
    |     ^^^^^ not found in this scope
    |
 note: function `bar::fpriv` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:7:5
+  --> $DIR/glob-resolve1.rs:8:5
    |
 LL |     fn fpriv() {}
    |     ^^^^^^^^^^ not accessible
 
 error[E0425]: cannot find function `epriv` in this scope
-  --> $DIR/glob-resolve1.rs:27:5
+  --> $DIR/glob-resolve1.rs:28:5
    |
 LL |     epriv();
    |     ^^^^^ not found in this scope
    |
 note: function `bar::epriv` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:9:9
+  --> $DIR/glob-resolve1.rs:10:9
    |
 LL |         fn epriv();
    |         ^^^^^^^^^^^ not accessible
 
 error[E0423]: expected value, found enum `B`
-  --> $DIR/glob-resolve1.rs:28:5
+  --> $DIR/glob-resolve1.rs:29:5
    |
 LL |     B;
    |     ^
    |
 note: the enum is defined here
-  --> $DIR/glob-resolve1.rs:14:5
+  --> $DIR/glob-resolve1.rs:15:5
    |
 LL | /     pub enum B {
 LL | |         B1,
@@ -41,25 +41,25 @@ LL |     B::B1;
    |      ++++
 
 error[E0425]: cannot find value `C` in this scope
-  --> $DIR/glob-resolve1.rs:29:5
+  --> $DIR/glob-resolve1.rs:30:5
    |
 LL |     C;
    |     ^ not found in this scope
    |
 note: unit struct `bar::C` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:18:5
+  --> $DIR/glob-resolve1.rs:19:5
    |
 LL |     struct C;
    |     ^^^^^^^^^ not accessible
 
 error[E0425]: cannot find function `import` in this scope
-  --> $DIR/glob-resolve1.rs:30:5
+  --> $DIR/glob-resolve1.rs:31:5
    |
 LL |     import();
    |     ^^^^^^ not found in this scope
    |
 note: function `bar::import` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:7:5
+  --> $DIR/glob-resolve1.rs:8:5
    |
 LL |     fn fpriv() {}
    |     ^^^^^^^^^^ not accessible
@@ -69,7 +69,7 @@ LL + use other::import;
    |
 
 error[E0412]: cannot find type `A` in this scope
-  --> $DIR/glob-resolve1.rs:32:11
+  --> $DIR/glob-resolve1.rs:33:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
@@ -78,13 +78,13 @@ LL |     foo::<A>();
    |           ^ help: an enum with a similar name exists: `B`
    |
 note: enum `bar::A` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:11:5
+  --> $DIR/glob-resolve1.rs:12:5
    |
 LL |     enum A {
    |     ^^^^^^ not accessible
 
 error[E0412]: cannot find type `C` in this scope
-  --> $DIR/glob-resolve1.rs:33:11
+  --> $DIR/glob-resolve1.rs:34:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
@@ -93,13 +93,13 @@ LL |     foo::<C>();
    |           ^ help: an enum with a similar name exists: `B`
    |
 note: struct `bar::C` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:18:5
+  --> $DIR/glob-resolve1.rs:19:5
    |
 LL |     struct C;
    |     ^^^^^^^^^ not accessible
 
 error[E0412]: cannot find type `D` in this scope
-  --> $DIR/glob-resolve1.rs:34:11
+  --> $DIR/glob-resolve1.rs:35:11
    |
 LL |     pub enum B {
    |     ---------- similarly named enum `B` defined here
@@ -108,7 +108,7 @@ LL |     foo::<D>();
    |           ^ help: an enum with a similar name exists: `B`
    |
 note: type alias `bar::D` exists but is inaccessible
-  --> $DIR/glob-resolve1.rs:20:5
+  --> $DIR/glob-resolve1.rs:21:5
    |
 LL |     type D = isize;
    |     ^^^^^^^^^^^^^^^ not accessible

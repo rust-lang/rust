@@ -1,3 +1,4 @@
+//@ edition:2015
 use foo::bar;
 //~^ ERROR unresolved import `foo` [E0432]
 //~| NOTE use of unresolved module or unlinked crate `foo`

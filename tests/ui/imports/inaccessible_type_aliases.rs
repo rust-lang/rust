@@ -1,3 +1,4 @@
+//@ edition:2015
 mod a {
     type Foo = u64;
     type Bar = u64;

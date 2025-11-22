@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/not-on-bare-trait.rs:7:12
+  --> $DIR/not-on-bare-trait.rs:8:12
    |
 LL | fn foo(_x: Foo + Send) {
    |            ^^^^^^^^^^
@@ -13,7 +13,7 @@ LL | fn foo(_x: dyn Foo + Send) {
    |            +++
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait.rs:7:12
+  --> $DIR/not-on-bare-trait.rs:8:12
    |
 LL | fn foo(_x: Foo + Send) {
    |            ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -30,7 +30,7 @@ LL | fn foo(_x: &(dyn Foo + Send)) {
    |            +++++           +
 
 error[E0277]: the size for values of type `(dyn Foo + Send + 'static)` cannot be known at compilation time
-  --> $DIR/not-on-bare-trait.rs:12:12
+  --> $DIR/not-on-bare-trait.rs:13:12
    |
 LL | fn bar(_x: (dyn Foo + Send)) {
    |            ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

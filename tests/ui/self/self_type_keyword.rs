@@ -1,3 +1,4 @@
+//@ edition:2015
 mod foo {
   struct Self;
   //~^ ERROR expected identifier, found keyword `Self`

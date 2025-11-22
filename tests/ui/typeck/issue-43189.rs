@@ -1,3 +1,4 @@
+//@ edition:2015
 // Issue 46112: An extern crate pub re-exporting libcore was causing
 // paths rooted from `std` to be misrendered in the diagnostic output.
 

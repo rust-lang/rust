@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ run-pass
 // Parsing of range patterns
 

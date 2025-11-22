@@ -1,3 +1,4 @@
+//@ edition:2015
 pub struct Foo;
 
 mod bar {

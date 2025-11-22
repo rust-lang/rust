@@ -1,5 +1,5 @@
 error[E0423]: expected function, tuple struct or tuple variant, found trait `Bar`
-  --> $DIR/privacy-ns1.rs:20:5
+  --> $DIR/privacy-ns1.rs:21:5
    |
 LL |     pub struct Baz;
    |     --------------- similarly named unit struct `Baz` defined here
@@ -8,7 +8,7 @@ LL |     Bar();
    |     ^^^
    |
 note: these functions exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:14:5
+  --> $DIR/privacy-ns1.rs:15:5
    |
 LL |     fn Bar() { }
    |     ^^^^^^^^ `foo1::Bar`: not accessible
@@ -26,7 +26,7 @@ LL + use foo2::Bar;
    |
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
-  --> $DIR/privacy-ns1.rs:51:5
+  --> $DIR/privacy-ns1.rs:52:5
    |
 LL |     pub struct Baz;
    |     --------------- similarly named unit struct `Baz` defined here
@@ -35,7 +35,7 @@ LL |     Bar();
    |     ^^^
    |
 note: these functions exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:14:5
+  --> $DIR/privacy-ns1.rs:15:5
    |
 LL |     fn Bar() { }
    |     ^^^^^^^^ `foo1::Bar`: not accessible
@@ -53,7 +53,7 @@ LL + use foo2::Bar;
    |
 
 error[E0412]: cannot find type `Bar` in this scope
-  --> $DIR/privacy-ns1.rs:52:17
+  --> $DIR/privacy-ns1.rs:53:17
    |
 LL |     pub struct Baz;
    |     --------------- similarly named struct `Baz` defined here
@@ -62,7 +62,7 @@ LL |     let _x: Box<Bar>;
    |                 ^^^
    |
 note: these traits exist but are inaccessible
-  --> $DIR/privacy-ns1.rs:25:5
+  --> $DIR/privacy-ns1.rs:26:5
    |
 LL |     trait Bar {
    |     ^^^^^^^^^ `foo2::Bar`: not accessible
@@ -80,7 +80,7 @@ LL + use foo1::Bar;
    |
 
 error[E0747]: constant provided when a type was expected
-  --> $DIR/privacy-ns1.rs:35:17
+  --> $DIR/privacy-ns1.rs:36:17
    |
 LL |     let _x: Box<Bar>;
    |                 ^^^

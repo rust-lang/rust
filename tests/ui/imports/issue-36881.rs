@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:issue-36881-aux.rs
 
 fn main() {

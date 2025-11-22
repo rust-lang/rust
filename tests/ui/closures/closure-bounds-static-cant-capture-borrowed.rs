@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 fn bar<F>(blk: F) where F: FnOnce() + 'static {
 }
 

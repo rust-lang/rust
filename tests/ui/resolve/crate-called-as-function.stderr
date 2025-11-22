@@ -1,5 +1,5 @@
 error[E0425]: cannot find external crate `foo` in the crate root
-  --> $DIR/crate-called-as-function.rs:2:7
+  --> $DIR/crate-called-as-function.rs:3:7
    |
 LL |     ::foo()
    |       ^^^ not found in the crate root

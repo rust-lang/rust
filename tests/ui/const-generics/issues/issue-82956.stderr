@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `IntoIter`
-  --> $DIR/issue-82956.rs:25:24
+  --> $DIR/issue-82956.rs:26:24
    |
 LL |         let mut iter = IntoIter::new(self);
    |                        ^^^^^^^^ use of undeclared type `IntoIter`

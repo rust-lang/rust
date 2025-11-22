@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 macro_rules! construct { ($x:ident) => { $x"str" } }
     //~^ ERROR expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
     //~| NOTE expected one of 8 possible tokens

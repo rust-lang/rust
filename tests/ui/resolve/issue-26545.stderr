@@ -1,5 +1,5 @@
 error[E0425]: cannot find function, tuple struct or tuple variant `B` in this scope
-  --> $DIR/issue-26545.rs:7:9
+  --> $DIR/issue-26545.rs:8:9
    |
 LL |         B(());
    |         ^ not found in this scope

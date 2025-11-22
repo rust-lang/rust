@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ compile-flags: -Zverbose-internals
 
 fn to_fn_once<F:FnOnce()>(f: F) -> F { f }

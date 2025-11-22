@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(lang_items, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 

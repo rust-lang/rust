@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![feature(type_alias_impl_trait)]
 
 trait T {

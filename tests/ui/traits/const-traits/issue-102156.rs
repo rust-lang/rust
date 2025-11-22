@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(allocator_api)]
 #![feature(const_trait_impl)]
 

@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: `V` is a variant, not a module
-  --> $DIR/resolve-variant-assoc-item.rs:5:8
+  --> $DIR/resolve-variant-assoc-item.rs:6:8
    |
 LL |     E::V::associated_item;
    |        ^ `V` is a variant, not a module
@@ -11,7 +11,7 @@ LL +     E::associated_item;
    |
 
 error[E0433]: failed to resolve: `V` is a variant, not a module
-  --> $DIR/resolve-variant-assoc-item.rs:6:5
+  --> $DIR/resolve-variant-assoc-item.rs:7:5
    |
 LL |     V::associated_item;
    |     ^ `V` is a variant, not a module

@@ -1,3 +1,4 @@
+//@ edition:2015
 // Test error message when enum variants are used as types
 
 

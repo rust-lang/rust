@@ -1,5 +1,5 @@
 warning: use of deprecated macro `try`: use the `?` operator instead
-  --> $DIR/issue-87274-paren-parent.rs:5:6
+  --> $DIR/issue-87274-paren-parent.rs:6:6
    |
 LL |     (try!(Ok::<u8, String>(1)));
    |      ^^^

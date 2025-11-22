@@ -1,5 +1,5 @@
 error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
-  --> $DIR/attributes-on-modules-fail.rs:16:1
+  --> $DIR/attributes-on-modules-fail.rs:17:1
    |
 LL | #[derive(Copy)]
    | ^^^^^^^^^^^^^^^ not applicable here
@@ -7,7 +7,7 @@ LL | mod n {}
    | -------- not a `struct`, `enum` or `union`
 
 error[E0658]: file modules in proc macro input are unstable
-  --> $DIR/attributes-on-modules-fail.rs:20:1
+  --> $DIR/attributes-on-modules-fail.rs:21:1
    |
 LL | mod module;
    | ^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | mod module;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: file modules in proc macro input are unstable
-  --> $DIR/attributes-on-modules-fail.rs:24:5
+  --> $DIR/attributes-on-modules-fail.rs:25:5
    |
 LL |     mod inner;
    |     ^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     mod inner;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: file modules in proc macro input are unstable
-  --> $DIR/attributes-on-modules-fail.rs:33:9
+  --> $DIR/attributes-on-modules-fail.rs:34:9
    |
 LL |         mod inner;
    |         ^^^^^^^^^^
@@ -37,7 +37,7 @@ LL |         mod inner;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: file modules in proc macro input are unstable
-  --> $DIR/attributes-on-modules-fail.rs:42:5
+  --> $DIR/attributes-on-modules-fail.rs:43:5
    |
 LL |     mod inner;
    |     ^^^^^^^^^^
@@ -47,7 +47,7 @@ LL |     mod inner;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0412]: cannot find type `Y` in this scope
-  --> $DIR/attributes-on-modules-fail.rs:10:14
+  --> $DIR/attributes-on-modules-fail.rs:11:14
    |
 LL |     type A = Y;
    |              ^ not found in this scope
@@ -58,7 +58,7 @@ LL +     use Y;
    |
 
 error[E0412]: cannot find type `X` in this scope
-  --> $DIR/attributes-on-modules-fail.rs:14:10
+  --> $DIR/attributes-on-modules-fail.rs:15:10
    |
 LL | type A = X;
    |          ^ not found in this scope

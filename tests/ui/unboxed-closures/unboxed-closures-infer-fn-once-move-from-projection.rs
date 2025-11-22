@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![allow(unused)]
 
 fn foo<F>(f: F)

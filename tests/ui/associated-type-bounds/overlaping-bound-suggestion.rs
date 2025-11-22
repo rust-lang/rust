@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![allow(bare_trait_objects)]
 trait Item {
     type Core;
