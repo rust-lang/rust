@@ -11,7 +11,7 @@ fn main() {
     // CHECK: debug x => [[x:_.*]];
     // CHECK: debug y => [[y:_.*]];
     // CHECK: debug z => [[y]];
-    // CHECK-NOT: StorageLive([[y]]);
+    // CHECK: StorageLive([[y]]);
     // CHECK: [[y]] = copy [[x]];
     // CHECK-NOT: StorageLive(_3);
     // CHECK-NOT: _3 = copy [[y]];
@@ -19,6 +19,7 @@ fn main() {
     // CHECK-NOT: _4 = copy _3;
     // CHECK-NOT: _1 = move _4;
     // CHECK: [[x]] = copy [[y]];
+    // CHECK: StorageDead([[y]]);
     let mut x = val();
     let y = x;
     let z = y;
