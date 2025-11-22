@@ -112,7 +112,10 @@ const unsafe fn get_offset_len_mut_noubcheck<T>(
 #[rustc_on_unimplemented(
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(
-        all(any(T = "str", T = "&str", T = "alloc::string::String"), Self = "{integer}"),
+        all(
+            any(T = "str", T = "&str", T = "alloc::string::generic::String<A>"),
+            Self = "{integer}"
+        ),
         note = "you can use `.chars().nth()` or `.bytes().nth()`\n\
                 for more information, see chapter 8 in The Book: \
                 <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"

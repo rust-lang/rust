@@ -19,21 +19,21 @@ LL |     let _: String = rrrstr.to_string();
    |
    = help: `&&str` implements `ToString` through a slower blanket impl, but `str` has a fast specialization of `ToString`
 
-error: calling `to_string` on `&&std::string::String`
+error: calling `to_string` on `&&std::string::generic::String`
   --> tests/ui/inefficient_to_string.rs:22:21
    |
 LL |     let _: String = rrstring.to_string();
    |                     ^^^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(*rrstring).to_string()`
    |
-   = help: `&std::string::String` implements `ToString` through a slower blanket impl, but `std::string::String` has a fast specialization of `ToString`
+   = help: `&std::string::generic::String` implements `ToString` through a slower blanket impl, but `std::string::generic::String` has a fast specialization of `ToString`
 
-error: calling `to_string` on `&&&std::string::String`
+error: calling `to_string` on `&&&std::string::generic::String`
   --> tests/ui/inefficient_to_string.rs:24:21
    |
 LL |     let _: String = rrrstring.to_string();
    |                     ^^^^^^^^^^^^^^^^^^^^^ help: try dereferencing the receiver: `(**rrrstring).to_string()`
    |
-   = help: `&&std::string::String` implements `ToString` through a slower blanket impl, but `std::string::String` has a fast specialization of `ToString`
+   = help: `&&std::string::generic::String` implements `ToString` through a slower blanket impl, but `std::string::generic::String` has a fast specialization of `ToString`
 
 error: calling `to_string` on `&&std::borrow::Cow<'_, str>`
   --> tests/ui/inefficient_to_string.rs:33:21
