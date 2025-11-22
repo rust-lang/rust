@@ -957,6 +957,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_result_trait_fn", issue = "144211")]
     pub const fn map_err<F, O>(self, op: O) -> Result<T, F>
