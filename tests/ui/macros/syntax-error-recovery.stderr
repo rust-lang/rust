@@ -2,7 +2,7 @@ error: expected one of `(`, `,`, `=`, `{`, or `}`, found `ty` metavariable
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,
-   |                          ^^^^^^ expected one of `(`, `,`, `=`, `{`, or `}`
+   |                          ^ expected one of `(`, `,`, `=`, `{`, or `}`
 ...
 LL | values!(STRING(1) as (String) => cfg(test),);
    | -------------------------------------------- in this macro invocation
@@ -14,7 +14,7 @@ error: macro expansion ignores `ty` metavariable and any tokens following
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,
-   |                          ^^^^^^
+   |                          ^
 ...
 LL | values!(STRING(1) as (String) => cfg(test),);
    | -------------------------------------------- caused by the macro expansion here

@@ -8,10 +8,10 @@ LL |     get_opt!(bar, foo);
    |     ------------------ in this macro invocation
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/issue-39848.rs:3:12
+  --> $DIR/issue-39848.rs:3:16
    |
 LL |         if $tgt.has_$field() {}
-   |            ^^^^^^^^^
+   |                ^^^^^
 ...
 LL |     get_opt!(bar, foo);
    |     ------------------ in this macro invocation

@@ -2,7 +2,7 @@ error[E0618]: expected function, found `{integer}`
   --> $DIR/issue-26237.rs:10:18
    |
 LL |         $not_a_function($some_argument)
-   |         ------------------------------- call expression requires function
+   |                        ---------------- call expression requires function
 ...
 LL |     let mut value_a = 0;
    |         ----------- `value_a` has type `{integer}`

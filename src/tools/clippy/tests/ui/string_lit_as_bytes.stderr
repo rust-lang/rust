@@ -26,10 +26,10 @@ LL |     let bs = "lit to owned".to_owned().into_bytes();
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"lit to owned".to_vec()`
 
 error: calling `as_bytes()` on a string literal
-  --> tests/ui/string_lit_as_bytes.rs:11:26
+  --> tests/ui/string_lit_as_bytes.rs:11:28
    |
 LL |         const B: &[u8] = $b.as_bytes();
-   |                          ^^^^^^^^^^^^^ help: consider using a byte string literal instead: `b"warning"`
+   |                            ^^^^^^^^^^^ help: consider using a byte string literal instead: `b"warning"`
 ...
 LL |     b!("warning");
    |     ------------- in this macro invocation

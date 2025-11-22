@@ -19,10 +19,10 @@ LL |         let _ = cmp!(a, b);
    |         +++++++
 
 warning: unused comparison that must be used
-  --> $DIR/must-use-macros.rs:41:17
+  --> $DIR/must-use-macros.rs:41:19
    |
 LL |                 $a == $b
-   |                 ^^^^^^^^ the comparison produces a value
+   |                   ^^^^^^ the comparison produces a value
 ...
 LL |         cmp!(1, 1);
    |         ---------- in this macro invocation
