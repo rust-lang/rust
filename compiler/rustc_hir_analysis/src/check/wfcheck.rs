@@ -1191,7 +1191,24 @@ pub(crate) fn check_static_item<'tcx>(
         let is_foreign_item = tcx.is_foreign_item(item_id);
 
         let forbid_unsized = !is_foreign_item || {
-            let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
+            let tail = tcx.struct_tail_raw(
+                item_ty,
+                &ObligationCause::dummy(),
+                |ty| match tcx
+                    .try_normalize_erasing_regions(wfcx.infcx.typing_env(wfcx.param_env), ty)
+                {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        tcx.dcx().span_delayed_bug(
+                            span,
+                            format!("could not normalize field type: {e:?}"),
+                        );
+                        ty
+                    }
+                },
+                || {},
+            );
+
             !matches!(tail.kind(), ty::Foreign(_))
         };
 
