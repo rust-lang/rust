@@ -8,7 +8,7 @@ use rustc_type_ir::{
 };
 
 use super::TyCtxt;
-use crate::ty;
+use crate::ty::{self, ValTreeKindExt};
 
 pub type PatternKind<'tcx> = ir::PatternKind<TyCtxt<'tcx>>;
 

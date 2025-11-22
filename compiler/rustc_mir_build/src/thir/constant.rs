@@ -63,7 +63,7 @@ pub(crate) fn lit_to_const<'tcx>(
             // A CStr is a newtype around a byte slice, so we create the inner slice here.
             // We need a branch for each "level" of the data structure.
             let bytes = ty::ValTree::from_raw_bytes(tcx, byte_sym.as_byte_str());
-            ty::ValTree::from_branches(tcx, [bytes])
+            ty::ValTree::from_branches(tcx, [ty::Const::new_value(tcx, bytes, *inner_ty)])
         }
         (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
             let scalar_int = trunc(n.get(), *ui);

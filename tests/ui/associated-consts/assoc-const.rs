@@ -11,13 +11,13 @@ pub struct Bar;
 
 impl Foo for Bar {
   #[type_const]
-  const N: usize = 3;
+  const N: usize = const { 3 };
 }
 
 const TEST:usize = 3;
 
 
-fn foo<F: Foo<N=3usize>>() {}
+fn foo<F: Foo<N = const { 3usize }>>() {}
 
 fn main() {
   foo::<Bar>()

@@ -321,6 +321,9 @@ pub(crate) fn clean_const<'tcx>(constant: &hir::ConstArg<'tcx>) -> ConstantKind 
         hir::ConstArgKind::Path(qpath) => {
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
+        hir::ConstArgKind::Struct(..) => {
+            ConstantKind::Path { path: "/* STRUCT EXPR */".to_string().into() }
+        }
         hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
         hir::ConstArgKind::Infer(..) | hir::ConstArgKind::Error(..) => ConstantKind::Infer,
     }
@@ -1813,7 +1816,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
                     let ct = cx.tcx.normalize_erasing_regions(typing_env, ct);
                     print_const(cx, ct)
                 }
-                hir::ConstArgKind::Path(..) => {
+                hir::ConstArgKind::Struct(..) | hir::ConstArgKind::Path(..) => {
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
                     print_const(cx, ct)
                 }

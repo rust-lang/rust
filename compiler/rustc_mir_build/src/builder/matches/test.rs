@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, ValTreeKindExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;

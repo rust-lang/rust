@@ -1,7 +1,7 @@
 use rustc_abi::BackendRepr;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, ValTreeKindExt};
 use rustc_middle::{bug, mir, span_bug};
 
 use super::FunctionCx;
@@ -79,12 +79,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // A SIMD type has a single field, which is an array.
                 let fields = val.unwrap_branch();
                 assert_eq!(fields.len(), 1);
-                let array = fields[0].unwrap_branch();
+                let array = fields[0].to_value().valtree.unwrap_branch();
                 // Iterate over the array elements to obtain the values in the vector.
                 let values: Vec<_> = array
                     .iter()
                     .map(|field| {
-                        if let Some(prim) = field.try_to_scalar() {
+                        if let Some(prim) = field.to_value().valtree.try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let BackendRepr::Scalar(scalar) = layout.backend_repr else {
                                 bug!("from_const: invalid ByVal layout: {:#?}", layout);

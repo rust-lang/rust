@@ -3,6 +3,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::ValTreeKindExt;
 use rustc_middle::ty::cast::mir_cast_kind;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
