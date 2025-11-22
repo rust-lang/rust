@@ -1,0 +1,29 @@
+error[E0015]: cannot call non-const function `foo` in constants
+  --> $DIR/not_callable.rs:8:13
+   |
+LL |     const { foo() };
+   |             ^^^^^
+   |
+note: function `foo` is not const
+  --> $DIR/not_callable.rs:4:1
+   |
+LL | fn foo() {}
+   | ^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const function `foo` in constant functions
+  --> $DIR/not_callable.rs:16:5
+   |
+LL |     foo();
+   |     ^^^^^
+   |
+note: function `foo` is not const
+  --> $DIR/not_callable.rs:4:1
+   |
+LL | fn foo() {}
+   | ^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

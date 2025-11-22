@@ -248,7 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && !attrs.iter().any(|attr| attr.doc_str().is_some())
             && cx.tcx.hir_attrs(impl_item_hir).is_empty()
         {
-            let is_const = constness == hir::Constness::Const;
+            let is_const = constness != hir::Constness::Never;
             if adt_def.is_struct() {
                 check_struct(
                     cx,
