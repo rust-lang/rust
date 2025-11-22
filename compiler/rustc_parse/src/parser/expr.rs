@@ -1414,7 +1414,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_bottom(&mut self) -> PResult<'a, Box<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
-        let span = self.token.span;
+        let span = self.token_diag_span();
         if let Some(expr) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
             |this| {
@@ -1910,9 +1910,9 @@ impl<'a> Parser<'a> {
                 {
                     self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
-                        lo.to(expr.span),
+                        lo.until(self.token.span),
                         ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
+                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span.until(self.token.span)),
                     );
                 }
 
