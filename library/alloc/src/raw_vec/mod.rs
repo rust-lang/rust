@@ -165,12 +165,12 @@ const fn min_non_zero_cap(size: usize) -> usize {
     }
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     /// Like `with_capacity`, but parameterized over the choice of
     /// allocator for the returned `RawVec`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub(crate) fn with_capacity_in(capacity: usize, alloc: A) -> Self
     {
         Self {
@@ -183,7 +183,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> RawVec<T, A> {
     /// caller to ensure `len == self.capacity()`.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub(crate) fn grow_one(&mut self)
     {
         // SAFETY: All calls on self.inner pass T::LAYOUT as the elem_layout
@@ -411,10 +410,10 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
     }
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     fn with_capacity_in(capacity: usize, alloc: A, elem_layout: Layout) -> Self
     {
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc, elem_layout) {
@@ -428,7 +427,6 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
             Err(err) => handle_error(err),
         }
     }
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     fn try_allocate_in(
         capacity: usize,
         init: AllocInit,
@@ -474,7 +472,6 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     /// - `elem_layout`'s size must be a multiple of its alignment
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     unsafe fn grow_one(&mut self, elem_layout: Layout)
     {
         // SAFETY: Precondition passed to caller
@@ -489,7 +486,6 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     ///   initially construct `self`
     /// - `elem_layout`'s size must be a multiple of its alignment
     /// - The sum of `len` and `additional` must be greater than the current capacity
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     unsafe fn grow_amortized(
         &mut self,
         len: usize,
@@ -532,7 +528,6 @@ const impl<A: [const] Allocator + [const] Destruct> RawVecInner<A> {
     // not marked inline(never) since we want optimizers to be able to observe the specifics of this
     // function, see tests/codegen-llvm/vec-reserve-extend.rs.
     #[cold]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     unsafe fn finish_grow(
         &self,
         cap: usize,

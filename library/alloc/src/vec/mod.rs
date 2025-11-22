@@ -847,6 +847,7 @@ impl<T> Vec<T> {
     }
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
 const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// Constructs a new, empty `Vec<T, A>` with at least the specified capacity
     /// with the provided allocator.
@@ -906,7 +907,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self
     {
         Vec { buf: RawVec::with_capacity_in(capacity, alloc), len: 0 }
@@ -937,7 +937,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push_back", "put", "append")]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn push(&mut self, value: T)
     {
         let _ = self.push_mut(value);
@@ -975,7 +974,6 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     #[inline]
     #[unstable(feature = "push_mut", issue = "135974")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
-    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn push_mut(&mut self, value: T) -> &mut T
     {
         // Inform codegen that the length does not change across grow_one().
