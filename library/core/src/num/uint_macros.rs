@@ -2131,23 +2131,10 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[track_caller]
-        pub const fn strict_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            loop {
-                if (exp & 1) == 1 {
-                    acc = acc.strict_mul(base);
-                    // since exp!=0, finally the exp must be 1.
-                    if exp == 1 {
-                        return acc;
-                    }
-                }
-                exp /= 2;
-                base = base.strict_mul(base);
+        pub const fn strict_pow(self, exp: u32) -> Self {
+            match self.checked_pow(exp) {
+                None => overflow_panic::pow(),
+                Some(a) => a,
             }
         }
 
@@ -2609,43 +2596,9 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn wrapping_pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc: Self = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary.
-                acc.wrapping_mul(base)
-            } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc.wrapping_mul(base);
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base.wrapping_mul(base);
-                }
-            }
+        pub const fn wrapping_pow(self, exp: u32) -> Self {
+            let (a, _) = self.overflowing_pow(exp);
+            a
         }
 
         /// Calculates `self` + `rhs`.
@@ -3286,30 +3239,26 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
-            if exp == 0{
-                return (1,false);
+            if exp == 0 {
+                return (1, false);
             }
             let mut base = self;
             let mut acc: Self = 1;
-            let mut overflown = false;
-            // Scratch space for storing results of overflowing_mul.
-            let mut r;
+            let mut overflow = false;
+            let mut tmp_overflow;
 
             loop {
                 if (exp & 1) == 1 {
-                    r = acc.overflowing_mul(base);
+                    (acc, tmp_overflow) = acc.overflowing_mul(base);
+                    overflow |= tmp_overflow;
                     // since exp!=0, finally the exp must be 1.
                     if exp == 1 {
-                        r.1 |= overflown;
-                        return r;
+                        return (acc, overflow);
                     }
-                    acc = r.0;
-                    overflown |= r.1;
                 }
                 exp /= 2;
-                r = base.overflowing_mul(base);
-                base = r.0;
-                overflown |= r.1;
+                (base, tmp_overflow) = base.overflowing_mul(base);
+                overflow |= tmp_overflow;
             }
         }
 
@@ -3327,43 +3276,11 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
-        pub const fn pow(self, mut exp: u32) -> Self {
-            if exp == 0 {
-                return 1;
-            }
-            let mut base = self;
-            let mut acc = 1;
-
-            if intrinsics::is_val_statically_known(exp) {
-                while exp > 1 {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
-
-                // since exp!=0, finally the exp must be 1.
-                // Deal with the final bit of the exponent separately, since
-                // squaring the base afterwards is not necessary and may cause a
-                // needless overflow.
-                acc * base
+        pub const fn pow(self, exp: u32) -> Self {
+            if intrinsics::overflow_checks() {
+                self.strict_pow(exp)
             } else {
-                // This is faster than the above when the exponent is not known
-                // at compile time. We can't use the same code for the constant
-                // exponent case because LLVM is currently unable to unroll
-                // this loop.
-                loop {
-                    if (exp & 1) == 1 {
-                        acc = acc * base;
-                        // since exp!=0, finally the exp must be 1.
-                        if exp == 1 {
-                            return acc;
-                        }
-                    }
-                    exp /= 2;
-                    base = base * base;
-                }
+                self.wrapping_pow(exp)
             }
         }
 
