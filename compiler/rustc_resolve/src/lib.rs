@@ -1173,6 +1173,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)> = BTreeSet::new(),
 
+    macro_vis_hack_map: FxIndexSet<(Module<'ra>, DefId)>,
     /// When a type is re-exported that has an inaccessible constructor because it has fields that
     /// are inaccessible from the import's scope, we mark that as the type won't be able to be built
     /// through the re-export. We use this information to extend the existing diagnostic.
@@ -1597,6 +1598,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             glob_map: Default::default(),
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
+            macro_vis_hack_map: Default::default(),
             inaccessible_ctor_reexport: Default::default(),
 
             arenas,
@@ -1836,15 +1838,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, TypeNS);
         f(self, ValueNS);
         f(self, MacroNS);
-    }
-
-    fn per_ns_cm<'r, F: FnMut(&mut CmResolver<'r, 'ra, 'tcx>, Namespace)>(
-        mut self: CmResolver<'r, 'ra, 'tcx>,
-        mut f: F,
-    ) {
-        f(&mut self, TypeNS);
-        f(&mut self, ValueNS);
-        f(&mut self, MacroNS);
     }
 
     fn is_builtin_macro(&self, res: Res) -> bool {
@@ -2584,12 +2577,6 @@ mod ref_mut {
                 true => self.p,
             }
         }
-
-        /// Returns a mutable reference to the inner value without checking if
-        /// it's in a mutable state.
-        pub(crate) fn get_mut_unchecked(&mut self) -> &mut T {
-            self.p
-        }
     }
 
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
@@ -2625,6 +2612,13 @@ mod ref_mut {
     impl<T> CmCell<T> {
         pub(crate) const fn new(value: T) -> CmCell<T> {
             CmCell(Cell::new(value))
+        }
+
+        pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+            if r.assert_speculative {
+                panic!()
+            }
+            self.0.set(val);
         }
 
         pub(crate) fn set_unchecked(&self, val: T) {
