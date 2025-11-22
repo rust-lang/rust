@@ -1378,8 +1378,9 @@ impl<'a> IoSliceMut<'a> {
     ///
     /// Panics on Windows if the slice is larger than 4GB.
     #[stable(feature = "iovec", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+    pub const fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut(sys::io::IoSliceMut::new(buf))
     }
 
@@ -1406,8 +1407,9 @@ impl<'a> IoSliceMut<'a> {
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
     #[stable(feature = "io_slice_advance", since = "1.81.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         self.0.advance(n)
     }
 
@@ -1536,9 +1538,10 @@ impl<'a> IoSlice<'a> {
     ///
     /// Panics on Windows if the slice is larger than 4GB.
     #[stable(feature = "iovec", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[must_use]
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+    pub const fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice(sys::io::IoSlice::new(buf))
     }
 
@@ -1565,8 +1568,9 @@ impl<'a> IoSlice<'a> {
     /// assert_eq!(buf.deref(), [1; 5].as_ref());
     /// ```
     #[stable(feature = "io_slice_advance", since = "1.81.0")]
+    #[rustc_const_unstable(feature = "io_slice_const", issue = "146459")]
     #[inline]
-    pub fn advance(&mut self, n: usize) {
+    pub const fn advance(&mut self, n: usize) {
         self.0.advance(n)
     }
 
