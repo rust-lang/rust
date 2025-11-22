@@ -814,7 +814,7 @@ pub enum MacroSubNs {
 }
 
 impl MacroSubNs {
-    fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
+    pub(crate) fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
         let expander = match macro_id {
             MacroId::Macro2Id(it) => it.lookup(db).expander,
             MacroId::MacroRulesId(it) => it.lookup(db).expander,

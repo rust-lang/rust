@@ -4,7 +4,7 @@
 use std::{fmt, sync::LazyLock};
 
 use base_db::Crate;
-use hir_expand::{AstId, MacroCallId, attrs::AttrId, db::ExpandDatabase, name::Name};
+use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
@@ -19,6 +19,7 @@ use crate::{
     AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
     LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
+    nameres::MacroSubNs,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
@@ -735,9 +736,15 @@ impl ItemScope {
         }
     }
 
-    pub(crate) fn dump(&self, db: &dyn ExpandDatabase, buf: &mut String) {
+    pub(crate) fn dump(&self, db: &dyn DefDatabase, buf: &mut String) {
         let mut entries: Vec<_> = self.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
+
+        let print_macro_sub_ns =
+            |buf: &mut String, macro_id: MacroId| match MacroSubNs::from_id(db, macro_id) {
+                MacroSubNs::Bang => buf.push('!'),
+                MacroSubNs::Attr => buf.push('#'),
+            };
 
         for (name, def) in entries {
             let display_name: &dyn fmt::Display = match &name {
@@ -763,8 +770,9 @@ impl ItemScope {
                     None => (),
                 }
             }
-            if let Some(Item { import, .. }) = def.macros {
+            if let Some(Item { def: macro_id, import, .. }) = def.macros {
                 buf.push_str(" macro");
+                print_macro_sub_ns(buf, macro_id);
                 match import {
                     Some(ImportOrExternCrate::Import(_)) => buf.push_str(" (import)"),
                     Some(ImportOrExternCrate::Glob(_)) => buf.push_str(" (glob)"),

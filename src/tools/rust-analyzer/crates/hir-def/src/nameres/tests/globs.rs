@@ -391,24 +391,24 @@ use reexport::*;
             - Trait : type (glob)
             - defs : type
             - function : value (glob)
-            - makro : macro (glob)
+            - makro : macro! (glob)
             - reexport : type
 
             crate::defs
             - Trait : type
             - function : value
-            - makro : macro
+            - makro : macro!
 
             crate::reexport
             - Trait : type (glob)
             - function : value (glob)
             - inner : type
-            - makro : macro (glob)
+            - makro : macro! (glob)
 
             crate::reexport::inner
             - Trait : type (import)
             - function : value (import)
-            - makro : macro (import)
+            - makro : macro! (import)
         "#]],
     );
 }

@@ -889,7 +889,7 @@ use self::m::S::{self};
             - m : type
 
             crate::m
-            - S : type value macro
+            - S : type value macro!
         "#]],
     );
 }

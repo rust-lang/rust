@@ -207,8 +207,8 @@ macro_rules! bar {
         expect![[r#"
             crate
             - Foo : type
-            - bar : macro (import)
-            - foo : macro (import)
+            - bar : macro! (import)
+            - foo : macro! (import)
         "#]],
     );
 }
@@ -555,9 +555,9 @@ fn baz() {}
 "#,
         expect![[r#"
             crate
-            - bar : type (import) macro (import)
-            - baz : type (import) value macro (import)
-            - foo : type macro
+            - bar : type (import) macro! (import)
+            - baz : type (import) value macro! (import)
+            - foo : type macro!
         "#]],
     );
 }
@@ -628,13 +628,13 @@ mod m {
             - OkAliasSuper : type value
             - OkCrate : type value
             - OkPlain : type value
-            - bar : macro
+            - bar : macro!
             - m : type
 
             crate::m
-            - alias1 : macro (import)
-            - alias2 : macro (import)
-            - alias3 : macro (import)
+            - alias1 : macro! (import)
+            - alias2 : macro! (import)
+            - alias3 : macro! (import)
             - not_found : _
         "#]],
     );
@@ -794,7 +794,7 @@ pub trait Clone {}
 "#,
         expect![[r#"
             crate
-            - Clone : type (glob) macro (glob)
+            - Clone : type (glob) macro# (glob)
         "#]],
     );
 }
@@ -910,7 +910,7 @@ fn derive() {}
         expect![[r#"
             crate
             - S : type value
-            - derive : macro
+            - derive : macro#
         "#]],
     );
 }
@@ -1029,13 +1029,13 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 "#,
         expect![[r#"
             crate
-            - AnotherTrait : macro
-            - DummyTrait : macro
+            - AnotherTrait : macro#
+            - DummyTrait : macro#
             - TokenStream : type value
-            - attribute_macro : value macro
+            - attribute_macro : value macro#
             - derive_macro : value
             - derive_macro_2 : value
-            - function_like_macro : value macro
+            - function_like_macro : value macro!
         "#]],
     );
 }
@@ -1075,9 +1075,9 @@ macro_rules! mbe {
 "#,
         expect![[r#"
             crate
-            - DummyTrait : macro (glob)
-            - attribute_macro : macro (glob)
-            - function_like_macro : macro (glob)
+            - DummyTrait : macro# (glob)
+            - attribute_macro : macro# (glob)
+            - function_like_macro : macro! (glob)
         "#]],
     );
 }
@@ -1120,7 +1120,7 @@ structs!(Foo);
         expect![[r#"
             crate
             - Foo : type
-            - structs : macro
+            - structs : macro!
         "#]],
     );
 }
@@ -1196,8 +1196,8 @@ struct B;
             crate
             - A : type value
             - B : type value
-            - inner_a : macro
-            - inner_b : macro
+            - inner_a : macro!
+            - inner_b : macro!
         "#]],
     );
 }
@@ -1228,7 +1228,7 @@ struct A;
         expect![[r#"
             crate
             - A : type value
-            - inner : macro
+            - inner : macro!
         "#]],
     );
     // eager -> MBE -> $crate::mbe
@@ -1257,7 +1257,7 @@ struct A;
         expect![[r#"
             crate
             - A : type value
-            - inner : macro
+            - inner : macro!
         "#]],
     );
 }
@@ -1501,9 +1501,9 @@ pub mod prelude {
         expect![[r#"
             crate
             - Ok : type value
-            - bar : macro
+            - bar : macro!
             - dep : type (extern)
-            - foo : macro
+            - foo : macro!
             - ok : value
         "#]],
     );
@@ -1589,8 +1589,8 @@ pub mod prelude {
         expect![[r#"
             crate
             - Ok : type value
-            - bar : macro (import)
-            - foo : macro (import)
+            - bar : macro# (import)
+            - foo : macro# (import)
             - ok : value
         "#]],
     );

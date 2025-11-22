@@ -326,7 +326,7 @@ fn main() {
             - FooWorks : type value
 
             crate
-            - foo : macro
+            - foo : macro!
             - main : value
         "#]],
     );
