@@ -77,7 +77,7 @@ use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
-use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
@@ -177,8 +177,25 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                     locs.push(MatcherLoc::Token { token: *token });
                 }
                 TokenTree::Delimited(span, _, delimited) => {
-                    let open_token = Token::new(delimited.delim.as_open_token_kind(), span.open);
-                    let close_token = Token::new(delimited.delim.as_close_token_kind(), span.close);
+                    // Is there a better way for MatcherLoc to store these??
+                    // I see we push a `MatcherLoc::Delimited` would it be
+                    // better to to store the entire span for all delimiters
+                    // types in that instead just leaving it as an empty enum
+                    // variant?
+                    // The diagnostics currently use `MatcherLoc::Span()`
+                    // however for invisible delimiters they seem to expect
+                    // that is the whole span. It would make more sense to me
+                    // if they got that data from `MatcherLoc::Delimited` that
+                    // also means any diagnostics for non-invisible delims could
+                    // get that entire span information if needed as well.
+                    // However for now I am just going to do this to make
+                    // existing diagnostics happy.
+                    let (open, close) = match delimited.delim {
+                        Delimiter::Invisible(_) => (span.entire(), span.entire()),
+                        _ => (span.open, span.close),
+                    };
+                    let open_token = Token::new(delimited.delim.as_open_token_kind(), open);
+                    let close_token = Token::new(delimited.delim.as_close_token_kind(), close);
 
                     locs.push(MatcherLoc::Delimited);
                     locs.push(MatcherLoc::Token { token: open_token });
@@ -479,7 +496,7 @@ impl TtParser {
                 MatcherLoc::Token { token: t } => {
                     // If it's a doc comment, we just ignore it and move on to the next tt in the
                     // matcher. This is a bug, but #95267 showed that existing programs rely on
-                    // this behaviour, and changing it would require some care and a transition
+                    // this behavior, and changing it would require some care and a transition
                     // period.
                     //
                     // If the token matches, we can just advance the parser.
@@ -649,10 +666,12 @@ impl TtParser {
             // Error messages here could be improved with links to original rules.
             match (self.next_mps.len(), self.bb_mps.len()) {
                 (0, 0) => {
+                    let mut tok = parser.token;
+                    tok.span = parser.token_diag_span();
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
                     return Failure(T::build_failure(
-                        parser.token,
+                        tok,
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
                     ));
