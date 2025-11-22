@@ -47,12 +47,12 @@ pub(crate) struct Vendor {
     pub(crate) versioned_dirs: bool,
     /// The root directory of the source code.
     pub(crate) root_dir: PathBuf,
-    /// The target directory for storing vendored dependencies.
-    pub(crate) output_dir: PathBuf,
+    /// The target directory for storing vendored dependencies if different from root_dir.
+    pub(crate) output_dir: Option<PathBuf>,
 }
 
 impl Step for Vendor {
-    type Output = VendorOutput;
+    type Output = ();
     const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
@@ -65,7 +65,7 @@ impl Step for Vendor {
             sync_args: run.builder.config.cmd.vendor_sync_args(),
             versioned_dirs: run.builder.config.cmd.vendor_versioned_dirs(),
             root_dir: run.builder.src.clone(),
-            output_dir: run.builder.src.join(VENDOR_DIR),
+            output_dir: None,
         });
     }
 
@@ -73,7 +73,7 @@ impl Step for Vendor {
     ///
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
+    fn run(self, builder: &Builder<'_>) {
         let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let mut cmd = command(&builder.initial_cargo);
@@ -106,15 +106,19 @@ impl Step for Vendor {
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.env("RUSTC", &builder.initial_rustc);
 
-        cmd.current_dir(self.root_dir).arg(&self.output_dir);
+        cmd.current_dir(&self.root_dir).arg(if let Some(output_dir) = &self.output_dir {
+            output_dir.join(VENDOR_DIR)
+        } else {
+            // Make sure to use a relative path here to ensure dist tarballs
+            // can be unpacked to a different drectory.
+            VENDOR_DIR.into()
+        });
 
         let config = cmd.run_capture_stdout(builder);
-        VendorOutput { config: config.stdout() }
-    }
-}
 
-/// Stores the result of the vendoring step.
-#[derive(Debug, Clone)]
-pub(crate) struct VendorOutput {
-    pub(crate) config: String,
+        // Write .cargo/config.toml
+        let cargo_config_dir = self.output_dir.unwrap_or(self.root_dir).join(".cargo");
+        builder.create_dir(&cargo_config_dir);
+        builder.create(&cargo_config_dir.join("config.toml"), &config.stdout());
+    }
 }
