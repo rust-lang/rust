@@ -41,6 +41,19 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
 
+#include "llvm/Transforms/Utils/ModuleUtils.h"
+#include "llvm/Analysis/VectorUtils.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/MD5.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/xxhash.h"
+
 // for raw `write` in the bad-alloc handler
 #ifdef _MSC_VER
 #include <io.h>
@@ -169,7 +182,7 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
   llvm::raw_string_ostream OS1(Storage);
   llvm::WriteBitcodeToFile(*unwrap(M), OS1);
   OS1.flush();
-  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "module.bc");
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
 
   SmallVector<char, 1024> BinaryData;
   raw_svector_ostream OS2(BinaryData);
@@ -178,8 +191,12 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
   ImageBinary.TheImageKind = object::IMG_Bitcode;
   ImageBinary.Image = std::move(MB);
   ImageBinary.TheOffloadKind = object::OFK_OpenMP;
-  ImageBinary.StringData["triple"] = TM.getTargetTriple().str();
-  ImageBinary.StringData["arch"] = TM.getTargetCPU();
+
+
+  std::string TripleStr = TM.getTargetTriple().str();
+  llvm::StringRef CPURef = TM.getTargetCPU();
+  ImageBinary.StringData["triple"] = TripleStr;
+  ImageBinary.StringData["arch"] = CPURef;
   llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
   if (Buffer.size() % OffloadBinary::getAlignment() != 0)
     // Offload binary has invalid size alignment
@@ -189,6 +206,82 @@ extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
                           StringRef(BinaryData.begin(), BinaryData.size())))
     return false;
   return true;
+}
+
+#include "llvm/Bitcode/BitcodeReader.h"
+Expected<std::unique_ptr<Module>>
+loadHostModuleFromBitcode(LLVMContext &Ctx) {
+  auto MBOrErr = MemoryBuffer::getFile("/g/todo");
+  if (!MBOrErr)
+    return errorCodeToError(MBOrErr.getError());
+
+  MemoryBufferRef Ref = (*MBOrErr)->getMemBufferRef();
+  return parseBitcodeFile(Ref, Ctx);
+}
+
+extern "C" void embedBufferInModule(Module &M, MemoryBufferRef Buf) {
+  StringRef SectionName = ".llvm.offloading";
+  Align Alignment = Align(8);
+  // Embed the memory buffer into the module.
+  Constant *ModuleConstant = ConstantDataArray::get(
+      M.getContext(), ArrayRef(Buf.getBufferStart(), Buf.getBufferSize()));
+  GlobalVariable *GV = new GlobalVariable(
+      M, ModuleConstant->getType(), true, GlobalValue::PrivateLinkage,
+      ModuleConstant, "llvm.embedded.object");
+  GV->setSection(SectionName);
+  GV->setAlignment(Alignment);
+
+  LLVMContext &Ctx = M.getContext();
+  NamedMDNode *MD = M.getOrInsertNamedMetadata("llvm.embedded.objects");
+  Metadata *MDVals[] = {ConstantAsMetadata::get(GV),
+                        MDString::get(Ctx, SectionName)};
+
+  MD->addOperand(llvm::MDNode::get(Ctx, MDVals));
+  GV->setMetadata(LLVMContext::MD_exclude, llvm::MDNode::get(Ctx, {}));
+
+  appendToCompilerUsed(M, GV);
+}
+
+Error embedHostOutIntoHostModule(Module &HostM, StringRef HostOutPath) {
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  if (!MBOrErr)
+    return errorCodeToError(MBOrErr.getError());
+
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  embedBufferInModule(HostM, Buf);
+  return Error::success();
+}
+
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/IR/LegacyPassManager.h"
+//#include "llvm/Support/Host.h"
+//#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/CodeGen.h"        // <-- new
+
+Error emitHostObjectWithTM(Module &HostM,
+                           TargetMachine &TM,
+                           StringRef OutObjPath) {
+  // Make sure module matches the TM
+  HostM.setDataLayout(TM.createDataLayout());
+  HostM.setTargetTriple(TM.getTargetTriple().str());
+
+  legacy::PassManager PM;
+  std::error_code EC;
+  raw_fd_ostream OS(OutObjPath, EC, sys::fs::OF_None);
+  if (EC)
+    return errorCodeToError(EC);
+
+  if (TM.addPassesToEmitFile(PM, OS, nullptr, llvm::CodeGenFileType::ObjectFile))
+    return createStringError(inconvertibleErrorCode(),
+                             "TargetMachine can't emit a file of this type");
+
+  PM.run(HostM);
+  return Error::success();
 }
 
 extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
