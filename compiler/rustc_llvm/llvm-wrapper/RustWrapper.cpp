@@ -25,6 +25,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Object/COFFImportFile.h"
+#include "llvm/Object/OffloadBinary.h"
 #include "llvm/Remarks/RemarkFormat.h"
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkStreamer.h"
@@ -35,6 +36,7 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
@@ -142,6 +144,51 @@ extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
 extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   auto OS = RawRustStringOstream(OutBuf);
   llvm::PrintStatistics(OS);
+}
+
+static Error writeFile(StringRef Filename, StringRef Data) {
+  Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
+      FileOutputBuffer::create(Filename, Data.size());
+  if (!OutputOrErr)
+    return OutputOrErr.takeError();
+  std::unique_ptr<FileOutputBuffer> Output = std::move(*OutputOrErr);
+  llvm::copy(Data, Output->getBufferStart());
+  if (Error E = Output->commit())
+    return E;
+  return Error::success();
+}
+
+// This is the first of many steps in creating a binary using llvm offload,
+// to run code on the gpu. Concrete, it replaces the following binary use:
+// clang-offload-packager -o host.out
+//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
+// The input module is the rust code compiled for a gpu target like amdgpu.
+// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
+  std::string Storage;
+  llvm::raw_string_ostream OS1(Storage);
+  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
+  OS1.flush();
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "module.bc");
+
+  SmallVector<char, 1024> BinaryData;
+  raw_svector_ostream OS2(BinaryData);
+
+  OffloadBinary::OffloadingImage ImageBinary{};
+  ImageBinary.TheImageKind = object::IMG_Bitcode;
+  ImageBinary.Image = std::move(MB);
+  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
+  ImageBinary.StringData["triple"] = TM.getTargetTriple().str();
+  ImageBinary.StringData["arch"] = TM.getTargetCPU();
+  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
+  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
+    // Offload binary has invalid size alignment
+    return false;
+  OS2 << Buffer;
+  if (Error E = writeFile("host.out",
+                          StringRef(BinaryData.begin(), BinaryData.size())))
+    return false;
+  return true;
 }
 
 extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
