@@ -7,7 +7,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![feature(array_windows)]
+#![cfg_attr(bootstrap, feature(array_windows))]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
