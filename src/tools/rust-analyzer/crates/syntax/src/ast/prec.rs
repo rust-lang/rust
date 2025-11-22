@@ -226,6 +226,12 @@ impl Expr {
             return false;
         }
 
+        // Special-case prefix operators with return/break/etc without value
+        // e.g., `!(return)` - parentheses are necessary
+        if self.is_ret_like_with_no_value() && parent.is_prefix() {
+            return true;
+        }
+
         if self.is_paren_like()
             || parent.is_paren_like()
             || self.is_prefix()
