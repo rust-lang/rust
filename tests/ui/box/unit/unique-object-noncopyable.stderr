@@ -2,15 +2,13 @@ error[E0599]: the method `clone` exists for struct `Box<dyn Foo>`, but its trait
   --> $DIR/unique-object-noncopyable.rs:24:16
    |
 LL | trait Foo {
-   | --------- doesn't satisfy `dyn Foo: Clone` or `dyn Foo: Sized`
+   | --------- doesn't satisfy `dyn Foo: CloneToUninit`
 ...
 LL |     let _z = y.clone();
    |                ^^^^^ method cannot be called on `Box<dyn Foo>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
-           `dyn Foo: Sized`
-           which is required by `Box<dyn Foo>: Clone`
-           `dyn Foo: Clone`
+           `dyn Foo: CloneToUninit`
            which is required by `Box<dyn Foo>: Clone`
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `clone`, perhaps you need to implement it:
