@@ -1268,6 +1268,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations."
     ),
     rustc_attr!(
+        rustc_should_not_be_called_on_const_items, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts."
+    ),
+    rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "`#[rustc_pass_by_value]` is used to mark types that must be passed by value instead of reference."
