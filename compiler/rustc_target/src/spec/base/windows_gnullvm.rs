@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
+use crate::spec::crt_objects::pre_mingw_self_contained;
 use crate::spec::{
-    Abi, BinaryFormat, Cc, DebuginfoKind, Env, LinkerFlavor, Lld, Os, SplitDebuginfo,
-    TargetOptions, cvs,
+    Abi, BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
+    SplitDebuginfo, TargetOptions, add_link_args, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -15,10 +16,11 @@ pub(crate) fn opts() -> TargetOptions {
         &["-nolibc", "--unwindlib=none"],
     );
     // Order of `late_link_args*` does not matter with LLD.
-    let late_link_args = TargetOptions::link_args(
-        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-        &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"],
-    );
+    let mingw_libs = &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"];
+
+    let mut late_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
 
     TargetOptions {
         os: Os::Windows,
@@ -36,6 +38,8 @@ pub(crate) fn opts() -> TargetOptions {
         binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
+        pre_link_objects_self_contained: pre_mingw_self_contained(),
+        link_self_contained: LinkSelfContainedDefault::InferredForMingw,
         late_link_args,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
