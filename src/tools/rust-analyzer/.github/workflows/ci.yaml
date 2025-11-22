@@ -16,6 +16,7 @@ env:
   CI: 1
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
+  RUSTFLAGS: "-D warnings -W unreachable-pub --cfg no_salsa_async_drops"
 
 defaults:
   run:
@@ -41,8 +42,6 @@ jobs:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: proc-macro-srv
     runs-on: ubuntu-latest
-    env:
-      RUSTFLAGS: "-D warnings"
 
     steps:
       - name: Checkout repository
@@ -80,7 +79,6 @@ jobs:
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
-      RUSTFLAGS: "-Dwarnings"
       CC: deny_c
 
     strategy:
@@ -207,8 +205,6 @@ jobs:
           # crate should
           - target: wasm32-unknown-unknown
             ide-only: true
-    env:
-      RUSTFLAGS: "-Dwarnings"
 
     steps:
       - name: Checkout repository
