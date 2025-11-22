@@ -130,7 +130,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             element.size.checked_mul(count, &self.cx).ok_or(LayoutCalculatorError::SizeOverflow)?;
 
         Ok(LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Array { stride: element.size, count },
             backend_repr: BackendRepr::Memory { sized: count_if_sized.is_some() },
             largest_niche: element.largest_niche.filter(|_| count != 0),
@@ -181,7 +181,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let size = size.align_to(align);
 
         Ok(LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Arbitrary {
                 offsets: [Size::ZERO].into(),
                 memory_index: [0].into(),
@@ -194,6 +194,54 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             max_repr_align: None,
             unadjusted_abi_align: elt.align.abi,
             randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
+        })
+    }
+
+    pub fn simd_type_for_scalar<FieldIdx: Idx, VariantIdx: Idx, F>(
+        &self,
+        element: Scalar,
+        count: u64,
+        repr_packed: bool,
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+        let elt = element;
+        if count == 0 {
+            return Err(LayoutCalculatorError::ZeroLengthSimdType);
+        } else if count > crate::MAX_SIMD_LANES {
+            return Err(LayoutCalculatorError::OversizedSimdType {
+                max_lanes: crate::MAX_SIMD_LANES,
+            });
+        }
+
+        // Compute the size and alignment of the vector
+        let dl = self.cx.data_layout();
+        let size = elt
+            .size(&self.cx)
+            .checked_mul(count, dl)
+            .ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
+        let (repr, align) = if repr_packed && !count.is_power_of_two() {
+            // Non-power-of-two vectors have padding up to the next power-of-two.
+            // If we're a packed repr, remove the padding while keeping the alignment as close
+            // to a vector as possible.
+            (BackendRepr::Memory { sized: true }, Align::max_aligned_factor(size))
+        } else {
+            (BackendRepr::SimdVector { element, count }, dl.llvmlike_vector_align(size))
+        };
+        let size = size.align_to(align);
+
+        Ok(LayoutData {
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
+            fields: FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into(),
+                memory_index: [0].into(),
+            },
+            backend_repr: repr,
+            largest_niche: None,
+            uninhabited: false,
+            size,
+            align: AbiAlign::new(align),
+            max_repr_align: None,
+            unadjusted_abi_align: elt.align(&self.cx).abi,
+            randomization_seed: (Hash64::new(count)),
         })
     }
 
@@ -467,7 +515,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
 
         Ok(LayoutData {
-            variants: Variants::Single { index: only_variant_idx },
+            variants: Variants::Single { index: only_variant_idx, variants: None },
             fields: FieldsShape::Union(union_field_count),
             backend_repr,
             largest_niche: None,
@@ -508,7 +556,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
 
         let mut st = self.univariant(&variants[v], repr, kind)?;
-        st.variants = Variants::Single { index: v };
+        st.variants = Variants::Single { index: v, variants: None };
 
         if is_special_no_niche {
             let hide_niches = |scalar: &mut _| match scalar {
@@ -598,7 +646,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::ReprConflict);
         }
 
-        let calculate_niche_filling_layout = || -> Option<LayoutData<FieldIdx, VariantIdx>> {
+        // Returns `(layout, is_this_maybe_npo)`.
+        // If `is_this_maybe_npo` is true, this layout is preferred over the tagged and
+        // no-tag layouts.
+        let calculate_niche_filling_layout = || -> Option<(LayoutData<_, _>, bool)> {
             if repr.inhibit_enum_layout_opt() {
                 return None;
             }
@@ -615,7 +666,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 .iter_enumerated()
                 .map(|(j, v)| {
                     let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
-                    st.variants = Variants::Single { index: j };
+                    st.variants = Variants::Single { index: j, variants: None };
 
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -625,30 +676,74 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
 
+            // Choose the largest variant, picking an inhabited variant in a tie.
+            // We still need to compute the niche-filling layout even if the largest variant
+            // is uninhabited, because `Result<UninhabitedReprTransparentPtr, 1ZST>` needs to
+            // still be NPO-optimized.
             let largest_variant_index = variant_layouts
                 .iter_enumerated()
-                .max_by_key(|(_i, layout)| layout.size.bytes())
+                .max_by_key(|(_i, layout)| (layout.size.bytes(), !layout.uninhabited))
                 .map(|(i, _layout)| i)?;
 
+            // Use the largest niche in the largest variant.
+            let niche = variant_layouts[largest_variant_index].largest_niche?;
+            let niche_offset = niche.offset;
+            let niche_size = niche.value.size(dl);
+            let size = variant_layouts[largest_variant_index].size.align_to(align);
+            // If the niche occupies the whole size of the enum,
+            // this could be a case of NPO, so we should prefer this layout over the
+            // tagged and no-tag layouts, even if it has a worse niche (due to the
+            // niched variant being uninhabited)
+            let is_maybe_npo = niche_size == size;
+
             let all_indices = variants.indices();
-            let needs_disc =
-                |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
-            let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
-                ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
+            let needs_disc = |index: VariantIdx| {
+                index != largest_variant_index && !variant_layouts[index].uninhabited
+            };
+            let first_niche_variant = all_indices.clone().find(|v| needs_disc(*v));
+            let last_niche_variant = all_indices.clone().rev().find(|v| needs_disc(*v));
+            let niche_variants = match Option::zip(first_niche_variant, last_niche_variant) {
+                Some((f, l)) => f..=l,
+                // All non-largest variants are uninhabited.
+                // If there are exactly 2 variants, and the largest variant's niche covers its
+                // whole size, and the non-largest variant is 1-aligned and zero-sized,
+                // this could be NPO.
+                // However, that only happens if the non-largest variant is "absent",
+                // which was already handled in `layout_of_struct_or_enum`, so we just debug_assert
+                // that that is not the case.
+                None if variants.len() == 2 && is_maybe_npo => {
+                    if cfg!(debug_assertions) {
+                        let non_largest_variant_index =
+                            all_indices.clone().find(|v| *v != largest_variant_index).unwrap();
+                        let non_largest_variant_layout =
+                            &variant_layouts[non_largest_variant_index];
+                        debug_assert!(
+                            non_largest_variant_layout.size > Size::ZERO
+                                || non_largest_variant_layout.align.abi > Align::ONE
+                        );
+                    }
+                    // The non-largest variant is not 1-ZST, this cannot be NPO,
+                    // use the no-tag layout.
+                    return None;
+                }
+                // All non-largest variants are uninhabited.
+                // This cannot be NPO, use the no-tag layout.
+                None => return None,
+            };
 
             let count =
                 (niche_variants.end().index() as u128 - niche_variants.start().index() as u128) + 1;
 
-            // Use the largest niche in the largest variant.
-            let niche = variant_layouts[largest_variant_index].largest_niche?;
+            // Calculate the new niche.
             let (niche_start, niche_scalar) = niche.reserve(dl, count)?;
-            let niche_offset = niche.offset;
-            let niche_size = niche.value.size(dl);
-            let size = variant_layouts[largest_variant_index].size.align_to(align);
 
             let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
                 if i == largest_variant_index {
                     return true;
+                } else if layout.uninhabited {
+                    // This variant doesn't need to hold space for the niche,
+                    // it just needs to be at-most-as big and aligned as the enum.
+                    return layout.size <= size && layout.align.abi <= align;
                 }
 
                 layout.largest_niche = None;
@@ -693,14 +788,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
             let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
 
-            let others_zst = variant_layouts
-                .iter_enumerated()
-                .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
+            let others_zst_or_uninhabited = variant_layouts.iter_enumerated().all(|(i, layout)| {
+                i == largest_variant_index || layout.size == Size::ZERO || layout.uninhabited
+            });
             let same_size = size == variant_layouts[largest_variant_index].size;
             let same_align = align == variant_layouts[largest_variant_index].align.abi;
 
             let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
-            let abi = if same_size && same_align && others_zst {
+            let abi = if same_size && same_align && others_zst_or_uninhabited {
                 match variant_layouts[largest_variant_index].backend_repr {
                     // When the total alignment and size match, we can use the
                     // same ABI as the scalar variant with the reserved niche.
@@ -750,10 +845,19 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 randomization_seed: combined_seed,
             };
 
-            Some(layout)
+            Some((layout, is_maybe_npo))
         };
 
-        let niche_filling_layout = calculate_niche_filling_layout();
+        let niche_filling_layout = match calculate_niche_filling_layout() {
+            // If this is possibly NPO, we prefer this layout over the others,
+            // even if they might have a better niche.
+            // (They could never be smaller, since possibly-npo only occurs
+            // when the niche fills the whole size of the enum.)
+            Some((layout, true)) => return Ok(layout),
+            // This is definitely not NPO, try the other layouts.
+            Some((layout, false)) => Some(layout),
+            None => None,
+        };
 
         let discr_type = repr.discr_type();
         let discr_int = Integer::from_attr(dl, discr_type);
@@ -807,6 +911,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         });
         trace!(?largest_niche);
 
+        let single_variant_layout_eligible =
+            !repr.inhibit_enum_layout_opt() && valid_discriminants.len() == 1;
+
         // `max` is the last valid discriminant before the largest niche
         // `min` is the first valid discriminant after the largest niche
         let (max, min) = largest_niche
@@ -839,15 +946,24 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         }
 
         // Create the set of structs that represent each variant.
+        let mut single_inhabited_variant_no_tag_layout = None;
         let mut layout_variants = variants
             .iter_enumerated()
             .map(|(i, field_layouts)| {
-                let mut st = self.univariant(
-                    field_layouts,
-                    repr,
-                    StructKind::Prefixed(min_ity.size(), prefix_align),
-                )?;
-                st.variants = Variants::Single { index: i };
+                let uninhabited = field_layouts.iter().any(|f| f.is_uninhabited());
+                if !uninhabited && single_variant_layout_eligible {
+                    single_inhabited_variant_no_tag_layout =
+                        Some((i, self.univariant(field_layouts, repr, StructKind::AlwaysSized)));
+                }
+                // We don't need to encode the tag in uninhabited variants in repr(Rust) enums
+                let struct_kind = if uninhabited && !repr.inhibit_enum_layout_opt() {
+                    StructKind::AlwaysSized
+                } else {
+                    StructKind::Prefixed(min_ity.size(), prefix_align)
+                };
+                let mut st = self.univariant(field_layouts, repr, struct_kind)?;
+
+                st.variants = Variants::Single { index: i, variants: None };
                 // Find the first field we can't move later
                 // to make room for a larger discriminant.
                 for field_idx in st.fields.index_by_increasing_offset() {
@@ -864,6 +980,73 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 Ok(st)
             })
             .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+        // If there is a single uninhabited variant, we can use it mostly unchanged as the layout,
+        // without using a tag or niche.
+        //
+        // We do still need to modify it to make all the uninhabited variants fit so they
+        // can be partially-initialized.
+        //
+        // We keep this as a prospective layout, and don't assume it's better than the tagged
+        // layout and return it immediately; e.g. it's worse for `enum Foo { A, B(i32, !) }`
+        // because it has no niche.
+        let no_tag_layout = if single_variant_layout_eligible
+            && let Some((single_inhabited_variant_idx, Ok(mut st))) =
+                single_inhabited_variant_no_tag_layout
+        {
+            // Keep track of original variant layouts (including the inhabited one)
+            // for `offset_of!`.
+            let mut variants = layout_variants.clone();
+            variants[single_inhabited_variant_idx] = st.clone();
+
+            // We know that every other variant is uninhabited, and thus does not have a
+            // prefix for the tag, so we can use them to find the necessary size.
+            for (idx, layout) in layout_variants.iter_enumerated() {
+                if idx != single_inhabited_variant_idx {
+                    st.size = cmp::max(st.size, layout.size);
+                    st.align = st.align.max(layout.align);
+                    st.max_repr_align = st.max_repr_align.max(layout.max_repr_align);
+                    st.unadjusted_abi_align =
+                        st.unadjusted_abi_align.max(layout.unadjusted_abi_align);
+                }
+            }
+
+            // Align the maximum variant size to the largest alignment.
+            st.size = st.size.align_to(st.align.abi);
+
+            // If the inhabited variant's layout would use a non-Memory BackendRepr,
+            // but we made it bigger or more-aligned due to uninhabited variants,
+            // force it to be BackendRepr::Memory
+            match st.backend_repr {
+                BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..) => {
+                    if st.backend_repr.scalar_size(&self.cx) != Some(st.size)
+                        || st.backend_repr.scalar_align(&self.cx) != Some(st.align.abi)
+                    {
+                        st.backend_repr = BackendRepr::Memory { sized: true }
+                    }
+                }
+                BackendRepr::SimdVector { element, count } => {
+                    // FIXME: is there a better way to do this than making a copy of
+                    // `LayoutCalculator::simd_type` *just* for this?
+                    let vector_layout = self.simd_type_for_scalar::<FieldIdx, VariantIdx, _>(
+                        element,
+                        count,
+                        repr.packed(),
+                    )?;
+                    if vector_layout.size != st.size || vector_layout.align != st.align {
+                        st.backend_repr = BackendRepr::Memory { sized: true }
+                    }
+                }
+                BackendRepr::Memory { .. } => {}
+            }
+
+            st.variants =
+                Variants::Single { index: single_inhabited_variant_idx, variants: Some(variants) };
+
+            Some(st)
+        } else {
+            None
+        };
 
         // Align the maximum variant size to the largest alignment.
         size = size.align_to(align);
@@ -916,6 +1099,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let old_ity_size = min_ity.size();
             let new_ity_size = ity.size();
             for variant in &mut layout_variants {
+                // Don't change field offsets of uninhabited variants in repr(Rust) enums,
+                // they don't encode the tag and their fields may overlap with the tag.
+                if variant.is_uninhabited() && !repr.inhibit_enum_layout_opt() {
+                    continue;
+                }
                 match variant.fields {
                     FieldsShape::Arbitrary { ref mut offsets, .. } => {
                         for i in offsets {
@@ -960,6 +1148,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
                     panic!("encountered a non-arbitrary layout during enum layout");
                 };
+                // Don't look in uninhabited variants for repr(Rust) enums, they will never be
+                // passed over an ABI so they don't matter for the purpose of determining
+                // BackendRepr.
+                if layout_variant.is_uninhabited() && !repr.inhibit_enum_layout_opt() {
+                    continue;
+                }
                 // We skip *all* ZST here and later check if we are good in terms of alignment.
                 // This lets us handle some cases involving aligned ZST.
                 let mut fields = iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
@@ -1076,6 +1270,43 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             .map(|v| v.randomization_seed)
             .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
 
+        // If all variants are uninhabited, the repr does not inhibit layout optimizations,
+        // and all fields are ZSTs, then the tagged layout will not have room for the tag.
+        // So in this case, we return an uninhabited layout that is big enough and aligned
+        // enough for all variant fields, but do not say it has any fields itself.
+        // Doing this only when the layout is too small to fit the tag gives better error
+        // messages during const-eval in some cases, "constructing invalid value at .<enum-tag>:
+        // encountered an uninhabited enum variant" instead of "constructing invalid value:
+        // encountered a value of uninhabited type".
+        // Note the we only reach this case when there is at least one non-1-aligned ZST field,
+        // since the all-1-ZST case is handled by the "present_variants" check in
+        // `layout_of_struct_or_enum`.
+        if uninhabited && size < tag.size(&self.cx) {
+            // The only way for the size to be less than the tag's size is for it to be zero,
+            // which can only occur when the repr does not inhibit layout optimization.
+            debug_assert!(
+                size == Size::ZERO,
+                "size was non-zero but less than tag size: 0 < {size:?} < {:?}",
+                tag.size(&self.cx)
+            );
+            debug_assert!(
+                !repr.inhibit_enum_layout_opt(),
+                "enum size was zero with layout optimizations disabled"
+            );
+            return Ok(LayoutData {
+                fields: FieldsShape::Arbitrary { offsets: [].into(), memory_index: [].into() },
+                variants: Variants::Empty { variants: Some(layout_variants) },
+                backend_repr: BackendRepr::Memory { sized: true },
+                largest_niche: None,
+                uninhabited: true,
+                align: AbiAlign::new(align),
+                size,
+                max_repr_align,
+                unadjusted_abi_align,
+                randomization_seed: combined_seed,
+            });
+        }
+
         let tagged_layout = LayoutData {
             variants: Variants::Multiple {
                 tag,
@@ -1097,22 +1328,36 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             randomization_seed: combined_seed,
         };
 
-        let best_layout = match (tagged_layout, niche_filling_layout) {
-            (tl, Some(nl)) => {
-                // Pick the smaller layout; otherwise,
-                // pick the layout with the larger niche; otherwise,
-                // pick tagged as it has simpler codegen.
+        // Pick the smallest layout; otherwise,
+        // pick the layout with the largest niche; otherwise,
+        // pick no_tag as it has simpler codegen than tagged and niched; otherwise,
+        // pick tagged as it has simpler codegen than niched.
+
+        let better_layout_or_first =
+            |l1: LayoutData<FieldIdx, VariantIdx>, l2: LayoutData<FieldIdx, VariantIdx>| {
                 use cmp::Ordering::*;
                 let niche_size = |l: &LayoutData<FieldIdx, VariantIdx>| {
                     l.largest_niche.map_or(0, |n| n.available(dl))
                 };
-                match (tl.size.cmp(&nl.size), niche_size(&tl).cmp(&niche_size(&nl))) {
-                    (Greater, _) => nl,
-                    (Equal, Less) => nl,
-                    _ => tl,
+                match (l1.size.cmp(&l2.size), niche_size(&l1).cmp(&niche_size(&l2))) {
+                    (Greater, _) => l2,
+                    (Equal, Less) => l2,
+                    _ => l1,
                 }
-            }
-            (tl, None) => tl,
+            };
+
+        let best_layout = match niche_filling_layout {
+            None => tagged_layout,
+            // Prefer tagged over niched if they have the same size and niche size,
+            // as the tagged layout has simpler codegen.
+            Some(niched_layout) => better_layout_or_first(tagged_layout, niched_layout),
+        };
+
+        let best_layout = match no_tag_layout {
+            None => best_layout,
+            // Prefer no-tag over tagged/niched if they have the same size and niche size,
+            // as the no-tag layout has simpler codegen.
+            Some(no_tag_layout) => better_layout_or_first(no_tag_layout, best_layout),
         };
 
         Ok(best_layout)
@@ -1457,7 +1702,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let seed = field_seed.wrapping_add(repr.field_shuffle_seed);
 
         Ok(LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Single { index: VariantIdx::new(0), variants: None },
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             backend_repr: abi,
             largest_niche,
