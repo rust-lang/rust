@@ -2,7 +2,7 @@
 
 pub mod json;
 pub mod msg;
-pub mod postcard_wire;
+pub mod postcard;
 
 use std::{
     io::{BufRead, Write},
@@ -183,15 +183,15 @@ fn send_request_postcard(
     req: Request,
     buf: &mut Vec<u8>,
 ) -> Result<Option<Response>, ServerError> {
-    let bytes = postcard_wire::encode_cobs(&req)
+    let bytes = postcard::encode_cobs(&req)
         .map_err(|_| ServerError { message: "failed to write request".into(), io: None })?;
 
-    postcard_wire::write_postcard(&mut writer, &bytes).map_err(|err| ServerError {
+    postcard::write_postcard(&mut writer, &bytes).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
 
-    let frame = postcard_wire::read_postcard(&mut reader, buf).map_err(|err| ServerError {
+    let frame = postcard::read_postcard(&mut reader, buf).map_err(|err| ServerError {
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;
@@ -199,7 +199,7 @@ fn send_request_postcard(
     match frame {
         None => Ok(None),
         Some(bytes) => {
-            let resp: Response = postcard_wire::decode_cobs(bytes).map_err(|e| ServerError {
+            let resp: Response = postcard::decode_cobs(bytes).map_err(|e| ServerError {
                 message: format!("failed to decode message: {e}"),
                 io: None,
             })?;

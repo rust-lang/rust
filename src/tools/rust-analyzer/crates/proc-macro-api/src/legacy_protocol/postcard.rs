@@ -18,10 +18,10 @@ pub fn write_postcard(out: &mut impl Write, msg: &[u8]) -> io::Result<()> {
     out.flush()
 }
 
-pub fn encode_cobs<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, postcard::Error> {
-    postcard::to_allocvec_cobs(value)
+pub fn encode_cobs<T: serde::Serialize>(value: &T) -> io::Result<Vec<u8>> {
+    postcard::to_allocvec_cobs(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-pub fn decode_cobs<T: serde::de::DeserializeOwned>(bytes: &mut [u8]) -> Result<T, postcard::Error> {
-    postcard::from_bytes_cobs(bytes)
+pub fn decode_cobs<T: serde::de::DeserializeOwned>(bytes: &mut [u8]) -> io::Result<T> {
+    postcard::from_bytes_cobs(bytes).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }

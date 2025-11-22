@@ -1,5 +1,5 @@
 //! The main loop of the proc-macro server.
-use std::{io, thread};
+use std::io;
 
 use proc_macro_api::{
     legacy_protocol::{
@@ -8,14 +8,13 @@ use proc_macro_api::{
             self, ExpandMacroData, ExpnGlobals, Message, SpanMode, SpanTransformer,
             deserialize_span_data_index_map, serialize_span_data_index_map,
         },
+        postcard::{read_postcard, write_postcard},
     },
     version::CURRENT_API_VERSION,
 };
 use proc_macro_srv::{EnvSnapshot, SpanId};
 
 use crate::ProtocolFormat;
-use std::io::BufReader;
-
 struct SpanTrans;
 
 impl SpanTransformer for SpanTrans {
@@ -183,23 +182,18 @@ fn run_postcard() -> io::Result<()> {
         }
     }
 
-    let stdin = io::stdin();
-    let stdout = io::stdout();
-    let mut reader = BufReader::new(stdin.lock());
-    let mut writer = stdout.lock();
-    let mut buf = vec![0; 1024];
+    let mut buf = Vec::new();
+    let mut read_request =
+        || msg::Request::read_postcard(read_postcard, &mut io::stdin().lock(), &mut buf);
+    let write_response =
+        |msg: msg::Response| msg.write_postcard(write_postcard, &mut io::stdout().lock());
 
     let env = proc_macro_srv::EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env);
 
     let mut span_mode = msg::SpanMode::Id;
-    use proc_macro_api::legacy_protocol::postcard_wire;
 
-    while let Some(req) = postcard_wire::read_postcard(&mut reader, &mut buf)? {
-        let Ok(req) = postcard_wire::decode_cobs(req) else {
-            thread::sleep(std::time::Duration::from_secs(1));
-            continue;
-        };
+    while let Some(req) = read_request()? {
         let res = match req {
             msg::Request::ListMacros { dylib_path } => {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path).map(|macros| {
@@ -302,8 +296,7 @@ fn run_postcard() -> io::Result<()> {
             }
         };
 
-        let res = postcard_wire::encode_cobs(&res).unwrap();
-        postcard_wire::write_postcard(&mut writer, &res)?;
+        write_response(res)?;
     }
 
     Ok(())

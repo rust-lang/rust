@@ -8,7 +8,10 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::ProcMacroKind;
+use crate::{
+    ProcMacroKind,
+    legacy_protocol::postcard::{decode_cobs, encode_cobs},
+};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -169,6 +172,26 @@ pub trait Message: serde::Serialize + DeserializeOwned {
         let text = serde_json::to_string(&self)?;
         to_proto(out, &text)
     }
+
+    fn read_postcard<R: BufRead>(
+        from_proto: ProtocolReadPostcard<R>,
+        inp: &mut R,
+        buf: &mut Vec<u8>,
+    ) -> io::Result<Option<Self>> {
+        Ok(match from_proto(inp, buf)? {
+            None => None,
+            Some(buf) => Some(decode_cobs(buf)?),
+        })
+    }
+
+    fn write_postcard<W: Write>(
+        self,
+        to_proto: ProtocolWritePostcard<W>,
+        out: &mut W,
+    ) -> io::Result<()> {
+        let buf = encode_cobs(&self)?;
+        to_proto(out, &buf)
+    }
 }
 
 impl Message for Request {}
@@ -181,6 +204,15 @@ type ProtocolRead<R: BufRead> =
 /// Type alias for a function that writes protocol messages to an output stream.
 #[allow(type_alias_bounds)]
 type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
+
+/// Type alias for a function that reads protocol postcard messages from a buffered input stream.
+#[allow(type_alias_bounds)]
+type ProtocolReadPostcard<R: BufRead> =
+    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut Vec<u8>) -> io::Result<Option<&'buf mut [u8]>>;
+/// Type alias for a function that writes protocol postcard messages to an output stream.
+#[allow(type_alias_bounds)]
+type ProtocolWritePostcard<W: Write> =
+    for<'o, 'msg> fn(out: &'o mut W, msg: &'msg [u8]) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {
