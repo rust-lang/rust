@@ -46,7 +46,7 @@ mod to_tokens;
 
 use core::ops::BitOr;
 use std::ffi::CStr;
-use std::ops::{Range, RangeBounds};
+use std::ops::{Bound, Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::{error, fmt};
@@ -880,7 +880,20 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.span = bridge::DelimSpan::from_single(span.0);
+        // This is an invisible delimiter so they have no width, so just use start and end.
+        if matches!(self.0.delimiter, Delimiter::None) {
+            self.0.span =
+                bridge::DelimSpan { open: span.0.start(), close: span.0.end(), entire: span.0 };
+            return;
+        }
+
+        let rng = span.0.byte_range();
+        let beg = (rng.end - rng.start).saturating_sub(1);
+        self.0.span = bridge::DelimSpan {
+            open: span.0.subspan(Bound::Included(0), Bound::Excluded(1)).unwrap_or(span.0.start()),
+            close: span.0.subspan(Bound::Included(beg), Bound::Unbounded).unwrap_or(span.0.end()),
+            entire: span.0,
+        };
     }
 }
 
