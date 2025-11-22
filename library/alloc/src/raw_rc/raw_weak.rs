@@ -8,6 +8,7 @@ use core::ops::{CoerceUnsized, DispatchFromDyn};
 use core::ptr::{self, NonNull};
 
 use crate::alloc::Global;
+use crate::raw_rc::raw_rc::RawRc;
 use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, RefCounts, rc_alloc};
@@ -244,6 +245,37 @@ where
     #[cfg(not(no_global_oom_handling))]
     pub(super) unsafe fn set_ptr(&mut self, ptr: NonNull<T>) {
         self.ptr = ptr;
+    }
+
+    /// Creates a `RawRc` object if there are non-zero strong reference counts.
+    ///
+    /// # Safety
+    ///
+    /// `self` must only be handled by the same `RefCounter` implementation.
+    pub(crate) unsafe fn upgrade<R>(&self) -> Option<RawRc<T, A>>
+    where
+        A: Clone,
+        R: RefCounter,
+    {
+        // For reducing monomorphization cost.
+        unsafe fn inner<R>(value_ptr: NonNull<()>) -> bool
+        where
+            R: RefCounter,
+        {
+            if let Some(value_ptr) = unsafe { try_get_rc_value_ptr(value_ptr) } {
+                unsafe { R::from_raw_counter(value_ptr.strong_count_ptr().as_ref()) }.try_upgrade()
+            } else {
+                false
+            }
+        }
+
+        let upgraded = unsafe { inner::<R>(self.ptr.cast()) };
+
+        if upgraded {
+            Some(unsafe { RawRc::from_raw_parts(self.ptr, self.alloc.clone()) })
+        } else {
+            None
+        }
     }
 
     /// Returns a pointer to the value location of the reference-counted allocation, assume `self`
