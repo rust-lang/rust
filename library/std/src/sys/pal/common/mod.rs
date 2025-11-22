@@ -11,6 +11,7 @@
 #![allow(dead_code)]
 
 pub mod small_c_string;
+pub(crate) mod timespec;
 
 #[cfg(test)]
 mod tests;
