@@ -3520,8 +3520,16 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline]
         pub const fn checked_ilog10(self) -> Option<u32> {
+            const MAX_RESULT: u32 = int_log10::$ActualT(<$SelfT>::MAX as $ActualT);
+
             if self > 0 {
-                Some(int_log10::$ActualT(self as $ActualT))
+                let result = int_log10::$ActualT(self as $ActualT);
+
+                // SAFETY: `ilog10` is a monotonically nondecreasing function, so the result for
+                // positive inputs is always in the range [0, `MAX_RESULT`].
+                unsafe { crate::hint::assert_unchecked(result <= MAX_RESULT) };
+
+                Some(result)
             } else {
                 None
             }
