@@ -1,12 +1,13 @@
 // ignore-tidy-filelength
 use core::ops::ControlFlow;
 use std::borrow::Cow;
+use std::collections::hash_set;
 use std::path::PathBuf;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -1952,11 +1953,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if self.tcx.visibility(did).is_accessible_from(body_def_id, self.tcx) {
                             // don't suggest foreign `#[doc(hidden)]` types
                             if !did.is_local() {
-                                while let Some(parent) = parent_map.get(&did) {
+                                let mut previously_seen_dids: FxHashSet<DefId> = Default::default();
+                                previously_seen_dids.insert(did);
+                                while let Some(&parent) = parent_map.get(&did)
+                                    && let hash_set::Entry::Vacant(v) =
+                                        previously_seen_dids.entry(parent)
+                                {
                                     if self.tcx.is_doc_hidden(did) {
                                         return false;
                                     }
-                                    did = *parent;
+                                    v.insert();
+                                    did = parent;
                                 }
                             }
                             true
