@@ -84,7 +84,6 @@ pub(crate) fn parse_system_registers(
 
     // ID_AA64ISAR0_EL1 - Instruction Set Attribute Register 0
     enable_feature(Feature::pmull, bits_shift(aa64isar0, 7, 4) >= 2);
-    enable_feature(Feature::tme, bits_shift(aa64isar0, 27, 24) == 1);
     enable_feature(Feature::lse, bits_shift(aa64isar0, 23, 20) >= 2);
     enable_feature(Feature::crc, bits_shift(aa64isar0, 19, 16) >= 1);
 

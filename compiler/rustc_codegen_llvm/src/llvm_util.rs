@@ -243,6 +243,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
                 "fp16" => Some(LLVMFeature::new("fullfp16")),
                 // Filter out features that are not supported by the current LLVM version
                 "fpmr" => None, // only existed in 18
+                // Withdrawn by ARM; removed from LLVM in 22
+                "tme" if major >= 22 => None,
                 s => Some(LLVMFeature::new(s)),
             }
         }

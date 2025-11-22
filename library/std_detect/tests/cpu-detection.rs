@@ -85,7 +85,6 @@ fn aarch64_linux() {
     println!("rcpc2: {}", is_aarch64_feature_detected!("rcpc2"));
     println!("rcpc3: {}", is_aarch64_feature_detected!("rcpc3"));
     println!("dotprod: {}", is_aarch64_feature_detected!("dotprod"));
-    println!("tme: {}", is_aarch64_feature_detected!("tme"));
     println!("fhm: {}", is_aarch64_feature_detected!("fhm"));
     println!("dit: {}", is_aarch64_feature_detected!("dit"));
     println!("flagm: {}", is_aarch64_feature_detected!("flagm"));
@@ -175,7 +174,6 @@ fn aarch64_bsd() {
     println!("rdm: {:?}", is_aarch64_feature_detected!("rdm"));
     println!("rcpc: {:?}", is_aarch64_feature_detected!("rcpc"));
     println!("dotprod: {:?}", is_aarch64_feature_detected!("dotprod"));
-    println!("tme: {:?}", is_aarch64_feature_detected!("tme"));
     println!("paca: {:?}", is_aarch64_feature_detected!("paca"));
     println!("pacg: {:?}", is_aarch64_feature_detected!("pacg"));
     println!("aes: {:?}", is_aarch64_feature_detected!("aes"));
