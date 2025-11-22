@@ -5,6 +5,13 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
+#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
+#![cfg_attr(
+    feature = "sysroot-abi",
+    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
+)]
+#![allow(internal_features)]
+
 pub mod legacy_protocol;
 mod process;
 

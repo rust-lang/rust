@@ -22,28 +22,20 @@ impl<S> Default for TokenStream<S> {
 }
 
 impl<S> TokenStream<S> {
-    pub(crate) fn new(tts: Vec<TokenTree<S>>) -> TokenStream<S> {
+    pub fn new(tts: Vec<TokenTree<S>>) -> TokenStream<S> {
         TokenStream(Arc::new(tts))
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.0.len()
     }
 
-    pub(crate) fn get(&self, index: usize) -> Option<&TokenTree<S>> {
-        self.0.get(index)
-    }
-
-    pub(crate) fn iter(&self) -> TokenStreamIter<'_, S> {
+    pub fn iter(&self) -> TokenStreamIter<'_, S> {
         TokenStreamIter::new(self)
-    }
-
-    pub(crate) fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree<S>> {
-        self.0.chunks(chunk_size)
     }
 
     pub(crate) fn from_str(s: &str, span: S) -> Result<Self, String>
@@ -481,7 +473,13 @@ fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> 
     Ok(())
 }
 
-fn display_fmt_literal<S>(literal: &Literal<S>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+pub fn literal_to_string<S>(literal: &Literal<S>) -> String {
+    let mut buf = String::new();
+    display_fmt_literal(literal, &mut buf).unwrap();
+    buf
+}
+
+fn display_fmt_literal<S>(literal: &Literal<S>, f: &mut impl std::fmt::Write) -> fmt::Result {
     match literal.kind {
         LitKind::Byte => write!(f, "b'{}'", literal.symbol),
         LitKind::Char => write!(f, "'{}'", literal.symbol),
@@ -626,7 +624,7 @@ impl<S> FromIterator<TokenTree<S>> for TokenStream<S> {
 }
 
 #[derive(Clone)]
-pub(crate) struct TokenStreamIter<'t, S> {
+pub struct TokenStreamIter<'t, S> {
     stream: &'t TokenStream<S>,
     index: usize,
 }
@@ -634,13 +632,6 @@ pub(crate) struct TokenStreamIter<'t, S> {
 impl<'t, S> TokenStreamIter<'t, S> {
     fn new(stream: &'t TokenStream<S>) -> Self {
         TokenStreamIter { stream, index: 0 }
-    }
-
-    // Peeking could be done via `Peekable`, but most iterators need peeking,
-    // and this is simple and avoids the need to use `peekable` and `Peekable`
-    // at all the use sites.
-    pub(crate) fn peek(&self) -> Option<&'t TokenTree<S>> {
-        self.stream.0.get(self.index)
     }
 }
 

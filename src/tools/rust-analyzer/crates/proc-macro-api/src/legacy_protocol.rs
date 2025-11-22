@@ -95,9 +95,10 @@ pub(crate) fn expand(
     let mixed_site = span_data_table.insert_full(mixed_site).0;
     let task = ExpandMacro {
         data: ExpandMacroData {
-            macro_body: FlatTree::new(subtree, version, &mut span_data_table),
+            macro_body: FlatTree::from_subtree(subtree, version, &mut span_data_table),
             macro_name: proc_macro.name.to_string(),
-            attributes: attr.map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
+            attributes: attr
+                .map(|subtree| FlatTree::from_subtree(subtree, version, &mut span_data_table)),
             has_global_spans: ExpnGlobals {
                 serialize: version >= version::HAS_GLOBAL_SPANS,
                 def_site,

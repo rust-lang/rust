@@ -297,7 +297,7 @@ mod tests {
             let mut span_data_table = Default::default();
             let task = ExpandMacro {
                 data: ExpandMacroData {
-                    macro_body: FlatTree::new(tt.view(), v, &mut span_data_table),
+                    macro_body: FlatTree::from_subtree(tt.view(), v, &mut span_data_table),
                     macro_name: Default::default(),
                     attributes: None,
                     has_global_spans: ExpnGlobals {

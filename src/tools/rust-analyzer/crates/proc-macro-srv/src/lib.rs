@@ -47,6 +47,12 @@ use temp_dir::TempDir;
 
 pub use crate::server_impl::token_id::SpanId;
 
+pub use proc_macro::Delimiter;
+
+pub use crate::bridge::*;
+pub use crate::server_impl::literal_from_str;
+pub use crate::token_stream::{TokenStream, literal_to_string};
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ProcMacroKind {
     CustomDerive,

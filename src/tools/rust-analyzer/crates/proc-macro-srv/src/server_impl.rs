@@ -9,7 +9,7 @@
 pub(crate) mod rust_analyzer_span;
 pub(crate) mod token_id;
 
-pub(super) fn literal_from_str<Span: Copy>(
+pub fn literal_from_str<Span: Copy>(
     s: &str,
     span: Span,
 ) -> Result<crate::bridge::Literal<Span>, ()> {
