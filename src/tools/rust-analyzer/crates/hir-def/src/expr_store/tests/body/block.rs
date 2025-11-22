@@ -12,12 +12,12 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            block scope
-            inner: v
+            (block scope)
+            - inner : value
 
             crate
-            inner: t
-            outer: v
+            - inner : type
+            - outer : value
         "#]],
     );
 }
@@ -37,16 +37,16 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            block scope
-            CrateStruct: ti
-            PlainStruct: ti vi
-            SelfStruct: ti
-            Struct: v
-            SuperStruct: _
+            (block scope)
+            - CrateStruct : type (import)
+            - PlainStruct : type (import) value (import)
+            - SelfStruct : type (import)
+            - Struct : value
+            - SuperStruct : _
 
             crate
-            Struct: t
-            outer: v
+            - Struct : type
+            - outer : value
         "#]],
     );
 }
@@ -65,13 +65,13 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            block scope
-            imported: ti vi
-            name: v
+            (block scope)
+            - imported : type (import) value (import)
+            - name : value
 
             crate
-            name: t
-            outer: v
+            - name : type
+            - outer : value
         "#]],
     );
 }
@@ -91,17 +91,17 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            block scope
-            inner1: ti
-            inner2: v
-            outer: vi
+            (block scope)
+            - inner1 : type (import)
+            - inner2 : value
+            - outer : value (import)
 
-            block scope
-            inner: v
-            inner1: t
+            (block scope)
+            - inner : value
+            - inner1 : type
 
             crate
-            outer: v
+            - outer : value
         "#]],
     );
 }
@@ -120,15 +120,15 @@ mod module {
 struct Struct {}
 "#,
         expect![[r#"
-            block scope
-            Struct: ti
+            (block scope)
+            - Struct : type (import)
 
             crate
-            Struct: t
-            module: t
+            - Struct : type
+            - module : type
 
             crate::module
-            f: v
+            - f : value
         "#]],
     );
 }
@@ -152,24 +152,24 @@ fn outer() {
 }
 "#,
         expect![[r#"
-            block scope
-            ResolveMe: ti
+            (block scope)
+            - ResolveMe : type (import)
 
-            block scope
-            m2: t
+            (block scope)
+            - m2 : type
 
-            block scope::m2
-            inner: v
+            (block scope)::m2
+            - inner : value
 
-            block scope
-            m: t
+            (block scope)
+            - m : type
 
-            block scope::m
-            ResolveMe: t
-            middle: v
+            (block scope)::m
+            - ResolveMe : type
+            - middle : value
 
             crate
-            outer: v
+            - outer : value
         "#]],
     );
 }
@@ -213,21 +213,21 @@ fn f() {
 }
 "#,
         expect![[r#"
-            block scope
-            ResolveMe: ti
+            (block scope)
+            - ResolveMe : type (import)
 
-            block scope
-            h: v
+            (block scope)
+            - h : value
 
-            block scope
-            m: t
+            (block scope)
+            - m : type
 
-            block scope::m
-            ResolveMe: t
-            g: v
+            (block scope)::m
+            - ResolveMe : type
+            - g : value
 
             crate
-            f: v
+            - f : value
         "#]],
     );
 }
@@ -250,11 +250,12 @@ fn f() {
 }
 "#,
         expect![[r#"
-            block scope
-            Hit: t
+            (block scope)
+            - Hit : type
 
             crate
-            f: v
+            - f : value
+            - (legacy) mark : macro!
         "#]],
     );
 }
@@ -285,15 +286,15 @@ pub mod cov_mark {
 }
 "#,
         expect![[r#"
-            block scope
-            Hit: t
+            (block scope)
+            - Hit : type
 
-            block scope
-            nested: v
+            (block scope)
+            - nested : value
 
             crate
-            cov_mark: ti
-            f: v
+            - cov_mark : type (import)
+            - f : value
         "#]],
     );
 }
@@ -318,16 +319,18 @@ fn main() {
 }
 "#,
         expect![[r#"
-            block scope
-            module: t
+            (block scope)
+            - module : type
 
-            block scope::module
-            BarWorks: t v
-            FooWorks: t v
+            (block scope)::module
+            - BarWorks : type value
+            - FooWorks : type value
 
             crate
-            foo: m
-            main: v
+            - foo : macro!
+            - main : value
+            - (legacy) bar : macro!
+            - (legacy) foo : macro!
         "#]],
     );
 }
@@ -354,14 +357,15 @@ fn f() {
 }
         "#,
         expect![[r#"
-            block scope
-            Def: t
+            (block scope)
+            - Def : type
 
             crate
-            module: t
+            - module : type
 
             crate::module
-            f: v
+            - f : value
+            - (legacy) m : macro!
         "#]],
     )
 }
@@ -380,16 +384,16 @@ fn main() {
 }
     "#,
         expect![[r#"
-        block scope
-        Struct: t
-        module: t
+            (block scope)
+            - Struct : type
+            - module : type
 
-        block scope::module
-        Struct: _
+            (block scope)::module
+            - Struct : _
 
-        crate
-        main: v
-    "#]],
+            crate
+            - main : value
+        "#]],
     );
 }
 
@@ -408,16 +412,16 @@ mod m {
 }
     "#,
         expect![[r#"
-        block scope
-        _: t
-        Tr: t
+            (block scope)
+            - _ : type
+            - Tr : type
 
-        crate
-        m: t
+            crate
+            - m : type
 
-        crate::m
-        main: v
-    "#]],
+            crate::m
+            - main : value
+        "#]],
     );
 }
 
@@ -444,11 +448,13 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            block scope
-            bar: v
+            (block scope)
+            - bar : value
 
             crate
-            foo: v
+            - foo : value
+            - (legacy) declare : macro!
+            - (legacy) inner_declare : macro!
         "#]],
     )
 }
@@ -467,16 +473,16 @@ fn outer() {
 }
         "#,
         expect![[r#"
-            block scope
-            name: _
-            tests: t
+            (block scope)
+            - name : _
+            - tests : type
 
-            block scope::tests
-            name: _
-            outer: vg
+            (block scope)::tests
+            - name : _
+            - outer : value (glob)
 
             crate
-            outer: v
+            - outer : value
         "#]],
     );
 }
@@ -496,11 +502,12 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            block scope
-            inner: v
+            (block scope)
+            - inner : value
 
             crate
-            foo: v
+            - foo : value
+            - (legacy) mac : macro!
         "#]],
     )
 }
@@ -517,12 +524,13 @@ fn f() {$0
 };
         "#,
         expect![[r#"
-            block scope
-            BAR: v
-            FOO: v
+            (block scope)
+            - BAR : value
+            - FOO : value
 
             crate
-            f: v
+            - f : value
+            - (legacy) foo : macro!
         "#]],
     )
 }
@@ -543,14 +551,14 @@ fn main() {
 pub struct S;
         "#,
         expect![[r#"
-            block scope
-            f: t
+            (block scope)
+            - f : type
 
-            block scope::f
-            S: ti vi
+            (block scope)::f
+            - S : type (import) value (import)
 
             crate
-            main: v
+            - main : value
         "#]],
     )
 }
@@ -573,18 +581,18 @@ fn main() {
 pub const S;
         "#,
         expect![[r#"
-            block scope
-            S: ti vi
-            inner: v
+            (block scope)
+            - S : type (import) value (import)
+            - inner : value
 
-            block scope
-            core: t
+            (block scope)
+            - core : type
 
-            block scope::core
-            S: t v
+            (block scope)::core
+            - S : type value
 
             crate
-            main: v
+            - main : value
         "#]],
     )
 }

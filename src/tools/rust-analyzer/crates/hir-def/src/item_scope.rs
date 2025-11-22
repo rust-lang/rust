@@ -1,10 +1,10 @@
 //! Describes items defined or visible (ie, imported) in a certain scope.
 //! This is shared between modules and blocks.
 
-use std::sync::LazyLock;
+use std::{fmt, sync::LazyLock};
 
 use base_db::Crate;
-use hir_expand::{AstId, MacroCallId, attrs::AttrId, db::ExpandDatabase, name::Name};
+use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
@@ -19,6 +19,7 @@ use crate::{
     AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
     LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
+    nameres::MacroSubNs,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
@@ -735,40 +736,47 @@ impl ItemScope {
         }
     }
 
-    pub(crate) fn dump(&self, db: &dyn ExpandDatabase, buf: &mut String) {
+    pub(crate) fn dump(&self, db: &dyn DefDatabase, buf: &mut String) {
         let mut entries: Vec<_> = self.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
 
+        let print_macro_sub_ns =
+            |buf: &mut String, macro_id: MacroId| match MacroSubNs::from_id(db, macro_id) {
+                MacroSubNs::Bang => buf.push('!'),
+                MacroSubNs::Attr => buf.push('#'),
+            };
+
         for (name, def) in entries {
-            format_to!(
-                buf,
-                "{}:",
-                name.map_or("_".to_owned(), |name| name.display(db, Edition::LATEST).to_string())
-            );
+            let display_name: &dyn fmt::Display = match &name {
+                Some(name) => &name.display(db, Edition::LATEST),
+                None => &"_",
+            };
+            format_to!(buf, "- {display_name} :");
 
             if let Some(Item { import, .. }) = def.types {
-                buf.push_str(" t");
+                buf.push_str(" type");
                 match import {
-                    Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
-                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
-                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
+                    Some(ImportOrExternCrate::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push_str(" (glob)"),
+                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push_str(" (extern)"),
                     None => (),
                 }
             }
             if let Some(Item { import, .. }) = def.values {
-                buf.push_str(" v");
+                buf.push_str(" value");
                 match import {
-                    Some(ImportOrGlob::Import(_)) => buf.push('i'),
-                    Some(ImportOrGlob::Glob(_)) => buf.push('g'),
+                    Some(ImportOrGlob::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrGlob::Glob(_)) => buf.push_str(" (glob)"),
                     None => (),
                 }
             }
-            if let Some(Item { import, .. }) = def.macros {
-                buf.push_str(" m");
+            if let Some(Item { def: macro_id, import, .. }) = def.macros {
+                buf.push_str(" macro");
+                print_macro_sub_ns(buf, macro_id);
                 match import {
-                    Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
-                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
-                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
+                    Some(ImportOrExternCrate::Import(_)) => buf.push_str(" (import)"),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push_str(" (glob)"),
+                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push_str(" (extern)"),
                     None => (),
                 }
             }
@@ -776,6 +784,21 @@ impl ItemScope {
                 buf.push_str(" _");
             }
 
+            buf.push('\n');
+        }
+
+        // Also dump legacy-textual-scope macros visible at the _end_ of the scope.
+        //
+        // For tests involving a cursor position, this might include macros that
+        // are _not_ visible at the cursor position.
+        let mut legacy_macros = self.legacy_macros().collect::<Vec<_>>();
+        legacy_macros.sort_by(|(a, _), (b, _)| Ord::cmp(a, b));
+        for (name, macros) in legacy_macros {
+            format_to!(buf, "- (legacy) {} :", name.display(db, Edition::LATEST));
+            for &macro_id in macros {
+                buf.push_str(" macro");
+                print_macro_sub_ns(buf, macro_id);
+            }
             buf.push('\n');
         }
     }
