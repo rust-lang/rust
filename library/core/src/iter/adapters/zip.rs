@@ -1,5 +1,6 @@
 use crate::cmp;
 use crate::fmt::{self, Debug};
+use crate::iter::traits::InfiniteIterator;
 use crate::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen, UncheckedIterator,
 };
@@ -409,6 +410,22 @@ where
 impl<A, B> ExactSizeIterator for Zip<A, B>
 where
     A: ExactSizeIterator,
+    B: ExactSizeIterator,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> ExactSizeIterator for Zip<A, B>
+where
+    A: ExactSizeIterator,
+    B: InfiniteIterator,
+{
+}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A, B> ExactSizeIterator for Zip<A, B>
+where
+    A: InfiniteIterator,
     B: ExactSizeIterator,
 {
 }

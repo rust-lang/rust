@@ -2,8 +2,8 @@ use crate::intrinsics::unlikely;
 use crate::iter::adapters::SourceIter;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::{
-    FusedIterator, InPlaceIterable, TrustedFused, TrustedLen, TrustedRandomAccess,
-    TrustedRandomAccessNoCoerce,
+    FusedIterator, InPlaceIterable, InfiniteIterator, TrustedFused, TrustedLen,
+    TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
@@ -287,3 +287,9 @@ where
 // I: TrustedLen would not.
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<I> TrustedLen for Skip<I> where I: Iterator + TrustedRandomAccess {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I: !ExactSizeIterator> !ExactSizeIterator for Skip<I> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I> InfiniteIterator for Skip<I> where I: InfiniteIterator {}
