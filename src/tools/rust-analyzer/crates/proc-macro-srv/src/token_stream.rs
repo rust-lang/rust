@@ -2,39 +2,14 @@ use core::fmt;
 use std::sync::Arc;
 
 use intern::Symbol;
-use proc_macro::{Delimiter, bridge};
+use proc_macro::Delimiter;
 use rustc_lexer::{DocStyle, LiteralKind};
 
-pub type TokenTree<S> = bridge::TokenTree<TokenStream<S>, S, Symbol>;
+use crate::bridge::{DelimSpan, Group, Ident, LitKind, Literal, Punct, TokenTree};
 
-/// Trait for allowing integration tests to parse tokenstreams with dynamic span ranges
-pub trait SpanLike {
+/// Trait for allowing tests to parse tokenstreams with dynamic span ranges
+pub(crate) trait SpanLike {
     fn derive_ranged(&self, range: std::ops::Range<usize>) -> Self;
-}
-
-impl SpanLike for crate::SpanId {
-    fn derive_ranged(&self, _: std::ops::Range<usize>) -> Self {
-        *self
-    }
-}
-
-impl SpanLike for () {
-    fn derive_ranged(&self, _: std::ops::Range<usize>) -> Self {
-        *self
-    }
-}
-
-impl SpanLike for crate::Span {
-    fn derive_ranged(&self, range: std::ops::Range<usize>) -> Self {
-        crate::Span {
-            range: span::TextRange::new(
-                span::TextSize::new(range.start as u32),
-                span::TextSize::new(range.end as u32),
-            ),
-            anchor: self.anchor,
-            ctx: self.ctx,
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -47,31 +22,31 @@ impl<S> Default for TokenStream<S> {
 }
 
 impl<S> TokenStream<S> {
-    pub fn new(tts: Vec<TokenTree<S>>) -> TokenStream<S> {
+    pub(crate) fn new(tts: Vec<TokenTree<S>>) -> TokenStream<S> {
         TokenStream(Arc::new(tts))
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.0.len()
     }
 
-    pub fn get(&self, index: usize) -> Option<&TokenTree<S>> {
+    pub(crate) fn get(&self, index: usize) -> Option<&TokenTree<S>> {
         self.0.get(index)
     }
 
-    pub fn iter(&self) -> TokenStreamIter<'_, S> {
+    pub(crate) fn iter(&self) -> TokenStreamIter<'_, S> {
         TokenStreamIter::new(self)
     }
 
-    pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree<S>> {
+    pub(crate) fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree<S>> {
         self.0.chunks(chunk_size)
     }
 
-    pub fn from_str(s: &str, span: S) -> Result<Self, String>
+    pub(crate) fn from_str(s: &str, span: S) -> Result<Self, String>
     where
         S: SpanLike + Copy,
     {
@@ -134,14 +109,14 @@ impl<S> TokenStream<S> {
                 rustc_lexer::TokenKind::CloseParen => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
                     groups.last_mut().ok_or_else(|| "Unbalanced delimiters".to_owned())?.2.push(
-                        TokenTree::Group(bridge::Group {
+                        TokenTree::Group(Group {
                             delimiter,
                             stream: if stream.is_empty() {
                                 None
                             } else {
                                 Some(TokenStream::new(stream))
                             },
-                            span: bridge::DelimSpan {
+                            span: DelimSpan {
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -158,14 +133,14 @@ impl<S> TokenStream<S> {
                 rustc_lexer::TokenKind::CloseBrace => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
                     groups.last_mut().ok_or_else(|| "Unbalanced delimiters".to_owned())?.2.push(
-                        TokenTree::Group(bridge::Group {
+                        TokenTree::Group(Group {
                             delimiter,
                             stream: if stream.is_empty() {
                                 None
                             } else {
                                 Some(TokenStream::new(stream))
                             },
-                            span: bridge::DelimSpan {
+                            span: DelimSpan {
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -182,14 +157,14 @@ impl<S> TokenStream<S> {
                 rustc_lexer::TokenKind::CloseBracket => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
                     groups.last_mut().ok_or_else(|| "Unbalanced delimiters".to_owned())?.2.push(
-                        TokenTree::Group(bridge::Group {
+                        TokenTree::Group(Group {
                             delimiter,
                             stream: if stream.is_empty() {
                                 None
                             } else {
                                 Some(TokenStream::new(stream))
                             },
-                            span: bridge::DelimSpan {
+                            span: DelimSpan {
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -203,77 +178,53 @@ impl<S> TokenStream<S> {
                 }
                 rustc_lexer::TokenKind::LineComment { doc_style: Some(doc_style) } => {
                     let text = &s[range.start + 2..range.end];
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'#',
-                        joint: false,
-                        span,
-                    }));
+                    tokenstream.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if doc_style == DocStyle::Inner {
-                        tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                            ch: b'!',
-                            joint: false,
-                            span,
-                        }));
+                        tokenstream.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
-                    tokenstream.push(bridge::TokenTree::Group(bridge::Group {
+                    tokenstream.push(TokenTree::Group(Group {
                         delimiter: Delimiter::Bracket,
                         stream: Some(TokenStream::new(vec![
-                            bridge::TokenTree::Ident(bridge::Ident {
+                            TokenTree::Ident(Ident {
                                 sym: Symbol::intern("doc"),
                                 is_raw: false,
                                 span,
                             }),
-                            bridge::TokenTree::Punct(bridge::Punct {
-                                ch: b'=',
-                                joint: false,
-                                span,
-                            }),
-                            bridge::TokenTree::Literal(bridge::Literal {
-                                kind: bridge::LitKind::Str,
+                            TokenTree::Punct(Punct { ch: b'=', joint: false, span }),
+                            TokenTree::Literal(Literal {
+                                kind: LitKind::Str,
                                 symbol: Symbol::intern(&text.escape_debug().to_string()),
                                 suffix: None,
                                 span: span.derive_ranged(range),
                             }),
                         ])),
-                        span: bridge::DelimSpan { open: span, close: span, entire: span },
+                        span: DelimSpan { open: span, close: span, entire: span },
                     }));
                 }
                 rustc_lexer::TokenKind::BlockComment { doc_style: Some(doc_style), terminated } => {
                     let text =
                         &s[range.start + 2..if terminated { range.end - 2 } else { range.end }];
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'#',
-                        joint: false,
-                        span,
-                    }));
+                    tokenstream.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if doc_style == DocStyle::Inner {
-                        tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                            ch: b'!',
-                            joint: false,
-                            span,
-                        }));
+                        tokenstream.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
                     }
-                    tokenstream.push(bridge::TokenTree::Group(bridge::Group {
+                    tokenstream.push(TokenTree::Group(Group {
                         delimiter: Delimiter::Bracket,
                         stream: Some(TokenStream::new(vec![
-                            bridge::TokenTree::Ident(bridge::Ident {
+                            TokenTree::Ident(Ident {
                                 sym: Symbol::intern("doc"),
                                 is_raw: false,
                                 span,
                             }),
-                            bridge::TokenTree::Punct(bridge::Punct {
-                                ch: b'=',
-                                joint: false,
-                                span,
-                            }),
-                            bridge::TokenTree::Literal(bridge::Literal {
-                                kind: bridge::LitKind::Str,
+                            TokenTree::Punct(Punct { ch: b'=', joint: false, span }),
+                            TokenTree::Literal(Literal {
+                                kind: LitKind::Str,
                                 symbol: Symbol::intern(&text.escape_debug().to_string()),
                                 suffix: None,
                                 span: span.derive_ranged(range),
                             }),
                         ])),
-                        span: bridge::DelimSpan { open: span, close: span, entire: span },
+                        span: DelimSpan { open: span, close: span, entire: span },
                     }));
                 }
                 rustc_lexer::TokenKind::Whitespace => continue,
@@ -286,35 +237,33 @@ impl<S> TokenStream<S> {
                 // FIXME: Error on edition >= 2024 ... I dont think the proc-macro server can fetch editions currently
                 // and whose edition is this?
                 rustc_lexer::TokenKind::GuardedStrPrefix => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
+                    tokenstream.push(TokenTree::Punct(Punct {
                         ch: s.as_bytes()[range.start],
                         joint: true,
                         span: span.derive_ranged(range.start..range.start + 1),
                     }));
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
+                    tokenstream.push(TokenTree::Punct(Punct {
                         ch: s.as_bytes()[range.start + 1],
                         joint: is_joint(),
                         span: span.derive_ranged(range.start + 1..range.end),
                     }))
                 }
-                rustc_lexer::TokenKind::Ident => {
-                    tokenstream.push(bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(&s[range.clone()]),
-                        is_raw: false,
-                        span: span.derive_ranged(range),
-                    }))
-                }
+                rustc_lexer::TokenKind::Ident => tokenstream.push(TokenTree::Ident(Ident {
+                    sym: Symbol::intern(&s[range.clone()]),
+                    is_raw: false,
+                    span: span.derive_ranged(range),
+                })),
                 rustc_lexer::TokenKind::InvalidIdent => return Err("Invalid identifier".to_owned()),
                 rustc_lexer::TokenKind::RawIdent => {
                     let range = range.start + 2..range.end;
-                    tokenstream.push(bridge::TokenTree::Ident(bridge::Ident {
+                    tokenstream.push(TokenTree::Ident(Ident {
                         sym: Symbol::intern(&s[range.clone()]),
                         is_raw: true,
                         span: span.derive_ranged(range),
                     }))
                 }
                 rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
-                    tokenstream.push(bridge::TokenTree::Literal(literal_from_lexer(
+                    tokenstream.push(TokenTree::Literal(literal_from_lexer(
                         &s[range.clone()],
                         span.derive_ranged(range),
                         kind,
@@ -323,12 +272,12 @@ impl<S> TokenStream<S> {
                 }
                 rustc_lexer::TokenKind::RawLifetime => {
                     let range = range.start + 1 + 2..range.end;
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
+                    tokenstream.push(TokenTree::Punct(Punct {
                         ch: b'\'',
                         joint: true,
                         span: span.derive_ranged(range.start..range.start + 1),
                     }));
-                    tokenstream.push(bridge::TokenTree::Ident(bridge::Ident {
+                    tokenstream.push(TokenTree::Ident(Ident {
                         sym: Symbol::intern(&s[range.clone()]),
                         is_raw: true,
                         span: span.derive_ranged(range),
@@ -339,164 +288,122 @@ impl<S> TokenStream<S> {
                         return Err("Lifetime cannot start with a number".to_owned());
                     }
                     let range = range.start + 1..range.end;
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
+                    tokenstream.push(TokenTree::Punct(Punct {
                         ch: b'\'',
                         joint: true,
                         span: span.derive_ranged(range.start..range.start + 1),
                     }));
-                    tokenstream.push(bridge::TokenTree::Ident(bridge::Ident {
+                    tokenstream.push(TokenTree::Ident(Ident {
                         sym: Symbol::intern(&s[range.clone()]),
                         is_raw: false,
                         span: span.derive_ranged(range),
                     }))
                 }
-                rustc_lexer::TokenKind::Semi => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b';',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Comma => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b',',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Dot => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'.',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::At => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'@',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Pound => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'#',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Tilde => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'~',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Question => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'?',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Colon => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b':',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Dollar => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'$',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Eq => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'=',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Bang => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'!',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Lt => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'<',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Gt => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'>',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Minus => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'-',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::And => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'&',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Or => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'|',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Plus => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'+',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Star => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'*',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Slash => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'/',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Caret => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'^',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
-                rustc_lexer::TokenKind::Percent => {
-                    tokenstream.push(bridge::TokenTree::Punct(bridge::Punct {
-                        ch: b'%',
-                        joint: is_joint(),
-                        span: span.derive_ranged(range),
-                    }))
-                }
+                rustc_lexer::TokenKind::Semi => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b';',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Comma => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b',',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Dot => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'.',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::At => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'@',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Pound => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'#',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Tilde => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'~',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Question => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'?',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Colon => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b':',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Dollar => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'$',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Eq => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'=',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Bang => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'!',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Lt => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'<',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Gt => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'>',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Minus => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'-',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::And => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'&',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Or => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'|',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Plus => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'+',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Star => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'*',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Slash => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'/',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Caret => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'^',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
+                rustc_lexer::TokenKind::Percent => tokenstream.push(TokenTree::Punct(Punct {
+                    ch: b'%',
+                    joint: is_joint(),
+                    span: span.derive_ranged(range),
+                })),
                 rustc_lexer::TokenKind::Eof => break,
             }
         }
@@ -521,7 +428,7 @@ impl<S> fmt::Display for TokenStream<S> {
 
 fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match tt {
-        bridge::TokenTree::Group(bridge::Group { delimiter, stream, span: _ }) => {
+        TokenTree::Group(Group { delimiter, stream, span: _ }) => {
             write!(
                 f,
                 "{}",
@@ -546,24 +453,24 @@ fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> 
                 }
             )?;
         }
-        bridge::TokenTree::Punct(bridge::Punct { ch, joint, span: _ }) => {
+        TokenTree::Punct(Punct { ch, joint, span: _ }) => {
             write!(f, "{ch}{}", if *joint { "" } else { " " })?
         }
-        bridge::TokenTree::Ident(bridge::Ident { sym, is_raw, span: _ }) => {
+        TokenTree::Ident(Ident { sym, is_raw, span: _ }) => {
             if *is_raw {
                 write!(f, "r#")?;
             }
             write!(f, "{sym} ")?;
         }
-        bridge::TokenTree::Literal(lit) => {
+        TokenTree::Literal(lit) => {
             display_fmt_literal(lit, f)?;
             let joint = match lit.kind {
-                bridge::LitKind::Str
-                | bridge::LitKind::StrRaw(_)
-                | bridge::LitKind::ByteStr
-                | bridge::LitKind::ByteStrRaw(_)
-                | bridge::LitKind::CStr
-                | bridge::LitKind::CStrRaw(_) => true,
+                LitKind::Str
+                | LitKind::StrRaw(_)
+                | LitKind::ByteStr
+                | LitKind::ByteStrRaw(_)
+                | LitKind::CStr
+                | LitKind::CStrRaw(_) => true,
                 _ => false,
             };
             if !joint {
@@ -574,20 +481,17 @@ fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> 
     Ok(())
 }
 
-fn display_fmt_literal<S>(
-    literal: &bridge::Literal<S, Symbol>,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
+fn display_fmt_literal<S>(literal: &Literal<S>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match literal.kind {
-        bridge::LitKind::Byte => write!(f, "b'{}'", literal.symbol),
-        bridge::LitKind::Char => write!(f, "'{}'", literal.symbol),
-        bridge::LitKind::Integer | bridge::LitKind::Float | bridge::LitKind::ErrWithGuar => {
+        LitKind::Byte => write!(f, "b'{}'", literal.symbol),
+        LitKind::Char => write!(f, "'{}'", literal.symbol),
+        LitKind::Integer | LitKind::Float | LitKind::ErrWithGuar => {
             write!(f, "{}", literal.symbol)
         }
-        bridge::LitKind::Str => write!(f, "\"{}\"", literal.symbol),
-        bridge::LitKind::ByteStr => write!(f, "b\"{}\"", literal.symbol),
-        bridge::LitKind::CStr => write!(f, "c\"{}\"", literal.symbol),
-        bridge::LitKind::StrRaw(num_of_hashes) => {
+        LitKind::Str => write!(f, "\"{}\"", literal.symbol),
+        LitKind::ByteStr => write!(f, "b\"{}\"", literal.symbol),
+        LitKind::CStr => write!(f, "c\"{}\"", literal.symbol),
+        LitKind::StrRaw(num_of_hashes) => {
             let num_of_hashes = num_of_hashes as usize;
             write!(
                 f,
@@ -596,7 +500,7 @@ fn display_fmt_literal<S>(
                 text = literal.symbol
             )
         }
-        bridge::LitKind::ByteStrRaw(num_of_hashes) => {
+        LitKind::ByteStrRaw(num_of_hashes) => {
             let num_of_hashes = num_of_hashes as usize;
             write!(
                 f,
@@ -605,7 +509,7 @@ fn display_fmt_literal<S>(
                 text = literal.symbol
             )
         }
-        bridge::LitKind::CStrRaw(num_of_hashes) => {
+        LitKind::CStrRaw(num_of_hashes) => {
             let num_of_hashes = num_of_hashes as usize;
             write!(
                 f,
@@ -645,7 +549,7 @@ fn debug_token_tree<S: fmt::Debug>(
 ) -> std::fmt::Result {
     write!(f, "{:indent$}", "", indent = depth * 2)?;
     match tt {
-        bridge::TokenTree::Group(bridge::Group { delimiter, stream, span }) => {
+        TokenTree::Group(Group { delimiter, stream, span }) => {
             writeln!(
                 f,
                 "GROUP {}{} {:#?} {:#?} {:#?}",
@@ -670,20 +574,20 @@ fn debug_token_tree<S: fmt::Debug>(
             }
             return Ok(());
         }
-        bridge::TokenTree::Punct(bridge::Punct { ch, joint, span }) => write!(
+        TokenTree::Punct(Punct { ch, joint, span }) => write!(
             f,
             "PUNCT {span:#?} {} {}",
             *ch as char,
             if *joint { "[joint]" } else { "[alone]" }
         )?,
-        bridge::TokenTree::Ident(bridge::Ident { sym, is_raw, span }) => {
+        TokenTree::Ident(Ident { sym, is_raw, span }) => {
             write!(f, "IDENT {span:#?} ")?;
             if *is_raw {
                 write!(f, "r#")?;
             }
             write!(f, "{sym}")?;
         }
-        bridge::TokenTree::Literal(bridge::Literal { kind, symbol, suffix, span }) => write!(
+        TokenTree::Literal(Literal { kind, symbol, suffix, span }) => write!(
             f,
             "LITER {span:#?} {kind:?} {symbol}{} ",
             match suffix {
@@ -698,7 +602,7 @@ fn debug_token_tree<S: fmt::Debug>(
 impl<S: Copy> TokenStream<S> {
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
-    pub fn push_tree(&mut self, tt: TokenTree<S>) {
+    pub(crate) fn push_tree(&mut self, tt: TokenTree<S>) {
         let vec_mut = Arc::make_mut(&mut self.0);
         vec_mut.push(tt);
     }
@@ -706,7 +610,7 @@ impl<S: Copy> TokenStream<S> {
     /// Push `stream` onto the end of the stream, possibly gluing the first
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
-    pub fn push_stream(&mut self, stream: TokenStream<S>) {
+    pub(crate) fn push_stream(&mut self, stream: TokenStream<S>) {
         let vec_mut = Arc::make_mut(&mut self.0);
 
         let stream_iter = stream.0.iter().cloned();
@@ -722,7 +626,7 @@ impl<S> FromIterator<TokenTree<S>> for TokenStream<S> {
 }
 
 #[derive(Clone)]
-pub struct TokenStreamIter<'t, S> {
+pub(crate) struct TokenStreamIter<'t, S> {
     stream: &'t TokenStream<S>,
     index: usize,
 }
@@ -735,7 +639,7 @@ impl<'t, S> TokenStreamIter<'t, S> {
     // Peeking could be done via `Peekable`, but most iterators need peeking,
     // and this is simple and avoids the need to use `peekable` and `Peekable`
     // at all the use sites.
-    pub fn peek(&self) -> Option<&'t TokenTree<S>> {
+    pub(crate) fn peek(&self) -> Option<&'t TokenTree<S>> {
         self.stream.0.get(self.index)
     }
 }
@@ -756,27 +660,27 @@ pub(super) fn literal_from_lexer<Span>(
     span: Span,
     kind: rustc_lexer::LiteralKind,
     suffix_start: u32,
-) -> bridge::Literal<Span, Symbol> {
+) -> Literal<Span> {
     let (kind, start_offset, end_offset) = match kind {
-        LiteralKind::Int { .. } => (bridge::LitKind::Integer, 0, 0),
-        LiteralKind::Float { .. } => (bridge::LitKind::Float, 0, 0),
-        LiteralKind::Char { terminated } => (bridge::LitKind::Char, 1, terminated as usize),
-        LiteralKind::Byte { terminated } => (bridge::LitKind::Byte, 2, terminated as usize),
-        LiteralKind::Str { terminated } => (bridge::LitKind::Str, 1, terminated as usize),
-        LiteralKind::ByteStr { terminated } => (bridge::LitKind::ByteStr, 2, terminated as usize),
-        LiteralKind::CStr { terminated } => (bridge::LitKind::CStr, 2, terminated as usize),
+        LiteralKind::Int { .. } => (LitKind::Integer, 0, 0),
+        LiteralKind::Float { .. } => (LitKind::Float, 0, 0),
+        LiteralKind::Char { terminated } => (LitKind::Char, 1, terminated as usize),
+        LiteralKind::Byte { terminated } => (LitKind::Byte, 2, terminated as usize),
+        LiteralKind::Str { terminated } => (LitKind::Str, 1, terminated as usize),
+        LiteralKind::ByteStr { terminated } => (LitKind::ByteStr, 2, terminated as usize),
+        LiteralKind::CStr { terminated } => (LitKind::CStr, 2, terminated as usize),
         LiteralKind::RawStr { n_hashes } => (
-            bridge::LitKind::StrRaw(n_hashes.unwrap_or_default()),
+            LitKind::StrRaw(n_hashes.unwrap_or_default()),
             2 + n_hashes.unwrap_or_default() as usize,
             1 + n_hashes.unwrap_or_default() as usize,
         ),
         LiteralKind::RawByteStr { n_hashes } => (
-            bridge::LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
+            LitKind::ByteStrRaw(n_hashes.unwrap_or_default()),
             3 + n_hashes.unwrap_or_default() as usize,
             1 + n_hashes.unwrap_or_default() as usize,
         ),
         LiteralKind::RawCStr { n_hashes } => (
-            bridge::LitKind::CStrRaw(n_hashes.unwrap_or_default()),
+            LitKind::CStrRaw(n_hashes.unwrap_or_default()),
             3 + n_hashes.unwrap_or_default() as usize,
             1 + n_hashes.unwrap_or_default() as usize,
         ),
@@ -789,7 +693,32 @@ pub(super) fn literal_from_lexer<Span>(
         suffix => Some(Symbol::intern(suffix)),
     };
 
-    bridge::Literal { kind, symbol: Symbol::intern(lit), suffix, span }
+    Literal { kind, symbol: Symbol::intern(lit), suffix, span }
+}
+
+impl SpanLike for crate::SpanId {
+    fn derive_ranged(&self, _: std::ops::Range<usize>) -> Self {
+        *self
+    }
+}
+
+impl SpanLike for () {
+    fn derive_ranged(&self, _: std::ops::Range<usize>) -> Self {
+        *self
+    }
+}
+
+impl SpanLike for crate::Span {
+    fn derive_ranged(&self, range: std::ops::Range<usize>) -> Self {
+        crate::Span {
+            range: span::TextRange::new(
+                span::TextSize::new(range.start as u32),
+                span::TextSize::new(range.end as u32),
+            ),
+            anchor: self.anchor,
+            ctx: self.ctx,
+        }
+    }
 }
 
 #[cfg(test)]

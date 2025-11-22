@@ -2,7 +2,7 @@
 
 use proc_macro::bridge;
 
-use crate::{ProcMacroKind, ProcMacroSrvSpan, tt::TokenStream};
+use crate::{ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);

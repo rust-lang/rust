@@ -26,9 +26,10 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
+mod bridge;
 mod dylib;
 mod server_impl;
-mod tt;
+mod token_stream;
 
 use std::{
     collections::{HashMap, hash_map::Entry},
@@ -80,12 +81,12 @@ impl ProcMacroSrv<'_> {
         env: &[(String, String)],
         current_dir: Option<impl AsRef<Path>>,
         macro_name: &str,
-        macro_body: tt::TokenStream<S>,
-        attribute: Option<tt::TokenStream<S>>,
+        macro_body: token_stream::TokenStream<S>,
+        attribute: Option<token_stream::TokenStream<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<tt::TokenStream<S>, PanicMessage> {
+    ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
             message: Some(format!("failed to load macro: {err}")),
@@ -149,7 +150,7 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server: proc_macro::bridge::server::Server<TokenStream = crate::tt::TokenStream<Self>>;
+    type Server: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }
 

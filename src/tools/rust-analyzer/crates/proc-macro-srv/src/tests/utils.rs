@@ -6,7 +6,7 @@ use span::{
 };
 
 use crate::{
-    EnvSnapshot, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path, tt::TokenStream,
+    EnvSnapshot, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path, token_stream::TokenStream,
 };
 
 fn parse_string(call_site: SpanId, src: &str) -> TokenStream<SpanId> {

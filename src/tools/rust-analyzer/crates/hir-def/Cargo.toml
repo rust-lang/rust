@@ -27,7 +27,6 @@ tracing.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.3"
-text-size.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 query-group.workspace = true

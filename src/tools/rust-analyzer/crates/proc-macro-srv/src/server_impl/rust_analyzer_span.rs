@@ -10,12 +10,13 @@ use std::{
 };
 
 use intern::Symbol;
-use proc_macro::bridge::{self, server};
+use proc_macro::bridge::server;
 use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, Span, TextRange, TextSize};
 
-use crate::server_impl::literal_from_str;
-
-type TokenStream = crate::tt::TokenStream<Span>;
+use crate::{
+    bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
+    server_impl::literal_from_str,
+};
 
 pub struct FreeFunctions;
 
@@ -31,7 +32,7 @@ pub struct RaSpanServer {
 
 impl server::Types for RaSpanServer {
     type FreeFunctions = FreeFunctions;
-    type TokenStream = TokenStream;
+    type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -48,14 +49,11 @@ impl server::FreeFunctions for RaSpanServer {
         self.tracked_paths.insert(path.into());
     }
 
-    fn literal_from_str(
-        &mut self,
-        s: &str,
-    ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, ()> {
         literal_from_str(s, self.call_site)
     }
 
-    fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {
+    fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {
         // FIXME handle diagnostic
     }
 }
@@ -77,11 +75,8 @@ impl server::TokenStream for RaSpanServer {
         stream.to_string()
     }
 
-    fn from_token_tree(
-        &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
-    ) -> Self::TokenStream {
-        TokenStream::new(vec![tree])
+    fn from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
+        Self::TokenStream::new(vec![tree])
     }
 
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
@@ -96,7 +91,7 @@ impl server::TokenStream for RaSpanServer {
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
+        trees: Vec<TokenTree<Self::Span>>,
     ) -> Self::TokenStream {
         match base {
             Some(mut base) => {
@@ -105,7 +100,7 @@ impl server::TokenStream for RaSpanServer {
                 }
                 base
             }
-            None => TokenStream::new(trees),
+            None => Self::TokenStream::new(trees),
         }
     }
 
@@ -121,10 +116,7 @@ impl server::TokenStream for RaSpanServer {
         stream
     }
 
-    fn into_trees(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
+    fn into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
         (*stream.0).clone()
     }
 }
@@ -285,8 +277,8 @@ impl server::Symbol for RaSpanServer {
 }
 
 impl server::Server for RaSpanServer {
-    fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
-        bridge::ExpnGlobals {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
             def_site: self.def_site,
             call_site: self.call_site,
             mixed_site: self.mixed_site,
