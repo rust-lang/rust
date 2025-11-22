@@ -21,7 +21,12 @@ pub fn test4(_: Quux) {}
 
 fn test5<T: hidden_struct::Marker>() {}
 
+fn test6<T: hidden_struct::library::Marker>() {}
+
 fn main() {
     test5::<i32>();
+    //~^ ERROR [E0277]
+
+    test6::<i32>();
     //~^ ERROR [E0277]
 }
