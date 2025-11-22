@@ -334,6 +334,7 @@ impl<'a> Parser<'a> {
         // we take this here so that the correct original token is retained in
         // the diagnostic, regardless of eager recovery.
         let bad_token = self.token;
+        let bad_span = self.token_diag_span();
 
         // suggest prepending a keyword in identifier position with `r#`
         let suggest_raw = if let Some((ident, IdentIsRaw::No)) = self.token.ident()
@@ -358,7 +359,7 @@ impl<'a> Parser<'a> {
                     recovered_ident = self.ident_or_err(false).ok();
                 };
 
-                Some(SuggRemoveComma { span: bad_token.span })
+                Some(SuggRemoveComma { span: bad_span })
             } else {
                 None
             };
@@ -372,7 +373,7 @@ impl<'a> Parser<'a> {
         });
 
         let err = ExpectedIdentifier {
-            span: bad_token.span,
+            span: bad_span,
             token: bad_token,
             suggest_raw,
             suggest_remove_comma,

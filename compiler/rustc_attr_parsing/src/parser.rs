@@ -483,13 +483,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn expected_lit(&mut self) -> Diag<'sess> {
-        let span = if self.parser.token.is_metavar_seq().is_some() {
-            self.parser.parent_tree_span().unwrap_or(self.parser.token.span)
-        } else {
-            self.parser.token.span
-        };
         let mut err = InvalidMetaItem {
-            span,
+            span: self.parser.token_diag_span(),
             descr: token_descr(&self.parser.token),
             quote_ident_sugg: None,
             remove_neg_sugg: None,

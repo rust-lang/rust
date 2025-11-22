@@ -1694,6 +1694,15 @@ impl<'a> Parser<'a> {
             _ => None,
         }
     }
+
+    /// Get the full span of the current token for diagnostic purposes.
+    pub fn token_diag_span(&self) -> Span {
+        let sp = self.token.span;
+        if self.token.is_metavar_seq().is_some() {
+            return self.parent_tree_span().unwrap_or(sp);
+        }
+        sp
+    }
 }
 
 // Metavar captures of various kinds.
