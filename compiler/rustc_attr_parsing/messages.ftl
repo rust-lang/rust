@@ -219,6 +219,48 @@ attr_parsing_stability_outside_std = stability attributes may not be used outsid
 attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
     .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
+attr_parsing_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
+attr_parsing_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
+attr_parsing_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
+attr_parsing_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+
+attr_parsing_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
+attr_parsing_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+attr_parsing_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+
+attr_parsing_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
+attr_parsing_unexpected_cfg_from_external_macro_refer = try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg
+attr_parsing_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
+attr_parsing_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
+        [0] {""}
+        *[other] {" "}and {$and_more} more
+    }
+attr_parsing_unexpected_cfg_name_expected_values = expected values for `{$best_match}` are: {$possibilities}
+attr_parsing_unexpected_cfg_name_similar_name = there is a config with a similar name
+attr_parsing_unexpected_cfg_name_similar_name_different_values = there is a config with a similar name and different values
+attr_parsing_unexpected_cfg_name_similar_name_no_value = there is a config with a similar name and no value
+attr_parsing_unexpected_cfg_name_similar_name_value = there is a config with a similar name and value
+attr_parsing_unexpected_cfg_name_version_syntax = there is a similar config predicate: `version("..")`
+attr_parsing_unexpected_cfg_name_with_similar_value = found config with similar value
+
+attr_parsing_unexpected_cfg_value = unexpected `cfg` condition value: {$has_value ->
+        [true] `{$value}`
+        *[false] (none)
+    }
+attr_parsing_unexpected_cfg_value_add_feature = consider adding `{$value}` as a feature in `Cargo.toml`
+attr_parsing_unexpected_cfg_value_expected_values = expected values for `{$name}` are: {$have_none_possibility ->
+        [true] {"(none), "}
+        *[false] {""}
+    }{$possibilities}{$and_more ->
+        [0] {""}
+        *[other] {" "}and {$and_more} more
+    }
+attr_parsing_unexpected_cfg_value_no_expected_value = no expected value for `{$name}`
+attr_parsing_unexpected_cfg_value_no_expected_values = no expected values for `{$name}`
+attr_parsing_unexpected_cfg_value_remove_condition = remove the condition
+attr_parsing_unexpected_cfg_value_remove_value = remove the value
+attr_parsing_unexpected_cfg_value_similar_name = there is a expected value with a similar name
+attr_parsing_unexpected_cfg_value_specify_value = specify a config value
 attr_parsing_unknown_meta_item =
     unknown meta item '{$item}'
     .label = expected one of {$expected}
