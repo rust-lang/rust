@@ -7,5 +7,5 @@ fn main() {
 }
 
 #[deprecated(note = test)]
-//~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `test`
+//~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found
 fn foo() {}

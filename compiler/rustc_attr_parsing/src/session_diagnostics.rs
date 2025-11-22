@@ -846,6 +846,8 @@ pub(crate) struct InvalidMetaItem {
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
     #[subdiagnostic]
     pub remove_neg_sugg: Option<InvalidMetaItemRemoveNegSugg>,
+    #[label]
+    pub label: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
