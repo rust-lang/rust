@@ -193,6 +193,14 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
+lint_const_item_interior_mutations =
+    mutation of an interior mutable `const` item with call to `{$method_name}`
+    .label = `{$const_name}` is a interior mutable `const` item of type `{$const_ty}`
+    .temporary = each usage of a `const` item creates a new temporary
+    .never_original = only the temporaries and never the original `const {$const_name}` will be modified
+    .suggestion_static = for a shared instance of `{$const_name}`, consider making it a `static` item instead
+    .help = for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+
 lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dropped local variable `{$local_var_name}`
     .ret_ty = return type is `{$ret_ty}`
     .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}

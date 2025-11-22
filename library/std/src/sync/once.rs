@@ -145,6 +145,7 @@ impl Once {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn call_once<F>(&self, f: F)
     where
         F: FnOnce(),
@@ -204,6 +205,7 @@ impl Once {
     /// ```
     #[inline]
     #[stable(feature = "once_poison", since = "1.51.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn call_once_force<F>(&self, f: F)
     where
         F: FnOnce(&OnceState),
@@ -288,6 +290,7 @@ impl Once {
     /// panicked, this method will also panic. Use [`wait_force`](Self::wait_force)
     /// if this behavior is not desired.
     #[stable(feature = "once_wait", since = "1.86.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(false);
@@ -300,6 +303,7 @@ impl Once {
     /// If this [`Once`] has been poisoned, this function blocks until it
     /// becomes completed, unlike [`Once::wait()`], which panics in this case.
     #[stable(feature = "once_wait", since = "1.86.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait_force(&self) {
         if !self.inner.is_completed() {
             self.inner.wait(true);

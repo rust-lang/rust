@@ -247,6 +247,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn force(this: &LazyLock<T, F>) -> &T {
         this.once.call_once_force(|state| {
             if state.is_poisoned() {
@@ -320,6 +321,7 @@ impl<T, F> LazyLock<T, F> {
     /// ```
     #[inline]
     #[unstable(feature = "lazy_get", issue = "129333")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn get(this: &LazyLock<T, F>) -> Option<&T> {
         if this.once.is_completed() {
             // SAFETY:

@@ -701,6 +701,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
+    /// Represents `#[rustc_should_not_be_called_on_const_items]`
+    RustcShouldNotBeCalledOnConstItems(Span),
+
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),
 

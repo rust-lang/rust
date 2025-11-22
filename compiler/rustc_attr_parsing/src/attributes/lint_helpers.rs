@@ -38,6 +38,17 @@ impl<S: Stage> NoArgsAttributeParser<S> for PassByValueParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::PassByValue;
 }
 
+pub(crate) struct RustcShouldNotBeCalledOnConstItems;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcShouldNotBeCalledOnConstItems {
+    const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcShouldNotBeCalledOnConstItems;
+}
+
 pub(crate) struct AutomaticallyDerivedParser;
 impl<S: Stage> NoArgsAttributeParser<S> for AutomaticallyDerivedParser {
     const PATH: &[Symbol] = &[sym::automatically_derived];

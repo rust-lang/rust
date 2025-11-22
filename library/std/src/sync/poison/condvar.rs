@@ -121,6 +121,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> LockResult<MutexGuard<'a, T>> {
         let poisoned = unsafe {
             let lock = mutex::guard_lock(&guard);
@@ -177,6 +178,7 @@ impl Condvar {
     /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| { *pending }).unwrap();
     /// ```
     #[stable(feature = "wait_until", since = "1.42.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
@@ -245,6 +247,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
     pub fn wait_timeout_ms<'a, T>(
         &self,
@@ -316,6 +319,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "wait_timeout", since = "1.5.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait_timeout<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,
@@ -382,6 +386,7 @@ impl Condvar {
     /// // access the locked mutex via result.0
     /// ```
     #[stable(feature = "wait_timeout_until", since = "1.42.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn wait_timeout_while<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
@@ -442,6 +447,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn notify_one(&self) {
         self.inner.notify_one()
     }
@@ -482,6 +488,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn notify_all(&self) {
         self.inner.notify_all()
     }
