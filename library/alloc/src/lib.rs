@@ -206,6 +206,8 @@
 #[macro_use]
 mod macros;
 
+#[cfg(not(no_rc))]
+mod raw_rc;
 mod raw_vec;
 
 // Heaps provided for low-level allocation strategies
