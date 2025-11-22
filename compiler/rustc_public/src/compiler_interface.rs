@@ -249,6 +249,14 @@ impl<'tcx> CompilerInterface<'tcx> {
         cx.def_name(did, trimmed)
     }
 
+    /// Returns the parent of the given `DefId`.
+    pub(crate) fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.def_parent(did).map(|did| tables.create_def_id(did))
+    }
+
     /// Return registered tool attributes with the given attribute name.
     ///
     /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
