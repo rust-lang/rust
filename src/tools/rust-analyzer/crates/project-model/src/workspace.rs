@@ -819,10 +819,16 @@ impl ProjectWorkspace {
                         // [lib]
                         // path = "../../src/lib.rs"
                         // ```
+                        //
+                        // or
+                        //
+                        // ```toml
+                        // [[bin]]
+                        // path = "../bin_folder/main.rs"
+                        // ```
                         let extra_targets = cargo[pkg]
                             .targets
                             .iter()
-                            .filter(|&&tgt| matches!(cargo[tgt].kind, TargetKind::Lib { .. }))
                             .filter_map(|&tgt| cargo[tgt].root.parent())
                             .map(|tgt| tgt.normalize().to_path_buf())
                             .filter(|path| !path.starts_with(&pkg_root));
@@ -874,10 +880,16 @@ impl ProjectWorkspace {
                         // [lib]
                         // path = "../../src/lib.rs"
                         // ```
+                        //
+                        // or
+                        //
+                        // ```toml
+                        // [[bin]]
+                        // path = "../bin_folder/main.rs"
+                        // ```
                         let extra_targets = cargo[pkg]
                             .targets
                             .iter()
-                            .filter(|&&tgt| matches!(cargo[tgt].kind, TargetKind::Lib { .. }))
                             .filter_map(|&tgt| cargo[tgt].root.parent())
                             .map(|tgt| tgt.normalize().to_path_buf())
                             .filter(|path| !path.starts_with(&pkg_root));
