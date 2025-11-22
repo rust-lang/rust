@@ -6,6 +6,7 @@ pub(crate) fn target() -> Target {
     base.features = "+cx16,+sse3,+sahf".into();
     base.plt_by_default = false;
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &["-m", "i386pep"]);
     base.max_atomic_width = Some(128);
     base.linker = Some("x86_64-w64-mingw32-clang".into());
 
