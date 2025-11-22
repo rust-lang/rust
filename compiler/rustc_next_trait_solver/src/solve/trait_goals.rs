@@ -663,6 +663,10 @@ where
             return Err(NoSolution);
         }
 
+        if goal.predicate.has_non_region_infer() {
+            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+        }
+
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let assume = ecx.structurally_normalize_const(
                 goal.param_env,
