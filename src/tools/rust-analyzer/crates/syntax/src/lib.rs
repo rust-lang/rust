@@ -200,6 +200,7 @@ impl ast::Expr {
     }
 }
 
+#[cfg(not(no_salsa_async_drops))]
 impl<T> Drop for Parse<T> {
     fn drop(&mut self) {
         let Some(green) = self.green.take() else {

@@ -156,6 +156,7 @@ where
     }
 }
 
+#[cfg(not(no_salsa_async_drops))]
 impl<S> Drop for SpanMap<S> {
     fn drop(&mut self) {
         struct SendPtr(*mut [()]);
