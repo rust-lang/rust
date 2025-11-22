@@ -92,6 +92,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
+    /// Cache function instances of intrinsics
+    pub intrinsic_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
@@ -280,6 +282,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             linkage: Cell::new(FunctionType::Internal),
             instances: Default::default(),
             function_instances: Default::default(),
+            intrinsic_instances: Default::default(),
             on_stack_params: Default::default(),
             on_stack_function_params: Default::default(),
             vtables: Default::default(),
@@ -391,17 +394,13 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> Function<'gcc> {
-        let func = get_fn(self, instance);
-        *self.current_func.borrow_mut() = Some(func);
-        func
+        get_fn(self, instance)
     }
 
     fn get_fn_addr(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 
-        let func = if self.intrinsics.borrow().contains_key(func_name) {
-            self.intrinsics.borrow()[func_name]
-        } else if let Some(variable) = self.get_declared_value(func_name) {
+        let func = if let Some(variable) = self.get_declared_value(func_name) {
             return variable;
         } else {
             get_fn(self, instance)
