@@ -687,7 +687,7 @@ impl TraitImpls {
 
     #[salsa::tracked(returns(ref))]
     pub fn for_crate_and_deps(db: &dyn HirDatabase, krate: Crate) -> Box<[Arc<Self>]> {
-        db.transitive_deps(krate).iter().map(|&dep| Self::for_crate(db, dep).clone()).collect()
+        krate.transitive_deps(db).iter().map(|&dep| Self::for_crate(db, dep).clone()).collect()
     }
 }
 

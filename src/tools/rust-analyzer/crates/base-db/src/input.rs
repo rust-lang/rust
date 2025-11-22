@@ -460,6 +460,32 @@ pub struct Crate {
     pub env: Env,
 }
 
+#[salsa::tracked]
+impl Crate {
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
+    #[salsa::tracked(returns(deref))]
+    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Box<[Crate]> {
+        // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
+        // and removing that is a bit difficult.
+        let mut worklist = vec![self];
+        let mut deps_seen = FxHashSet::default();
+        let mut deps = Vec::new();
+
+        while let Some(krate) = worklist.pop() {
+            if !deps_seen.insert(krate) {
+                continue;
+            }
+            deps.push(krate);
+
+            worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
+        }
+        deps.into_boxed_slice()
+    }
+}
+
 /// The mapping from [`UniqueCrateData`] to their [`Crate`] input.
 #[derive(Debug, Default)]
 pub struct CratesMap(DashMap<UniqueCrateData, Crate, BuildHasherDefault<FxHasher>>);

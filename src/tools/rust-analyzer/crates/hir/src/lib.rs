@@ -250,6 +250,14 @@ impl Crate {
         db.transitive_rev_deps(self.id).into_iter().map(|id| Crate { id })
     }
 
+    pub fn notable_traits_in_deps(self, db: &dyn HirDatabase) -> impl Iterator<Item = &TraitId> {
+        self.id
+            .transitive_deps(db)
+            .into_iter()
+            .filter_map(|&krate| db.crate_notable_traits(krate))
+            .flatten()
+    }
+
     pub fn root_module(self) -> Module {
         Module { id: CrateRootModuleId::from(self.id).into() }
     }
