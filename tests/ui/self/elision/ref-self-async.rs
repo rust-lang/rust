@@ -4,16 +4,21 @@
 #![feature(arbitrary_self_types)]
 
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, Receiver};
 use std::pin::Pin;
 
-struct Struct { }
+struct Struct {}
 
 struct Wrap<T, P>(T, PhantomData<P>);
 
 impl<T, P> Deref for Wrap<T, P> {
     type Target = T;
-    fn deref(&self) -> &T { &self.0 }
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+impl<T, P> Receiver for Wrap<T, P> {
+    type Target = T;
 }
 
 impl Struct {
@@ -57,4 +62,4 @@ impl Struct {
     }
 }
 
-fn main() { }
+fn main() {}

@@ -1,6 +1,12 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(arbitrary_self_types_pointers, unsize, coerce_unsized, dispatch_from_dyn)]
+#![feature(
+    arbitrary_self_types,
+    arbitrary_self_types_pointers,
+    unsize,
+    coerce_unsized,
+    dispatch_from_dyn
+)]
 #![feature(rustc_attrs)]
 
 fn pin_box_dyn() {
@@ -63,7 +69,7 @@ fn stdlib_pointers() {
 
 fn pointers_and_wrappers() {
     use std::marker::Unsize;
-    use std::ops::{CoerceUnsized, Deref, DispatchFromDyn};
+    use std::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 
     struct Ptr<T: ?Sized>(Box<T>);
 
@@ -73,6 +79,9 @@ fn pointers_and_wrappers() {
         fn deref(&self) -> &T {
             &*self.0
         }
+    }
+    impl<T: ?Sized> Receiver for Ptr<T> {
+        type Target = T;
     }
 
     impl<T: Unsize<U> + ?Sized, U: ?Sized> CoerceUnsized<Ptr<U>> for Ptr<T> {}
@@ -86,6 +95,9 @@ fn pointers_and_wrappers() {
         fn deref(&self) -> &T {
             &self.0
         }
+    }
+    impl<T: ?Sized> Receiver for Wrapper<T> {
+        type Target = T;
     }
 
     impl<T: CoerceUnsized<U>, U> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
