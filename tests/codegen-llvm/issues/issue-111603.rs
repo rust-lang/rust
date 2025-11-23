@@ -20,8 +20,8 @@ pub fn new_from_array(x: u64) -> Arc<[u64]> {
 // CHECK-LABEL: @new_uninit
 #[no_mangle]
 pub fn new_uninit(x: u64) -> Arc<[u64; 1000]> {
-    // CHECK: call alloc::sync::arcinner_layout_for_value_layout
-    // CHECK-NOT: call alloc::sync::arcinner_layout_for_value_layout
+    // CHECK: call {{.*}}__rust_alloc(i[[#BITS:]]
+    // CHECK-SAME: [[#8000 + div(BITS,4)]], i[[#BITS]]{{.*}} 8) #
     let mut arc = Arc::new_uninit();
     unsafe { Arc::get_mut_unchecked(&mut arc) }.write([x; 1000]);
     unsafe { arc.assume_init() }
@@ -30,8 +30,8 @@ pub fn new_uninit(x: u64) -> Arc<[u64; 1000]> {
 // CHECK-LABEL: @new_uninit_slice
 #[no_mangle]
 pub fn new_uninit_slice(x: u64) -> Arc<[u64]> {
-    // CHECK: call alloc::sync::arcinner_layout_for_value_layout
-    // CHECK-NOT: call alloc::sync::arcinner_layout_for_value_layout
+    // CHECK: call {{.*}}__rust_alloc(i[[#BITS:]]
+    // CHECK-SAME: [[#8000 + div(BITS,4)]], i[[#BITS]]{{.*}} 8) #
     let mut arc = Arc::new_uninit_slice(1000);
     for elem in unsafe { Arc::get_mut_unchecked(&mut arc) } {
         elem.write(x);
