@@ -2,6 +2,7 @@
 #![feature(never_type, exhaustive_patterns)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]
+#![expect(unmustuse_in_always_ok)]
 
 enum Void {}
 

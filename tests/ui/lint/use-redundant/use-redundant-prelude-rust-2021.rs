@@ -1,7 +1,7 @@
 //@ check-pass
 //@ edition:2021
 #![warn(redundant_imports)]
-
+#![expect(unmustuse_in_always_ok)]
 use std::convert::TryFrom;//~ WARNING the item `TryFrom` is imported redundantly
 use std::convert::TryInto;//~ WARNING the item `TryInto` is imported redundantly
 

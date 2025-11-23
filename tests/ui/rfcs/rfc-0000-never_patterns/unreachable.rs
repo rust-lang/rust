@@ -1,6 +1,6 @@
 #![feature(exhaustive_patterns)]
 #![feature(never_patterns)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features, unmustuse_in_always_ok)]
 #![allow(dead_code, unreachable_code)]
 #![deny(unreachable_patterns)]
 

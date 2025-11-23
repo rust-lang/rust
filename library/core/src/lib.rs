@@ -89,6 +89,7 @@
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
 #![warn(unreachable_pub)]
+#![expect(unmustuse_in_always_ok)]
 // Do not check link redundancy on bootstrapping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]

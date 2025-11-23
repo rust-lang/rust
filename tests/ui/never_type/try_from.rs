@@ -6,7 +6,7 @@
 // over `TryFrom` being blanket impl for all `T: From`
 
 #![feature(never_type)]
-
+#![expect(unmustuse_in_always_ok)]
 use std::convert::{TryInto, Infallible};
 
 struct Foo<T> {

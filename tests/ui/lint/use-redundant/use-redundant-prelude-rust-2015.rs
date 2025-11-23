@@ -1,7 +1,7 @@
 //@ edition: 2015
 //@ check-pass
 #![warn(redundant_imports)]
-
+#![expect(unmustuse_in_always_ok)]
 
 use std::option::Option::Some;//~ WARNING the item `Some` is imported redundantly
 use std::option::Option::None; //~ WARNING the item `None` is imported redundantly
