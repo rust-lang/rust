@@ -1,4 +1,4 @@
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-attr-non-associated-functions.rs:6:5
    |
 LL |     #[test]
@@ -10,7 +10,7 @@ LL -     #[test]
 LL +     #[cfg(test)]
    |
 
-error: the `#[test]` attribute may only be used on a non-associated function
+error: the `#[test]` attribute may only be used on a free function
   --> $DIR/test-attr-non-associated-functions.rs:11:5
    |
 LL |     #[test]

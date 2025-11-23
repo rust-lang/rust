@@ -250,38 +250,6 @@ mod macro_export {
     //~| HELP remove the attribute
 }
 
-// At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[test] attributes seem to be ignored.
-
-#[test]
-mod test { mod inner { #![test] }
-
-    fn f() { }
-
-    struct S;
-
-    type T = S;
-
-    impl S { }
-}
-
-// At time of unit test authorship, if compiling without `--test` then
-// non-crate-level #[bench] attributes seem to be ignored.
-
-#[bench]
-mod bench {
-    mod inner { #![bench] }
-
-    #[bench]
-    struct S;
-
-    #[bench]
-    type T = S;
-
-    #[bench]
-    impl S { }
-}
-
 #[path = "3800"]
 mod path {
     mod inner { #![path="3800"] }
