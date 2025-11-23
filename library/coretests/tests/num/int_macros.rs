@@ -2,8 +2,9 @@ macro_rules! int_module {
     ($T:ident, $U:ident) => {
         use core::num::ParseIntError;
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
-        use core::$T::*;
 
+        const MAX: $T = $T::MAX;
+        const MIN: $T = $T::MIN;
         const UMAX: $U = $U::MAX;
 
         use crate::num;

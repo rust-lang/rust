@@ -13,7 +13,7 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated, deprecated_in_future)]
+#[allow(deprecated)]
 pub use core::f32::{
     DIGITS, EPSILON, INFINITY, MANTISSA_DIGITS, MAX, MAX_10_EXP, MAX_EXP, MIN, MIN_10_EXP, MIN_EXP,
     MIN_POSITIVE, NAN, NEG_INFINITY, RADIX, consts,
