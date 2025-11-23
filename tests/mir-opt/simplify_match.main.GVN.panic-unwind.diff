@@ -11,14 +11,12 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _2 = const false;
 -         _1 = copy _2;
--         StorageDead(_2);
--         switchInt(copy _1) -> [0: bb2, otherwise: bb1];
 +         _1 = const false;
-+         nop;
+          StorageDead(_2);
+-         switchInt(copy _1) -> [0: bb2, otherwise: bb1];
 +         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   

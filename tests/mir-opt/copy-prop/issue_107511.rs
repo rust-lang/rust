@@ -5,8 +5,8 @@
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug i => [[i:_.*]];
-    // CHECK-NOT: StorageLive([[i]]);
-    // CHECK-NOT: StorageDead([[i]]);
+    // CHECK: StorageLive([[i]]);
+    // CHECK: StorageDead([[i]]);
     let mut sum = 0;
     let a = [0, 10, 20, 30];
 

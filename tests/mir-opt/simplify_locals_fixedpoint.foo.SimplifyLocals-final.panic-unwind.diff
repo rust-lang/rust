@@ -35,7 +35,9 @@
       }
   
       bb2: {
+          StorageLive(_6);
           _6 = copy (((_1.0: std::option::Option<u8>) as Some).0: u8);
+          StorageDead(_6);
           goto -> bb3;
       }
   

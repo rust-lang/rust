@@ -51,8 +51,7 @@
       bb1: {
           StorageDead(_3);
           StorageDead(_2);
--         StorageLive(_6);
-+         nop;
+          StorageLive(_6);
           StorageLive(_7);
           _7 = copy _1;
 -         _6 = Lt(move _7, const 13_i64);
@@ -145,8 +144,7 @@
           StorageDead(_23);
           StorageDead(_22);
           _0 = const ();
--         StorageDead(_6);
-+         nop;
+          StorageDead(_6);
           return;
       }
   }

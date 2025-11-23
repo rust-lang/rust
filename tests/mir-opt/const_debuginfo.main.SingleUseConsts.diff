@@ -55,14 +55,14 @@
       }
   
       bb0: {
-          nop;
+          StorageLive(_1);
 -         _1 = const 1_u8;
-          nop;
++         nop;
+          StorageLive(_2);
 -         _2 = const 2_u8;
-          nop;
++         nop;
+          StorageLive(_3);
 -         _3 = const 3_u8;
-+         nop;
-+         nop;
 +         nop;
           StorageLive(_4);
           StorageLive(_5);
@@ -95,7 +95,7 @@
 -         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
 +         nop;
           StorageLive(_13);
-          nop;
+          StorageLive(_14);
 -         _14 = const 32_u32;
 +         nop;
           StorageLive(_15);
@@ -104,7 +104,7 @@
 +         nop;
 +         nop;
           StorageDead(_15);
-          nop;
+          StorageDead(_14);
           _0 = const ();
           StorageDead(_13);
           StorageDead(_12);
@@ -112,9 +112,9 @@
           StorageDead(_10);
           StorageDead(_9);
           StorageDead(_4);
-          nop;
-          nop;
-          nop;
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
           return;
       }
   }
