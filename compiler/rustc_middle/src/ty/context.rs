@@ -2090,6 +2090,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.dcx()
     }
 
+    /// Checks to see if the caller (`body_features`) has all the features required by the callee
+    /// (`callee_features`).
     pub fn is_target_feature_call_safe(
         self,
         callee_features: &[TargetFeature],
