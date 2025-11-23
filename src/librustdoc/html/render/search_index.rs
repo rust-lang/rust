@@ -2059,22 +2059,21 @@ enum SimplifiedParam {
 /// not be added to the map.
 ///
 /// This function also works recursively.
-#[instrument(level = "trace", skip(tcx, res, rgen, cache))]
+#[instrument(level = "trace", skip(tcx, rgen, cache))]
 fn simplify_fn_type<'a, 'tcx>(
     self_: Option<&'a Type>,
     generics: &Generics,
     arg: &'a Type,
     tcx: TyCtxt<'tcx>,
     recurse: usize,
-    res: &mut Vec<RenderType>,
     rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
     is_return: bool,
     cache: &Cache,
-) {
+) -> Option<RenderType> {
     if recurse >= 10 {
         // FIXME: remove this whole recurse thing when the recursion bug is fixed
         // See #59502 for the original issue.
-        return;
+        return None;
     }
 
     // First, check if it's "Self".
@@ -2091,179 +2090,120 @@ fn simplify_fn_type<'a, 'tcx>(
     match *arg {
         Type::Generic(arg_s) => {
             // First we check if the bounds are in a `where` predicate...
-            let mut type_bounds = Vec::new();
-            for where_pred in generics.where_predicates.iter().filter(|g| match g {
-                WherePredicate::BoundPredicate { ty, .. } => *ty == *arg,
-                _ => false,
-            }) {
-                let bounds = where_pred.get_bounds().unwrap_or(&[]);
-                for bound in bounds.iter() {
-                    if let Some(path) = bound.get_trait_path() {
-                        let ty = Type::Path { path };
-                        simplify_fn_type(
-                            self_,
-                            generics,
-                            &ty,
-                            tcx,
-                            recurse + 1,
-                            &mut type_bounds,
-                            rgen,
-                            is_return,
-                            cache,
-                        );
+            let where_bounds = generics
+                .where_predicates
+                .iter()
+                .filter_map(|g| {
+                    if let WherePredicate::BoundPredicate { ty, bounds, .. } = g
+                        && *ty == *arg
+                    {
+                        Some(bounds)
+                    } else {
+                        None
                     }
-                }
-            }
+                })
+                .flatten();
             // Otherwise we check if the trait bounds are "inlined" like `T: Option<u32>`...
-            if let Some(bound) = generics.params.iter().find(|g| g.is_type() && g.name == arg_s) {
-                for bound in bound.get_bounds().unwrap_or(&[]) {
-                    if let Some(path) = bound.get_trait_path() {
-                        let ty = Type::Path { path };
-                        simplify_fn_type(
-                            self_,
-                            generics,
-                            &ty,
-                            tcx,
-                            recurse + 1,
-                            &mut type_bounds,
-                            rgen,
-                            is_return,
-                            cache,
-                        );
-                    }
-                }
-            }
-            if let Some((idx, _)) = rgen.get(&SimplifiedParam::Symbol(arg_s)) {
-                res.push(RenderType {
-                    id: Some(RenderTypeId::Index(*idx)),
-                    generics: None,
-                    bindings: None,
-                });
+            let inline_bounds = generics
+                .params
+                .iter()
+                .find(|g| g.is_type() && g.name == arg_s)
+                .and_then(|bound| bound.get_bounds())
+                .into_iter()
+                .flatten();
+
+            let type_bounds = where_bounds
+                .chain(inline_bounds)
+                .filter_map(
+                    |bound| if let Some(path) = bound.get_trait_path() { Some(path) } else { None },
+                )
+                .filter_map(|path| {
+                    let ty = Type::Path { path };
+                    simplify_fn_type(self_, generics, &ty, tcx, recurse + 1, rgen, is_return, cache)
+                })
+                .collect();
+
+            Some(if let Some((idx, _)) = rgen.get(&SimplifiedParam::Symbol(arg_s)) {
+                RenderType { id: Some(RenderTypeId::Index(*idx)), generics: None, bindings: None }
             } else {
                 let idx = -isize::try_from(rgen.len() + 1).unwrap();
                 rgen.insert(SimplifiedParam::Symbol(arg_s), (idx, type_bounds));
-                res.push(RenderType {
-                    id: Some(RenderTypeId::Index(idx)),
-                    generics: None,
-                    bindings: None,
-                });
-            }
+                RenderType { id: Some(RenderTypeId::Index(idx)), generics: None, bindings: None }
+            })
         }
         Type::ImplTrait(ref bounds) => {
-            let mut type_bounds = Vec::new();
-            for bound in bounds {
-                if let Some(path) = bound.get_trait_path() {
+            let type_bounds = bounds
+                .iter()
+                .filter_map(|bound| bound.get_trait_path())
+                .filter_map(|path| {
                     let ty = Type::Path { path };
-                    simplify_fn_type(
-                        self_,
-                        generics,
-                        &ty,
-                        tcx,
-                        recurse + 1,
-                        &mut type_bounds,
-                        rgen,
-                        is_return,
-                        cache,
-                    );
-                }
-            }
-            if is_return && !type_bounds.is_empty() {
+                    simplify_fn_type(self_, generics, &ty, tcx, recurse + 1, rgen, is_return, cache)
+                })
+                .collect::<Vec<_>>();
+            Some(if is_return && !type_bounds.is_empty() {
                 // In return position, `impl Trait` is a unique thing.
-                res.push(RenderType { id: None, generics: Some(type_bounds), bindings: None });
+                RenderType { id: None, generics: Some(type_bounds), bindings: None }
             } else {
                 // In parameter position, `impl Trait` is the same as an unnamed generic parameter.
                 let idx = -isize::try_from(rgen.len() + 1).unwrap();
                 rgen.insert(SimplifiedParam::Anonymous(idx), (idx, type_bounds));
-                res.push(RenderType {
-                    id: Some(RenderTypeId::Index(idx)),
-                    generics: None,
-                    bindings: None,
-                });
-            }
+                RenderType { id: Some(RenderTypeId::Index(idx)), generics: None, bindings: None }
+            })
         }
         Type::Slice(ref ty) => {
-            let mut ty_generics = Vec::new();
-            simplify_fn_type(
-                self_,
-                generics,
-                ty,
-                tcx,
-                recurse + 1,
-                &mut ty_generics,
-                rgen,
-                is_return,
-                cache,
-            );
-            res.push(get_index_type(arg, ty_generics, rgen));
+            let ty_generics =
+                simplify_fn_type(self_, generics, ty, tcx, recurse + 1, rgen, is_return, cache)
+                    .into_iter()
+                    .collect();
+            Some(get_index_type(arg, ty_generics, rgen))
         }
         Type::Array(ref ty, _) => {
-            let mut ty_generics = Vec::new();
-            simplify_fn_type(
-                self_,
-                generics,
-                ty,
-                tcx,
-                recurse + 1,
-                &mut ty_generics,
-                rgen,
-                is_return,
-                cache,
-            );
-            res.push(get_index_type(arg, ty_generics, rgen));
+            let ty_generics =
+                simplify_fn_type(self_, generics, ty, tcx, recurse + 1, rgen, is_return, cache)
+                    .into_iter()
+                    .collect();
+            Some(get_index_type(arg, ty_generics, rgen))
         }
         Type::Tuple(ref tys) => {
-            let mut ty_generics = Vec::new();
-            for ty in tys {
-                simplify_fn_type(
-                    self_,
-                    generics,
-                    ty,
-                    tcx,
-                    recurse + 1,
-                    &mut ty_generics,
-                    rgen,
-                    is_return,
-                    cache,
-                );
-            }
-            res.push(get_index_type(arg, ty_generics, rgen));
+            let ty_generics = tys
+                .iter()
+                .filter_map(|ty| {
+                    simplify_fn_type(self_, generics, ty, tcx, recurse + 1, rgen, is_return, cache)
+                })
+                .collect();
+            Some(get_index_type(arg, ty_generics, rgen))
         }
         Type::BareFunction(ref bf) => {
-            let mut ty_generics = Vec::new();
-            for ty in bf.decl.inputs.iter().map(|arg| &arg.type_) {
-                simplify_fn_type(
-                    self_,
-                    generics,
-                    ty,
-                    tcx,
-                    recurse + 1,
-                    &mut ty_generics,
-                    rgen,
-                    is_return,
-                    cache,
-                );
-            }
+            let ty_generics = bf
+                .decl
+                .inputs
+                .iter()
+                .map(|arg| &arg.type_)
+                .filter_map(|ty| {
+                    simplify_fn_type(self_, generics, ty, tcx, recurse + 1, rgen, is_return, cache)
+                })
+                .collect();
             // The search index, for simplicity's sake, represents fn pointers and closures
             // the same way: as a tuple for the parameters, and an associated type for the
             // return type.
-            let mut ty_output = Vec::new();
-            simplify_fn_type(
+            let ty_output = simplify_fn_type(
                 self_,
                 generics,
                 &bf.decl.output,
                 tcx,
                 recurse + 1,
-                &mut ty_output,
                 rgen,
                 is_return,
                 cache,
-            );
+            )
+            .into_iter()
+            .collect();
             let ty_bindings = vec![(RenderTypeId::AssociatedType(sym::Output), ty_output)];
-            res.push(RenderType {
+            Some(RenderType {
                 id: get_index_type_id(arg, rgen),
                 bindings: Some(ty_bindings),
                 generics: Some(ty_generics),
-            });
+            })
         }
         Type::BorrowedRef { lifetime: _, mutability, ref type_ }
         | Type::RawPointer(mutability, ref type_) => {
@@ -2275,18 +2215,12 @@ fn simplify_fn_type<'a, 'tcx>(
                     bindings: None,
                 });
             }
-            simplify_fn_type(
-                self_,
-                generics,
-                type_,
-                tcx,
-                recurse + 1,
-                &mut ty_generics,
-                rgen,
-                is_return,
-                cache,
-            );
-            res.push(get_index_type(arg, ty_generics, rgen));
+            if let Some(ty) =
+                simplify_fn_type(self_, generics, type_, tcx, recurse + 1, rgen, is_return, cache)
+            {
+                ty_generics.push(ty);
+            }
+            Some(get_index_type(arg, ty_generics, rgen))
         }
         _ => {
             // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
@@ -2297,22 +2231,25 @@ fn simplify_fn_type<'a, 'tcx>(
             let mut ty_generics = Vec::new();
             let mut ty_constraints = Vec::new();
             if let Some(arg_generics) = arg.generic_args() {
-                for ty in arg_generics.into_iter().filter_map(|param| match param {
-                    clean::GenericArg::Type(ty) => Some(ty),
-                    _ => None,
-                }) {
-                    simplify_fn_type(
-                        self_,
-                        generics,
-                        &ty,
-                        tcx,
-                        recurse + 1,
-                        &mut ty_generics,
-                        rgen,
-                        is_return,
-                        cache,
-                    );
-                }
+                ty_generics = arg_generics
+                    .into_iter()
+                    .filter_map(|param| match param {
+                        clean::GenericArg::Type(ty) => Some(ty),
+                        _ => None,
+                    })
+                    .filter_map(|ty| {
+                        simplify_fn_type(
+                            self_,
+                            generics,
+                            &ty,
+                            tcx,
+                            recurse + 1,
+                            rgen,
+                            is_return,
+                            cache,
+                        )
+                    })
+                    .collect();
                 for constraint in arg_generics.constraints() {
                     simplify_fn_constraint(
                         self_,
@@ -2359,9 +2296,10 @@ fn simplify_fn_type<'a, 'tcx>(
                             // Can't just pass stored_bounds to simplify_fn_type,
                             // because it also accepts rgen as a parameter.
                             // Instead, have it fill in this local, then copy it into the map afterward.
-                            let mut type_bounds = Vec::new();
-                            for bound in bounds {
-                                if let Some(path) = bound.get_trait_path() {
+                            let type_bounds = bounds
+                                .iter()
+                                .filter_map(|bound| bound.get_trait_path())
+                                .filter_map(|path| {
                                     let ty = Type::Path { path };
                                     simplify_fn_type(
                                         self_,
@@ -2369,13 +2307,12 @@ fn simplify_fn_type<'a, 'tcx>(
                                         &ty,
                                         tcx,
                                         recurse + 1,
-                                        &mut type_bounds,
                                         rgen,
                                         is_return,
                                         cache,
-                                    );
-                                }
-                            }
+                                    )
+                                })
+                                .collect();
                             let stored_bounds = &mut rgen
                                 .get_mut(&SimplifiedParam::AssociatedType(def_id, name))
                                 .unwrap()
@@ -2397,11 +2334,13 @@ fn simplify_fn_type<'a, 'tcx>(
             }
             let id = get_index_type_id(arg, rgen);
             if id.is_some() || !ty_generics.is_empty() {
-                res.push(RenderType {
+                Some(RenderType {
                     id,
                     bindings: if ty_constraints.is_empty() { None } else { Some(ty_constraints) },
                     generics: if ty_generics.is_empty() { None } else { Some(ty_generics) },
-                });
+                })
+            } else {
+                None
             }
         }
     }
@@ -2422,17 +2361,18 @@ fn simplify_fn_constraint<'a>(
     let ty_constrained_assoc = RenderTypeId::AssociatedType(constraint.assoc.name);
     for param in &constraint.assoc.args {
         match param {
-            clean::GenericArg::Type(arg) => simplify_fn_type(
-                self_,
-                generics,
-                &arg,
-                tcx,
-                recurse + 1,
-                &mut ty_constraints,
-                rgen,
-                is_return,
-                cache,
-            ),
+            clean::GenericArg::Type(arg) => {
+                ty_constraints.extend(simplify_fn_type(
+                    self_,
+                    generics,
+                    &arg,
+                    tcx,
+                    recurse + 1,
+                    rgen,
+                    is_return,
+                    cache,
+                ));
+            }
             clean::GenericArg::Lifetime(_)
             | clean::GenericArg::Const(_)
             | clean::GenericArg::Infer => {}
@@ -2454,34 +2394,32 @@ fn simplify_fn_constraint<'a>(
     match &constraint.kind {
         clean::AssocItemConstraintKind::Equality { term } => {
             if let clean::Term::Type(arg) = &term {
-                simplify_fn_type(
+                ty_constraints.extend(simplify_fn_type(
                     self_,
                     generics,
                     arg,
                     tcx,
                     recurse + 1,
-                    &mut ty_constraints,
                     rgen,
                     is_return,
                     cache,
-                );
+                ));
             }
         }
         clean::AssocItemConstraintKind::Bound { bounds } => {
             for bound in &bounds[..] {
                 if let Some(path) = bound.get_trait_path() {
                     let ty = Type::Path { path };
-                    simplify_fn_type(
+                    ty_constraints.extend(simplify_fn_type(
                         self_,
                         generics,
                         &ty,
                         tcx,
                         recurse + 1,
-                        &mut ty_constraints,
                         rgen,
                         is_return,
                         cache,
-                    );
+                    ));
                 }
             }
         }
@@ -2537,23 +2475,17 @@ fn get_fn_inputs_and_outputs(
         (None, &func.generics)
     };
 
-    let mut param_types = Vec::new();
-    for param in decl.inputs.iter() {
-        simplify_fn_type(
-            self_,
-            generics,
-            &param.type_,
-            tcx,
-            0,
-            &mut param_types,
-            &mut rgen,
-            false,
-            cache,
-        );
-    }
+    let param_types = decl
+        .inputs
+        .iter()
+        .filter_map(|param| {
+            simplify_fn_type(self_, generics, &param.type_, tcx, 0, &mut rgen, false, cache)
+        })
+        .collect();
 
-    let mut ret_types = Vec::new();
-    simplify_fn_type(self_, generics, &decl.output, tcx, 0, &mut ret_types, &mut rgen, true, cache);
+    let ret_types = simplify_fn_type(self_, generics, &decl.output, tcx, 0, &mut rgen, true, cache)
+        .into_iter()
+        .collect();
 
     let mut simplified_params = rgen.into_iter().collect::<Vec<_>>();
     simplified_params.sort_by_key(|(_, (idx, _))| -idx);
