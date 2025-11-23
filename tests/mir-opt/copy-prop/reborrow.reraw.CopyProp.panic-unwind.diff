@@ -31,7 +31,7 @@
 -         StorageLive(_6);
 -         _6 = move _4;
 -         _5 = opaque::<&mut u8>(move _6) -> [return: bb1, unwind continue];
-+         _5 = opaque::<&mut u8>(move _2) -> [return: bb1, unwind continue];
++         _5 = opaque::<&mut u8>(copy _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {
