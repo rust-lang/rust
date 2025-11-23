@@ -473,7 +473,6 @@ const_eval_validation_invalid_ref_meta = {$front_matter}: encountered invalid re
 const_eval_validation_invalid_ref_slice_meta = {$front_matter}: encountered invalid reference metadata: slice is bigger than largest supported object
 const_eval_validation_invalid_vtable_ptr = {$front_matter}: encountered {$value}, but expected a vtable pointer
 const_eval_validation_invalid_vtable_trait = {$front_matter}: wrong trait in wide pointer vtable: expected `{$expected_dyn_type}`, but encountered `{$vtable_dyn_type}`
-const_eval_validation_mutable_ref_in_const = {$front_matter}: encountered mutable reference in `const` value
 const_eval_validation_mutable_ref_to_immutable = {$front_matter}: encountered mutable reference or box pointing to read-only memory
 const_eval_validation_never_val = {$front_matter}: encountered a value of the never type `!`
 const_eval_validation_nonnull_ptr_out_of_range = {$front_matter}: encountered a maybe-null pointer, but expected something that is definitely non-zero

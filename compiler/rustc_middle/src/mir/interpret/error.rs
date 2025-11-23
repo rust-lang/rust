@@ -496,7 +496,6 @@ pub enum ValidationErrorKind<'tcx> {
     },
     MutableRefToImmutable,
     UnsafeCellInImmutable,
-    MutableRefInConst,
     NullFnPtr {
         /// Records whether this pointer is definitely null or just may be null.
         maybe: bool,
