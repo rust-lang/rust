@@ -32,7 +32,7 @@ fn main() -> () {
     bb1: {
         StorageLive(_3);
         StorageLive(_4);
-        _4 = begin_panic::<&str>(const "explicit panic") -> bb8;
+        _4 = std::rt::begin_panic::<&str>(const "explicit panic") -> bb8;
     }
 
     bb2: {
