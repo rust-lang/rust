@@ -847,7 +847,8 @@ impl Group {
     /// ```
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn span(&self) -> Span {
-        Span(self.0.span.entire)
+        let sp = self.0.span;
+        Span(sp.open.join(sp.close).unwrap_or(sp.open))
     }
 
     /// Returns the span pointing to the opening delimiter of this group.

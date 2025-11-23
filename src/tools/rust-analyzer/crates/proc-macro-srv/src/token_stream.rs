@@ -115,6 +115,7 @@ impl<S> TokenStream<S> {
                                 Some(TokenStream::new(stream))
                             },
                             span: DelimSpan {
+                                #[cfg(bootstrap)]
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -143,6 +144,7 @@ impl<S> TokenStream<S> {
                                 Some(TokenStream::new(stream))
                             },
                             span: DelimSpan {
+                                #[cfg(bootstrap)]
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -171,6 +173,7 @@ impl<S> TokenStream<S> {
                                 Some(TokenStream::new(stream))
                             },
                             span: DelimSpan {
+                                #[cfg(bootstrap)]
                                 entire: span.derive_ranged(open_range.start..range.end),
                                 open: span.derive_ranged(open_range),
                                 close: span.derive_ranged(range),
@@ -204,7 +207,12 @@ impl<S> TokenStream<S> {
                                 span: span.derive_ranged(range),
                             }),
                         ])),
-                        span: DelimSpan { open: span, close: span, entire: span },
+                        span: DelimSpan {
+                            open: span,
+                            close: span,
+                            #[cfg(bootstrap)]
+                            entire: span,
+                        },
                     }));
                 }
                 rustc_lexer::TokenKind::BlockComment { doc_style: Some(doc_style), terminated } => {
@@ -230,7 +238,12 @@ impl<S> TokenStream<S> {
                                 span: span.derive_ranged(range),
                             }),
                         ])),
-                        span: DelimSpan { open: span, close: span, entire: span },
+                        span: DelimSpan {
+                            open: span,
+                            close: span,
+                            #[cfg(bootstrap)]
+                            entire: span,
+                        },
                     }));
                 }
                 rustc_lexer::TokenKind::Whitespace => continue,
@@ -570,7 +583,7 @@ fn debug_token_tree<S: fmt::Debug>(
         TokenTree::Group(Group { delimiter, stream, span }) => {
             writeln!(
                 f,
-                "GROUP {}{} {:#?} {:#?} {:#?}",
+                "GROUP {}{} {:#?} {:#?}",
                 match delimiter {
                     proc_macro::Delimiter::Parenthesis => "(",
                     proc_macro::Delimiter::Brace => "{",
@@ -585,7 +598,6 @@ fn debug_token_tree<S: fmt::Debug>(
                 },
                 span.open,
                 span.close,
-                span.entire,
             )?;
             if let Some(stream) = stream {
                 debug_token_stream(stream, depth + 1, f)?;

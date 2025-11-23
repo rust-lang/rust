@@ -14,14 +14,14 @@ fn test_derive_empty() {
         expect![[r#"
             IDENT 1 struct
             IDENT 1 S
-            GROUP {} 1 1 1
+            GROUP {} 1 1
               IDENT 1 field
               PUNCT 1 : [alone]
               PUNCT 1 & [joint]
               PUNCT 1 ' [joint]
               IDENT 1 r#lt
               IDENT 1 fn
-              GROUP () 1 1 1
+              GROUP () 1 1
                 IDENT 1 u32
               PUNCT 1 - [joint]
               PUNCT 1 > [alone]
@@ -33,14 +33,14 @@ fn test_derive_empty() {
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..6#ROOT2024 struct
             IDENT 42:Root[0000, 0]@7..8#ROOT2024 S
-            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@46..47#ROOT2024 42:Root[0000, 0]@9..47#ROOT2024
+            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@46..47#ROOT2024
               IDENT 42:Root[0000, 0]@11..16#ROOT2024 field
               PUNCT 42:Root[0000, 0]@16..17#ROOT2024 : [alone]
               PUNCT 42:Root[0000, 0]@18..19#ROOT2024 & [joint]
               PUNCT 42:Root[0000, 0]@22..23#ROOT2024 ' [joint]
               IDENT 42:Root[0000, 0]@22..24#ROOT2024 r#lt
               IDENT 42:Root[0000, 0]@25..27#ROOT2024 fn
-              GROUP () 42:Root[0000, 0]@27..28#ROOT2024 42:Root[0000, 0]@31..32#ROOT2024 42:Root[0000, 0]@27..32#ROOT2024
+              GROUP () 42:Root[0000, 0]@27..28#ROOT2024 42:Root[0000, 0]@31..32#ROOT2024
                 IDENT 42:Root[0000, 0]@28..31#ROOT2024 u32
               PUNCT 42:Root[0000, 0]@33..34#ROOT2024 - [joint]
               PUNCT 42:Root[0000, 0]@34..35#ROOT2024 > [alone]
@@ -60,7 +60,7 @@ fn test_derive_error() {
         expect![[r#"
             IDENT 1 struct
             IDENT 1 S
-            GROUP {} 1 1 1
+            GROUP {} 1 1
               IDENT 1 field
               PUNCT 1 : [alone]
               IDENT 1 u32
@@ -68,14 +68,14 @@ fn test_derive_error() {
 
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
-            GROUP () 1 1 1
+            GROUP () 1 1
               LITER 1 Str #[derive(DeriveError)] struct S {field 58 u32 }
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..6#ROOT2024 struct
             IDENT 42:Root[0000, 0]@7..8#ROOT2024 S
-            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@22..23#ROOT2024 42:Root[0000, 0]@9..23#ROOT2024
+            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@22..23#ROOT2024
               IDENT 42:Root[0000, 0]@11..16#ROOT2024 field
               PUNCT 42:Root[0000, 0]@16..17#ROOT2024 : [alone]
               IDENT 42:Root[0000, 0]@18..21#ROOT2024 u32
@@ -83,7 +83,7 @@ fn test_derive_error() {
 
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@64..65#ROOT2024 42:Root[0000, 0]@14..65#ROOT2024
+            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@64..65#ROOT2024
               LITER 42:Root[0000, 0]@15..64#ROOT2024 Str #[derive(DeriveError)] struct S {field 58 u32 }
             PUNCT 42:Root[0000, 0]@65..66#ROOT2024 ; [alone]
         "#]],
@@ -102,7 +102,7 @@ fn test_fn_like_macro_noop() {
             PUNCT 1 , [alone]
             LITER 1 Integer 1
             PUNCT 1 , [alone]
-            GROUP [] 1 1 1
+            GROUP [] 1 1
 
 
             IDENT 1 ident
@@ -111,7 +111,7 @@ fn test_fn_like_macro_noop() {
             PUNCT 1 , [alone]
             LITER 1 Integer 1
             PUNCT 1 , [alone]
-            GROUP [] 1 1 1
+            GROUP [] 1 1
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
@@ -120,7 +120,7 @@ fn test_fn_like_macro_noop() {
             PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
             LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
+            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024
 
 
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
@@ -129,7 +129,7 @@ fn test_fn_like_macro_noop() {
             PUNCT 42:Root[0000, 0]@8..9#ROOT2024 , [alone]
             LITER 42:Root[0000, 0]@10..11#ROOT2024 Integer 1
             PUNCT 42:Root[0000, 0]@11..12#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@13..15#ROOT2024
+            GROUP [] 42:Root[0000, 0]@13..14#ROOT2024 42:Root[0000, 0]@14..15#ROOT2024
         "#]],
     );
 }
@@ -142,22 +142,22 @@ fn test_fn_like_macro_clone_ident_subtree() {
         expect![[r#"
             IDENT 1 ident
             PUNCT 1 , [alone]
-            GROUP [] 1 1 1
+            GROUP [] 1 1
 
 
             IDENT 1 ident
             PUNCT 1 , [alone]
-            GROUP [] 1 1 1
+            GROUP [] 1 1
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@8..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024
+            GROUP [] 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@8..9#ROOT2024
 
 
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024
+            GROUP [] 42:Root[0000, 0]@7..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024
         "#]],
     );
 }
@@ -462,7 +462,7 @@ fn test_attr_macro() {
         expect![[r#"
             IDENT 1 mod
             IDENT 1 m
-            GROUP {} 1 1 1
+            GROUP {} 1 1
 
 
             IDENT 1 some
@@ -471,14 +471,14 @@ fn test_attr_macro() {
 
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
-            GROUP () 1 1 1
+            GROUP () 1 1
               LITER 1 Str #[attr_error(some arguments )] mod m {}
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..3#ROOT2024 mod
             IDENT 42:Root[0000, 0]@4..5#ROOT2024 m
-            GROUP {} 42:Root[0000, 0]@6..7#ROOT2024 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@6..8#ROOT2024
+            GROUP {} 42:Root[0000, 0]@6..7#ROOT2024 42:Root[0000, 0]@7..8#ROOT2024
 
 
             IDENT 42:Root[0000, 0]@0..4#ROOT2024 some
@@ -487,7 +487,7 @@ fn test_attr_macro() {
 
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@56..57#ROOT2024 42:Root[0000, 0]@14..57#ROOT2024
+            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@56..57#ROOT2024
               LITER 42:Root[0000, 0]@15..56#ROOT2024 Str #[attr_error(some arguments )] mod m {}
             PUNCT 42:Root[0000, 0]@57..58#ROOT2024 ; [alone]
         "#]],
