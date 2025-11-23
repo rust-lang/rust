@@ -28,10 +28,10 @@ fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
     };
     let impls = match module.containing_block() {
         Some(block) => match TraitImpls::for_block(db, block) {
-            Some(it) => it,
+            Some(it) => &**it,
             None => return false,
         },
-        None => &**TraitImpls::for_crate(db, module.krate()),
+        None => TraitImpls::for_crate(db, module.krate()),
     };
     !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).is_empty()
 }

@@ -3,9 +3,9 @@
 
 use base_db::{Crate, target::TargetLoadError};
 use hir_def::{
-    AdtId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId,
-    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId,
-    TypeOrConstParamId, VariantId, db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
+    AdtId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
+    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, VariantId,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
 };
 use la_arena::ArenaMap;
 use salsa::plumbing::AsId;
@@ -29,6 +29,8 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // region:mir
 
+    // FXME: Collapse `mir_body_for_closure` into `mir_body`
+    // and `monomorphized_mir_body_for_closure` into `monomorphized_mir_body`
     #[salsa::invoke(crate::mir::mir_body_query)]
     #[salsa::cycle(cycle_result = crate::mir::mir_body_cycle_result)]
     fn mir_body<'db>(
@@ -70,7 +72,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_cycle_result)]
     fn const_eval<'db>(
         &'db self,
-        def: GeneralConstId,
+        def: ConstId,
         subst: GenericArgs<'db>,
         trait_env: Option<Arc<TraitEnvironment<'db>>>,
     ) -> Result<Const<'db>, ConstEvalError<'db>>;
@@ -230,13 +232,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 #[test]
 fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
-}
-
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
-#[derive(PartialOrd, Ord)]
-pub struct InternedTypeOrConstParamId {
-    /// This stores the param and its index.
-    pub loc: (TypeOrConstParamId, u32),
 }
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]

@@ -247,7 +247,15 @@ impl Crate {
         self,
         db: &dyn HirDatabase,
     ) -> impl Iterator<Item = Crate> {
-        db.transitive_rev_deps(self.id).into_iter().map(|id| Crate { id })
+        self.id.transitive_rev_deps(db).into_iter().map(|id| Crate { id })
+    }
+
+    pub fn notable_traits_in_deps(self, db: &dyn HirDatabase) -> impl Iterator<Item = &TraitId> {
+        self.id
+            .transitive_deps(db)
+            .into_iter()
+            .filter_map(|krate| db.crate_notable_traits(krate))
+            .flatten()
     }
 
     pub fn root_module(self) -> Module {
@@ -2798,7 +2806,7 @@ impl Const {
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
         let interner = DbInterner::new_with(db, None, None);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
+        db.const_eval(self.id, GenericArgs::new_from_iter(interner, []), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
     }
 }
@@ -2877,10 +2885,12 @@ impl Static {
 
     /// Evaluate the static initializer.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
-        let interner = DbInterner::new_with(db, None, None);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
-            .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
+        db.const_eval_static(self.id).map(|it| EvaluatedConst {
+            const_: it,
+            def: self.id.into(),
+            ty,
+        })
     }
 }
 
@@ -4444,7 +4454,7 @@ impl Impl {
         let mut handle_impls = |impls: &TraitImpls| {
             impls.for_trait(trait_.id, |impls| all.extend(impls.iter().copied().map(Impl::from)));
         };
-        for krate in db.transitive_rev_deps(module.krate()) {
+        for krate in module.krate().transitive_rev_deps(db) {
             handle_impls(TraitImpls::for_crate(db, krate));
         }
         if let Some(block) = module.containing_block()

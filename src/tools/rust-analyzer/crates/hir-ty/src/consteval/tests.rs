@@ -142,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id.into(), GenericArgs::new_from_iter(interner, []), None)
+    db.const_eval(const_id, GenericArgs::new_from_iter(interner, []), None)
 }
 
 #[test]

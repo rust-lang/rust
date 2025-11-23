@@ -1532,10 +1532,20 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 UnevaluatedConst { def: const_id.into(), args: subst },
             )
         } else {
-            let name = const_id.name(self.db);
-            self.db
-                .const_eval(const_id, subst, None)
-                .map_err(|e| MirLowerError::ConstEvalError(name.into(), Box::new(e)))?
+            match const_id {
+                id @ GeneralConstId::ConstId(const_id) => {
+                    self.db.const_eval(const_id, subst, None).map_err(|e| {
+                        let name = id.name(self.db);
+                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
+                    })?
+                }
+                GeneralConstId::StaticId(static_id) => {
+                    self.db.const_eval_static(static_id).map_err(|e| {
+                        let name = const_id.name(self.db);
+                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
+                    })?
+                }
+            }
         };
         let ty = self
             .db
