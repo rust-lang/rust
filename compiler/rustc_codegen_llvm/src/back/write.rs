@@ -771,6 +771,13 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_plugins.len(),
         )
     };
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        unsafe {
+            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+        }
+    }
+
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 

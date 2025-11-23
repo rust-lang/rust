@@ -47,5 +47,6 @@ tracing = "0.1"
 # tidy-alphabetical-start
 check_only = ["rustc_llvm/check_only"]
 llvm_enzyme = []
+llvm_offload = []
 # tidy-alphabetical-end
 
