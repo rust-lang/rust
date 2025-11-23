@@ -38,6 +38,16 @@
             <?elseif $(env.CFG_CHANNEL)="dev" ?>
                 <?define UpgradeCode="231A9544-7E39-4A60-A069-0EB3CA4BAB2E" ?>
             <?endif ?>
+        <?elseif $(env.CFG_ABI)="LLVM" ?>
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="BA2B2E96-F3E2-4DE9-8809-38C31382CC96" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="44A2D96F-6CF2-4ED9-AE05-7CF0C3A7D0D9" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="FB0EEAE4-13FB-46BB-86E8-F9D00E6DA364" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="73C94FB8-266F-48DC-A23B-B6E5DBDCF508" ?>
+            <?endif ?>
         <?endif ?>
         <?define PlatformProgramFilesFolder="ProgramFiles64Folder" ?>
     <?elseif $(sys.BUILDARCH)="x86" ?>
@@ -60,6 +70,16 @@
                 <?define UpgradeCode="FF193BBC-E73B-4FBD-ADE0-12F3CFC84145" ?>
             <?elseif $(env.CFG_CHANNEL)="dev" ?>
                 <?define UpgradeCode="87DFC303-6492-4E9B-911E-56EAD56C5E58" ?>
+            <?endif ?>
+        <?elseif $(env.CFG_ABI)="LLVM" ?>
+            <?if $(env.CFG_CHANNEL)="stable" ?>
+                <?define UpgradeCode="DB29CBDE-CDDF-4EC9-9C68-B6F00038EEDD" ?>
+            <?elseif $(env.CFG_CHANNEL)="beta" ?>
+                <?define UpgradeCode="AE1EF98B-1387-43BE-BE55-2310449D7E02" ?>
+            <?elseif $(env.CFG_CHANNEL)="nightly" ?>
+                <?define UpgradeCode="27B805BC-9C71-4198-A397-3082B1E708A7" ?>
+            <?elseif $(env.CFG_CHANNEL)="dev" ?>
+                <?define UpgradeCode="9DDD8D25-57C4-4410-AB35-A23A805AAD17" ?>
             <?endif ?>
         <?endif ?>
         <?define PlatformProgramFilesFolder="ProgramFilesFolder" ?>

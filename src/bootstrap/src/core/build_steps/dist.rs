@@ -338,7 +338,7 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
         return;
     }
 
-    let (bin_path, libs_path) = get_cc_search_dirs(target, builder);
+    let (bin_path, _) = get_cc_search_dirs(target, builder);
 
     let mut rustc_dlls = vec![];
     // windows-gnu and windows-gnullvm require different runtime libs
@@ -354,15 +354,6 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
     } else {
         panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
     }
-    // FIXME(#144656): Remove this whole `let ...`
-    let bin_path = if target.ends_with("windows-gnullvm") && builder.host_target != target {
-        bin_path
-            .into_iter()
-            .chain(libs_path.iter().map(|path| path.with_file_name("bin")))
-            .collect()
-    } else {
-        bin_path
-    };
     let rustc_dlls = find_files(&rustc_dlls, &bin_path);
 
     // Copy runtime dlls next to rustc.exe
@@ -1868,8 +1859,7 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        // FIXME(mati865): `gnullvm` here is temporary, remove it once it can host itself
-        if target.is_windows() && !target.contains("gnullvm") {
+        if target.is_windows() {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
@@ -2232,7 +2222,7 @@ fn add_env(
         .env("CFG_CHANNEL", &builder.config.channel);
 
     if target.contains("windows-gnullvm") {
-        cmd.env("CFG_MINGW", "1").env("CFG_ABI", "LLVM");
+        cmd.env("CFG_MINGW", "0").env("CFG_ABI", "LLVM");
     } else if target.is_windows_gnu() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");
     } else {

@@ -247,12 +247,6 @@ auto:
   - name: dist-s390x-linux
     <<: *job-linux-4c
 
-  - name: dist-aarch64-windows-gnullvm
-    <<: *job-linux-4c
-
-  - name: dist-x86_64-windows-gnullvm
-    <<: *job-linux-4c
-
   - name: dist-various-1
     <<: *job-linux-4c
 
@@ -685,6 +679,28 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
+      DIST_REQUIRE_ALL_TOOLS: 1
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-windows
+
+  - name: dist-aarch64-llvm-mingw
+    env:
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      RUST_CONFIGURE_ARGS: >-
+        --build=aarch64-pc-windows-gnullvm
+        --enable-full-tools
+        --enable-profiler
+      DIST_REQUIRE_ALL_TOOLS: 1
+      CODEGEN_BACKENDS: llvm,cranelift
+    <<: *job-windows-aarch64
+
+  - name: dist-x86_64-llvm-mingw
+    env:
+      SCRIPT: python x.py dist bootstrap --include-default-paths
+      RUST_CONFIGURE_ARGS: >-
+        --build=x86_64-pc-windows-gnullvm
+        --enable-full-tools
+        --enable-profiler
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
