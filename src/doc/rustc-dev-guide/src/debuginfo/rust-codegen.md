@@ -78,27 +78,27 @@ debug info:
 | Rust name | MSVC name |
 | --- | --- |
 | `&str`/`&mut str` | `ref$<str$>`/`ref_mut$<str$>` |
-| `&[T]`/`&mut [T]` | `ref$<slice$<T> >`/`ref_mut$<slice$<T> >`* |
+| `&[T]`/`&mut [T]` | `ref$<slice$<T> >`/`ref_mut$<slice$<T> >`[^1] |
 | `[T; N]` | `array$<T, N>` |
 | `RustEnum` | `enum2$<RustEnum>` |
 | `(T1, T2)` | `tuple$<T1, T2>`|
 | `*const T` | `ptr_const$<T>` |
 | `*mut T` | `ptr_mut$<T>` |
-| `usize` | `size_t`** |
-| `isize` | `ptrdiff_t`** |
-| `uN` | `unsigned __intN`** |
-| `iN` | `__intN`** |
-| `f32` | `float`** |
-| `f64` | `double`** |
-| `f128` | `fp128`** |
+| `usize` | `size_t`[^2] |
+| `isize` | `ptrdiff_t`[^2] |
+| `uN` | `unsigned __intN`[^2] |
+| `iN` | `__intN`[^2] |
+| `f32` | `float`[^2] |
+| `f64` | `double`[^2] |
+| `f128` | `fp128`[^2] |
 
-> \* MSVC's expression parser will treat `>>` as a right shift. It is necessary to separate
->consecutive `>`'s with a space (`> >`) in type names.
->
-> ** While these type names are generated as part of the debug info node (which is then wrapped in
->a typedef node with the Rust name), once the LLVM-IR node is converted to a CodeView node, the type
->name information is lost. This is because CodeView has special shorthand nodes for primitive types,
->and those shorthand nodes to not have a "name" field.
+[^1]: MSVC's expression parser will treat `>>` as a right shift. It is necessary to separate
+consecutive `>`'s with a space (`> >`) in type names.
+
+[^2]: While these type names are generated as part of the debug info node (which is then wrapped in
+a typedef node with the Rust name), once the LLVM-IR node is converted to a CodeView node, the type
+name information is lost. This is because CodeView has special shorthand nodes for primitive types,
+and those shorthand nodes to not have a "name" field.
 
 ### Generics
 

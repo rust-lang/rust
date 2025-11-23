@@ -1,7 +1,7 @@
 # LLDB - Python Providers
 
 > NOTE: LLDB's C++<->Python FFI expects a version of python designated at the time LLDB was
->compiled. LLDB is careful to correspond this version to the minimum in typical Linux and MacOs
+>compiled. LLDB is careful to correspond this version to the minimum in typical Linux and macOS
 >distributions, but on Windows there is no easy solution. If you recieve an import error regarding
 >`_lldb` not existing, a mismatched Python version is likely the cause.
 >

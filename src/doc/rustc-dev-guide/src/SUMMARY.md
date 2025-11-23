@@ -231,7 +231,7 @@
 - [Debug Info](./debuginfo/intro.md)
     - [Rust Codegen](./debuginfo/rust-codegen.md)
     - [LLVM Codegen](./debuginfo/llvm-codegen.md)
-    - [Debugger Interanls](./debuginfo/debugger-internals.md)
+    - [Debugger Internals](./debuginfo/debugger-internals.md)
         - [LLDB Internals](./debuginfo/lldb-internals.md)
         - [GDB Internals](./debuginfo/gdb-internals.md)
     - [Debugger Visualizers](./debuginfo/debugger-visualizers.md)
