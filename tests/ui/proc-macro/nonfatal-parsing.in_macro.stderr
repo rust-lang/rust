@@ -23,7 +23,7 @@ LL | c 'r'
    |  +
 
 error: unexpected closing delimiter: `)`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ unexpected closing delimiter
@@ -31,7 +31,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: unexpected closing delimiter: `]`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     -^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,15 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0765]: unterminated double quote string
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +59,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid digit for a base 2 literal
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +67,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0768]: no valid digits found for number
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +75,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: binary float literal is not supported
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -75,7 +83,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: character constant must be escaped: `'`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +96,7 @@ LL +     nonfatal_parsing::run!(\';
    |
 
 error: character constant must be escaped: `\n`
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -101,7 +109,7 @@ LL +     nonfatal_parsing::run!(\n;
    |
 
 error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +117,7 @@ LL |     nonfatal_parsing::run!();
    = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid digit for a base 2 literal
-  --> $DIR/nonfatal-parsing.rs:15:5
+  --> $DIR/nonfatal-parsing.rs:21:5
    |
 LL |     nonfatal_parsing::run!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,6 +145,12 @@ error: found invalid character; only `#` is allowed in raw string delimitation: 
    |
 LL | r#
    | ^^
+
+error[E0765]: unterminated double quote string
+  --> <proc-macro source code>:1:4
+   |
+LL | "a""
+   |    ^
 
 error: invalid digit for a base 2 literal
   --> <proc-macro source code>:1:3
@@ -192,6 +206,7 @@ error: invalid digit for a base 2 literal
 LL | /*a*/ 0b2 //
    |         ^
 
-error: aborting due to 22 previous errors
+error: aborting due to 24 previous errors
 
-For more information about this error, try `rustc --explain E0768`.
+Some errors have detailed explanations: E0765, E0768.
+For more information about an error, try `rustc --explain E0765`.
