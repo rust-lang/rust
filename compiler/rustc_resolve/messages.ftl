@@ -379,14 +379,6 @@ resolve_remove_surrounding_derive =
 
 resolve_remove_unnecessary_import = remove unnecessary import
 
-resolve_self_import_can_only_appear_once_in_the_list =
-    `self` import can only appear once in an import list
-    .label = can only appear once in an import list
-
-resolve_self_import_only_in_import_list_with_non_empty_prefix =
-    `self` import can only appear in an import list with a non-empty prefix
-    .label = can only appear in an import list with a non-empty prefix
-
 resolve_self_imports_only_allowed_within =
     `self` imports are only allowed within a {"{"} {"}"} list
 
@@ -468,6 +460,9 @@ resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
 
 resolve_unnamed_crate_root_import =
     crate root imports need to be explicitly named: `use crate as name;`
+
+resolve_unnamed_super_or_self_import = imports need to be explicitly named
+resolve_unnamed_super_or_self_sugg_import = try renaming it with a name
 
 resolve_unreachable_label =
     use of unreachable label `{$name}`
