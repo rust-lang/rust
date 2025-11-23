@@ -2300,7 +2300,10 @@ impl ModCollector<'_, '_> {
             }
         } else {
             // Case 2: normal `macro_rules!` macro
-            MacroExpander::Declarative
+            let id = InFile::new(self.file_id(), ast_id);
+            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let styles = decl_expander.mac.rule_styles();
+            MacroExpander::Declarative { styles }
         };
         let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 
@@ -2369,7 +2372,10 @@ impl ModCollector<'_, '_> {
             }
         } else {
             // Case 2: normal `macro`
-            MacroExpander::Declarative
+            let id = InFile::new(self.file_id(), ast_id);
+            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let styles = decl_expander.mac.rule_styles();
+            MacroExpander::Declarative { styles }
         };
         let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 

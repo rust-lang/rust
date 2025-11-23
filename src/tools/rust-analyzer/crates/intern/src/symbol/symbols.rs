@@ -127,6 +127,7 @@ define_symbols! {
     as_str,
     asm,
     assert,
+    attr,
     attributes,
     begin_panic,
     bench,

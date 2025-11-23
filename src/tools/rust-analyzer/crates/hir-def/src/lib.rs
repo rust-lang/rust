@@ -61,8 +61,8 @@ use std::hash::{Hash, Hasher};
 
 use base_db::{Crate, impl_intern_key};
 use hir_expand::{
-    AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
-    MacroDefKind,
+    AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallStyles,
+    MacroDefId, MacroDefKind,
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
@@ -403,7 +403,7 @@ bitflags::bitflags! {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroExpander {
-    Declarative,
+    Declarative { styles: MacroCallStyles },
     BuiltIn(BuiltinFnLikeExpander),
     BuiltInAttr(BuiltinAttrExpander),
     BuiltInDerive(BuiltinDeriveExpander),
