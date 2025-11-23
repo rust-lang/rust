@@ -1655,6 +1655,51 @@ impl<T> *mut T {
     pub const fn cast_uninit(self) -> *mut MaybeUninit<T> {
         self as _
     }
+
+    /// Forms a raw mutable slice from a pointer and a length.
+    ///
+    /// The `len` argument is the number of **elements**, not the number of bytes.
+    ///
+    /// Performs the same functionality as [`cast_slice`] on a `*const T`, except that a
+    /// raw mutable slice is returned, as opposed to a raw immutable slice.
+    ///
+    /// This function is safe, but actually using the return value is unsafe.
+    /// See the documentation of [`slice::from_raw_parts_mut`] for slice safety requirements.
+    ///
+    /// [`slice::from_raw_parts_mut`]: crate::slice::from_raw_parts_mut
+    /// [`cast_slice`]: pointer::cast_slice
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(ptr_cast_slice)]
+    ///
+    /// let x = &mut [5, 6, 7];
+    /// let slice = x.as_mut_ptr().cast_slice(3);
+    ///
+    /// unsafe {
+    ///     (*slice)[2] = 99; // assign a value at an index in the slice
+    /// };
+    ///
+    /// assert_eq!(unsafe { &*slice }[2], 99);
+    /// ```
+    ///
+    /// You must ensure that the pointer is valid and not null before dereferencing
+    /// the raw slice. A slice reference must never have a null pointer, even if it's empty.
+    ///
+    /// ```rust,should_panic
+    /// #![feature(ptr_cast_slice)]
+    /// use std::ptr;
+    /// let danger: *mut [u8] = ptr::null_mut::<u8>().cast_slice(0);
+    /// unsafe {
+    ///     danger.as_mut().expect("references must not be null");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    pub const fn cast_slice(self, len: usize) -> *mut [T] {
+        slice_from_raw_parts_mut(self, len)
+    }
 }
 impl<T> *mut MaybeUninit<T> {
     /// Casts from a maybe-uninitialized type to its initialized version.
