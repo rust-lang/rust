@@ -335,6 +335,55 @@ declare_id_wrapper!(AdtIdWrapper, AdtId);
 declare_id_wrapper!(ImplIdWrapper, ImplId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GeneralConstIdWrapper(pub GeneralConstId);
+
+impl std::fmt::Debug for GeneralConstIdWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+impl From<GeneralConstIdWrapper> for GeneralConstId {
+    #[inline]
+    fn from(value: GeneralConstIdWrapper) -> GeneralConstId {
+        value.0
+    }
+}
+impl From<GeneralConstId> for GeneralConstIdWrapper {
+    #[inline]
+    fn from(value: GeneralConstId) -> GeneralConstIdWrapper {
+        Self(value)
+    }
+}
+impl From<GeneralConstIdWrapper> for SolverDefId {
+    #[inline]
+    fn from(value: GeneralConstIdWrapper) -> SolverDefId {
+        match value.0 {
+            GeneralConstId::ConstId(id) => SolverDefId::ConstId(id),
+            GeneralConstId::StaticId(id) => SolverDefId::StaticId(id),
+        }
+    }
+}
+impl TryFrom<SolverDefId> for GeneralConstIdWrapper {
+    type Error = ();
+    #[inline]
+    fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+        match value {
+            SolverDefId::ConstId(it) => Ok(Self(it.into())),
+            SolverDefId::StaticId(it) => Ok(Self(it.into())),
+            _ => Err(()),
+        }
+    }
+}
+impl<'db> inherent::DefId<DbInterner<'db>> for GeneralConstIdWrapper {
+    fn as_local(self) -> Option<SolverDefId> {
+        Some(self.into())
+    }
+    fn is_local(self) -> bool {
+        true
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CallableIdWrapper(pub CallableDefId);
 
 impl std::fmt::Debug for CallableIdWrapper {

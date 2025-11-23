@@ -98,7 +98,7 @@ pub(super) fn fulfillment_error_for_no_solution<'db>(
         PredicateKind::Clause(ClauseKind::ConstArgHasType(ct, expected_ty)) => {
             let ct_ty = match ct.kind() {
                 ConstKind::Unevaluated(uv) => {
-                    infcx.interner.type_of(uv.def).instantiate(infcx.interner, uv.args)
+                    infcx.interner.type_of(uv.def.into()).instantiate(infcx.interner, uv.args)
                 }
                 ConstKind::Param(param_ct) => param_ct.find_const_ty_from_env(obligation.param_env),
                 ConstKind::Value(cv) => cv.ty,
@@ -286,7 +286,6 @@ impl<'db> BestObligation<'db> {
                                     nested_goal.source(),
                                     GoalSource::ImplWhereBound
                                         | GoalSource::AliasBoundConstCondition
-                                        | GoalSource::InstantiateHigherRanked
                                         | GoalSource::AliasWellFormed
                                 ) && nested_goal.result().is_err()
                             })
@@ -555,8 +554,6 @@ impl<'db> ProofTreeVisitor<'db> for BestObligation<'db> {
                     ChildMode::Host(_parent_host_pred),
                     GoalSource::ImplWhereBound | GoalSource::AliasBoundConstCondition,
                 ) => make_obligation(),
-                // Skip over a higher-ranked predicate.
-                (_, GoalSource::InstantiateHigherRanked) => self.obligation.clone(),
                 (ChildMode::PassThrough, _)
                 | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
                     make_obligation()
@@ -620,7 +617,7 @@ impl<'db> NextSolverError<'db> {
 }
 
 mod wf {
-    use hir_def::ItemContainerId;
+    use hir_def::{GeneralConstId, ItemContainerId};
     use rustc_type_ir::inherent::{
         AdtDef, BoundExistentialPredicates, GenericArgs as _, IntoKind, SliceLike, Term as _,
         Ty as _,
@@ -1054,14 +1051,14 @@ mod wf {
                             predicate,
                         ));
 
-                        if let SolverDefId::ConstId(uv_def) = uv.def
+                        if let GeneralConstId::ConstId(uv_def) = uv.def.0
                             && let ItemContainerId::ImplId(impl_) =
                                 uv_def.loc(self.interner().db).container
                             && self.interner().db.impl_signature(impl_).target_trait.is_none()
                         {
                             return; // Subtree is handled by above function
                         } else {
-                            let obligations = self.nominal_obligations(uv.def, uv.args);
+                            let obligations = self.nominal_obligations(uv.def.into(), uv.args);
                             self.out.extend(obligations);
                         }
                     }

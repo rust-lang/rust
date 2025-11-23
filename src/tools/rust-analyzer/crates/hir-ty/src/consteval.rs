@@ -5,7 +5,7 @@ mod tests;
 
 use base_db::Crate;
 use hir_def::{
-    ConstId, EnumVariantId, StaticId,
+    ConstId, EnumVariantId, GeneralConstId, StaticId,
     expr_store::Body,
     hir::{Expr, ExprId},
     type_ref::LiteralConstRef,
@@ -21,8 +21,8 @@ use crate::{
     infer::InferenceContext,
     mir::{MirEvalError, MirLowerError},
     next_solver::{
-        Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
-        SolverDefId, Ty, ValueConst,
+        Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Ty,
+        ValueConst,
     },
 };
 
@@ -139,17 +139,16 @@ pub fn try_const_usize<'db>(db: &'db dyn HirDatabase, c: Const<'db>) -> Option<u
         ConstKind::Infer(_) => None,
         ConstKind::Bound(_, _) => None,
         ConstKind::Placeholder(_) => None,
-        ConstKind::Unevaluated(unevaluated_const) => match unevaluated_const.def {
-            SolverDefId::ConstId(id) => {
+        ConstKind::Unevaluated(unevaluated_const) => match unevaluated_const.def.0 {
+            GeneralConstId::ConstId(id) => {
                 let subst = unevaluated_const.args;
                 let ec = db.const_eval(id, subst, None).ok()?;
                 try_const_usize(db, ec)
             }
-            SolverDefId::StaticId(id) => {
+            GeneralConstId::StaticId(id) => {
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_usize(db, ec)
             }
-            _ => unreachable!(),
         },
         ConstKind::Value(val) => Some(u128::from_le_bytes(pad16(&val.value.inner().memory, false))),
         ConstKind::Error(_) => None,
@@ -163,17 +162,16 @@ pub fn try_const_isize<'db>(db: &'db dyn HirDatabase, c: &Const<'db>) -> Option<
         ConstKind::Infer(_) => None,
         ConstKind::Bound(_, _) => None,
         ConstKind::Placeholder(_) => None,
-        ConstKind::Unevaluated(unevaluated_const) => match unevaluated_const.def {
-            SolverDefId::ConstId(id) => {
+        ConstKind::Unevaluated(unevaluated_const) => match unevaluated_const.def.0 {
+            GeneralConstId::ConstId(id) => {
                 let subst = unevaluated_const.args;
                 let ec = db.const_eval(id, subst, None).ok()?;
                 try_const_isize(db, &ec)
             }
-            SolverDefId::StaticId(id) => {
+            GeneralConstId::StaticId(id) => {
                 let ec = db.const_eval_static(id).ok()?;
                 try_const_isize(db, &ec)
             }
-            _ => unreachable!(),
         },
         ConstKind::Value(val) => Some(i128::from_le_bytes(pad16(&val.value.inner().memory, true))),
         ConstKind::Error(_) => None,
