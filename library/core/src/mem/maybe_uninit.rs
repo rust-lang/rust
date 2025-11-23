@@ -1128,7 +1128,6 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut dst = [MaybeUninit::uninit(); 32];
@@ -1140,8 +1139,6 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = [0; 16];
     ///
@@ -1157,7 +1154,8 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,
@@ -1188,7 +1186,6 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut dst = [const { MaybeUninit::uninit() }; 5];
@@ -1203,8 +1200,6 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = ["rust", "is", "a", "pretty", "cool", "language"].map(|s| s.to_string());
     ///
@@ -1220,7 +1215,7 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// [`write_copy_of_slice`]: slice::write_copy_of_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
     pub fn write_clone_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Clone,
@@ -1415,7 +1410,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
@@ -1442,7 +1437,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
