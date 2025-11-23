@@ -21,5 +21,9 @@ intern.workspace = true
 triomphe.workspace = true
 paths.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

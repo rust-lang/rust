@@ -445,35 +445,52 @@ impl Step for RustAnalyzer {
 
     /// Runs `cargo test` for rust-analyzer
     fn run(self, builder: &Builder<'_>) {
-        let host = self.compilers.target();
+        let tool_result = builder.ensure(tool::RustAnalyzer::from_compilers(self.compilers));
+        let build_compiler = tool_result.build_compiler;
+        let target = self.compilers.target();
 
-        let workspace_path = "src/tools/rust-analyzer";
-        // until the whole RA test suite runs on `i686`, we only run
-        // `proc-macro-srv` tests
-        let crate_path = "src/tools/rust-analyzer/crates/proc-macro-srv";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            self.compilers.build_compiler(),
+            build_compiler,
             Mode::ToolRustcPrivate,
-            host,
+            target,
             Kind::Test,
-            crate_path,
+            "src/tools/rust-analyzer",
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
-        let dir = builder.src.join(workspace_path);
-        // needed by rust-analyzer to find its own text fixtures, cf.
-        // https://github.com/rust-analyzer/expect-test/issues/33
-        cargo.env("CARGO_WORKSPACE_DIR", &dir);
+        // N.B. it turns out _setting_ `CARGO_WORKSPACE_DIR` actually somehow breaks `expect-test`,
+        // even though previously we actually needed to set that hack to allow `expect-test` to
+        // correctly discover the r-a workspace instead of the outer r-l/r workspace.
 
-        // RA's test suite tries to write to the source directory, that can't
-        // work in Rust CI
+        // FIXME: RA's test suite tries to write to the source directory, that can't work in Rust CI
+        // without properly wiring up the writable test dir.
         cargo.env("SKIP_SLOW_TESTS", "1");
 
+        // NOTE: we need to skip `src/tools/rust-analyzer/xtask` as they seem to exercise rustup /
+        // stable rustfmt.
+        //
+        // NOTE: you can only skip a specific workspace package via `--exclude=...` if you *also*
+        // specify `--workspace`.
+        cargo.arg("--workspace");
+        cargo.arg("--exclude=xtask");
+
+        let mut skip_tests = vec![];
+
+        // Across all platforms
+        skip_tests.extend_from_slice(&[
+            // FIXME: this test wants to find a `rustc`. We need to provide it with a path to staged
+            // in-tree `rustc`, but setting `RUSTC` env var requires some reworking of bootstrap.
+            "tests::smoke_test_real_sysroot_cargo",
+        ]);
+
+        let skip_tests = skip_tests.iter().map(|name| format!("--skip={name}")).collect::<Vec<_>>();
+        let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder);
+        run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
