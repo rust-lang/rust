@@ -1,0 +1,20 @@
+error[E0038]: the trait `Tr` is not dyn compatible
+  --> $DIR/no-duplicate-e0038.rs:15:17
+   |
+LL |     let x: &dyn Tr = &0_u8;
+   |                 ^^ `Tr` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/no-duplicate-e0038.rs:7:11
+   |
+LL | trait Tr {
+   |       -- this trait is not dyn compatible...
+LL |     const N: usize;
+   |           ^ ...because it contains this associated `const`
+   = help: consider moving `N` to another trait
+   = help: only type `u8` implements `Tr`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.
