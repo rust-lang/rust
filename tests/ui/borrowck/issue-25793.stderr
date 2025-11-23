@@ -1,8 +1,8 @@
 error[E0503]: cannot use `self.width` because it was mutably borrowed
-  --> $DIR/issue-25793.rs:4:9
+  --> $DIR/issue-25793.rs:4:14
    |
 LL |         $this.width.unwrap()
-   |         ^^^^^^^^^^^ use of borrowed `*self`
+   |              ^^^^^^ use of borrowed `*self`
 ...
 LL |         let r = &mut *self;
    |                 ---------- `*self` is borrowed here

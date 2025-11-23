@@ -8,7 +8,7 @@ extern crate macro_rules;
 
 macro_rules! b {
     ($b:literal) => {
-        const B: &[u8] = b"warning";
+        const B: &[u8] = $bb"warning";
         //~^ string_lit_as_bytes
     };
 }

@@ -1414,7 +1414,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_bottom(&mut self) -> PResult<'a, Box<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
-        let span = self.token.span;
+        let span = self.token_diag_span();
         if let Some(expr) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
             |this| {
@@ -1910,9 +1910,9 @@ impl<'a> Parser<'a> {
                 {
                     self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
-                        lo.to(expr.span),
+                        lo.until(self.token.span),
                         ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
+                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span.until(self.token.span)),
                     );
                 }
 
@@ -2357,13 +2357,11 @@ impl<'a> Parser<'a> {
         }
 
         if self.token.is_metavar_block() {
+            let sp = self.token_diag_span();
             self.dcx().emit_err(errors::InvalidBlockMacroSegment {
-                span: self.token.span,
-                context: lo.to(self.token.span),
-                wrap: errors::WrapInExplicitBlock {
-                    lo: self.token.span.shrink_to_lo(),
-                    hi: self.token.span.shrink_to_hi(),
-                },
+                span: sp,
+                context: lo.to(sp),
+                wrap: errors::WrapInExplicitBlock { lo: sp.shrink_to_lo(), hi: sp.shrink_to_hi() },
             });
         }
 

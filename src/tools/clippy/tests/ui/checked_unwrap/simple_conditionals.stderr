@@ -65,13 +65,13 @@ LL |         x.unwrap();
    |         ^^^^^^^^^^
 
 error: called `unwrap` on `x` after checking its variant with `is_some`
-  --> tests/ui/checked_unwrap/simple_conditionals.rs:13:13
+  --> tests/ui/checked_unwrap/simple_conditionals.rs:13:15
    |
 LL |         if $a.is_some() {
    |         --------------- help: try: `if let Some(<item>) = x`
 LL |             // unnecessary
 LL |             $a.unwrap();
-   |             ^^^^^^^^^^^
+   |               ^^^^^^^^^
 ...
 LL |     m!(x);
    |     ----- in this macro invocation

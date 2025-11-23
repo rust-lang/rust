@@ -749,10 +749,10 @@ LL +             ($a:ident, $b:ident) => { std::ptr::addr_eq($a, $b) }
    |
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
-  --> $DIR/wide_pointer_comparisons.rs:167:37
+  --> $DIR/wide_pointer_comparisons.rs:167:39
    |
 LL |             ($a:expr, $b:expr) => { $a == $b }
-   |                                     ^^^^^^^^
+   |                                       ^^^^^^
 ...
 LL |         cmp!(&a, &b);
    |         ------------ in this macro invocation

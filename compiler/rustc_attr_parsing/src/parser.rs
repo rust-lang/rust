@@ -484,7 +484,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
 
     fn expected_lit(&mut self) -> Diag<'sess> {
         let mut err = InvalidMetaItem {
-            span: self.parser.token.span,
+            span: self.parser.token_diag_span(),
             descr: token_descr(&self.parser.token),
             quote_ident_sugg: None,
             remove_neg_sugg: None,
