@@ -33,8 +33,8 @@ serde_json = { version = "1.0", optional = true }
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
 # easily use that since we support of-tree builds.
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
-features = ['unprefixed_malloc_on_supported_platforms']
+version = "0.6.1"
+features = ['override_allocator_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
