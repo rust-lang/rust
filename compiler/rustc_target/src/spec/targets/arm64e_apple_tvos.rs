@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch,
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a12,+v8.3a,+pauth".into(),
+            features: "+neon,+apple-a12,+v8.3a,+paca,+pacg".into(),
             max_atomic_width: Some(128),
             ..opts
         },
