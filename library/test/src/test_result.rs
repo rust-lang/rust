@@ -1,7 +1,8 @@
 use std::any::Any;
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
-use std::process::ExitStatus;
+use std::process::{ExitStatus, Output};
+use std::{fmt, io};
 
 pub use self::TestResult::*;
 use super::bench::BenchSamples;
@@ -103,15 +104,14 @@ pub(crate) fn calc_result(
     result
 }
 
-/// Creates a `TestResult` depending on the exit code of test subprocess.
-pub(crate) fn get_result_from_exit_code(
-    desc: &TestDesc,
+/// Creates a `TestResult` depending on the exit code of test subprocess
+pub(crate) fn get_result_from_exit_code_inner(
     status: ExitStatus,
-    time_opts: Option<&time::TestTimeOptions>,
-    exec_time: Option<&time::TestExecTime>,
+    success_error_code: i32,
 ) -> TestResult {
-    let result = match status.code() {
-        Some(TR_OK) => TestResult::TrOk,
+    match status.code() {
+        Some(error_code) if error_code == success_error_code => TestResult::TrOk,
+        Some(crate::ERROR_EXIT_CODE) => TestResult::TrFailed,
         #[cfg(windows)]
         Some(STATUS_FAIL_FAST_EXCEPTION) => TestResult::TrFailed,
         #[cfg(unix)]
@@ -131,7 +131,17 @@ pub(crate) fn get_result_from_exit_code(
         Some(code) => TestResult::TrFailedMsg(format!("got unexpected return code {code}")),
         #[cfg(not(any(windows, unix)))]
         Some(_) => TestResult::TrFailed,
-    };
+    }
+}
+
+/// Creates a `TestResult` depending on the exit code of test subprocess and on its runtime.
+pub(crate) fn get_result_from_exit_code(
+    desc: &TestDesc,
+    status: ExitStatus,
+    time_opts: Option<&time::TestTimeOptions>,
+    exec_time: Option<&time::TestExecTime>,
+) -> TestResult {
+    let result = get_result_from_exit_code_inner(status, TR_OK);
 
     // If test is already failed (or allowed to fail), do not change the result.
     if result != TestResult::TrOk {
@@ -146,4 +156,93 @@ pub(crate) fn get_result_from_exit_code(
     }
 
     result
+}
+
+pub enum RustdocResult {
+    /// The test failed to compile.
+    CompileError,
+    /// The test is marked `compile_fail` but compiled successfully.
+    UnexpectedCompilePass,
+    /// The test failed to compile (as expected) but the compiler output did not contain all
+    /// expected error codes.
+    MissingErrorCodes(Vec<String>),
+    /// The test binary was unable to be executed.
+    ExecutionError(io::Error),
+    /// The test binary exited with a non-zero exit code.
+    ///
+    /// This typically means an assertion in the test failed or another form of panic occurred.
+    ExecutionFailure(Output),
+    /// The test is marked `should_panic` but the test binary executed successfully.
+    NoPanic(Option<String>),
+}
+
+impl fmt::Display for RustdocResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::CompileError => {
+                write!(f, "Couldn't compile the test.")
+            }
+            Self::UnexpectedCompilePass => {
+                write!(f, "Test compiled successfully, but it's marked `compile_fail`.")
+            }
+            Self::NoPanic(msg) => {
+                write!(f, "Test didn't panic, but it's marked `should_panic`")?;
+                if let Some(msg) = msg {
+                    write!(f, " ({msg})")?;
+                }
+                f.write_str(".")
+            }
+            Self::MissingErrorCodes(codes) => {
+                write!(f, "Some expected error codes were not found: {codes:?}")
+            }
+            Self::ExecutionError(err) => {
+                write!(f, "Couldn't run the test: {err}")?;
+                if err.kind() == io::ErrorKind::PermissionDenied {
+                    f.write_str(" - maybe your tempdir is mounted with noexec?")?;
+                }
+                Ok(())
+            }
+            Self::ExecutionFailure(out) => {
+                writeln!(f, "Test executable failed ({reason}).", reason = out.status)?;
+
+                // FIXME(#12309): An unfortunate side-effect of capturing the test
+                // executable's output is that the relative ordering between the test's
+                // stdout and stderr is lost. However, this is better than the
+                // alternative: if the test executable inherited the parent's I/O
+                // handles the output wouldn't be captured at all, even on success.
+                //
+                // The ordering could be preserved if the test process' stderr was
+                // redirected to stdout, but that functionality does not exist in the
+                // standard library, so it may not be portable enough.
+                let stdout = str::from_utf8(&out.stdout).unwrap_or_default();
+                let stderr = str::from_utf8(&out.stderr).unwrap_or_default();
+
+                if !stdout.is_empty() || !stderr.is_empty() {
+                    writeln!(f)?;
+
+                    if !stdout.is_empty() {
+                        writeln!(f, "stdout:\n{stdout}")?;
+                    }
+
+                    if !stderr.is_empty() {
+                        writeln!(f, "stderr:\n{stderr}")?;
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+pub fn get_rustdoc_result(output: Output, should_panic: bool) -> Result<(), RustdocResult> {
+    let result = get_result_from_exit_code_inner(output.status, 0);
+    match (result, should_panic) {
+        (TestResult::TrFailed, true) | (TestResult::TrOk, false) => Ok(()),
+        (TestResult::TrOk, true) => Err(RustdocResult::NoPanic(None)),
+        (TestResult::TrFailedMsg(msg), true) => Err(RustdocResult::NoPanic(Some(msg))),
+        (TestResult::TrFailedMsg(_) | TestResult::TrFailed, false) => {
+            Err(RustdocResult::ExecutionFailure(output))
+        }
+        _ => unreachable!("unexpected status for rustdoc test output"),
+    }
 }
