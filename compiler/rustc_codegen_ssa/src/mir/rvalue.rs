@@ -24,6 +24,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match *rvalue {
             mir::Rvalue::Use(ref operand) => {
+                if let mir::Operand::Constant(const_op) = operand {
+                    let val = self.eval_mir_constant(&const_op);
+                    if val.all_bytes_uninit(self.cx.tcx()) {
+                        return;
+                    }
+                }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
                 // `BackendRepr::Scalar | BackendRepr::ScalarPair`. This ensures we match the MIR
