@@ -3940,21 +3940,33 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
-            err.span_suggestion_verbose(
-                decl.source_info.span.shrink_to_lo(),
-                "consider making this binding mutable",
-                "mut ".to_string(),
-                Applicability::MachineApplicable,
+            let is_destructuring_pattern = matches!(
+                decl.local_info(),
+                LocalInfo::User(BindingForm::Var(VarBindingForm {
+                    opt_match_place: Some((Some(_), _)),
+                    ..
+                }))
             );
-            if !from_arg
-                && matches!(
-                    decl.local_info(),
-                    LocalInfo::User(BindingForm::Var(VarBindingForm {
-                        opt_match_place: Some((Some(_), _)),
-                        ..
-                    }))
-                )
+            if is_destructuring_pattern
+                && matches!(decl.source_info.span.desugaring_kind(), Some(DesugaringKind::ForLoop))
+                && let Ok(binding_name) =
+                    self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {
+                err.span_suggestion_verbose(
+                    decl.source_info.span.shrink_to_lo(),
+                    "consider making this binding mutable",
+                    format!("(mut {}) ", binding_name),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_suggestion_verbose(
+                    decl.source_info.span.shrink_to_lo(),
+                    "consider making this binding mutable",
+                    "mut ".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            if !from_arg && is_destructuring_pattern {
                 err.span_suggestion_verbose(
                     decl.source_info.span.shrink_to_lo(),
                     "to modify the original value, take a borrow instead",
