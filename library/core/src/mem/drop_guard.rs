@@ -63,13 +63,10 @@ where
 
     /// Consumes the `DropGuard`, returning the wrapped value.
     ///
-    /// This will not execute the closure. This is implemented as an associated
-    /// function to prevent any potential conflicts with any other methods called
-    /// `into_inner` from the `Deref` and `DerefMut` impls.
-    ///
-    /// It is typically preferred to call this function instead of `mem::forget`
-    /// because it will return the stored value and drop variables captured
-    /// by the closure instead of leaking their owned resources.
+    /// This will not execute the closure. It is typically preferred to call
+    /// this function instead of `mem::forget` because it will return the stored
+    /// value and drop variables captured by the closure instead of leaking their
+    /// owned resources.
     ///
     /// # Example
     ///
@@ -81,26 +78,26 @@ where
     ///
     /// let value = String::from("Nori likes chicken");
     /// let guard = DropGuard::new(value, |s| println!("{s}"));
-    /// assert_eq!(DropGuard::into_inner(guard), "Nori likes chicken");
+    /// assert_eq!(guard.dismiss(), "Nori likes chicken");
     /// ```
     #[unstable(feature = "drop_guard", issue = "144426")]
     #[inline]
-    pub fn into_inner(guard: Self) -> T {
+    pub fn dismiss(self) -> T {
         // First we ensure that dropping the guard will not trigger
         // its destructor
-        let mut guard = ManuallyDrop::new(guard);
+        let mut this = ManuallyDrop::new(self);
 
         // Next we manually read the stored value from the guard.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        let value = unsafe { ManuallyDrop::take(&mut guard.inner) };
+        let value = unsafe { ManuallyDrop::take(&mut this.inner) };
 
         // Finally we drop the stored closure. We do this *after* having read
         // the value, so that even if the closure's `drop` function panics,
         // unwinding still tries to drop the value.
         //
         // SAFETY: this is safe because we've taken ownership of the guard.
-        unsafe { ManuallyDrop::drop(&mut guard.f) };
+        unsafe { ManuallyDrop::drop(&mut this.f) };
         value
     }
 }
