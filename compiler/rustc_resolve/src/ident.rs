@@ -52,7 +52,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ctxt: SyntaxContext,
         derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
-            &mut CmResolver<'r, 'ra, 'tcx>,
+            CmResolver<'_, 'ra, 'tcx>,
             Scope<'ra>,
             UsePrelude,
             SyntaxContext,
@@ -156,7 +156,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if visit {
                 let use_prelude = if use_prelude { UsePrelude::Yes } else { UsePrelude::No };
-                if let break_result @ Some(..) = visitor(&mut self, scope, use_prelude, ctxt) {
+                if let break_result @ Some(..) = visitor(self.reborrow(), scope, use_prelude, ctxt)
+                {
                     return break_result;
                 }
             }
@@ -442,7 +443,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             parent_scope,
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
-            |this, scope, use_prelude, ctxt| {
+            |mut this, scope, use_prelude, ctxt| {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let result = match scope {
                     Scope::DeriveHelpers(expn_id) => {
