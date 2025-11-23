@@ -156,7 +156,7 @@ impl MultiItemModifier for DeriveProcMacro {
         let mut items = vec![];
 
         loop {
-            match parser.parse_item(ForceCollect::No) {
+            match parser.parse_item(ForceCollect::No, (!is_stmt).into()) {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {

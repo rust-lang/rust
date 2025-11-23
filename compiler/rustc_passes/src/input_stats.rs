@@ -573,6 +573,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Use,
                 Static,
                 Const,
+                ConstBlock,
                 Fn,
                 Mod,
                 ForeignMod,
