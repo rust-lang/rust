@@ -88,13 +88,8 @@ fn dont_splice_pipes_from_files() -> Result<()> {
 
     use crate::io::SeekFrom;
     use crate::os::unix::fs::FileExt;
-    use crate::process::{ChildStdin, ChildStdout};
-    use crate::sys_common::FromInner;
 
-    let (read_end, write_end) = crate::sys::pipe::anon_pipe()?;
-
-    let mut read_end = ChildStdout::from_inner(read_end);
-    let mut write_end = ChildStdin::from_inner(write_end);
+    let (mut read_end, mut write_end) = crate::io::pipe()?;
 
     let tmp_path = tmpdir();
     let file = tmp_path.join("to_be_modified");
@@ -220,13 +215,8 @@ fn bench_file_to_uds_copy(b: &mut test::Bencher) {
 fn bench_socket_pipe_socket_copy(b: &mut test::Bencher) {
     use super::CopyResult;
     use crate::io::ErrorKind;
-    use crate::process::{ChildStdin, ChildStdout};
-    use crate::sys_common::FromInner;
 
-    let (read_end, write_end) = crate::sys::pipe::anon_pipe().unwrap();
-
-    let mut read_end = ChildStdout::from_inner(read_end);
-    let write_end = ChildStdin::from_inner(write_end);
+    let (mut read_end, write_end) = crate::io::pipe().unwrap();
 
     let acceptor = crate::net::TcpListener::bind("localhost:0").unwrap();
     let mut remote_end = crate::net::TcpStream::connect(acceptor.local_addr().unwrap()).unwrap();
