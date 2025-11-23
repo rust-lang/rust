@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, Ty, Upcast};
+use rustc_middle::ty::{self, Ty, TyVid, Upcast};
 
 use super::{ObligationCause, PredicateObligation, PredicateObligations};
 use crate::infer::InferCtxt;
@@ -107,6 +107,15 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
     fn has_pending_obligations(&self) -> bool;
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx>;
+    // Returning all pending obligations which reference an inference
+    // variable with `_sub_root`. This assumes that no type inference
+    // progress has been made since the last `select_where_possible` call.
+    fn pending_obligations_potentially_referencing_sub_root(
+        &self,
+        _sub_root: TyVid,
+    ) -> PredicateObligations<'tcx> {
+        self.pending_obligations()
+    }
 
     /// Among all pending obligations, collect those are stalled on a inference variable which has
     /// changed since the last call to `try_evaluate_obligations`. Those obligations are marked as
