@@ -516,21 +516,53 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         // Converse of above, if this is a function/closure then the late-bound regions declared
         // on its signature are local.
         //
-        // We manually loop over `bound_inputs_and_output` instead of using
-        // `for_each_late_bound_region_in_item` as we may need to add the otherwise
-        // implicit `ClosureEnv` region.
+        // For closures/coroutines, we manually loop over `bound_inputs_and_output` instead of
+        // using `for_each_late_bound_region_in_item` as we may need to add the otherwise
+        // implicit `ClosureEnv` region. For regular functions, we need to use
+        // `for_each_late_bound_region_in_item` to ensure we capture all late-bound regions,
+        // including those that don't appear in the inputs/output (e.g., unused lifetime parameters).
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
-        for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
-            if let ty::BoundVariableKind::Region(kind) = bound_var {
-                let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
-                let r = ty::Region::new_late_param(self.infcx.tcx, self.mir_def.to_def_id(), kind);
-                let region_vid = {
-                    let name = r.get_name_or_anon(self.infcx.tcx);
-                    self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                };
+        match defining_ty {
+            DefiningTy::Closure(..)
+            | DefiningTy::Coroutine(..)
+            | DefiningTy::CoroutineClosure(..) => {
+                // For closures/coroutines, iterate over bound_vars to include implicit regions.
+                for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
+                    if let ty::BoundVariableKind::Region(kind) = bound_var {
+                        let kind = ty::LateParamRegionKind::from_bound(
+                            ty::BoundVar::from_usize(idx),
+                            kind,
+                        );
+                        let r = ty::Region::new_late_param(
+                            self.infcx.tcx,
+                            self.mir_def.to_def_id(),
+                            kind,
+                        );
+                        let region_vid = {
+                            let name = r.get_name_or_anon(self.infcx.tcx);
+                            self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                        };
 
-                debug!(?region_vid);
-                indices.insert_late_bound_region(r, region_vid.as_var());
+                        debug!(?region_vid);
+                        indices.insert_late_bound_region(r, region_vid.as_var());
+                    }
+                }
+            }
+            DefiningTy::FnDef(..) => {
+                // For functions, use for_each_late_bound_region_in_item to ensure we capture
+                // all late-bound regions, including those that don't appear in inputs/output.
+                for_each_late_bound_region_in_item(self.infcx.tcx, self.mir_def, |r| {
+                    let region_vid = {
+                        let name = r.get_name_or_anon(self.infcx.tcx);
+                        self.infcx.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
+                    };
+
+                    debug!(?region_vid);
+                    indices.insert_late_bound_region(r, region_vid.as_var());
+                });
+            }
+            DefiningTy::Const(..) | DefiningTy::InlineConst(..) | DefiningTy::GlobalAsm(..) => {
+                // These don't have late-bound regions.
             }
         }
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
