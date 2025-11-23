@@ -285,7 +285,6 @@ fn default_hook(info: &PanicHookInfo<'_>) {
         static FIRST_PANIC: Atomic<bool> = AtomicBool::new(true);
 
         match backtrace {
-            // SAFETY: we took out a lock just a second ago.
             Some(BacktraceStyle::Short) => {
                 drop(lock.print(err, crate::backtrace_rs::PrintFmt::Short))
             }
