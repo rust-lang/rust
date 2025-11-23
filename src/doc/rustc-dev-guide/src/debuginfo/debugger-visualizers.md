@@ -13,6 +13,55 @@ debug info, but can be derived from invariants about the language and the type i
 example is allowing one to interact with the elements of a `Vec<T>` instead of just it's `*mut u8`
 heap pointer, length, and capacity.
 
+## `rust-lldb`, `rust-gdb`, and `rust-windbg.cmd`
+
+These support scripts are distributed with Rust toolchains. They locate the appropriate debugger and
+the toolchain's visualizer scripts, then launch the debugger with the appropriate arguments to load
+the visualizer scripts before a debugee is launched/attached to.
+
+## `#![debugger_visualizer]`
+
+[This attribute][dbg_vis_attr] allows Rust library authors to include pretty printers for their
+types within the library itself. These pretty printers are of the same format as typical
+visualizers, but are embedded directly into the compiled binary. These scripts are loaded
+automatically by the debugger, allowing a seamless experience for users. This attribute currently
+works for GDB and natvis scripts.
+
+[dbg_vis_attr]: https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute
+
+GDB python scripts are embedded in the `.debug_gdb_scripts` section of the binary. More information
+can be found [here](https://sourceware.org/gdb/current/onlinedocs/gdb.html/dotdebug_005fgdb_005fscripts-section.html). Rustc accomplishes this in [`rustc_codegen_llvm/src/debuginfo/gdb.rs`][gdb_rs]
+
+[gdb_rs]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_llvm/src/debuginfo/gdb.rs
+
+Natvis files can be embedded in the PDB debug info using the [`/NATVIS` linker option][linker_opt],
+and have the [highest priority][priority] when a type is resolving which visualizer to use. The
+files specified by the attribute are collected into
+[`CrateInfo::natvis_debugger_visualizers`][natvis] which are then added as linker arguments in
+[`rustc_codegen_ssa/src/back/linker.rs`][linker_rs]
+
+[linker_opt]: https://learn.microsoft.com/en-us/cpp/build/reference/natvis-add-natvis-to-pdb?view=msvc-170
+[priority]: https://learn.microsoft.com/en-us/visualstudio/debugger/create-custom-views-of-native-objects?view=visualstudio#BKMK_natvis_location
+[natvis]: https://github.com/rust-lang/rust/blob/e0e204f3e97ad5f79524b9c259dc38df606ed82c/compiler/rustc_codegen_ssa/src/lib.rs#L212
+[linker_rs]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/back/linker.rs#L1106
+
+LLDB is not currently supported, but there are a few methods that could potentially allow support in
+the future. Officially, the intended method is via a [formatter bytecode][bytecode]. This was
+created to offer a comparable experience to GDB's, but without  the safety concerns associated with
+embedding an entire python script. The opcodes are limited, but it works with `SBValue` and `SBType`
+in roughly the same way as python visualizer scripts. Implementing this would require writing some
+sort of DSL/mini compiler.
+
+[bytecode]: https://lldb.llvm.org/resources/formatterbytecode.html
+
+Alternatively, it might be possible to copy GDB's strategy entirely: create a bespoke section in the
+binary and embed a python script in it. LLDB will not load it automatically, but the python API does
+allow one to access the [raw sections of the debug info][SBSection]. With this, it may be possible
+to extract the python script from our bespoke section and then load it in during the startup of
+Rust's visualizer scripts.
+
+[SBSection]: https://lldb.llvm.org/python_api/lldb.SBSection.html#sbsection
+
 ## Performance
 
 Before tackling the visualizers themselves, it's important to note that these are part of a
