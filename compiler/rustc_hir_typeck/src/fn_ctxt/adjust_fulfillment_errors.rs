@@ -49,31 +49,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let uninstantiated_pred = match flavor {
             ClauseFlavor::Where => {
-                if let Some(pred) = self
+                let Some(pred) = self
                     .tcx
                     .predicates_of(def_id)
                     .instantiate_identity(self.tcx)
                     .predicates
                     .into_iter()
                     .nth(idx)
-                {
-                    pred
-                } else {
+                else {
                     return false;
-                }
+                };
+                pred
             }
             ClauseFlavor::Const => {
-                if let Some((pred, _)) = self
+                let Some((pred, _)) = self
                     .tcx
                     .const_conditions(def_id)
                     .instantiate_identity(self.tcx)
                     .into_iter()
                     .nth(idx)
-                {
-                    pred.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe)
-                } else {
+                else {
                     return false;
-                }
+                };
+                pred.to_host_effect_clause(self.tcx, ty::BoundConstness::Maybe)
             }
         };
 

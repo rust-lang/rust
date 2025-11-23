@@ -410,14 +410,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // In theory, any zero-sized value could be borrowed
                 // mutably without consequences. However, only &mut []
                 // is allowed right now.
-                if let ty::Array(_, len) = ty.kind() {
-                    match len.try_to_target_usize(self.tcx) {
-                        Some(0) => {}
-                        _ => return Err(Unpromotable),
-                    }
-                } else {
-                    return Err(Unpromotable);
-                }
+                let ty::Array(_, len) = ty.kind() else { return Err(Unpromotable) };
+                let Some(0) = len.try_to_target_usize(self.tcx) else { return Err(Unpromotable) };
             }
         }
 

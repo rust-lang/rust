@@ -121,13 +121,12 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 len,
                             )
                         };
-                        if let Some(len) = len.try_to_target_usize(self.tcx()) {
-                            (len, ty)
-                        } else {
+                        let Some(len) = len.try_to_target_usize(self.tcx()) else {
                             return Err(NonAsmTypeReason::UnevaluatedSIMDArrayLength(
                                 field.did, len,
                             ));
-                        }
+                        };
+                        (len, ty)
                     }
                     _ => (fields.len() as u64, elem_ty),
                 };
