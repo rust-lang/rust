@@ -577,10 +577,9 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_float_classify", since = "1.83.0")]
     #[inline]
+    #[allow(clippy::eq_op)]
     pub const fn is_finite(self) -> bool {
-        // There's no need to handle NaN separately: if self is NaN,
-        // the comparison is not true, exactly as desired.
-        self.abs() < Self::INFINITY
+        self - self == self - self
     }
 
     /// Returns `true` if the number is [subnormal].
