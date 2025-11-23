@@ -13,7 +13,7 @@
 // gdb-command:print fun(444, false)
 // gdb-check:$2 = false
 
-// gdb-command:print r.get_x()
+// gdb-command: print function_call::RegularStruct::get_x(&r)
 // gdb-check:$3 = 4
 
 #![allow(dead_code, unused_variables)]

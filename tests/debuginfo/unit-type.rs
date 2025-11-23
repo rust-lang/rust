@@ -9,10 +9,10 @@
 // gdb-command: run
 
 // gdb-command: print _ref
-// gdb-check: $1 = (*mut ()) 0x[...]
+// gdb-check: $1 = (&()) 0x[...]
 
 // gdb-command: print _ptr
-// gdb-check: $2 = (*mut ()) 0x[...]
+// gdb-check: $2 = (*const ()) 0x[...]
 
 // gdb-command: print _local
 // gdb-check: $3 = ()
