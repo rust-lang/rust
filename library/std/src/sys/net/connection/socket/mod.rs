@@ -22,13 +22,9 @@ cfg_select! {
         mod solid;
         pub use solid::*;
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         pub use unix::*;
-    }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use wasip2::*;
     }
     target_os = "windows" => {
         mod windows;
