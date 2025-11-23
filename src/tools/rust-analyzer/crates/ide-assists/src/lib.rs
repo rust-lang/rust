@@ -119,6 +119,7 @@ mod handlers {
     mod change_visibility;
     mod convert_bool_then;
     mod convert_bool_to_enum;
+    mod convert_char_literal;
     mod convert_closure_to_fn;
     mod convert_comment_block;
     mod convert_comment_from_or_to_doc;
@@ -256,6 +257,7 @@ mod handlers {
             convert_bool_then::convert_bool_then_to_if,
             convert_bool_then::convert_if_to_bool_then,
             convert_bool_to_enum::convert_bool_to_enum,
+            convert_char_literal::convert_char_literal,
             convert_closure_to_fn::convert_closure_to_fn,
             convert_comment_block::convert_comment_block,
             convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
