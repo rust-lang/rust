@@ -8,7 +8,7 @@ LL | pub use handwritten::*;
    |
    = note: `#[warn(ambiguous_glob_reexports)]` on by default
 
-error: `id` is ambiguous
+error[E0759]: `id` is ambiguous
   --> $DIR/ambiguous-17.rs:25:5
    |
 LL |     id();
@@ -33,8 +33,9 @@ LL | pub use handwritten::*;
 
 error: aborting due to 1 previous error; 1 warning emitted
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-error: `id` is ambiguous
+error[E0759]: `id` is ambiguous
   --> $DIR/ambiguous-17.rs:25:5
    |
 LL |     id();

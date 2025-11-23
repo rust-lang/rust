@@ -8,7 +8,7 @@ LL |     use crate::a::foo;
    |
    = note: `foo` must be defined only once in the value namespace of this module
 
-error[E0659]: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/duplicate.rs:48:15
    |
 LL |     use self::foo::bar;
@@ -28,7 +28,7 @@ LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-error[E0659]: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/duplicate.rs:35:8
    |
 LL |     f::foo();
@@ -48,7 +48,7 @@ LL |     pub use crate::b::*;
    |             ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-error[E0659]: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/duplicate.rs:51:9
    |
 LL |         foo::bar();
@@ -68,7 +68,7 @@ LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();
@@ -93,10 +93,10 @@ LL |     pub use crate::b::*;
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0252, E0659.
+Some errors have detailed explanations: E0252, E0759.
 For more information about an error, try `rustc --explain E0252`.
 Future incompatibility report: Future breakage diagnostic:
-error: `foo` is ambiguous
+error[E0759]: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();

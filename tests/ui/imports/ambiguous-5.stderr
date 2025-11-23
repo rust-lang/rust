@@ -1,4 +1,4 @@
-error: `Class` is ambiguous
+error[E0759]: `Class` is ambiguous
   --> $DIR/ambiguous-5.rs:12:23
    |
 LL |     struct MarkRecord(Class);
@@ -23,8 +23,9 @@ LL |     use super::gsubgpos::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Class` is ambiguous
+error[E0759]: `Class` is ambiguous
   --> $DIR/ambiguous-5.rs:12:23
    |
 LL |     struct MarkRecord(Class);

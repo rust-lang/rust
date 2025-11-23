@@ -1,4 +1,4 @@
-error: `Rect` is ambiguous
+error[E0759]: `Rect` is ambiguous
   --> $DIR/ambiguous-13.rs:18:9
    |
 LL | fn a(_: Rect) {}
@@ -23,8 +23,9 @@ LL | use crate::content::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0759`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Rect` is ambiguous
+error[E0759]: `Rect` is ambiguous
   --> $DIR/ambiguous-13.rs:18:9
    |
 LL | fn a(_: Rect) {}
