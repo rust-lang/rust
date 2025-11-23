@@ -1524,17 +1524,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if should_encode_constness(def_kind) {
                 let constness = self.tcx.constness(def_id);
-                match constness {
-                    hir::Constness::Const => self.tables.constness.set(def_id.index, constness),
-                    hir::Constness::NotConst => {}
-                }
+                self.tables.constness.set(def_id.index, constness);
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
                 let asyncness = tcx.asyncness(def_id);
-                match asyncness {
-                    ty::Asyncness::Yes => self.tables.asyncness.set(def_id.index, asyncness),
-                    ty::Asyncness::No => {}
-                }
+                self.tables.asyncness.set(def_id.index, asyncness);
                 record_array!(self.tables.fn_arg_idents[def_id] <- tcx.fn_arg_idents(def_id));
             }
             if let Some(name) = tcx.intrinsic(def_id) {
@@ -1697,7 +1691,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }));
 
             for field in &variant.fields {
-                self.tables.safety.set_some(field.did.index, field.safety);
+                self.tables.safety.set(field.did.index, field.safety);
             }
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
@@ -1759,7 +1753,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let item = tcx.associated_item(def_id);
 
         if matches!(item.container, AssocContainer::Trait | AssocContainer::TraitImpl(_)) {
-            self.tables.defaultness.set_some(def_id.index, item.defaultness(tcx));
+            self.tables.defaultness.set(def_id.index, item.defaultness(tcx));
         }
 
         record!(self.tables.assoc_container[def_id] <- item.container);
@@ -2161,7 +2155,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let header = tcx.impl_trait_header(def_id);
                 record!(self.tables.impl_trait_header[def_id] <- header);
 
-                self.tables.defaultness.set_some(def_id.index, tcx.defaultness(def_id));
+                self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
 
                 let trait_ref = header.trait_ref.instantiate_identity();
                 let simplified_self_ty = fast_reject::simplify_type(

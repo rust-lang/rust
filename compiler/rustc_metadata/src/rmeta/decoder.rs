@@ -1187,7 +1187,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_safety(self, id: DefIndex) -> Safety {
-        self.root.tables.safety.get(self, id).unwrap_or_else(|| self.missing("safety", id))
+        self.root.tables.safety.get(self, id)
     }
 
     fn get_default_field(self, id: DefIndex) -> Option<DefId> {
