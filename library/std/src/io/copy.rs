@@ -214,28 +214,19 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
         }
 
         let mut len = 0;
-        let mut init = 0;
 
         loop {
             let buf = self.buffer_mut();
             let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
-
-            unsafe {
-                // SAFETY: init is either 0 or the init_len from the previous iteration.
-                read_buf.set_init(init);
-            }
 
             if read_buf.capacity() >= DEFAULT_BUF_SIZE {
                 let mut cursor = read_buf.unfilled();
                 match reader.read_buf(cursor.reborrow()) {
                     Ok(()) => {
                         let bytes_read = cursor.written();
-
                         if bytes_read == 0 {
                             return Ok(len);
                         }
-
-                        init = read_buf.init_len() - bytes_read;
                         len += bytes_read as u64;
 
                         // SAFETY: BorrowedBuf guarantees all of its filled bytes are init
@@ -248,10 +239,6 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
                     Err(e) => return Err(e),
                 }
             } else {
-                // All the bytes that were already in the buffer are initialized,
-                // treat them as such when the buffer is flushed.
-                init += buf.len();
-
                 self.flush_buf()?;
             }
         }
