@@ -247,7 +247,7 @@ impl Crate {
         self,
         db: &dyn HirDatabase,
     ) -> impl Iterator<Item = Crate> {
-        db.transitive_rev_deps(self.id).into_iter().map(|id| Crate { id })
+        self.id.transitive_rev_deps(db).into_iter().map(|id| Crate { id })
     }
 
     pub fn notable_traits_in_deps(self, db: &dyn HirDatabase) -> impl Iterator<Item = &TraitId> {
@@ -4454,7 +4454,7 @@ impl Impl {
         let mut handle_impls = |impls: &TraitImpls| {
             impls.for_trait(trait_.id, |impls| all.extend(impls.iter().copied().map(Impl::from)));
         };
-        for krate in db.transitive_rev_deps(module.krate()) {
+        for krate in module.krate().transitive_rev_deps(db) {
             handle_impls(TraitImpls::for_crate(db, krate));
         }
         if let Some(block) = module.containing_block()
