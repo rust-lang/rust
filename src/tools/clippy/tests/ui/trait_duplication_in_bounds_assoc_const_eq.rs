@@ -8,7 +8,7 @@ trait AssocConstTrait {
 }
 fn assoc_const_args<T>()
 where
-    T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
+    T: AssocConstTrait<ASSOC = const { 0 }> + AssocConstTrait<ASSOC = const { 0 }>,
     //~^ trait_duplication_in_bounds
 {
 }

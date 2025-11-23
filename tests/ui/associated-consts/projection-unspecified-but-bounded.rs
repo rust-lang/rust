@@ -8,7 +8,7 @@ pub trait TraitWAssocConst {
     const A: usize;
 }
 
-fn foo<T: TraitWAssocConst<A = 32>>() {}
+fn foo<T: TraitWAssocConst<A = const { 32 }>>() {}
 
 fn bar<T: TraitWAssocConst>() {
     foo::<T>();
