@@ -11,5 +11,13 @@ note: the lint level is defined here
 LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: moving 9999 bytes
+  --> $DIR/inline_mir.rs:23:5
+   |
+LL |     std::hint::black_box(cell);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+error: aborting due to 2 previous errors
 
