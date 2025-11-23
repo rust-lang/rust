@@ -24,6 +24,18 @@ pub(crate) struct IncorrectDoNotRecommendLocation;
 #[diag(passes_incorrect_do_not_recommend_args)]
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_attr_expects_string)]
+pub(crate) struct DocAttrExpectsString {
+    pub(crate) attr_name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_doc_attr_expects_no_value)]
+pub(crate) struct DocAttrExpectsNoValue {
+    pub(crate) attr_name: Symbol,
+}
+
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {

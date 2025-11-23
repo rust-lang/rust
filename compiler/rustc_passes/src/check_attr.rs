@@ -1123,6 +1123,28 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         true
     }
 
+    fn check_doc_attr_string_value(&self, meta: &MetaItemInner, hir_id: HirId) {
+        if meta.value_str().is_none() {
+            self.tcx.emit_node_span_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::DocAttrExpectsString { attr_name: meta.name().unwrap() },
+            );
+        }
+    }
+
+    fn check_doc_attr_no_value(&self, meta: &MetaItemInner, hir_id: HirId) {
+        if !meta.is_word() {
+            self.tcx.emit_node_span_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::DocAttrExpectsNoValue { attr_name: meta.name().unwrap() },
+            );
+        }
+    }
+
     /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
     fn check_test_attr(
         &self,
@@ -1293,10 +1315,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::html_logo_url
                             | sym::html_playground_url
                             | sym::issue_tracker_base_url
-                            | sym::html_root_url
-                            | sym::html_no_source,
+                            | sym::html_root_url,
                         ) => {
                             self.check_attr_crate_level(attr_span, style, meta, hir_id);
+                            self.check_doc_attr_string_value(meta, hir_id);
+                        }
+
+                        Some(sym::html_no_source) => {
+                            self.check_attr_crate_level(attr_span, style, meta, hir_id);
+                            self.check_doc_attr_no_value(meta, hir_id);
                         }
 
                         Some(sym::auto_cfg) => {
