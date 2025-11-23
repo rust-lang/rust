@@ -104,29 +104,19 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         visitor.visit_pat(local.pat);
     }
 
-    fn assign(&mut self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
-        // We evaluate expressions twice occasionally in diagnostics for better
-        // type information or because it needs type information out-of-order.
-        // In order to not ICE and not lead to knock-on ambiguity errors, if we
-        // try to re-assign a type to a local, then just take out the previous
-        // type and delay a bug.
-        if let Some(&local) = self.fcx.locals.borrow_mut().get(&nid) {
-            self.fcx.dcx().span_delayed_bug(span, "evaluated expression more than once");
-            return local;
-        }
-
-        match ty_opt {
-            None => {
-                // Infer the variable's type.
-                let var_ty = self.fcx.next_ty_var(span);
-                self.fcx.locals.borrow_mut().insert(nid, var_ty);
-                var_ty
-            }
-            Some(typ) => {
-                // Take type that the user specified.
-                self.fcx.locals.borrow_mut().insert(nid, typ);
-                typ
-            }
+    fn assign(&mut self, nid: HirId, ty: Ty<'tcx>) {
+        let prev = self.fcx.locals.borrow_mut().insert(nid, ty);
+        if let Some(prev) = prev {
+            // We evaluate expressions twice occasionally in diagnostics for better
+            // type information or because it needs type information out-of-order.
+            // In order to not ICE and not lead to knock-on ambiguity errors, if we
+            // try to re-assign a type to a local, then just take out the previous
+            // type and delay a bug.
+            self.fcx.dcx().span_delayed_bug(
+                self.fcx.tcx.hir_span(nid),
+                "evaluated expression more than once",
+            );
+            self.fcx.locals.borrow_mut().insert(nid, prev);
         }
     }
 
@@ -151,11 +141,19 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
                     .user_provided_types_mut()
                     .insert(ty.hir_id, c_ty);
 
-                Some(o_ty.normalized)
+                o_ty.normalized
             }
-            None => None,
+            None => {
+                let ty = self.fcx.next_ty_var(decl.span);
+                self.fcx.register_wf_obligation(
+                    ty.into(),
+                    decl.span,
+                    ObligationCauseCode::WellFormed(None),
+                );
+                ty
+            }
         };
-        self.assign(decl.span, decl.hir_id, local_ty);
+        self.assign(decl.hir_id, local_ty);
 
         debug!(
             "local variable {:?} is assigned type {}",
@@ -182,7 +180,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     // Add pattern bindings.
     fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
-            let var_ty = self.assign(p.span, p.hir_id, None);
+            let var_ty = self.fcx.next_ty_var(p.span);
+            self.assign(p.hir_id, var_ty);
 
             if let Some((ty_span, hir_id)) = self.outermost_fn_param_pat {
                 if !self.fcx.tcx.features().unsized_fn_params() {
