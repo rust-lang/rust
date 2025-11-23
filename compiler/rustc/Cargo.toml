@@ -31,6 +31,7 @@ check_only = ['rustc_driver_impl/check_only']
 jemalloc = ['dep:tikv-jemalloc-sys']
 llvm = ['rustc_driver_impl/llvm']
 llvm_enzyme = ['rustc_driver_impl/llvm_enzyme']
+llvm_offload = ['rustc_driver_impl/llvm_offload']
 max_level_info = ['rustc_driver_impl/max_level_info']
 rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
 # tidy-alphabetical-end

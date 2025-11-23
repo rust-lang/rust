@@ -1641,9 +1641,6 @@ unsafe extern "C" {
         Name: *const c_char,
     ) -> &'a Value;
 
-    /// Processes the module and writes it in an offload compatible way into a "host.out" file.
-    pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
-
     /// Writes a module to the specified path. Returns 0 on success.
     pub(crate) fn LLVMWriteBitcodeToFile(M: &Module, Path: *const c_char) -> c_int;
 
@@ -1719,6 +1716,20 @@ unsafe extern "C" {
         NumBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
+}
+
+#[cfg(feature = "llvm_offload")]
+unsafe extern "C" {
+    /// Processes the module and writes it in an offload compatible way into a "host.out" file.
+    pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
+}
+
+#[cfg(not(feature = "llvm_offload"))]
+#[allow(unused_unsafe)]
+/// Processes the module and writes it in an offload compatible way into a "host.out" file.
+/// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
+pub(crate) unsafe fn LLVMRustBundleImages<'a>(_M: &'a Module, _TM: &'a TargetMachine) -> bool {
+    unimplemented!("This rustc version was not built with LLVM Offload support!");
 }
 
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
