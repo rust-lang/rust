@@ -20,6 +20,7 @@ pub(crate) fn target() -> Target {
             asm_args: cvs!["-mthumb-interwork", "-march=armv5te", "-mlittle-endian",],
             features: "+soft-float,+strict-align".into(),
             atomic_cas: false,
+            max_atomic_width: Some(0),
             has_thumb_interworking: true,
             ..base::arm_none::opts()
         },
