@@ -2947,61 +2947,77 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 #[rustc_intrinsic]
 pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
-/// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
+/// Returns the minimum of two `f16` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 minNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::min`]
+/// The stabilized version of this intrinsic is [`f16::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn minnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the minimum (IEEE 754-2008 minNum) of two `f32` values.
+/// Returns the minimum of two `f32` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 minNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::min`]
+/// The stabilized version of this intrinsic is [`f32::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn minnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the minimum (IEEE 754-2008 minNum) of two `f64` values.
+/// Returns the minimum of two `f64` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 minNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f64::min`]
+/// The stabilized version of this intrinsic is [`f64::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn minnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the minimum (IEEE 754-2008 minNum) of two `f128` values.
+/// Returns the minimum of two `f128` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 minNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f128::min`]
+/// The stabilized version of this intrinsic is [`f128::min`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn minnumf128(x: f128, y: f128) -> f128;
 
-/// Returns the minimum (IEEE 754-2019 minimum) of two `f16` values.
+/// Returns the minimum of two `f16` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 minimum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3022,7 +3038,11 @@ pub const fn minimumf16(x: f16, y: f16) -> f16 {
     }
 }
 
-/// Returns the minimum (IEEE 754-2019 minimum) of two `f32` values.
+/// Returns the minimum of two `f32` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 minimum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3043,7 +3063,11 @@ pub const fn minimumf32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the minimum (IEEE 754-2019 minimum) of two `f64` values.
+/// Returns the minimum of two `f64` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 minimum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3064,7 +3088,11 @@ pub const fn minimumf64(x: f64, y: f64) -> f64 {
     }
 }
 
-/// Returns the minimum (IEEE 754-2019 minimum) of two `f128` values.
+/// Returns the minimum of two `f128` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 minimum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3085,61 +3113,77 @@ pub const fn minimumf128(x: f128, y: f128) -> f128 {
     }
 }
 
-/// Returns the maximum (IEEE 754-2008 maxNum) of two `f16` values.
+/// Returns the maximum of two `f16` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 maxNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f16::max`]
+/// The stabilized version of this intrinsic is [`f16::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn maxnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the maximum (IEEE 754-2008 maxNum) of two `f32` values.
+/// Returns the maximum of two `f32` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 maxNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f32::max`]
+/// The stabilized version of this intrinsic is [`f32::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn maxnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the maximum (IEEE 754-2008 maxNum) of two `f64` values.
+/// Returns the maximum of two `f64` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 maxNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f64::max`]
+/// The stabilized version of this intrinsic is [`f64::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 pub const fn maxnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the maximum (IEEE 754-2008 maxNum) of two `f128` values.
+/// Returns the maximum of two `f128` values, ignoring NaN.
+///
+/// This behaves like IEEE 754-2008 maxNum. In particular:
+/// If one of the arguments is NaN, then the other argument is returned. If the inputs compare equal
+/// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is
-/// [`f128::max`]
+/// The stabilized version of this intrinsic is [`f128::max`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn maxnumf128(x: f128, y: f128) -> f128;
 
-/// Returns the maximum (IEEE 754-2019 maximum) of two `f16` values.
+/// Returns the maximum of two `f16` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 maximum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3159,7 +3203,11 @@ pub const fn maximumf16(x: f16, y: f16) -> f16 {
     }
 }
 
-/// Returns the maximum (IEEE 754-2019 maximum) of two `f32` values.
+/// Returns the maximum of two `f32` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 maximum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3179,7 +3227,11 @@ pub const fn maximumf32(x: f32, y: f32) -> f32 {
     }
 }
 
-/// Returns the maximum (IEEE 754-2019 maximum) of two `f64` values.
+/// Returns the maximum of two `f64` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 maximum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3199,7 +3251,11 @@ pub const fn maximumf64(x: f64, y: f64) -> f64 {
     }
 }
 
-/// Returns the maximum (IEEE 754-2019 maximum) of two `f128` values.
+/// Returns the maximum of two `f128` values, propagating NaN.
+///
+/// This behaves like IEEE 754-2019 maximum. In particular:
+/// If one of the arguments is NaN, then a NaN is returned using the usual NaN propagation rules.
+/// For this operation, -0.0 is considered to be strictly less than +0.0.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
