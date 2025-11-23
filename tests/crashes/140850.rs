@@ -1,6 +1,6 @@
 //@ known-bug: #140850
 //@ compile-flags: -Zvalidate-mir
-fn A() -> impl {
+fn A() -> impl Copy {
     while A() {}
     loop {}
 }
