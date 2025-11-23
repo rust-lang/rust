@@ -433,6 +433,8 @@ mod spec_extend;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Vec"]
 #[rustc_insignificant_dtor]
+#[doc(alias = "list")]
+#[doc(alias = "vector")]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
     buf: RawVec<T, A>,
     len: usize,
