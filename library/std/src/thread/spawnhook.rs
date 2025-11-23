@@ -1,7 +1,7 @@
+use super::thread::Thread;
 use crate::cell::Cell;
 use crate::iter;
 use crate::sync::Arc;
-use crate::thread::Thread;
 
 crate::thread_local! {
     /// A thread local linked list of spawn hooks.
