@@ -1436,6 +1436,9 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
+    if builder.config.llvm_offload {
+        cargo.env("LLVM_OFFLOAD", "1");
+    }
     let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &host_llvm_config);
 

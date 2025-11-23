@@ -25,7 +25,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Object/COFFImportFile.h"
-#include "llvm/Object/OffloadBinary.h"
 #include "llvm/Remarks/RemarkFormat.h"
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkStreamer.h"
@@ -36,10 +35,17 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
+
+// Some of the functions below rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Target/TargetMachine.h"
+#endif
 
 // for raw `write` in the bad-alloc handler
 #ifdef _MSC_VER
@@ -146,6 +152,10 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
+// Some of the functions here rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
 static Error writeFile(StringRef Filename, StringRef Data) {
   Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
       FileOutputBuffer::create(Filename, Data.size());
@@ -210,6 +220,7 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
 }
+#endif
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
                                               size_t NameLen) {
