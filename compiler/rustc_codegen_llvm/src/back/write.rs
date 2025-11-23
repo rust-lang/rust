@@ -771,6 +771,38 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_plugins.len(),
         )
     };
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        let lib_bc_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/lib.bc").unwrap();
+        let host_out_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.out").unwrap();
+        let out_obj_c = CString::new("/p/lustre1/drehwald1/prog/offload/r/host.o").unwrap();
+
+        unsafe {
+            llvm::LLVMRustBundleImages(
+                module.module_llvm.llmod(),
+                module.module_llvm.tm.raw(),
+                host_out_c.as_ptr(),
+            );
+        }
+        unsafe {
+            // 1) Bundle device module into offload image host.out (device TM)
+            let ok = llvm::LLVMRustBundleImages(
+                module.module_llvm.llmod(),
+                module.module_llvm.tm.raw(),
+                host_out_c.as_ptr(),
+            );
+            assert!(ok, "LLVMRustBundleImages (device -> host.out) failed");
+
+            // 2) Finalize host: lib.bc + host.out -> host.offload.o (host TM created in C++)
+            let ok = llvm::LLVMRustFinalizeOffload(
+                lib_bc_c.as_ptr(),
+                host_out_c.as_ptr(),
+                out_obj_c.as_ptr(),
+            );
+            assert!(ok, "LLVMRustFinalizeOffload (host finalize) failed");
+        }
+        dbg!("done");
+    }
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 

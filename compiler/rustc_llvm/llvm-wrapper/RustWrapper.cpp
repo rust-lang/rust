@@ -25,6 +25,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Value.h"
 #include "llvm/Object/COFFImportFile.h"
+#include "llvm/Object/OffloadBinary.h"
 #include "llvm/Remarks/RemarkFormat.h"
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkStreamer.h"
@@ -35,9 +36,23 @@
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/Timer.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
+
+#include "llvm/Transforms/Utils/ModuleUtils.h"
+#include "llvm/Analysis/VectorUtils.h"
+#include "llvm/ADT/SmallString.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/MDBuilder.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/Support/MD5.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/xxhash.h"
 
 // for raw `write` in the bad-alloc handler
 #ifdef _MSC_VER
@@ -144,6 +159,135 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
+static Error writeFile(StringRef Filename, StringRef Data) {
+  Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
+      FileOutputBuffer::create(Filename, Data.size());
+  if (!OutputOrErr)
+    return OutputOrErr.takeError();
+  std::unique_ptr<FileOutputBuffer> Output = std::move(*OutputOrErr);
+  llvm::copy(Data, Output->getBufferStart());
+  if (Error E = Output->commit())
+    return E;
+  return Error::success();
+}
+
+// This is the first of many steps in creating a binary using llvm offload,
+// to run code on the gpu. Concrete, it replaces the following binary use:
+// clang-offload-packager -o host.out
+//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
+// The input module is the rust code compiled for a gpu target like amdgpu.
+// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM, const char *HostOutPath) {
+  std::string Storage;
+  llvm::raw_string_ostream OS1(Storage);
+  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
+  OS1.flush();
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "device.bc");
+
+  SmallVector<char, 1024> BinaryData;
+  raw_svector_ostream OS2(BinaryData);
+
+  OffloadBinary::OffloadingImage ImageBinary{};
+  ImageBinary.TheImageKind = object::IMG_Bitcode;
+  ImageBinary.Image = std::move(MB);
+  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
+
+
+  std::string TripleStr = TM.getTargetTriple().str();
+  llvm::StringRef CPURef = TM.getTargetCPU();
+  ImageBinary.StringData["triple"] = TripleStr;
+  ImageBinary.StringData["arch"] = CPURef;
+  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
+  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
+    // Offload binary has invalid size alignment
+    return false;
+  OS2 << Buffer;
+  if (Error E = writeFile(HostOutPath,
+                          StringRef(BinaryData.begin(), BinaryData.size())))
+    return false;
+  return true;
+}
+
+#include "llvm/Bitcode/BitcodeReader.h"
+Expected<std::unique_ptr<Module>>
+loadHostModuleFromBitcode(LLVMContext &Ctx, StringRef LibBCPath) {
+  auto MBOrErr = MemoryBuffer::getFile(LibBCPath);
+  if (!MBOrErr)
+    return errorCodeToError(MBOrErr.getError());
+
+  MemoryBufferRef Ref = (*MBOrErr)->getMemBufferRef();
+  return parseBitcodeFile(Ref, Ctx);
+}
+
+extern "C" void embedBufferInModule(Module &M, MemoryBufferRef Buf) {
+  StringRef SectionName = ".llvm.offloading";
+  Align Alignment = Align(8);
+  // Embed the memory buffer into the module.
+  Constant *ModuleConstant = ConstantDataArray::get(
+      M.getContext(), ArrayRef(Buf.getBufferStart(), Buf.getBufferSize()));
+  GlobalVariable *GV = new GlobalVariable(
+      M, ModuleConstant->getType(), true, GlobalValue::PrivateLinkage,
+      ModuleConstant, "llvm.embedded.object");
+  GV->setSection(SectionName);
+  GV->setAlignment(Alignment);
+
+  LLVMContext &Ctx = M.getContext();
+  NamedMDNode *MD = M.getOrInsertNamedMetadata("llvm.embedded.objects");
+  Metadata *MDVals[] = {ConstantAsMetadata::get(GV),
+                        MDString::get(Ctx, SectionName)};
+
+  MD->addOperand(llvm::MDNode::get(Ctx, MDVals));
+  GV->setMetadata(LLVMContext::MD_exclude, llvm::MDNode::get(Ctx, {}));
+
+  appendToCompilerUsed(M, GV);
+}
+
+Error embedHostOutIntoHostModule(Module &HostM, StringRef HostOutPath) {
+  llvm::errs() << "embedHostOutIntoHostModule step 1:\n";
+  auto MBOrErr = MemoryBuffer::getFile(HostOutPath);
+  llvm::errs() << "embedHostOutIntoHostModule step 2:\n";
+  if (!MBOrErr)
+    return errorCodeToError(MBOrErr.getError());
+
+  llvm::errs() << "embedHostOutIntoHostModule step 3:\n";
+  MemoryBufferRef Buf = (*MBOrErr)->getMemBufferRef();
+  llvm::errs() << "embedHostOutIntoHostModule step 4:\n";
+  embedBufferInModule(HostM, Buf);
+  return Error::success();
+}
+
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/IR/LegacyPassManager.h"
+//#include "llvm/Support/Host.h"
+//#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/CodeGen.h"        // <-- new
+
+Error emitHostObjectWithTM(Module &HostM,
+                           TargetMachine &TM,
+                           StringRef OutObjPath) {
+  // Make sure module matches the TM
+  //HostM.setDataLayout(TM.createDataLayout());
+  //HostM.setTargetTriple(TM.getTargetTriple().str());
+
+  legacy::PassManager PM;
+  std::error_code EC;
+  raw_fd_ostream OS(OutObjPath, EC, sys::fs::OF_None);
+  if (EC)
+    return errorCodeToError(EC);
+
+  if (TM.addPassesToEmitFile(PM, OS, nullptr, llvm::CodeGenFileType::ObjectFile))
+    return createStringError(inconvertibleErrorCode(),
+                             "TargetMachine can't emit a file of this type");
+
+  PM.run(HostM);
+  return Error::success();
+}
+
 extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
@@ -162,6 +306,65 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::CloneFunctionInto(newFn, oldFn, vmap,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
+}
+
+// Create a host TargetMachine with HARDCODED triple/CPU
+static std::unique_ptr<TargetMachine> createHostTargetMachine() {
+  static bool Initialized = false;
+  if (!Initialized) {
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmPrinters();
+    InitializeAllAsmParsers();
+    Initialized = true;
+  }
+
+  // Hardcoded host triple + CPU (adapt if your CI/host differs)
+  std::string TripleStr = "x86_64-unknown-linux-gnu";
+  std::string CPU       = "x86-64"; // OK for X86
+
+  std::string Err;
+  const Target *T = TargetRegistry::lookupTarget(TripleStr, Err);
+  if (!T) {
+    // Could log Err here
+    return nullptr;
+  }
+
+  TargetOptions Opts;
+  auto RM = std::optional<Reloc::Model>(Reloc::PIC_);
+
+  std::unique_ptr<TargetMachine> TM(
+      T->createTargetMachine(TripleStr, CPU, /*Features*/"", Opts, RM));
+
+  return TM;
+}
+
+// Top-level entry: host finalize in second rustc invocation
+// lib.bc (from first rustc) + host.out (from LLVMRustBundleImages) => host.offload.o
+extern "C" bool LLVMRustFinalizeOffload(const char *LibBCPath,
+                                        const char *HostOutPath,
+                                        const char *OutObjPath) {
+  LLVMContext Ctx;
+
+  // 1. Load host lib.bc
+  auto ModOrErr = loadHostModuleFromBitcode(Ctx, LibBCPath);
+  if (!ModOrErr)
+    return !errorToBool(ModOrErr.takeError());
+  std::unique_ptr<Module> HostM = std::move(*ModOrErr);
+
+  // 2. Embed host.out
+  if (Error E = embedHostOutIntoHostModule(*HostM, HostOutPath))
+    return !errorToBool(std::move(E));
+
+  // 3. Create host TM and emit host object
+  auto HostTM = createHostTargetMachine();
+  if (!HostTM)
+    return false;
+
+  if (Error E = emitHostObjectWithTM(*HostM, *HostTM, OutObjPath))
+    return !errorToBool(std::move(E));
+
+  return true;
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
