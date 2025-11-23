@@ -63,6 +63,8 @@ a type parameter).
 */
 
 pub mod always_applicable;
+#[cfg_attr(bootstrap, allow(unknown_lints))]
+#[allow(module_inception)]
 mod check;
 mod compare_impl_item;
 mod entry;

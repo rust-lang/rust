@@ -4,6 +4,7 @@
 // Similar to https://github.com/rust-lang/rust/issues/131474
 
 //@ check-pass
+#![allow(module_inception)]
 
 pub mod tmp {
     pub mod tmp {
