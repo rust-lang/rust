@@ -348,7 +348,7 @@ impl CodeSuggestion {
             hi_opt: Option<&Loc>,
         ) -> usize {
             let mut line_count = 0;
-            // Convert CharPos to Usize, as CharPose is character offset
+            // Convert `CharPos` to `usize`, as `CharPos` is character offset
             // Extract low index and high index
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
