@@ -14,7 +14,7 @@ fn assert_unpin<T: Unpin>(_: T) {}
 fn main() {
     let mut coroutine = #[coroutine]
     static || {
-        yield;
+        ().yield;
     };
     assert_unpin(coroutine); //~ ERROR E0277
 }

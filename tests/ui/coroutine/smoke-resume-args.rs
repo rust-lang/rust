@@ -52,32 +52,32 @@ fn main() {
     drain(
         &mut #[coroutine] |mut b| {
             while b != 0 {
-                b = yield (b + 1);
+                b = (b + 1).yield;
             }
             -1
         },
         vec![(1, Yielded(2)), (-45, Yielded(-44)), (500, Yielded(501)), (0, Complete(-1))],
     );
 
-    expect_drops(2, || drain(&mut #[coroutine] |a| yield a, vec![(DropMe, Yielded(DropMe))]));
+    expect_drops(2, || drain(&mut #[coroutine] |a| a.yield, vec![(DropMe, Yielded(DropMe))]));
 
     expect_drops(6, || {
         drain(
-            &mut #[coroutine] |a| yield yield a,
+            &mut #[coroutine] |a| a.yield.yield,
             vec![(DropMe, Yielded(DropMe)), (DropMe, Yielded(DropMe)), (DropMe, Complete(DropMe))],
         )
     });
 
     #[allow(unreachable_code)]
     expect_drops(2, || drain(
-        &mut #[coroutine] |a| yield return a,
+        &mut #[coroutine] |a| (return a).yield,
         vec![(DropMe, Complete(DropMe))]
     ));
 
     expect_drops(2, || {
         drain(
             &mut #[coroutine] |a: DropMe| {
-                if false { yield () } else { a }
+                if false { ().yield } else { a }
             },
             vec![(DropMe, Complete(DropMe))],
         )
@@ -87,9 +87,9 @@ fn main() {
         drain(
             #[allow(unused_assignments, unused_variables)]
             &mut #[coroutine] |mut a: DropMe| {
-                a = yield;
-                a = yield;
-                a = yield;
+                a = ().yield;
+                a = ().yield;
+                a = ().yield;
             },
             vec![
                 (DropMe, Yielded(())),

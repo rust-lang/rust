@@ -5,15 +5,15 @@
 #![feature(gen_blocks)]
 
 fn foo() -> impl Iterator<Item = u32> {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn bar() -> impl Iterator<Item = i64> {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn baz() -> impl Iterator<Item = i32> {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn main() {}

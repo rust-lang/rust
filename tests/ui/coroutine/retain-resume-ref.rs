@@ -15,7 +15,7 @@ fn main() {
     let mut gen = #[coroutine]
     |r| {
         if false {
-            yield r;
+            r.yield;
         }
     };
 

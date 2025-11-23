@@ -115,7 +115,7 @@ impl<'unnecessary_lifetime> MyVec {
     }
 
     fn coroutine_doesnt_capture_unnecessary_lifetime<'s: 's>() -> impl Sized {
-        #[coroutine] || yield
+        #[coroutine] || ().yield
     }
 }
 

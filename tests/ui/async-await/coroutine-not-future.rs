@@ -12,7 +12,7 @@ fn returns_async_block() -> impl Future<Output = ()> {
 fn returns_coroutine() -> impl Coroutine<(), Yield = (), Return = ()> {
     #[coroutine]
     || {
-        let _: () = yield ();
+        let _: () = ().yield;
     }
 }
 
@@ -28,7 +28,7 @@ fn main() {
     takes_coroutine(
         #[coroutine]
         || {
-            let _: () = yield ();
+            let _: () = ().yield;
         },
     );
 
@@ -47,7 +47,7 @@ fn main() {
         #[coroutine]
         |ctx| {
             //~^ ERROR is not a future
-            ctx = yield ();
+            ctx = ().yield;
         },
     );
 }

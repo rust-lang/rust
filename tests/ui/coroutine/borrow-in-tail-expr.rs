@@ -4,7 +4,7 @@
 
 fn main() {
     let _a = #[coroutine] || {
-        yield;
+        ().yield;
         let a = String::new();
         a.len()
     };

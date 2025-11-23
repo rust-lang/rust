@@ -7,7 +7,7 @@
 fn coroutine_hold() -> impl Sized {
     #[coroutine] move || { //~ ERROR recursion in a coroutine requires boxing
         let x = coroutine_hold();
-        yield;
+        ().yield;
         x;
     }
 }

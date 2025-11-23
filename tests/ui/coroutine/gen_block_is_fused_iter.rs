@@ -7,15 +7,15 @@
 use std::iter::FusedIterator;
 
 fn foo() -> impl FusedIterator {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn bar() -> impl FusedIterator<Item = u16> {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn baz() -> impl FusedIterator + Iterator<Item = i64> {
-    gen { yield 42 }
+    gen { 42.yield }
 }
 
 fn main() {}

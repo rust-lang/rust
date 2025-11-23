@@ -3,6 +3,6 @@
 #![feature(coroutines, gen_blocks, stmt_expr_attributes)]
 
 fn main() {
-    let _ = #[coroutine] || yield;
+    let _ = #[coroutine] || ().yield;
     //~^ ERROR `yield` can only be used
 }

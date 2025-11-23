@@ -1,6 +1,6 @@
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{self, ExprPrecedence};
-use rustc_ast::{Expr, ExprKind, YieldKind};
+use rustc_ast::{Expr, ExprKind};
 
 // The default amount of fixing is minimal fixing, so all fixups are set to `false` by `Default`.
 // Fixups should be turned on in a targeted fashion where needed.
@@ -239,11 +239,7 @@ impl FixupContext {
             // Decrease precedence of value-less jumps when followed by an
             // operator that would otherwise get interpreted as beginning a
             // value for the jump.
-            if let ExprKind::Break(..)
-            | ExprKind::Ret(..)
-            | ExprKind::Yeet(..)
-            | ExprKind::Yield(YieldKind::Prefix(..)) = expr.kind
-            {
+            if let ExprKind::Break(..) | ExprKind::Ret(..) | ExprKind::Yeet(..) = expr.kind {
                 return ExprPrecedence::Jump;
             }
         }
@@ -255,7 +251,6 @@ impl FixupContext {
             | ExprKind::Closure(..)
             | ExprKind::Ret(..)
             | ExprKind::Yeet(..)
-            | ExprKind::Yield(YieldKind::Prefix(..))
             | ExprKind::Range(None, ..) = expr.kind
             {
                 return ExprPrecedence::Prefix;

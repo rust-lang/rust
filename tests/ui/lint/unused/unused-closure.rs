@@ -25,7 +25,7 @@ fn unused() {
 
 fn ignored() {
     let _ = || {};
-    let _ = #[coroutine] || yield 42;
+    let _ = #[coroutine] || 42.yield;
 }
 
 fn main() {

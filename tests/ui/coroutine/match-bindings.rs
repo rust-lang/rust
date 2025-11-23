@@ -17,7 +17,7 @@ fn main() {
                     Enum::B => {}
                 }
             }
-            yield;
+            ().yield;
         }
     };
 }
