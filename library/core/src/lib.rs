@@ -126,8 +126,6 @@
 #![feature(str_split_inclusive_remainder)]
 #![feature(str_split_remainder)]
 #![feature(ub_checks)]
-#![feature(unchecked_neg)]
-#![feature(unchecked_shifts)]
 #![feature(unsafe_pinned)]
 #![feature(utf16_extra)]
 #![feature(variant_count)]

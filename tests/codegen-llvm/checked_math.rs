@@ -1,7 +1,6 @@
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 
 #![crate_type = "lib"]
-#![feature(unchecked_shifts)]
 
 // Because the result of something like `u32::checked_sub` can only be used if it
 // didn't overflow, make sure that LLVM actually knows that in optimized builds.
