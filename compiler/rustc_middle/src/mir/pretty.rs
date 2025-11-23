@@ -1869,6 +1869,13 @@ fn pretty_print_const_value_tcx<'tcx>(
         return Ok(());
     }
 
+    // Printing [MaybeUninit<u8>::uninit(); N] or any other aggregate where all fields are uninit
+    // becomes very verbose. This special case makes the dump terse and clear.
+    if ct.all_bytes_uninit(tcx) {
+        fmt.write_str("<uninit>")?;
+        return Ok(());
+    }
+
     let u8_type = tcx.types.u8;
     match (ct, ty.kind()) {
         // Byte/string slices, printed as (byte) string literals.

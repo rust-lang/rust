@@ -522,6 +522,10 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     pub(super) fn op(&self) -> &Operand<Prov> {
         &self.op
     }
+
+    pub fn is_immediate_uninit(&self) -> bool {
+        matches!(self.op, Operand::Immediate(Immediate::Uninit))
+    }
 }
 
 impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for OpTy<'tcx, Prov> {
