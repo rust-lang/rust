@@ -5,12 +5,12 @@ use crate::collections::HashMap;
 use crate::ffi::{CStr, OsStr, OsString, c_char};
 use crate::io;
 use crate::os::hermit::ffi::OsStringExt;
-use crate::sync::Mutex;
+use crate::sync::nonpoison::Mutex;
 
 static ENV: Mutex<Option<HashMap<OsString, OsString>>> = Mutex::new(None);
 
 pub fn init(env: *const *const c_char) {
-    let mut guard = ENV.lock().unwrap();
+    let mut guard = ENV.lock();
     let map = guard.insert(HashMap::new());
 
     if env.is_null() {
@@ -48,7 +48,7 @@ pub fn init(env: *const *const c_char) {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    let guard = ENV.lock().unwrap();
+    let guard = ENV.lock();
     let env = guard.as_ref().unwrap();
 
     let result = env.iter().map(|(key, value)| (key.clone(), value.clone())).collect();
@@ -57,16 +57,16 @@ pub fn env() -> Env {
 }
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
-    ENV.lock().unwrap().as_ref().unwrap().get(k).cloned()
+    ENV.lock().as_ref().unwrap().get(k).cloned()
 }
 
 pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let (k, v) = (k.to_owned(), v.to_owned());
-    ENV.lock().unwrap().as_mut().unwrap().insert(k, v);
+    ENV.lock().as_mut().unwrap().insert(k, v);
     Ok(())
 }
 
 pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
-    ENV.lock().unwrap().as_mut().unwrap().remove(k);
+    ENV.lock().as_mut().unwrap().remove(k);
     Ok(())
 }

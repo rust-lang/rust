@@ -5,7 +5,7 @@ use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sync::{Mutex, MutexGuard, PoisonError};
+use crate::sync::nonpoison::{Mutex, MutexGuard};
 use crate::{env, fmt, io};
 
 /// Max number of frames to print.
@@ -15,7 +15,7 @@ pub(crate) struct BacktraceLock<'a>(#[allow(dead_code)] MutexGuard<'a, ()>);
 
 pub(crate) fn lock<'a>() -> BacktraceLock<'a> {
     static LOCK: Mutex<()> = Mutex::new(());
-    BacktraceLock(LOCK.lock().unwrap_or_else(PoisonError::into_inner))
+    BacktraceLock(LOCK.lock())
 }
 
 impl BacktraceLock<'_> {
