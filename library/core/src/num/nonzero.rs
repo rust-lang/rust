@@ -1657,7 +1657,15 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
                       without modifying the original"]
         #[inline]
         pub const fn ilog10(self) -> u32 {
-            super::int_log10::$Int(self.get())
+            const MAX_RESULT: u32 = super::int_log10::$Int(<$Int>::MAX);
+
+            let result = super::int_log10::$Int(self.get());
+
+            // SAFETY: `ilog10` is a monotonically nondecreasing function, so the result for
+            // positive inputs is always in the range [0, `MAX_RESULT`].
+            unsafe { crate::hint::assert_unchecked(result <= MAX_RESULT) };
+
+            result
         }
 
         /// Calculates the midpoint (average) between `self` and `rhs`.
