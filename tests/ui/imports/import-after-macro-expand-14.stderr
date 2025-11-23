@@ -1,0 +1,64 @@
+error[E0659]: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-14.rs:1:15
+   |
+LL | use crate::a::HeaderMap;
+   |               ^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the struct imported here
+  --> $DIR/import-after-macro-expand-14.rs:16:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the struct imported here
+  --> $DIR/import-after-macro-expand-14.rs:16:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+
+error[E0659]: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-14.rs:20:34
+   |
+LL |     let h: crate::b::HeaderMap = HeaderMap;
+   |                                  ^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `HeaderMap` could refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-14.rs:16:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+note: `HeaderMap` could also refer to the unit struct imported here
+  --> $DIR/import-after-macro-expand-14.rs:16:13
+   |
+LL |     pub use crate::b::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `HeaderMap` to disambiguate
+
+error[E0308]: mismatched types
+  --> $DIR/import-after-macro-expand-14.rs:20:34
+   |
+LL |     let h: crate::b::HeaderMap = HeaderMap;
+   |            -------------------   ^^^^^^^^^ expected `b::HeaderMap`, found `http::HeaderMap`
+   |            |
+   |            expected due to this
+   |
+   = note: `http::HeaderMap` and `b::HeaderMap` have similar names, but are actually distinct types
+note: `http::HeaderMap` is defined in module `crate::b::http` of the current crate
+  --> $DIR/import-after-macro-expand-14.rs:7:9
+   |
+LL |         pub struct HeaderMap;
+   |         ^^^^^^^^^^^^^^^^^^^^
+note: `b::HeaderMap` is defined in module `crate::b` of the current crate
+  --> $DIR/import-after-macro-expand-14.rs:12:5
+   |
+LL |     pub struct HeaderMap;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0659.
+For more information about an error, try `rustc --explain E0308`.

@@ -53,7 +53,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         binding: NameBinding<'ra>,
     ) {
-        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding, false) {
+        if let Err(old_binding) = self.try_define_local(parent, ident, ns, binding) {
             self.report_conflict(parent, ident, ns, old_binding, binding);
         }
     }
