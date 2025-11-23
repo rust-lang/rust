@@ -5,15 +5,17 @@ use std::io::{self, BufRead, Write};
 pub fn read_postcard<'a>(
     input: &mut impl BufRead,
     buf: &'a mut Vec<u8>,
-) -> io::Result<Option<&'a mut [u8]>> {
+) -> io::Result<Option<&'a mut Vec<u8>>> {
     buf.clear();
     let n = input.read_until(0, buf)?;
     if n == 0 {
         return Ok(None);
     }
-    Ok(Some(&mut buf[..]))
+    Ok(Some(buf))
 }
-pub fn write_postcard(out: &mut impl Write, msg: &[u8]) -> io::Result<()> {
+
+#[allow(clippy::ptr_arg)]
+pub fn write_postcard(out: &mut impl Write, msg: &Vec<u8>) -> io::Result<()> {
     out.write_all(msg)?;
     out.flush()
 }

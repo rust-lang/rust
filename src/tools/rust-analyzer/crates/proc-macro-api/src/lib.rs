@@ -31,10 +31,9 @@ pub mod version {
     /// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
     pub const EXTENDED_LEAF_DATA: u32 = 5;
     pub const HASHED_AST_ID: u32 = 6;
-    pub const POSTCARD_WIRE: u32 = 7;
 
     /// Current API version of the proc-macro protocol.
-    pub const CURRENT_API_VERSION: u32 = POSTCARD_WIRE;
+    pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
 }
 
 /// Represents different kinds of procedural macros that can be expanded by the external server.
@@ -124,7 +123,7 @@ impl ProcMacroClient {
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(process_path, env)?;
+        let process = ProcMacroServerProcess::run(process_path, env, process::Protocol::default())?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 

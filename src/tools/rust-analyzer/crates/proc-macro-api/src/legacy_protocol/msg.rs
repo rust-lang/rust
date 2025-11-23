@@ -153,7 +153,7 @@ impl ExpnGlobals {
 
 pub trait Message: serde::Serialize + DeserializeOwned {
     fn read<R: BufRead>(
-        from_proto: ProtocolRead<R>,
+        from_proto: ProtocolRead<R, String>,
         inp: &mut R,
         buf: &mut String,
     ) -> io::Result<Option<Self>> {
@@ -168,13 +168,13 @@ pub trait Message: serde::Serialize + DeserializeOwned {
             }
         })
     }
-    fn write<W: Write>(self, to_proto: ProtocolWrite<W>, out: &mut W) -> io::Result<()> {
+    fn write<W: Write>(self, to_proto: ProtocolWrite<W, String>, out: &mut W) -> io::Result<()> {
         let text = serde_json::to_string(&self)?;
         to_proto(out, &text)
     }
 
     fn read_postcard<R: BufRead>(
-        from_proto: ProtocolReadPostcard<R>,
+        from_proto: ProtocolRead<R, Vec<u8>>,
         inp: &mut R,
         buf: &mut Vec<u8>,
     ) -> io::Result<Option<Self>> {
@@ -186,7 +186,7 @@ pub trait Message: serde::Serialize + DeserializeOwned {
 
     fn write_postcard<W: Write>(
         self,
-        to_proto: ProtocolWritePostcard<W>,
+        to_proto: ProtocolWrite<W, Vec<u8>>,
         out: &mut W,
     ) -> io::Result<()> {
         let buf = encode_cobs(&self)?;
@@ -199,20 +199,12 @@ impl Message for Response {}
 
 /// Type alias for a function that reads protocol messages from a buffered input stream.
 #[allow(type_alias_bounds)]
-type ProtocolRead<R: BufRead> =
-    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
+type ProtocolRead<R: BufRead, Buf> =
+    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut Buf) -> io::Result<Option<&'buf mut Buf>>;
 /// Type alias for a function that writes protocol messages to an output stream.
 #[allow(type_alias_bounds)]
-type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
-
-/// Type alias for a function that reads protocol postcard messages from a buffered input stream.
-#[allow(type_alias_bounds)]
-type ProtocolReadPostcard<R: BufRead> =
-    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut Vec<u8>) -> io::Result<Option<&'buf mut [u8]>>;
-/// Type alias for a function that writes protocol postcard messages to an output stream.
-#[allow(type_alias_bounds)]
-type ProtocolWritePostcard<W: Write> =
-    for<'o, 'msg> fn(out: &'o mut W, msg: &'msg [u8]) -> io::Result<()>;
+type ProtocolWrite<W: Write, Buf> =
+    for<'o, 'msg> fn(out: &'o mut W, msg: &'msg Buf) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {

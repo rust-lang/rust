@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("postcard")
+                .default_value("json")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")

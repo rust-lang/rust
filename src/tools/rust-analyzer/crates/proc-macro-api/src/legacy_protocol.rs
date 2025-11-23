@@ -21,6 +21,7 @@ use crate::{
             ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
             flat::serialize_span_data_index_map,
         },
+        postcard::{read_postcard, write_postcard},
     },
     process::ProcMacroServerProcess,
     version,
@@ -153,7 +154,7 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
     }
 
     if srv.use_postcard() {
-        srv.send_task_bin(send_request_postcard, req)
+        srv.send_task(send_request_postcard, req)
     } else {
         srv.send_task(send_request, req)
     }
@@ -183,27 +184,12 @@ fn send_request_postcard(
     req: Request,
     buf: &mut Vec<u8>,
 ) -> Result<Option<Response>, ServerError> {
-    let bytes = postcard::encode_cobs(&req)
-        .map_err(|_| ServerError { message: "failed to write request".into(), io: None })?;
-
-    postcard::write_postcard(&mut writer, &bytes).map_err(|err| ServerError {
+    req.write_postcard(write_postcard, &mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
-
-    let frame = postcard::read_postcard(&mut reader, buf).map_err(|err| ServerError {
-        message: "failed to read response".into(),
-        io: Some(Arc::new(err)),
+    let res = Response::read_postcard(read_postcard, &mut reader, buf).map_err(|err| {
+        ServerError { message: "failed to read response".into(), io: Some(Arc::new(err)) }
     })?;
-
-    match frame {
-        None => Ok(None),
-        Some(bytes) => {
-            let resp: Response = postcard::decode_cobs(bytes).map_err(|e| ServerError {
-                message: format!("failed to decode message: {e}"),
-                io: None,
-            })?;
-            Ok(Some(resp))
-        }
-    }
+    Ok(res)
 }

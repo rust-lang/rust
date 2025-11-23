@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Write};
 pub fn read_json<'a>(
     inp: &mut impl BufRead,
     buf: &'a mut String,
-) -> io::Result<Option<&'a String>> {
+) -> io::Result<Option<&'a mut String>> {
     loop {
         buf.clear();
 
@@ -28,7 +28,7 @@ pub fn read_json<'a>(
 }
 
 /// Writes a JSON message to the output stream.
-pub fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
+pub fn write_json(out: &mut impl Write, msg: &String) -> io::Result<()> {
     tracing::debug!("> {}", msg);
     out.write_all(msg.as_bytes())?;
     out.write_all(b"\n")?;
