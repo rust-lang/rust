@@ -6,10 +6,7 @@ use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, RtsanSetting, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::{
-    self as hir, Attribute, CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem,
-    find_attr, lang_items,
-};
+use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
@@ -389,15 +386,6 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
         }
     }
 
-    // #129347: desugared async coutines inherit inline attrs from the async fn/closure
-    if let Some(parent) = async_poll_inherit_inline(tcx, did.to_def_id()) {
-        let parent_attrs = tcx.codegen_fn_attrs(parent);
-        if matches!(parent_attrs.inline, InlineAttr::Never | InlineAttr::Hint | InlineAttr::Always)
-        {
-            codegen_fn_attrs.inline = parent_attrs.inline;
-        }
-    }
-
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
     let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
@@ -657,23 +645,6 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 /// attribute on the method prototype (if any).
 fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
     tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
-}
-
-// Checks if the given DefId is a desugared async coroutine that should inherit inline attrs.
-fn async_poll_inherit_inline(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    let Some(kind) = tcx.coroutine_kind(def_id) else {
-        return None;
-    };
-
-    if matches!(
-        kind,
-        CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Fn)
-            | CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)
-    ) {
-        Some(tcx.parent(def_id))
-    } else {
-        None
-    }
 }
 
 /// We now check the #\[rustc_autodiff\] attributes which we generated from the #[autodiff(...)]

@@ -1290,6 +1290,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // FIXME(async_fn_track_caller): Can this be moved above?
             let hir_id = expr.hir_id;
             this.maybe_forward_track_caller(body.span, fn_id, hir_id);
+            this.forward_inline(body.span, fn_id, hir_id);
 
             (parameters, expr)
         })
