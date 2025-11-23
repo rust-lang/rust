@@ -43,7 +43,7 @@ use crate::errors::{
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::llvm_type_ptr;
-use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, base, common, llvm_util};
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
@@ -712,11 +712,12 @@ pub(crate) unsafe fn llvm_optimize(
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
         // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
         // introducing a proper offload intrinsic to solve this limitation.
-        for num in 0..9 {
-            let name = format!("kernel_{num}");
-            if let Some(kernel) = cx.get_function(&name) {
-                handle_offload(&cx, kernel);
+        for func in cx.get_functions() {
+            let offload_kernel = "offload-kernel";
+            if attributes::has_string_attr(func, offload_kernel) {
+                handle_offload(&cx, func);
             }
+            attributes::remove_string_attr_from_llfn(func, offload_kernel);
         }
     }
 

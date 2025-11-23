@@ -11,6 +11,7 @@
 // when inside of a function called main. This, too, is a temporary workaround for not having a
 // frontend.
 
+#![feature(core_intrinsics)]
 #![no_main]
 
 #[unsafe(no_mangle)]
@@ -25,73 +26,70 @@ fn main() {
 // CHECK: %struct.__tgt_bin_desc = type { i32, ptr, ptr, ptr }
 // CHECK: %struct.__tgt_kernel_arguments = type { i32, i32, ptr, ptr, ptr, ptr, ptr, ptr, i64, i64, [3 x i32], [3 x i32], i32 }
 
-// CHECK: @.offload_sizes.1 = private unnamed_addr constant [1 x i64] [i64 1024]
-// CHECK: @.offload_maptypes.1 = private unnamed_addr constant [1 x i64] [i64 35]
-// CHECK: @.kernel_1.region_id = weak unnamed_addr constant i8 0
-// CHECK: @.offloading.entry_name.1 = internal unnamed_addr constant [9 x i8] c"kernel_1\00", section ".llvm.rodata.offloading", align 1
-// CHECK: @.offloading.entry.kernel_1 = weak constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @.kernel_1.region_id, ptr @.offloading.entry_name.1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
-// CHECK: @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
-// CHECK: @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
+// CHECK: @.offload_sizes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 1024]
+// CHECK: @.offload_maptypes._kernel_1 = private unnamed_addr constant [1 x i64] [i64 35]
+// CHECK: @._kernel_1.region_id = internal unnamed_addr constant i8 0
+// CHECK: @.offloading.entry_name._kernel_1 = internal unnamed_addr constant [10 x i8] c"_kernel_1\00", section ".llvm.rodata.offloading", align 1
+// CHECK: @.offloading.entry._kernel_1 = internal constant %struct.__tgt_offload_entry { i64 0, i16 1, i16 1, i32 0, ptr @._kernel_1.region_id, ptr @.offloading.entry_name._kernel_1, i64 0, i64 0, ptr null }, section "llvm_offload_entries", align 8
+
+// CHECK: @anon.{{.*}}.0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
+// CHECK: @anon.{{.*}}.1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @anon.{{.*}}.0 }, align 8
 
 // CHECK:  Function Attrs:
 // CHECK-NEXT: define{{( dso_local)?}} void @main()
 // CHECK-NEXT: start:
 // CHECK-NEXT:   %0 = alloca [8 x i8], align 8
 // CHECK-NEXT:   %x = alloca [1024 x i8], align 16
+// CHECK:        call void @kernel_1(ptr noalias noundef nonnull align 4 dereferenceable(1024) %x)
+// CHECK-NEXT:   call void @llvm.lifetime.start.p0(i64 8, ptr nonnull %0)
+// CHECK-NEXT:   store ptr %x, ptr %0, align 8
+// CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0) #4, !srcloc !4
+// CHECK-NEXT:   call void @llvm.lifetime.end.p0(i64 8, ptr nonnull %0)
+// CHECK-NEXT:   call void @llvm.lifetime.end.p0(i64 1024, ptr nonnull %x)
+// CHECK-NEXT:   ret void
+// CHECK-NEXT: }
+
+// CHECK:      define{{( dso_local)?}} void @kernel_1(ptr noalias noundef align 4 dereferenceable(1024) %x)
+// CHECK-NEXT: start:
 // CHECK-NEXT:   %EmptyDesc = alloca %struct.__tgt_bin_desc, align 8
 // CHECK-NEXT:   %.offload_baseptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_ptrs = alloca [1 x ptr], align 8
 // CHECK-NEXT:   %.offload_sizes = alloca [1 x i64], align 8
 // CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
-// CHECK:        call void @llvm.memset.p0.i64(ptr align 8 %EmptyDesc, i8 0, i64 32, i1 false)
-// CHECK-NEXT:   %1 = getelementptr inbounds float, ptr %x, i32 0
-// CHECK-NEXT:   call void @__tgt_register_lib(ptr %EmptyDesc)
+// CHECK-NEXT:   %dummy = load volatile ptr, ptr @.offload_sizes._kernel_1, align 8
+// CHECK-NEXT:   %dummy1 = load volatile ptr, ptr @.offloading.entry._kernel_1, align 8
+// CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %EmptyDesc, i8 0, i64 32, i1 false)
+// CHECK-NEXT:   call void @__tgt_register_lib(ptr nonnull %EmptyDesc)
 // CHECK-NEXT:   call void @__tgt_init_all_rtls()
-// CHECK-NEXT:   %2 = getelementptr inbounds [1 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
-// CHECK-NEXT:   store ptr %x, ptr %2, align 8
-// CHECK-NEXT:   %3 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
-// CHECK-NEXT:   store ptr %1, ptr %3, align 8
-// CHECK-NEXT:   %4 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
-// CHECK-NEXT:   store i64 1024, ptr %4, align 8
-// CHECK-NEXT:   %5 = getelementptr inbounds [1 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
-// CHECK-NEXT:   %6 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
-// CHECK-NEXT:   %7 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
-// CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr @1, i64 -1, i32 1, ptr %5, ptr %6, ptr %7, ptr @.offload_maptypes.1, ptr null, ptr null)
-// CHECK-NEXT:   %8 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 0
-// CHECK-NEXT:   store i32 3, ptr %8, align 4
-// CHECK-NEXT:   %9 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 1
-// CHECK-NEXT:   store i32 1, ptr %9, align 4
-// CHECK-NEXT:   %10 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 2
-// CHECK-NEXT:   store ptr %5, ptr %10, align 8
-// CHECK-NEXT:   %11 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 3
-// CHECK-NEXT:   store ptr %6, ptr %11, align 8
-// CHECK-NEXT:   %12 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 4
-// CHECK-NEXT:   store ptr %7, ptr %12, align 8
-// CHECK-NEXT:   %13 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 5
-// CHECK-NEXT:   store ptr @.offload_maptypes.1, ptr %13, align 8
-// CHECK-NEXT:   %14 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 6
-// CHECK-NEXT:   store ptr null, ptr %14, align 8
-// CHECK-NEXT:   %15 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 7
-// CHECK-NEXT:   store ptr null, ptr %15, align 8
-// CHECK-NEXT:   %16 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 8
-// CHECK-NEXT:   store i64 0, ptr %16, align 8
-// CHECK-NEXT:   %17 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 9
-// CHECK-NEXT:   store i64 0, ptr %17, align 8
-// CHECK-NEXT:   %18 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 10
-// CHECK-NEXT:   store [3 x i32] [i32 2097152, i32 0, i32 0], ptr %18, align 4
-// CHECK-NEXT:   %19 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 11
-// CHECK-NEXT:   store [3 x i32] [i32 256, i32 0, i32 0], ptr %19, align 4
-// CHECK-NEXT:   %20 = getelementptr inbounds %struct.__tgt_kernel_arguments, ptr %kernel_args, i32 0, i32 12
-// CHECK-NEXT:   store i32 0, ptr %20, align 4
-// CHECK-NEXT:   %21 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)
-// CHECK-NEXT:   %22 = getelementptr inbounds [1 x ptr], ptr %.offload_baseptrs, i32 0, i32 0
-// CHECK-NEXT:   %23 = getelementptr inbounds [1 x ptr], ptr %.offload_ptrs, i32 0, i32 0
-// CHECK-NEXT:   %24 = getelementptr inbounds [1 x i64], ptr %.offload_sizes, i32 0, i32 0
-// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr @1, i64 -1, i32 1, ptr %22, ptr %23, ptr %24, ptr @.offload_maptypes.1, ptr null, ptr null)
-// CHECK-NEXT:   call void @__tgt_unregister_lib(ptr %EmptyDesc)
-// CHECK:        store ptr %x, ptr %0, align 8
-// CHECK-NEXT:   call void asm sideeffect "", "r,~{memory}"(ptr nonnull %0)
-// CHECK:        ret void
+// CHECK-NEXT:   store ptr %x, ptr %.offload_baseptrs, align 8
+// CHECK-NEXT:   store ptr %x, ptr %.offload_ptrs, align 8
+// CHECK-NEXT:   store i64 1024, ptr %.offload_sizes, align 8
+// CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes._kernel_1, ptr null, ptr null)
+// CHECK-NEXT:   store i32 3, ptr %kernel_args, align 8
+// CHECK-NEXT:   %0 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 4
+// CHECK-NEXT:   store i32 1, ptr %0, align 4
+// CHECK-NEXT:   %1 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 8
+// CHECK-NEXT:   store ptr %.offload_baseptrs, ptr %1, align 8
+// CHECK-NEXT:   %2 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 16
+// CHECK-NEXT:   store ptr %.offload_ptrs, ptr %2, align 8
+// CHECK-NEXT:   %3 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 24
+// CHECK-NEXT:   store ptr %.offload_sizes, ptr %3, align 8
+// CHECK-NEXT:   %4 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 32
+// CHECK-NEXT:   store ptr @.offload_maptypes._kernel_1, ptr %4, align 8
+// CHECK-NEXT:   %5 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 40
+// CHECK-NEXT:   %6 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 72
+// CHECK-NEXT:   call void @llvm.memset.p0.i64(ptr noundef nonnull align 8 dereferenceable(32) %5, i8 0, i64 32, i1 false)
+// CHECK-NEXT:   store <4 x i32> <i32 2097152, i32 0, i32 0, i32 256>, ptr %6, align 8
+// CHECK-NEXT:   %.fca.1.gep3 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 88
+// CHECK-NEXT:   store i32 0, ptr %.fca.1.gep3, align 8
+// CHECK-NEXT:   %.fca.2.gep4 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 92
+// CHECK-NEXT:   store i32 0, ptr %.fca.2.gep4, align 4
+// CHECK-NEXT:   %7 = getelementptr inbounds nuw i8, ptr %kernel_args, i64 96
+// CHECK-NEXT:   store i32 0, ptr %7, align 8
+// CHECK-NEXT:   %8 = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2097152, i32 256, ptr nonnull @._kernel_1.region_id, ptr nonnull %kernel_args)
+// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 1, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes._kernel_1, ptr null, ptr null)
+// CHECK-NEXT:   call void @__tgt_unregister_lib(ptr nonnull %EmptyDesc)
+// CHECK-NEXT:   ret void
 // CHECK-NEXT: }
 
 // CHECK: Function Attrs: nounwind
@@ -100,6 +98,12 @@ fn main() {
 #[unsafe(no_mangle)]
 #[inline(never)]
 pub fn kernel_1(x: &mut [f32; 256]) {
+    core::intrinsics::offload(_kernel_1, (x,))
+}
+
+#[unsafe(no_mangle)]
+#[inline(never)]
+pub fn _kernel_1(x: &mut [f32; 256]) {
     for i in 0..256 {
         x[i] = 21.0;
     }

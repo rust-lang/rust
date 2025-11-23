@@ -129,6 +129,7 @@ pub mod fast_reject;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
+pub mod offload_meta;
 pub mod pattern;
 pub mod print;
 pub mod relate;

@@ -41,6 +41,14 @@ pub(crate) struct AutoDiffWithoutLto;
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_without_enable)]
+pub(crate) struct OffloadWithoutEnable;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_without_fat_lto)]
+pub(crate) struct OffloadWithoutFatLTO;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
     pub err: String,

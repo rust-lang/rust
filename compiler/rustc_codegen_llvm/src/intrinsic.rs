@@ -13,6 +13,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir};
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
+use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
@@ -25,8 +26,11 @@ use tracing::debug;
 use crate::abi::FnAbiLlvmExt;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
+use crate::builder::gpu_offload::TgtOffloadEntry;
 use crate::context::CodegenCx;
-use crate::errors::{AutoDiffWithoutEnable, AutoDiffWithoutLto};
+use crate::errors::{
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
+};
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
@@ -195,6 +199,24 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::autodiff => {
                 codegen_autodiff(self, tcx, instance, args, result);
+                return Ok(());
+            }
+            sym::offload => {
+                if !tcx
+                    .sess
+                    .opts
+                    .unstable_opts
+                    .offload
+                    .contains(&rustc_session::config::Offload::Enable)
+                {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutEnable);
+                }
+
+                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                    let _ = tcx.dcx().emit_almost_fatal(OffloadWithoutFatLTO);
+                }
+
+                codegen_offload(self, tcx, instance, args);
                 return Ok(());
             }
             sym::is_val_statically_known => {
@@ -1229,6 +1251,62 @@ fn codegen_autodiff<'ll, 'tcx>(
         result,
         fnc_tree,
     );
+}
+
+// Generates the LLVM code to offload a Rust function to a target device (e.g., GPU).
+// For each kernel call, it generates the necessary globals (including metadata such as
+// size and pass mode), manages memory mapping to and from the device, handles all
+// data transfers, and launches the kernel on the target device.
+fn codegen_offload<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: ty::Instance<'tcx>,
+    args: &[OperandRef<'tcx, &'ll Value>],
+) {
+    let cx = bx.cx;
+    let fn_args = instance.args;
+
+    let (target_id, target_args) = match fn_args.into_type_list(tcx)[0].kind() {
+        ty::FnDef(def_id, params) => (def_id, params),
+        _ => bug!("invalid offload intrinsic arg"),
+    };
+
+    let fn_target = match Instance::try_resolve(tcx, cx.typing_env(), *target_id, target_args) {
+        Ok(Some(instance)) => instance,
+        Ok(None) => bug!(
+            "could not resolve ({:?}, {:?}) to a specific offload instance",
+            target_id,
+            target_args
+        ),
+        Err(_) => {
+            // An error has already been emitted
+            return;
+        }
+    };
+
+    let args = get_args_from_tuple(bx, args[1], fn_target);
+    let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
+
+    let offload_entry_ty = TgtOffloadEntry::new_decl(&cx);
+
+    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder().skip_binder();
+    let inputs = sig.inputs();
+
+    let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+
+    let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
+
+    let offload_data = crate::builder::gpu_offload::gen_define_handling(
+        cx,
+        offload_entry_ty,
+        &metadata,
+        &types,
+        &target_symbol,
+    );
+
+    // FIXME(Sa4dUs): pass the original builder once we separate kernel launch logic from globals
+    let bb = unsafe { llvm::LLVMGetInsertBlock(bx.llbuilder) };
+    crate::builder::gpu_offload::gen_call_handling(cx, bb, &offload_data, &args, &types, &metadata);
 }
 
 fn get_args_from_tuple<'ll, 'tcx>(
