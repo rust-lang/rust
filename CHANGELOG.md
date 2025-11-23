@@ -6280,6 +6280,7 @@ Released 2018-09-13
 [`cyclomatic_complexity`]: https://rust-lang.github.io/rust-clippy/master/index.html#cyclomatic_complexity
 [`dbg_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro
 [`debug_assert_with_mut_call`]: https://rust-lang.github.io/rust-clippy/master/index.html#debug_assert_with_mut_call
+[`decimal_bitwise_operands`]: https://rust-lang.github.io/rust-clippy/master/index.html#decimal_bitwise_operands
 [`decimal_literal_representation`]: https://rust-lang.github.io/rust-clippy/master/index.html#decimal_literal_representation
 [`declare_interior_mutable_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#declare_interior_mutable_const
 [`default_constructed_unit_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#default_constructed_unit_structs
