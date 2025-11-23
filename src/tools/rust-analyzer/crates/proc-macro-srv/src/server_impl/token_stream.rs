@@ -104,7 +104,6 @@ impl<S: Copy> TokenStream<S> {
                         span: bridge::DelimSpan {
                             open: subtree.delimiter.open,
                             close: subtree.delimiter.close,
-                            entire: join_spans(subtree.delimiter.open, subtree.delimiter.close),
                         },
                     }))
                 }

@@ -151,11 +151,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     trees.push(TokenTree::Group(Group {
                         delimiter: rustc_proc_macro::Delimiter::from_internal(delim),
                         stream: Some(stream),
-                        span: DelimSpan {
-                            open: span.open,
-                            close: span.close,
-                            entire: span.entire(),
-                        },
+                        span: DelimSpan { open: span.open, close: span.close },
                     }));
                     continue;
                 }
