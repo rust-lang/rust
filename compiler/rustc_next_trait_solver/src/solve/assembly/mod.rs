@@ -790,9 +790,6 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let cx = self.cx();
-        if !cx.trait_may_be_implemented_via_object(goal.predicate.trait_def_id(cx)) {
-            return;
-        }
 
         let self_ty = goal.predicate.self_ty();
         let bounds = match self_ty.kind() {
