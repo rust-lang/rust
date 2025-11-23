@@ -873,6 +873,9 @@ impl Build {
         if self.config.llvm_enzyme {
             features.push("llvm_enzyme");
         }
+        if self.config.llvm_offload {
+            features.push("llvm_offload");
+        }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
             features.push("rustc_randomized_layouts");
