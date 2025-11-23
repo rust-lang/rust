@@ -127,6 +127,56 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: _1.swap_bytes(), _1);
             }
 
+            fn test_gather_bits() {
+                assert_eq_const_safe!($T: A.gather_bits(B), 0b_0010);
+                assert_eq_const_safe!($T: A.gather_bits(C), 0b_1010);
+
+                assert_eq_const_safe!($T: B.gather_bits(A), 0b_0100);
+                assert_eq_const_safe!($T: B.gather_bits(C), 0b_1001);
+
+                assert_eq_const_safe!($T: C.gather_bits(A), 0b_0110);
+                assert_eq_const_safe!($T: C.gather_bits(B), 0b_0011);
+
+                assert_eq_const_safe!($T: A.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: B.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: C.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(A), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(B), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(C), 0);
+
+                assert_eq_const_safe!($T: A.gather_bits(_1), A);
+                assert_eq_const_safe!($T: B.gather_bits(_1), B);
+                assert_eq_const_safe!($T: C.gather_bits(_1), C);
+                assert_eq_const_safe!($T: _1.gather_bits(A), 0b0000_0111);
+                assert_eq_const_safe!($T: _1.gather_bits(B), 0b0000_0011);
+                assert_eq_const_safe!($T: _1.gather_bits(C), 0b0001_1111);
+            }
+
+            fn test_scatter_bits() {
+                assert_eq_const_safe!($T: A.scatter_bits(B), 0);
+                assert_eq_const_safe!($T: A.scatter_bits(C), 0b0011_0000);
+
+                assert_eq_const_safe!($T: B.scatter_bits(A), 0b0000_0100);
+                assert_eq_const_safe!($T: B.scatter_bits(C), 0b0000_0001);
+
+                assert_eq_const_safe!($T: C.scatter_bits(A), 0b_0000_0100);
+                assert_eq_const_safe!($T: C.scatter_bits(B), 0b_0000_0001);
+
+                assert_eq_const_safe!($T: A.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: B.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: C.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(A), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(B), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(C), 0);
+
+                assert_eq_const_safe!($T: A.scatter_bits(_1), A);
+                assert_eq_const_safe!($T: B.scatter_bits(_1), B);
+                assert_eq_const_safe!($T: C.scatter_bits(_1), C);
+                assert_eq_const_safe!($T: _1.scatter_bits(A), A);
+                assert_eq_const_safe!($T: _1.scatter_bits(B), B);
+                assert_eq_const_safe!($T: _1.scatter_bits(C), C);
+            }
+
             fn test_reverse_bits() {
                 assert_eq_const_safe!($T: A.reverse_bits().reverse_bits(), A);
                 assert_eq_const_safe!($T: B.reverse_bits().reverse_bits(), B);
