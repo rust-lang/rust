@@ -363,7 +363,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             .unwrap_or(target_def_id);
         item_def_id != import_def_id
             && self.cx.cache.effective_visibilities.is_directly_public(tcx, item_def_id.to_def_id())
-            && !tcx.is_doc_hidden(item_def_id)
+            && !tcx.is_doc_hidden(item_def_id.to_def_id())
             && !inherits_doc_hidden(tcx, item_def_id, None)
     }
 
