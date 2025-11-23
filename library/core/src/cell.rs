@@ -1801,7 +1801,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
-impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'a, U>> for Ref<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
@@ -2107,7 +2107,7 @@ impl<T: ?Sized> const DerefMut for RefMut<'_, T> {
 unsafe impl<T: ?Sized> DerefPure for RefMut<'_, T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
-impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'a, U>> for RefMut<'b, T> {}
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
