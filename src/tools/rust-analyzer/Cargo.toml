@@ -156,7 +156,7 @@ smol_str = "0.3.2"
 temp-dir = "0.1.16"
 text-size = "1.1.1"
 toml = "0.9.8"
-tracing = "0.1.41"
+tracing = { version = "0.1.41", default-features = false, features = ["std"] }
 tracing-tree = "0.4.0"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "registry",
