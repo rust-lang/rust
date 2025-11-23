@@ -322,12 +322,6 @@ impl Slice {
     }
 
     #[inline]
-    pub fn into_box(&self) -> Box<Slice> {
-        let boxed: Box<[u8]> = self.inner.into();
-        unsafe { mem::transmute(boxed) }
-    }
-
-    #[inline]
     pub fn empty_box() -> Box<Slice> {
         let boxed: Box<[u8]> = Default::default();
         unsafe { mem::transmute(boxed) }
