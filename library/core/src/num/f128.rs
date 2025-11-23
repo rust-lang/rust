@@ -1276,6 +1276,54 @@ impl f128 {
         self
     }
 
+    /// Restrict a value to a maximum bound.
+    ///
+    /// Returns `max` if `self` is greater than `max`. Otherwise this returns `self`. If either `self` or `max` is NaN, the other is returned.
+    ///
+    /// This is identical to [`f128::min`], but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128, clamp_min_max)]
+    /// assert_eq!((3.0f128).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f128).clamp_max(1.0), 0.0);
+    /// assert_eq!((f128::NAN).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f128).clamp_max(f128::NAN), 0.0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "clamp_min_max", issue = "147781")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn clamp_max(self, max: f128) -> f128 {
+        self.min(max)
+    }
+
+    /// Restrict a value to a minimum bound.
+    ///
+    /// Returns `min` if `self` is less than `min`. Otherwise this returns `self`. If either `self` or `min` is NaN, the other is returned.
+    ///
+    /// This is identical to [`f128::max`], but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128, clamp_min_max)]
+    /// assert_eq!((-3.0f128).clamp_min(-2.0), -2.0);
+    /// assert_eq!((0.0f128).clamp_min(-2.0), 0.0);
+    /// assert_eq!((f128::NAN).clamp_min(-2.0), -2.0);
+    /// assert_eq!((0.0f128).clamp_min(f128::NAN), 0.0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "clamp_min_max", issue = "147781")]
+    #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn clamp_min(self, min: f128) -> f128 {
+        self.max(min)
+    }
+
     /// Computes the absolute value of `self`.
     ///
     /// This function always returns the precise result.

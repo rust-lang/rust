@@ -1429,6 +1429,50 @@ impl f64 {
         self
     }
 
+    /// Restrict a value to a maximum bound.
+    ///
+    /// Returns `max` if `self` is greater than `max`. Otherwise this returns `self`. If either `self` or `max` is NaN, the other is returned.
+    ///
+    /// This is identical to [`f64::min`], but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_min_max)]
+    /// assert_eq!((3.0f64).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f64).clamp_max(1.0), 0.0);
+    /// assert_eq!((f64::NAN).clamp_max(1.0), 1.0);
+    /// assert_eq!((0.0f64).clamp_max(f64::NAN), 0.0);
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "clamp_min_max", issue = "147781")]
+    #[inline]
+    pub const fn clamp_max(self, max: f64) -> f64 {
+        self.min(max)
+    }
+
+    /// Restrict a value to a minimum bound.
+    ///
+    /// Returns `min` if `self` is less than `min`. Otherwise this returns `self`. If either `self` or `min` is NaN, the other is returned.
+    ///
+    /// This is identical to [`f64::max`], but is easier to read when using method call syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp_min_max)]
+    /// assert_eq!((-3.0f64).clamp_min(-2.0), -2.0);
+    /// assert_eq!((0.0f64).clamp_min(-2.0), 0.0);
+    /// assert_eq!((f64::NAN).clamp_min(-2.0), -2.0);
+    /// assert_eq!((0.0f64).clamp_min(f64::NAN), 0.0);
+    /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "clamp_min_max", issue = "147781")]
+    #[inline]
+    pub const fn clamp_min(self, min: f64) -> f64 {
+        self.max(min)
+    }
+
     /// Computes the absolute value of `self`.
     ///
     /// This function always returns the precise result.
