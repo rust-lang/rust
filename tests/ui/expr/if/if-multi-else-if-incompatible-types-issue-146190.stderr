@@ -1,0 +1,22 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-multi-else-if-incompatible-types-issue-146190.rs:8:9
+   |
+LL |     let v = if let Some(a) = oa {
+   |             ------------------- `if` and `else` have incompatible types
+LL |         Some(&a)
+   |         -------- expected because of this
+LL |     } else if let Some(a) = oa2 {
+LL |         &Some(a)
+   |         ^^^^^^^^ expected `Option<&{integer}>`, found `&Option<{integer}>`
+   |
+   = note:   expected enum `Option<&{integer}>`
+           found reference `&Option<{integer}>`
+help: try using `.as_ref()` to convert `&Option<{integer}>` to `Option<&{integer}>`
+   |
+LL -         &Some(a)
+LL +         Some(a).as_ref()
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
