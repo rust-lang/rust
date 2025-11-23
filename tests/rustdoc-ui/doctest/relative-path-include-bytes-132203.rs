@@ -17,4 +17,6 @@
 // relative path. The edition2015 version fails, because paths are
 // resolved relative to the rs file instead of relative to the md file.
 
+#![allow(rustdoc::failed_merged_doctest_compilation)]
+
 #![doc=include_str!("auxiliary/relative-dir.md")]

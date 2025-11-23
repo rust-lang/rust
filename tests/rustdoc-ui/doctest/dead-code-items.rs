@@ -9,6 +9,7 @@
 //@ failure-status: 101
 
 #![doc(test(attr(deny(warnings))))]
+#![allow(rustdoc::failed_merged_doctest_compilation)]
 
 #[doc(test(attr(allow(dead_code))))]
 /// Example
