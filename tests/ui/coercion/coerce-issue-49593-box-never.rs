@@ -1,9 +1,8 @@
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 //@[fallback] check-pass
 
 #![feature(never_type)]
-#![cfg_attr(fallback, feature(never_type_fallback))]
-#![allow(unreachable_code)]
 
 use std::error::Error;
 use std::mem;

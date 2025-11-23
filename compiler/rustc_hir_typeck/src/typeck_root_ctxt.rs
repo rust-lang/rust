@@ -1,34 +1,18 @@
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, HirId, HirIdMap, LangItem};
+use rustc_hir::{self as hir, HirId, HirIdMap};
 use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInferExt};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
-use rustc_trait_selection::traits::{
-    self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
-};
-use tracing::{debug, instrument};
+use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine, TraitEngineExt as _};
+use tracing::instrument;
 
 use super::callee::DeferredCallResolution;
-
-#[derive(Debug, Default, Copy, Clone)]
-pub(crate) struct InferVarInfo {
-    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
-    /// obligation, where:
-    ///
-    ///  * `Foo` is not `Sized`
-    ///  * `(): Foo` may be satisfied
-    pub self_in_trait: bool,
-    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
-    /// _>::AssocType = ?T`
-    pub output: bool,
-}
 
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
@@ -83,8 +67,6 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<UnordSet<Ty<'tcx>>>,
-
-    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, InferVarInfo>>,
 }
 
 impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
@@ -119,7 +101,6 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
-            infer_var_info: RefCell::new(Default::default()),
         }
     }
 
@@ -128,8 +109,6 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
-
-        self.update_infer_var_info(&obligation);
 
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }
@@ -146,47 +125,5 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
     pub(super) fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
         self.register_predicates(infer_ok.obligations);
         infer_ok.value
-    }
-
-    fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
-        let infer_var_info = &mut self.infer_var_info.borrow_mut();
-
-        // (*) binder skipped
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(tpred)) =
-            obligation.predicate.kind().skip_binder()
-            && let Some(ty) =
-                self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
-            && !self.tcx.is_lang_item(tpred.trait_ref.def_id, LangItem::Sized)
-        {
-            let new_self_ty = self.tcx.types.unit;
-
-            // Then construct a new obligation with Self = () added
-            // to the ParamEnv, and see if it holds.
-            let o = obligation.with(
-                self.tcx,
-                obligation.predicate.kind().rebind(
-                    // (*) binder moved here
-                    ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                        tpred.with_replaced_self_ty(self.tcx, new_self_ty),
-                    )),
-                ),
-            );
-            // Don't report overflow errors. Otherwise equivalent to may_hold.
-            if let Ok(result) = self.probe(|_| self.evaluate_obligation(&o))
-                && result.may_apply()
-            {
-                infer_var_info.entry(ty).or_default().self_in_trait = true;
-            }
-        }
-
-        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) =
-            obligation.predicate.kind().skip_binder()
-            // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
-            // we need to make it into one.
-            && let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid())
-        {
-            debug!("infer_var_info: {:?}.output = true", vid);
-            infer_var_info.entry(vid).or_default().output = true;
-        }
     }
 }
