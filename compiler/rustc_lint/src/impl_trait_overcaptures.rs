@@ -12,7 +12,8 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::ty::relate::{
-    Relate, RelateResult, TypeRelation, structurally_relate_consts, structurally_relate_tys,
+    Relate, RelateResult, TypeRelation, relate_args_with_variances, structurally_relate_consts,
+    structurally_relate_tys,
 };
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -500,6 +501,20 @@ struct FunctionalVariances<'tcx> {
 impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: Ty<'tcx>,
+        _: Ty<'tcx>,
+        def_id: DefId,
+        a_args: ty::GenericArgsRef<'tcx>,
+        b_args: ty::GenericArgsRef<'tcx>,
+        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        let variances = self.cx().variances_of(def_id);
+        relate_args_with_variances(self, variances, a_args, b_args)?;
+        Ok(a_ty)
     }
 
     fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
