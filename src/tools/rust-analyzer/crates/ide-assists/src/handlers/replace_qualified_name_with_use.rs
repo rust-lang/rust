@@ -6,7 +6,8 @@ use ide_db::{
 use syntax::{
     AstNode, Edition, SyntaxNode,
     ast::{self, HasGenericArgs, make},
-    match_ast, ted,
+    match_ast,
+    syntax_editor::SyntaxEditor,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -71,8 +72,10 @@ pub(crate) fn replace_qualified_name_with_use(
         |builder| {
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
-            let scope = builder.make_import_scope_mut(scope);
-            shorten_paths(scope.as_syntax_node(), &original_path);
+            let scope_node = scope.as_syntax_node();
+            let mut editor = builder.make_editor(scope_node);
+            shorten_paths(&mut editor, scope_node, &original_path);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
             let path = drop_generic_args(&original_path);
             let edition = ctx
                 .sema
@@ -85,6 +88,7 @@ pub(crate) fn replace_qualified_name_with_use(
                     Some(qualifier) => make::path_concat(qualifier, path),
                     None => path,
                 };
+            let scope = builder.make_import_scope_mut(scope);
             insert_use(&scope, path, &ctx.config.insert_use);
         },
     )
@@ -107,17 +111,19 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
 }
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
-    let path = path.clone_for_update();
+    let path = path.clone_subtree();
+    let mut editor = SyntaxEditor::new(path.syntax().clone());
     if let Some(segment) = path.segment()
         && let Some(generic_args) = segment.generic_arg_list()
     {
-        ted::remove(generic_args.syntax());
+        editor.delete(generic_args.syntax());
     }
-    path
+
+    ast::Path::cast(editor.finish().new_root().clone()).unwrap()
 }
 
 /// Mutates `node` to shorten `path` in all descendants of `node`.
-fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
+fn shorten_paths(editor: &mut SyntaxEditor, node: &SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -127,26 +133,26 @@ fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
                 // Don't descend into submodules, they don't have the same `use` items in scope.
                 // FIXME: This isn't true due to `super::*` imports?
                 ast::Module(_) => continue,
-                ast::Path(p) => if maybe_replace_path(p.clone(), path.clone()).is_none() {
-                    shorten_paths(p.syntax(), path);
+                ast::Path(p) => if maybe_replace_path(editor, p.clone(), path.clone()).is_none() {
+                    shorten_paths(editor, p.syntax(), path);
                 },
-                _ => shorten_paths(&child, path),
+                _ => shorten_paths(editor, &child, path),
             }
         }
     }
 }
 
-fn maybe_replace_path(path: ast::Path, target: ast::Path) -> Option<()> {
+fn maybe_replace_path(editor: &mut SyntaxEditor, path: ast::Path, target: ast::Path) -> Option<()> {
     if !path_eq_no_generics(path.clone(), target) {
         return None;
     }
 
     // Shorten `path`, leaving only its last segment.
     if let Some(parent) = path.qualifier() {
-        ted::remove(parent.syntax());
+        editor.delete(parent.syntax());
     }
     if let Some(double_colon) = path.coloncolon_token() {
-        ted::remove(&double_colon);
+        editor.delete(double_colon);
     }
 
     Some(())
