@@ -954,9 +954,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.visit_ty(element_ty);
                 self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
             }
-            TyKind::Typeof(ct) => {
-                self.resolve_anon_const(ct, AnonConstKind::ConstArg(IsRepeatExpr::No))
-            }
             _ => visit::walk_ty(self, ty),
         }
         self.diag_metadata.current_trait_object = prev;

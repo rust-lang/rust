@@ -1325,11 +1325,6 @@ impl<'a> State<'a> {
                 self.print_expr(&length.value, FixupContext::default());
                 self.word("]");
             }
-            ast::TyKind::Typeof(e) => {
-                self.word("typeof(");
-                self.print_expr(&e.value, FixupContext::default());
-                self.word(")");
-            }
             ast::TyKind::Infer => {
                 self.word("_");
             }

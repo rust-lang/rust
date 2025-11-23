@@ -336,7 +336,6 @@ where
             | ty::Uint(..)
             | ty::Float(..)
             | ty::Str
-            | ty::FnDef(..)
             | ty::Pat(..)
             | ty::FnPtr(..)
             | ty::Array(..)
@@ -403,7 +402,6 @@ where
                     // implement, so we don't use this behavior.
                     // Addendum: Moreover, revealing the underlying type is likely to cause cycle
                     // errors as we rely on coherence / the specialization graph during typeck.
-
                     self.found_non_local_ty(ty)
                 }
             }
@@ -435,31 +433,14 @@ where
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(did, ..) => {
-                if self.def_id_is_local(did) {
-                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
-                } else {
-                    self.found_non_local_ty(ty)
-                }
+
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => {
+                unreachable!("unnameable type in coherence: {ty:?}");
             }
-            ty::CoroutineClosure(did, ..) => {
-                if self.def_id_is_local(did) {
-                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
-                } else {
-                    self.found_non_local_ty(ty)
-                }
-            }
-            ty::Coroutine(did, ..) => {
-                if self.def_id_is_local(did) {
-                    ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
-                } else {
-                    self.found_non_local_ty(ty)
-                }
-            }
-            // This should only be created when checking whether we have to check whether some
-            // auto trait impl applies. There will never be multiple impls, so we can just
-            // act as if it were a local type here.
-            ty::CoroutineWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
         };
         // A bit of a hack, the `OrphanChecker` is only used to visit a `TraitRef`, so
         // the first type we visit is always the self type.

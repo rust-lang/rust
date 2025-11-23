@@ -1367,7 +1367,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lower_ty(ty, itctx),
                 self.lower_array_length_to_const_arg(length),
             ),
-            TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
