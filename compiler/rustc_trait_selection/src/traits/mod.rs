@@ -618,7 +618,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     (args, typing_env)
                 }
-                _ => {
+                Some(ty::AnonConstKind::MCG) | Some(ty::AnonConstKind::NonTypeSystem) | None => {
                     // We are only dealing with "truly" generic/uninferred constants here:
                     // - GCEConsts have been handled separately
                     // - Repeat expr count back compat consts have also been handled separately
@@ -637,7 +637,7 @@ pub fn try_evaluate_const<'tcx>(
 
                     // Since there is no generic parameter, we can just drop the environment
                     // to prevent query cycle.
-                    let typing_env = infcx.typing_env(ty::ParamEnv::empty());
+                    let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
 
                     (uv.args, typing_env)
                 }
