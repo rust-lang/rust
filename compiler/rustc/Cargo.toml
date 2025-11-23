@@ -28,9 +28,9 @@ wasi = "=0.14.2"
 
 
 [dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
+version = "0.6.1"
 optional = true
-features = ['unprefixed_malloc_on_supported_platforms']
+features = ['override_allocator_on_supported_platforms']
 
 [features]
 # tidy-alphabetical-start
