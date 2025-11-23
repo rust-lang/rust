@@ -256,10 +256,14 @@ impl SerializedSearchIndex {
     /// The returned ID can be used to attach more data to the search result.
     fn add_entry(&mut self, name: Symbol, entry_data: EntryData, desc: String) -> usize {
         let fqp = if let Some(module_path_index) = entry_data.module_path {
-            let mut fqp = self.path_data[module_path_index].as_ref().unwrap().module_path.clone();
-            fqp.push(Symbol::intern(&self.names[module_path_index]));
-            fqp.push(name);
-            fqp
+            self.path_data[module_path_index]
+                .as_ref()
+                .unwrap()
+                .module_path
+                .iter()
+                .copied()
+                .chain([Symbol::intern(&self.names[module_path_index]), name])
+                .collect()
         } else {
             vec![name]
         };
@@ -306,13 +310,13 @@ impl SerializedSearchIndex {
 
     pub(crate) fn union(mut self, other: &SerializedSearchIndex) -> SerializedSearchIndex {
         let other_entryid_offset = self.names.len();
-        let mut map_other_pathid_to_self_pathid: Vec<usize> = Vec::new();
+        let mut map_other_pathid_to_self_pathid = Vec::new();
         let mut skips = FxHashSet::default();
         for (other_pathid, other_path_data) in other.path_data.iter().enumerate() {
             if let Some(other_path_data) = other_path_data {
-                let mut fqp = other_path_data.module_path.clone();
                 let name = Symbol::intern(&other.names[other_pathid]);
-                fqp.push(name);
+                let fqp =
+                    other_path_data.module_path.iter().copied().chain(iter::once(name)).collect();
                 let self_pathid = other_entryid_offset + other_pathid;
                 let self_pathid = match self.crate_paths_index.entry((other_path_data.ty, fqp)) {
                     Entry::Vacant(slot) => {
@@ -1819,20 +1823,23 @@ pub(crate) fn build_index(
                     tcx,
                 );
             }
-            let mut used_in_constraints = Vec::new();
-            for constraint in &mut search_type.where_clause {
-                let mut used_in_constraint = BTreeSet::new();
-                for trait_ in &mut constraint[..] {
-                    convert_render_type(
-                        trait_,
-                        cache,
-                        &mut serialized_index,
-                        &mut used_in_constraint,
-                        tcx,
-                    );
-                }
-                used_in_constraints.push(used_in_constraint);
-            }
+            let used_in_constraints = search_type
+                .where_clause
+                .iter_mut()
+                .map(|constraint| {
+                    let mut used_in_constraint = BTreeSet::new();
+                    for trait_ in constraint {
+                        convert_render_type(
+                            trait_,
+                            cache,
+                            &mut serialized_index,
+                            &mut used_in_constraint,
+                            tcx,
+                        );
+                    }
+                    used_in_constraint
+                })
+                .collect::<Vec<_>>();
             loop {
                 let mut inserted_any = false;
                 for (i, used_in_constraint) in used_in_constraints.iter().enumerate() {
