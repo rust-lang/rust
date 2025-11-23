@@ -361,5 +361,8 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
             lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }
+        BuiltinLintDiag::UnusedVisibility(span) => {
+            lints::UnusedVisibility { span }.decorate_lint(diag)
+        }
     }
 }

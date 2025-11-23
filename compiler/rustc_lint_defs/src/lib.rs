@@ -748,6 +748,7 @@ pub enum BuiltinLintDiag {
         path: String,
         location: String,
     },
+    UnusedVisibility(Span),
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
