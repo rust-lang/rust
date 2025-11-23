@@ -1080,6 +1080,18 @@ fn test_string_prefix() {
     assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
 }
 
+pub(crate) fn add_group_separators(s: &str, group_size: usize) -> String {
+    let mut chars = Vec::new();
+    for (i, ch) in s.chars().filter(|&ch| ch != '_').rev().enumerate() {
+        if i > 0 && i % group_size == 0 && ch != '-' {
+            chars.push('_');
+        }
+        chars.push(ch);
+    }
+
+    chars.into_iter().rev().collect()
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
