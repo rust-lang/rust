@@ -254,7 +254,7 @@ impl Crate {
         self.id
             .transitive_deps(db)
             .into_iter()
-            .filter_map(|&krate| db.crate_notable_traits(krate))
+            .filter_map(|krate| db.crate_notable_traits(krate))
             .flatten()
     }
 
@@ -2806,7 +2806,7 @@ impl Const {
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
         let interner = DbInterner::new_with(db, None, None);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
+        db.const_eval(self.id, GenericArgs::new_from_iter(interner, []), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
     }
 }

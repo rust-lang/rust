@@ -4,8 +4,8 @@
 use base_db::{Crate, target::TargetLoadError};
 use hir_def::{
     AdtId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
-    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId,
-    TypeOrConstParamId, VariantId, db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
+    GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, VariantId,
+    db::DefDatabase, hir::ExprId, layout::TargetDataLayout,
 };
 use la_arena::ArenaMap;
 use salsa::plumbing::AsId;

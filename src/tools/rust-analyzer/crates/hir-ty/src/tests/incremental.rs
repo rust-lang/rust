@@ -613,7 +613,6 @@ fn main() {
                 "impl_signature_with_source_map_shim",
                 "callable_item_signature_shim",
                 "TraitImpls::for_crate_and_deps_",
-                "Crate::transitive_deps_",
                 "TraitImpls::for_crate_",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",

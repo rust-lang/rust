@@ -460,13 +460,11 @@ pub struct Crate {
     pub env: Env,
 }
 
-#[salsa::tracked]
 impl Crate {
     /// Returns an iterator over all transitive dependencies of the given crate,
     /// including the crate itself.
     ///
     /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    #[salsa::tracked(returns(deref))]
     pub fn transitive_deps(self, db: &dyn salsa::Database) -> Box<[Crate]> {
         // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
         // and removing that is a bit difficult.
