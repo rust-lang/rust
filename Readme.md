@@ -159,7 +159,7 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
 
  * _**CG_GCCJIT_DUMP_ALL_MODULES**_: Enables dumping of all compilation modules. When set to "1", a dump is created for each module during compilation and stored in `/tmp/reproducers/`.
  * _**CG_GCCJIT_DUMP_MODULE**_: Enables dumping of a specific module. When set with the module name, e.g., `CG_GCCJIT_DUMP_MODULE=module_name`, a dump of that specific module is created in `/tmp/reproducers/`.
- * _**CG_RUSTFLAGS**_: Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`.
+ * _**CG_RUSTFLAGS**_: Send additional flags to rustc. Can be used to build the sysroot without unwinding by setting `CG_RUSTFLAGS=-Cpanic=abort`. Note that `-Cllvm-args` flags are forwarded to GCC.
  * _**CG_GCCJIT_DUMP_TO_FILE**_: Dump a C-like representation to /tmp/gccjit_dumps and enable debug info in order to debug this C-like representation.
  * _**CG_GCCJIT_DUMP_RTL**_: Dumps RTL (Register Transfer Language) for virtual registers.
  * _**CG_GCCJIT_DUMP_RTL_ALL**_: Dumps all RTL passes.
