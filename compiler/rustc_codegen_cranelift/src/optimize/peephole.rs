@@ -29,11 +29,7 @@ pub(crate) fn maybe_known_branch_taken(
     arg: Value,
     test_zero: bool,
 ) -> Option<bool> {
-    let arg_inst = if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
-        arg_inst
-    } else {
-        return None;
-    };
+    let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) else { return None };
 
     match bcx.func.dfg.insts[arg_inst] {
         InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } => {

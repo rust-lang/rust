@@ -1749,10 +1749,8 @@ fn generics_args_err_extend<'a>(
         GenericsArgsErrExtend::SelfTyAlias { def_id, span } => {
             let ty = tcx.at(span).type_of(def_id).instantiate_identity();
             let span_of_impl = tcx.span_of_impl(def_id);
-            let def_id = match *ty.kind() {
-                ty::Adt(self_def, _) => self_def.did(),
-                _ => return,
-            };
+            let ty::Adt(self_def, _) = *ty.kind() else { return };
+            let def_id = self_def.did();
 
             let type_name = tcx.item_name(def_id);
             let span_of_ty = tcx.def_ident_span(def_id);

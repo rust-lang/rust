@@ -112,12 +112,11 @@ impl<T, A: Allocator> Drain<'_, T, A> {
         };
 
         for place in range_slice {
-            if let Some(new_item) = replace_with.next() {
-                unsafe { ptr::write(place, new_item) };
-                vec.len += 1;
-            } else {
+            let Some(new_item) = replace_with.next() else {
                 return false;
-            }
+            };
+            unsafe { ptr::write(place, new_item) };
+            vec.len += 1;
         }
         true
     }

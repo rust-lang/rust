@@ -1124,16 +1124,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
-        let target = match self.body[location.block].statements.get(location.statement_index) {
-            Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) => {
-                if let Some(local) = place.as_local() {
-                    local
-                } else {
-                    return OtherUse(use_span);
-                }
-            }
-            _ => return OtherUse(use_span),
+        let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) =
+            self.body[location.block].statements.get(location.statement_index)
+        else {
+            return OtherUse(use_span);
         };
+        let Some(target) = place.as_local() else { return OtherUse(use_span) };
 
         if self.body.local_kind(target) != LocalKind::Temp {
             // operands are always temporaries.
