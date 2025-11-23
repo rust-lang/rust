@@ -196,27 +196,37 @@ fn test(x..y: &core::ops::Range<u32>) {
 }
         "#,
         expect![[r#"
-            8..9 'x': u32
+            8..9 'x': Range<u32>
             8..12 'x..y': Range<u32>
-            11..12 'y': u32
+            11..12 'y': Range<u32>
             38..96 '{     ...2 {} }': ()
             44..66 'if let...u32 {}': ()
             47..63 'let 1....= 2u32': bool
-            51..52 '1': i32
-            51..56 '1..76': Range<i32>
-            54..56 '76': i32
+            51..52 '1': u32
+            51..56 '1..76': u32
+            54..56 '76': u32
             59..63 '2u32': u32
             64..66 '{}': ()
             71..94 'if let...u32 {}': ()
             74..91 'let 1....= 2u32': bool
-            78..79 '1': i32
-            78..84 '1..=76': RangeInclusive<i32>
-            82..84 '76': i32
+            78..79 '1': u32
+            78..84 '1..=76': u32
+            82..84 '76': u32
             87..91 '2u32': u32
             92..94 '{}': ()
-            51..56: expected u32, got Range<i32>
-            78..84: expected u32, got RangeInclusive<i32>
         "#]],
+    );
+    check_no_mismatches(
+        r#"
+//- minicore: range
+fn main() {
+    let byte: u8 = 0u8;
+    let b = match byte {
+        b'0'..=b'9' => true,
+        _ => false,
+    };
+}
+    "#,
     );
 }
 
