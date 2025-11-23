@@ -71,7 +71,7 @@ pub enum GoalSource {
     /// A nested goal required to prove that types are equal/subtypes.
     /// This is always an unproductive step.
     ///
-    /// This is also used for all `NormalizesTo` goals as we they are used
+    /// This is also used for all `NormalizesTo` goals as those are used
     /// to relate types in `AliasRelate`.
     TypeRelating,
     /// We're proving a where-bound of an impl.
@@ -85,6 +85,8 @@ pub enum GoalSource {
     /// 2. for rigid projections's trait goal,
     /// 3. for GAT where clauses.
     AliasWellFormed,
+    /// A goal from a nested `NormalizesTo` goal which has been propagated to its caller.
+    NestedNormalizationGoal(PathKind),
     /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
     /// aliases in the context of the parent may incorrectly change the cycle kind.
     /// Normalizing aliases in goals therefore tracks the original path kind for this
@@ -269,7 +271,7 @@ impl<I: Interner> ExternalConstraintsData<I> {
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(PathKind, Goal<I, I::Predicate>)>);
 
 impl<I: Interner> Eq for NestedNormalizationGoals<I> {}
 
