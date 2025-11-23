@@ -844,6 +844,8 @@ impl ProjectWorkspace {
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
                         }
+                        include.sort();
+                        include.dedup();
                         PackageRoot { is_local, include, exclude }
                     })
                     .chain(mk_sysroot())
@@ -905,6 +907,8 @@ impl ProjectWorkspace {
                             exclude.push(pkg_root.join("examples"));
                             exclude.push(pkg_root.join("benches"));
                         }
+                        include.sort();
+                        include.dedup();
                         PackageRoot { is_local, include, exclude }
                     })
                 }))
