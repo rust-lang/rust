@@ -841,6 +841,33 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
         dead_captures
     }
 
+    /// Check if a local is referenced in any reachable basic block.
+    /// Variables in unreachable code (e.g., after `todo!()`) should not trigger unused warnings.
+    fn is_local_in_reachable_code(&self, local: Local) -> bool {
+        struct LocalVisitor {
+            target_local: Local,
+            found: bool,
+        }
+
+        impl<'tcx> Visitor<'tcx> for LocalVisitor {
+            fn visit_local(&mut self, local: Local, _context: PlaceContext, _location: Location) {
+                if local == self.target_local {
+                    self.found = true;
+                }
+            }
+        }
+
+        let mut visitor = LocalVisitor { target_local: local, found: false };
+        for (bb, bb_data) in traversal::postorder(self.body) {
+            visitor.visit_basic_block_data(bb, bb_data);
+            if visitor.found {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Report fully unused locals, and forget the corresponding assignments.
     fn report_fully_unused(&mut self) {
         let tcx = self.tcx;
@@ -932,6 +959,10 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
+                if !self.is_local_in_reachable_code(local) {
+                    continue;
+                }
+
                 let sugg = if from_macro {
                     errors::UnusedVariableSugg::NoSugg { span: def_span, name }
                 } else {
