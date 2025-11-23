@@ -5,6 +5,7 @@ use test::{Bencher, black_box};
 mod char_count;
 mod corpora;
 mod debug;
+mod eq_ignore_ascii_case;
 mod iter;
 
 #[bench]
