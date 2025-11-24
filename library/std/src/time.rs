@@ -536,6 +536,12 @@ impl SystemTime {
     /// This value differs a lot between platforms, but it is always the case
     /// that any positive subtraction from [`SystemTime::MIN`] will fail.
     ///
+    /// Depending on the platform, this may be either less than or equal to
+    /// [`SystemTime::UNIX_EPOCH`], depending on whether the operating system
+    /// supports the representation of timestamps before the Unix epoch or not.
+    /// However, it is always guaranteed that a [`SystemTime::UNIX_EPOCH`] fits
+    /// between a [`SystemTime::MIN`] and [`SystemTime::MAX`].
+    ///
     /// # Examples
     ///
     /// ```
