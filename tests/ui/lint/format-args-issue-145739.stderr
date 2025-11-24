@@ -1,0 +1,93 @@
+error: `format_args!` is called with multiple parameters that capturing the same constant violating issue 145739
+  --> $DIR/format-args-issue-145739.rs:31:14
+   |
+LL |     print!("{DROP_IMPL}, {DROP_IMPL}");
+   |              ^^^^^^^^^
+   |
+note: the type of this constant is `DropImpl` and it has drop implementation
+  --> $DIR/format-args-issue-145739.rs:21:1
+   |
+LL | const DROP_IMPL: DropImpl = DropImpl;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: these are the duplicated parameters
+  --> $DIR/format-args-issue-145739.rs:31:13
+   |
+LL |     print!("{DROP_IMPL}, {DROP_IMPL}");
+   |             ^^^^^^^^^^^  ^^^^^^^^^^^
+   = note: `#[deny(issue_145739)]` on by default
+   = note: this error originates in the macro `$crate::format_args` which comes from the expansion of the macro `print` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `format_args!` is called with multiple parameters that capturing the same constant constructor violating issue 145739
+  --> $DIR/format-args-issue-145739.rs:33:16
+   |
+LL |     println!("{DropImpl}{DropImpl:?}");
+   |                ^^^^^^^^
+   |
+note: the type of this constant constructor is `DropImpl` and it has drop implementation
+  --> $DIR/format-args-issue-145739.rs:14:1
+   |
+LL | struct DropImpl;
+   | ^^^^^^^^^^^^^^^
+note: these are the duplicated parameters
+  --> $DIR/format-args-issue-145739.rs:33:15
+   |
+LL |     println!("{DropImpl}{DropImpl:?}");
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `format_args!` is called with multiple parameters that capturing the same constant violating issue 145739
+  --> $DIR/format-args-issue-145739.rs:35:15
+   |
+LL |     format!("{NON_FREEZE:?}{:?}{NON_FREEZE:?}", NON_FREEZE);
+   |               ^^^^^^^^^^
+   |
+note: the type of this constant is `NonFreeze` and it has interior mutability
+  --> $DIR/format-args-issue-145739.rs:20:1
+   |
+LL | const NON_FREEZE: NonFreeze = NonFreeze(Cell::new(0));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: these are the duplicated parameters
+  --> $DIR/format-args-issue-145739.rs:35:14
+   |
+LL |     format!("{NON_FREEZE:?}{:?}{NON_FREEZE:?}", NON_FREEZE);
+   |              ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `format_args!` is called with multiple parameters that capturing the same constant violating issue 145739
+  --> $DIR/format-args-issue-145739.rs:37:15
+   |
+LL |     format!("{NON_FREEZE:?}{DropImpl}{NON_FREEZE:?}{DropImpl}");
+   |               ^^^^^^^^^^
+   |
+note: the type of this constant is `NonFreeze` and it has interior mutability
+  --> $DIR/format-args-issue-145739.rs:20:1
+   |
+LL | const NON_FREEZE: NonFreeze = NonFreeze(Cell::new(0));
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: these are the duplicated parameters
+  --> $DIR/format-args-issue-145739.rs:37:14
+   |
+LL |     format!("{NON_FREEZE:?}{DropImpl}{NON_FREEZE:?}{DropImpl}");
+   |              ^^^^^^^^^^^^^^          ^^^^^^^^^^^^^^
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `format_args!` is called with multiple parameters that capturing the same constant constructor violating issue 145739
+  --> $DIR/format-args-issue-145739.rs:37:29
+   |
+LL |     format!("{NON_FREEZE:?}{DropImpl}{NON_FREEZE:?}{DropImpl}");
+   |                             ^^^^^^^^
+   |
+note: the type of this constant constructor is `DropImpl` and it has drop implementation
+  --> $DIR/format-args-issue-145739.rs:14:1
+   |
+LL | struct DropImpl;
+   | ^^^^^^^^^^^^^^^
+note: these are the duplicated parameters
+  --> $DIR/format-args-issue-145739.rs:37:28
+   |
+LL |     format!("{NON_FREEZE:?}{DropImpl}{NON_FREEZE:?}{DropImpl}");
+   |                            ^^^^^^^^^^              ^^^^^^^^^^
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 5 previous errors
+

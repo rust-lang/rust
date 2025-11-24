@@ -398,6 +398,7 @@ symbols! {
         __S,
         __T,
         __awaitee,
+        __issue_145739,
         __try_var,
         _t,
         _task_context,
