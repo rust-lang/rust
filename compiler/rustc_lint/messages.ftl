@@ -482,6 +482,19 @@ lint_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
     .help = `#[{$name}]` can {$only}be applied to {$applied}
     .suggestion = remove the attribute
 
+lint_issue_145739 = `format_args!` is called with multiple parameters that capturing the same {$kind} violating issue 145739
+    .note1 = the type of this {$kind} is `{$ty}` and it has {$is_not_freeze ->
+            [true] {$needs_drop ->
+                    [true] interior mutability and drop implementation
+                    *[false] interior mutability
+                }
+            *[false] {$needs_drop ->
+                    [true] drop implementation
+                    *[false] (none)
+                }
+        }
+    .note2 = these are the duplicated parameters
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
@@ -997,16 +1010,3 @@ lint_uses_power_alignment = repr(C) does not follow the power alignment rule. Th
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_issue_145739 = `format_args!` is called with multiple parameters that capturing the same {$kind} violating issue 145739
-    .note1 = the type of this {$kind} is `{$ty}` and it has {$is_not_freeze ->
-            [true] {$needs_drop ->
-                    [true] interior mutability and drop implementation
-                    *[false] interior mutability
-                }
-            *[false] {$needs_drop ->
-                    [true] drop implementation
-                    *[false] (none)
-                }
-        }
-    .note2 = these are the duplicated parameters
