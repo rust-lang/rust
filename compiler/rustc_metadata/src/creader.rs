@@ -519,7 +519,6 @@ impl CStore {
         externs: &Externs,
         name: Symbol,
         hash: Option<Svh>,
-        kind: PathKind,
     ) -> Option<CrateNum> {
         for (cnum, data) in self.iter_crate_data() {
             if data.name() != name {
@@ -561,27 +560,9 @@ impl CStore {
                 continue;
             }
 
-            // Alright, so we've gotten this far which means that `data` has the
-            // right name, we don't have a hash, and we don't have a --extern
-            // pointing for ourselves. We're still not quite yet done because we
-            // have to make sure that this crate was found in the crate lookup
-            // path (this is a top-level dependency) as we don't want to
-            // implicitly load anything inside the dependency lookup path.
-            let prev_kind = source
-                .dylib
-                .as_ref()
-                .or(source.rlib.as_ref())
-                .or(source.rmeta.as_ref())
-                .expect("No sources for crate")
-                .1;
-            if kind.matches(prev_kind) {
-                return Some(cnum);
-            } else {
-                debug!(
-                    "failed to load existing crate {}; kind {:?} did not match prev_kind {:?}",
-                    name, kind, prev_kind
-                );
-            }
+            // While the crate name matched, no --extern crate_name=path matched. It is possible
+            // that we have already loaded the target crate, but if that happens CStore::load will
+            // indicate so and we gracefully handle this, just potentially wasting a bit of time.
         }
 
         None
@@ -818,9 +799,7 @@ impl CStore {
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
         let private_dep = origin.private_dep();
 
-        let result = if let Some(cnum) =
-            self.existing_match(&tcx.sess.opts.externs, name, hash, path_kind)
-        {
+        let result = if let Some(cnum) = self.existing_match(&tcx.sess.opts.externs, name, hash) {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
