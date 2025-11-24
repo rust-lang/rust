@@ -13,7 +13,7 @@
 // lldb-command:v I
 // lldb-check: ::I = -1
 // lldb-command:v --format=d C
-// lldb-check: ::C = 97
+// lldb-check: ::C = 97 U+0x00000061 U'a'
 // lldb-command:v --format=d I8
 // lldb-check: ::I8 = 68
 // lldb-command:v I16
