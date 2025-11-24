@@ -90,6 +90,20 @@ fn enforce_trait_manually_implementable(
         return Err(err.emit());
     }
 
+    // Disallow explicit impls of the `Unpin` trait for structurally pinned types
+    if tcx.features().pin_ergonomics()
+        && tcx.is_lang_item(trait_def_id, LangItem::Unpin)
+        && let Some(adt) =
+            tcx.impl_trait_ref(impl_def_id).instantiate_identity().self_ty().ty_adt_def()
+        && adt.is_pin_project()
+    {
+        return Err(tcx.dcx().emit_err(crate::errors::ImplUnpinForPinProjectedType {
+            span: impl_header_span,
+            adt_span: tcx.def_span(adt.did()),
+            adt_name: tcx.item_name(adt.did()),
+        }));
+    }
+
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
     {
         if !tcx.features().specialization()
