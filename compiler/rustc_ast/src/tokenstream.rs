@@ -978,19 +978,16 @@ pub struct DelimSpan {
 
 impl DelimSpan {
     pub fn from_single(sp: Span) -> Self {
-        let default_open = sp;
-        let default_close = sp;
-
         let Some(sm) = rustc_span::source_map::get_source_map() else {
             // No source map available.
-            return Self { open: default_open, close: default_close };
+            return Self { open: sp, close: sp };
         };
 
         let (open, close) = sm
             .span_to_source(sp, |src, start, end| {
                 let src = match src.get(start..end) {
                     Some(s) if s.len() >= 2 => s.as_bytes(),
-                    _ => return Ok((default_open, default_close)),
+                    _ => return Ok((sp, sp)),
                 };
 
                 // Only check the first and last characters.
@@ -1012,19 +1009,19 @@ impl DelimSpan {
                 // If these return `None` just use the default because that
                 // means the span is too small for there to be a matched pair.
                 let Some(open) = sp.subspan(0..1) else {
-                    return Ok((default_open, default_close));
+                    return Ok((sp, sp));
                 };
                 let Some(close) = sp.subspan(pos..) else {
-                    return Ok((default_open, default_close));
+                    return Ok((sp, sp));
                 };
 
                 Ok(match (first, last) {
                     (b'(', b')') | (b'{', b'}') | (b'[', b']') => (open, close),
-                    (_, _) => (default_open, default_close),
+                    (_, _) => (sp, sp),
                 })
             })
             .ok()
-            .unwrap_or((default_open, default_close));
+            .unwrap_or((sp, sp));
 
         debug_assert!(open.lo() <= close.lo());
         DelimSpan { open, close }
