@@ -861,20 +861,46 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        /// Starting at a target unreachable block, find some user code to lint as unreachable
+        fn find_unreachable_code_from(
+            bb: BasicBlock,
+            bbs: &IndexVec<BasicBlock, BasicBlockData<'_>>,
+        ) -> Option<(SourceInfo, &'static str)> {
+            let bb = &bbs[bb];
+            for stmt in &bb.statements {
+                match &stmt.kind {
+                    // Ignore the implicit `()` return place assignment for unit functions/blocks
+                    StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(const_))))
+                        if const_.ty().is_unit() =>
+                    {
+                        continue;
+                    }
+                    StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
+                        continue;
+                    }
+                    StatementKind::FakeRead(..) => return Some((stmt.source_info, "definition")),
+                    _ => return Some((stmt.source_info, "expression")),
+                }
+            }
+
+            let term = bb.terminator();
+            match term.kind {
+                // No user code in this bb, and our goto target may be reachable via other paths
+                TerminatorKind::Goto { .. } | TerminatorKind::Return => None,
+                _ => Some((term.source_info, "expression")),
+            }
+        }
+
         for (target_bb, orig_ty, orig_span) in lints {
             if orig_span.in_external_macro(self.tcx.sess.source_map()) {
                 continue;
             }
-            let target_bb = &self.cfg.basic_blocks[target_bb];
-            let (target_loc, descr) = target_bb
-                .statements
-                .iter()
-                .find_map(|stmt| match stmt.kind {
-                    StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => None,
-                    StatementKind::FakeRead(..) => Some((stmt.source_info, "definition")),
-                    _ => Some((stmt.source_info, "expression")),
-                })
-                .unwrap_or_else(|| (target_bb.terminator().source_info, "expression"));
+
+            let Some((target_loc, descr)) =
+                find_unreachable_code_from(target_bb, &self.cfg.basic_blocks)
+            else {
+                continue;
+            };
             let lint_root = self.source_scopes[target_loc.scope]
                 .local_data
                 .as_ref()

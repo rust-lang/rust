@@ -589,13 +589,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::UnsafeBinder(_) => {
-                let simp = ty::fast_reject::simplify_type(
+                if let Some(simp) = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
-                )
-                .unwrap();
-                consider_impls_for_simplified_type(simp);
+                ) {
+                    consider_impls_for_simplified_type(simp);
+                }
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -2090,6 +2090,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.dcx()
     }
 
+    /// Checks to see if the caller (`body_features`) has all the features required by the callee
+    /// (`callee_features`).
     pub fn is_target_feature_call_safe(
         self,
         callee_features: &[TargetFeature],
