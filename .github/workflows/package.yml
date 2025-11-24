@@ -2,7 +2,7 @@ name: Packaging
 on:
   push:
     branches:
-      - packagetest
+      - main
 
 defaults:
   run:
