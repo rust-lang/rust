@@ -451,6 +451,7 @@ pub(crate) use self::Fallback_AD::*;
 pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 
+    use std::ffi::c_void;
     use std::sync::Mutex;
 
     use libc::c_char;
@@ -459,7 +460,9 @@ pub(crate) mod Fallback_AD {
 
     use super::{CConcreteType, CTypeTreeRef, Context, EnzymeTypeTree};
 
-    pub(crate) struct EnzymeWrapper;
+    pub(crate) struct EnzymeWrapper {
+        pub registerEnzymeAndPassPipeline: *const c_void,
+    }
 
     impl EnzymeWrapper {
         pub(crate) fn init<'a, B: WriteBackendMethods>(
