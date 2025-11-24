@@ -528,7 +528,7 @@ impl SystemTime {
     /// // But adding just 1ns will already fail.
     /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(0, 1)), None);
     ///
-    /// // Utilize this for saturating artihmetic to improve error handling.
+    /// // Utilize this for saturating arithmetic to improve error handling.
     /// // In this case, we will use a certificate with a timestamp in the
     /// // future as a practical example.
     /// let configured_offset = Duration::from_secs(60 * 60 * 24);
@@ -563,7 +563,7 @@ impl SystemTime {
     /// // But subtracting just 1ns will already fail.
     /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(0, 1)), None);
     ///
-    /// // Utilize this for saturating artihmetic to improve error handling.
+    /// // Utilize this for saturating arithmetic to improve error handling.
     /// // In this case, we will use a cache expiry as a practical example.
     /// let configured_expiry = Duration::from_secs(60 * 3);
     /// let expiry_threshold =
