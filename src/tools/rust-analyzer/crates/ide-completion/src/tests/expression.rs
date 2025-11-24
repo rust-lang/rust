@@ -628,7 +628,6 @@ fn completes_after_ref_expr() {
             fn main() fn()
             bt u32     u32
             kw const
-            kw const
             kw crate::
             kw false
             kw for
