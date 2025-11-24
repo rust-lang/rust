@@ -1126,7 +1126,8 @@ pub(crate) fn print_impl(
             }
             if impl_.kind.is_fake_variadic()
                 && let Some(generics) = ty.generics()
-                && let Ok(inner_type) = generics.exactly_one()
+                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                && let Ok(inner_type) = Itertools::exactly_one(generics)
             {
                 let last = ty.last();
                 if f.alternate() {
@@ -1206,7 +1207,8 @@ impl clean::Impl {
             }
         } else if let clean::Type::Path { path } = type_
             && let Some(generics) = path.generics()
-            && let Ok(ty) = generics.exactly_one()
+            // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+            && let Ok(ty) = Itertools::exactly_one(generics)
             && self.kind.is_fake_variadic()
         {
             print_anchor(path.def_id(), path.last(), cx).fmt(f)?;
