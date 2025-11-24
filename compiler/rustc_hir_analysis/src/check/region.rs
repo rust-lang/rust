@@ -99,7 +99,7 @@ fn resolve_block<'tcx>(
         for (i, statement) in blk.stmts.iter().enumerate() {
             match statement.kind {
                 hir::StmtKind::Let(LetStmt { els: Some(els), .. }) => {
-                    // Let-else has a special lexical structure for variables.
+                    // let-else has a special lexical structure for variables.
                     // First we take a checkpoint of the current scope context here.
                     let mut prev_cx = visitor.cx;
 

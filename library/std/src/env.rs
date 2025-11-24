@@ -1097,7 +1097,7 @@ pub mod consts {
     /// * `"nto"`
     /// * `"redox"`
     /// * `"solaris"`
-    /// * `"solid_asp3`
+    /// * `"solid_asp3"`
     /// * `"vexos"`
     /// * `"vita"`
     /// * `"vxworks"`

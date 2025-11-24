@@ -14,7 +14,7 @@ LL | enum Helper<T, U> {
 LL |     T(T, [!; 0]),
    |     - not covered
    = note: the matched value is of type `Helper<T, U>`
-help: you might want to use `let else` to handle the variant that isn't matched
+help: you might want to use `let...else` to handle the variant that isn't matched
    |
 LL |     let Helper::U(u) = Helper::T(t, []) else { todo!() };
    |                                         ++++++++++++++++
