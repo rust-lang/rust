@@ -465,7 +465,7 @@ impl Step for Llvm {
             //enabled_llvm_runtimes.push("compiler-rt");
 
             //  -DRUNTIMES_CMAKE_ARGS="-DLIBOMPTARGET_PLUGINS_TO_BUILD=amdgpu;nvptx;
-            cfg.define("RUNTIMES_CMAKE_ARGS", "-DLIBOMPTARGET_PLUGINS_TO_BUILD=amdgpu;nvptx");
+            //cfg.define("RUNTIMES_CMAKE_ARGS", "-DLIBOMPTARGET_PLUGINS_TO_BUILD=amdgpu;nvptx");
             //cfg.define("LLVM_TARGETS_TO_BUILD", "host;AMDGPU;NVPTX");
 
             //let runtime_targets = vec!["default", "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
