@@ -1,6 +1,11 @@
 #![expect(dead_code)]
 
 use libc::{c_char, c_uint};
+// I am going to delete this declaration.
+// I have just added this to avoid conflicting to main branch and to let CI run.
+// I will make libloading as optional later, before merging this PR.
+#[cfg(not(feature = "llvm_enzyme"))]
+use libloading as _;
 
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
