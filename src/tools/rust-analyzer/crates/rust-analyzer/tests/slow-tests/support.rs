@@ -113,7 +113,8 @@ impl Project<'_> {
         let mut buf = Vec::new();
         flags::Lsif::run(
             flags::Lsif {
-                path: tmp_dir_path.join(self.roots.iter().exactly_one().unwrap()).into(),
+                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                path: tmp_dir_path.join(Itertools::exactly_one(self.roots.iter()).unwrap()).into(),
                 exclude_vendored_libraries: false,
             },
             &mut buf,
