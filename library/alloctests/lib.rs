@@ -19,7 +19,6 @@
 #![feature(array_into_iter_constructors)]
 #![feature(assert_matches)]
 #![feature(char_internals)]
-#![feature(char_max_len)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
 #![feature(exact_size_is_empty)]

@@ -73,10 +73,10 @@ build/
   node_modules/
     .bin/
 
-  # Copy of package.json and package-lock.json, because npm requires these
+  # Copy of package.json and yarn.lock, because yarn requires these
   # to be in the same directory as `node_modules`.
   package.json
-  package-lock.json
+  yarn.lock
 
   # Output of the dist-related steps like dist-std, dist-rustc, and dist-docs
   dist/

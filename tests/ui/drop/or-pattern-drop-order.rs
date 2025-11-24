@@ -33,15 +33,15 @@ fn main() {
         // Drops are right-to-left: `z`, `y`, `x`.
         let (x, Ok(y) | Err(y), z);
         // Assignment order doesn't matter.
-        z = LogDrop(o, 1);
-        y = LogDrop(o, 2);
-        x = LogDrop(o, 3);
+        z = LogDrop(o, 1); //~ WARN value assigned to `z` is never read
+        y = LogDrop(o, 2); //~ WARN value assigned to `y` is never read
+        x = LogDrop(o, 3); //~ WARN value assigned to `x` is never read
     });
     assert_drop_order(1..=2, |o| {
         // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
         let ((true, x, y) | (false, y, x));
-        x = LogDrop(o, 2);
-        y = LogDrop(o, 1);
+        x = LogDrop(o, 2); //~ WARN value assigned to `x` is never read
+        y = LogDrop(o, 1); //~ WARN value assigned to `y` is never read
     });
 
     // `let pat = expr;` should have the same drop order.
@@ -61,15 +61,21 @@ fn main() {
     // `match` should have the same drop order.
     assert_drop_order(1..=3, |o| {
         // Drops are right-to-left: `z`, `y` `x`.
-        match (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)) { (x, Ok(y) | Err(y), z) => {} }
+        match (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)) {
+            (x, Ok(y) | Err(y), z) => {}
+        }
     });
     assert_drop_order(1..=2, |o| {
         // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
-        match (true, LogDrop(o, 2), LogDrop(o, 1)) { (true, x, y) | (false, y, x) => {} }
+        match (true, LogDrop(o, 2), LogDrop(o, 1)) {
+            (true, x, y) | (false, y, x) => {}
+        }
     });
     assert_drop_order(1..=2, |o| {
         // That drop order is used regardless of which or-pattern alternative matches: `y`, `x`.
-        match (false, LogDrop(o, 1), LogDrop(o, 2)) { (true, x, y) | (false, y, x) => {} }
+        match (false, LogDrop(o, 1), LogDrop(o, 2)) {
+            (true, x, y) | (false, y, x) => {}
+        }
     });
 
     // Function params are visited one-by-one, and the order of bindings within a param's pattern is

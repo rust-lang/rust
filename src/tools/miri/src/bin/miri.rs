@@ -20,6 +20,11 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
+/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
+/// and https://github.com/rust-lang/rust/pull/146627 for why we need this `use` statement.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use tikv_jemalloc_sys as _;
+
 mod log;
 
 use std::env;
@@ -158,19 +163,24 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         _: &rustc_interface::interface::Compiler,
         tcx: TyCtxt<'tcx>,
     ) -> Compilation {
+        // Compilation is done, interpretation is starting. Deal with diagnostics from the
+        // compilation part. We cannot call `sess.finish_diagnostics()` as then "aborting due to
+        // previous errors" gets printed twice.
+        tcx.dcx().emit_stashed_diagnostics();
         tcx.dcx().abort_if_errors();
         tcx.dcx().flush_delayed();
 
+        // Miri is taking over. Start logging.
+        init_late_loggers(&EarlyDiagCtxt::new(tcx.sess.opts.error_format), tcx);
+
+        // Find the entry point.
         if !tcx.crate_types().contains(&CrateType::Executable) {
             tcx.dcx().fatal("miri only makes sense on bin crates");
         }
-
-        let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
-        init_late_loggers(&early_dcx, tcx);
-
         let (entry_def_id, entry_type) = entry_fn(tcx);
-        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
 
+        // Obtain and complete the Miri configuration.
+        let mut config = self.miri_config.take().expect("after_analysis must only be called once");
         // Add filename to `miri` arguments.
         config.args.insert(0, tcx.sess.io.input.filestem().to_string());
 
@@ -179,6 +189,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             env::set_current_dir(cwd).unwrap();
         }
 
+        // Emit warnings for some unusual configurations.
         if tcx.sess.opts.optimize != OptLevel::No {
             tcx.dcx().warn("Miri does not support optimizations: the opt-level is ignored. The only effect \
                     of selecting a Cargo profile that enables optimizations (such as --release) is to apply \
@@ -193,6 +204,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     optimizations is usually marginal at best.");
         }
 
+        // Invoke the interpreter.
         let res = if config.genmc_config.is_some() {
             assert!(self.many_seeds.is_none());
             run_genmc_mode(tcx, &config, |genmc_ctx: Rc<GenmcCtx>| {
@@ -209,7 +221,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         } else {
             miri::eval_entry(tcx, entry_def_id, entry_type, &config, None)
         };
-
+        // Process interpreter result.
         if let Err(return_code) = res {
             tcx.dcx().abort_if_errors();
             exit(return_code.get());
@@ -388,48 +400,7 @@ fn parse_range(val: &str) -> Result<Range<u32>, &'static str> {
     Ok(from..to)
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-fn jemalloc_magic() {
-    // These magic runes are copied from
-    // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
-    // See there for further comments.
-    use std::os::raw::{c_int, c_void};
-
-    use tikv_jemalloc_sys as jemalloc_sys;
-
-    #[used]
-    static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
-    #[used]
-    static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-        jemalloc_sys::posix_memalign;
-    #[used]
-    static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
-    #[used]
-    static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
-    #[used]
-    static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
-    #[used]
-    static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
-
-    // On OSX, jemalloc doesn't directly override malloc/free, but instead
-    // registers itself with the allocator's zone APIs in a ctor. However,
-    // the linker doesn't seem to consider ctors as "used" when statically
-    // linking, so we need to explicitly depend on the function.
-    #[cfg(target_os = "macos")]
-    {
-        unsafe extern "C" {
-            fn _rjem_je_zone_register();
-        }
-
-        #[used]
-        static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
-    }
-}
-
 fn main() {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
-    jemalloc_magic();
-
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.
@@ -509,7 +480,6 @@ fn main() {
                 Some(BorrowTrackerMethod::TreeBorrows(TreeBorrowsParams {
                     precise_interior_mut: true,
                 }));
-            miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-tree-borrows-no-precise-interior-mut" {
             match &mut miri_config.borrow_tracker {
                 Some(BorrowTrackerMethod::TreeBorrows(params)) => {
@@ -701,17 +671,6 @@ fn main() {
         } else {
             // Forward to rustc.
             rustc_args.push(arg);
-        }
-    }
-    // Tree Borrows implies strict provenance, and is not compatible with native calls.
-    if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows { .. })) {
-        if miri_config.provenance_mode != ProvenanceMode::Strict {
-            fatal_error!(
-                "Tree Borrows does not support integer-to-pointer casts, and hence requires strict provenance"
-            );
-        }
-        if !miri_config.native_lib.is_empty() {
-            fatal_error!("Tree Borrows is not compatible with calling native functions");
         }
     }
 

@@ -8,6 +8,7 @@ fn parent_impl_or_trait_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::C
     let parent_id = tcx.local_parent(def_id);
     match tcx.def_kind(parent_id) {
         DefKind::Impl { of_trait: true } => tcx.impl_trait_header(parent_id).constness,
+        DefKind::Impl { of_trait: false } => tcx.constness(parent_id),
         DefKind::Trait => {
             if tcx.is_const_trait(parent_id.into()) {
                 hir::Constness::Const
@@ -30,6 +31,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
             hir::Constness::NotConst
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
+        hir::Node::Item(i) if let hir::ItemKind::Impl(impl_) = i.kind => impl_.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
                 if fn_kind.constness() == hir::Constness::Const {

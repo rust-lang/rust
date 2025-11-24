@@ -6,7 +6,7 @@
 //
 //@ run-fail
 //@ error-pattern: Call to blocking function
-//@ error-pattern: realtime_blocking::blocking::
+//@ error-pattern: realtime_blocking::blocking
 //@ ignore-backends: gcc
 #![feature(sanitize)]
 

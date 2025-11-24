@@ -2791,6 +2791,26 @@ pub const fn size_of<T>() -> usize;
 #[rustc_intrinsic]
 pub const fn align_of<T>() -> usize;
 
+/// The offset of a field inside a type.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+///
+/// This intrinsic can only be evaluated at compile-time, and should only appear in
+/// constants or inline const blocks.
+///
+/// The stabilized version of this intrinsic is [`core::mem::offset_of`].
+/// This intrinsic is also a lang item so `offset_of!` can desugar to calls to it.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_intrinsic]
+#[lang = "offset_of"]
+pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
+
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
 ///
@@ -3330,7 +3350,13 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 
 /// Copies the current location of arglist `src` to the arglist `dst`.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// You must check the following invariants before you call this function:
+///
+/// - `dest` must be non-null and point to valid, writable memory.
+/// - `dest` must not alias `src`.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
@@ -3338,14 +3364,27 @@ pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// This function is only sound to call when:
+///
+/// - there is a next variable argument available.
+/// - the next argument's type must be ABI-compatible with the type `T`.
+/// - the next argument must have a properly initialized value of type `T`.
+///
+/// Calling this function with an incompatible type, an invalid value, or when there
+/// are no more variable arguments, is unsound.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 
 /// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// `ap` must not be used to access variable arguments after this call.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_end(ap: &mut VaListImpl<'_>);

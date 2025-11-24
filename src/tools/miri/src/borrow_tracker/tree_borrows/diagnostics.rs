@@ -291,9 +291,10 @@ pub(super) struct TbError<'node> {
     pub conflicting_info: &'node NodeDebugInfo,
     // What kind of access caused this error (read, write, reborrow, deallocation)
     pub access_cause: AccessCause,
-    /// Which tag the access that caused this error was made through, i.e.
+    /// Which tag, if any, the access that caused this error was made through, i.e.
     /// which tag was used to read/write/deallocate.
-    pub accessed_info: &'node NodeDebugInfo,
+    /// Not set on wildcard accesses.
+    pub accessed_info: Option<&'node NodeDebugInfo>,
 }
 
 impl TbError<'_> {
@@ -302,10 +303,20 @@ impl TbError<'_> {
         use TransitionError::*;
         let cause = self.access_cause;
         let accessed = self.accessed_info;
+        let accessed_str =
+            self.accessed_info.map(|v| format!("{v}")).unwrap_or_else(|| "<wildcard>".into());
         let conflicting = self.conflicting_info;
-        let accessed_is_conflicting = accessed.tag == conflicting.tag;
+        // An access is considered conflicting if it happened through a
+        // different tag than the one who caused UB.
+        // When doing a wildcard access (where `accessed` is `None`) we
+        // do not know which precise tag the accessed happened from,
+        // however we can be certain that it did not come from the
+        // conflicting tag.
+        // This is because the wildcard data structure already removes
+        // all tags through which an access would cause UB.
+        let accessed_is_conflicting = accessed.map(|a| a.tag) == Some(conflicting.tag);
         let title = format!(
-            "{cause} through {accessed} at {alloc_id:?}[{offset:#x}] is forbidden",
+            "{cause} through {accessed_str} at {alloc_id:?}[{offset:#x}] is forbidden",
             alloc_id = self.alloc_id,
             offset = self.error_offset
         );
@@ -316,7 +327,7 @@ impl TbError<'_> {
                 let mut details = Vec::new();
                 if !accessed_is_conflicting {
                     details.push(format!(
-                        "the accessed tag {accessed} is a child of the conflicting tag {conflicting}"
+                        "the accessed tag {accessed_str} is a child of the conflicting tag {conflicting}"
                     ));
                 }
                 let access = cause.print_as_access(/* is_foreign */ false);
@@ -330,7 +341,7 @@ impl TbError<'_> {
                 let access = cause.print_as_access(/* is_foreign */ true);
                 let details = vec![
                     format!(
-                        "the accessed tag {accessed} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
+                        "the accessed tag {accessed_str} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
                     ),
                     format!(
                         "this {access} would cause the {conflicting_tag_name} tag {conflicting} (currently {before_disabled}) to become Disabled"
@@ -343,7 +354,7 @@ impl TbError<'_> {
                 let conflicting_tag_name = "strongly protected";
                 let details = vec![
                     format!(
-                        "the allocation of the accessed tag {accessed} also contains the {conflicting_tag_name} tag {conflicting}"
+                        "the allocation of the accessed tag {accessed_str} also contains the {conflicting_tag_name} tag {conflicting}"
                     ),
                     format!("the {conflicting_tag_name} tag {conflicting} disallows deallocations"),
                 ];
@@ -351,8 +362,10 @@ impl TbError<'_> {
             }
         };
         let mut history = HistoryData::default();
-        if !accessed_is_conflicting {
-            history.extend(self.accessed_info.history.forget(), "accessed", false);
+        if let Some(accessed_info) = self.accessed_info
+            && !accessed_is_conflicting
+        {
+            history.extend(accessed_info.history.forget(), "accessed", false);
         }
         history.extend(
             self.conflicting_info.history.extract_relevant(self.error_offset, self.error_kind),
@@ -361,6 +374,20 @@ impl TbError<'_> {
         );
         err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, details, history })
     }
+}
+
+/// Cannot access this allocation with wildcard provenance, as there are no
+/// valid exposed references for this access kind.
+pub fn no_valid_exposed_references_error<'tcx>(
+    alloc_id: AllocId,
+    offset: u64,
+    access_cause: AccessCause,
+) -> InterpErrorKind<'tcx> {
+    let title =
+        format!("{access_cause} through <wildcard> at {alloc_id:?}[{offset:#x}] is forbidden");
+    let details = vec![format!("there are no exposed tags which may perform this access here")];
+    let history = HistoryData::default();
+    err_machine_stop!(TerminationInfo::TreeBorrowsUb { title, details, history })
 }
 
 type S = &'static str;
@@ -623,10 +650,10 @@ impl DisplayRepr {
             } else {
                 // We take this node
                 let rperm = tree
-                    .rperms
+                    .locations
                     .iter_all()
-                    .map(move |(_offset, perms)| {
-                        let perm = perms.get(idx);
+                    .map(move |(_offset, loc)| {
+                        let perm = loc.perms.get(idx);
                         perm.cloned()
                     })
                     .collect::<Vec<_>>();
@@ -788,7 +815,7 @@ impl<'tcx> Tree {
         show_unnamed: bool,
     ) -> InterpResult<'tcx> {
         let mut indenter = DisplayIndent::new();
-        let ranges = self.rperms.iter_all().map(|(range, _perms)| range).collect::<Vec<_>>();
+        let ranges = self.locations.iter_all().map(|(range, _loc)| range).collect::<Vec<_>>();
         if let Some(repr) = DisplayRepr::from(self, show_unnamed) {
             repr.print(
                 &DEFAULT_FORMATTER,

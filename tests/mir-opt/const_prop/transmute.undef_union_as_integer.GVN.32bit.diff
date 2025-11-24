@@ -12,16 +12,20 @@
 -         _2 = ();
 -         _1 = Union32 { value: move _2 };
 +         _2 = const ();
-+         _1 = const Union32 {{ value: Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: u32, unit: () }};
++         _1 = const <uninit>;
           StorageDead(_2);
 -         _0 = move _1 as u32 (Transmute);
-+         _0 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: u32;
++         _0 = const <uninit>;
           StorageDead(_1);
           return;
       }
 + }
 + 
 + ALLOC0 (size: 4, align: 4) {
++     __ __ __ __                                     │ ░░░░
++ }
++ 
++ ALLOC1 (size: 4, align: 4) {
 +     __ __ __ __                                     │ ░░░░
   }
   

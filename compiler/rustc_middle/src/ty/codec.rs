@@ -10,7 +10,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use std::marker::{DiscriminantKind, PointeeSized};
 
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_serialize::{Decodable, Encodable};
@@ -486,15 +486,6 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<LocalDefId> {
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
     fn decode(d: &mut D) -> Self {
         RefDecodable::decode(d)
-    }
-}
-
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<(VariantIdx, FieldIdx)> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        let len = decoder.read_usize();
-        decoder.interner().mk_offset_of_from_iter(
-            (0..len).map::<(VariantIdx, FieldIdx), _>(|_| Decodable::decode(decoder)),
-        )
     }
 }
 

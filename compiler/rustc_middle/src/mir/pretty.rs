@@ -1097,19 +1097,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => {
-                let t = with_no_trimmed_paths!(format!("{}", t));
-                match op {
-                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
-                    NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
-                        write!(fmt, "ContractChecks()")
-                    }
-                    NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
-                        write!(fmt, "OverflowChecks()")
-                    }
+            NullaryOp(ref op) => match op {
+                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
+                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
+                    write!(fmt, "ContractChecks()")
                 }
-            }
+                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                    write!(fmt, "OverflowChecks()")
+                }
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1870,6 +1866,13 @@ fn pretty_print_const_value_tcx<'tcx>(
 
     if tcx.sess.verbose_internals() {
         fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
+        return Ok(());
+    }
+
+    // Printing [MaybeUninit<u8>::uninit(); N] or any other aggregate where all fields are uninit
+    // becomes very verbose. This special case makes the dump terse and clear.
+    if ct.all_bytes_uninit(tcx) {
+        fmt.write_str("<uninit>")?;
         return Ok(());
     }
 

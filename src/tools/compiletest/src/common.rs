@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::process::Command;
@@ -1011,6 +1012,13 @@ pub struct TargetCfg {
     // target spec).
     pub(crate) rustc_abi: Option<String>,
 
+    /// ELF is the "default" binary format, so the compiler typically doesn't
+    /// emit a `"binary-format"` field for ELF targets.
+    ///
+    /// See `impl ToJson for Target` in `compiler/rustc_target/src/spec/json.rs`.
+    #[serde(default = "default_binary_format_elf")]
+    pub(crate) binary_format: Cow<'static, str>,
+
     // Not present in target cfg json output, additional derived information.
     #[serde(skip)]
     /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
@@ -1030,6 +1038,10 @@ fn default_os() -> String {
 
 fn default_reloc_model() -> String {
     "pic".into()
+}
+
+fn default_binary_format_elf() -> Cow<'static, str> {
+    Cow::Borrowed("elf")
 }
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]

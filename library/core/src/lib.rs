@@ -195,6 +195,7 @@
 // tidy-alphabetical-start
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
+#![feature(avx10_target_feature)]
 #![feature(hexagon_target_feature)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]

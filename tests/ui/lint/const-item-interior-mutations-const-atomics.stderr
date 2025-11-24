@@ -1,0 +1,765 @@
+warning: mutation of an interior mutable `const` item with call to `store`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:13:14
+   |
+LL |     let _a = A.store(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+   = note: `#[warn(const_item_interior_mutations)]` on by default
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:16:14
+   |
+LL |     let _a = A.swap(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_and_swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:19:14
+   |
+LL |     let _a = A.compare_and_swap(false, true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:22:14
+   |
+LL |     let _a = A.compare_exchange(false, true, Ordering::SeqCst, Ordering::Relaxed);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange_weak`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:25:14
+   |
+LL |     let _a = A.compare_exchange_weak(false, true, Ordering::SeqCst, Ordering::Relaxed);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_and`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:28:14
+   |
+LL |     let _a = A.fetch_and(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_nand`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:31:14
+   |
+LL |     let _a = A.fetch_nand(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_or`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:34:14
+   |
+LL |     let _a = A.fetch_or(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_xor`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:37:14
+   |
+LL |     let _a = A.fetch_xor(true, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_not`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:40:14
+   |
+LL |     let _a = A.fetch_not(Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:43:14
+   |
+LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(true));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:46:14
+   |
+LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(false));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:49:14
+   |
+LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| true);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicBool`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicBool = AtomicBool::new(false);
+LL +     static A: AtomicBool = AtomicBool::new(false);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `store`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:56:14
+   |
+LL |     let _a = A.store(std::ptr::null_mut(), Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:59:14
+   |
+LL |     let _a = A.swap(std::ptr::null_mut(), Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_and_swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:62:14
+   |
+LL |     let _a = A.compare_and_swap(std::ptr::null_mut(), std::ptr::null_mut(), Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:65:14
+   |
+LL |       let _a = A.compare_exchange(
+   |                ^ `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |  ______________|
+   | |
+LL | |
+LL | |         std::ptr::null_mut(),
+LL | |         std::ptr::null_mut(),
+LL | |         Ordering::SeqCst,
+LL | |         Ordering::Relaxed,
+LL | |     );
+   | |_____^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange_weak`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:73:14
+   |
+LL |       let _a = A.compare_exchange_weak(
+   |                ^ `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |  ______________|
+   | |
+LL | |
+LL | |         std::ptr::null_mut(),
+LL | |         std::ptr::null_mut(),
+LL | |         Ordering::SeqCst,
+LL | |         Ordering::Relaxed,
+LL | |     );
+   | |_____^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:81:14
+   |
+LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(std::ptr::null_mut()));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:84:14
+   |
+LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(std::ptr::null_mut()));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:87:14
+   |
+LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| std::ptr::null_mut());
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_ptr_add`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:90:14
+   |
+LL |     let _a = A.fetch_ptr_add(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_ptr_sub`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:93:14
+   |
+LL |     let _a = A.fetch_ptr_sub(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_byte_add`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:96:14
+   |
+LL |     let _a = A.fetch_byte_add(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_byte_sub`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:99:14
+   |
+LL |     let _a = A.fetch_byte_sub(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_and`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:102:14
+   |
+LL |     let _a = A.fetch_and(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_or`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:105:14
+   |
+LL |     let _a = A.fetch_or(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_xor`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:108:14
+   |
+LL |     let _a = A.fetch_xor(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicPtr<i32>`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+LL +     static A: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   |
+
+warning: mutation of an interior mutable `const` item with call to `store`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:115:14
+   |
+LL |     let _a = A.store(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:118:14
+   |
+LL |     let _a = A.swap(2, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_and_swap`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:121:14
+   |
+LL |     let _a = A.compare_and_swap(2, 3, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:124:14
+   |
+LL |     let _a = A.compare_exchange(3, 4, Ordering::SeqCst, Ordering::Relaxed);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `compare_exchange_weak`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:127:14
+   |
+LL |     let _a = A.compare_exchange_weak(4, 5, Ordering::SeqCst, Ordering::Relaxed);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_add`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:130:14
+   |
+LL |     let _a = A.fetch_add(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_sub`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:133:14
+   |
+LL |     let _a = A.fetch_sub(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_add`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:136:14
+   |
+LL |     let _a = A.fetch_add(2, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_nand`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:139:14
+   |
+LL |     let _a = A.fetch_nand(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_or`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:142:14
+   |
+LL |     let _a = A.fetch_or(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_xor`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:145:14
+   |
+LL |     let _a = A.fetch_xor(1, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:148:14
+   |
+LL |     let _a = A.fetch_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(10));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `try_update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:151:14
+   |
+LL |     let _a = A.try_update(Ordering::SeqCst, Ordering::Relaxed, |_| Some(11));
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `update`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:154:14
+   |
+LL |     let _a = A.update(Ordering::SeqCst, Ordering::Relaxed, |_| 12);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_max`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:157:14
+   |
+LL |     let _a = A.fetch_max(20, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: mutation of an interior mutable `const` item with call to `fetch_min`
+  --> $DIR/const-item-interior-mutations-const-atomics.rs:160:14
+   |
+LL |     let _a = A.fetch_min(5, Ordering::SeqCst);
+   |              -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |
+   |              `A` is a interior mutable `const` item of type `AtomicU32`
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const A` will be modified
+   = help: for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+help: for a shared instance of `A`, consider making it a `static` item instead
+   |
+LL -     const A: AtomicU32 = AtomicU32::new(0);
+LL +     static A: AtomicU32 = AtomicU32::new(0);
+   |
+
+warning: 44 warnings emitted
+

@@ -80,4 +80,5 @@ fn debug() {
             b"Hello\xC0\x80 There\xE6\x83 Goodbye\xf4\x8d\x93\xaa".utf8_chunks().debug(),
         ),
     );
+    assert_eq!("\"'\"", &format!("{:?}", b"'".utf8_chunks().debug()));
 }

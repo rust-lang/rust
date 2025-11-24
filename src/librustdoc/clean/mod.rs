@@ -249,7 +249,7 @@ pub(crate) fn clean_trait_ref_with_constraints<'tcx>(
     trait_ref: ty::PolyTraitRef<'tcx>,
     constraints: ThinVec<AssocItemConstraint>,
 ) -> Path {
-    let kind = cx.tcx.def_kind(trait_ref.def_id()).into();
+    let kind = ItemType::from_def_id(trait_ref.def_id(), cx.tcx);
     if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
         span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {kind:?}");
     }

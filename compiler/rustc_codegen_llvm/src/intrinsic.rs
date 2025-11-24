@@ -15,6 +15,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
@@ -1136,8 +1137,17 @@ fn codegen_autodiff<'ll, 'tcx>(
     if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
         let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutEnable);
     }
-    if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-        let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+
+    let ct = tcx.crate_types();
+    let lto = tcx.sess.lto();
+    if ct.len() == 1 && ct.contains(&CrateType::Executable) {
+        if lto != rustc_session::config::Lto::Fat {
+            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+        }
+    } else {
+        if lto != rustc_session::config::Lto::Fat && !tcx.sess.opts.cg.linker_plugin_lto.enabled() {
+            let _ = tcx.dcx().emit_almost_fatal(AutoDiffWithoutLto);
+        }
     }
 
     let fn_args = instance.args;

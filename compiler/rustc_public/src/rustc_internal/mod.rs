@@ -53,7 +53,7 @@ where
 }
 
 pub fn crate_num(item: &crate::Crate) -> CrateNum {
-    item.id.into()
+    item.id.0.into()
 }
 
 /// Loads the current context and calls a function with it.

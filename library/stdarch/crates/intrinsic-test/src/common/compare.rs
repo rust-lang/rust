@@ -86,6 +86,10 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
             println!("Failed to run rust program for intrinsic {intrinsic}")
         }
     });
-    println!("{} differences found", intrinsics.len());
+    println!(
+        "{} differences found (tested {} intrinsics)",
+        intrinsics.len(),
+        intrinsic_name_list.len()
+    );
     intrinsics.is_empty()
 }

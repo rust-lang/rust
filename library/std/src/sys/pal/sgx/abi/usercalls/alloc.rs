@@ -143,12 +143,6 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
         align_of::<T>()
     }
 
-    /// # Safety
-    /// Behavior is undefined if any of these conditions are violated:
-    /// * `ptr` must be [valid] for writes of `size` many bytes, and it must be
-    ///   properly aligned.
-    ///
-    /// [valid]: core::ptr#safety
     /// # Panics
     ///
     /// This function panics if:
@@ -158,8 +152,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
         let elem_size = size_of::<T>();
         assert_eq!(size % elem_size, 0);
         let len = size / elem_size;
-        // SAFETY: The caller must uphold the safety contract for `from_raw_sized_unchecked`
-        unsafe { slice::from_raw_parts_mut(ptr as _, len) }
+        ptr::slice_from_raw_parts_mut(ptr as _, len)
     }
 }
 

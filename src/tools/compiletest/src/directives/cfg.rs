@@ -169,11 +169,7 @@ fn parse_cfg_name_directive<'a>(
 
     condition! {
         name: "elf",
-        condition: !config.target.contains("windows")
-            && !config.target.contains("wasm")
-            && !config.target.contains("apple")
-            && !config.target.contains("aix")
-            && !config.target.contains("uefi"),
+        condition: target_cfg.binary_format == "elf",
         message: "when the target binary format is ELF"
     }
 

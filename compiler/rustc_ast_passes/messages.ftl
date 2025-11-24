@@ -37,9 +37,10 @@ ast_passes_assoc_type_without_body =
     .suggestion = provide a definition for the type
 
 ast_passes_async_fn_in_const_trait_or_trait_impl =
-    async functions are not allowed in `const` {$in_impl ->
-        [true] trait impls
-        *[false] traits
+    async functions are not allowed in `const` {$context ->
+        [trait_impl] trait impls
+        [impl] impls
+        *[trait] traits
     }
     .label = associated functions of `const` cannot be declared `async`
 
@@ -203,6 +204,11 @@ ast_passes_generic_before_constraints = generic arguments must come before the f
     }
 
 ast_passes_generic_default_trailing = generic parameters with a default must be trailing
+
+ast_passes_impl_fn_const =
+    redundant `const` fn marker in const impl
+    .parent_constness = this declares all associated functions implicitly const
+    .label = remove the `const`
 
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features

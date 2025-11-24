@@ -400,6 +400,8 @@ define_tables! {
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
+    asyncness: Table<DefIndex, ty::Asyncness>,
+    constness: Table<DefIndex, hir::Constness>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
@@ -433,7 +435,6 @@ define_tables! {
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     thir_abstract_const: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
     impl_parent: Table<DefIndex, RawDefId>,
-    constness: Table<DefIndex, hir::Constness>,
     const_conditions: Table<DefIndex, LazyValue<ty::ConstConditions<'static>>>,
     defaultness: Table<DefIndex, hir::Defaultness>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
@@ -441,7 +442,6 @@ define_tables! {
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,

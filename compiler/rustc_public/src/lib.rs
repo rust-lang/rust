@@ -17,6 +17,7 @@
 //! [crates.io](https://crates.io).
 
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::{fmt, io};
 
 pub(crate) use rustc_public_bridge::IndexedVal;
@@ -33,7 +34,10 @@ pub use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use crate::error::*;
 use crate::mir::mono::StaticDef;
 use crate::mir::{Body, Mutability};
-use crate::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty};
+use crate::ty::{
+    AssocItem, FnDef, ForeignModuleDef, ImplDef, ProvenanceMap, Span, TraitDef, Ty,
+    serialize_index_impl,
+};
 use crate::unstable::Stable;
 
 pub mod abi;
@@ -46,6 +50,8 @@ pub mod compiler_interface;
 pub mod error;
 pub mod mir;
 pub mod target;
+#[cfg(test)]
+mod tests;
 pub mod ty;
 pub mod visitor;
 
@@ -53,21 +59,13 @@ pub mod visitor;
 pub type Symbol = String;
 
 /// The number that identifies a crate.
-pub type CrateNum = usize;
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct CrateNum(pub(crate) usize, ThreadLocalIndex);
+serialize_index_impl!(CrateNum);
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DefId").field("id", &self.0).field("name", &self.name()).finish()
-    }
-}
-
-impl IndexedVal for DefId {
-    fn to_val(index: usize) -> Self {
-        DefId(index)
-    }
-
-    fn to_index(&self) -> usize {
-        self.0
     }
 }
 
@@ -295,5 +293,27 @@ impl rustc_public_bridge::bridge::Allocation<compiler_interface::BridgeTys>
             align,
             mutability: mutability.stable(tables, cx),
         }
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Default)]
+/// Marker type for indexes into thread local structures.
+///
+/// Makes things `!Send`/`!Sync`, so users don't move `rustc_public` types to
+/// thread with no (or worse, different) `rustc_public` pointer.
+///
+/// Note. This doesn't make it impossible to confuse TLS. You could return a
+/// `DefId` from one `run!` invocation, and then use it inside a different
+/// `run!` invocation with different tables.
+pub(crate) struct ThreadLocalIndex {
+    _phantom: PhantomData<*const ()>,
+}
+#[expect(non_upper_case_globals)]
+/// Emulating unit struct `struct ThreadLocalIndex`;
+pub(crate) const ThreadLocalIndex: ThreadLocalIndex = ThreadLocalIndex { _phantom: PhantomData };
+
+impl fmt::Debug for ThreadLocalIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ThreadLocalIndex").finish()
     }
 }

@@ -181,13 +181,13 @@ impl EpollInterestTable {
                     .borrow_mut()
                     .extract_if(range_for_id(id), |_, _| true)
                     // Consume the iterator.
-                    .for_each(|_| ());
+                    .for_each(drop);
                 epoll
                     .ready_set
                     .borrow_mut()
                     .extract_if(range_for_id(id), |_| true)
                     // Consume the iterator.
-                    .for_each(|_| ());
+                    .for_each(drop);
             }
         }
     }

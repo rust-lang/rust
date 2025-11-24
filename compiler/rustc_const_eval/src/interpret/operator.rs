@@ -4,7 +4,7 @@ use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::NullOp;
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
+use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::sym;
 use tracing::trace;
@@ -506,22 +506,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    pub fn nullary_op(
-        &self,
-        null_op: NullOp<'tcx>,
-        arg_ty: Ty<'tcx>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+    pub fn nullary_op(&self, null_op: NullOp) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         use rustc_middle::mir::NullOp::*;
-
-        let layout = self.layout_of(arg_ty)?;
-        let usize_layout = || self.layout_of(self.tcx.types.usize).unwrap();
-
         interp_ok(match null_op {
-            OffsetOf(fields) => {
-                let val =
-                    self.tcx.offset_of_subfield(self.typing_env, layout, fields.iter()).bytes();
-                ImmTy::from_uint(val, usize_layout())
-            }
             RuntimeChecks(r) => ImmTy::from_bool(M::runtime_checks(self, r)?, *self.tcx),
         })
     }

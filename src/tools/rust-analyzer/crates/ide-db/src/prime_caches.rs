@@ -11,7 +11,7 @@ use salsa::{Cancelled, Database};
 use crate::{
     FxIndexMap, RootDatabase,
     base_db::{Crate, RootQueryDb},
-    symbol_index::SymbolsDatabase,
+    symbol_index::SymbolIndex,
 };
 
 /// We're indexing many crates.
@@ -107,8 +107,9 @@ pub fn parallel_prime_caches(
                     Ok::<_, crossbeam_channel::SendError<_>>(())
                 };
                 let handle_symbols = |module| {
-                    let cancelled =
-                        Cancelled::catch(AssertUnwindSafe(|| _ = db.module_symbols(module)));
+                    let cancelled = Cancelled::catch(AssertUnwindSafe(|| {
+                        _ = SymbolIndex::module_symbols(&db, module)
+                    }));
 
                     match cancelled {
                         Ok(()) => progress_sender

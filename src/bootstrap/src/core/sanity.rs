@@ -41,6 +41,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     "sparc64-unknown-helenos",
     // just a dummy comment so the list doesn't get onelined
     "riscv64gc-unknown-redox",
+    "hexagon-unknown-qurt",
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -185,12 +186,12 @@ than building it.
         .or_else(|| cmd_finder.maybe_have("node"))
         .or_else(|| cmd_finder.maybe_have("nodejs"));
 
-    build.config.npm = build
+    build.config.yarn = build
         .config
-        .npm
+        .yarn
         .take()
         .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("npm"));
+        .or_else(|| cmd_finder.maybe_have("yarn"));
 
     build.config.gdb = build
         .config
