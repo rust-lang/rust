@@ -461,7 +461,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_trait_item(&mut self, ti: &'v hir::TraitItem<'v>) {
         record_variants!(
             (self, ti, ti.kind, Some(ti.hir_id()), hir, TraitItem, TraitItemKind),
-            [Const, Fn, Type]
+            [Const, Fn, Type, AutoImpl]
         );
         hir_visit::walk_trait_item(self, ti)
     }
@@ -474,7 +474,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         record_variants!(
             (self, ii, ii.kind, Some(ii.hir_id()), hir, ImplItem, ImplItemKind),
-            [Const, Fn, Type]
+            [Const, Fn, Type, AutoImpl]
         );
         hir_visit::walk_impl_item(self, ii)
     }
@@ -584,6 +584,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Trait,
                 TraitAlias,
                 Impl,
+                AutoImpl,
+                ExternImpl,
                 MacCall,
                 MacroDef,
                 Delegation,
@@ -716,7 +718,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_assoc_item(&mut self, i: &'v ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         record_variants!(
             (self, i, i.kind, None, ast, AssocItem, AssocItemKind),
-            [Const, Fn, Type, MacCall, Delegation, DelegationMac]
+            [Const, Fn, Type, MacCall, Delegation, DelegationMac, AutoImpl, ExternImpl]
         );
         ast_visit::walk_assoc_item(self, i, ctxt);
     }

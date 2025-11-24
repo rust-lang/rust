@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
+use rustc_errors::{E0570, ErrorGuaranteed, FatalError, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
@@ -11,6 +11,7 @@ use rustc_hir::{
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_session::parse::feature_err;
 use rustc_span::def_id::DefId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
@@ -89,6 +90,12 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
                     self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
                 }
                 AstOwner::AssocItem(item, ctxt) => {
+                    if matches!(item.kind, AssocItemKind::ExternImpl(_)) {
+                        // We do not lower `extern unsafe? impl` items.
+                        // They just discharge the `auto impl` obligation from the current
+                        // `impl` block.
+                        return;
+                    }
                     self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt))
                 }
                 AstOwner::ForeignItem(item) => self.with_lctx(item.id, |lctx| {
@@ -216,6 +223,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             | ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
             | ItemKind::Impl(..)
+            | ItemKind::AutoImpl(..)
+            | ItemKind::ExternImpl(..)
             | ItemKind::MacCall(..)
             | ItemKind::MacroDef(..)
             | ItemKind::Delegation(..)
@@ -507,6 +516,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items: new_impl_items,
                     constness,
                 })
+            }
+            ItemKind::AutoImpl(..) | ItemKind::ExternImpl(..) => {
+                feature_err(
+                    self.tcx.sess,
+                    sym::supertrait_auto_impl,
+                    span,
+                    "feature is under construction",
+                )
+                .emit();
+                FatalError.raise()
             }
             ItemKind::Trait(box Trait {
                 constness,
@@ -1028,6 +1047,50 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     true,
                 )
             }
+            AssocItemKind::AutoImpl(ai) => {
+                let tcx = self.tcx;
+                if !tcx.features().supertrait_auto_impl() {
+                    feature_err(
+                        &tcx.sess,
+                        sym::supertrait_auto_impl,
+                        i.span,
+                        "feature is under construction",
+                    )
+                    .emit();
+                    FatalError.raise();
+                }
+                let generics = tcx.arena.alloc(hir::Generics {
+                    has_where_clause_predicates: false,
+                    params: &[],
+                    predicates: &[],
+                    where_clause_span: DUMMY_SP,
+                    span: DUMMY_SP,
+                });
+                (
+                    Ident::dummy(),
+                    &*generics,
+                    hir::TraitItemKind::AutoImpl(
+                        tcx.arena.alloc(self.lower_poly_trait_ref_inner(
+                            &ai.generics.params,
+                            &TraitBoundModifiers {
+                                constness: BoundConstness::Never,
+                                asyncness: BoundAsyncness::Normal,
+                                polarity: match ai.of_trait.polarity {
+                                    ImplPolarity::Positive => BoundPolarity::Positive,
+                                    ImplPolarity::Negative(span) => BoundPolarity::Negative(span),
+                                },
+                            },
+                            &ai.of_trait.trait_ref,
+                            ai.of_trait.trait_ref.path.span,
+                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::SuperTrait),
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
+                        )),
+                        &[],
+                    ),
+                    false,
+                )
+            }
+            AssocItemKind::ExternImpl(..) => unreachable!("we should never lower ast::ExternImpl"),
             AssocItemKind::Type(box TyAlias {
                 ident,
                 generics,
@@ -1232,6 +1295,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         },
                     ),
                 )
+            }
+            AssocItemKind::AutoImpl(_) | AssocItemKind::ExternImpl(_) => {
+                feature_err(
+                    &self.tcx.sess,
+                    sym::supertrait_auto_impl,
+                    i.span,
+                    "feature is under construction",
+                )
+                .emit();
+                FatalError.raise();
             }
             AssocItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, i.id);

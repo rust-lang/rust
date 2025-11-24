@@ -2585,7 +2585,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             AssocSuggestion::MethodWithSelf { called }
                         }
                         ast::AssocItemKind::Delegation(..) => AssocSuggestion::AssocFn { called },
-                        ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(..) => {
+                        ast::AssocItemKind::AutoImpl(_)
+                        | ast::AssocItemKind::ExternImpl(_)
+                        | ast::AssocItemKind::MacCall(_)
+                        | ast::AssocItemKind::DelegationMac(..) => {
                             continue;
                         }
                     });

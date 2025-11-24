@@ -84,6 +84,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
             }
         }
         hir::ImplItemKind::Type(..) => Target::AssocTy,
+        hir::ImplItemKind::AutoImpl(_poly_trait_ref, _impl_items) => Target::AutoImpl,
     }
 }
 
@@ -909,6 +910,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Trait
             | Target::TraitAlias
             | Target::Method(..)
+            | Target::AutoImpl
+            | Target::ExternImpl
             | Target::ForeignFn
             | Target::ForeignStatic
             | Target::ForeignTy

@@ -1078,6 +1078,8 @@ rustc_queries! {
 
     /// Maps from an impl/trait or struct/variant `DefId`
     /// to a list of the `DefId`s of its associated items or fields.
+    ///
+    /// Note: This does not report `auto impl` items.
     query associated_item_def_ids(key: DefId) -> &'tcx [DefId] {
         desc { |tcx| "collecting associated items or fields of `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
@@ -1085,6 +1087,8 @@ rustc_queries! {
     }
 
     /// Maps from a trait/impl item to the trait/impl item "descriptor".
+    ///
+    /// It is a bug to call this with `DefId` associated with an `auto impl`.
     query associated_item(key: DefId) -> ty::AssocItem {
         desc { |tcx| "computing associated item data for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

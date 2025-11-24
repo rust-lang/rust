@@ -280,6 +280,8 @@ pub enum DefPathData {
     // Different kinds of items and item-like things:
     /// An impl.
     Impl,
+    /// An `auto impl` directive
+    AutoImpl,
     /// An `extern` block.
     ForeignMod,
     /// A `use` item.
@@ -461,6 +463,7 @@ impl DefPathData {
             DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
 
             Impl
+            | AutoImpl
             | ForeignMod
             | CrateRoot
             | Use
@@ -485,6 +488,7 @@ impl DefPathData {
             DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
 
             Impl
+            | AutoImpl
             | ForeignMod
             | CrateRoot
             | Use
@@ -506,7 +510,7 @@ impl DefPathData {
             | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
-            Impl => DefPathDataName::Anon { namespace: kw::Impl },
+            Impl | AutoImpl => DefPathDataName::Anon { namespace: kw::Impl },
             ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
             Use => DefPathDataName::Anon { namespace: kw::Use },
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },

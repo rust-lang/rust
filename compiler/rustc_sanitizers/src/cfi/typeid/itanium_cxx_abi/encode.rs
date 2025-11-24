@@ -676,7 +676,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     for disambiguated_data in &def_path.data {
         s.push('N');
         s.push_str(match disambiguated_data.data {
-            hir::definitions::DefPathData::Impl => "I", // Not specified in v0's <namespace>
+            hir::definitions::DefPathData::Impl | hir::definitions::DefPathData::AutoImpl => "I", // Not specified in v0's <namespace>
             hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
             hir::definitions::DefPathData::TypeNs(..) => "t",
             hir::definitions::DefPathData::ValueNs(..) => "v",

@@ -2111,20 +2111,40 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         rbp: RelaxedBoundPolicy<'_>,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
+        self.lower_poly_trait_ref_inner(
+            bound_generic_params,
+            modifiers,
+            trait_ref,
+            *span,
+            rbp,
+            itctx,
+        )
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn lower_poly_trait_ref_inner(
+        &mut self,
+        bound_generic_params: &[GenericParam],
+        modifiers: &TraitBoundModifiers,
+        trait_ref: &TraitRef,
+        span: Span,
+        rbp: RelaxedBoundPolicy<'_>,
+        itctx: ImplTraitContext,
+    ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(trait_ref.ref_id, bound_generic_params);
         let trait_ref = self.lower_trait_ref(*modifiers, trait_ref, itctx);
         let modifiers = self.lower_trait_bound_modifiers(*modifiers);
 
         if let ast::BoundPolarity::Maybe(_) = modifiers.polarity {
-            self.validate_relaxed_bound(trait_ref, *span, rbp);
+            self.validate_relaxed_bound(trait_ref, span, rbp);
         }
 
         hir::PolyTraitRef {
             bound_generic_params,
             modifiers,
             trait_ref,
-            span: self.lower_span(*span),
+            span: self.lower_span(span),
         }
     }
 
