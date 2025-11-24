@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{fs, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
@@ -726,6 +726,13 @@ pub(crate) unsafe fn llvm_optimize(
 
     let llvm_plugins = config.llvm_plugins.join(",");
 
+    let enzyme_fn = if consider_ad {
+        let wrapper: &'static Mutex<llvm::EnzymeWrapper> = llvm::EnzymeWrapper::init(cgcx);
+        wrapper.lock().unwrap().registerEnzymeAndPassPipeline
+    } else {
+        std::ptr::null()
+    };
+
     let result = unsafe {
         llvm::LLVMRustOptimize(
             module.module_llvm.llmod(),
@@ -745,7 +752,7 @@ pub(crate) unsafe fn llvm_optimize(
             vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
-            run_enzyme,
+            enzyme_fn,
             print_before_enzyme,
             print_after_enzyme,
             print_passes,
