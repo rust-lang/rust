@@ -9,17 +9,26 @@ use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
 
-use crate::{ExpandError, ExpandErrorKind, ExpandResult, MatchedArmIndex, parser::MetaVarKind};
+use crate::{
+    ExpandError, ExpandErrorKind, ExpandResult, MacroCallStyle, MatchedArmIndex,
+    parser::MetaVarKind,
+};
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
     input: &tt::TopSubtree<Span>,
     marker: impl Fn(&mut Span) + Copy,
+    call_style: MacroCallStyle,
     call_site: Span,
     def_site_edition: Edition,
 ) -> ExpandResult<(tt::TopSubtree<Span>, MatchedArmIndex)> {
     let mut match_: Option<(matcher::Match<'_>, &crate::Rule, usize)> = None;
     for (idx, rule) in rules.iter().enumerate() {
+        // Skip any rules that aren't relevant to the call style (fn-like/attr/derive).
+        if call_style != rule.style {
+            continue;
+        }
+
         let new_match = matcher::match_(&rule.lhs, input, def_site_edition);
 
         if new_match.err.is_none() {

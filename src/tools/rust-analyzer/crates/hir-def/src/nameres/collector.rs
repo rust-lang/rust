@@ -2300,7 +2300,10 @@ impl ModCollector<'_, '_> {
             }
         } else {
             // Case 2: normal `macro_rules!` macro
-            MacroExpander::Declarative
+            let id = InFile::new(self.file_id(), ast_id);
+            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let styles = decl_expander.mac.rule_styles();
+            MacroExpander::Declarative { styles }
         };
         let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 
@@ -2369,7 +2372,10 @@ impl ModCollector<'_, '_> {
             }
         } else {
             // Case 2: normal `macro`
-            MacroExpander::Declarative
+            let id = InFile::new(self.file_id(), ast_id);
+            let decl_expander = self.def_collector.db.decl_macro_expander(krate, id.upcast());
+            let styles = decl_expander.mac.rule_styles();
+            MacroExpander::Declarative { styles }
         };
         let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 
@@ -2429,12 +2435,7 @@ impl ModCollector<'_, '_> {
                         })
                         .or_else(|| def_map[self.module_id].scope.get(name).take_macros())
                         .or_else(|| Some(def_map.macro_use_prelude.get(name).copied()?.0))
-                        .filter(|&id| {
-                            sub_namespace_match(
-                                Some(MacroSubNs::from_id(db, id)),
-                                Some(MacroSubNs::Bang),
-                            )
-                        })
+                        .filter(|&id| sub_namespace_match(db, id, Some(MacroSubNs::Bang)))
                         .map(|it| self.def_collector.db.macro_def(it))
                 })
             },

@@ -1468,6 +1468,7 @@ name = "mbe"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "bitflags 2.9.4",
  "cov-mark",
  "expect-test",
  "intern",
