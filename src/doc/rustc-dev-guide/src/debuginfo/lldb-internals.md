@@ -15,6 +15,9 @@ Here are some existing implementations of LLDB's plugin API:
 * [Apple's fork with support for Swift](https://github.com/swiftlang/llvm-project)
 * [CodeLLDB's former fork with support for Rust](https://archive.softwareheritage.org/browse/origin/directory/?branch=refs/heads/codelldb/16.x&origin_url=https://github.com/vadimcn/llvm-project&path=lldb/source/Plugins/TypeSystem/Rust&timestamp=2023-09-11T04:55:10Z)
 * [A work in progress reimplementation of Rust support](https://github.com/Walnut356/llvm-project/tree/lldbrust/19.x)
+* [A Rust expression parser plugin](https://github.com/tromey/lldb/tree/a0fc10ce0dacb3038b7302fff9f6cb8cb34b37c6/source/Plugins/ExpressionParser/Rust).
+This was written before the `TypeSystem` API was created. Due to the freeform nature of expression parsing, the
+underlyng lexing, parsing, function calling, etc. should still offer valuable insights.
 
 ## Rust Support and TypeSystemClang
 

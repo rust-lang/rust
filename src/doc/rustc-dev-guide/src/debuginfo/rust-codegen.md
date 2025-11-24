@@ -56,7 +56,7 @@ Using the `const` qualifier to denote non-`mut` poses potential issues due to LL
 optimizations. In short, LLDB attempts to cache the child-values of variables (e.g. struct fields,
 array elements) when stepping through code. A heuristic is used to determine which values are safely
 cache-able, and `const` is part of that heuristic. Research has not been done into how this would
-interact with things like Rust's interrior mutability constructs.
+interact with things like Rust's interior mutability constructs.
 
 ### DWARF vs PDB
 
