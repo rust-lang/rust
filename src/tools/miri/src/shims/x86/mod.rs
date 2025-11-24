@@ -518,61 +518,6 @@ fn shift_simd_by_scalar<'tcx>(
     interp_ok(())
 }
 
-/// Shifts each element of `left` by the corresponding element of `right`.
-///
-/// For logic shifts, when right is larger than BITS - 1, zero is produced.
-/// For arithmetic right-shifts, when right is larger than BITS - 1, the sign
-/// bit is copied to all bits.
-fn shift_simd_by_simd<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx>,
-    right: &OpTy<'tcx>,
-    which: ShiftOp,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = ecx.project_to_simd(left)?;
-    let (right, right_len) = ecx.project_to_simd(right)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    for i in 0..dest_len {
-        let left = ecx.read_scalar(&ecx.project_index(&left, i)?)?;
-        let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        // It is ok to saturate the value to u32::MAX because any value
-        // above BITS - 1 will produce the same result.
-        let shift = u32::try_from(right.to_uint(dest.layout.size)?).unwrap_or(u32::MAX);
-
-        let res = match which {
-            ShiftOp::Left => {
-                let left = left.to_uint(dest.layout.size)?;
-                let res = left.checked_shl(shift).unwrap_or(0);
-                // `truncate` is needed as left-shift can make the absolute value larger.
-                Scalar::from_uint(dest.layout.size.truncate(res), dest.layout.size)
-            }
-            ShiftOp::RightLogic => {
-                let left = left.to_uint(dest.layout.size)?;
-                let res = left.checked_shr(shift).unwrap_or(0);
-                // No `truncate` needed as right-shift can only make the absolute value smaller.
-                Scalar::from_uint(res, dest.layout.size)
-            }
-            ShiftOp::RightArith => {
-                let left = left.to_int(dest.layout.size)?;
-                // On overflow, copy the sign bit to the remaining bits
-                let res = left.checked_shr(shift).unwrap_or(left >> 127);
-                // No `truncate` needed as right-shift can only make the absolute value smaller.
-                Scalar::from_int(res, dest.layout.size)
-            }
-        };
-        ecx.write_scalar(res, &dest)?;
-    }
-
-    interp_ok(())
-}
-
 /// Takes a 128-bit vector, transmutes it to `[u64; 2]` and extracts
 /// the first value.
 fn extract_first_u64<'tcx>(
@@ -910,73 +855,6 @@ fn test_high_bits_masked<'tcx>(
     }
 
     interp_ok((direct, negated))
-}
-
-/// Conditionally loads from `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_load<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx>,
-    mask: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = ecx.project_to_simd(mask)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(dest_len, mask_len);
-
-    let mask_item_size = mask.layout.field(ecx, 0).size;
-    let high_bit_offset = mask_item_size.bits().strict_sub(1);
-
-    let ptr = ecx.read_pointer(ptr)?;
-    for i in 0..dest_len {
-        let mask = ecx.project_index(&mask, i)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            let ptr = ptr.wrapping_offset(dest.layout.size * i, &ecx.tcx);
-            // Unaligned copy, which is what we want.
-            ecx.mem_copy(ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
-        } else {
-            ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-        }
-    }
-
-    interp_ok(())
-}
-
-/// Conditionally stores into `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_store<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx>,
-    mask: &OpTy<'tcx>,
-    value: &OpTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = ecx.project_to_simd(mask)?;
-    let (value, value_len) = ecx.project_to_simd(value)?;
-
-    assert_eq!(value_len, mask_len);
-
-    let mask_item_size = mask.layout.field(ecx, 0).size;
-    let high_bit_offset = mask_item_size.bits().strict_sub(1);
-
-    let ptr = ecx.read_pointer(ptr)?;
-    for i in 0..value_len {
-        let mask = ecx.project_index(&mask, i)?;
-        let value = ecx.project_index(&value, i)?;
-
-        if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // *Non-inbounds* pointer arithmetic to compute the destination.
-            // (That's why we can't use a place projection.)
-            let ptr = ptr.wrapping_offset(value.layout.size * i, &ecx.tcx);
-            // Deref the pointer *unaligned*, and do the copy.
-            let dest = ecx.ptr_to_mplace_unaligned(ptr, value.layout);
-            ecx.copy_op(&value, &dest)?;
-        }
-    }
-
-    interp_ok(())
 }
 
 /// Compute the sum of absolute differences of quadruplets of unsigned
