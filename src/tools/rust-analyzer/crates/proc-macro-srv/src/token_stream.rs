@@ -98,7 +98,11 @@ impl<S> TokenStream<S> {
                     groups.push((proc_macro::Delimiter::Parenthesis, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseParen if *open_delim != Delimiter::Parenthesis => {
-                    return Err("Expected ')'".to_owned());
+                    return if *open_delim == Delimiter::None {
+                        Err("Unexpected ')'".to_owned())
+                    } else {
+                        Err("Expected ')'".to_owned())
+                    };
                 }
                 rustc_lexer::TokenKind::CloseParen => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
@@ -122,7 +126,11 @@ impl<S> TokenStream<S> {
                     groups.push((proc_macro::Delimiter::Brace, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseBrace if *open_delim != Delimiter::Brace => {
-                    return Err("Expected '}'".to_owned());
+                    return if *open_delim == Delimiter::None {
+                        Err("Unexpected '}'".to_owned())
+                    } else {
+                        Err("Expected '}'".to_owned())
+                    };
                 }
                 rustc_lexer::TokenKind::CloseBrace => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
@@ -146,7 +154,11 @@ impl<S> TokenStream<S> {
                     groups.push((proc_macro::Delimiter::Bracket, range, vec![]))
                 }
                 rustc_lexer::TokenKind::CloseBracket if *open_delim != Delimiter::Bracket => {
-                    return Err("Expected ']'".to_owned());
+                    return if *open_delim == Delimiter::None {
+                        Err("Unexpected ']'".to_owned())
+                    } else {
+                        Err("Expected ']'".to_owned())
+                    };
                 }
                 rustc_lexer::TokenKind::CloseBracket => {
                     let (delimiter, open_range, stream) = groups.pop().unwrap();
@@ -223,10 +235,14 @@ impl<S> TokenStream<S> {
                 }
                 rustc_lexer::TokenKind::Whitespace => continue,
                 rustc_lexer::TokenKind::Frontmatter { .. } => unreachable!(),
-                rustc_lexer::TokenKind::Unknown => return Err("Unknown token".to_owned()),
-                rustc_lexer::TokenKind::UnknownPrefix => return Err("Unknown prefix".to_owned()),
+                rustc_lexer::TokenKind::Unknown => {
+                    return Err(format!("Unknown token: `{}`", &s[range]));
+                }
+                rustc_lexer::TokenKind::UnknownPrefix => {
+                    return Err(format!("Unknown prefix: `{}`", &s[range]));
+                }
                 rustc_lexer::TokenKind::UnknownPrefixLifetime => {
-                    return Err("Unknown lifetime prefix".to_owned());
+                    return Err(format!("Unknown lifetime prefix: `{}`", &s[range]));
                 }
                 // FIXME: Error on edition >= 2024 ... I dont think the proc-macro server can fetch editions currently
                 // and whose edition is this?
@@ -247,7 +263,9 @@ impl<S> TokenStream<S> {
                     is_raw: false,
                     span: span.derive_ranged(range),
                 })),
-                rustc_lexer::TokenKind::InvalidIdent => return Err("Invalid identifier".to_owned()),
+                rustc_lexer::TokenKind::InvalidIdent => {
+                    return Err(format!("Invalid identifier: `{}`", &s[range]));
+                }
                 rustc_lexer::TokenKind::RawIdent => {
                     let range = range.start + 2..range.end;
                     tokenstream.push(TokenTree::Ident(Ident {

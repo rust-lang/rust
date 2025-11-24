@@ -10,16 +10,44 @@ use expect_test::expect;
 fn test_derive_empty() {
     assert_expand(
         "DeriveEmpty",
-        r#"struct S;"#,
+        r#"struct S { field: &'r#lt fn(u32) -> &'a r#u32 }"#,
         expect![[r#"
             IDENT 1 struct
             IDENT 1 S
-            PUNCT 1 ; [alone]
+            GROUP {} 1 1 1
+              IDENT 1 field
+              PUNCT 1 : [alone]
+              PUNCT 1 & [joint]
+              PUNCT 1 ' [joint]
+              IDENT 1 r#lt
+              IDENT 1 fn
+              GROUP () 1 1 1
+                IDENT 1 u32
+              PUNCT 1 - [joint]
+              PUNCT 1 > [alone]
+              PUNCT 1 & [joint]
+              PUNCT 1 ' [joint]
+              IDENT 1 a
+              IDENT 1 r#u32
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..6#ROOT2024 struct
             IDENT 42:Root[0000, 0]@7..8#ROOT2024 S
-            PUNCT 42:Root[0000, 0]@8..9#ROOT2024 ; [alone]
+            GROUP {} 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@46..47#ROOT2024 42:Root[0000, 0]@9..47#ROOT2024
+              IDENT 42:Root[0000, 0]@11..16#ROOT2024 field
+              PUNCT 42:Root[0000, 0]@16..17#ROOT2024 : [alone]
+              PUNCT 42:Root[0000, 0]@18..19#ROOT2024 & [joint]
+              PUNCT 42:Root[0000, 0]@22..23#ROOT2024 ' [joint]
+              IDENT 42:Root[0000, 0]@22..24#ROOT2024 r#lt
+              IDENT 42:Root[0000, 0]@25..27#ROOT2024 fn
+              GROUP () 42:Root[0000, 0]@27..28#ROOT2024 42:Root[0000, 0]@31..32#ROOT2024 42:Root[0000, 0]@27..32#ROOT2024
+                IDENT 42:Root[0000, 0]@28..31#ROOT2024 u32
+              PUNCT 42:Root[0000, 0]@33..34#ROOT2024 - [joint]
+              PUNCT 42:Root[0000, 0]@34..35#ROOT2024 > [alone]
+              PUNCT 42:Root[0000, 0]@36..37#ROOT2024 & [joint]
+              PUNCT 42:Root[0000, 0]@38..39#ROOT2024 ' [joint]
+              IDENT 42:Root[0000, 0]@38..39#ROOT2024 a
+              IDENT 42:Root[0000, 0]@42..45#ROOT2024 r#u32
         "#]],
     );
 }
@@ -464,6 +492,30 @@ fn test_attr_macro() {
             PUNCT 42:Root[0000, 0]@57..58#ROOT2024 ; [alone]
         "#]],
     );
+}
+
+#[test]
+#[should_panic = "called `Result::unwrap()` on an `Err` value: \"Mismatched token groups\""]
+fn test_broken_input_unclosed_delim() {
+    assert_expand("fn_like_clone_tokens", r###"{"###, expect![[]], expect![[]]);
+}
+
+#[test]
+#[should_panic = "called `Result::unwrap()` on an `Err` value: \"Unexpected '}'\""]
+fn test_broken_input_unopened_delim() {
+    assert_expand("fn_like_clone_tokens", r###"}"###, expect![[]], expect![[]]);
+}
+
+#[test]
+#[should_panic = "called `Result::unwrap()` on an `Err` value: \"Expected '}'\""]
+fn test_broken_input_mismatched_delim() {
+    assert_expand("fn_like_clone_tokens", r###"(}"###, expect![[]], expect![[]]);
+}
+
+#[test]
+#[should_panic = "called `Result::unwrap()` on an `Err` value: \"Invalid identifier: `🪟`\""]
+fn test_broken_input_unknowm_token() {
+    assert_expand("fn_like_clone_tokens", r###"🪟"###, expect![[]], expect![[]]);
 }
 
 /// Tests that we find and classify all proc macros correctly.
