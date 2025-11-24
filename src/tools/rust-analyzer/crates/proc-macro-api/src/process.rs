@@ -34,12 +34,6 @@ pub(crate) enum Protocol {
     Postcard { mode: SpanMode },
 }
 
-impl Default for Protocol {
-    fn default() -> Self {
-        Protocol::Postcard { mode: SpanMode::Id }
-    }
-}
-
 /// Maintains the state of the proc-macro server process.
 #[derive(Debug)]
 struct ProcessSrvState {
@@ -122,11 +116,10 @@ impl ProcMacroServerProcess {
         srv.version = version;
 
         if version >= version::RUST_ANALYZER_SPAN_SUPPORT
-            && let Ok(mode) = srv.enable_rust_analyzer_spans()
+            && let Ok(new_mode) = srv.enable_rust_analyzer_spans()
         {
-            srv.protocol = match protocol {
-                Protocol::Postcard { .. } => Protocol::Postcard { mode },
-                Protocol::LegacyJson { .. } => Protocol::LegacyJson { mode },
+            match &mut srv.protocol {
+                Protocol::Postcard { mode } | Protocol::LegacyJson { mode } => *mode = new_mode,
             };
         }
 

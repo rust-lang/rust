@@ -8,10 +8,7 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::{
-    ProcMacroKind,
-    legacy_protocol::postcard::{decode_cobs, encode_cobs},
-};
+use crate::{ProcMacroKind, codec::Codec};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -152,59 +149,20 @@ impl ExpnGlobals {
 }
 
 pub trait Message: serde::Serialize + DeserializeOwned {
-    fn read<R: BufRead>(
-        from_proto: ProtocolRead<R, String>,
-        inp: &mut R,
-        buf: &mut String,
-    ) -> io::Result<Option<Self>> {
-        Ok(match from_proto(inp, buf)? {
+    fn read<R: BufRead, C: Codec>(inp: &mut R, buf: &mut C::Buf) -> io::Result<Option<Self>> {
+        Ok(match C::read(inp, buf)? {
             None => None,
-            Some(text) => {
-                let mut deserializer = serde_json::Deserializer::from_str(text);
-                // Note that some proc-macro generate very deep syntax tree
-                // We have to disable the current limit of serde here
-                deserializer.disable_recursion_limit();
-                Some(Self::deserialize(&mut deserializer)?)
-            }
+            Some(buf) => C::decode(buf)?,
         })
     }
-    fn write<W: Write>(self, to_proto: ProtocolWrite<W, String>, out: &mut W) -> io::Result<()> {
-        let text = serde_json::to_string(&self)?;
-        to_proto(out, &text)
-    }
-
-    fn read_postcard<R: BufRead>(
-        from_proto: ProtocolRead<R, Vec<u8>>,
-        inp: &mut R,
-        buf: &mut Vec<u8>,
-    ) -> io::Result<Option<Self>> {
-        Ok(match from_proto(inp, buf)? {
-            None => None,
-            Some(buf) => Some(decode_cobs(buf)?),
-        })
-    }
-
-    fn write_postcard<W: Write>(
-        self,
-        to_proto: ProtocolWrite<W, Vec<u8>>,
-        out: &mut W,
-    ) -> io::Result<()> {
-        let buf = encode_cobs(&self)?;
-        to_proto(out, &buf)
+    fn write<W: Write, C: Codec>(self, out: &mut W) -> io::Result<()> {
+        let value = C::encode(&self)?;
+        C::write(out, &value)
     }
 }
 
 impl Message for Request {}
 impl Message for Response {}
-
-/// Type alias for a function that reads protocol messages from a buffered input stream.
-#[allow(type_alias_bounds)]
-type ProtocolRead<R: BufRead, Buf> =
-    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut Buf) -> io::Result<Option<&'buf mut Buf>>;
-/// Type alias for a function that writes protocol messages to an output stream.
-#[allow(type_alias_bounds)]
-type ProtocolWrite<W: Write, Buf> =
-    for<'o, 'msg> fn(out: &'o mut W, msg: &'msg Buf) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {

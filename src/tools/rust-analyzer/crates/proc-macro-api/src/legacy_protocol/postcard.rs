@@ -2,28 +2,39 @@
 
 use std::io::{self, BufRead, Write};
 
-pub fn read_postcard<'a>(
-    input: &mut impl BufRead,
-    buf: &'a mut Vec<u8>,
-) -> io::Result<Option<&'a mut Vec<u8>>> {
-    buf.clear();
-    let n = input.read_until(0, buf)?;
-    if n == 0 {
-        return Ok(None);
+use serde::{Serialize, de::DeserializeOwned};
+
+use crate::{codec::Codec, framing::Framing};
+
+pub struct PostcardProtocol;
+
+impl Framing for PostcardProtocol {
+    type Buf = Vec<u8>;
+
+    fn read<'a, R: BufRead>(
+        inp: &mut R,
+        buf: &'a mut Vec<u8>,
+    ) -> io::Result<Option<&'a mut Vec<u8>>> {
+        buf.clear();
+        let n = inp.read_until(0, buf)?;
+        if n == 0 {
+            return Ok(None);
+        }
+        Ok(Some(buf))
     }
-    Ok(Some(buf))
+
+    fn write<W: Write>(out: &mut W, buf: &Vec<u8>) -> io::Result<()> {
+        out.write_all(buf)?;
+        out.flush()
+    }
 }
 
-#[allow(clippy::ptr_arg)]
-pub fn write_postcard(out: &mut impl Write, msg: &Vec<u8>) -> io::Result<()> {
-    out.write_all(msg)?;
-    out.flush()
-}
+impl Codec for PostcardProtocol {
+    fn encode<T: Serialize>(msg: &T) -> io::Result<Vec<u8>> {
+        postcard::to_allocvec_cobs(msg).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    }
 
-pub fn encode_cobs<T: serde::Serialize>(value: &T) -> io::Result<Vec<u8>> {
-    postcard::to_allocvec_cobs(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-}
-
-pub fn decode_cobs<T: serde::de::DeserializeOwned>(bytes: &mut [u8]) -> io::Result<T> {
-    postcard::from_bytes_cobs(bytes).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    fn decode<T: DeserializeOwned>(buf: &mut Self::Buf) -> io::Result<T> {
+        postcard::from_bytes_cobs(buf).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    }
 }

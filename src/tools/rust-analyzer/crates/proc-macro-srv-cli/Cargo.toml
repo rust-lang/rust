@@ -18,7 +18,7 @@ postcard.workspace = true
 clap = {version = "4.5.42", default-features = false, features = ["std"]}
 
 [features]
-default = ["postcard"]
+default = []
 sysroot-abi = ["proc-macro-srv/sysroot-abi", "proc-macro-api/sysroot-abi"]
 in-rust-tree = ["proc-macro-srv/in-rust-tree", "sysroot-abi"]
 
