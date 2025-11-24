@@ -5,7 +5,6 @@
         "cargo": {
           "buildScripts": {
             "enable": true,
-            "invocationLocation": "root",
             "invocationStrategy": "once",
             "overrideCommand": [
               "python3",
@@ -23,7 +22,6 @@
           "sysrootSrc": "./library"
         },
         "check": {
-          "invocationLocation": "root",
           "invocationStrategy": "once",
           "overrideCommand": [
             "python3",

@@ -1,8 +1,7 @@
 ((rustic-mode
   .((eglot-workspace-configuration
      . (:rust-analyzer
-        ( :check ( :invocationLocation "root"
-                                       :invocationStrategy "once"
+        ( :check ( invocationStrategy "once"
                                        :overrideCommand ["python3"
                                                          "x.py"
                                                          "check"
@@ -20,7 +19,6 @@
                  :procMacro ( :server "build-rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
                                       :enable t)
                  :cargo ( :buildScripts ( :enable t
-                                                  :invocationLocation "root"
                                                   :invocationStrategy "once"
                                                   :overrideCommand ["python3"
                                                                     "x.py"

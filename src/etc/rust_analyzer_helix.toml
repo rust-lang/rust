@@ -18,7 +18,6 @@ linkedProjects = [
 ]
 
 [language-server.rust-analyzer.config.check]
-invocationLocation = "root"
 invocationStrategy = "once"
 overrideCommand = [
     "python3",
@@ -50,7 +49,6 @@ RUSTC_BOOTSTRAP = "1"
 
 [language-server.rust-analyzer.config.cargo.buildScripts]
 enable = true
-invocationLocation = "root"
 invocationStrategy = "once"
 overrideCommand = [
     "python3",
