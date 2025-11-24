@@ -6259,6 +6259,7 @@ intrinsics:
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
+    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - ['_lane_s32', int32x2_t, uint8x8_t, '[LANE as u32, LANE as u32]','']
@@ -6268,12 +6269,12 @@ intrinsics:
       - Let:
           - c
           - int32x2_t
-          - FnCall: ['vreinterpret_s32_s8', [c]]
+          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_s32_s8', [c]]
       - Let:
           - c
           - "{type[1]}"
           - FnCall: [simd_shuffle!, [c, c, "{type[3]}"]]
-      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: ['vreinterpret{type[4]}_s8_s32', [c]]}]]
+      - FnCall: ["vusdot{neon_type[1].no}", [a, b, {FnCall: [transmute, [c]]}]] #'vreinterpret{type[4]}_s8_s32'
 
   - name: "vsudot{neon_type[0].lane_nox}"
     doc: "Dot product index form with signed and unsigned integers"
@@ -6288,6 +6289,7 @@ intrinsics:
       - *neon-unstable-i8mm
       - *neon-cfg-arm-unstable
     static_defs: ["const LANE: i32"]
+    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - [int32x2_t, int8x8_t, uint8x8_t, '[LANE as u32, LANE as u32]', uint32x2_t,'']
@@ -6297,7 +6299,7 @@ intrinsics:
       - Let:
           - c
           - uint32x2_t
-          - FnCall: ['vreinterpret_u32_u8', [c]]
+          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_u32_u8', [c]]
       - Let:
           - c
           - "{type[4]}"
@@ -6305,7 +6307,7 @@ intrinsics:
       - FnCall: 
           - "vusdot{neon_type[0].no}"
           - - a
-            - FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
+            - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret{type[5]}_u8_u32', [c]]
             - b
 
   - name: "vmul{neon_type[1].no}"
@@ -7115,6 +7117,7 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['3']]
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
+    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     safety: safe
     types:
       - [int32x2_t, int8x8_t, int8x8_t, int32x2_t, '[LANE as u32, LANE as u32]','']
@@ -7124,7 +7127,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: [transmute, [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7133,7 +7136,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: [transmute, [c]]
 
   - name: "vdot{neon_type[0].lane_nox}"
     doc: Dot product arithmetic (indexed)
@@ -7149,6 +7152,7 @@ intrinsics:
       - FnCall: [cfg_attr, [{FnCall: [not, ['target_arch = "arm"']]}, {FnCall: [unstable, ['feature = "stdarch_neon_dotprod"', 'issue = "117224"']]}]]
       - *neon-cfg-arm-unstable
     safety: safe
+    big_endian_inverse: true # TODO: Remove this attribute, and replace transmute with vreinterpret when https://github.com/llvm/llvm-project/pull/169337 is merged, LLVM inlining issue causing assertion failure.
     types:
       - [uint32x2_t, uint8x8_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32]','']
       - [uint32x4_t, uint8x16_t, uint8x8_t, uint32x2_t, '[LANE as u32, LANE as u32, LANE as u32, LANE as u32]','q']
@@ -7157,7 +7161,7 @@ intrinsics:
       - Let:
           - c
           - "{neon_type[3]}"
-          - FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
+          - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret_{neon_type[0]}_{neon_type[1]}', [c]]
       - Let:
           - c
           - "{neon_type[0]}"
@@ -7166,7 +7170,7 @@ intrinsics:
           - "vdot{neon_type[0].no}"
           - - a
             - b
-            - FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
+            - FnCall: [transmute, [c]] #- FnCall: ['vreinterpret{type[5]}_{neon_type[1]}_{neon_type[0]}', [c]]
 
   - name: "vmax{neon_type.no}"
     doc: Maximum (vector)
