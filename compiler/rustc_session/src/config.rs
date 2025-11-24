@@ -1462,6 +1462,18 @@ impl Options {
     pub fn autodiff_enabled(&self) -> bool {
         self.unstable_opts.autodiff.contains(&AutoDiff::Enable)
     }
+
+    pub fn allowed_partial_mitigations(&self) -> impl Iterator<Item = EnforcedMitigationKind> {
+        let mut result = BTreeSet::default();
+        for mitigation in &self.unstable_opts.allow_partial_mitigations {
+            if mitigation.enabled {
+                result.insert(mitigation.kind);
+            } else {
+                result.remove(&mitigation.kind);
+            }
+        }
+        result.into_iter()
+    }
 }
 
 impl UnstableOptions {

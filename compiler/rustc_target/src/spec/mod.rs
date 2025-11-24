@@ -1336,6 +1336,7 @@ impl FramePointer {
 
 crate::target_spec_enum! {
     /// Controls use of stack canaries.
+    #[derive(Encodable, BlobDecodable, HashStable_Generic)]
     pub enum StackProtector {
         /// Disable stack canary generation.
         None = "none",

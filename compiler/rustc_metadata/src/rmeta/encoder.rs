@@ -27,7 +27,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{CrateType, EnforcedMitigation, OptLevel, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
@@ -715,6 +715,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // `SourceFiles` we actually need to encode.
         let source_map = stat!("source-map", || self.encode_source_map());
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
+        let enforced_mitigations =
+            stat!("enforced-mitigations", || self.encode_enforced_mitigations());
 
         let root = stat!("final", || {
             let attrs = tcx.hir_krate_attrs();
@@ -761,6 +763,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 foreign_modules,
                 source_map,
                 target_modifiers,
+                enforced_mitigations,
                 traits,
                 impls,
                 incoherent_impls,
@@ -2099,6 +2102,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         self.lazy_array(tcx.sess.opts.gather_target_modifiers())
+    }
+
+    fn encode_enforced_mitigations(&mut self) -> LazyArray<EnforcedMitigation> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        self.lazy_array(tcx.sess.gather_enabled_enforced_mitigations())
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {

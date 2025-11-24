@@ -29,7 +29,7 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::config::TargetModifier;
+use rustc_session::config::{EnforcedMitigation, TargetModifier};
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
@@ -78,8 +78,11 @@ impl MetadataBlob {
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
-/// Target modifiers - abi or exploit mitigations flags
+/// Target modifiers - abi or exploit mitigations flags that cause unsoundness when mixed
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
+
+/// Enforced Mitigations
+pub(crate) type EnforcedMitigations = Vec<EnforcedMitigation>;
 
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
@@ -958,6 +961,13 @@ impl CrateRoot {
         metadata: &'a MetadataBlob,
     ) -> impl ExactSizeIterator<Item = TargetModifier> {
         self.target_modifiers.decode(metadata)
+    }
+
+    pub(crate) fn decode_enforced_mitigations<'a>(
+        &self,
+        metadata: &'a MetadataBlob,
+    ) -> impl ExactSizeIterator<Item = EnforcedMitigation> {
+        self.enforced_mitigations.decode(metadata)
     }
 }
 
@@ -1941,6 +1951,10 @@ impl CrateMetadata {
 
     pub(crate) fn target_modifiers(&self) -> TargetModifiers {
         self.root.decode_target_modifiers(&self.blob).collect()
+    }
+
+    pub(crate) fn enforced_mitigations(&self) -> EnforcedMitigations {
+        self.root.decode_enforced_mitigations(&self.blob).collect()
     }
 
     /// Keep `new_extern_crate` if it looks better in diagnostics

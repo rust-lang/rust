@@ -34,7 +34,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt, UnusedGenericParams};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
-use rustc_session::config::{SymbolManglingVersion, TargetModifier};
+use rustc_session::config::{EnforcedMitigation, SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
@@ -285,6 +285,7 @@ pub(crate) struct CrateRoot {
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
+    enforced_mitigations: LazyArray<EnforcedMitigation>,
 
     compiler_builtins: bool,
     needs_allocator: bool,
