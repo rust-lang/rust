@@ -169,6 +169,7 @@ else
   fi
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
+  export NO_DOWNLOAD_CI_LLVM="1"
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh
   # copy of the compiler (including llvm tools, etc.) if we haven't actually
@@ -185,6 +186,7 @@ else
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=false"
   fi
 
   # Download GCC from CI on test builders
