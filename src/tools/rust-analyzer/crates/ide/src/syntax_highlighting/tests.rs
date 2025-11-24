@@ -1516,8 +1516,10 @@ fn main() {
 fn test_deprecated_highlighting() {
     check_highlighting(
         r#"
+//- /foo.rs crate:foo deps:bar
 #![deprecated]
 use crate as _;
+extern crate bar;
 #[deprecated]
 macro_rules! macro_ {
     () => {};
@@ -1544,6 +1546,8 @@ trait Trait {}
 type Alias = ();
 #[deprecated]
 static STATIC: () = ();
+//- /bar.rs crate:bar
+#![deprecated]
         "#,
         expect_file!["./test_data/highlight_deprecated.html"],
         false,

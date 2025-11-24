@@ -413,6 +413,10 @@ fn highlight_name_ref(
             if is_from_builtin_crate {
                 h |= HlMod::DefaultLibrary;
             }
+            let is_deprecated = resolved_krate.attrs(sema.db).by_key(sym::deprecated).exists();
+            if is_deprecated {
+                h |= HlMod::Deprecated;
+            }
             h |= HlMod::CrateRoot;
             h
         }
