@@ -24,7 +24,7 @@
 // lldb-check:(issue_57822::main::{closure_env#1}) g = { f = { x = 1 } }
 
 // lldb-command:v b
-// lldb-check:(issue_57822::main::{coroutine_env#3}) b = { value = { a = { value = { y = 2 } $discr$ = '\x02' } } $discr$ = '\x02' }
+// lldb-check:(issue_57822::main::{coroutine_env#3}) b = 2{a:2{y:2}} { a = 2{y:2} { y = 2 } }
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 
