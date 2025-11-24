@@ -20,6 +20,10 @@ fn unprincipled<'a: 'b, 'b>(x: *mut (dyn Send + 'a)) -> *mut (dyn Sync + 'b) {
     x as _
 }
 
+fn remove_principal<'a: 'b, 'b, 't>(x: *mut (dyn Trait<'t> + Send + 'a)) -> *mut (dyn Send + 'b) {
+    x as _
+}
+
 // If it is possible to coerce from the source to the target type modulo
 // regions, then we skip the HIR checks for ptr-to-ptr casts and possibly
 // insert an unsizing coercion into the MIR before the ptr-to-ptr cast.
