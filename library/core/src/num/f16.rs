@@ -701,6 +701,7 @@ impl f16 {
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f16::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -727,6 +728,7 @@ impl f16 {
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f16::NAN), x);
     /// # }
     /// ```
     #[inline]
