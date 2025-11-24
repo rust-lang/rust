@@ -1670,7 +1670,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     )
                     .emit());
                 }
-                ty::AssocTag::Fn => unreachable!(),
+                ty::AssocTag::Fn => {
+                    unreachable!()
+                }
             }
         }
 
@@ -2758,6 +2760,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 | DefKind::InlineConst
                 | DefKind::Field
                 | DefKind::Impl { .. }
+                | DefKind::AutoImpl
                 | DefKind::Closure
                 | DefKind::ExternCrate
                 | DefKind::GlobalAsm
