@@ -1708,3 +1708,14 @@ pub(crate) struct AsyncDropWithoutSyncDrop {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_impl_unpin_for_pin_projected_type)]
+pub(crate) struct ImplUnpinForPinProjectedType {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[help]
+    pub adt_span: Span,
+    pub adt_name: Symbol,
+}
