@@ -240,6 +240,18 @@ impl CodegenBackend for LlvmCodegenBackend {
 
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
+
+        #[cfg(feature = "llvm_enzyme")]
+        {
+            use rustc_session::config::AutoDiff;
+            if sess.opts.unstable_opts.autodiff.contains(&AutoDiff::Enable) {
+                {
+                    use crate::back::lto::enable_autodiff_settings;
+
+                    enable_autodiff_settings(&sess.opts.sysroot, &sess.opts.unstable_opts.autodiff);
+                }
+            }
+        }
     }
 
     fn provide(&self, providers: &mut Providers) {
