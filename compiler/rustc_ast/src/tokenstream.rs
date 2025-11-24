@@ -978,10 +978,60 @@ pub struct DelimSpan {
 
 impl DelimSpan {
     pub fn from_single(sp: Span) -> Self {
-        DelimSpan { open: sp, close: sp }
+        let default_open = sp;
+        let default_close = sp;
+
+        let Some(sm) = rustc_span::source_map::get_source_map() else {
+            // No source map available.
+            return Self { open: default_open, close: default_close };
+        };
+
+        let (open, close) = sm
+            .span_to_source(sp, |src, start, end| {
+                let src = match src.get(start..end) {
+                    Some(s) if s.len() >= 2 => s.as_bytes(),
+                    _ => return Ok((default_open, default_close)),
+                };
+
+                // Only check the first and last characters.
+                // If there is white space or other characters
+                // other than `( ... )`, `[ ... ]`, and `{ ... }`.
+                // I assume that is intentionally included in this
+                // span so we don't want to shrink the span by
+                // searching for the delimiters, and setting
+                // the open and close spans to some more interior
+                // position.
+                let first = src[0];
+                let last = src[src.len() - 1];
+
+                // Thought maybe scan through if first is '(', '[',  or '{'
+                // and see if the last matches up (e.g. make sure it's not some
+                // extra mismatched delimiter)
+
+                let pos = (sp.hi() - sp.lo()).0.checked_sub(1).unwrap_or(0);
+                // If these return `None` just use the default because that
+                // means the span is too small for there to be a matched pair.
+                let Some(open) = sp.subspan(0..1) else {
+                    return Ok((default_open, default_close));
+                };
+                let Some(close) = sp.subspan(pos..) else {
+                    return Ok((default_open, default_close));
+                };
+
+                Ok(match (first, last) {
+                    (b'(', b')') | (b'{', b'}') | (b'[', b']') => (open, close),
+                    (_, _) => (default_open, default_close),
+                })
+            })
+            .ok()
+            .unwrap_or((default_open, default_close));
+
+        debug_assert!(open.lo() <= close.lo());
+        DelimSpan { open, close }
     }
 
     pub fn from_pair(open: Span, close: Span) -> Self {
+        debug_assert!(open.lo() <= close.lo());
         DelimSpan { open, close }
     }
 
@@ -990,6 +1040,7 @@ impl DelimSpan {
     }
 
     pub fn entire(self) -> Span {
+        debug_assert!(self.open.lo() <= self.close.lo());
         self.open.with_hi(self.close.hi())
     }
 }
