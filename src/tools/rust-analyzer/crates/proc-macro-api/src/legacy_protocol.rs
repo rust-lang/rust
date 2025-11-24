@@ -2,6 +2,7 @@
 
 pub mod json;
 pub mod msg;
+pub mod postcard;
 
 use std::{
     io::{BufRead, Write},
@@ -13,13 +14,15 @@ use span::Span;
 
 use crate::{
     ProcMacro, ProcMacroKind, ServerError,
+    codec::Codec,
     legacy_protocol::{
-        json::{read_json, write_json},
+        json::JsonProtocol,
         msg::{
             ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, Message, Request, Response,
             ServerConfig, SpanDataIndexMap, deserialize_span_data_index_map,
             flat::serialize_span_data_index_map,
         },
+        postcard::PostcardProtocol,
     },
     process::ProcMacroServerProcess,
     version,
@@ -151,21 +154,25 @@ fn send_task(srv: &ProcMacroServerProcess, req: Request) -> Result<Response, Ser
         return Err(server_error.clone());
     }
 
-    srv.send_task(send_request, req)
+    if srv.use_postcard() {
+        srv.send_task(send_request::<PostcardProtocol>, req)
+    } else {
+        srv.send_task(send_request::<JsonProtocol>, req)
+    }
 }
 
 /// Sends a request to the server and reads the response.
-fn send_request(
+fn send_request<P: Codec>(
     mut writer: &mut dyn Write,
     mut reader: &mut dyn BufRead,
     req: Request,
-    buf: &mut String,
+    buf: &mut P::Buf,
 ) -> Result<Option<Response>, ServerError> {
-    req.write(write_json, &mut writer).map_err(|err| ServerError {
+    req.write::<_, P>(&mut writer).map_err(|err| ServerError {
         message: "failed to write request".into(),
         io: Some(Arc::new(err)),
     })?;
-    let res = Response::read(read_json, &mut reader, buf).map_err(|err| ServerError {
+    let res = Response::read::<_, P>(&mut reader, buf).map_err(|err| ServerError {
         message: "failed to read response".into(),
         io: Some(Arc::new(err)),
     })?;

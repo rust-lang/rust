@@ -12,6 +12,8 @@
 )]
 #![allow(internal_features)]
 
+mod codec;
+mod framing;
 pub mod legacy_protocol;
 mod process;
 
@@ -19,7 +21,8 @@ use paths::{AbsPath, AbsPathBuf};
 use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
-use crate::process::ProcMacroServerProcess;
+pub use crate::codec::Codec;
+use crate::{legacy_protocol::SpanMode, process::ProcMacroServerProcess};
 
 /// The versions of the server protocol
 pub mod version {
@@ -123,7 +126,11 @@ impl ProcMacroClient {
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(process_path, env)?;
+        let process = ProcMacroServerProcess::run(
+            process_path,
+            env,
+            process::Protocol::Postcard { mode: SpanMode::Id },
+        )?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
