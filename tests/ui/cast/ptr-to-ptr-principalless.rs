@@ -46,4 +46,29 @@ fn unprincipled_wrap2_static<'a>(x: *mut (dyn Send + 'a)) -> *mut Wrapper<dyn Sy
     //~^ ERROR: lifetime may not live long enough
 }
 
+// Cast away principal trait
+trait Trait {}
+
+fn unprincipled3<'a, 'b>(x: *mut (dyn Trait + Send + 'a)) -> *mut (dyn Send + 'b) {
+    x as _
+    //~^ ERROR: lifetime may not live long enough
+}
+
+fn unprincipled3_static<'a>(x: *mut (dyn Trait + Send + 'a)) -> *mut (dyn Send + 'static) {
+    x as _
+    //~^ ERROR: lifetime may not live long enough
+}
+
+fn unprincipled_wrap3<'a, 'b>(x: *mut (dyn Trait + Send + 'a)) -> *mut Wrapper<dyn Send + 'b> {
+    x as _
+    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'b)>` is invalid
+}
+
+fn unprincipled_wrap3_static<'a>(
+    x: *mut (dyn Trait + Send + 'a)
+) -> *mut Wrapper<dyn Send + 'static> {
+    x as _
+    //~^ ERROR: casting `*mut (dyn Trait + Send + 'a)` as `*mut Wrapper<(dyn Send + 'static)>` is invalid
+}
+
 fn main() {}
