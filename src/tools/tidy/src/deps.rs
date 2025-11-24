@@ -21,7 +21,6 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
     "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "Apache-2.0 / MIT",
-    "Apache-2.0 OR ISC OR MIT",
     "Apache-2.0 AND ISC",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
@@ -223,6 +222,7 @@ const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
     ("inferno", "CDDL-1.0"),
+    ("ring", "Apache-2.0 OR ISC OR MIT"),
     // tidy-alphabetical-end
 ];
 
