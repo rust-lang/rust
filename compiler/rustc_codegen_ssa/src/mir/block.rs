@@ -1039,6 +1039,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(instance) = instance
             && let Some(name) = bx.tcx().codegen_fn_attrs(instance.def_id()).symbol_name
             && name.as_str().starts_with("llvm.")
+            // This is the only LLVM intrinsic we use that unwinds
+            // FIXME either add unwind support to codegen_llvm_intrinsic_call or replace usage of
+            // this intrinsic with something else
+            && name.as_str() != "llvm.wasm.throw"
         {
             assert!(!instance.args.has_infer());
             assert!(!instance.args.has_escaping_bound_vars());
