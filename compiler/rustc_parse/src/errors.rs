@@ -2455,12 +2455,6 @@ pub(crate) enum UnescapeError {
         is_hex: bool,
         ch: String,
     },
-    #[diag(parse_out_of_range_hex_escape)]
-    OutOfRangeHexEscape(
-        #[primary_span]
-        #[label]
-        Span,
-    ),
     #[diag(parse_leading_underscore_unicode_escape)]
     LeadingUnderscoreUnicodeEscape {
         #[primary_span]
