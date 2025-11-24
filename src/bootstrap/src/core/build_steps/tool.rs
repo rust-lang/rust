@@ -1567,6 +1567,11 @@ tool_rustc_extended!(Miri {
     tool_name: "miri",
     stable: false,
     add_bins_to_sysroot: ["miri"],
+    add_features: |builder, target, features| {
+        if builder.config.jemalloc(target) {
+            features.push("jemalloc".to_string());
+        }
+    },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });

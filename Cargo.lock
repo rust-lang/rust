@@ -2486,7 +2486,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "tikv-jemalloc-sys",
  "ui_test",
 ]
 
