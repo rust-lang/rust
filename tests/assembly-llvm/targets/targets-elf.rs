@@ -586,6 +586,9 @@
 //@ revisions: thumbv8m_main_none_eabihf
 //@ [thumbv8m_main_none_eabihf] compile-flags: --target thumbv8m.main-none-eabihf
 //@ [thumbv8m_main_none_eabihf] needs-llvm-components: arm
+//@ revisions: v810-unknown-vb
+//@ [v810_unknown_vb] compile-flags: --target v810-unknown-vb
+//@ [v810_unknown_vb] needs-llvm-components: v810
 //@ revisions: wasm32_unknown_emscripten
 //@ [wasm32_unknown_emscripten] compile-flags: --target wasm32-unknown-emscripten
 //@ [wasm32_unknown_emscripten] needs-llvm-components: webassembly
