@@ -15,6 +15,10 @@ use types::*;
 // ============================================================================
 // Type Conversion Utilities
 // ============================================================================
+//
+// These utility functions provide low-level type conversion capabilities
+// for SVE types. They use transmute_copy for bit-level reinterpretation
+// to avoid triggering E0511 errors with non-SIMD types.
 
 /// Bit-level reinterpretation for SVE types.
 ///
@@ -79,7 +83,7 @@ unsafe extern "C" {
     fn __llvm_sve_sel_nxv16i1(mask: svbool_t, a: svbool_t, b: svbool_t) -> svbool_t;
 }
 
-// Implementation for signed integer types
+// Signed integer type implementations
 impl __SveSelect for svint8_t {
     #[inline(always)]
     unsafe fn sel(mask: svbool_t, a: Self, b: Self) -> Self {
@@ -108,7 +112,7 @@ impl __SveSelect for svint64_t {
     }
 }
 
-// Implementation for unsigned integer types
+// Unsigned integer type implementations
 // Note: svuint*_t and svint*_t share the same LLVM intrinsic at the same width
 // since they have identical layouts in LLVM.
 impl __SveSelect for svuint8_t {
@@ -155,7 +159,7 @@ impl __SveSelect for svuint64_t {
     }
 }
 
-// Implementation for floating-point types
+// Floating-point type implementations
 impl __SveSelect for svfloat32_t {
     #[inline(always)]
     unsafe fn sel(mask: svbool_t, a: Self, b: Self) -> Self {
@@ -170,7 +174,7 @@ impl __SveSelect for svfloat64_t {
     }
 }
 
-// Implementation for predicate type (1-bit predicate vector, nxv16i1)
+// Predicate type implementation (1-bit predicate vector, nxv16i1)
 impl __SveSelect for svbool_t {
     #[inline(always)]
     unsafe fn sel(mask: svbool_t, a: Self, b: Self) -> Self {
@@ -182,35 +186,6 @@ impl __SveSelect for svbool_t {
 // impl __SveSelect for svfloat16_t { ... }
 // impl __SveSelect for svbfloat16_t { ... }
 // impl __SveSelect for svmfloat8_t { ... }
-
-// ============================================================================
-// Predicate Type Conversions
-// ============================================================================
-//
-// These implementations use transmute_copy for bit-level conversion.
-// No target feature is required since transmute_copy is a pure bit-level
-// operation that doesn't involve SVE instructions.
-
-impl From<svbool2_t> for svbool_t {
-    #[inline(always)]
-    fn from(x: svbool2_t) -> Self {
-        unsafe { core::mem::transmute_copy(&x) }
-    }
-}
-
-impl From<svbool4_t> for svbool_t {
-    #[inline(always)]
-    fn from(x: svbool4_t) -> Self {
-        unsafe { core::mem::transmute_copy(&x) }
-    }
-}
-
-impl From<svbool8_t> for svbool_t {
-    #[inline(always)]
-    fn from(x: svbool8_t) -> Self {
-        unsafe { core::mem::transmute_copy(&x) }
-    }
-}
 
 // ============================================================================
 // Public Select API
@@ -232,11 +207,15 @@ where
 }
 
 // ============================================================================
-// Scalar Type Conversion Traits
+// Scalar and Pointer Type Conversion Traits
 // ============================================================================
+//
+// These traits provide conversion capabilities for scalar types and pointers
+// used in SVE API implementations. They enable seamless conversion between
+// signed and unsigned representations.
 
 /// Trait for converting between signed and unsigned scalar types.
-trait ScalarConversion: Sized {
+pub(crate) trait ScalarConversion: Sized {
     type Unsigned;
     type Signed;
     fn as_unsigned(self) -> Self::Unsigned;
@@ -365,10 +344,7 @@ impl ScalarConversion for u64 {
     }
 }
 
-// ============================================================================
-// Pointer Type Conversions
-// ============================================================================
-
+// Pointer type conversions are implemented via macro below
 macro_rules! impl_scalar_conversion_for_ptr {
     ($(($unsigned:ty, $signed:ty)),*) => {
         $(
@@ -438,7 +414,7 @@ macro_rules! impl_scalar_conversion_for_ptr {
 impl_scalar_conversion_for_ptr!((u8, i8), (u16, i16), (u32, i32), (u64, i64));
 
 // ============================================================================
-// Public Exports
+// Public Module Exports
 // ============================================================================
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
@@ -449,22 +425,3 @@ pub use sve2::*;
 
 #[unstable(feature = "stdarch_aarch64_sve", issue = "none")]
 pub use types::*;
-
-// ============================================================================
-// LLVM Intrinsics and Public APIs
-// ============================================================================
-
-unsafe extern "C" {
-    #[link_name = "llvm.aarch64.sve.whilelt"]
-    fn __llvm_sve_whilelt_i32(i: i32, n: i32) -> svbool_t;
-}
-
-/// Generate a predicate for while less-than comparison.
-///
-/// Note: The svcntw() function is defined in sve.rs with the correct
-/// LLVM intrinsic function signature.
-#[inline]
-#[target_feature(enable = "sve")]
-pub unsafe fn svwhilelt_b32(i: i32, n: i32) -> svbool_t {
-    __llvm_sve_whilelt_i32(i, n)
-}
