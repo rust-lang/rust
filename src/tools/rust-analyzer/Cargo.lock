@@ -772,7 +772,6 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "hir-ty",
- "indexmap",
  "intern",
  "itertools 0.14.0",
  "ra-ap-rustc_type_ir",
@@ -824,7 +823,6 @@ dependencies = [
  "syntax-bridge",
  "test-fixture",
  "test-utils",
- "text-size 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "thin-vec",
  "tracing",
  "triomphe",
@@ -864,7 +862,6 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "base-db",
- "bitflags 2.9.4",
  "cov-mark",
  "either",
  "ena",
@@ -890,7 +887,6 @@ dependencies = [
  "rustc_apfloat",
  "salsa",
  "salsa-macros",
- "scoped-tls",
  "smallvec",
  "span",
  "stdx",
@@ -1085,7 +1081,6 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
- "indexmap",
  "itertools 0.14.0",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "macros",
@@ -1825,6 +1820,7 @@ dependencies = [
  "indexmap",
  "intern",
  "paths",
+ "proc-macro-srv",
  "rustc-hash 2.1.1",
  "serde",
  "serde_derive",
@@ -1849,9 +1845,7 @@ dependencies = [
  "proc-macro-test",
  "ra-ap-rustc_lexer",
  "span",
- "syntax-bridge",
  "temp-dir",
- "tt",
 ]
 
 [[package]]
@@ -2291,14 +2285,12 @@ dependencies = [
  "ide-db",
  "ide-ssr",
  "indexmap",
- "intern",
  "itertools 0.14.0",
  "load-cargo",
  "lsp-server 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
  "memchr",
  "mimalloc",
- "nohash-hasher",
  "num_cpus",
  "oorandom",
  "parking_lot",
@@ -2490,12 +2482,6 @@ checksum = "fb2b449a5e4660ce817676a0871cd1b4e2ff1023e33a1ac046670fa594b543a2"
 dependencies = [
  "protobuf",
 ]
-
-[[package]]
-name = "scoped-tls"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scopeguard"
