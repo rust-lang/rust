@@ -3562,6 +3562,7 @@ impl Item {
             | ItemKind::DelegationMac(_)
             | ItemKind::MacroDef(..) => None,
             ItemKind::Static(_) => None,
+            ItemKind::AutoImpl(_) => None,
             ItemKind::Const(i) => Some(&i.generics),
             ItemKind::Fn(i) => Some(&i.generics),
             ItemKind::TyAlias(i) => Some(&i.generics),
@@ -3702,6 +3703,14 @@ pub struct Impl {
     pub constness: Const,
     pub of_trait: Option<Box<TraitImplHeader>>,
     pub self_ty: Box<Ty>,
+    pub items: ThinVec<Box<AssocItem>>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct AutoImpl {
+    pub generics: Generics,
+    pub constness: Const,
+    pub of_trait: Box<TraitImplHeader>,
     pub items: ThinVec<Box<AssocItem>>,
 }
 
@@ -3857,6 +3866,8 @@ pub enum ItemKind {
     ///
     /// E.g., `impl<A> Foo<A> { .. }` or `impl<A> Trait for Foo<A> { .. }`.
     Impl(Impl),
+    /// An `auto impl` implementation, such as a supertrait `auto impl`.
+    AutoImpl(Box<AutoImpl>),
     /// A macro invocation.
     ///
     /// E.g., `foo!(..)`.
@@ -3893,6 +3904,7 @@ impl ItemKind {
             | ItemKind::ForeignMod(_)
             | ItemKind::GlobalAsm(_)
             | ItemKind::Impl(_)
+            | ItemKind::AutoImpl(_)
             | ItemKind::MacCall(_)
             | ItemKind::DelegationMac(_) => None,
         }
@@ -3905,7 +3917,12 @@ impl ItemKind {
             Use(..) | Static(..) | Const(..) | Fn(..) | Mod(..) | GlobalAsm(..) | TyAlias(..)
             | Struct(..) | Union(..) | Trait(..) | TraitAlias(..) | MacroDef(..)
             | Delegation(..) | DelegationMac(..) => "a",
-            ExternCrate(..) | ForeignMod(..) | MacCall(..) | Enum(..) | Impl { .. } => "an",
+            ExternCrate(..)
+            | ForeignMod(..)
+            | MacCall(..)
+            | Enum(..)
+            | Impl { .. }
+            | AutoImpl { .. } => "an",
         }
     }
 
@@ -3928,6 +3945,7 @@ impl ItemKind {
             ItemKind::MacCall(..) => "item macro invocation",
             ItemKind::MacroDef(..) => "macro definition",
             ItemKind::Impl { .. } => "implementation",
+            ItemKind::AutoImpl { .. } => "`auto` implementation",
             ItemKind::Delegation(..) => "delegated function",
             ItemKind::DelegationMac(..) => "delegation",
         }
@@ -3975,6 +3993,8 @@ pub enum AssocItemKind {
     Delegation(Box<Delegation>),
     /// An associated list or glob delegation item.
     DelegationMac(Box<DelegationMac>),
+    /// An `auto impl` item
+    AutoImpl(Box<AutoImpl>),
 }
 
 impl AssocItemKind {
@@ -3985,7 +4005,9 @@ impl AssocItemKind {
             | AssocItemKind::Type(box TyAlias { ident, .. })
             | AssocItemKind::Delegation(box Delegation { ident, .. }) => Some(ident),
 
-            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(_) => None,
+            AssocItemKind::MacCall(_)
+            | AssocItemKind::DelegationMac(_)
+            | AssocItemKind::AutoImpl(_) => None,
         }
     }
 
@@ -3993,7 +4015,11 @@ impl AssocItemKind {
         match *self {
             Self::Const(box ConstItem { defaultness, .. })
             | Self::Fn(box Fn { defaultness, .. })
-            | Self::Type(box TyAlias { defaultness, .. }) => defaultness,
+            | Self::Type(box TyAlias { defaultness, .. })
+            | Self::AutoImpl(box AutoImpl {
+                of_trait: box TraitImplHeader { defaultness, .. },
+                ..
+            }) => defaultness,
             Self::MacCall(..) | Self::Delegation(..) | Self::DelegationMac(..) => {
                 Defaultness::Final
             }
@@ -4010,6 +4036,7 @@ impl From<AssocItemKind> for ItemKind {
             AssocItemKind::MacCall(a) => ItemKind::MacCall(a),
             AssocItemKind::Delegation(delegation) => ItemKind::Delegation(delegation),
             AssocItemKind::DelegationMac(delegation) => ItemKind::DelegationMac(delegation),
+            AssocItemKind::AutoImpl(ai) => ItemKind::AutoImpl(ai),
         }
     }
 }
@@ -4025,6 +4052,7 @@ impl TryFrom<ItemKind> for AssocItemKind {
             ItemKind::MacCall(a) => AssocItemKind::MacCall(a),
             ItemKind::Delegation(d) => AssocItemKind::Delegation(d),
             ItemKind::DelegationMac(d) => AssocItemKind::DelegationMac(d),
+            ItemKind::AutoImpl(ai) => AssocItemKind::AutoImpl(ai),
             _ => return Err(item_kind),
         })
     }

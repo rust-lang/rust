@@ -112,7 +112,9 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                         vec![]
                     }
                 }
-                ty::AssocKind::Fn { .. } | ty::AssocKind::Const { .. } => vec![],
+                ty::AssocKind::Fn { .. }
+                | ty::AssocKind::Const { .. }
+                | ty::AssocKind::AutoImpl => vec![],
             }
         })
         .collect();

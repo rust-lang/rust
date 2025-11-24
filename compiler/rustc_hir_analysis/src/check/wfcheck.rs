@@ -431,6 +431,8 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                         )
                     }
                     ty::AssocKind::Const { .. } => None,
+                    // This does not change judgement on GAT
+                    ty::AssocKind::AutoImpl => continue,
                 };
 
                 if let Some(item_required_bounds) = item_required_bounds {
@@ -985,6 +987,9 @@ pub(crate) fn check_associated_item(
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
                 Ok(())
+            }
+            ty::AssocKind::AutoImpl => {
+                todo!()
             }
         }
     })
@@ -2285,6 +2290,7 @@ fn lint_redundant_lifetimes<'tcx>(
         | DefKind::TraitAlias
         | DefKind::Fn
         | DefKind::Const
+        | DefKind::AutoImpl
         | DefKind::Impl { of_trait: _ } => {
             // Proceed
         }

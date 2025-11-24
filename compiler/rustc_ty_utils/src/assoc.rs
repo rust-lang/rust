@@ -95,6 +95,7 @@ fn associated_item_from_trait_item(
         hir::TraitItemKind::Type { .. } => {
             ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
         }
+        hir::TraitItemKind::AutoImpl(..) => ty::AssocKind::AutoImpl,
     };
 
     ty::AssocItem { kind, def_id: owner_id.to_def_id(), container: ty::AssocContainer::Trait }
@@ -111,6 +112,8 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
         hir::ImplItemKind::Type { .. } => {
             ty::AssocKind::Type { data: ty::AssocTypeData::Normal(name) }
         }
+        hir::ImplItemKind::AutoImpl(..) => todo!(),
+        hir::ImplItemKind::ExternImpl(..) => todo!(),
     };
 
     let container = match impl_item.impl_kind {

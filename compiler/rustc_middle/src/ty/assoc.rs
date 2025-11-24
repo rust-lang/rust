@@ -32,6 +32,7 @@ impl AssocItem {
             ty::AssocKind::Type { data: AssocTypeData::Rpitit(_) } => None,
             ty::AssocKind::Const { name } => Some(name),
             ty::AssocKind::Fn { name, .. } => Some(name),
+            ty::AssocKind::AutoImpl => None,
         }
     }
 
@@ -122,6 +123,7 @@ impl AssocItem {
             ty::AssocKind::Const { name } => {
                 format!("const {}: {:?};", name, tcx.type_of(self.def_id).instantiate_identity())
             }
+            AssocKind::AutoImpl => "automatic impl".into(),
         }
     }
 
@@ -131,12 +133,13 @@ impl AssocItem {
             ty::AssocKind::Fn { has_self: true, .. } => "method",
             ty::AssocKind::Fn { has_self: false, .. } => "associated function",
             ty::AssocKind::Type { .. } => "associated type",
+            ty::AssocKind::AutoImpl => "automatic implementation",
         }
     }
 
     pub fn namespace(&self) -> Namespace {
         match self.kind {
-            ty::AssocKind::Type { .. } => Namespace::TypeNS,
+            ty::AssocKind::Type { .. } | ty::AssocKind::AutoImpl => Namespace::TypeNS,
             ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
         }
     }
@@ -146,6 +149,7 @@ impl AssocItem {
             AssocKind::Const { .. } => DefKind::AssocConst,
             AssocKind::Fn { .. } => DefKind::AssocFn,
             AssocKind::Type { .. } => DefKind::AssocTy,
+            AssocKind::AutoImpl => DefKind::AutoImpl,
         }
     }
     pub fn is_type(&self) -> bool {
@@ -165,6 +169,7 @@ impl AssocItem {
             AssocKind::Const { .. } => AssocTag::Const,
             AssocKind::Fn { .. } => AssocTag::Fn,
             AssocKind::Type { .. } => AssocTag::Type,
+            AssocKind::AutoImpl => AssocTag::AutoImpl,
         }
     }
 
@@ -187,12 +192,13 @@ pub enum AssocKind {
     Const { name: Symbol },
     Fn { name: Symbol, has_self: bool },
     Type { data: AssocTypeData },
+    AutoImpl,
 }
 
 impl AssocKind {
     pub fn namespace(&self) -> Namespace {
         match *self {
-            ty::AssocKind::Type { .. } => Namespace::TypeNS,
+            ty::AssocKind::Type { .. } | ty::AssocKind::AutoImpl { .. } => Namespace::TypeNS,
             ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => Namespace::ValueNS,
         }
     }
@@ -202,6 +208,7 @@ impl AssocKind {
             AssocKind::Const { .. } => DefKind::AssocConst,
             AssocKind::Fn { .. } => DefKind::AssocFn,
             AssocKind::Type { .. } => DefKind::AssocTy,
+            AssocKind::AutoImpl {} => DefKind::AutoImpl,
         }
     }
 }
@@ -213,16 +220,20 @@ impl std::fmt::Display for AssocKind {
             AssocKind::Fn { has_self: false, .. } => write!(f, "associated function"),
             AssocKind::Const { .. } => write!(f, "associated const"),
             AssocKind::Type { .. } => write!(f, "associated type"),
+            AssocKind::AutoImpl => write!(f, "automatic implementation"),
         }
     }
 }
 
-// Like `AssocKind`, but just the tag, no fields. Used in various kinds of matching.
+/// Like `AssocKind`, but just the tag, no fields.
+/// Used in various kinds of matching.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AssocTag {
     Const,
     Fn,
     Type,
+    AutoImpl,
+    ExternImpl,
 }
 
 /// A list of `ty::AssocItem`s in definition order that allows for efficient lookup by name.

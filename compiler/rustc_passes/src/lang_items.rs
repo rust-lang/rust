@@ -288,6 +288,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             ast::ItemKind::Trait(_) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
             ast::ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
+            ast::ItemKind::AutoImpl(..) => Target::Impl { of_trait: true },
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")
@@ -342,6 +343,11 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             }
             ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
             ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
+            ast::AssocItemKind::AutoImpl(_) => {
+                // An language item shall not be applied to some `auto impl`.
+                // Therein lie all concrete implementors anyway.
+                return;
+            }
             ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")
             }

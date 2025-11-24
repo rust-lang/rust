@@ -11,7 +11,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::{Span, Symbol, sym};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::{ImplTraitContext, InvocationParent, Resolver};
 
@@ -33,6 +33,7 @@ struct DefCollector<'a, 'ra, 'tcx> {
 }
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
+    #[instrument(level = "debug", skip(self))]
     fn create_def(
         &mut self,
         node_id: NodeId,
@@ -41,10 +42,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         span: Span,
     ) -> LocalDefId {
         let parent_def = self.invocation_parent.parent_def;
-        debug!(
-            "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
-            node_id, def_kind, parent_def
-        );
+        debug!(?parent_def);
         self.resolver
             .create_def(
                 parent_def,
@@ -107,6 +105,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let mut opt_macro_data = None;
         let def_kind = match &i.kind {
             ItemKind::Impl(i) => DefKind::Impl { of_trait: i.of_trait.is_some() },
+            // Can we return early? `auto impl` outside an `impl` is not allowed.
+            ItemKind::AutoImpl(..) => DefKind::AutoImpl,
             ItemKind::ForeignMod(..) => DefKind::ForeignMod,
             ItemKind::Mod(..) => DefKind::Mod,
             ItemKind::Trait(..) => DefKind::Trait,
@@ -335,17 +335,22 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
-        let (ident, def_kind) = match &i.kind {
+        let (name, def_kind) = match &i.kind {
             AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (*ident, DefKind::AssocFn),
-            AssocItemKind::Const(box ConstItem { ident, .. }) => (*ident, DefKind::AssocConst),
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (*ident, DefKind::AssocTy),
+            | AssocItemKind::Delegation(box Delegation { ident, .. }) => {
+                (Some(ident.name), DefKind::AssocFn)
+            }
+            AssocItemKind::Const(box ConstItem { ident, .. }) => {
+                (Some(ident.name), DefKind::AssocConst)
+            }
+            AssocItemKind::Type(box TyAlias { ident, .. }) => (Some(ident.name), DefKind::AssocTy),
+            AssocItemKind::AutoImpl(_) => (None, DefKind::AutoImpl),
             AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                 return self.visit_macro_invoc(i.id);
             }
         };
 
-        let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
+        let def = self.create_def(i.id, name, def_kind, i.span);
         self.with_parent(def, |this| visit::walk_assoc_item(this, i, ctxt));
     }
 

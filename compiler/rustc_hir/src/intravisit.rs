@@ -1255,6 +1255,10 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
             walk_list!(visitor, visit_param_bound, bounds);
             visit_opt!(visitor, visit_ty_unambig, default);
         }
+        TraitItemKind::AutoImpl(trait_ref, items) => {
+            try_visit!(visitor.visit_poly_trait_ref(trait_ref));
+            walk_list!(visitor, visit_impl_item, items);
+        }
     }
     V::Result::output()
 }
@@ -1299,6 +1303,12 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
             impl_item.owner_id.def_id,
         ),
         ImplItemKind::Type(ref ty) => visitor.visit_ty_unambig(ty),
+        ImplItemKind::AutoImpl(trait_ref, items) => {
+            try_visit!(visitor.visit_poly_trait_ref(trait_ref));
+            walk_list!(visitor, visit_impl_item, items);
+            V::Result::output()
+        }
+        ImplItemKind::ExternImpl(poly_trait_ref) => visitor.visit_poly_trait_ref(poly_trait_ref),
     }
 }
 

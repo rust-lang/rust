@@ -18,7 +18,8 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_session::parse::feature_err;
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -47,6 +48,18 @@ pub(super) fn compare_impl_item(
         ty::AssocKind::Type { .. } => compare_impl_ty(tcx, impl_item, trait_item, impl_trait_ref),
         ty::AssocKind::Const { .. } => {
             compare_impl_const(tcx, impl_item, trait_item, impl_trait_ref)
+        }
+        ty::AssocKind::AutoImpl => {
+            if !tcx.features().supertrait_auto_impl() {
+                return Err(feature_err(
+                    &tcx.sess,
+                    sym::supertrait_auto_impl,
+                    tcx.def_span(impl_item_def_id),
+                    "feature is under construction",
+                )
+                .emit());
+            }
+            todo!()
         }
     }
 }

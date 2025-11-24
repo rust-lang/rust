@@ -478,7 +478,7 @@ fn best_definition_site_of_opaque<'tcx>(
                             return Some(span);
                         }
                     }
-                    ty::AssocKind::Type { .. } => {}
+                    ty::AssocKind::Type { .. } | ty::AssocKind::AutoImpl => {}
                 }
             }
 
@@ -816,6 +816,18 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     check_impl_items_against_trait(tcx, def_id, impl_trait_header);
                 }
             }
+        }
+        DefKind::AutoImpl => {
+            if !tcx.features().supertrait_auto_impl() {
+                return Err(feature_err(
+                    &tcx.sess,
+                    sym::supertrait_auto_impl,
+                    tcx.def_span(def_id),
+                    "feature is under construction",
+                )
+                .emit());
+            }
+            todo!()
         }
         DefKind::Trait => {
             tcx.ensure_ok().generics_of(def_id);
@@ -1228,6 +1240,7 @@ fn check_impl_items_against_trait<'tcx>(
                 }
                 ty::AssocKind::Const { .. } => {}
                 ty::AssocKind::Type { .. } => {}
+                ty::AssocKind::AutoImpl => {}
             }
         }
 

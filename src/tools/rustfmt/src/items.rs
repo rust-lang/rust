@@ -759,11 +759,13 @@ impl<'a> FmtVisitor<'a> {
                 }
                 (Const(ca), Const(cb)) => ca.ident.as_str().cmp(cb.ident.as_str()),
                 (MacCall(..), MacCall(..)) => Ordering::Equal,
-                (Fn(..), Fn(..)) | (Delegation(..), Delegation(..)) => {
-                    a.span.lo().cmp(&b.span.lo())
-                }
+                (AutoImpl(..), AutoImpl(..))
+                | (Fn(..), Fn(..))
+                | (Delegation(..), Delegation(..)) => a.span.lo().cmp(&b.span.lo()),
                 (Type(ty), _) if is_type(&ty.ty) => Ordering::Less,
                 (_, Type(ty)) if is_type(&ty.ty) => Ordering::Greater,
+                (AutoImpl(..), _) => Ordering::Less,
+                (_, AutoImpl(..)) => Ordering::Greater,
                 (Type(..), _) => Ordering::Less,
                 (_, Type(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
@@ -806,10 +808,67 @@ pub(crate) fn format_impl(
         generics,
         self_ty,
         items,
+        of_trait,
+        constness,
         ..
     } = iimpl;
+    format_impl_inner(
+        context,
+        item,
+        offset,
+        generics,
+        of_trait.as_deref(),
+        *constness,
+        Some(&**self_ty),
+        self_ty.span.hi(),
+        items,
+    )
+}
+
+pub(crate) fn format_auto_impl(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    iimpl: &ast::AutoImpl,
+    offset: Indent,
+) -> Option<String> {
+    let ast::AutoImpl {
+        generics,
+        items,
+        of_trait,
+        constness,
+    } = iimpl;
+    let impl_head_end = of_trait.trait_ref.path.span.hi();
+    format_impl_inner(
+        context,
+        item,
+        offset,
+        generics,
+        Some(&**of_trait),
+        *constness,
+        None,
+        impl_head_end,
+        items,
+    )
+}
+
+/// `impl_header_end` points at the 1-past-end of proper `impl` header.
+/// For instance, in case of `impl Trait for Type {`, `impl_header_end` points at
+/// the space coming right after the token `Type`.
+fn format_impl_inner(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+    offset: Indent,
+    generics: &ast::Generics,
+    of_trait: Option<&ast::TraitImplHeader>,
+    constness: ast::Const,
+    self_ty: Option<&ast::Ty>,
+    impl_header_end: BytePos,
+    items: &[Box<ast::AssocItem>],
+) -> Option<String> {
     let mut result = String::with_capacity(128);
-    let ref_and_type = format_impl_ref_and_type(context, item, iimpl, offset)?;
+    let ref_and_type = format_impl_ref_and_type(
+        context, item, generics, of_trait, self_ty, constness, offset,
+    )?;
     let sep = offset.to_string_with_newline(context.config);
     result.push_str(&ref_and_type);
 
@@ -832,7 +891,7 @@ pub(crate) fn format_impl(
         option.allow_single_line();
     }
 
-    let missing_span = mk_sp(self_ty.span.hi(), item.span.hi());
+    let missing_span = mk_sp(impl_header_end, item.span.hi());
     let where_span_end = context.snippet_provider.opt_span_before(missing_span, "{");
     let where_clause_str = rewrite_where_clause(
         context,
@@ -842,7 +901,7 @@ pub(crate) fn format_impl(
         false,
         "{",
         where_span_end,
-        self_ty.span.hi(),
+        impl_header_end,
         option,
     )
     .ok()?;
@@ -852,7 +911,7 @@ pub(crate) fn format_impl(
     if generics.where_clause.predicates.is_empty() {
         if let Some(hi) = where_span_end {
             match recover_missing_comment_in_span(
-                mk_sp(self_ty.span.hi(), hi),
+                mk_sp(impl_header_end, hi),
                 Shape::indented(offset, context.config),
                 context,
                 last_line_width(&result),
@@ -865,7 +924,7 @@ pub(crate) fn format_impl(
         }
     }
 
-    if is_impl_single_line(context, items.as_slice(), &result, &where_clause_str, item)? {
+    if is_impl_single_line(context, items, &result, &where_clause_str, item)? {
         result.push_str(&where_clause_str);
         if where_clause_str.contains('\n') {
             // If there is only one where-clause predicate
@@ -901,7 +960,7 @@ pub(crate) fn format_impl(
 
     result.push('{');
     // this is an impl body snippet(impl SampleImpl { /* here */ })
-    let lo = max(self_ty.span.hi(), generics.where_clause.span.hi());
+    let lo = max(impl_header_end, generics.where_clause.span.hi());
     let snippet = context.snippet(mk_sp(lo, item.span.hi()));
     let open_pos = snippet.find_uncommented("{")? + 1;
 
@@ -953,25 +1012,21 @@ fn is_impl_single_line(
 fn format_impl_ref_and_type(
     context: &RewriteContext<'_>,
     item: &ast::Item,
-    iimpl: &ast::Impl,
+    generics: &ast::Generics,
+    of_trait: Option<&ast::TraitImplHeader>,
+    self_ty: Option<&ast::Ty>,
+    constness: ast::Const,
     offset: Indent,
 ) -> Option<String> {
-    let ast::Impl {
-        generics,
-        of_trait,
-        self_ty,
-        items: _,
-        constness,
-    } = iimpl;
     let mut result = String::with_capacity(128);
 
     result.push_str(&format_visibility(context, &item.vis));
 
-    if let Some(of_trait) = of_trait.as_deref() {
+    if let Some(of_trait) = of_trait {
         result.push_str(format_defaultness(of_trait.defaultness));
         result.push_str(format_safety(of_trait.safety));
     } else {
-        result.push_str(format_constness_right(*constness));
+        result.push_str(format_constness_right(constness));
     }
 
     let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
@@ -988,7 +1043,7 @@ fn format_impl_ref_and_type(
 
     let trait_ref_overhead;
     if let Some(of_trait) = of_trait.as_deref() {
-        result.push_str(format_constness_right(*constness));
+        result.push_str(format_constness_right(constness));
         let polarity_str = match of_trait.polarity {
             ast::ImplPolarity::Negative(_) => "!",
             ast::ImplPolarity::Positive => "",
@@ -1020,15 +1075,18 @@ fn format_impl_ref_and_type(
     let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
     // 1 = space before the type.
     let budget = context.budget(used_space + 1);
-    if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
-        if !self_ty_str.contains('\n') {
-            if of_trait.is_some() {
-                result.push_str(" for ");
-            } else {
-                result.push(' ');
+    // TODO(@dingxiangfei2009): rewrite this in let-chain once we finish migrating to Edition 2024
+    if let Some(self_ty) = self_ty {
+        if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
+            if !self_ty_str.contains('\n') {
+                if of_trait.is_some() {
+                    result.push_str(" for ");
+                } else {
+                    result.push(' ');
+                }
+                result.push_str(&self_ty_str);
+                return Some(result);
             }
-            result.push_str(&self_ty_str);
-            return Some(result);
         }
     }
 
@@ -1045,7 +1103,9 @@ fn format_impl_ref_and_type(
         IndentStyle::Visual => new_line_offset + trait_ref_overhead,
         IndentStyle::Block => new_line_offset,
     };
-    result.push_str(&*self_ty.rewrite(context, Shape::legacy(budget, type_offset))?);
+    if let Some(self_ty) = self_ty {
+        result.push_str(&*self_ty.rewrite(context, Shape::legacy(budget, type_offset))?);
+    }
     Some(result)
 }
 
