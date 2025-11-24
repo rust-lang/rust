@@ -133,6 +133,44 @@ fn foo() {
 }
 
 #[test]
+fn refutable_in_record_pat_field() {
+    check(
+        r#"
+enum Bar { Value, Nil }
+struct Foo { x: Bar }
+fn foo(foo: Foo) { match foo { Foo { x: $0 } } }
+"#,
+        expect![[r#"
+            en Bar
+            st Foo
+            bn Foo {…} Foo { x$1 }$0
+            kw mut
+            kw ref
+        "#]],
+    );
+
+    check(
+        r#"
+enum Bar { Value, Nil }
+use Bar::*;
+struct Foo { x: Bar }
+fn foo(foo: Foo) { match foo { Foo { x: $0 } } }
+"#,
+        expect![[r#"
+            en Bar
+            st Foo
+            ev Nil
+            ev Value
+            bn Foo {…} Foo { x$1 }$0
+            bn Nil             Nil$0
+            bn Value         Value$0
+            kw mut
+            kw ref
+        "#]],
+    );
+}
+
+#[test]
 fn irrefutable() {
     check_with_base_items(
         r#"
@@ -653,6 +691,7 @@ fn f(u: U) {
 
     check(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 #[lang = "u32"]
 impl u32 {

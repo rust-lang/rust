@@ -1,31 +1,25 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use span::{EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext};
-use tt::TextRange;
+use span::{
+    EditionedFileId, FileId, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext, TextRange,
+};
 
-use crate::{EnvSnapshot, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path};
+use crate::{
+    EnvSnapshot, ProcMacroSrv, SpanId, dylib, proc_macro_test_dylib_path, token_stream::TokenStream,
+};
 
-fn parse_string(call_site: SpanId, src: &str) -> crate::server_impl::TokenStream<SpanId> {
-    crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
-        syntax_bridge::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src)
-            .unwrap()
-            .0
-            .into_vec(),
-    ))
+fn parse_string(call_site: SpanId, src: &str) -> TokenStream<SpanId> {
+    TokenStream::from_str(src, call_site).unwrap()
 }
 
 fn parse_string_spanned(
     anchor: SpanAnchor,
     call_site: SyntaxContext,
     src: &str,
-) -> crate::server_impl::TokenStream<Span> {
-    crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
-        syntax_bridge::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src)
-            .unwrap()
-            .0
-            .into_vec(),
-    ))
+) -> TokenStream<Span> {
+    TokenStream::from_str(src, Span { range: TextRange::default(), anchor, ctx: call_site })
+        .unwrap()
 }
 
 pub fn assert_expand(
@@ -60,16 +54,18 @@ fn assert_expand_impl(
     let def_site = SpanId(0);
     let call_site = SpanId(1);
     let mixed_site = SpanId(2);
-    let input_ts = parse_string(call_site, input).into_subtree(call_site);
-    let attr_ts = attr.map(|attr| parse_string(call_site, attr).into_subtree(call_site));
+    let input_ts = parse_string(call_site, input);
+    let attr_ts = attr.map(|attr| parse_string(call_site, attr));
     let input_ts_string = format!("{input_ts:?}");
     let attr_ts_string = attr_ts.as_ref().map(|it| format!("{it:?}"));
 
     let res =
         expander.expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site).unwrap();
     expect.assert_eq(&format!(
-        "{input_ts_string}\n\n{}\n\n{res:?}",
-        attr_ts_string.unwrap_or_default()
+        "{input_ts_string}{}{}{}",
+        if attr_ts_string.is_some() { "\n\n" } else { "" },
+        attr_ts_string.unwrap_or_default(),
+        if res.is_empty() { String::new() } else { format!("\n\n{res:?}") }
     ));
 
     let def_site = Span {
@@ -90,17 +86,18 @@ fn assert_expand_impl(
     };
     let mixed_site = call_site;
 
-    let fixture =
-        parse_string_spanned(call_site.anchor, call_site.ctx, input).into_subtree(call_site);
-    let attr = attr.map(|attr| {
-        parse_string_spanned(call_site.anchor, call_site.ctx, attr).into_subtree(call_site)
-    });
+    let fixture = parse_string_spanned(call_site.anchor, call_site.ctx, input);
+    let attr = attr.map(|attr| parse_string_spanned(call_site.anchor, call_site.ctx, attr));
     let fixture_string = format!("{fixture:?}");
     let attr_string = attr.as_ref().map(|it| format!("{it:?}"));
 
     let res = expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site).unwrap();
-    expect_spanned
-        .assert_eq(&format!("{fixture_string}\n\n{}\n\n{res:#?}", attr_string.unwrap_or_default()));
+    expect_spanned.assert_eq(&format!(
+        "{fixture_string}{}{}{}",
+        if attr_string.is_some() { "\n\n" } else { "" },
+        attr_string.unwrap_or_default(),
+        if res.is_empty() { String::new() } else { format!("\n\n{res:?}") }
+    ));
 }
 
 pub(crate) fn list() -> Vec<String> {

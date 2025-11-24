@@ -194,6 +194,7 @@ fn check_test_attrs(path: &Path, text: &str) {
         "test-utils/src/fixture.rs",
         // Generated code from lints contains doc tests in string literals.
         "ide-db/src/generated/lints.rs",
+        "proc-macro-srv/src/tests/mod.rs",
     ];
     if need_panic.iter().any(|p| path.ends_with(p)) {
         return;

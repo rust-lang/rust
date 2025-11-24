@@ -2189,7 +2189,7 @@ fn foo(s: &S) {
 //- minicore: index
 struct X;
 
-impl std::ops::Index<usize> for X {
+impl core::ops::Index<usize> for X {
     type Output = i32;
     fn index(&self) -> &Self::Output { 0 }
 }
@@ -2204,7 +2204,7 @@ fn foo(s: &S) {
             r#"
 struct X;
 
-impl std::ops::Index<usize> for X {
+impl core::ops::Index<usize> for X {
     type Output = i32;
     fn index(&self) -> &Self::Output { 0 }
 }
@@ -2214,8 +2214,8 @@ struct S {
 }
 
 fn foo(s: &S) {
-    let $0sub = &s.sub;
-    sub[0];
+    let $0x = &s.sub;
+    x[0];
 }"#,
             "Extract into variable",
         );

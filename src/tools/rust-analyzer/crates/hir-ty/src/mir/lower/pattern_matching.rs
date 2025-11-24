@@ -1,9 +1,8 @@
 //! MIR lowering for patterns
 
-use hir_def::{AssocItemId, hir::ExprId, signatures::VariantFields};
+use hir_def::{hir::ExprId, signatures::VariantFields};
 use rustc_type_ir::inherent::{IntoKind, SliceLike, Ty as _};
 
-use crate::next_solver::GenericArgs;
 use crate::{
     BindingMode,
     mir::{
@@ -16,6 +15,7 @@ use crate::{
         },
     },
 };
+use crate::{method_resolution::CandidateId, next_solver::GenericArgs};
 
 macro_rules! not_supported {
     ($x: expr) => {
@@ -207,7 +207,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                     mode,
                 )?
             }
-            Pat::Range { start, end } => {
+            Pat::Range { start, end, range_type: _ } => {
                 let mut add_check = |l: &ExprId, binop| -> Result<'db, ()> {
                     let lv = self.lower_literal_or_const_to_operand(self.infer[pattern], l)?;
                     let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
@@ -393,7 +393,7 @@ impl<'db> MirLowerCtx<'_, 'db> {
                     }
                     let (c, subst) = 'b: {
                         if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern)
-                            && let AssocItemId::ConstId(c) = x.0
+                            && let CandidateId::ConstId(c) = x.0
                         {
                             break 'b (c, x.1);
                         }

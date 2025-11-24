@@ -142,7 +142,7 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
             _ => None,
         })
         .expect("No const named GOAL found in the test");
-    db.const_eval(const_id.into(), GenericArgs::new_from_iter(interner, []), None)
+    db.const_eval(const_id, GenericArgs::new_from_iter(interner, []), None)
 }
 
 #[test]
@@ -851,6 +851,7 @@ fn ifs() {
 fn loops() {
     check_number(
         r#"
+    //- minicore: add, builtin_impls
     const GOAL: u8 = {
         let mut x = 0;
         loop {
@@ -871,6 +872,7 @@ fn loops() {
     );
     check_number(
         r#"
+    //- minicore: add, builtin_impls
     const GOAL: u8 = {
         let mut x = 0;
         loop {
@@ -885,6 +887,7 @@ fn loops() {
     );
     check_number(
         r#"
+    //- minicore: add, builtin_impls
     const GOAL: u8 = {
         'a: loop {
             let x = 'b: loop {
@@ -907,7 +910,7 @@ fn loops() {
     );
     check_number(
         r#"
-    //- minicore: add
+    //- minicore: add, builtin_impls
     const GOAL: u8 = {
         let mut x = 0;
         'a: loop {
@@ -1277,7 +1280,7 @@ fn pattern_matching_ergonomics() {
 fn destructing_assignment() {
     check_number(
         r#"
-    //- minicore: add
+    //- minicore: add, builtin_impls
     const fn f(i: &mut u8) -> &mut u8 {
         *i += 1;
         i
@@ -1469,11 +1472,11 @@ fn result_layout_niche_optimization() {
 fn options() {
     check_number(
         r#"
-    //- minicore: option
+    //- minicore: option, add, builtin_impls
     const GOAL: u8 = {
         let x = Some(2);
         match x {
-            Some(y) => 2 * y,
+            Some(y) => 2 + y,
             _ => 10,
         }
     };
@@ -1482,7 +1485,7 @@ fn options() {
     );
     check_number(
         r#"
-    //- minicore: option
+    //- minicore: option, add, builtin_impls
     fn f(x: Option<Option<i32>>) -> i32 {
         if let Some(y) = x && let Some(z) = y {
             z
@@ -1498,11 +1501,11 @@ fn options() {
     );
     check_number(
         r#"
-    //- minicore: option
+    //- minicore: option, add, builtin_impls
     const GOAL: u8 = {
         let x = None;
         match x {
-            Some(y) => 2 * y,
+            Some(y) => 2 + y,
             _ => 10,
         }
     };

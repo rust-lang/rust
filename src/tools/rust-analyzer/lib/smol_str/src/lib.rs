@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![debugger_visualizer(gdb_script_file = "gdb_smolstr_printer.py")]
 
 extern crate alloc;
 
@@ -104,11 +105,19 @@ impl SmolStr {
 impl Clone for SmolStr {
     #[inline]
     fn clone(&self) -> Self {
-        if !self.is_heap_allocated() {
-            // SAFETY: We verified that the payload of `Repr` is a POD
-            return unsafe { core::ptr::read(self as *const SmolStr) };
+        // hint for faster inline / slower heap clones
+        #[cold]
+        #[inline(never)]
+        fn cold_clone(v: &SmolStr) -> SmolStr {
+            SmolStr(v.0.clone())
         }
-        Self(self.0.clone())
+
+        if self.is_heap_allocated() {
+            return cold_clone(self);
+        }
+
+        // SAFETY: We verified that the payload of `Repr` is a POD
+        unsafe { core::ptr::read(self as *const SmolStr) }
     }
 }
 

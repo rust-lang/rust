@@ -9,9 +9,9 @@ use triomphe::Arc;
 use crate::{
     TraitEnvironment, consteval,
     db::HirDatabase,
-    method_resolution::TyFingerprint,
+    method_resolution::TraitImpls,
     next_solver::{
-        Ty, TyKind,
+        SimplifiedType, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -27,13 +27,13 @@ fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
         return false;
     };
     let impls = match module.containing_block() {
-        Some(block) => match db.trait_impls_in_block(block) {
-            Some(it) => it,
+        Some(block) => match TraitImpls::for_block(db, block) {
+            Some(it) => &**it,
             None => return false,
         },
-        None => db.trait_impls_in_crate(module.krate()),
+        None => TraitImpls::for_crate(db, module.krate()),
     };
-    impls.for_trait_and_self_ty(drop_trait, TyFingerprint::Adt(adt)).next().is_some()
+    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).is_empty()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

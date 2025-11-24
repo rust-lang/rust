@@ -439,10 +439,27 @@ fn f((_O): u8) {}
     #[test]
     fn ignores_no_mangle_items() {
         cov_mark::check!(extern_func_no_mangle_ignored);
+        cov_mark::check!(no_mangle_static_incorrect_case_ignored);
         check_diagnostics(
             r#"
 #[no_mangle]
 extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+#[no_mangle]
+static lower_case: () = ();
+            "#,
+        );
+    }
+
+    #[test]
+    fn ignores_unsafe_no_mangle_items() {
+        cov_mark::check!(extern_func_no_mangle_ignored);
+        cov_mark::check!(no_mangle_static_incorrect_case_ignored);
+        check_diagnostics(
+            r#"
+#[unsafe(no_mangle)]
+extern "C" fn NonSnakeCaseName(some_var: u8) -> u8;
+#[unsafe(no_mangle)]
+static lower_case: () = ();
             "#,
         );
     }
