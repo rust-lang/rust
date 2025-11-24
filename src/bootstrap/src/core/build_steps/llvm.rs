@@ -471,7 +471,8 @@ impl Step for Llvm {
             //let runtime_targets = vec!["default", "amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"];
             //cfg.define("LLVM_RUNTIME_TARGETS", runtime_targets.join(";"));
 
-            cfg.define("-DLLVM_BUILD_TESTS", "OFF");
+            cfg.define("LLVM_INCLUDE_TESTS", "OFF");
+            cfg.define("LLVM_BUILD_TESTS", "OFF");
             //cfg.define("RUNTIMES_nvptx64-nvidia-cuda_LLVM_ENABLE_RUNTIMES", "openmp");
             //cfg.define("RUNTIMES_amdgcn-amd-amdhsa_LLVM_ENABLE_RUNTIMES", "openmp");
         }
