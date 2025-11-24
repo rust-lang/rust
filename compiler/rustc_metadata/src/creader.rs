@@ -135,16 +135,16 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
             let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
             if let Some(dylib) = dylib {
-                writeln!(fmt, "  dylib: {}", dylib.0.display())?;
+                writeln!(fmt, "  dylib: {}", dylib.display())?;
             }
             if let Some(rlib) = rlib {
-                writeln!(fmt, "   rlib: {}", rlib.0.display())?;
+                writeln!(fmt, "   rlib: {}", rlib.display())?;
             }
             if let Some(rmeta) = rmeta {
-                writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+                writeln!(fmt, "   rmeta: {}", rmeta.display())?;
             }
             if let Some(sdylib_interface) = sdylib_interface {
-                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.0.display())?;
+                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.display())?;
             }
         }
         Ok(())
@@ -550,9 +550,9 @@ impl CStore {
                 if let Some(mut files) = entry.files() {
                     if files.any(|l| {
                         let l = l.canonicalized();
-                        source.dylib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rlib.as_ref().map(|(p, _)| p) == Some(l)
-                            || source.rmeta.as_ref().map(|(p, _)| p) == Some(l)
+                        source.dylib.as_ref() == Some(l)
+                            || source.rlib.as_ref() == Some(l)
+                            || source.rmeta.as_ref() == Some(l)
                     }) {
                         return Some(cnum);
                     }
@@ -658,7 +658,7 @@ impl CStore {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(tcx.sess, &dlsym_dylib.0, dlsym_root.stable_crate_id())?)
+            Some(self.dlsym_proc_macros(tcx.sess, dlsym_dylib, dlsym_root.stable_crate_id())?)
         } else {
             None
         };
