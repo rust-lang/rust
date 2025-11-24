@@ -91,7 +91,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                     (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir_attrs(v.hir_id)))
                         .then_some((v.def_id, v.span))
                 });
-                if let Ok((id, span)) = iter.exactly_one()
+                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                if let Ok((id, span)) = Itertools::exactly_one(iter)
                     && !find_attr!(cx.tcx.hir_attrs(item.hir_id()), NonExhaustive(..))
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
@@ -103,7 +104,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                     .iter()
                     .filter(|field| !cx.effective_visibilities.is_exported(field.def_id));
                 if fields.len() > 1
-                    && let Ok(field) = private_fields.exactly_one()
+                    // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                    && let Ok(field) = Itertools::exactly_one(private_fields)
                     && let TyKind::Tup([]) = field.ty.kind
                 {
                     span_lint_and_then(
