@@ -334,7 +334,7 @@ mir_build_suggest_if_let = you might want to use `if let` to ignore the {$count 
         *[other] variants that aren't
     } matched
 
-mir_build_suggest_let_else = you might want to use `let else` to handle the {$count ->
+mir_build_suggest_let_else = you might want to use `let...else` to handle the {$count ->
         [one] variant that isn't
         *[other] variants that aren't
     } matched
