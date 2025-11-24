@@ -2589,6 +2589,7 @@ pub const fn can_compare_bitwise<T: ?Sized>() -> bool;
 #[inline]
 #[rustc_intrinsic]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn compare_bitwise<T: ?Sized>(a: &T, b: &T) -> bool {
     // SAFETY: These pointers were originally references to the same memory.
     unsafe {
