@@ -2479,11 +2479,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let other_len = len - at;
         let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
 
-        unsafe {
-            let (first_half, second_half) = self.as_slices();
+        let (first_half, second_half) = self.as_slices();
+        let first_len = first_half.len();
+        let second_len = second_half.len();
 
-            let first_len = first_half.len();
-            let second_len = second_half.len();
+        unsafe {
             if at < first_len {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;

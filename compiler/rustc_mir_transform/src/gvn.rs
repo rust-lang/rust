@@ -570,9 +570,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             _ if ty.is_zst() => ImmTy::uninit(ty).into(),
 
             Opaque(_) => return None,
-            // Do not bother evaluating repeat expressions. This would uselessly consume memory.
-            Repeat(..) => return None,
 
+            // In general, evaluating repeat expressions just consumes a lot of memory.
+            // But in the special case that the element is just Immediate::Uninit, we can evaluate
+            // it without extra memory! If we don't propagate uninit values like this, LLVM can get
+            // very confused: https://github.com/rust-lang/rust/issues/139355
+            Repeat(value, _count) => {
+                let value = self.eval_to_const(value)?;
+                if value.is_immediate_uninit() {
+                    ImmTy::uninit(ty).into()
+                } else {
+                    return None;
+                }
+            }
             Constant { ref value, disambiguator: _ } => {
                 self.ecx.eval_mir_constant(value, DUMMY_SP, None).discard_err()?
             }
@@ -608,8 +618,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             }
             Union(active_field, field) => {
                 let field = self.eval_to_const(field)?;
-                if matches!(ty.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
-                {
+                if field.layout.layout.is_zst() {
+                    ImmTy::from_immediate(Immediate::Uninit, ty).into()
+                } else if matches!(
+                    ty.backend_repr,
+                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
+                ) {
                     let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
                     let field_dest = self.ecx.project_field(&dest, active_field).discard_err()?;
                     self.ecx.copy_op(field, &field_dest).discard_err()?;
@@ -1695,7 +1709,11 @@ fn op_to_prop_const<'tcx>(
 
     // Do not synthetize too large constants. Codegen will just memcpy them, which we'd like to
     // avoid.
-    if !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
+    // But we *do* want to synthesize any size constant if it is entirely uninit because that
+    // benefits codegen, which has special handling for them.
+    if !op.is_immediate_uninit()
+        && !matches!(op.layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+    {
         return None;
     }
 
