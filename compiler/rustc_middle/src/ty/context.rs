@@ -589,13 +589,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::UnsafeBinder(_) => {
-                let simp = ty::fast_reject::simplify_type(
+                if let Some(simp) = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
-                )
-                .unwrap();
-                consider_impls_for_simplified_type(simp);
+                ) {
+                    consider_impls_for_simplified_type(simp);
+                }
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
