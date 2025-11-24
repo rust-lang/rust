@@ -10,8 +10,7 @@ use std::{
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    FindPathConfig, GeneralConstId, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    FindPathConfig, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -700,11 +699,7 @@ impl<'db> HirDisplay<'db> for Const<'db> {
                 const_bytes.ty,
             ),
             ConstKind::Unevaluated(unev) => {
-                let c = match unev.def {
-                    SolverDefId::ConstId(id) => GeneralConstId::ConstId(id),
-                    SolverDefId::StaticId(id) => GeneralConstId::StaticId(id),
-                    _ => unreachable!(),
-                };
+                let c = unev.def.0;
                 write!(f, "{}", c.name(f.db))?;
                 hir_fmt_generics(f, unev.args.as_slice(), c.generic_def(f.db), None)?;
                 Ok(())

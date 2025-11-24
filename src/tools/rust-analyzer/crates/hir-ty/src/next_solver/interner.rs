@@ -20,7 +20,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
     EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -36,9 +36,9 @@ use crate::{
     method_resolution::TraitImpls,
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, OpaqueTypeKey,
-        RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper,
-        TypeAliasIdWrapper, util::explicit_item_bounds,
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, ImplIdWrapper,
+        OpaqueTypeKey, RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds,
+        TraitIdWrapper, TypeAliasIdWrapper, util::explicit_item_bounds,
     },
 };
 
@@ -770,7 +770,7 @@ impl<'db> Pattern<'db> {
 }
 
 impl<'db> Flags for Pattern<'db> {
-    fn flags(&self) -> rustc_type_ir::TypeFlags {
+    fn flags(&self) -> TypeFlags {
         match self.inner() {
             PatternKind::Range { start, end } => {
                 FlagComputation::for_const_kind(&start.kind()).flags
@@ -783,6 +783,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 flags
             }
+            PatternKind::NotNull => TypeFlags::empty(),
         }
     }
 
@@ -798,6 +799,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 idx
             }
+            PatternKind::NotNull => rustc_type_ir::INNERMOST,
         }
     }
 }
@@ -835,7 +837,10 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
                 )?;
                 Ok(Pattern::new(tcx, PatternKind::Or(pats)))
             }
-            (PatternKind::Range { .. } | PatternKind::Or(_), _) => Err(TypeError::Mismatch),
+            (PatternKind::NotNull, PatternKind::NotNull) => Ok(a),
+            (PatternKind::Range { .. } | PatternKind::Or(_) | PatternKind::NotNull, _) => {
+                Err(TypeError::Mismatch)
+            }
         }
     }
 }
@@ -878,6 +883,7 @@ impl<'db> Interner for DbInterner<'db> {
     type CoroutineId = CoroutineIdWrapper;
     type AdtId = AdtIdWrapper;
     type ImplId = ImplIdWrapper;
+    type UnevaluatedConstId = GeneralConstIdWrapper;
     type Span = Span;
 
     type GenericArgs = GenericArgs<'db>;
@@ -1597,12 +1603,11 @@ impl<'db> Interner for DbInterner<'db> {
         )
     }
 
-    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId> {
-        let trait_ = match def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        trait_.trait_items(self.db()).associated_types().map(|id| id.into())
+    fn associated_type_def_ids(
+        self,
+        def_id: Self::TraitId,
+    ) -> impl IntoIterator<Item = Self::DefId> {
+        def_id.0.trait_items(self.db()).associated_types().map(|id| id.into())
     }
 
     fn for_each_relevant_impl(
@@ -2216,6 +2221,7 @@ TrivialTypeTraversalImpls! {
     CoroutineIdWrapper,
     AdtIdWrapper,
     ImplIdWrapper,
+    GeneralConstIdWrapper,
     Pattern<'db>,
     Safety,
     FnAbi,

@@ -9,7 +9,7 @@ use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt, UpcastFrom,
     inherent::{Const as _, GenericArg as _, IntoKind, SliceLike, Ty as _},
-    solve::{Certainty, GoalSource},
+    solve::Certainty,
 };
 use smallvec::SmallVec;
 use triomphe::Arc;
@@ -62,21 +62,7 @@ impl<'a, 'db> ProofTreeVisitor<'db> for NestedObligationsForSelfTy<'a, 'db> {
 
         let db = self.ctx.interner();
         let goal = inspect_goal.goal();
-        if self.ctx.predicate_has_self_ty(goal.predicate, self.self_ty)
-            // We do not push the instantiated forms of goals as it would cause any
-            // aliases referencing bound vars to go from having escaping bound vars to
-            // being able to be normalized to an inference variable.
-            //
-            // This is mostly just a hack as arbitrary nested goals could still contain
-            // such aliases while having a different `GoalSource`. Closure signature inference
-            // however can't really handle *every* higher ranked `Fn` goal also being present
-            // in the form of `?c: Fn<(<?x as Trait<'!a>>::Assoc)`.
-            //
-            // This also just better matches the behaviour of the old solver where we do not
-            // encounter instantiated forms of goals, only nested goals that referred to bound
-            // vars from instantiated goals.
-            && !matches!(inspect_goal.source(), GoalSource::InstantiateHigherRanked)
-        {
+        if self.ctx.predicate_has_self_ty(goal.predicate, self.self_ty) {
             self.obligations_for_self_ty.push(Obligation::new(
                 db,
                 self.root_cause.clone(),

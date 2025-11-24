@@ -15,9 +15,9 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalFieldId, Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId, TypeParamId,
-    UnionId, VariantId,
+    FunctionId, GeneralConstId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId,
+    LifetimeParamId, LocalFieldId, Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId,
+    TypeParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, HygieneId, path::Path},
     hir::generics::{
@@ -335,7 +335,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 Some(Const::new(
                     self.interner,
                     rustc_type_ir::ConstKind::Unevaluated(UnevaluatedConst::new(
-                        SolverDefId::ConstId(c),
+                        GeneralConstId::ConstId(c).into(),
                         args,
                     )),
                 ))

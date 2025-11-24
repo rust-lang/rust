@@ -1,6 +1,6 @@
 //! Defining `SolverContext` for next-trait-solver.
 
-use hir_def::AssocItemId;
+use hir_def::{AssocItemId, GeneralConstId};
 use rustc_next_trait_solver::delegate::SolverDelegate;
 use rustc_type_ir::{
     AliasTyKind, GenericArgKind, InferCtxtLike, Interner, PredicatePolarity, TypeFlags,
@@ -233,17 +233,16 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         _param_env: ParamEnv<'db>,
         uv: rustc_type_ir::UnevaluatedConst<Self::Interner>,
     ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Const> {
-        match uv.def {
-            SolverDefId::ConstId(c) => {
+        match uv.def.0 {
+            GeneralConstId::ConstId(c) => {
                 let subst = uv.args;
                 let ec = self.cx().db.const_eval(c, subst, None).ok()?;
                 Some(ec)
             }
-            SolverDefId::StaticId(c) => {
+            GeneralConstId::StaticId(c) => {
                 let ec = self.cx().db.const_eval_static(c).ok()?;
                 Some(ec)
             }
-            _ => unreachable!(),
         }
     }
 
