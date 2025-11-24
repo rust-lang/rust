@@ -451,110 +451,128 @@ pub(crate) use self::Fallback_AD::*;
 pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 
+    use std::sync::Mutex;
+
     use libc::c_char;
     use rustc_codegen_ssa::back::write::CodegenContext;
+    use rustc_codegen_ssa::traits::WriteBackendMethods;
 
-    use super::{CConcreteType, CTypeTreeRef, Context};
+    use super::{CConcreteType, CTypeTreeRef, Context, EnzymeTypeTree};
 
-    // TypeTree function fallbacks
-    pub(crate) fn init<'a, B: WriteBackendMethods>(
-        cgcx: &'a CodegenContext<B>,
-    ) -> &'static Mutex<Self> {
-        unimplemented!()
-    }
+    pub(crate) struct EnzymeWrapper;
 
-    pub(crate) fn get_instance() -> &'static Mutex<Self> {
-        unimplemented!()
-    }
+    impl EnzymeWrapper {
+        pub(crate) fn init<'a, B: WriteBackendMethods>(
+            _cgcx: &'a CodegenContext<B>,
+        ) -> &'static Mutex<Self> {
+            unimplemented!("Enzyme not available: build with llvm_enzyme feature")
+        }
 
-    pub(crate) fn new_type_tree(&self) -> CTypeTreeRef {
-        unimplemented!()
-    }
+        pub(crate) fn get_instance() -> &'static Mutex<Self> {
+            unimplemented!("Enzyme not available: build with llvm_enzyme feature")
+        }
 
-    pub(crate) fn new_type_tree_ct(&self, t: CConcreteType, ctx: &Context) -> *mut EnzymeTypeTree {
-        unimplemented!()
-    }
+        pub(crate) fn new_type_tree(&self) -> CTypeTreeRef {
+            unimplemented!()
+        }
 
-    pub(crate) fn new_type_tree_tr(&self, tree: CTypeTreeRef) -> CTypeTreeRef {
-        unimplemented!()
-    }
+        pub(crate) fn new_type_tree_ct(
+            &self,
+            t: CConcreteType,
+            ctx: &Context,
+        ) -> *mut EnzymeTypeTree {
+            unimplemented!()
+        }
 
-    pub(crate) fn free_type_tree(&self, tree: CTypeTreeRef) {
-        unimplemented!()
-    }
+        pub(crate) fn new_type_tree_tr(&self, tree: CTypeTreeRef) -> CTypeTreeRef {
+            unimplemented!()
+        }
 
-    pub(crate) fn merge_type_tree(&self, tree1: CTypeTreeRef, tree2: CTypeTreeRef) -> bool {
-        unimplemented!()
-    }
+        pub(crate) fn free_type_tree(&self, tree: CTypeTreeRef) {
+            unimplemented!()
+        }
 
-    pub(crate) fn tree_only_eq(&self, tree: CTypeTreeRef, num: i64) {
-        unimplemented!()
-    }
+        pub(crate) fn merge_type_tree(&self, tree1: CTypeTreeRef, tree2: CTypeTreeRef) -> bool {
+            unimplemented!()
+        }
 
-    pub(crate) fn tree_data0_eq(&self, tree: CTypeTreeRef) {
-        unimplemented!()
-    }
+        pub(crate) fn tree_only_eq(&self, tree: CTypeTreeRef, num: i64) {
+            unimplemented!()
+        }
 
-    pub(crate) fn shift_indicies_eq(
-        &self,
-        tree: CTypeTreeRef,
-        data_layout: *const c_char,
-        offset: i64,
-        max_size: i64,
-        add_offset: u64,
-    ) {
-        unimplemented!()
-    }
+        pub(crate) fn tree_data0_eq(&self, tree: CTypeTreeRef) {
+            unimplemented!()
+        }
 
-    pub(crate) fn tree_insert_eq(
-        &self,
-        tree: CTypeTreeRef,
-        indices: *const i64,
-        len: usize,
-        ct: CConcreteType,
-        ctx: &Context,
-    ) {
-        unimplemented!()
-    }
+        pub(crate) fn shift_indicies_eq(
+            &self,
+            tree: CTypeTreeRef,
+            data_layout: *const c_char,
+            offset: i64,
+            max_size: i64,
+            add_offset: u64,
+        ) {
+            unimplemented!()
+        }
 
-    pub(crate) fn tree_to_string(&self, tree: *mut EnzymeTypeTree) -> *const c_char {
-        unimplemented!()
-    }
+        pub(crate) fn tree_insert_eq(
+            &self,
+            tree: CTypeTreeRef,
+            indices: *const i64,
+            len: usize,
+            ct: CConcreteType,
+            ctx: &Context,
+        ) {
+            unimplemented!()
+        }
 
-    pub(crate) fn tree_to_string_free(&self, ch: *const c_char) {
-        unimplemented!()
-    }
+        pub(crate) fn tree_to_string(&self, tree: *mut EnzymeTypeTree) -> *const c_char {
+            unimplemented!()
+        }
 
-    pub(crate) fn get_max_type_depth(&self) -> usize {
-        unimplemented!()
-    }
+        pub(crate) fn tree_to_string_free(&self, ch: *const c_char) {
+            unimplemented!()
+        }
 
-    pub(crate) fn set_inline(val: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_print_perf(print: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_print_activity(print: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_print_type(print: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_print_type_fun(fun_name: &str) {
-        unimplemented!()
-    }
-    pub(crate) fn set_print(print: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_strict_aliasing(strict: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_loose_types(loose: bool) {
-        unimplemented!()
-    }
-    pub(crate) fn set_rust_rules(val: bool) {
-        unimplemented!()
+        pub(crate) fn get_max_type_depth(&self) -> usize {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_inline(&mut self, val: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_print_perf(&mut self, print: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_print_activity(&mut self, print: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_print_type(&mut self, print: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_print_type_fun(&mut self, fun_name: &str) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_print(&mut self, print: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_strict_aliasing(&mut self, strict: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_loose_types(&mut self, loose: bool) {
+            unimplemented!()
+        }
+
+        pub(crate) fn set_rust_rules(&mut self, val: bool) {
+            unimplemented!()
+        }
     }
 }
 
