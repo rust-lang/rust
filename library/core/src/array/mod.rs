@@ -13,7 +13,7 @@ use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
 use crate::marker::Destruct;
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
@@ -145,14 +145,10 @@ where
 #[inline]
 #[unstable(feature = "array_try_from_fn", issue = "89379")]
 #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
-pub const fn try_from_fn<R, const N: usize>(
-    cb: impl [const] FnMut(usize) -> R + [const] Destruct,
-) -> ChangeOutputType<R, [R::Output; N]>
+pub const fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
-    R: [const] Try<
-            Residual: [const] Residual<[R::Output; N], TryType: [const] Try>,
-            Output: [const] Destruct,
-        >,
+    R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
+    F: [const] FnMut(usize) -> R + [const] Destruct,
 {
     let mut array = [const { MaybeUninit::uninit() }; N];
     match try_from_fn_erased(&mut array, cb) {
@@ -559,6 +555,7 @@ impl<T, const N: usize> [T; N] {
     where
         F: [const] FnMut(T) -> U + [const] Destruct,
         U: [const] Destruct,
+        T: [const] Destruct,
     {
         self.try_map(NeverShortCircuit::wrap_mut_1(f)).0
     }
@@ -600,16 +597,13 @@ impl<T, const N: usize> [T; N] {
         mut f: impl [const] FnMut(T) -> R + [const] Destruct,
     ) -> ChangeOutputType<R, [R::Output; N]>
     where
-        R: [const] Try<
-                Residual: [const] Residual<[R::Output; N], TryType: [const] Try>,
-                Output: [const] Destruct,
-            >,
+        R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
+        T: [const] Destruct,
     {
-        // SAFETY: try_from_fn calls `f` with 0..N.
-        let mut f = unsafe { drain::Drain::new(self, &mut f) };
-        let out = try_from_fn(&mut f);
-        mem::forget(f); // it doesnt like being remembered
-        out
+        let mut me = ManuallyDrop::new(self);
+        // SAFETY: try_from_fn calls `f` N times.
+        let mut f = unsafe { drain::Drain::new(&mut me, &mut f) };
+        try_from_fn(&mut f)
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.

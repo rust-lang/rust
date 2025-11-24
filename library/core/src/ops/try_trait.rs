@@ -364,6 +364,7 @@ where
 pub const trait Residual<O>: Sized {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+    // FIXME: ought to be implied
     type TryType: [const] Try<Output = O, Residual = Self>;
 }
 
