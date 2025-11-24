@@ -24,6 +24,9 @@ case "${channel}" in
     stable)
         channel_branch="stable"
         ;;
+    v810)
+        channel_branch="v810"
+        ;;
     *)
         echo "error: unknown channel defined in src/ci/channel: ${channel}"
         exit 1
