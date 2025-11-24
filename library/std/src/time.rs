@@ -527,6 +527,15 @@ impl SystemTime {
     ///
     /// // But adding just 1ns will already fail.
     /// assert_eq!(SystemTime::MAX.checked_add(Duration::new(0, 1)), None);
+    ///
+    /// // Utilize this for saturating artihmetic to improve error handling.
+    /// // In this case, we will use a certificate with a timestamp in the
+    /// // future as a practical example.
+    /// let configured_offset = Duration::from_secs(60 * 60 * 24);
+    /// let valid_after =
+    ///     SystemTime::now()
+    ///         .checked_add(configured_offset)
+    ///         .unwrap_or(SystemTime::MAX);
     /// ```
     #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MAX: SystemTime = SystemTime(time::SystemTime::MAX);
@@ -553,6 +562,14 @@ impl SystemTime {
     ///
     /// // But subtracting just 1ns will already fail.
     /// assert_eq!(SystemTime::MIN.checked_sub(Duration::new(0, 1)), None);
+    ///
+    /// // Utilize this for saturating artihmetic to improve error handling.
+    /// // In this case, we will use a cache expiry as a practical example.
+    /// let configured_expiry = Duration::from_secs(60 * 3);
+    /// let expiry_threshold =
+    ///     SystemTime::now()
+    ///         .checked_sub(configured_expiry)
+    ///         .unwrap_or(SystemTime::MIN);
     /// ```
     #[unstable(feature = "time_systemtime_limits", issue = "149067")]
     pub const MIN: SystemTime = SystemTime(time::SystemTime::MIN);
