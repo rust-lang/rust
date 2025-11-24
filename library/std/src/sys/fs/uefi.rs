@@ -7,7 +7,7 @@ use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{helpers, unsupported};
 
 #[expect(dead_code)]
 const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
@@ -75,6 +75,18 @@ impl FileAttr {
 
     pub fn created(&self) -> io::Result<SystemTime> {
         Ok(self.created)
+    }
+
+    fn from_uefi(info: helpers::UefiBox<file::Info>) -> Self {
+        unsafe {
+            Self {
+                attr: (*info.as_ptr()).attribute,
+                size: (*info.as_ptr()).file_size,
+                modified: uefi_fs::uefi_to_systemtime((*info.as_ptr()).modification_time),
+                accessed: uefi_fs::uefi_to_systemtime((*info.as_ptr()).last_access_time),
+                created: uefi_fs::uefi_to_systemtime((*info.as_ptr()).create_time),
+            }
+        }
     }
 }
 
@@ -381,8 +393,10 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn stat(p: &Path) -> io::Result<FileAttr> {
+    let f = uefi_fs::File::from_path(p, r_efi::protocols::file::MODE_READ, 0)?;
+    let inf = f.file_info()?;
+    Ok(FileAttr::from_uefi(inf))
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
@@ -404,7 +418,7 @@ mod uefi_fs {
     use crate::io;
     use crate::path::Path;
     use crate::ptr::NonNull;
-    use crate::sys::helpers;
+    use crate::sys::helpers::{self, UefiBox};
     use crate::sys::time::{self, SystemTime};
 
     pub(crate) struct File(NonNull<file::Protocol>);
@@ -492,6 +506,37 @@ mod uefi_fs {
             let p = NonNull::new(file_opened).unwrap();
             Ok(File(p))
         }
+
+        pub(crate) fn file_info(&self) -> io::Result<UefiBox<file::Info>> {
+            let file_ptr = self.0.as_ptr();
+            let mut info_id = file::INFO_ID;
+            let mut buf_size = 0;
+
+            let r = unsafe {
+                ((*file_ptr).get_info)(
+                    file_ptr,
+                    &mut info_id,
+                    &mut buf_size,
+                    crate::ptr::null_mut(),
+                )
+            };
+            assert!(r.is_error());
+            if r != r_efi::efi::Status::BUFFER_TOO_SMALL {
+                return Err(io::Error::from_raw_os_error(r.as_usize()));
+            }
+
+            let mut info: UefiBox<file::Info> = UefiBox::new(buf_size)?;
+            let r = unsafe {
+                ((*file_ptr).get_info)(
+                    file_ptr,
+                    &mut info_id,
+                    &mut buf_size,
+                    info.as_mut_ptr().cast(),
+                )
+            };
+
+            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
+        }
     }
 
     impl Drop for File {
@@ -556,8 +601,7 @@ mod uefi_fs {
 
     /// EDK2 FAT driver uses EFI_UNSPECIFIED_TIMEZONE to represent localtime. So for proper
     /// conversion to SystemTime, we use the current time to get the timezone in such cases.
-    #[expect(dead_code)]
-    fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> SystemTime {
+    pub(crate) fn uefi_to_systemtime(mut time: r_efi::efi::Time) -> SystemTime {
         time.timezone = if time.timezone == r_efi::efi::UNSPECIFIED_TIMEZONE {
             time::system_time_internal::now().unwrap().timezone
         } else {

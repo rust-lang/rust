@@ -1,11 +1,11 @@
 use itertools::Itertools;
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_hir::find_attr;
+use rustc_hir::{LangItem, find_attr};
 use rustc_index::Idx;
 use rustc_middle::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
@@ -336,6 +336,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results.expr_ty(expr);
+        let mk_expr =
+            |kind, ty| Expr { temp_scope_id: expr.hir_id.local_id, span: expr.span, ty, kind };
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
@@ -813,11 +815,48 @@ impl<'tcx> ThirBuildCx<'tcx> {
             })),
 
             hir::ExprKind::OffsetOf(_, _) => {
-                let data = self.typeck_results.offset_of_data();
-                let &(container, ref indices) = data.get(expr.hir_id).unwrap();
-                let fields = tcx.mk_offset_of_from_iter(indices.iter().copied());
+                let offset_of_intrinsic = tcx.require_lang_item(LangItem::OffsetOf, expr.span);
+                let mk_u32_kind = |val: u32| ExprKind::NonHirLiteral {
+                    lit: ScalarInt::try_from_uint(val, Size::from_bits(32)).unwrap(),
+                    user_ty: None,
+                };
+                let mk_call =
+                    |thir: &mut Thir<'tcx>, ty: Ty<'tcx>, variant: VariantIdx, field: FieldIdx| {
+                        let fun_ty =
+                            Ty::new_fn_def(tcx, offset_of_intrinsic, [ty::GenericArg::from(ty)]);
+                        let fun = thir
+                            .exprs
+                            .push(mk_expr(ExprKind::ZstLiteral { user_ty: None }, fun_ty));
+                        let variant =
+                            thir.exprs.push(mk_expr(mk_u32_kind(variant.as_u32()), tcx.types.u32));
+                        let field =
+                            thir.exprs.push(mk_expr(mk_u32_kind(field.as_u32()), tcx.types.u32));
+                        let args = Box::new([variant, field]);
+                        ExprKind::Call {
+                            ty: fun_ty,
+                            fun,
+                            args,
+                            from_hir_call: false,
+                            fn_span: expr.span,
+                        }
+                    };
 
-                ExprKind::OffsetOf { container, fields }
+                let indices = self.typeck_results.offset_of_data().get(expr.hir_id).unwrap();
+                let mut expr = None::<ExprKind<'tcx>>;
+
+                for &(container, variant, field) in indices.iter() {
+                    let next = mk_call(&mut self.thir, container, variant, field);
+                    expr = Some(match expr.take() {
+                        None => next,
+                        Some(last) => {
+                            let last = self.thir.exprs.push(mk_expr(last, tcx.types.usize));
+                            let next = self.thir.exprs.push(mk_expr(next, tcx.types.usize));
+                            ExprKind::Binary { op: BinOp::Add, lhs: last, rhs: next }
+                        }
+                    });
+                }
+
+                expr.unwrap_or(mk_u32_kind(0))
             }
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
@@ -1081,7 +1120,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::Err(_) => unreachable!("cannot lower a `hir::ExprKind::Err` to THIR"),
         };
 
-        Expr { temp_scope_id: expr.hir_id.local_id, ty: expr_ty, span: expr.span, kind }
+        mk_expr(kind, expr_ty)
     }
 
     fn user_args_applied_to_res(

@@ -2,6 +2,7 @@
 #![allow(internal_features)]
 #![feature(default_field_values)]
 #![feature(iter_intersperse)]
+#![feature(macro_derive)]
 #![feature(rustc_attrs)]
 // To generate CodegenOptionsTargetModifiers and UnstableOptionsTargetModifiers enums
 // with macro_rules, it is necessary to use recursive mechanic ("Incremental TT Munchers").
@@ -20,6 +21,7 @@ pub mod code_stats;
 pub mod config;
 pub mod cstore;
 pub mod filesearch;
+mod macros;
 mod options;
 pub mod search_paths;
 

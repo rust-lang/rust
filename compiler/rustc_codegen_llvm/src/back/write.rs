@@ -9,8 +9,8 @@ use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
-    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
-    TargetMachineFactoryFn,
+    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig,
+    TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::*;
@@ -434,7 +434,7 @@ fn report_inline_asm(
     level: llvm::DiagnosticLevel,
     cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
-) {
+) -> InlineAsmError {
     // In LTO build we may get srcloc values from other crates which are invalid
     // since they use a different source map. To be safe we just suppress these
     // in LTO builds.
@@ -454,7 +454,7 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     let msg = msg.trim_prefix("error: ").to_string();
-    cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
+    InlineAsmError { span, msg, level, source }
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -466,7 +466,13 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
     match unsafe { llvm::diagnostic::Diagnostic::unpack(info) } {
         llvm::diagnostic::InlineAsm(inline) => {
-            report_inline_asm(cgcx, inline.message, inline.level, inline.cookie, inline.source);
+            cgcx.diag_emitter.inline_asm_error(report_inline_asm(
+                cgcx,
+                inline.message,
+                inline.level,
+                inline.cookie,
+                inline.source,
+            ));
         }
 
         llvm::diagnostic::Optimization(opt) => {
@@ -765,6 +771,13 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_plugins.len(),
         )
     };
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        unsafe {
+            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+        }
+    }
+
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 

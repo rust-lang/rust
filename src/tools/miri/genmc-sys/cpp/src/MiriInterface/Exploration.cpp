@@ -22,13 +22,23 @@ auto MiriGenmcShim::schedule_next(
     // a scheduling decision.
     threads_action_[curr_thread_id].kind = curr_thread_next_instr_kind;
 
-    if (const auto result = GenMCDriver::scheduleNext(threads_action_))
-        return SchedulingResult { ExecutionState::Ok, static_cast<int32_t>(result.value()) };
-    if (getExec().getGraph().isBlocked())
-        return SchedulingResult { ExecutionState::Blocked, 0 };
-    if (getResult().status.has_value()) // the "value" here is a `VerificationError`
-        return SchedulingResult { ExecutionState::Error, 0 };
-    return SchedulingResult { ExecutionState::Finished, 0 };
+    auto result = GenMCDriver::scheduleNext(threads_action_);
+    return std::visit(
+        [](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (std::is_same_v<T, int>)
+                return SchedulingResult { ExecutionState::Ok, static_cast<int32_t>(arg) };
+            else if constexpr (std::is_same_v<T, Blocked>)
+                return SchedulingResult { ExecutionState::Blocked, 0 };
+            else if constexpr (std::is_same_v<T, Error>)
+                return SchedulingResult { ExecutionState::Error, 0 };
+            else if constexpr (std::is_same_v<T, Finished>)
+                return SchedulingResult { ExecutionState::Finished, 0 };
+            else
+                static_assert(false, "non-exhaustive visitor!");
+        },
+        result
+    );
 }
 
 /**** Execution start/end handling ****/

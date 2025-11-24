@@ -220,7 +220,8 @@ struct MiriGenmcShim : private GenMCDriver {
     auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
         -> HandleResult<SVal> {
         const auto pos = inc_pos(tid);
-        const auto ret = GenMCDriver::handleLoad<k>(pos, old_val, std::forward<Ts>(params)...);
+        const auto ret =
+            GenMCDriver::handleLoad<k>(nullptr, pos, old_val, std::forward<Ts>(params)...);
         // If we didn't get a value, we have to reset the index of the current thread.
         if (!std::holds_alternative<SVal>(ret)) {
             dec_pos(tid);

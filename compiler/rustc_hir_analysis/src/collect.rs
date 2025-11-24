@@ -1346,7 +1346,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
     let selfty = tcx.type_of(def_id).instantiate_identity();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
 
-    check_impl_constness(tcx, of_trait.constness, &of_trait.trait_ref);
+    check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
 
     let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
 
@@ -1354,7 +1354,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
         trait_ref: ty::EarlyBinder::bind(trait_ref),
         safety: of_trait.safety,
         polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
-        constness: of_trait.constness,
+        constness: impl_.constness,
     }
 }
 

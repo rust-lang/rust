@@ -312,7 +312,7 @@ mod expressions {
 
 
 
-        { builtin # offset_of(T, field) };
+        const { builtin # offset_of(T, field) };
     }
     /// ExprKind::MacCall
     fn expr_mac_call() { "..."; "..."; "..."; }

@@ -119,7 +119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         local_info: LocalInfo<'tcx>,
         needs_temporary: NeedsTemporary,
     ) -> BlockAnd<Operand<'tcx>> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
 
         let expr = &this.thir[expr_id];
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
@@ -161,7 +161,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope: TempLifetime,
         expr_id: ExprId,
     ) -> BlockAnd<Operand<'tcx>> {
-        let this = self;
+        let this = self; // See "LET_THIS_SELF".
         let expr = &this.thir[expr_id];
         debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
 

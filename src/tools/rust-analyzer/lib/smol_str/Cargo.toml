@@ -1,0 +1,37 @@
+[package]
+name = "smol_str"
+version = "0.3.4"
+description = "small-string optimized string type with O(1) clone"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/smol_str"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>", "Lukas Wirth <lukastw97@gmail.com>"]
+edition = "2024"
+rust-version = "1.89"
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+all-features = true
+
+[dependencies]
+serde_core = { version = "1.0.220", optional = true, default-features = false }
+borsh = { version = "1.4.0", optional = true, default-features = false }
+arbitrary = { version = "1.3", optional = true }
+
+[dev-dependencies]
+proptest = "1.5"
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+criterion = "0.7"
+rand = "0.9.2"
+
+[features]
+default = ["std"]
+std = ["serde_core?/std", "borsh?/std"]
+serde = ["dep:serde_core"]
+
+[[bench]]
+name = "bench"
+harness = false
+
+[lints]
+workspace = true

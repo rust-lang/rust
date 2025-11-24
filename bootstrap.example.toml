@@ -315,12 +315,12 @@
 # target when running tests, otherwise this can be omitted.
 #build.nodejs = "node"
 
-# The npm executable to use. Note that this is used for rustdoc-gui tests,
-# otherwise this can be omitted.
+# The yarn executable to use. Note that this is used for rustdoc-gui tests and
+# tidy js extra-checks, otherwise this can be omitted.
 #
-# Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
+# Under Windows this should be `yarn.cmd` or path to it (verified on nodejs v18.06), or
 # error will be emitted.
-#build.npm = "npm"
+#build.yarn = "yarn"
 
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, and some dist bits and pieces.
@@ -708,6 +708,12 @@
 # desired in distributions, for example.
 #rust.rpath = true
 
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags but not over per target rustflags nor env. vars. like RUSTFLAGS.
+# Applies to all stages and targets.
+#
+#rust.rustflags = []
+
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #rust.strip = false
 
@@ -830,6 +836,11 @@
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #rust.new-symbol-mangling = true|false (see comment)
+
+# Size limit in bytes for move/copy annotations (-Zannotate-moves). Only types
+# at or above this size will be annotated. If not specified, uses the default
+# limit (65 bytes).
+#rust.annotate-moves-size-limit = 65
 
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
@@ -1007,6 +1018,12 @@
 # This option supports enable `rpath` in each target independently,
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
+
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags and `rust.rustflags` but not over env. vars. like RUSTFLAGS.
+# Applies to all stages.
+#
+#rustflags = rust.rustflags
 
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the

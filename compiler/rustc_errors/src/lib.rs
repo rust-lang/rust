@@ -348,7 +348,7 @@ impl CodeSuggestion {
             hi_opt: Option<&Loc>,
         ) -> usize {
             let mut line_count = 0;
-            // Convert CharPos to Usize, as CharPose is character offset
+            // Convert `CharPos` to `usize`, as `CharPos` is character offset
             // Extract low index and high index
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
@@ -1205,6 +1205,10 @@ impl<'a> DiagCtxtHandle<'a> {
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 
+    /// Trigger an ICE if there are any delayed bugs and no hard errors.
+    ///
+    /// This will panic if there are any stashed diagnostics. You can call
+    /// `emit_stashed_diagnostics` to emit those before calling `flush_delayed`.
     pub fn flush_delayed(&self) {
         self.inner.borrow_mut().flush_delayed();
     }

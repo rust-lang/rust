@@ -2,7 +2,7 @@
 
 use std::hash::{BuildHasher, Hash};
 
-use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics};
+use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics, Symbol};
 use smallvec::SmallVec;
 use span::{TextRange, TextSize};
 use syntax::{
@@ -524,6 +524,7 @@ impl_empty_upmap_from_ra_fixture!(
     f64,
     &str,
     String,
+    Symbol,
     SmolStr,
     Documentation,
     SymbolKind,

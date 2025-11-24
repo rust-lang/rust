@@ -11,10 +11,10 @@ use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{Filename, IndexedVal, Opaque};
+use crate::{Filename, IndexedVal, Opaque, ThreadLocalIndex};
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
-pub struct Ty(usize);
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Ty(usize, ThreadLocalIndex);
 
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -151,8 +151,8 @@ pub enum TyConstKind {
     ZSTValue(Ty),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize)]
-pub struct TyConstId(usize);
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct TyConstId(usize, ThreadLocalIndex);
 
 /// Represents a constant in MIR
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
@@ -212,8 +212,8 @@ impl MirConst {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct MirConstId(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct MirConstId(usize, ThreadLocalIndex);
 
 type Ident = Opaque;
 
@@ -255,8 +255,8 @@ pub struct Placeholder<T> {
     pub bound: T,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct Span(usize);
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Span(usize, ThreadLocalIndex);
 
 impl Debug for Span {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -1560,14 +1560,29 @@ macro_rules! index_impl {
     ($name:ident) => {
         impl crate::IndexedVal for $name {
             fn to_val(index: usize) -> Self {
-                $name(index)
+                $name(index, $crate::ThreadLocalIndex)
             }
             fn to_index(&self) -> usize {
                 self.0
             }
         }
+        $crate::ty::serialize_index_impl!($name);
     };
 }
+macro_rules! serialize_index_impl {
+    ($name:ident) => {
+        impl ::serde::Serialize for $name {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: ::serde::Serializer,
+            {
+                let n: usize = self.0; // Make sure we're serializing an int.
+                ::serde::Serialize::serialize(&n, serializer)
+            }
+        }
+    };
+}
+pub(crate) use {index_impl, serialize_index_impl};
 
 index_impl!(TyConstId);
 index_impl!(MirConstId);
@@ -1587,8 +1602,8 @@ index_impl!(Span);
 /// `a` is in the variant with the `VariantIdx` of `0`,
 /// `c` is in the variant with the `VariantIdx` of `1`, and
 /// `g` is in the variant with the `VariantIdx` of `0`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct VariantIdx(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct VariantIdx(usize, ThreadLocalIndex);
 
 index_impl!(VariantIdx);
 

@@ -217,6 +217,7 @@ pub struct Config {
     pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
+    pub rust_annotate_moves_size_limit: Option<u64>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
@@ -224,6 +225,7 @@ pub struct Config {
     pub rust_std_features: BTreeSet<String>,
     pub rust_break_on_ice: bool,
     pub rust_parallel_frontend_threads: Option<u32>,
+    pub rust_rustflags: Vec<String>,
 
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
@@ -271,7 +273,7 @@ pub struct Config {
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
-    pub npm: Option<PathBuf>,
+    pub yarn: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
@@ -462,6 +464,8 @@ impl Config {
             gdb: build_gdb,
             lldb: build_lldb,
             nodejs: build_nodejs,
+
+            yarn: build_yarn,
             npm: build_npm,
             python: build_python,
             windows_rc: build_windows_rc,
@@ -559,6 +563,7 @@ impl Config {
             control_flow_guard: rust_control_flow_guard,
             ehcont_guard: rust_ehcont_guard,
             new_symbol_mangling: rust_new_symbol_mangling,
+            annotate_moves_size_limit: rust_annotate_moves_size_limit,
             profile_generate: rust_profile_generate,
             profile_use: rust_profile_use,
             download_rustc: rust_download_rustc,
@@ -571,6 +576,7 @@ impl Config {
             bootstrap_override_lld_legacy: rust_bootstrap_override_lld_legacy,
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
+            rustflags: rust_rustflags,
         } = toml.rust.unwrap_or_default();
 
         let Llvm {
@@ -831,6 +837,12 @@ impl Config {
                     .to_owned();
         }
 
+        if build_npm.is_some() {
+            println!(
+                "WARNING: `build.npm` set in bootstrap.toml, this option no longer has any effect. . Use `build.yarn` instead to provide a path to a `yarn` binary."
+            );
+        }
+
         let mut lld_enabled = rust_lld_enabled.unwrap_or(false);
 
         // Linux targets for which the user explicitly overrode the used linker
@@ -854,6 +866,7 @@ impl Config {
                     sanitizers: target_sanitizers,
                     profiler: target_profiler,
                     rpath: target_rpath,
+                    rustflags: target_rustflags,
                     crt_static: target_crt_static,
                     musl_root: target_musl_root,
                     musl_libdir: target_musl_libdir,
@@ -937,6 +950,7 @@ impl Config {
                 target.sanitizers = target_sanitizers;
                 target.profiler = target_profiler;
                 target.rpath = target_rpath;
+                target.rustflags = target_rustflags.unwrap_or_default();
                 target.optimized_compiler_builtins = target_optimized_compiler_builtins;
                 target.jemalloc = target_jemalloc;
                 if let Some(backends) = target_codegen_backends {
@@ -1382,7 +1396,6 @@ impl Config {
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
-            npm: build_npm.map(PathBuf::from),
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
@@ -1398,6 +1411,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_annotate_moves_size_limit,
             rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
@@ -1431,6 +1445,7 @@ impl Config {
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
             rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
             rust_rpath: rust_rpath.unwrap_or(true),
+            rust_rustflags: rust_rustflags.unwrap_or_default(),
             rust_stack_protector,
             rust_std_features: rust_std_features
                 .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
@@ -1468,6 +1483,7 @@ impl Config {
             vendor,
             verbose_tests,
             windows_rc: build_windows_rc.map(PathBuf::from),
+            yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end
         }
     }

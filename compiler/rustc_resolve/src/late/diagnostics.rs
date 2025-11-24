@@ -823,8 +823,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let Some(Res::Def(DefKind::Struct, def_id)) = res {
-                    self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
-                    err.note("constructor is not visible here due to private fields");
+                    let private_fields = self.has_private_fields(def_id);
+                    let adjust_error_message =
+                        private_fields && self.is_struct_with_fn_ctor(def_id);
+                    if adjust_error_message {
+                        self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                    }
+
+                    if private_fields {
+                        err.note("constructor is not visible here due to private fields");
+                    }
                 } else {
                     err.span_suggestion(
                         call_span,
@@ -1642,6 +1650,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    fn is_struct_with_fn_ctor(&mut self, def_id: DefId) -> bool {
+        def_id
+            .as_local()
+            .and_then(|local_id| self.r.struct_constructors.get(&local_id))
+            .map(|struct_ctor| {
+                matches!(
+                    struct_ctor.0,
+                    def::Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
+                )
+            })
+            .unwrap_or(false)
+    }
+
     fn update_err_for_private_tuple_struct_fields(
         &mut self,
         err: &mut Diag<'_>,
@@ -1674,7 +1695,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     *call_span,
                     &args[..],
                 );
-                // Use spans of the tuple struct definition.
+
                 self.r
                     .field_idents(def_id)
                     .map(|fields| fields.iter().map(|f| f.span).collect::<Vec<_>>())

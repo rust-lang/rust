@@ -213,6 +213,7 @@ impl AnnotateSnippetEmitter {
                 file_ann.swap(0, pos);
             }
 
+            let file_ann_len = file_ann.len();
             for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate() {
                 if should_show_source_code(&self.ignored_directories_in_source_blocks, sm, &file) {
                     if let Some(snippet) = self.annotated_snippet(annotations, &file.name, sm) {
@@ -240,6 +241,7 @@ impl AnnotateSnippetEmitter {
                     // ╰ warning: this was previously accepted
                     if let Some(c) = children.first()
                         && (!c.span.has_primary_spans() && !c.span.has_span_labels())
+                        && file_idx == file_ann_len - 1
                     {
                         group = group.element(Padding);
                     }
@@ -631,7 +633,7 @@ impl AnnotateSnippetEmitter {
                     report.push(std::mem::replace(&mut group, Group::with_level(level.clone())));
                 }
 
-                if !line_tracker.contains(&lo.line) {
+                if !line_tracker.contains(&lo.line) && (i == 0 || hi.line <= lo.line) {
                     line_tracker.push(lo.line);
                     // ╭▸ $SRC_DIR/core/src/option.rs:594:0 (<- It adds *this*)
                     // ⸬  $SRC_DIR/core/src/option.rs:602:4
@@ -739,6 +741,14 @@ fn collect_annotations(
                 output.push((file, vec![ann]));
             }
         }
+    }
+
+    // Sort annotations within each file by line number
+    for (_, ann) in output.iter_mut() {
+        ann.sort_by_key(|a| {
+            let lo = sm.lookup_char_pos(a.span.lo());
+            lo.line
+        });
     }
     output
 }
