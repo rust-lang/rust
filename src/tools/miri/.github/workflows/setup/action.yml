@@ -21,8 +21,6 @@ runs:
       - name: Add cache for cargo
         id: cache
         uses: actions/cache@v4
-        # FIXME: work around https://github.com/actions/runner-images/issues/13341
-        if: runner.os != 'macOS'
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
