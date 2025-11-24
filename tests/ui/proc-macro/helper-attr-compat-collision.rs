@@ -1,6 +1,6 @@
 //@ proc-macro: test-macros.rs
 //@ proc-macro: extra-empty-derive.rs
-//@ build-pass
+//@ check-pass
 
 #[macro_use(Empty)]
 extern crate test_macros;
