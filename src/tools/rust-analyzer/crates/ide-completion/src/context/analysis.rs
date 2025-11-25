@@ -657,7 +657,7 @@ fn expected_type_and_name<'db>(
                     cov_mark::hit!(expected_type_fn_param);
                     ActiveParameter::at_token(
                         sema,
-                       token.clone(),
+                        token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
                         (Some(ap.ty), name)
