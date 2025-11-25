@@ -1099,7 +1099,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // vs. copying a struct with mixed types requires different derivative handling.
         // The TypeTree tells Enzyme exactly what memory layout to expect.
         if let Some(tt) = tt {
-            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
+            crate::typetree::add_tt(
+                self.cx().llmod,
+                self.cx().llcx,
+                memcpy,
+                tt,
+                &self.cx().tcx.sess.opts.sysroot,
+            );
         }
     }
 

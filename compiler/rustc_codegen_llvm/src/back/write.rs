@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::{fs, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
@@ -727,8 +727,9 @@ pub(crate) unsafe fn llvm_optimize(
     let llvm_plugins = config.llvm_plugins.join(",");
 
     let enzyme_fn = if consider_ad {
-        let wrapper: &'static Mutex<llvm::EnzymeWrapper> = llvm::EnzymeWrapper::init(cgcx);
-        wrapper.lock().unwrap().registerEnzymeAndPassPipeline
+        // Initialize Enzyme if not already done (idempotent due to OnceLock)
+        let wrapper = llvm::EnzymeWrapper::get_or_init(&cgcx.sysroot);
+        wrapper.registerEnzymeAndPassPipeline
     } else {
         std::ptr::null()
     };

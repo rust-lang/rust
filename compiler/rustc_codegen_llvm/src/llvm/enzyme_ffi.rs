@@ -97,10 +97,8 @@ pub(crate) use self::Enzyme_AD::*;
 #[cfg(feature = "llvm_enzyme")]
 pub(crate) mod Enzyme_AD {
     use std::ffi::{c_char, c_void};
-    use std::sync::{Mutex, OnceLock};
+    use std::sync::{Mutex, MutexGuard, OnceLock};
 
-    use rustc_codegen_ssa::back::write::CodegenContext;
-    use rustc_codegen_ssa::traits::WriteBackendMethods;
     use rustc_middle::bug;
     use rustc_session::config::{Sysroot, host_tuple};
     use rustc_session::filesearch;
@@ -202,18 +200,29 @@ pub(crate) mod Enzyme_AD {
     static ENZYME_INSTANCE: OnceLock<Mutex<EnzymeWrapper>> = OnceLock::new();
 
     impl EnzymeWrapper {
-        pub(crate) fn init<'a, B: WriteBackendMethods>(
-            cgcx: &'a CodegenContext<B>,
-        ) -> &'static Mutex<Self> {
-            ENZYME_INSTANCE.get_or_init(|| {
-                Self::call_dynamic(cgcx)
-                    .unwrap_or_else(|e| bug!("failed to load Enzyme: {e}"))
-                    .into()
-            })
+        /// Initialize EnzymeWrapper with the given sysroot if not already initialized.
+        /// Safe to call multiple times - subsequent calls are no-ops due to OnceLock.
+        pub(crate) fn get_or_init(
+            sysroot: &rustc_session::config::Sysroot,
+        ) -> MutexGuard<'static, Self> {
+            ENZYME_INSTANCE
+                .get_or_init(|| {
+                    Self::call_dynamic(sysroot)
+                        .unwrap_or_else(|e| bug!("failed to load Enzyme: {e}"))
+                        .into()
+                })
+                .lock()
+                .unwrap()
         }
 
-        pub(crate) fn get_instance() -> &'static Mutex<Self> {
-            ENZYME_INSTANCE.get().expect("EnzymeWrapper not initialized")
+        /// Get the EnzymeWrapper instance. Panics if not initialized.
+        /// Call get_or_init with a sysroot first.
+        pub(crate) fn get_instance() -> MutexGuard<'static, Self> {
+            ENZYME_INSTANCE
+                .get()
+                .expect("EnzymeWrapper not initialized. Call get_or_init with sysroot first.")
+                .lock()
+                .unwrap()
         }
 
         pub(crate) fn new_type_tree(&self) -> CTypeTreeRef {
@@ -350,10 +359,10 @@ pub(crate) mod Enzyme_AD {
         }
 
         #[allow(non_snake_case)]
-        fn call_dynamic<'a, B: WriteBackendMethods>(
-            cgcx: &'a CodegenContext<B>,
+        fn call_dynamic(
+            sysroot: &rustc_session::config::Sysroot,
         ) -> Result<Self, Box<dyn std::error::Error>> {
-            let enzyme_path = Self::get_enzyme_path(&cgcx.sysroot)?;
+            let enzyme_path = Self::get_enzyme_path(sysroot)?;
             let lib = unsafe { libloading::Library::new(enzyme_path)? };
 
             load_ptrs_by_symbols_fn!(
@@ -587,19 +596,19 @@ pub(crate) mod Fallback_AD {
 impl TypeTree {
     pub(crate) fn new() -> TypeTree {
         let wrapper = EnzymeWrapper::get_instance();
-        let inner = wrapper.lock().unwrap().new_type_tree();
+        let inner = wrapper.new_type_tree();
         TypeTree { inner }
     }
 
     pub(crate) fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
         let wrapper = EnzymeWrapper::get_instance();
-        let inner = wrapper.lock().unwrap().new_type_tree_ct(t, ctx);
+        let inner = wrapper.new_type_tree_ct(t, ctx);
         TypeTree { inner }
     }
 
     pub(crate) fn merge(self, other: Self) -> Self {
         let wrapper = EnzymeWrapper::get_instance();
-        wrapper.lock().unwrap().merge_type_tree(self.inner, other.inner);
+        wrapper.merge_type_tree(self.inner, other.inner);
         drop(other);
         self
     }
@@ -614,7 +623,7 @@ impl TypeTree {
     ) -> Self {
         let layout = std::ffi::CString::new(layout).unwrap();
         let wrapper = EnzymeWrapper::get_instance();
-        wrapper.lock().unwrap().shift_indicies_eq(
+        wrapper.shift_indicies_eq(
             self.inner,
             layout.as_ptr(),
             offset as i64,
@@ -627,20 +636,14 @@ impl TypeTree {
 
     pub(crate) fn insert(&mut self, indices: &[i64], ct: CConcreteType, ctx: &Context) {
         let wrapper = EnzymeWrapper::get_instance();
-        wrapper.lock().unwrap().tree_insert_eq(
-            self.inner,
-            indices.as_ptr(),
-            indices.len(),
-            ct,
-            ctx,
-        );
+        wrapper.tree_insert_eq(self.inner, indices.as_ptr(), indices.len(), ct, ctx);
     }
 }
 
 impl Clone for TypeTree {
     fn clone(&self) -> Self {
         let wrapper = EnzymeWrapper::get_instance();
-        let inner = wrapper.lock().unwrap().new_type_tree_tr(self.inner);
+        let inner = wrapper.new_type_tree_tr(self.inner);
         TypeTree { inner }
     }
 }
@@ -648,7 +651,7 @@ impl Clone for TypeTree {
 impl std::fmt::Display for TypeTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let wrapper = EnzymeWrapper::get_instance();
-        let ptr = wrapper.lock().unwrap().tree_to_string(self.inner);
+        let ptr = wrapper.tree_to_string(self.inner);
         let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
         match cstr.to_str() {
             Ok(x) => write!(f, "{}", x)?,
@@ -656,7 +659,7 @@ impl std::fmt::Display for TypeTree {
         }
 
         // delete C string pointer
-        wrapper.lock().unwrap().tree_to_string_free(ptr);
+        wrapper.tree_to_string_free(ptr);
 
         Ok(())
     }
@@ -671,6 +674,6 @@ impl std::fmt::Debug for TypeTree {
 impl Drop for TypeTree {
     fn drop(&mut self) {
         let wrapper = EnzymeWrapper::get_instance();
-        wrapper.lock().unwrap().free_type_tree(self.inner)
+        wrapper.free_type_tree(self.inner)
     }
 }

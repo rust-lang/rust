@@ -529,33 +529,34 @@ fn thin_lto(
 }
 
 fn enable_autodiff_settings(cgcx: &CodegenContext<LlvmCodegenBackend>, ad: &[config::AutoDiff]) {
-    use std::sync::Mutex;
-    let enzyme: &'static Mutex<llvm::EnzymeWrapper> = llvm::EnzymeWrapper::init(cgcx);
+    // Initialize Enzyme if not already done (idempotent due to OnceLock)
+    // This ensures it works even if LlvmCodegenBackend::init() didn't run it
+    let mut enzyme = llvm::EnzymeWrapper::get_or_init(&cgcx.sysroot);
 
     for val in ad {
         // We intentionally don't use a wildcard, to not forget handling anything new.
         match val {
             config::AutoDiff::PrintPerf => {
-                enzyme.lock().unwrap().set_print_perf(true);
+                enzyme.set_print_perf(true);
             }
             config::AutoDiff::PrintAA => {
-                enzyme.lock().unwrap().set_print_activity(true);
+                enzyme.set_print_activity(true);
             }
             config::AutoDiff::PrintTA => {
-                enzyme.lock().unwrap().set_print_type(true);
+                enzyme.set_print_type(true);
             }
             config::AutoDiff::PrintTAFn(fun) => {
-                enzyme.lock().unwrap().set_print_type(true); // Enable general type printing
-                enzyme.lock().unwrap().set_print_type_fun(&fun); // Set specific function to analyze
+                enzyme.set_print_type(true); // Enable general type printing
+                enzyme.set_print_type_fun(&fun); // Set specific function to analyze
             }
             config::AutoDiff::Inline => {
-                enzyme.lock().unwrap().set_inline(true);
+                enzyme.set_inline(true);
             }
             config::AutoDiff::LooseTypes => {
-                enzyme.lock().unwrap().set_loose_types(true);
+                enzyme.set_loose_types(true);
             }
             config::AutoDiff::PrintSteps => {
-                enzyme.lock().unwrap().set_print(true);
+                enzyme.set_print(true);
             }
             // We handle this in the PassWrapper.cpp
             config::AutoDiff::PrintPasses => {}
@@ -574,9 +575,9 @@ fn enable_autodiff_settings(cgcx: &CodegenContext<LlvmCodegenBackend>, ad: &[con
         }
     }
     // This helps with handling enums for now.
-    enzyme.lock().unwrap().set_strict_aliasing(false);
+    enzyme.set_strict_aliasing(false);
     // FIXME(ZuseZ4): Test this, since it was added a long time ago.
-    enzyme.lock().unwrap().set_rust_rules(true);
+    enzyme.set_rust_rules(true);
 }
 
 pub(crate) fn run_pass_manager(

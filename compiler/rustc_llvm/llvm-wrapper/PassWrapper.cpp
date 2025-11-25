@@ -888,7 +888,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   // now load "-enzyme" pass:
-#ifdef ENZYME
+  // With dlopen, ENZYME macro may not be defined, so check EnzymePtr directly
   if (EnzymePtr) {
 
     if (PrintBeforeEnzyme) {
@@ -910,7 +910,6 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       MPM.addPass(PrintModulePass(outs(), Banner, true, false));
     }
   }
-#endif
   if (PrintPasses) {
     // Print all passes from the PM:
     std::string Pipeline;

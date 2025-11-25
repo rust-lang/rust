@@ -63,6 +63,7 @@ pub(crate) fn add_tt<'ll>(
     llcx: &'ll llvm::Context,
     fn_def: &'ll Value,
     tt: FncTree,
+    sysroot: &rustc_session::config::Sysroot,
 ) {
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
@@ -75,7 +76,7 @@ pub(crate) fn add_tt<'ll>(
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
 
-    let enzyme_wrapper = EnzymeWrapper::get_instance().lock().unwrap();
+    let enzyme_wrapper = EnzymeWrapper::get_or_init(sysroot);
 
     for (i, input) in inputs.iter().enumerate() {
         unsafe {
@@ -120,6 +121,7 @@ pub(crate) fn add_tt<'ll>(
     _llcx: &'ll llvm::Context,
     _fn_def: &'ll Value,
     _tt: FncTree,
+    _sysroot: &rustc_session::config::Sysroot,
 ) {
     unimplemented!()
 }
