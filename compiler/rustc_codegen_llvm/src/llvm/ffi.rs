@@ -1096,6 +1096,7 @@ unsafe extern "C" {
         Fn: &'a Value,
         NewFn: &mut Option<&'a Value>,
     ) -> bool;
+    pub(crate) fn LLVMRustIsTargetIntrinsic(ID: NonZero<c_uint>) -> bool;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
