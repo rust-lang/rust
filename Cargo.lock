@@ -4870,6 +4870,7 @@ dependencies = [
  "minifier",
  "pulldown-cmark-escape",
  "regex",
+ "rustc_proc_macro",
  "rustdoc-json-types",
  "serde",
  "serde_json",

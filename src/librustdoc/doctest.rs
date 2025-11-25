@@ -9,6 +9,7 @@ use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -19,14 +20,15 @@ pub(crate) use markdown::test as test_markdown;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
-use rustc_hir as hir;
-use rustc_hir::CRATE_HIR_ID;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{Attribute, CRATE_HIR_ID};
 use rustc_interface::interface;
+use rustc_middle::ty::TyCtxt;
+use rustc_proc_macro::{TokenStream, TokenTree};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
 use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
@@ -212,8 +214,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-            let crate_attrs = tcx.hir_attrs(CRATE_HIR_ID);
-            let opts = scrape_test_config(crate_name, crate_attrs, args_path);
+            let opts = scrape_test_config(tcx, crate_name, args_path);
 
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
@@ -417,8 +418,8 @@ pub(crate) fn run_tests(
 
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(
+    tcx: TyCtxt<'_>,
     crate_name: String,
-    attrs: &[hir::Attribute],
     args_file: PathBuf,
 ) -> GlobalTestOptions {
     let mut opts = GlobalTestOptions {
@@ -428,19 +429,26 @@ fn scrape_test_config(
         args_file,
     };
 
-    let test_attrs: Vec<_> = attrs
-        .iter()
-        .filter(|a| a.has_name(sym::doc))
-        .flat_map(|a| a.meta_item_list().unwrap_or_default())
-        .filter(|a| a.has_name(sym::test))
-        .collect();
-    let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
-
-    for attr in attrs {
-        if attr.has_name(sym::no_crate_inject) {
-            opts.no_crate_inject = true;
+    let source_map = tcx.sess.source_map();
+    'main: for attr in tcx.hir_attrs(CRATE_HIR_ID) {
+        let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
+        for attr_span in &d.test_attrs {
+            // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
+            if let Ok(snippet) = source_map.span_to_snippet(*attr_span)
+                && let Ok(stream) = TokenStream::from_str(&snippet)
+            {
+                // NOTE: `test(attr(..))` is handled when discovering the individual tests
+                if stream.into_iter().any(|token| {
+                    matches!(
+                        token,
+                        TokenTree::Ident(i) if i.to_string() == "no_crate_inject",
+                    )
+                }) {
+                    opts.no_crate_inject = true;
+                    break 'main;
+                }
+            }
         }
-        // NOTE: `test(attr(..))` is handled when discovering the individual tests
     }
 
     opts

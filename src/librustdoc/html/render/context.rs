@@ -8,11 +8,13 @@ use std::sync::mpsc::{Receiver, channel};
 use askama::Template;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, FileName, Symbol, sym};
+use rustc_span::{BytePos, FileName, Symbol};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -260,7 +262,9 @@ impl<'tcx> Context<'tcx> {
                 short_title,
                 description: &desc,
                 resource_suffix: &self.shared.resource_suffix,
-                rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
+                rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), |d| {
+                    d.rust_logo.is_some()
+                }),
             };
             layout::render(
                 &self.shared.layout,
@@ -522,27 +526,25 @@ impl<'tcx> Context<'tcx> {
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
-        for attr in krate.module.attrs.lists(sym::doc) {
-            match (attr.name(), attr.value_str()) {
-                (Some(sym::html_favicon_url), Some(s)) => {
-                    layout.favicon = s.to_string();
-                }
-                (Some(sym::html_logo_url), Some(s)) => {
-                    layout.logo = s.to_string();
-                }
-                (Some(sym::html_playground_url), Some(s)) => {
-                    playground = Some(markdown::Playground {
-                        crate_name: Some(krate.name(tcx)),
-                        url: s.to_string(),
-                    });
-                }
-                (Some(sym::issue_tracker_base_url), Some(s)) => {
-                    issue_tracker_base_url = Some(s.to_string());
-                }
-                (Some(sym::html_no_source), None) if attr.is_word() => {
-                    include_sources = false;
-                }
-                _ => {}
+        for attr in &krate.module.attrs.other_attrs {
+            let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
+            if let Some((html_favicon_url, _)) = d.html_favicon_url {
+                layout.favicon = html_favicon_url.to_string();
+            }
+            if let Some((html_logo_url, _)) = d.html_logo_url {
+                layout.logo = html_logo_url.to_string();
+            }
+            if let Some((html_playground_url, _)) = d.html_playground_url {
+                playground = Some(markdown::Playground {
+                    crate_name: Some(krate.name(tcx)),
+                    url: html_playground_url.to_string(),
+                });
+            }
+            if let Some((s, _)) = d.issue_tracker_base_url {
+                issue_tracker_base_url = Some(s.to_string());
+            }
+            if d.html_no_source.is_some() {
+                include_sources = false;
             }
         }
 
@@ -645,7 +647,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             resource_suffix: &shared.resource_suffix,
-            rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
+            rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), |d| d.rust_logo.is_some()),
         };
         let all = shared.all.replace(AllTypes::new());
         let mut sidebar = String::new();
