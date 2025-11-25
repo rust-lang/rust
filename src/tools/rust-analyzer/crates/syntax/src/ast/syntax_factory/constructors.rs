@@ -671,6 +671,26 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn expr_for_loop(
+        &self,
+        pat: ast::Pat,
+        iterable: ast::Expr,
+        body: ast::BlockExpr,
+    ) -> ast::ForExpr {
+        let ast =
+            make::expr_for_loop(pat.clone(), iterable.clone(), body.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(pat.syntax().clone(), ast.pat().unwrap().syntax().clone());
+            builder.map_node(iterable.syntax().clone(), ast.iterable().unwrap().syntax().clone());
+            builder.map_node(body.syntax().clone(), ast.loop_body().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn expr_let(&self, pattern: ast::Pat, expr: ast::Expr) -> ast::LetExpr {
         let ast = make::expr_let(pattern.clone(), expr.clone()).clone_for_update();
 
