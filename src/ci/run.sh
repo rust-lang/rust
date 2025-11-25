@@ -189,8 +189,8 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=false"
   fi
 
-  # Download GCC from CI on test builders
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+  # Do not download GCC from CI on test builders, we don't have a copy
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=false"
 
   # download-rustc seems to be broken on CI after the stage0 redesign
   # Disable it until these issues are debugged and resolved
