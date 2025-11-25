@@ -8,6 +8,8 @@ use crate::lints::Issue145738Diag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
+    /// A crater only lint that checks for multiple parameters capturing a single const/const ctor
+    /// inside a single `format_args!` macro expansion.
     pub ISSUE_145739,
     Deny,
     "a violation for issue 145739 is caught",
