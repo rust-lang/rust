@@ -1823,6 +1823,10 @@ extern "C" bool LLVMRustUpgradeIntrinsicFunction(LLVMValueRef Fn,
   return CanUpgrade;
 }
 
+extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
+  return Intrinsic::isTargetIntrinsic(ID);
+}
+
 // Statically assert that the fixed metadata kind IDs declared in
 // `metadata_kind.rs` match the ones actually used by LLVM.
 #define FIXED_MD_KIND(VARIANT, VALUE)                                          \

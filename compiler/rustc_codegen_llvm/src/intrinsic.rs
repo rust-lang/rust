@@ -25,7 +25,7 @@ use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRI
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Arch, Os};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -35,8 +35,8 @@ use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
-    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, OffloadWithoutEnable,
-    OffloadWithoutFatLTO,
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
+    OffloadWithoutEnable, OffloadWithoutFatLTO,
 };
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
@@ -760,6 +760,26 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
+fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
+    Some(match rust_arch {
+        Arch::AArch64 | Arch::Arm64EC => "aarch64",
+        Arch::AmdGpu => "amdgcn",
+        Arch::Arm => "arm",
+        Arch::Bpf => "bpf",
+        Arch::Hexagon => "hexagon",
+        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
+        Arch::Nvptx64 => "nvvm",
+        Arch::PowerPC | Arch::PowerPC64 | Arch::PowerPC64LE => "ppc",
+        Arch::RiscV32 | Arch::RiscV64 => "riscv",
+        Arch::S390x => "s390",
+        Arch::SpirV => "spv",
+        Arch::Wasm32 | Arch::Wasm64 => "wasm",
+        Arch::X86 | Arch::X86_64 => "x86",
+        _ => return None, // fallback for unknown archs
+    })
+}
+
 fn intrinsic_fn<'ll, 'tcx>(
     bx: &Builder<'_, 'll, 'tcx>,
     name: &str,
@@ -771,6 +791,23 @@ fn intrinsic_fn<'ll, 'tcx>(
     assert!(!fn_abi.ret.is_indirect());
 
     let intrinsic = llvm::Intrinsic::lookup(name.as_bytes());
+
+    if let Some(intrinsic) = intrinsic
+        && intrinsic.is_target_specific()
+    {
+        let (llvm_arch, _) = name[5..].split_once('.').unwrap();
+        let rust_arch = &tcx.sess.target.arch;
+
+        if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
+            && llvm_arch != correct_llvm_arch
+        {
+            tcx.dcx().emit_fatal(IntrinsicWrongArch {
+                name,
+                target_arch: rust_arch.desc(),
+                span: tcx.def_span(instance.def_id()),
+            });
+        }
+    }
 
     if let Some(intrinsic) = intrinsic
         && !intrinsic.is_overloaded()
