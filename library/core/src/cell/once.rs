@@ -376,14 +376,10 @@ impl<T: fmt::Debug> fmt::Debug for OnceCell<T> {
 impl<T: Clone> Clone for OnceCell<T> {
     #[inline]
     fn clone(&self) -> OnceCell<T> {
-        let res = OnceCell::new();
-        if let Some(value) = self.get() {
-            match res.set(value.clone()) {
-                Ok(()) => (),
-                Err(_) => unreachable!(),
-            }
+        match self.get() {
+            Some(value) => OnceCell::from(value.clone()),
+            None => OnceCell::new(),
         }
-        res
     }
 }
 
