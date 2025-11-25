@@ -563,6 +563,10 @@ impl<'a> DeclValidator<'a> {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
         }
+        if self.db.attrs(static_id.into()).by_key(sym::no_mangle).exists() {
+            cov_mark::hit!(no_mangle_static_incorrect_case_ignored);
+            return;
+        }
 
         self.create_incorrect_case_diagnostic_for_item_name(
             static_id,

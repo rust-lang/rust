@@ -33,6 +33,7 @@ use crate::{
     infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
+    method_resolution::CandidateId,
     mir::{
         AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, Either, Expr,
         FieldId, GenericArgs, Idx, InferenceResult, Local, LocalId, MemoryMap, MirBody, MirSpan,
@@ -388,15 +389,15 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     );
                     Ok(Some(current))
                 }
-                Adjust::Borrow(AutoBorrow::Ref(_, m) | AutoBorrow::RawPtr(m)) => {
-                    let Some((p, current)) =
-                        self.lower_expr_as_place_with_adjust(current, expr_id, true, rest)?
-                    else {
-                        return Ok(None);
-                    };
-                    let bk = BorrowKind::from_rustc(*m);
-                    self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
-                    Ok(Some(current))
+                Adjust::Borrow(AutoBorrow::Ref(m)) => self.lower_expr_to_place_with_borrow_adjust(
+                    expr_id,
+                    place,
+                    current,
+                    rest,
+                    (*m).into(),
+                ),
+                Adjust::Borrow(AutoBorrow::RawPtr(m)) => {
+                    self.lower_expr_to_place_with_borrow_adjust(expr_id, place, current, rest, *m)
                 }
                 Adjust::Pointer(cast) => {
                     let Some((p, current)) =
@@ -419,6 +420,24 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             },
             None => self.lower_expr_to_place_without_adjust(expr_id, place, current),
         }
+    }
+
+    fn lower_expr_to_place_with_borrow_adjust(
+        &mut self,
+        expr_id: ExprId,
+        place: Place<'db>,
+        current: BasicBlockId<'db>,
+        rest: &[Adjustment<'db>],
+        m: Mutability,
+    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+        let Some((p, current)) =
+            self.lower_expr_as_place_with_adjust(current, expr_id, true, rest)?
+        else {
+            return Ok(None);
+        };
+        let bk = BorrowKind::from_rustc(m);
+        self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
+        Ok(Some(current))
     }
 
     fn lower_expr_to_place(
@@ -460,17 +479,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let pr =
                     if let Some((assoc, subst)) = self.infer.assoc_resolutions_for_expr(expr_id) {
                         match assoc {
-                            hir_def::AssocItemId::ConstId(c) => {
+                            CandidateId::ConstId(c) => {
                                 self.lower_const(c.into(), current, place, subst, expr_id.into())?;
                                 return Ok(Some(current));
                             }
-                            hir_def::AssocItemId::FunctionId(_) => {
+                            CandidateId::FunctionId(_) => {
                                 // FnDefs are zero sized, no action is needed.
                                 return Ok(Some(current));
-                            }
-                            hir_def::AssocItemId::TypeAliasId(_) => {
-                                // FIXME: If it is unreachable, use proper error instead of `not_supported`.
-                                not_supported!("associated functions and types")
                             }
                         }
                     } else if let Some(variant) = self.infer.variant_resolution_for_expr(expr_id) {
@@ -1517,10 +1532,20 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 UnevaluatedConst { def: const_id.into(), args: subst },
             )
         } else {
-            let name = const_id.name(self.db);
-            self.db
-                .const_eval(const_id, subst, None)
-                .map_err(|e| MirLowerError::ConstEvalError(name.into(), Box::new(e)))?
+            match const_id {
+                id @ GeneralConstId::ConstId(const_id) => {
+                    self.db.const_eval(const_id, subst, None).map_err(|e| {
+                        let name = id.name(self.db);
+                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
+                    })?
+                }
+                GeneralConstId::StaticId(static_id) => {
+                    self.db.const_eval_static(static_id).map_err(|e| {
+                        let name = const_id.name(self.db);
+                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
+                    })?
+                }
+            }
         };
         let ty = self
             .db

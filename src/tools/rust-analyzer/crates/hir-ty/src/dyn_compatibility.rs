@@ -18,7 +18,7 @@ use smallvec::SmallVec;
 use crate::{
     ImplTraitId,
     db::{HirDatabase, InternedOpaqueTyId},
-    lower::associated_ty_item_bounds,
+    lower::{GenericPredicates, associated_ty_item_bounds},
     next_solver::{
         Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv, ParamTy,
         SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt, mk_param,
@@ -136,11 +136,11 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     };
 
     let interner = DbInterner::new_with(db, Some(krate), None);
-    let predicates = db.generic_predicates(def);
+    let predicates = GenericPredicates::query_explicit(db, def);
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
     // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
-    elaborate::elaborate(interner, predicates.iter().copied()).any(|pred| {
+    elaborate::elaborate(interner, predicates.iter_identity_copied()).any(|pred| {
         match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
                 if sized == trait_pred.def_id().0
@@ -162,8 +162,8 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // but we don't have good way to render such locations.
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    db.generic_predicates(trait_.into())
-        .iter()
+    GenericPredicates::query_explicit(db, trait_.into())
+        .iter_identity_copied()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
 
@@ -199,7 +199,7 @@ enum AllowSelfProjection {
 fn predicate_references_self<'db>(
     db: &'db dyn HirDatabase,
     trait_: TraitId,
-    predicate: &Clause<'db>,
+    predicate: Clause<'db>,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
     match predicate.kind().skip_binder() {
@@ -363,8 +363,8 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = &*db.generic_predicates_without_parent(func.into());
-    for pred in predicates {
+    let predicates = GenericPredicates::query_own(db, func.into());
+    for pred in predicates.iter_identity_copied() {
         let pred = pred.kind().skip_binder();
 
         if matches!(pred, ClauseKind::TypeOutlives(_)) {
@@ -440,7 +440,7 @@ fn receiver_is_dispatchable<'db>(
     let unsized_receiver_ty = receiver_for_self_ty(interner, func, receiver_ty, unsized_self_ty);
 
     let param_env = {
-        let generic_predicates = &*db.generic_predicates(func.into());
+        let generic_predicates = GenericPredicates::query_all(db, func.into());
 
         // Self: Unsize<U>
         let unsize_predicate =
@@ -458,7 +458,7 @@ fn receiver_is_dispatchable<'db>(
         ParamEnv {
             clauses: Clauses::new_from_iter(
                 interner,
-                generic_predicates.iter().copied().chain([
+                generic_predicates.iter_identity_copied().chain([
                     unsize_predicate.upcast(interner),
                     trait_predicate.upcast(interner),
                     meta_sized_predicate.upcast(interner),

@@ -21,7 +21,8 @@ serde_json.workspace = true
 serde.workspace = true
 serde_derive.workspace = true
 temp-dir.workspace = true
-tracing.workspace = true
+toml.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 triomphe.workspace = true
 la-arena.workspace = true
 itertools.workspace = true

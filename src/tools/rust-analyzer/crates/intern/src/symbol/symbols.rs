@@ -520,4 +520,7 @@ define_symbols! {
     never_type_fallback,
     specialization,
     min_specialization,
+    arbitrary_self_types,
+    arbitrary_self_types_pointers,
+    supertrait_item_shadowing,
 }

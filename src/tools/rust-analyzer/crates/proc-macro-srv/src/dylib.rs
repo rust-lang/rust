@@ -13,7 +13,7 @@ use paths::{Utf8Path, Utf8PathBuf};
 
 use crate::{
     PanicMessage, ProcMacroKind, ProcMacroSrvSpan, dylib::proc_macros::ProcMacros,
-    server_impl::TopSubtree,
+    token_stream::TokenStream,
 };
 
 pub(crate) struct Expander {
@@ -40,18 +40,18 @@ impl Expander {
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: TopSubtree<S>,
-        attributes: Option<TopSubtree<S>>,
+        macro_body: TokenStream<S>,
+        attribute: Option<TokenStream<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<TopSubtree<S>, PanicMessage>
+    ) -> Result<TokenStream<S>, PanicMessage>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
     {
         self.inner
             .proc_macros
-            .expand(macro_name, macro_body, attributes, def_site, call_site, mixed_site)
+            .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
     }
 
     pub(crate) fn list_macros(&self) -> impl Iterator<Item = (&str, ProcMacroKind)> {

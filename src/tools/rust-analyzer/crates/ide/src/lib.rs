@@ -642,7 +642,7 @@ impl Analysis {
 
     /// Returns crates that this file belongs to.
     pub fn transitive_rev_deps(&self, crate_id: Crate) -> Cancellable<Vec<Crate>> {
-        self.with_db(|db| Vec::from_iter(db.transitive_rev_deps(crate_id)))
+        self.with_db(|db| Vec::from_iter(crate_id.transitive_rev_deps(db)))
     }
 
     /// Returns crates that this file *might* belong to.

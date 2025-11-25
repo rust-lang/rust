@@ -86,14 +86,14 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.137", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.137", default-features = false }
-ra-ap-rustc_index = { version = "0.137", default-features = false }
-ra-ap-rustc_abi = { version = "0.137", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.137", default-features = false }
-ra-ap-rustc_ast_ir = { version = "0.137", default-features = false }
-ra-ap-rustc_type_ir = { version = "0.137", default-features = false }
-ra-ap-rustc_next_trait_solver = { version = "0.137", default-features = false }
+ra-ap-rustc_lexer = { version = "0.139", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.139", default-features = false }
+ra-ap-rustc_index = { version = "0.139", default-features = false }
+ra-ap-rustc_abi = { version = "0.139", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.139", default-features = false }
+ra-ap-rustc_ast_ir = { version = "0.139", default-features = false }
+ra-ap-rustc_type_ir = { version = "0.139", default-features = false }
+ra-ap-rustc_next_trait_solver = { version = "0.139", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -106,7 +106,7 @@ lsp-server = { version = "0.7.9" }
 anyhow = "1.0.98"
 arrayvec = "0.7.6"
 bitflags = "2.9.1"
-cargo_metadata = "0.21.0"
+cargo_metadata = "0.23.0"
 camino = "1.1.10"
 crossbeam-channel = "0.5.15"
 dissimilar = "1.0.10"
@@ -134,10 +134,11 @@ rayon = "1.10.0"
 rowan = "=0.15.15"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.24.0", default-features = true, features = [
+salsa = { version = "0.24.0", default-features = false, features = [
     "rayon",
     "salsa_unstable",
     "macros",
+    "inventory",
 ] }
 salsa-macros = "0.24.0"
 semver = "1.0.26"
@@ -154,7 +155,8 @@ smallvec = { version = "1.15.1", features = [
 smol_str = "0.3.2"
 temp-dir = "0.1.16"
 text-size = "1.1.1"
-tracing = "0.1.41"
+toml = "0.9.8"
+tracing = { version = "0.1.41", default-features = false, features = ["std"] }
 tracing-tree = "0.4.0"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "registry",
@@ -182,7 +184,7 @@ hashbrown = { version = "0.14.*", features = [
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 unsafe_op_in_unsafe_fn = "warn"
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)', "cfg(no_salsa_async_drops)"] }
 unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"

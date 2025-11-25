@@ -2060,7 +2060,7 @@ fn fix_param_usages(
             .filter_map(|reference| path_element_of_reference(syntax, reference))
             .map(|expr| tm.make_mut(&expr));
 
-        usages_for_param.push((param, usages.collect()));
+        usages_for_param.push((param, usages.unique().collect()));
     }
 
     let res = tm.make_syntax_mut(syntax);
@@ -4250,7 +4250,7 @@ fn $0fun_name() -> Result<i32, i64> {
         check_assist(
             extract_function,
             r#"
-//- minicore: option
+//- minicore: option, add, builtin_impls
 fn bar() -> Option<i32> { None }
 fn foo() -> Option<()> {
     let n = bar()?;
@@ -4314,7 +4314,7 @@ fn $0fun_name() -> Option<()> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;
@@ -4345,7 +4345,7 @@ fn $0fun_name() -> Result<i32, i64> {
         check_assist(
             extract_function,
             r#"
-//- minicore: option
+//- minicore: option, add, builtin_impls
 fn foo() -> Option<()> {
     let n = 1;
     $0let k = foo()?;
@@ -4382,7 +4382,7 @@ fn $0fun_name() -> Option<i32> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;
@@ -4441,7 +4441,7 @@ fn foo() -> Option<()> {
         check_assist(
             extract_function,
             r#"
-//- minicore: result
+//- minicore: result, add, builtin_impls
 fn foo() -> Result<(), i64> {
     let n = 1;
     $0let k = foo()?;
@@ -6232,5 +6232,65 @@ fn $0fun_name(a: i32, b: i32) {
     fn in_right_brack_is_not_applicable() {
         cov_mark::check!(extract_function_in_braces_is_not_applicable);
         check_assist_not_applicable(extract_function, r"fn foo(arr: &mut $0[$0i32]) {}");
+    }
+
+    #[test]
+    fn issue_20965_panic() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: fmt
+#[derive(Debug)]
+struct Foo(&'static str);
+
+impl Foo {
+    fn text(&self) -> &str { self.0 }
+}
+
+fn main() {
+    let s = Foo("");
+    $0print!("{}{}", s, s);$0
+    let _ = s.text() == "";
+}"#,
+            r#"
+#[derive(Debug)]
+struct Foo(&'static str);
+
+impl Foo {
+    fn text(&self) -> &str { self.0 }
+}
+
+fn main() {
+    let s = Foo("");
+    fun_name(&s);
+    let _ = s.text() == "";
+}
+
+fn $0fun_name(s: &Foo) {
+    *print!("{}{}", s, s);
+}"#,
+        );
+    }
+
+    #[test]
+    fn parameter_is_added_used_in_eq_expression_in_macro() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: fmt
+fn foo() {
+   let v = 123;
+   $0print!("{v:?}{}", v == 123);$0
+}"#,
+            r#"
+fn foo() {
+   let v = 123;
+   fun_name(v);
+}
+
+fn $0fun_name(v: i32) {
+    print!("{v:?}{}", v == 123);
+}"#,
+        );
     }
 }

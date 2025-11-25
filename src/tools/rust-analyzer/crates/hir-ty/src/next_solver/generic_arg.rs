@@ -17,7 +17,7 @@ use super::{
     generics::Generics,
 };
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable, salsa::Supertype)]
 pub enum GenericArg<'db> {
     Ty(Ty<'db>),
     Lifetime(Region<'db>),
@@ -196,6 +196,11 @@ impl<'db> GenericArgs<'db> {
     {
         let defs = interner.generics_of(def_id);
         let count = defs.count();
+
+        if count == 0 {
+            return Default::default();
+        }
+
         let mut args = SmallVec::with_capacity(count);
         Self::fill_item(&mut args, interner, defs, &mut mk_kind);
         interner.mk_args(&args)

@@ -11,10 +11,11 @@ use ide_db::{
     text_edit::TextEdit,
     ty_filter::TryEnum,
 };
+use itertools::Itertools;
 use stdx::never;
 use syntax::{
     SyntaxKind::{EXPR_STMT, STMT_LIST},
-    T, TextRange, TextSize,
+    T, TextRange, TextSize, ToSmolStr,
     ast::{self, AstNode, AstToken},
     match_ast,
 };
@@ -360,10 +361,18 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
         resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
     {
         found_ref_or_deref = true;
-        let exclusive = parent_ref_element.mut_token().is_some();
+        let last_child_or_token = parent_ref_element.syntax().last_child_or_token();
+        prefix.insert_str(
+            0,
+            parent_ref_element
+                .syntax()
+                .children_with_tokens()
+                .filter(|it| Some(it) != last_child_or_token.as_ref())
+                .format("")
+                .to_smolstr()
+                .as_str(),
+        );
         resulting_element = ast::Expr::from(parent_ref_element);
-
-        prefix.insert_str(0, if exclusive { "&mut " } else { "&" });
     }
 
     if !found_ref_or_deref {
@@ -1006,6 +1015,20 @@ fn main() {
         );
 
         check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &raw mut 42.$0 }"#,
+            r#"fn main() { Ok(&raw mut 42) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "ok",
+            r#"fn main() { &raw const 42.$0 }"#,
+            r#"fn main() { Ok(&raw const 42) }"#,
+        );
+
+        check_edit_with_config(
             CompletionConfig { snippets: vec![snippet], ..TEST_CONFIG },
             "ok",
             r#"
@@ -1028,6 +1051,55 @@ fn main() {
     Ok(&a.a)
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn postfix_custom_snippets_completion_for_reference_expr() {
+        // https://github.com/rust-lang/rust-analyzer/issues/21035
+        let snippet = Snippet::new(
+            &[],
+            &["group".into()],
+            &["(${receiver})".into()],
+            "",
+            &[],
+            crate::SnippetScope::Expr,
+        )
+        .unwrap();
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &[1, 2, 3].g$0 }"#,
+            r#"fn main() { (&[1, 2, 3]) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &&foo(a, b, 1+1).$0 }"#,
+            r#"fn main() { (&&foo(a, b, 1+1)) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &mut Foo { a: 1, b: 2, c: 3 }.$0 }"#,
+            r#"fn main() { (&mut Foo { a: 1, b: 2, c: 3 }) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &raw mut Foo::new().$0 }"#,
+            r#"fn main() { (&raw mut Foo::new()) }"#,
+        );
+
+        check_edit_with_config(
+            CompletionConfig { snippets: vec![snippet.clone()], ..TEST_CONFIG },
+            "group",
+            r#"fn main() { &raw const Foo::bar::SOME_CONST.$0 }"#,
+            r#"fn main() { (&raw const Foo::bar::SOME_CONST) }"#,
         );
     }
 

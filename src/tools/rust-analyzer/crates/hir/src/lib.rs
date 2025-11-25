@@ -75,26 +75,28 @@ use hir_expand::{
     proc_macro::ProcMacroKind,
 };
 use hir_ty::{
-    TraitEnvironment, TyDefId, TyLoweringDiagnostic, ValueTyDefId, all_super_traits, autoderef,
-    check_orphan_rules,
+    GenericPredicates, TraitEnvironment, TyDefId, TyLoweringDiagnostic, ValueTyDefId,
+    all_super_traits, autoderef, check_orphan_rules,
     consteval::try_const_usize,
     db::{InternedClosureId, InternedCoroutineId},
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
-    method_resolution,
+    method_resolution::{
+        self, InherentImpls, MethodResolutionContext, MethodResolutionUnstableFeatures,
+    },
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        AliasTy, Canonical, ClauseKind, ConstKind, DbInterner, ErrorGuaranteed, GenericArg,
-        GenericArgs, PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
+        AliasTy, ClauseKind, ConstKind, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs,
+        PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
-    traits::{self, FnTrait, structurally_normalize_ty},
+    traits::{self, FnTrait, is_inherent_impl_coherent, structurally_normalize_ty},
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    AliasTyKind, TypeSuperVisitable, TypeVisitable, TypeVisitor, fast_reject,
     inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _},
 };
 use smallvec::SmallVec;
@@ -136,7 +138,7 @@ pub use {
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         find_path::PrefixKind,
         import_map,
-        lang_item::LangItem,
+        lang_item::{LangItem, crate_lang_items},
         nameres::{DefMap, ModuleSource, crate_def_map},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
@@ -171,11 +173,12 @@ pub use {
         drop::DropGlue,
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
-        method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
         next_solver::abi::Safety,
         next_solver::clear_tls_solver_cache,
     },
+    // FIXME: These are needed for import assets, properly encapsulate them.
+    hir_ty::{method_resolution::TraitImpls, next_solver::SimplifiedType},
     intern::{Symbol, sym},
 };
 
@@ -244,7 +247,15 @@ impl Crate {
         self,
         db: &dyn HirDatabase,
     ) -> impl Iterator<Item = Crate> {
-        db.transitive_rev_deps(self.id).into_iter().map(|id| Crate { id })
+        self.id.transitive_rev_deps(db).into_iter().map(|id| Crate { id })
+    }
+
+    pub fn notable_traits_in_deps(self, db: &dyn HirDatabase) -> impl Iterator<Item = &TraitId> {
+        self.id
+            .transitive_deps(db)
+            .into_iter()
+            .filter_map(|krate| db.crate_notable_traits(krate))
+            .flatten()
     }
 
     pub fn root_module(self) -> Module {
@@ -754,8 +765,6 @@ impl Module {
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
 
-        let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
-
         let interner = DbInterner::new_with(db, Some(self.id.krate()), self.id.containing_block());
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
@@ -784,7 +793,9 @@ impl Module {
                 emit_def_diagnostic(db, acc, diag, edition);
             }
 
-            if inherent_impls.invalid_impls().contains(&impl_def.id) {
+            if impl_signature.target_trait.is_none()
+                && !is_inherent_impl_coherent(db, def_map, impl_def.id)
+            {
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(loc.id.value), file_id }.into())
             }
 
@@ -2795,7 +2806,7 @@ impl Const {
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
         let interner = DbInterner::new_with(db, None, None);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
+        db.const_eval(self.id, GenericArgs::new_from_iter(interner, []), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
     }
 }
@@ -2874,10 +2885,12 @@ impl Static {
 
     /// Evaluate the static initializer.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
-        let interner = DbInterner::new_with(db, None, None);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
-        db.const_eval(self.id.into(), GenericArgs::new_from_iter(interner, []), None)
-            .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
+        db.const_eval_static(self.id).map(|it| EvaluatedConst {
+            const_: it,
+            def: self.id.into(),
+            ty,
+        })
     }
 }
 
@@ -3350,6 +3363,15 @@ pub enum AssocItem {
     TypeAlias(TypeAlias),
 }
 
+impl From<method_resolution::CandidateId> for AssocItem {
+    fn from(value: method_resolution::CandidateId) -> Self {
+        match value {
+            method_resolution::CandidateId::FunctionId(id) => AssocItem::Function(Function { id }),
+            method_resolution::CandidateId::ConstId(id) => AssocItem::Const(Const { id }),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum AssocItemContainer {
     Trait(Trait),
@@ -3701,7 +3723,7 @@ impl GenericDef {
         push_ty_diagnostics(
             db,
             acc,
-            db.generic_predicates_without_parent_with_diagnostics(def).1,
+            GenericPredicates::query_with_diagnostics(db, def).1.clone(),
             &source_map,
         );
         for (param_id, param) in generics.iter_type_or_consts() {
@@ -4196,10 +4218,13 @@ impl TypeParam {
     /// parameter, not additional bounds that might be added e.g. by a method if
     /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id.parent(), self.id.into(), None)
-            .iter()
+        let self_ty = self.ty(db).ty;
+        GenericPredicates::query_explicit(db, self.id.parent())
+            .iter_identity_copied()
             .filter_map(|pred| match &pred.kind().skip_binder() {
-                ClauseKind::Trait(trait_ref) => Some(Trait::from(trait_ref.def_id().0)),
+                ClauseKind::Trait(trait_ref) if trait_ref.self_ty() == self_ty => {
+                    Some(Trait::from(trait_ref.def_id().0))
+                }
                 _ => None,
             })
             .collect()
@@ -4361,90 +4386,81 @@ pub struct Impl {
 
 impl Impl {
     pub fn all_in_crate(db: &dyn HirDatabase, krate: Crate) -> Vec<Impl> {
-        let inherent = db.inherent_impls_in_crate(krate.id);
-        let trait_ = db.trait_impls_in_crate(krate.id);
+        let mut result = Vec::new();
+        extend_with_def_map(db, crate_def_map(db, krate.id), &mut result);
+        return result;
 
-        inherent.all_impls().chain(trait_.all_impls()).map(Self::from).collect()
+        fn extend_with_def_map(db: &dyn HirDatabase, def_map: &DefMap, result: &mut Vec<Impl>) {
+            for (_, module) in def_map.modules() {
+                result.extend(module.scope.impls().map(Impl::from));
+
+                for unnamed_const in module.scope.unnamed_consts() {
+                    for (_, block_def_map) in db.body(unnamed_const.into()).blocks(db) {
+                        extend_with_def_map(db, block_def_map, result);
+                    }
+                }
+            }
+        }
     }
 
     pub fn all_in_module(db: &dyn HirDatabase, module: Module) -> Vec<Impl> {
         module.id.def_map(db)[module.id.local_id].scope.impls().map(Into::into).collect()
     }
 
+    /// **Note:** This is an **approximation** that strives to give the *human-perceived notion* of an "impl for type",
+    /// **not** answer the technical question "what are all impls applying to this type". In particular, it excludes
+    /// blanket impls, and only does a shallow type constructor check. In fact, this should've probably been on `Adt`
+    /// etc., and not on `Type`. If you would want to create a precise list of all impls applying to a type,
+    /// you would need to include blanket impls, and try to prove to predicates for each candidate.
     pub fn all_for_type<'db>(db: &'db dyn HirDatabase, Type { ty, env }: Type<'db>) -> Vec<Impl> {
-        let def_crates = match method_resolution::def_crates(db, ty, env.krate) {
-            Some(def_crates) => def_crates,
-            None => return Vec::new(),
+        let mut result = Vec::new();
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let Some(simplified_ty) =
+            fast_reject::simplify_type(interner, ty, fast_reject::TreatParams::AsRigid)
+        else {
+            return Vec::new();
         };
-
-        let filter = |impl_def: &Impl| {
-            let self_ty = impl_def.self_ty(db);
-            let rref = self_ty.remove_ref();
-            ty.equals_ctor(rref.as_ref().map_or(self_ty.ty, |it| it.ty))
-        };
-
-        let fp = TyFingerprint::for_inherent_impl(ty);
-        let fp = match fp {
-            Some(fp) => fp,
-            None => return Vec::new(),
-        };
-
-        let mut all = Vec::new();
-        def_crates.iter().for_each(|&id| {
-            all.extend(
-                db.inherent_impls_in_crate(id)
-                    .for_self_ty(ty)
-                    .iter()
-                    .cloned()
-                    .map(Self::from)
-                    .filter(filter),
-            )
-        });
-
-        for id in def_crates
-            .iter()
-            .flat_map(|&id| Crate { id }.transitive_reverse_dependencies(db))
-            .map(|Crate { id }| id)
-        {
-            all.extend(
-                db.trait_impls_in_crate(id)
-                    .for_self_ty_without_blanket_impls(fp)
-                    .map(Self::from)
-                    .filter(filter),
+        let mut extend_with_impls =
+            |impls: &[ImplId]| result.extend(impls.iter().copied().map(Impl::from));
+        extend_with_impls(method_resolution::incoherent_inherent_impls(db, simplified_ty));
+        if let Some(module) = method_resolution::simplified_type_module(db, &simplified_ty) {
+            InherentImpls::for_each_crate_and_block(
+                db,
+                module.krate(),
+                module.containing_block(),
+                &mut |impls| extend_with_impls(impls.for_self_ty(&simplified_ty)),
             );
-        }
-
-        if let Some(block) = ty.as_adt().and_then(|(def, _)| def.module(db).containing_block()) {
-            if let Some(inherent_impls) = db.inherent_impls_in_block(block) {
-                all.extend(
-                    inherent_impls.for_self_ty(ty).iter().cloned().map(Self::from).filter(filter),
-                );
+            std::iter::successors(module.containing_block(), |block| {
+                block.loc(db).module.containing_block()
+            })
+            .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
+            .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
+            for &krate in &**db.all_crates() {
+                TraitImpls::for_crate(db, krate)
+                    .for_self_ty(&simplified_ty, &mut extend_with_impls);
             }
-            if let Some(trait_impls) = db.trait_impls_in_block(block) {
-                all.extend(
-                    trait_impls
-                        .for_self_ty_without_blanket_impls(fp)
-                        .map(Self::from)
-                        .filter(filter),
-                );
+        } else {
+            for &krate in &**db.all_crates() {
+                TraitImpls::for_crate(db, krate)
+                    .for_self_ty(&simplified_ty, &mut extend_with_impls);
             }
         }
-
-        all
+        result
     }
 
     pub fn all_for_trait(db: &dyn HirDatabase, trait_: Trait) -> Vec<Impl> {
-        let module = trait_.module(db);
-        let krate = module.krate();
+        let module = trait_.module(db).id;
         let mut all = Vec::new();
-        for Crate { id } in krate.transitive_reverse_dependencies(db) {
-            let impls = db.trait_impls_in_crate(id);
-            all.extend(impls.for_trait(trait_.id).map(Self::from))
+        let mut handle_impls = |impls: &TraitImpls| {
+            impls.for_trait(trait_.id, |impls| all.extend(impls.iter().copied().map(Impl::from)));
+        };
+        for krate in module.krate().transitive_rev_deps(db) {
+            handle_impls(TraitImpls::for_crate(db, krate));
         }
-        if let Some(block) = module.id.containing_block()
-            && let Some(trait_impls) = db.trait_impls_in_block(block)
+        if let Some(block) = module.containing_block()
+            && let Some(impls) = TraitImpls::for_block(db, block)
         {
-            all.extend(trait_impls.for_trait(trait_.id).map(Self::from));
+            handle_impls(impls);
         }
         all
     }
@@ -5265,13 +5281,12 @@ impl<'db> Type<'db> {
         }
     }
 
-    pub fn fingerprint_for_trait_impl(&self) -> Option<TyFingerprint> {
-        TyFingerprint::for_trait_impl(self.ty)
-    }
-
-    pub(crate) fn canonical(&self, db: &'db dyn HirDatabase) -> Canonical<'db, Ty<'db>> {
-        let interner = DbInterner::new_with(db, None, None);
-        hir_ty::replace_errors_with_variables(interner, &self.ty)
+    pub fn fingerprint_for_trait_impl(&self) -> Option<SimplifiedType> {
+        fast_reject::simplify_type(
+            DbInterner::conjure(),
+            self.ty,
+            fast_reject::TreatParams::AsRigid,
+        )
     }
 
     /// Returns types that this type dereferences to (including this type itself). The returned
@@ -5295,11 +5310,10 @@ impl<'db> Type<'db> {
     pub fn iterate_assoc_items<T>(
         &self,
         db: &'db dyn HirDatabase,
-        krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         let mut slot = None;
-        self.iterate_assoc_items_dyn(db, krate, &mut |assoc_item_id| {
+        self.iterate_assoc_items_dyn(db, &mut |assoc_item_id| {
             slot = callback(assoc_item_id.into());
             slot.is_some()
         });
@@ -5309,24 +5323,36 @@ impl<'db> Type<'db> {
     fn iterate_assoc_items_dyn(
         &self,
         db: &'db dyn HirDatabase,
-        krate: Crate,
         callback: &mut dyn FnMut(AssocItemId) -> bool,
     ) {
-        let ty_ns = self.ty;
-        let def_crates = match method_resolution::def_crates(db, ty_ns, krate.id) {
-            Some(it) => it,
-            None => return,
-        };
-        for krate in def_crates {
-            let impls = db.inherent_impls_in_crate(krate);
-
-            for impl_def in impls.for_self_ty(ty_ns) {
+        let mut handle_impls = |impls: &[ImplId]| {
+            for &impl_def in impls {
                 for &(_, item) in impl_def.impl_items(db).items.iter() {
                     if callback(item) {
                         return;
                     }
                 }
             }
+        };
+
+        let interner = DbInterner::new_with(db, None, None);
+        let Some(simplified_type) =
+            fast_reject::simplify_type(interner, self.ty, fast_reject::TreatParams::AsRigid)
+        else {
+            return;
+        };
+
+        handle_impls(method_resolution::incoherent_inherent_impls(db, simplified_type));
+
+        if let Some(module) = method_resolution::simplified_type_module(db, &simplified_type) {
+            InherentImpls::for_each_crate_and_block(
+                db,
+                module.krate(),
+                module.containing_block(),
+                &mut |impls| {
+                    handle_impls(impls.for_self_ty(&simplified_type));
+                },
+            );
         }
     }
 
@@ -5417,26 +5443,20 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
-        with_local_impls: Option<Module>,
         name: Option<&Name>,
         mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("iterate_method_candidates_with_traits").entered();
         let mut slot = None;
-        self.iterate_method_candidates_split_inherent(
-            db,
-            scope,
-            traits_in_scope,
-            with_local_impls,
-            name,
-            |f| match callback(f) {
+        self.iterate_method_candidates_split_inherent(db, scope, traits_in_scope, name, |f| {
+            match callback(f) {
                 it @ Some(_) => {
                     slot = it;
                     ControlFlow::Break(())
                 }
                 None => ControlFlow::Continue(()),
-            },
-        );
+            }
+        });
         slot
     }
 
@@ -5444,7 +5464,6 @@ impl<'db> Type<'db> {
         &self,
         db: &'db dyn HirDatabase,
         scope: &SemanticsScope<'_>,
-        with_local_impls: Option<Module>,
         name: Option<&Name>,
         callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
@@ -5452,10 +5471,35 @@ impl<'db> Type<'db> {
             db,
             scope,
             &scope.visible_traits().0,
-            with_local_impls,
             name,
             callback,
         )
+    }
+
+    fn with_method_resolution<R>(
+        &self,
+        db: &'db dyn HirDatabase,
+        resolver: &Resolver<'db>,
+        traits_in_scope: &FxHashSet<TraitId>,
+        f: impl FnOnce(&MethodResolutionContext<'_, 'db>) -> R,
+    ) -> R {
+        let module = resolver.module();
+        let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+        let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        let unstable_features =
+            MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| TraitEnvironment::empty(module.krate()), |d| db.trait_environment(d));
+        let ctx = MethodResolutionContext {
+            infcx: &infcx,
+            resolver,
+            env: &environment,
+            traits_in_scope,
+            edition: resolver.krate().data(db).edition,
+            unstable_features: &unstable_features,
+        };
+        f(&ctx)
     }
 
     /// Allows you to treat inherent and non-inherent methods differently.
@@ -5467,67 +5511,77 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
-        with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: impl MethodCandidateCallback,
+        mut callback: impl MethodCandidateCallback,
     ) {
-        struct Callback<T>(T);
-
-        impl<T: MethodCandidateCallback> method_resolution::MethodCandidateCallback for Callback<T> {
-            fn on_inherent_method(
-                &mut self,
-                _adjustments: method_resolution::ReceiverAdjustments,
-                item: AssocItemId,
-                _is_visible: bool,
-            ) -> ControlFlow<()> {
-                if let AssocItemId::FunctionId(func) = item {
-                    self.0.on_inherent_method(func.into())
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-
-            fn on_trait_method(
-                &mut self,
-                _adjustments: method_resolution::ReceiverAdjustments,
-                item: AssocItemId,
-                _is_visible: bool,
-            ) -> ControlFlow<()> {
-                if let AssocItemId::FunctionId(func) = item {
-                    self.0.on_trait_method(func.into())
-                } else {
-                    ControlFlow::Continue(())
-                }
-            }
-        }
-
         let _p = tracing::info_span!(
-            "iterate_method_candidates_dyn",
-            with_local_impls = traits_in_scope.len(),
+            "iterate_method_candidates_split_inherent",
             traits_in_scope = traits_in_scope.len(),
             ?name,
         )
         .entered();
-        let interner = DbInterner::new_with(db, None, None);
-        // There should be no inference vars in types passed here
-        let canonical = hir_ty::replace_errors_with_variables(interner, &self.ty);
 
-        let krate = scope.krate();
-        let environment = scope
-            .resolver()
-            .generic_def()
-            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
+        self.with_method_resolution(db, scope.resolver(), traits_in_scope, |ctx| {
+            // There should be no inference vars in types passed here
+            let canonical = hir_ty::replace_errors_with_variables(ctx.infcx.interner, &self.ty);
+            let (self_ty, _) = ctx.infcx.instantiate_canonical(&canonical);
 
-        _ = method_resolution::iterate_method_candidates_dyn(
-            &canonical,
-            db,
-            environment,
-            traits_in_scope,
-            with_local_impls.and_then(|b| b.id.containing_block()).into(),
-            name,
-            method_resolution::LookupMode::MethodCall,
-            &mut Callback(callback),
-        );
+            match name {
+                Some(name) => {
+                    match ctx.probe_for_name(
+                        method_resolution::Mode::MethodCall,
+                        name.clone(),
+                        self_ty,
+                    ) {
+                        Ok(candidate)
+                        | Err(method_resolution::MethodError::PrivateMatch(candidate)) => {
+                            let method_resolution::CandidateId::FunctionId(id) = candidate.item
+                            else {
+                                unreachable!("`Mode::MethodCall` can only return functions");
+                            };
+                            let id = Function { id };
+                            match candidate.kind {
+                                method_resolution::PickKind::InherentImplPick(_)
+                                | method_resolution::PickKind::ObjectPick(..)
+                                | method_resolution::PickKind::WhereClausePick(..) => {
+                                    // Candidates from where clauses and trait objects are considered inherent.
+                                    _ = callback.on_inherent_method(id);
+                                }
+                                method_resolution::PickKind::TraitPick(..) => {
+                                    _ = callback.on_trait_method(id);
+                                }
+                            }
+                        }
+                        Err(_) => {}
+                    };
+                }
+                None => {
+                    _ = ctx.probe_all(method_resolution::Mode::MethodCall, self_ty).try_for_each(
+                        |candidate| {
+                            let method_resolution::CandidateId::FunctionId(id) =
+                                candidate.candidate.item
+                            else {
+                                unreachable!("`Mode::MethodCall` can only return functions");
+                            };
+                            let id = Function { id };
+                            match candidate.candidate.kind {
+                                method_resolution::CandidateKind::InherentImplCandidate {
+                                    ..
+                                }
+                                | method_resolution::CandidateKind::ObjectCandidate(..)
+                                | method_resolution::CandidateKind::WhereClauseCandidate(..) => {
+                                    // Candidates from where clauses and trait objects are considered inherent.
+                                    callback.on_inherent_method(id)
+                                }
+                                method_resolution::CandidateKind::TraitCandidate(..) => {
+                                    callback.on_trait_method(id)
+                                }
+                            }
+                        },
+                    );
+                }
+            }
+        })
     }
 
     #[tracing::instrument(skip_all, fields(name = ?name))]
@@ -5536,27 +5590,21 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
-        with_local_impls: Option<Module>,
         name: Option<&Name>,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("iterate_path_candidates").entered();
         let mut slot = None;
 
-        self.iterate_path_candidates_split_inherent(
-            db,
-            scope,
-            traits_in_scope,
-            with_local_impls,
-            name,
-            |item| match callback(item) {
+        self.iterate_path_candidates_split_inherent(db, scope, traits_in_scope, name, |item| {
+            match callback(item) {
                 it @ Some(_) => {
                     slot = it;
                     ControlFlow::Break(())
                 }
                 None => ControlFlow::Continue(()),
-            },
-        );
+            }
+        });
         slot
     }
 
@@ -5571,50 +5619,68 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         scope: &SemanticsScope<'_>,
         traits_in_scope: &FxHashSet<TraitId>,
-        with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: impl PathCandidateCallback,
+        mut callback: impl PathCandidateCallback,
     ) {
-        struct Callback<T>(T);
+        let _p = tracing::info_span!(
+            "iterate_path_candidates_split_inherent",
+            traits_in_scope = traits_in_scope.len(),
+            ?name,
+        )
+        .entered();
 
-        impl<T: PathCandidateCallback> method_resolution::MethodCandidateCallback for Callback<T> {
-            fn on_inherent_method(
-                &mut self,
-                _adjustments: method_resolution::ReceiverAdjustments,
-                item: AssocItemId,
-                _is_visible: bool,
-            ) -> ControlFlow<()> {
-                self.0.on_inherent_item(item.into())
+        self.with_method_resolution(db, scope.resolver(), traits_in_scope, |ctx| {
+            // There should be no inference vars in types passed here
+            let canonical = hir_ty::replace_errors_with_variables(ctx.infcx.interner, &self.ty);
+            let (self_ty, _) = ctx.infcx.instantiate_canonical(&canonical);
+
+            match name {
+                Some(name) => {
+                    match ctx.probe_for_name(
+                        method_resolution::Mode::MethodCall,
+                        name.clone(),
+                        self_ty,
+                    ) {
+                        Ok(candidate)
+                        | Err(method_resolution::MethodError::PrivateMatch(candidate)) => {
+                            let id = candidate.item.into();
+                            match candidate.kind {
+                                method_resolution::PickKind::InherentImplPick(_)
+                                | method_resolution::PickKind::ObjectPick(..)
+                                | method_resolution::PickKind::WhereClausePick(..) => {
+                                    // Candidates from where clauses and trait objects are considered inherent.
+                                    _ = callback.on_inherent_item(id);
+                                }
+                                method_resolution::PickKind::TraitPick(..) => {
+                                    _ = callback.on_trait_item(id);
+                                }
+                            }
+                        }
+                        Err(_) => {}
+                    };
+                }
+                None => {
+                    _ = ctx.probe_all(method_resolution::Mode::Path, self_ty).try_for_each(
+                        |candidate| {
+                            let id = candidate.candidate.item.into();
+                            match candidate.candidate.kind {
+                                method_resolution::CandidateKind::InherentImplCandidate {
+                                    ..
+                                }
+                                | method_resolution::CandidateKind::ObjectCandidate(..)
+                                | method_resolution::CandidateKind::WhereClauseCandidate(..) => {
+                                    // Candidates from where clauses and trait objects are considered inherent.
+                                    callback.on_inherent_item(id)
+                                }
+                                method_resolution::CandidateKind::TraitCandidate(..) => {
+                                    callback.on_trait_item(id)
+                                }
+                            }
+                        },
+                    );
+                }
             }
-
-            fn on_trait_method(
-                &mut self,
-                _adjustments: method_resolution::ReceiverAdjustments,
-                item: AssocItemId,
-                _is_visible: bool,
-            ) -> ControlFlow<()> {
-                self.0.on_trait_item(item.into())
-            }
-        }
-
-        let interner = DbInterner::new_with(db, None, None);
-        let canonical = hir_ty::replace_errors_with_variables(interner, &self.ty);
-
-        let krate = scope.krate();
-        let environment = scope
-            .resolver()
-            .generic_def()
-            .map_or_else(|| TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
-
-        _ = method_resolution::iterate_path_candidates(
-            &canonical,
-            db,
-            environment,
-            traits_in_scope,
-            with_local_impls.and_then(|b| b.id.containing_block()).into(),
-            name,
-            &mut Callback(callback),
-        );
+        })
     }
 
     pub fn as_adt(&self) -> Option<Adt> {

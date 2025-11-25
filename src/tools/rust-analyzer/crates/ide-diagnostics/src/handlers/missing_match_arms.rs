@@ -390,7 +390,6 @@ fn main() {
 
     #[test]
     fn expr_diverges() {
-        cov_mark::check_count!(validate_match_bailed_out, 2);
         check_diagnostics(
             r#"
 enum Either { A, B }
@@ -401,6 +400,7 @@ fn main() {
         Either::B => (),
     }
     match loop {} {
+       // ^^^^^^^ error: missing match arm: `B` not covered
         Either::A => (),
     }
     match loop { break Either::A } {

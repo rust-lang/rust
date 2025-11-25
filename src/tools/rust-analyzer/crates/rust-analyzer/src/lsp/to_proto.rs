@@ -882,6 +882,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::ControlFlow => mods::CONTROL_FLOW,
             HlMod::CrateRoot => mods::CRATE_ROOT,
             HlMod::DefaultLibrary => mods::DEFAULT_LIBRARY,
+            HlMod::Deprecated => mods::DEPRECATED,
             HlMod::Definition => mods::DECLARATION,
             HlMod::Documentation => mods::DOCUMENTATION,
             HlMod::Injected => mods::INJECTED,

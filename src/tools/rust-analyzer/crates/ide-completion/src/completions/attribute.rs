@@ -231,7 +231,7 @@ const fn attr(
 macro_rules! attrs {
     // attributes applicable to all items
     [@ { item $($tt:tt)* } {$($acc:tt)*}] => {
-        attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "docinclude", "must_use", "no_mangle" })
+        attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "docinclude", "must_use", "no_mangle", "unsafe" })
     };
     // attributes applicable to all adts
     [@ { adt $($tt:tt)* } {$($acc:tt)*}] => {
@@ -395,6 +395,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("track_caller", None, None),
     attr("type_length_limit = …", Some("type_length_limit"), Some("type_length_limit = ${0:128}"))
         .prefer_inner(),
+    attr("unsafe(…)", Some("unsafe"), Some("unsafe($0)")),
     attr("used", None, None),
     attr("warn(…)", Some("warn"), Some("warn(${0:lint})")),
     attr(
