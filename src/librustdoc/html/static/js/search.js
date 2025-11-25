@@ -28,7 +28,7 @@ if (!Array.prototype.toSpliced) {
  * @template T
  * @param {Iterable<T>} arr
  * @param {function(T): Promise<any>} func
- * @param {function(T): boolean} funcBtwn
+ * @param {function(T): void} funcBtwn
  */
 async function onEachBtwnAsync(arr, func, funcBtwn) {
     let skipped = true;
@@ -2421,7 +2421,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ", highlighted: false }, result),
                     );
                     pushText({ name: sb, highlighted: fnType.highlighted }, result);
@@ -2435,7 +2434,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2454,7 +2452,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2515,7 +2512,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, where),
-                        // @ts-expect-error
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
@@ -2545,7 +2541,6 @@ class DocSearch {
                         await onEachBtwnAsync(
                             fnType.generics,
                             value => writeFn(value, result),
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                         if (fnType.generics.length > 1) {
@@ -2568,6 +2563,7 @@ class DocSearch {
                                 async([key, values]) => [await this.getName(key), values],
                             )),
                             async([name, values]) => {
+                                // values[0] cannot be null due to length check
                                 // @ts-expect-error
                                 if (values.length === 1 && values[0].id < 0 &&
                                     // @ts-expect-error
@@ -2593,14 +2589,12 @@ class DocSearch {
                                 await onEachBtwnAsync(
                                     values || [],
                                     value => writeFn(value, result),
-                                    // @ts-expect-error
                                     () => pushText({ name: " + ",  highlighted: false }, result),
                                 );
                                 if (values.length !== 1) {
                                     pushText({ name: ")", highlighted: false }, result);
                                 }
                             },
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                     }
@@ -2610,7 +2604,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         value => writeFn(value, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ",  highlighted: false }, result),
                     );
                     if (hasBindings || fnType.generics.length > 0) {
@@ -2623,14 +2616,12 @@ class DocSearch {
             await onEachBtwnAsync(
                 fnInputs,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
             pushText({ name: " -> ", highlighted: false }, type);
             await onEachBtwnAsync(
                 fnOutput,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
 
