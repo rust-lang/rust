@@ -5050,9 +5050,11 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
     if (query.proposeCorrectionFrom !== null && isTypeSearch) {
         const orig = query.proposeCorrectionFrom;
         const targ = query.proposeCorrectionTo;
-        correctionOutput = "<h3 class=\"search-corrections\">" +
-            `Type "${orig}" not found and used as generic parameter. ` +
-            `Consider searching for "${targ}" instead.</h3>`;
+        const parts = [`Type "${orig}" not found and used as generic parameter.`];
+        if (targ !== null) {
+            parts.push(`Consider searching for "${targ}" instead.`);
+        }
+        correctionOutput = `<h3 class="search-corrections">${parts.join(" ")}</h3>`;
     }
     if (firstResult.value) {
         if (correctionOutput !== "") {
