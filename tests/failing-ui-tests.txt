@@ -85,3 +85,6 @@ tests/ui/sanitizer/kcfi-c-variadic.rs
 tests/ui/sanitizer/kcfi/fn-trait-objects.rs
 tests/ui/statics/const_generics.rs
 tests/ui/test-attrs/test-panic-while-printing.rs
+tests/ui/thir-print/offset_of.rs
+tests/ui/iterators/rangefrom-overflow-debug.rs
+tests/ui/iterators/rangefrom-overflow-overflow-checks.rs
