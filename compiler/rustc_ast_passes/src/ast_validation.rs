@@ -820,6 +820,12 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
     }
 
+    fn deny_const_auto_traits(&self, constness: Const) {
+        if let Const::Yes(span) = constness {
+            self.dcx().emit_err(errors::ConstAutoTrait { span });
+        }
+    }
+
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
         if !generics.params.is_empty() {
             self.dcx()
@@ -1257,6 +1263,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 if *is_auto == IsAuto::Yes {
+                    // For why we reject `const auto trait`, see rust-lang/rust#149285.
+                    self.deny_const_auto_traits(*constness);
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, ident.span);
                     self.deny_super_traits(bounds, ident.span);

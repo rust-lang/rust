@@ -1,0 +1,10 @@
+error: auto traits cannot be const
+  --> $DIR/const-auto-trait.rs:3:1
+   |
+LL | const auto trait Marker {}
+   | ^^^^^
+   |
+   = help: remove the `const` keyword
+
+error: aborting due to 1 previous error
+

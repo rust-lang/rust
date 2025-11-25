@@ -430,6 +430,14 @@ pub(crate) struct AutoTraitItems {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_const_auto_trait)]
+#[help]
+pub(crate) struct ConstAutoTrait {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_generic_before_constraints)]
 pub(crate) struct ArgsBeforeConstraint {
     #[primary_span]
