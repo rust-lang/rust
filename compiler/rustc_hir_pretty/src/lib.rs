@@ -445,11 +445,6 @@ impl<'a> State<'a> {
                 self.print_const_arg(length);
                 self.word("]");
             }
-            hir::TyKind::Typeof(ref e) => {
-                self.word("typeof(");
-                self.print_anon_const(e);
-                self.word(")");
-            }
             hir::TyKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

@@ -1660,18 +1660,6 @@ impl EarlyLintPass for UnusedBraces {
                 );
             }
 
-            ast::TyKind::Typeof(ref anon_const) => {
-                self.check_unused_delims_expr(
-                    cx,
-                    &anon_const.value,
-                    UnusedDelimsCtx::AnonConst,
-                    false,
-                    None,
-                    None,
-                    false,
-                );
-            }
-
             _ => {}
         }
     }

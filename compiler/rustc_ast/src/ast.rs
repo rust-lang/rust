@@ -2513,8 +2513,6 @@ pub enum TyKind {
     ImplTrait(NodeId, #[visitable(extra = BoundKind::Impl)] GenericBounds),
     /// No-op; kept solely so that we can pretty-print faithfully.
     Paren(Box<Ty>),
-    /// Unused for now.
-    Typeof(AnonConst),
     /// This means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     Infer,
