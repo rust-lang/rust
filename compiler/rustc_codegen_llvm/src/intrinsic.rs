@@ -820,12 +820,20 @@ fn equate_ty<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Typ
                 },
             )
         }
-        TypeKind::Vector if cx.element_type(llvm_ty) == cx.type_i1() => {
+        TypeKind::Vector => {
+            let llvm_element_ty = cx.element_type(llvm_ty);
             let element_count = cx.vector_length(llvm_ty) as u64;
-            let int_width = element_count.next_power_of_two().max(8);
 
-            rust_ty == cx.type_ix(int_width)
+            if llvm_element_ty == cx.type_bf16() {
+                rust_ty == cx.type_vector(cx.type_i16(), element_count)
+            } else if llvm_element_ty == cx.type_i1() {
+                let int_width = element_count.next_power_of_two().max(8);
+                rust_ty == cx.type_ix(int_width)
+            } else {
+                false
+            }
         }
+        TypeKind::BFloat => rust_ty == cx.type_i16(),
         _ => false,
     }
 }
@@ -890,7 +898,7 @@ fn autocast<'ll>(
                 bx.bitcast(val, dest_ty)
             }
         }
-        _ => unreachable!(),
+        _ => bx.bitcast(val, dest_ty), // for `bf16(xN)` <-> `u16(xN)`
     }
 }
 
