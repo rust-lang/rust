@@ -10,6 +10,7 @@
 
 // The rustc crates we need
 extern crate rustc_abi;
+extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
@@ -19,6 +20,7 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_target;
 
 /// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
@@ -36,6 +38,7 @@ use std::num::{NonZero, NonZeroI32};
 use std::ops::Range;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Once;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use miri::{
@@ -43,12 +46,14 @@ use miri::{
     ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
 use rustc_abi::ExternAbi;
+use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_interface::interface::Config;
+use rustc_interface::util::DummyCodegenBackend;
 use rustc_log::tracing::debug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
@@ -58,8 +63,9 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, Options};
 use rustc_span::def_id::DefId;
+use rustc_target::spec::Target;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -161,7 +167,31 @@ fn run_many_seeds(
     }
 }
 
+/// Generates the codegen backend for code that Miri will interpret: we basically
+/// use the dummy backend, except that we put the LLVM backend in charge of
+/// target features.
+fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn CodegenBackend> {
+    let early_dcx = EarlyDiagCtxt::new(opts.error_format);
+
+    // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
+    // calculated target features match said backend by respecting eg -Ctarget-cpu.
+    let target_config_backend =
+        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, &target);
+    let target_config_backend_init = Once::new();
+
+    Box::new(DummyCodegenBackend {
+        target_config_override: Some(Box::new(move |sess| {
+            target_config_backend_init.call_once(|| target_config_backend.init(sess));
+            target_config_backend.target_config(sess)
+        })),
+    })
+}
+
 impl rustc_driver::Callbacks for MiriCompilerCalls {
+    fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+        config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+    }
+
     fn after_analysis<'tcx>(
         &mut self,
         _: &rustc_interface::interface::Compiler,
@@ -244,6 +274,10 @@ struct MiriBeRustCompilerCalls {
 impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
+        if self.target_crate {
+            config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+        }
+
         if config.opts.prints.is_empty() && self.target_crate {
             #[allow(rustc::bad_opt_access)] // tcx does not exist yet
             {

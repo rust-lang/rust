@@ -24,6 +24,7 @@ use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, sym};
+use rustc_target::spec::Target;
 use tracing::trace;
 
 use crate::util;
@@ -385,7 +386,7 @@ pub struct Config {
     /// custom driver where the custom codegen backend has arbitrary data."
     /// (See #102759.)
     pub make_codegen_backend:
-        Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
+        Option<Box<dyn FnOnce(&config::Options, &Target) -> Box<dyn CodegenBackend> + Send>>,
 
     /// Registry of diagnostics codes.
     pub registry: Registry,
@@ -453,7 +454,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 Some(make_codegen_backend) => {
                     // N.B. `make_codegen_backend` takes precedence over
                     // `target.default_codegen_backend`, which is ignored in this case.
-                    make_codegen_backend(&config.opts)
+                    make_codegen_backend(&config.opts, &target)
                 }
             };
 
