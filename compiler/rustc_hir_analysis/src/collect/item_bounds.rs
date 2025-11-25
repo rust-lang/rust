@@ -528,12 +528,14 @@ pub(super) fn impl_super_outlives(
 ) -> ty::EarlyBinder<'_, ty::Clauses<'_>> {
     tcx.impl_trait_header(def_id).trait_ref.map_bound(|trait_ref| {
         let clause: ty::Clause<'_> = trait_ref.upcast(tcx);
-        tcx.mk_clauses_from_iter(util::elaborate(tcx, [clause]).filter(|clause| {
-            matches!(
-                clause.kind().skip_binder(),
-                ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::RegionOutlives(_)
-            )
-        }))
+        tcx.mk_clauses_from_iter(util::elaborate(tcx, [clause]).filter_only_self().filter(
+            |clause| {
+                matches!(
+                    clause.kind().skip_binder(),
+                    ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::RegionOutlives(_)
+                )
+            },
+        ))
     })
 }
 
