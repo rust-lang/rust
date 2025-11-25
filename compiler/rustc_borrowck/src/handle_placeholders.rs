@@ -24,12 +24,59 @@ use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, NllRegionVariableOrigin};
 
+pub(crate) trait RegionSccs {
+    fn representative(&self, scc: ConstraintSccIndex) -> RegionVid;
+    fn reachable_placeholders(&self, _scc: ConstraintSccIndex) -> Option<PlaceholderReachability> {
+        None
+    }
+    /// The largest universe this SCC can name. It's the smallest
+    /// largest nameable universe of any reachable region, or
+    /// `max_nameable(r) = min (max_nameable(r') for r' reachable from r)`
+    fn max_nameable_universe(&self, _scc: ConstraintSccIndex) -> UniverseIndex {
+        UniverseIndex::ROOT
+    }
+    fn max_placeholder_universe_reached(&self, _scc: ConstraintSccIndex) -> UniverseIndex {
+        UniverseIndex::ROOT
+    }
+}
+
+impl RegionSccs for IndexVec<ConstraintSccIndex, RegionTracker> {
+    fn representative(&self, scc: ConstraintSccIndex) -> RegionVid {
+        self[scc].representative.rvid()
+    }
+
+    fn reachable_placeholders(&self, scc: ConstraintSccIndex) -> Option<PlaceholderReachability> {
+        self[scc].reachable_placeholders
+    }
+
+    fn max_nameable_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
+        // Note that this is stricter than it might need to be!
+        self[scc].min_max_nameable_universe
+    }
+
+    fn max_placeholder_universe_reached(&self, scc: ConstraintSccIndex) -> UniverseIndex {
+        self[scc].reachable_placeholders.map(|p| p.max_universe.u).unwrap_or(UniverseIndex::ROOT)
+    }
+}
+
+impl RegionSccs for IndexVec<ConstraintSccIndex, Representative> {
+    fn representative(&self, scc: ConstraintSccIndex) -> RegionVid {
+        self[scc].rvid()
+    }
+}
+
+impl FromRegionDefinition for Representative {
+    fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        Representative::new(rvid, definition)
+    }
+}
+
 /// A set of outlives constraints after rewriting to remove
 /// higher-kinded constraints.
 pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
     pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
-    pub(crate) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
+    pub(crate) scc_annotations: Box<dyn RegionSccs>,
     pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
     pub(crate) liveness_constraints: LivenessValues,
@@ -42,23 +89,28 @@ impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
     }
 }
 
+trait FromRegionDefinition {
+    fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self;
+}
+
 /// A Visitor for SCC annotation construction.
 pub(crate) struct SccAnnotations<'d, 'tcx, A: scc::Annotation> {
     pub(crate) scc_to_annotation: IndexVec<ConstraintSccIndex, A>,
     definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
 }
-
-impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
-    fn new(&self, element: RegionVid) -> RegionTracker {
-        RegionTracker::new(element, &self.definitions[element])
+impl<A: scc::Annotation + FromRegionDefinition> scc::Annotations<RegionVid>
+    for SccAnnotations<'_, '_, A>
+{
+    fn new(&self, element: RegionVid) -> A {
+        A::new(element, &self.definitions[element])
     }
 
-    fn annotate_scc(&mut self, scc: ConstraintSccIndex, annotation: RegionTracker) {
+    fn annotate_scc(&mut self, scc: ConstraintSccIndex, annotation: A) {
         let idx = self.scc_to_annotation.push(annotation);
         assert!(idx == scc);
     }
 
-    type Ann = RegionTracker;
+    type Ann = A;
     type SccIdx = ConstraintSccIndex;
 }
 
@@ -127,8 +179,8 @@ pub(crate) struct RegionTracker {
     pub(crate) representative: Representative,
 }
 
-impl RegionTracker {
-    pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+impl FromRegionDefinition for RegionTracker {
+    fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
         use NllRegionVariableOrigin::*;
 
         let min_max_nameable_universe = definition.universe;
@@ -163,24 +215,12 @@ impl RegionTracker {
             },
         }
     }
-
-    /// The largest universe this SCC can name. It's the smallest
-    /// largest nameable universe of any reachable region, or
-    /// `max_nameable(r) = min (max_nameable(r') for r' reachable from r)`
-    pub(crate) fn max_nameable_universe(self) -> UniverseIndex {
-        // Note that this is stricter than it might need to be!
-        self.min_max_nameable_universe
-    }
-
-    pub(crate) fn max_placeholder_universe_reached(self) -> UniverseIndex {
-        self.reachable_placeholders.map(|p| p.max_universe.u).unwrap_or(UniverseIndex::ROOT)
-    }
 }
 
 impl scc::Annotation for RegionTracker {
     fn update_scc(&mut self, other: &Self) {
         trace!("{:?} << {:?}", self.representative, other.representative);
-        self.representative = self.representative.min(other.representative);
+        self.representative.update_scc(&other.representative);
         self.is_placeholder = self.is_placeholder.max(other.is_placeholder);
         self.update_reachable(other); // SCC membership implies reachability.
     }
@@ -291,19 +331,23 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
             )
         };
 
-    let mut scc_annotations = SccAnnotations::init(&definitions);
-    let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
-
-    // This code structure is a bit convoluted because it allows for a planned
-    // future change where the early return here has a different type of annotation
-    // that does much less work.
     if !has_placeholders {
         debug!("No placeholder regions found; skipping rewriting logic!");
+
+        // We skip the extra logic and only record representatives.
+        let mut scc_annotations: SccAnnotations<'_, '_, Representative> =
+            SccAnnotations::init(&definitions);
+        let constraint_sccs = ConstraintSccs::new_with_annotation(
+            &outlives_constraints
+                .graph(definitions.len())
+                .region_graph(&outlives_constraints, fr_static),
+            &mut scc_annotations,
+        );
 
         return LoweredConstraints {
             type_tests,
             constraint_sccs,
-            scc_annotations: scc_annotations.scc_to_annotation,
+            scc_annotations: Box::new(scc_annotations.scc_to_annotation),
             definitions,
             outlives_constraints: Frozen::freeze(outlives_constraints),
             liveness_constraints,
@@ -311,6 +355,8 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         };
     }
     debug!("Placeholders present; activating placeholder handling logic!");
+    let mut scc_annotations = SccAnnotations::init(&definitions);
+    let constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
 
     let added_constraints = rewrite_placeholder_outlives(
         &constraint_sccs,
@@ -338,7 +384,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     LoweredConstraints {
         constraint_sccs,
         definitions,
-        scc_annotations,
+        scc_annotations: Box::new(scc_annotations),
         outlives_constraints: Frozen::freeze(outlives_constraints),
         type_tests,
         liveness_constraints,

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -26,7 +26,7 @@ use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
+use crate::handle_placeholders::{LoweredConstraints, RegionSccs, RegionTracker};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
@@ -74,6 +74,14 @@ impl Representative {
     }
 }
 
+impl scc::Annotation for Representative {
+    fn update_scc(&mut self, other: &Self) {
+        *self = (*self).min(*other);
+    }
+
+    fn update_reachable(&mut self, _other: &Self) {}
+}
+
 pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex>;
 
 pub struct RegionInferenceContext<'tcx> {
@@ -102,7 +110,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// compute the values of each region.
     constraint_sccs: ConstraintSccs,
 
-    scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
+    scc_annotations: Box<dyn RegionSccs>,
 
     /// Map universe indexes to information on why we created it.
     universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
@@ -499,9 +507,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         scc_a: ConstraintSccIndex,
         scc_b: ConstraintSccIndex,
     ) -> bool {
-        self.scc_annotations[scc_a]
-            .max_nameable_universe()
-            .can_name(self.scc_annotations[scc_b].max_placeholder_universe_reached())
+        self.scc_annotations
+            .max_nameable_universe(scc_a)
+            .can_name(self.scc_annotations.max_placeholder_universe_reached(scc_b))
     }
 
     /// Once regions have been propagated, this method is used to see
@@ -613,7 +621,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // It doesn't matter *what* universe because the promoted `T` will
         // always be in the root universe.
-        if !self.scc_annotations[r_scc].max_placeholder_universe_reached().is_root() {
+        if !self.scc_annotations.max_placeholder_universe_reached(r_scc).is_root() {
             debug!("encountered placeholder in higher universe, requiring 'static");
             let static_r = self.universal_regions().fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
@@ -1091,7 +1099,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// The largest universe of any region nameable from this SCC.
     fn max_nameable_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.scc_annotations[scc].max_nameable_universe()
+        self.scc_annotations.max_nameable_universe(scc)
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -1452,7 +1460,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         scc: ConstraintSccIndex,
     ) -> Option<ty::PlaceholderRegion> {
         if let NllRegionVariableOrigin::Placeholder(p) =
-            self.definitions[self.scc_annotations[scc].representative.rvid()].origin
+            self.definitions[self.scc_annotations.representative(scc)].origin
         {
             Some(p)
         } else {
@@ -1465,7 +1473,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         scc: ConstraintSccIndex,
     ) -> Option<ty::PlaceholderRegion> {
-        let ps = self.scc_annotations[scc].reachable_placeholders?;
+        let ps = self.scc_annotations.reachable_placeholders(scc)?;
 
         if let NllRegionVariableOrigin::Placeholder(p) = self.definitions[ps.min_placeholder].origin
             && ps.min_placeholder == ps.max_placeholder
@@ -1775,7 +1783,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.scc_annotations[scc].representative.rvid()
+        self.scc_annotations.representative(scc)
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {

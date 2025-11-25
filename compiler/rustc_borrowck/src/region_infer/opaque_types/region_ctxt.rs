@@ -9,7 +9,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use crate::BorrowckInferCtxt;
 use crate::constraints::ConstraintSccIndex;
 use crate::diagnostics::RegionErrors;
-use crate::handle_placeholders::{SccAnnotations, region_definitions};
+use crate::handle_placeholders::{RegionSccs, SccAnnotations, region_definitions};
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::RegionValues;
 use crate::region_infer::{
@@ -110,7 +110,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         &self,
         scc: ConstraintSccIndex,
     ) -> UniverseIndex {
-        self.scc_annotations[scc].max_placeholder_universe_reached()
+        self.scc_annotations.max_placeholder_universe_reached(scc)
     }
 
     pub(super) fn universal_regions(&self) -> &UniversalRegions<'tcx> {
