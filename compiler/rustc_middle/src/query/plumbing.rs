@@ -44,7 +44,7 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub loadable_from_disk:
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
-    pub value_from_cycle_error: fn(
+    pub execute_fallback: fn(
         tcx: TyCtxt<'tcx>,
         key: C::Key,
         cycle_error: &CycleError,

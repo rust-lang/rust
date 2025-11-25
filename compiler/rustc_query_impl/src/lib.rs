@@ -144,14 +144,14 @@ where
         (self.dynamic.loadable_from_disk)(qcx.tcx, key, index)
     }
 
-    fn value_from_cycle_error(
+    fn execute_fallback(
         self,
         tcx: TyCtxt<'tcx>,
         key: Self::Key,
         cycle_error: &CycleError,
         guar: ErrorGuaranteed,
     ) -> Self::Value {
-        (self.dynamic.value_from_cycle_error)(tcx, key, cycle_error, guar)
+        (self.dynamic.execute_fallback)(tcx, key, cycle_error, guar)
     }
 
     #[inline(always)]

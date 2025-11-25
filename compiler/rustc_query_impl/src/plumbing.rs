@@ -704,7 +704,7 @@ macro_rules! define_queries {
                     } {
                         |_tcx, _key, _prev_index, _index| None
                     }),
-                    value_from_cycle_error: |tcx, key, cycle, guar| {
+                    execute_fallback: |tcx, key, cycle, guar| {
                         queries::$name::provided_to_erased(
                             tcx,
                             call_fallback_provider!([$($modifiers)*][tcx, $name, key, cycle, guar]),
