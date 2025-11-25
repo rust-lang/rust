@@ -1090,6 +1090,10 @@ unsafe extern "C" {
         ParamTypes: *const &'a Type,
         ParamCount: size_t,
     ) -> &'a Value;
+    pub(crate) fn LLVMRustUpgradeIntrinsicFunction<'a>(
+        Fn: &'a Value,
+        NewFn: &mut Option<&'a Value>,
+    ) -> bool;
 
     // Operations on parameters
     pub(crate) fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
