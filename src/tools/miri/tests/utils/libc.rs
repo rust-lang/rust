@@ -107,8 +107,9 @@ pub mod epoll {
             events: event.events.cast_unsigned(),
             u64: event.data.try_into().unwrap(),
         };
-        errno_result(unsafe { libc::epoll_ctl(epfd, op, fd, &raw mut event) })
-            .map(|r| assert_eq!(r, 0))
+        let ret = errno_result(unsafe { libc::epoll_ctl(epfd, op, fd, &raw mut event) })?;
+        assert_eq!(ret, 0);
+        Ok(())
     }
 
     /// Helper for the common case of adding an FD to an epoll with the FD itself being
@@ -124,7 +125,7 @@ pub mod epoll {
         let num = errno_result(unsafe {
             libc::epoll_wait(epfd, array.as_mut_ptr(), N.try_into().unwrap(), 0)
         })
-        .unwrap();
+        .expect("epoll_wait returned an error");
         let got = &mut array[..num.try_into().unwrap()];
         let got = got
             .iter()
