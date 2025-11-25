@@ -1,10 +1,10 @@
-//@ compile-flags: -C opt-level=0 -C target-feature=+kl,+avx512vp2intersect,+avx512vl
+//@ compile-flags: -C opt-level=0 -C target-feature=+kl,+avx512vp2intersect,+avx512vl,+avxneconvert
 //@ only-x86_64
 
 #![feature(link_llvm_intrinsics, abi_unadjusted, simd_ffi, portable_simd)]
 #![crate_type = "lib"]
 
-use std::simd::i64x2;
+use std::simd::{f32x4, i16x8, i64x2};
 
 #[repr(C, packed)]
 pub struct Bar(u32, i64x2, i64x2, i64x2, i64x2, i64x2, i64x2);
@@ -71,8 +71,23 @@ pub unsafe fn i1_vector_autocast(a: u8, b: u8) -> u8 {
     foo(a, b)
 }
 
+// CHECK-LABEL: @bf16_vector_autocast
+#[no_mangle]
+pub unsafe fn bf16_vector_autocast(a: f32x4) -> i16x8 {
+    extern "unadjusted" {
+        #[link_name = "llvm.x86.vcvtneps2bf16128"]
+        fn foo(a: f32x4) -> i16x8;
+    }
+
+    // CHECK: [[A:%[0-9]+]] = call <8 x bfloat> @llvm.x86.vcvtneps2bf16128(<4 x float> {{.*}})
+    // CHECK: bitcast <8 x bfloat> [[A]] to <8 x i16>
+    foo(a)
+}
+
 // CHECK: declare { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } @llvm.x86.encodekey128(i32, <2 x i64>)
 
 // CHECK: declare { <2 x i1>, <2 x i1> } @llvm.x86.avx512.vp2intersect.q.128(<2 x i64>, <2 x i64>)
 
 // CHECK: declare <8 x i1> @llvm.x86.avx512.kadd.b(<8 x i1>, <8 x i1>)
+
+// CHECK: declare <8 x bfloat> @llvm.x86.vcvtneps2bf16128(<4 x float>)
