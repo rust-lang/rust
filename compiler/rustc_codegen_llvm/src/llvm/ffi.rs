@@ -929,6 +929,8 @@ unsafe extern "C" {
     ) -> &'a Type;
     pub(crate) fn LLVMCountParamTypes(FunctionTy: &Type) -> c_uint;
     pub(crate) fn LLVMGetParamTypes<'a>(FunctionTy: &'a Type, Dest: *mut &'a Type);
+    pub(crate) fn LLVMGetReturnType(FunctionTy: &Type) -> &Type;
+    pub(crate) fn LLVMIsFunctionVarArg(FunctionTy: &Type) -> Bool;
 
     // Operations on struct types
     pub(crate) fn LLVMStructTypeInContext<'a>(
@@ -1083,6 +1085,7 @@ unsafe extern "C" {
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
+    pub(crate) fn LLVMIntrinsicIsOverloaded(ID: NonZero<c_uint>) -> Bool;
     pub(crate) fn LLVMGetIntrinsicDeclaration<'a>(
         Mod: &'a Module,
         ID: NonZero<c_uint>,

@@ -308,6 +308,8 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type>;
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
@@ -325,26 +327,30 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_return_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+        match &self.ret.mode {
+            PassMode::Ignore => cx.type_void(),
+            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
+            PassMode::Cast { cast, .. } => cast.llvm_type(cx),
+            PassMode::Indirect { .. } => cx.type_void(),
+        }
+    }
+
+    fn llvm_argument_types(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<&'ll Type> {
+        let indirect_return = matches!(self.ret.mode, PassMode::Indirect { .. });
+
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
             if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
 
         // This capacity calculation is approximate.
-        let mut llargument_tys = Vec::with_capacity(
-            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
-        );
+        let mut llargument_tys =
+            Vec::with_capacity(self.args.len() + if indirect_return { 1 } else { 0 });
 
-        let llreturn_ty = match &self.ret.mode {
-            PassMode::Ignore => cx.type_void(),
-            PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
-            PassMode::Indirect { .. } => {
-                llargument_tys.push(cx.type_ptr());
-                cx.type_void()
-            }
-        };
+        if indirect_return {
+            llargument_tys.push(cx.type_ptr());
+        }
 
         for arg in args {
             // Note that the exact number of arguments pushed here is carefully synchronized with
@@ -391,10 +397,17 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             llargument_tys.push(llarg_ty);
         }
 
+        llargument_tys
+    }
+
+    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+        let return_ty = self.llvm_return_type(cx);
+        let argument_tys = self.llvm_argument_types(cx);
+
         if self.c_variadic {
-            cx.type_variadic_func(&llargument_tys, llreturn_ty)
+            cx.type_variadic_func(&argument_tys, return_ty)
         } else {
-            cx.type_func(&llargument_tys, llreturn_ty)
+            cx.type_func(&argument_tys, return_ty)
         }
     }
 

@@ -1,7 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 use std::ffi::c_uint;
-use std::ptr;
+use std::{iter, ptr};
 
 use rustc_abi::{
     Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
@@ -34,7 +34,8 @@ use crate::builder::gpu_offload::{gen_call_handling, gen_define_handling};
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
-    AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, OffloadWithoutEnable,
+    OffloadWithoutFatLTO,
 };
 use crate::llvm::{self, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
@@ -644,41 +645,21 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         args: &[OperandRef<'tcx, Self::Value>],
         is_cleanup: bool,
     ) -> Self::Value {
-        let tcx = self.tcx();
-
-        // FIXME remove usage of fn_abi
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-        assert!(!fn_abi.ret.is_indirect());
-        let fn_ty = fn_abi.llvm_type(self);
-
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
-            let sym = tcx.symbol_name(instance).name;
+            let sym = self.tcx.symbol_name(instance).name;
 
-            // FIXME use get_intrinsic
             let llfn = if let Some(llfn) = self.get_declared_value(sym) {
                 llfn
             } else {
-                // Function addresses in Rust are never significant, allowing functions to
-                // be merged.
-                let llfn = declare_raw_fn(
-                    self,
-                    sym,
-                    fn_abi.llvm_cconv(self),
-                    llvm::UnnamedAddr::Global,
-                    llvm::Visibility::Default,
-                    fn_ty,
-                );
-                fn_abi.apply_attrs_llfn(self, llfn, Some(instance));
-
-                llfn
+                intrinsic_fn(self, sym, instance)
             };
 
             self.intrinsic_instances.borrow_mut().insert(instance, llfn);
-
             llfn
         };
+        let fn_ty = self.get_type_of_global(fn_ptr);
 
         let mut llargs = vec![];
 
@@ -776,6 +757,63 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
     }
+}
+
+fn intrinsic_fn<'ll, 'tcx>(
+    bx: &Builder<'_, 'll, 'tcx>,
+    name: &str,
+    instance: ty::Instance<'tcx>,
+) -> &'ll Value {
+    let tcx = bx.tcx;
+
+    let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
+    assert!(!fn_abi.ret.is_indirect());
+
+    let intrinsic = llvm::Intrinsic::lookup(name.as_bytes());
+
+    if let Some(intrinsic) = intrinsic
+        && !intrinsic.is_overloaded()
+    {
+        // FIXME: also do this for overloaded intrinsics
+        let llfn = intrinsic.get_declaration(bx.llmod, &[]);
+        let fn_ty = bx.get_type_of_global(llfn);
+
+        let rust_return_ty = fn_abi.llvm_return_type(bx);
+        let rust_argument_tys = fn_abi.llvm_argument_types(bx);
+
+        let llvm_return_ty = bx.get_return_type(fn_ty);
+        let llvm_argument_tys = bx.func_params_types(fn_ty);
+        let llvm_is_variadic = bx.func_is_variadic(fn_ty);
+
+        let is_correct_signature = fn_abi.c_variadic == llvm_is_variadic
+            && rust_argument_tys.len() == llvm_argument_tys.len()
+            && iter::once((rust_return_ty, llvm_return_ty))
+                .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
+                .all(|(rust_ty, llvm_ty)| rust_ty == llvm_ty);
+
+        if !is_correct_signature {
+            tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
+                name,
+                llvm_fn_ty: &format!("{fn_ty:?}"),
+                rust_fn_ty: &format!("{:?}", fn_abi.llvm_type(bx)),
+                span: tcx.def_span(instance.def_id()),
+            });
+        }
+
+        return llfn;
+    }
+
+    // Function addresses in Rust are never significant, allowing functions to be merged.
+    let llfn = declare_raw_fn(
+        bx,
+        name,
+        fn_abi.llvm_cconv(bx),
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::Default,
+        fn_abi.llvm_type(bx),
+    );
+
+    llfn
 }
 
 fn catch_unwind_intrinsic<'ll, 'tcx>(
