@@ -653,6 +653,8 @@ impl Builder<'_> {
                 // If an explicit setting is given, use that
                 setting
             }
+            // Per compiler-team#938, v0 mangling is used on nightly
+            None if self.config.channel == "dev" || self.config.channel == "nightly" => true,
             None => {
                 if mode == Mode::Std {
                     // The standard library defaults to the legacy scheme
