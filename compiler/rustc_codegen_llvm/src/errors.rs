@@ -218,3 +218,12 @@ pub(crate) struct IntrinsicSignatureMismatch<'a> {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("intrinsic `{$name}` cannot be used with target arch `{$target_arch}`")]
+pub(crate) struct IntrinsicWrongArch<'a> {
+    pub name: &'a str,
+    pub target_arch: &'a str,
+    #[primary_span]
+    pub span: Span,
+}
