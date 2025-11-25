@@ -27,6 +27,11 @@ extern crate rustc_span;
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// https://github.com/rust-lang/cc-rs/issues/1613.
 #[cfg(feature = "jemalloc")]
+// Make sure `--all-features` works: only Linux and macOS actually use jemalloc, and not on arm32.
+#[cfg(all(
+    any(target_os = "linux", target_os = "macos"),
+    any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"),
+))]
 extern crate tikv_jemalloc_sys as _;
 
 mod log;
