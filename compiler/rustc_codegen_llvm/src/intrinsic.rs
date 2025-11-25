@@ -689,7 +689,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
-        is_cleanup: bool,
+        _is_cleanup: bool,
     ) -> Self::Value {
         let tcx = self.tcx();
 
@@ -740,7 +740,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         for arg in args {
             match arg.val {
                 OperandValue::ZeroSized => {}
-                OperandValue::Immediate(_) => llargs.push(arg.immediate()),
+                OperandValue::Immediate(a) => llargs.push(a),
                 OperandValue::Pair(a, b) => {
                     llargs.push(a);
                     llargs.push(b);
@@ -766,24 +766,38 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
 
         debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
-        let args = self.check_call("call", fn_ty, fn_ptr, &llargs);
+
+        for (dest_ty, arg) in iter::zip(self.func_params_types(fn_ty), &mut llargs) {
+            let src_ty = self.val_ty(arg);
+            assert!(
+                equate_ty(self, src_ty, dest_ty),
+                "Cannot match `{dest_ty:?}` (expected) with {src_ty:?} (found) in `{fn_ptr:?}"
+            );
+
+            *arg = autocast(self, fn_ptr, arg, src_ty, dest_ty, true);
+        }
+
         let llret = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder,
                 fn_ty,
                 fn_ptr,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
+                llargs.as_ptr(),
+                llargs.len() as c_uint,
                 ptr::dangling(),
                 0,
                 c"".as_ptr(),
             )
         };
-        if is_cleanup {
-            self.apply_attrs_to_cleanup_callsite(llret);
-        }
 
-        llret
+        let src_ty = self.val_ty(llret);
+        let dest_ty = llreturn_ty;
+        assert!(
+            equate_ty(self, dest_ty, src_ty),
+            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+        );
+
+        autocast(self, fn_ptr, llret, src_ty, dest_ty, false)
     }
 
     fn abort(&mut self) {
@@ -854,6 +868,62 @@ fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
     })
 }
 
+fn equate_ty<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Type) -> bool {
+    if rust_ty == llvm_ty {
+        return true;
+    }
+
+    // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+    // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+    // as, well, packed structs, so they won't match with those either)
+    if cx.type_kind(llvm_ty) == TypeKind::Struct && cx.type_kind(rust_ty) == TypeKind::Struct {
+        let rust_element_tys = cx.struct_element_types(rust_ty);
+        let llvm_element_tys = cx.struct_element_types(llvm_ty);
+
+        if rust_element_tys.len() != llvm_element_tys.len() {
+            return false;
+        }
+
+        iter::zip(rust_element_tys, llvm_element_tys).all(|(rust_element_ty, llvm_element_ty)| {
+            equate_ty(cx, rust_element_ty, llvm_element_ty)
+        })
+    } else {
+        false
+    }
+}
+
+fn autocast<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
+    llfn: &'ll Value,
+    val: &'ll Value,
+    src_ty: &'ll Type,
+    dest_ty: &'ll Type,
+    is_argument: bool,
+) -> &'ll Value {
+    let (rust_ty, llvm_ty) = if is_argument { (src_ty, dest_ty) } else { (dest_ty, src_ty) };
+
+    if rust_ty == llvm_ty {
+        return val;
+    }
+
+    match bx.type_kind(llvm_ty) {
+        TypeKind::Struct => {
+            let mut ret = bx.const_poison(dest_ty);
+            for (idx, (src_element_ty, dest_element_ty)) in
+                iter::zip(bx.struct_element_types(src_ty), bx.struct_element_types(dest_ty))
+                    .enumerate()
+            {
+                let elt = bx.extract_value(val, idx as u64);
+                let casted_elt =
+                    autocast(bx, llfn, elt, src_element_ty, dest_element_ty, is_argument);
+                ret = bx.insert_value(ret, casted_elt, idx as u64);
+            }
+            ret
+        }
+        _ => unreachable!(),
+    }
+}
+
 fn intrinsic_fn<'ll, 'tcx>(
     bx: &Builder<'_, 'll, 'tcx>,
     name: &str,
@@ -899,7 +969,7 @@ fn intrinsic_fn<'ll, 'tcx>(
             && rust_argument_tys.len() == llvm_argument_tys.len()
             && iter::once((rust_return_ty, llvm_return_ty))
                 .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
-                .all(|(rust_ty, llvm_ty)| rust_ty == llvm_ty);
+                .all(|(rust_ty, llvm_ty)| equate_ty(bx, rust_ty, llvm_ty));
 
         if !is_correct_signature {
             tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
