@@ -802,22 +802,31 @@ fn equate_ty<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Typ
         return true;
     }
 
-    // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
-    // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
-    // as, well, packed structs, so they won't match with those either)
-    if cx.type_kind(llvm_ty) == TypeKind::Struct && cx.type_kind(rust_ty) == TypeKind::Struct {
-        let rust_element_tys = cx.struct_element_types(rust_ty);
-        let llvm_element_tys = cx.struct_element_types(llvm_ty);
+    match cx.type_kind(llvm_ty) {
+        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+        // as, well, packed structs, so they won't match with those either)
+        TypeKind::Struct if cx.type_kind(rust_ty) == TypeKind::Struct => {
+            let rust_element_tys = cx.struct_element_types(rust_ty);
+            let llvm_element_tys = cx.struct_element_types(llvm_ty);
 
-        if rust_element_tys.len() != llvm_element_tys.len() {
-            return false;
+            if rust_element_tys.len() != llvm_element_tys.len() {
+                return false;
+            }
+
+            iter::zip(rust_element_tys, llvm_element_tys).all(
+                |(rust_element_ty, llvm_element_ty)| {
+                    equate_ty(cx, rust_element_ty, llvm_element_ty)
+                },
+            )
         }
+        TypeKind::Vector if cx.element_type(llvm_ty) == cx.type_i1() => {
+            let element_count = cx.vector_length(llvm_ty) as u64;
+            let int_width = element_count.next_power_of_two().max(8);
 
-        iter::zip(rust_element_tys, llvm_element_tys).all(|(rust_element_ty, llvm_element_ty)| {
-            equate_ty(cx, rust_element_ty, llvm_element_ty)
-        })
-    } else {
-        false
+            rust_ty == cx.type_ix(int_width)
+        }
+        _ => false,
     }
 }
 
@@ -848,6 +857,38 @@ fn autocast<'ll>(
                 ret = bx.insert_value(ret, casted_elt, idx as u64);
             }
             ret
+        }
+        TypeKind::Vector if bx.element_type(llvm_ty) == bx.type_i1() => {
+            let vector_length = bx.vector_length(llvm_ty) as u64;
+            let int_width = vector_length.next_power_of_two().max(8);
+
+            if is_argument {
+                let bitcasted = bx.bitcast(val, bx.type_vector(bx.type_i1(), int_width));
+                if vector_length == int_width {
+                    bitcasted
+                } else {
+                    let shuffle_mask: Vec<_> =
+                        (0..vector_length).map(|i| bx.const_i32(i as i32)).collect();
+                    bx.shuffle_vector(bitcasted, bitcasted, bx.const_vector(&shuffle_mask))
+                }
+            } else {
+                let val = if vector_length != int_width {
+                    let shuffle_indices = match vector_length {
+                        0 => unreachable!("zero length vectors are not allowed"),
+                        1 => vec![0, 1, 1, 1, 1, 1, 1, 1],
+                        2 => vec![0, 1, 2, 3, 2, 3, 2, 3],
+                        3 => vec![0, 1, 2, 3, 4, 5, 3, 4],
+                        4.. => (0..int_width as i32).collect(),
+                    };
+                    let shuffle_mask =
+                        shuffle_indices.into_iter().map(|i| bx.const_i32(i)).collect::<Vec<_>>();
+                    bx.shuffle_vector(val, bx.const_null(src_ty), bx.const_vector(&shuffle_mask))
+                } else {
+                    val
+                };
+
+                bx.bitcast(val, dest_ty)
+            }
         }
         _ => unreachable!(),
     }
