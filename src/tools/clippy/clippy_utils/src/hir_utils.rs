@@ -1309,9 +1309,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
-            TyKind::Typeof(anon_const) => {
-                self.hash_body(anon_const.body);
-            },
             TyKind::UnsafeBinder(binder) => {
                 self.hash_ty(binder.inner_ty);
             },
