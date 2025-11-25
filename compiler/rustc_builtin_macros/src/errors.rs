@@ -150,7 +150,6 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
-/// The `#[global_allocator]` attribute cannot be used with `#[thread_local]`.
 #[derive(Diagnostic)]
 #[diag(builtin_macros_global_allocator_thread_local_conflict)] 
 pub(crate) struct GlobalAllocatorThreadLocalConflict { 

@@ -307,7 +307,6 @@ builtin_macros_unexpected_lit = expected path to a trait, found literal
 
 builtin_macros_unnameable_test_items = cannot test inner items
 
-# New: Disallow simultaneous use of #[global_allocator] and #[thread_local]
 builtin_macros_global_allocator_thread_local_conflict =
     `#[global_allocator]` cannot be used with `#[thread_local]` on the same static
     .note = The global allocator must be a single, program-wide instance.
