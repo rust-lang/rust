@@ -1,4 +1,4 @@
-use crate::spec::{Arch, Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let base = opts();
@@ -26,5 +26,6 @@ fn opts() -> TargetOptions {
     options.linker_flavor = LinkerFlavor::Gnu(Cc::No, Lld::Yes);
     options.linker = Some("rust-lld".into());
     options.panic_strategy = PanicStrategy::Abort;
+    options.relocation_model = RelocModel::Static;
     options
 }
