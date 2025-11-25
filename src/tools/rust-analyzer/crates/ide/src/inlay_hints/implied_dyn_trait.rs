@@ -14,6 +14,10 @@ pub(super) fn hints(
     config: &InlayHintsConfig<'_>,
     path: Either<ast::PathType, ast::DynTraitType>,
 ) -> Option<()> {
+    if !config.implied_dyn_trait_hints {
+        return None;
+    }
+
     let parent = path.syntax().parent()?;
     let range = match path {
         Either::Left(path) => {
@@ -76,7 +80,14 @@ mod tests {
 
     #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
-        check_with_config(InlayHintsConfig { sized_bound: true, ..DISABLED_CONFIG }, ra_fixture);
+        check_with_config(
+            InlayHintsConfig {
+                sized_bound: true,
+                implied_dyn_trait_hints: true,
+                ..DISABLED_CONFIG
+            },
+            ra_fixture,
+        );
     }
 
     #[test]
@@ -125,7 +136,7 @@ fn foo(
     #[test]
     fn edit() {
         check_edit(
-            DISABLED_CONFIG,
+            InlayHintsConfig { implied_dyn_trait_hints: true, ..DISABLED_CONFIG },
             r#"
 trait T {}
 fn foo(

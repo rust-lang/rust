@@ -11,7 +11,7 @@ use stdx::never;
 use crate::{
     InferenceDiagnostic,
     db::HirDatabase,
-    infer::{AllowTwoPhase, InferenceContext, coerce::CoerceNever},
+    infer::{AllowTwoPhase, InferenceContext, expr::ExprIsRead},
     next_solver::{BoundExistentialPredicates, DbInterner, ParamTy, Ty, TyKind},
 };
 
@@ -110,8 +110,8 @@ impl<'db> CastCheck<'db> {
         &mut self,
         ctx: &mut InferenceContext<'_, 'db>,
     ) -> Result<(), InferenceDiagnostic<'db>> {
-        self.expr_ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(self.expr_ty);
-        self.cast_ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(self.cast_ty);
+        self.expr_ty = ctx.table.try_structurally_resolve_type(self.expr_ty);
+        self.cast_ty = ctx.table.try_structurally_resolve_type(self.cast_ty);
 
         // This should always come first so that we apply the coercion, which impacts infer vars.
         if ctx
@@ -120,7 +120,7 @@ impl<'db> CastCheck<'db> {
                 self.expr_ty,
                 self.cast_ty,
                 AllowTwoPhase::No,
-                CoerceNever::Yes,
+                ExprIsRead::Yes,
             )
             .is_ok()
         {
@@ -159,7 +159,7 @@ impl<'db> CastCheck<'db> {
                     TyKind::FnDef(..) => {
                         let sig =
                             self.expr_ty.callable_sig(ctx.interner()).expect("FnDef had no sig");
-                        let sig = ctx.table.eagerly_normalize_and_resolve_shallow_in(sig);
+                        let sig = ctx.table.normalize_associated_types_in(sig);
                         let fn_ptr = Ty::new_fn_ptr(ctx.interner(), sig);
                         if ctx
                             .coerce(
@@ -167,7 +167,7 @@ impl<'db> CastCheck<'db> {
                                 self.expr_ty,
                                 fn_ptr,
                                 AllowTwoPhase::No,
-                                CoerceNever::Yes,
+                                ExprIsRead::Yes,
                             )
                             .is_ok()
                         {
@@ -191,7 +191,7 @@ impl<'db> CastCheck<'db> {
                             },
                             // array-ptr-cast
                             CastTy::Ptr(t, m) => {
-                                let t = ctx.table.eagerly_normalize_and_resolve_shallow_in(t);
+                                let t = ctx.table.try_structurally_resolve_type(t);
                                 if !ctx.table.is_sized(t) {
                                     return Err(CastError::IllegalCast);
                                 }
@@ -248,7 +248,7 @@ impl<'db> CastCheck<'db> {
                     self.expr_ty,
                     array_ptr_type,
                     AllowTwoPhase::No,
-                    CoerceNever::Yes,
+                    ExprIsRead::Yes,
                 )
                 .is_ok()
             {
@@ -263,7 +263,7 @@ impl<'db> CastCheck<'db> {
             // This is a less strict condition than rustc's `demand_eqtype`,
             // but false negative is better than false positive
             if ctx
-                .coerce(self.source_expr.into(), ety, t_cast, AllowTwoPhase::No, CoerceNever::Yes)
+                .coerce(self.source_expr.into(), ety, t_cast, AllowTwoPhase::No, ExprIsRead::Yes)
                 .is_ok()
             {
                 return Ok(());
@@ -375,7 +375,7 @@ fn pointer_kind<'db>(
     ty: Ty<'db>,
     ctx: &mut InferenceContext<'_, 'db>,
 ) -> Result<Option<PointerKind<'db>>, ()> {
-    let ty = ctx.table.eagerly_normalize_and_resolve_shallow_in(ty);
+    let ty = ctx.table.try_structurally_resolve_type(ty);
 
     if ctx.table.is_sized(ty) {
         return Ok(Some(PointerKind::Thin));

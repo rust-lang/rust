@@ -6,7 +6,7 @@ use rustc_ast_ir::Mutability;
 
 use crate::{
     Adjust, Adjustment, OverloadedDeref,
-    autoderef::{Autoderef, AutoderefKind},
+    autoderef::{Autoderef, AutoderefCtx, AutoderefKind, GeneralAutoderef},
     infer::unify::InferenceTable,
     next_solver::{
         Ty,
@@ -15,18 +15,16 @@ use crate::{
 };
 
 impl<'db> InferenceTable<'db> {
-    pub(crate) fn autoderef(&mut self, base_ty: Ty<'db>) -> Autoderef<'_, 'db> {
-        Autoderef::new(self, base_ty)
+    pub(crate) fn autoderef(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db, usize> {
+        Autoderef::new(&self.infer_ctxt, &self.trait_env, base_ty)
+    }
+
+    pub(crate) fn autoderef_with_tracking(&self, base_ty: Ty<'db>) -> Autoderef<'_, 'db> {
+        Autoderef::new_with_tracking(&self.infer_ctxt, &self.trait_env, base_ty)
     }
 }
 
-impl<'db> Autoderef<'_, 'db> {
-    /// Returns the adjustment steps.
-    pub(crate) fn adjust_steps(mut self) -> Vec<Adjustment<'db>> {
-        let infer_ok = self.adjust_steps_as_infer_ok();
-        self.table.register_infer_ok(infer_ok)
-    }
-
+impl<'db, Ctx: AutoderefCtx<'db>> GeneralAutoderef<'db, Ctx> {
     pub(crate) fn adjust_steps_as_infer_ok(&mut self) -> InferOk<'db, Vec<Adjustment<'db>>> {
         let steps = self.steps();
         if steps.is_empty() {

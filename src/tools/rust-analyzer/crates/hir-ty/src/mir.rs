@@ -12,7 +12,7 @@ use hir_def::{
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{GenericArgs as _, IntoKind, SliceLike, Ty as _};
 use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
@@ -22,7 +22,6 @@ use crate::{
     db::{HirDatabase, InternedClosureId},
     display::{DisplayTarget, HirDisplay},
     infer::PointerCast,
-    lang_items::is_box,
     next_solver::{
         Const, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
@@ -185,7 +184,7 @@ impl<V, T> ProjectionElem<V, T> {
         match self {
             ProjectionElem::Deref => match base.kind() {
                 TyKind::RawPtr(inner, _) | TyKind::Ref(_, inner, _) => inner,
-                TyKind::Adt(adt_def, subst) if is_box(db, adt_def.def_id().0) => subst.type_at(0),
+                TyKind::Adt(adt_def, subst) if adt_def.is_box() => subst.type_at(0),
                 _ => {
                     never!(
                         "Overloaded deref on type {} is not a projection",

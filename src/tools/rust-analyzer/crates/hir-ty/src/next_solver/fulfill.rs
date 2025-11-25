@@ -2,7 +2,7 @@
 
 mod errors;
 
-use std::{mem, ops::ControlFlow};
+use std::ops::ControlFlow;
 
 use rustc_hash::FxHashSet;
 use rustc_next_trait_solver::{
@@ -77,14 +77,12 @@ impl<'db> ObligationStorage<'db> {
         obligations
     }
 
-    fn drain_pending(
-        &mut self,
-        cond: impl Fn(&PredicateObligation<'db>) -> bool,
-    ) -> PendingObligations<'db> {
-        let (not_stalled, pending) =
-            mem::take(&mut self.pending).into_iter().partition(|(o, _)| cond(o));
-        self.pending = pending;
-        not_stalled
+    fn drain_pending<'this, 'cond>(
+        &'this mut self,
+        cond: impl 'cond + Fn(&PredicateObligation<'db>) -> bool,
+    ) -> impl Iterator<Item = (PredicateObligation<'db>, Option<GoalStalledOn<DbInterner<'db>>>)>
+    {
+        self.pending.extract_if(.., move |(o, _)| cond(o))
     }
 
     fn on_fulfillment_overflow(&mut self, infcx: &InferCtxt<'db>) {
@@ -165,9 +163,11 @@ impl<'db> FulfillmentCtxt<'db> {
         // to not put the obligations queue in `InferenceTable`'s snapshots.
         // assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
+        let mut obligations = Vec::new();
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
+            obligations.extend(self.obligations.drain_pending(|_| true));
+            for (mut obligation, stalled_on) in obligations.drain(..) {
                 if obligation.recursion_depth >= infcx.interner.recursion_limit() {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
@@ -269,7 +269,6 @@ impl<'db> FulfillmentCtxt<'db> {
                         .is_break()
                 })
             })
-            .into_iter()
             .map(|(o, _)| o)
             .collect()
     }

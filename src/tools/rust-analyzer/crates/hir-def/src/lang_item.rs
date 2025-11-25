@@ -5,7 +5,6 @@
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
-use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
@@ -223,16 +222,8 @@ pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangIte
     db.attrs(item).lang_item()
 }
 
-pub(crate) fn notable_traits_in_deps(db: &dyn DefDatabase, krate: Crate) -> Arc<[Arc<[TraitId]>]> {
-    let _p = tracing::info_span!("notable_traits_in_deps", ?krate).entered();
-    Arc::from_iter(
-        db.transitive_deps(krate).into_iter().filter_map(|krate| db.crate_notable_traits(krate)),
-    )
-}
-
-pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Arc<[TraitId]>> {
-    let _p = tracing::info_span!("crate_notable_traits", ?krate).entered();
-
+#[salsa::tracked(returns(as_deref))]
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
     let mut traits = Vec::new();
 
     let crate_def_map = crate_def_map(db, krate);

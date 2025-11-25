@@ -31,7 +31,6 @@ use crate::{
             BoundRegionConversionTime, InferOk, InferResult,
             traits::{ObligationCause, PredicateObligations},
         },
-        util::explicit_item_bounds,
     },
     traits::FnTrait,
 };
@@ -255,8 +254,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     closure_kind,
-                    explicit_item_bounds(self.interner(), def_id)
-                        .iter_instantiated(self.interner(), args)
+                    def_id
+                        .expect_opaque_ty()
+                        .predicates(self.db)
+                        .iter_instantiated_copied(self.interner(), args.as_slice())
                         .map(|clause| clause.as_predicate()),
                 ),
             TyKind::Dynamic(object_type, ..) => {

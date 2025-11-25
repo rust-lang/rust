@@ -9,7 +9,7 @@ use std::{
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
-use syntax::ast::HasName;
+use syntax::ast::{HasName, RangeOp};
 
 use crate::{
     AdtId, DefWithBodyId, GenericDefId, TypeParamId, VariantId,
@@ -510,7 +510,22 @@ impl Printer<'_> {
     }
 
     fn print_expr(&mut self, expr: ExprId) {
+        self.print_expr_in(None, expr);
+    }
+
+    fn print_expr_in(&mut self, prec: Option<ast::prec::ExprPrecedence>, expr: ExprId) {
         let expr = &self.store[expr];
+        let needs_parens = match (prec, expr.precedence()) {
+            (Some(ast::prec::ExprPrecedence::LOr), ast::prec::ExprPrecedence::LOr) => false,
+            (Some(ast::prec::ExprPrecedence::LAnd), ast::prec::ExprPrecedence::LAnd) => false,
+            (Some(parent), prec) => prec.needs_parentheses_in(parent),
+            (None, _) => false,
+        };
+        let prec = Some(expr.precedence());
+
+        if needs_parens {
+            w!(self, "(");
+        }
 
         match expr {
             Expr::Missing => w!(self, "�"),
@@ -544,7 +559,7 @@ impl Printer<'_> {
                 w!(self, "let ");
                 self.print_pat(*pat);
                 w!(self, " = ");
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
             Expr::Loop { body, label } => {
                 if let Some(lbl) = label {
@@ -554,7 +569,7 @@ impl Printer<'_> {
                 self.print_expr(*body);
             }
             Expr::Call { callee, args } => {
-                self.print_expr(*callee);
+                self.print_expr_in(prec, *callee);
                 w!(self, "(");
                 if !args.is_empty() {
                     self.indented(|p| {
@@ -567,7 +582,7 @@ impl Printer<'_> {
                 w!(self, ")");
             }
             Expr::MethodCall { receiver, method_name, args, generic_args } => {
-                self.print_expr(*receiver);
+                self.print_expr_in(prec, *receiver);
                 w!(self, ".{}", method_name.display(self.db, self.edition));
                 if let Some(args) = generic_args {
                     w!(self, "::<");
@@ -616,26 +631,26 @@ impl Printer<'_> {
                 }
                 if let Some(expr) = expr {
                     self.whitespace();
-                    self.print_expr(*expr);
+                    self.print_expr_in(prec, *expr);
                 }
             }
             Expr::Return { expr } => {
                 w!(self, "return");
                 if let Some(expr) = expr {
                     self.whitespace();
-                    self.print_expr(*expr);
+                    self.print_expr_in(prec, *expr);
                 }
             }
             Expr::Become { expr } => {
                 w!(self, "become");
                 self.whitespace();
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
             Expr::Yield { expr } => {
                 w!(self, "yield");
                 if let Some(expr) = expr {
                     self.whitespace();
-                    self.print_expr(*expr);
+                    self.print_expr_in(prec, *expr);
                 }
             }
             Expr::Yeet { expr } => {
@@ -644,7 +659,7 @@ impl Printer<'_> {
                 w!(self, "yeet");
                 if let Some(expr) = expr {
                     self.whitespace();
-                    self.print_expr(*expr);
+                    self.print_expr_in(prec, *expr);
                 }
             }
             Expr::RecordLit { path, fields, spread } => {
@@ -670,15 +685,15 @@ impl Printer<'_> {
                 w!(self, "}}");
             }
             Expr::Field { expr, name } => {
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
                 w!(self, ".{}", name.display(self.db, self.edition));
             }
             Expr::Await { expr } => {
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
                 w!(self, ".await");
             }
             Expr::Cast { expr, type_ref } => {
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
                 w!(self, " as ");
                 self.print_type_ref(*type_ref);
             }
@@ -690,11 +705,11 @@ impl Printer<'_> {
                 if mutability.is_mut() {
                     w!(self, "mut ");
                 }
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
             Expr::Box { expr } => {
                 w!(self, "box ");
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
             Expr::UnaryOp { expr, op } => {
                 let op = match op {
@@ -703,43 +718,32 @@ impl Printer<'_> {
                     ast::UnaryOp::Neg => "-",
                 };
                 w!(self, "{}", op);
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
             Expr::BinaryOp { lhs, rhs, op } => {
-                let (bra, ket) = match op {
-                    None | Some(ast::BinaryOp::Assignment { .. }) => ("", ""),
-                    _ => ("(", ")"),
-                };
-                w!(self, "{}", bra);
-                self.print_expr(*lhs);
-                w!(self, "{} ", ket);
+                self.print_expr_in(prec, *lhs);
+                self.whitespace();
                 match op {
                     Some(op) => w!(self, "{}", op),
                     None => w!(self, "�"), // :)
                 }
-                w!(self, " {}", bra);
-                self.print_expr(*rhs);
-                w!(self, "{}", ket);
+                self.whitespace();
+                self.print_expr_in(prec, *rhs);
             }
             Expr::Range { lhs, rhs, range_type } => {
                 if let Some(lhs) = lhs {
-                    w!(self, "(");
-                    self.print_expr(*lhs);
-                    w!(self, ") ");
+                    self.print_expr_in(prec, *lhs);
                 }
-                let range = match range_type {
-                    ast::RangeOp::Exclusive => "..",
-                    ast::RangeOp::Inclusive => "..=",
+                match range_type {
+                    RangeOp::Exclusive => w!(self, ".."),
+                    RangeOp::Inclusive => w!(self, "..="),
                 };
-                w!(self, "{}", range);
                 if let Some(rhs) = rhs {
-                    w!(self, "(");
-                    self.print_expr(*rhs);
-                    w!(self, ") ");
+                    self.print_expr_in(prec, *rhs);
                 }
             }
             Expr::Index { base, index } => {
-                self.print_expr(*base);
+                self.print_expr_in(prec, *base);
                 w!(self, "[");
                 self.print_expr(*index);
                 w!(self, "]");
@@ -826,8 +830,12 @@ impl Printer<'_> {
             &Expr::Assignment { target, value } => {
                 self.print_pat(target);
                 w!(self, " = ");
-                self.print_expr(value);
+                self.print_expr_in(prec, value);
             }
+        }
+
+        if needs_parens {
+            w!(self, ")");
         }
     }
 
@@ -857,6 +865,7 @@ impl Printer<'_> {
     }
 
     fn print_pat(&mut self, pat: PatId) {
+        let prec = Some(ast::prec::ExprPrecedence::Shift);
         let pat = &self.store[pat];
 
         match pat {
@@ -928,13 +937,16 @@ impl Printer<'_> {
                 });
                 w!(self, "}}");
             }
-            Pat::Range { start, end } => {
+            Pat::Range { start, end, range_type } => {
                 if let Some(start) = start {
-                    self.print_expr(*start);
+                    self.print_expr_in(prec, *start);
                 }
-                w!(self, "..=");
+                match range_type {
+                    RangeOp::Inclusive => w!(self, "..="),
+                    RangeOp::Exclusive => w!(self, ".."),
+                }
                 if let Some(end) = end {
-                    self.print_expr(*end);
+                    self.print_expr_in(prec, *end);
                 }
             }
             Pat::Slice { prefix, slice, suffix } => {
@@ -954,7 +966,7 @@ impl Printer<'_> {
                 w!(self, "]");
             }
             Pat::Path(path) => self.print_path(path),
-            Pat::Lit(expr) => self.print_expr(*expr),
+            Pat::Lit(expr) => self.print_expr_in(prec, *expr),
             Pat::Bind { id, subpat } => {
                 self.print_binding(*id);
                 if let Some(pat) = subpat {
@@ -996,7 +1008,7 @@ impl Printer<'_> {
                 self.print_expr(*c);
             }
             Pat::Expr(expr) => {
-                self.print_expr(*expr);
+                self.print_expr_in(prec, *expr);
             }
         }
     }
@@ -1181,7 +1193,9 @@ impl Printer<'_> {
     pub(crate) fn print_generic_arg(&mut self, arg: &GenericArg) {
         match arg {
             GenericArg::Type(ty) => self.print_type_ref(*ty),
-            GenericArg::Const(ConstRef { expr }) => self.print_expr(*expr),
+            GenericArg::Const(ConstRef { expr }) => {
+                self.print_expr_in(Some(ast::prec::ExprPrecedence::Unambiguous), *expr)
+            }
             GenericArg::Lifetime(lt) => self.print_lifetime_ref(*lt),
         }
     }

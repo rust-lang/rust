@@ -67,9 +67,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             }
             .map(move |pat| (pat, has_guard))
         })
-        .map(|(pat, has_guard)| {
+        .filter_map(|(pat, has_guard)| {
             has_catch_all_arm |= !has_guard && matches!(pat, Pat::WildcardPat(_));
-            pat
+            (!has_guard).then_some(pat)
         })
         // Exclude top level wildcards so that they are expanded by this assist, retains status quo in #8129.
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
@@ -998,7 +998,8 @@ fn main() {
         A::Ds(_value) => { let x = 1; }
         A::Es(B::Xs) => (),
         A::As => ${1:todo!()},
-        A::Cs => ${2:todo!()},$0
+        A::Bs => ${2:todo!()},
+        A::Cs => ${3:todo!()},$0
     }
 }
 "#,

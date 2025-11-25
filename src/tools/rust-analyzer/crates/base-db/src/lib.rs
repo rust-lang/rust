@@ -26,7 +26,7 @@ pub use crate::{
 };
 use dashmap::{DashMap, mapref::entry::Entry};
 pub use query_group::{self};
-use rustc_hash::{FxHashSet, FxHasher};
+use rustc_hash::FxHasher;
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use span::Edition;
@@ -256,38 +256,6 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
     #[salsa::input]
     fn all_crates(&self) -> Arc<Box<[Crate]>>;
-
-    /// Returns an iterator over all transitive dependencies of the given crate,
-    /// including the crate itself.
-    ///
-    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    #[salsa::transparent]
-    fn transitive_deps(&self, crate_id: Crate) -> FxHashSet<Crate>;
-
-    /// Returns all transitive reverse dependencies of the given crate,
-    /// including the crate itself.
-    ///
-    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
-    #[salsa::invoke(input::transitive_rev_deps)]
-    #[salsa::transparent]
-    fn transitive_rev_deps(&self, of: Crate) -> FxHashSet<Crate>;
-}
-
-pub fn transitive_deps(db: &dyn SourceDatabase, crate_id: Crate) -> FxHashSet<Crate> {
-    // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
-    // and removing that is a bit difficult.
-    let mut worklist = vec![crate_id];
-    let mut deps = FxHashSet::default();
-
-    while let Some(krate) = worklist.pop() {
-        if !deps.insert(krate) {
-            continue;
-        }
-
-        worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
-    }
-
-    deps
 }
 
 #[salsa_macros::db]

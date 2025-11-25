@@ -174,10 +174,17 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
 fn install_proc_macro_server(sh: &Shell, opts: ProcMacroServerOpt) -> anyhow::Result<()> {
     let profile = if opts.dev_rel { "dev-rel" } else { "release" };
 
-    cmd!(
+    let mut cmd = cmd!(
         sh,
-        "cargo +nightly install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
-    ).run()?;
+        "cargo install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
+    );
+    if std::env::var_os("RUSTUP_TOOLCHAIN").is_none() {
+        cmd = cmd.env("RUSTUP_TOOLCHAIN", "nightly");
+    } else {
+        cmd = cmd.env("RUSTC_BOOTSTRAP", "1");
+    }
+
+    cmd.run()?;
 
     Ok(())
 }

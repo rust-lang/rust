@@ -11,7 +11,7 @@ use std::{
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
     Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
-    Name,
+    Name, crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -200,7 +200,7 @@ impl flags::AnalysisStats {
         let mut num_crates = 0;
         let mut visited_modules = FxHashSet::default();
         let mut visit_queue = Vec::new();
-        for krate in krates {
+        for &krate in &krates {
             let module = krate.root_module();
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
@@ -313,6 +313,10 @@ impl flags::AnalysisStats {
         }
 
         hir::attach_db(db, || {
+            if !self.skip_lang_items {
+                self.run_lang_items(db, &krates, verbosity);
+            }
+
             if !self.skip_lowering {
                 self.run_body_lowering(db, &vfs, &bodies, verbosity);
             }
@@ -1109,6 +1113,26 @@ impl flags::AnalysisStats {
         report_metric("body lowering time", body_lowering_time.time.as_millis() as u64, "ms");
     }
 
+    fn run_lang_items(&self, db: &RootDatabase, crates: &[Crate], verbosity: Verbosity) {
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(crates.len()),
+        };
+
+        let mut sw = self.stop_watch();
+        bar.tick();
+        for &krate in crates {
+            crate_lang_items(db, krate.into());
+            bar.inc(1);
+        }
+
+        bar.finish_and_clear();
+        let time = sw.elapsed();
+        eprintln!("{:<20} {}", "Crate lang items:", time);
+        report_metric("crate lang items time", time.time.as_millis() as u64, "ms");
+    }
+
     /// Invariant: `file_ids` must be sorted and deduped before passing into here
     fn run_ide_things(
         &self,
@@ -1186,6 +1210,7 @@ impl flags::AnalysisStats {
                     closure_capture_hints: true,
                     binding_mode_hints: true,
                     implicit_drop_hints: true,
+                    implied_dyn_trait_hints: true,
                     lifetime_elision_hints: ide::LifetimeElisionHints::Always,
                     param_names_for_lifetime_elision_hints: true,
                     hide_named_constructor_hints: false,

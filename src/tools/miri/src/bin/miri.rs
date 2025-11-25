@@ -21,9 +21,18 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 /// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this `use` statement.
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-use tikv_jemalloc_sys as _;
+/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
+///
+/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
+/// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
+/// https://github.com/rust-lang/cc-rs/issues/1613.
+#[cfg(feature = "jemalloc")]
+// Make sure `--all-features` works: only Linux and macOS actually use jemalloc, and not on arm32.
+#[cfg(all(
+    any(target_os = "linux", target_os = "macos"),
+    any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"),
+))]
+extern crate tikv_jemalloc_sys as _;
 
 mod log;
 

@@ -89,13 +89,12 @@ pub use infer::{
     could_coerce, could_unify, could_unify_deeply,
 };
 pub use lower::{
-    LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
+    GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
     associated_type_shorthand_candidates, diagnostics::*,
 };
-pub use method_resolution::check_orphan_rules;
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
-pub use traits::TraitEnvironment;
+pub use traits::{TraitEnvironment, check_orphan_rules};
 pub use utils::{
     TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
     is_fn_unsafe_to_call, target_feature_is_safe_in_target,

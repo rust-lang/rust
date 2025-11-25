@@ -2346,6 +2346,16 @@
             {
                 "title": "Inlay Hints",
                 "properties": {
+                    "rust-analyzer.inlayHints.impliedDynTraitHints.enable": {
+                        "markdownDescription": "Show inlay hints for the implied `dyn` keyword in trait object types.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
                     "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                         "markdownDescription": "Show inlay type hints for elided lifetimes in function signatures.",
                         "default": "never",

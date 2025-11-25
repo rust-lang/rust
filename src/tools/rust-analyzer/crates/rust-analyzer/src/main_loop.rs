@@ -341,20 +341,23 @@ impl GlobalState {
                     self.handle_task(&mut prime_caches_progress, task);
                 }
 
+                let title = "Indexing";
+                let cancel_token = Some("rustAnalyzer/cachePriming".to_owned());
+
+                let mut last_report = None;
                 for progress in prime_caches_progress {
-                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
-                            state = Progress::Begin;
-                            message = None;
-                            fraction = 0.0;
-                            title = "Indexing";
+                            self.report_progress(
+                                title,
+                                Progress::Begin,
+                                None,
+                                Some(0.0),
+                                cancel_token.clone(),
+                            );
                         }
                         PrimeCachesProgress::Report(report) => {
-                            state = Progress::Report;
-                            title = report.work_type;
-
-                            message = match &*report.crates_currently_indexing {
+                            let message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
                                     "{}/{} ({})",
                                     report.crates_done,
@@ -371,38 +374,66 @@ impl GlobalState {
                                 _ => None,
                             };
 
-                            fraction = Progress::fraction(report.crates_done, report.crates_total);
+                            // Don't send too many notifications while batching, sending progress reports
+                            // serializes notifications on the mainthread at the moment which slows us down
+                            last_report = Some((
+                                message,
+                                Progress::fraction(report.crates_done, report.crates_total),
+                                report.work_type,
+                            ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            state = Progress::End;
-                            message = None;
-                            fraction = 1.0;
-                            title = "Indexing";
-
                             self.analysis_host.raw_database_mut().trigger_lru_eviction();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
                                     .request_op("restart after cancellation".to_owned(), ());
                             }
+                            if let Some((message, fraction, title)) = last_report.take() {
+                                self.report_progress(
+                                    title,
+                                    Progress::Report,
+                                    message,
+                                    Some(fraction),
+                                    cancel_token.clone(),
+                                );
+                            }
+                            self.report_progress(
+                                title,
+                                Progress::End,
+                                None,
+                                Some(1.0),
+                                cancel_token.clone(),
+                            );
                         }
                     };
-
+                }
+                if let Some((message, fraction, title)) = last_report.take() {
                     self.report_progress(
                         title,
-                        state,
+                        Progress::Report,
                         message,
                         Some(fraction),
-                        Some("rustAnalyzer/cachePriming".to_owned()),
+                        cancel_token.clone(),
                     );
                 }
             }
             Event::Vfs(message) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
-                self.handle_vfs_msg(message);
+                let mut last_progress_report = None;
+                self.handle_vfs_msg(message, &mut last_progress_report);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
-                    self.handle_vfs_msg(message);
+                    self.handle_vfs_msg(message, &mut last_progress_report);
+                }
+                if let Some((message, fraction)) = last_progress_report {
+                    self.report_progress(
+                        "Roots Scanned",
+                        Progress::Report,
+                        Some(message),
+                        Some(fraction),
+                        None,
+                    );
                 }
             }
             Event::Flycheck(message) => {
@@ -452,7 +483,11 @@ impl GlobalState {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
-                if self.config.prefill_caches() {
+                // delay initial cache priming until proc macros are loaded, or we will load up a bunch of garbage into salsa
+                let proc_macros_loaded = self.config.prefill_caches()
+                    && !self.config.expand_proc_macros()
+                    || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false);
+                if proc_macros_loaded {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
                 }
             }
@@ -846,7 +881,11 @@ impl GlobalState {
         }
     }
 
-    fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+    fn handle_vfs_msg(
+        &mut self,
+        message: vfs::loader::Message,
+        last_progress_report: &mut Option<(String, f64)>,
+    ) {
         let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
@@ -903,13 +942,41 @@ impl GlobalState {
                     );
                 }
 
-                self.report_progress(
-                    "Roots Scanned",
-                    state,
-                    Some(message),
-                    Some(Progress::fraction(n_done, n_total)),
-                    None,
-                );
+                match state {
+                    Progress::Begin => self.report_progress(
+                        "Roots Scanned",
+                        state,
+                        Some(message),
+                        Some(Progress::fraction(n_done, n_total)),
+                        None,
+                    ),
+                    // Don't send too many notifications while batching, sending progress reports
+                    // serializes notifications on the mainthread at the moment which slows us down
+                    Progress::Report => {
+                        if last_progress_report.is_none() {
+                            self.report_progress(
+                                "Roots Scanned",
+                                state,
+                                Some(message.clone()),
+                                Some(Progress::fraction(n_done, n_total)),
+                                None,
+                            );
+                        }
+
+                        *last_progress_report =
+                            Some((message, Progress::fraction(n_done, n_total)));
+                    }
+                    Progress::End => {
+                        last_progress_report.take();
+                        self.report_progress(
+                            "Roots Scanned",
+                            state,
+                            Some(message),
+                            Some(Progress::fraction(n_done, n_total)),
+                            None,
+                        )
+                    }
+                }
             }
         }
     }

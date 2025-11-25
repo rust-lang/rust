@@ -28,8 +28,8 @@ pub(crate) enum UndoLog<'db> {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'db>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'db>>>),
-    #[expect(dead_code, reason = "this is used in rustc")]
-    PushRegionObligation,
+    PushTypeOutlivesConstraint,
+    PushRegionAssumption,
 }
 
 macro_rules! impl_from {
@@ -75,8 +75,13 @@ impl<'db> Rollback<UndoLog<'db>> for InferCtxtInner<'db> {
             UndoLog::RegionUnificationTable(undo) => {
                 self.region_constraint_storage.as_mut().unwrap().unification_table.reverse(undo)
             }
-            UndoLog::PushRegionObligation => {
-                self.region_obligations.pop();
+            UndoLog::PushTypeOutlivesConstraint => {
+                let popped = self.region_obligations.pop();
+                assert!(popped.is_some(), "pushed region constraint but could not pop it");
+            }
+            UndoLog::PushRegionAssumption => {
+                let popped = self.region_assumptions.pop();
+                assert!(popped.is_some(), "pushed region assumption but could not pop it");
             }
         }
     }

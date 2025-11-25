@@ -35,7 +35,7 @@ use hir_ty::{
         unsafe_operations,
     },
     lang_items::lang_items_for_bin_op,
-    method_resolution,
+    method_resolution::{self, CandidateId},
     next_solver::{
         DbInterner, ErrorGuaranteed, GenericArgs, Ty, TyKind, TypingMode, infer::DbInternerInferExt,
     },
@@ -651,8 +651,9 @@ impl<'db> SourceAnalyzer<'db> {
         let lhs = self.ty_of_expr(binop_expr.lhs()?)?;
         let rhs = self.ty_of_expr(binop_expr.rhs()?)?;
 
-        let (_op_trait, op_fn) = lang_items_for_bin_op(op)
-            .and_then(|(name, lang_item)| self.lang_trait_fn(db, lang_item, &name))?;
+        let (_op_trait, op_fn) = lang_items_for_bin_op(op).and_then(|(name, lang_item)| {
+            self.lang_trait_fn(db, lang_item, &Name::new_symbol_root(name))
+        })?;
         // HACK: subst for `index()` coincides with that for `Index` because `index()` itself
         // doesn't have any generic parameters, so we skip building another subst for `index()`.
         let interner = DbInterner::new_with(db, None, None);
@@ -861,7 +862,7 @@ impl<'db> SourceAnalyzer<'db> {
                 let expr_id = self.expr_id(path_expr.into())?;
                 if let Some((assoc, subs)) = infer.assoc_resolutions_for_expr_or_pat(expr_id) {
                     let (assoc, subst) = match assoc {
-                        AssocItemId::FunctionId(f_in_trait) => {
+                        CandidateId::FunctionId(f_in_trait) => {
                             match infer.type_of_expr_or_pat(expr_id) {
                                 None => {
                                     let subst = GenericSubstitution::new(
@@ -869,7 +870,7 @@ impl<'db> SourceAnalyzer<'db> {
                                         subs,
                                         self.trait_environment(db),
                                     );
-                                    (assoc, subst)
+                                    (AssocItemId::from(f_in_trait), subst)
                                 }
                                 Some(func_ty) => {
                                     if let TyKind::FnDef(_fn_def, subs) = func_ty.kind() {
@@ -889,12 +890,12 @@ impl<'db> SourceAnalyzer<'db> {
                                             subs,
                                             self.trait_environment(db),
                                         );
-                                        (assoc, subst)
+                                        (f_in_trait.into(), subst)
                                     }
                                 }
                             }
                         }
-                        AssocItemId::ConstId(const_id) => {
+                        CandidateId::ConstId(const_id) => {
                             let (konst, subst) =
                                 self.resolve_impl_const_or_trait_def_with_subst(db, const_id, subs);
                             let subst = GenericSubstitution::new(
@@ -904,14 +905,6 @@ impl<'db> SourceAnalyzer<'db> {
                             );
                             (konst.into(), subst)
                         }
-                        AssocItemId::TypeAliasId(type_alias) => (
-                            assoc,
-                            GenericSubstitution::new(
-                                type_alias.into(),
-                                subs,
-                                self.trait_environment(db),
-                            ),
-                        ),
                     };
 
                     return Some((PathResolution::Def(AssocItem::from(assoc).into()), Some(subst)));
@@ -927,7 +920,7 @@ impl<'db> SourceAnalyzer<'db> {
                 if let Some((assoc, subs)) = infer.assoc_resolutions_for_expr_or_pat(expr_or_pat_id)
                 {
                     let (assoc, subst) = match assoc {
-                        AssocItemId::ConstId(const_id) => {
+                        CandidateId::ConstId(const_id) => {
                             let (konst, subst) =
                                 self.resolve_impl_const_or_trait_def_with_subst(db, const_id, subs);
                             let subst = GenericSubstitution::new(
@@ -935,12 +928,12 @@ impl<'db> SourceAnalyzer<'db> {
                                 subst,
                                 self.trait_environment(db),
                             );
-                            (konst.into(), subst)
+                            (AssocItemId::from(konst), subst)
                         }
-                        assoc => (
-                            assoc,
+                        CandidateId::FunctionId(function_id) => (
+                            function_id.into(),
                             GenericSubstitution::new(
-                                assoc.into(),
+                                function_id.into(),
                                 subs,
                                 self.trait_environment(db),
                             ),

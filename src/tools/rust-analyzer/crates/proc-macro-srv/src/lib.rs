@@ -10,11 +10,16 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
-#![cfg(any(feature = "sysroot-abi", rust_analyzer))]
-#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
+#![cfg(feature = "sysroot-abi")]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![allow(
+    unreachable_pub,
+    internal_features,
+    clippy::disallowed_types,
+    clippy::print_stderr,
+    unused_crate_dependencies
+)]
 #![deny(deprecated_safe, clippy::undocumented_unsafe_blocks)]
 
 extern crate proc_macro;
@@ -26,8 +31,10 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
+mod bridge;
 mod dylib;
 mod server_impl;
+mod token_stream;
 
 use std::{
     collections::{HashMap, hash_map::Entry},
@@ -43,9 +50,13 @@ use paths::{Utf8Path, Utf8PathBuf};
 use span::Span;
 use temp_dir::TempDir;
 
-use crate::server_impl::TokenStream;
-
 pub use crate::server_impl::token_id::SpanId;
+
+pub use proc_macro::Delimiter;
+
+pub use crate::bridge::*;
+pub use crate::server_impl::literal_from_str;
+pub use crate::token_stream::{TokenStream, literal_to_string};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ProcMacroKind {
@@ -81,12 +92,12 @@ impl ProcMacroSrv<'_> {
         env: &[(String, String)],
         current_dir: Option<impl AsRef<Path>>,
         macro_name: &str,
-        macro_body: tt::TopSubtree<S>,
-        attribute: Option<tt::TopSubtree<S>>,
+        macro_body: token_stream::TokenStream<S>,
+        attribute: Option<token_stream::TokenStream<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<Vec<tt::TokenTree<S>>, PanicMessage> {
+    ) -> Result<token_stream::TokenStream<S>, PanicMessage> {
         let snapped_env = self.env;
         let expander = self.expander(lib.as_ref()).map_err(|err| PanicMessage {
             message: Some(format!("failed to load macro: {err}")),
@@ -102,15 +113,7 @@ impl ProcMacroSrv<'_> {
                 .name(macro_name.to_owned())
                 .spawn_scoped(s, move || {
                     expander
-                        .expand(
-                            macro_name,
-                            server_impl::TopSubtree(macro_body.0.into_vec()),
-                            attribute.map(|it| server_impl::TopSubtree(it.0.into_vec())),
-                            def_site,
-                            call_site,
-                            mixed_site,
-                        )
-                        .map(|tt| tt.0)
+                        .expand(macro_name, macro_body, attribute, def_site, call_site, mixed_site)
                 });
             match thread.unwrap().join() {
                 Ok(res) => res,
@@ -157,8 +160,8 @@ impl ProcMacroSrv<'_> {
     }
 }
 
-pub trait ProcMacroSrvSpan: Copy + Send {
-    type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
+pub trait ProcMacroSrvSpan: Copy + Send + Sync {
+    type Server: proc_macro::bridge::server::Server<TokenStream = crate::token_stream::TokenStream<Self>>;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }
 

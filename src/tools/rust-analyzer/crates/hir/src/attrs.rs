@@ -1,7 +1,5 @@
 //! Attributes & documentation for hir types.
 
-use std::ops::ControlFlow;
-
 use hir_def::{
     AssocItemId, AttrDefId, ModuleDefId,
     attr::AttrsWithOwner,
@@ -14,7 +12,13 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use hir_ty::{db::HirDatabase, method_resolution};
+use hir_ty::{
+    db::HirDatabase,
+    method_resolution::{
+        self, CandidateId, MethodError, MethodResolutionContext, MethodResolutionUnstableFeatures,
+    },
+    next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
+};
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -242,7 +246,7 @@ fn resolve_assoc_item<'db>(
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    ty.iterate_assoc_items(db, ty.krate(db), move |assoc_item| {
+    ty.iterate_assoc_items(db, move |assoc_item| {
         if assoc_item.name(db)? != *name {
             return None;
         }
@@ -257,37 +261,39 @@ fn resolve_impl_trait_item<'db>(
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    let canonical = ty.canonical(db);
     let krate = ty.krate(db);
     let environment = resolver
         .generic_def()
         .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
     let traits_in_scope = resolver.traits_in_scope(db);
 
-    let mut result = None;
-
     // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    _ = method_resolution::iterate_path_candidates(
-        &canonical,
-        db,
-        environment,
-        &traits_in_scope,
-        method_resolution::VisibleFromModule::None,
-        Some(name),
-        &mut |_, assoc_item_id: AssocItemId, _| {
-            // If two traits in scope define the same item, Rustdoc links to no specific trait (for
-            // instance, given two methods `a`, Rustdoc simply links to `method.a` with no
-            // disambiguation) so we just pick the first one we find as well.
-            result = as_module_def_if_namespace_matches(assoc_item_id.into(), ns);
-
-            if result.is_some() { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
-        },
-    );
-
-    result
+    let interner = DbInterner::new_with(db, Some(environment.krate), environment.block);
+    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let unstable_features =
+        MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
+    let ctx = MethodResolutionContext {
+        infcx: &infcx,
+        resolver: &resolver,
+        env: &environment,
+        traits_in_scope: &traits_in_scope,
+        edition: krate.edition(db),
+        unstable_features: &unstable_features,
+    };
+    let resolution = ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty);
+    let resolution = match resolution {
+        Ok(resolution) => resolution.item,
+        Err(MethodError::PrivateMatch(resolution)) => resolution.item,
+        _ => return None,
+    };
+    let resolution = match resolution {
+        CandidateId::FunctionId(id) => AssocItem::Function(id.into()),
+        CandidateId::ConstId(id) => AssocItem::Const(id.into()),
+    };
+    as_module_def_if_namespace_matches(resolution, ns)
 }
 
 fn resolve_field(

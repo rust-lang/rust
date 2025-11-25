@@ -11,6 +11,7 @@ use hir_def::{
     type_ref::{TypeBound, TypeRef, TypeRefId},
 };
 use hir_ty::{
+    GenericPredicates,
     db::HirDatabase,
     display::{
         HirDisplay, HirDisplayError, HirDisplayWithExpressionStore, HirFormatter, SizedByDefault,
@@ -484,11 +485,9 @@ impl<'db> HirDisplay<'db> for TypeParam {
         let param_data = &params[self.id.local_id()];
         let krate = self.id.parent().krate(f.db).id;
         let ty = self.ty(f.db).ty;
-        let predicates = f.db.generic_predicates(self.id.parent());
+        let predicates = GenericPredicates::query_all(f.db, self.id.parent());
         let predicates = predicates
-            .instantiate_identity()
-            .into_iter()
-            .flatten()
+            .iter_identity_copied()
             .filter(|wc| match wc.kind().skip_binder() {
                 ClauseKind::Trait(tr) => tr.self_ty() == ty,
                 ClauseKind::Projection(proj) => proj.self_ty() == ty,

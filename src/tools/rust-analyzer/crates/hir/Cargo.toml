@@ -18,9 +18,8 @@ either.workspace = true
 arrayvec.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
-tracing.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 triomphe.workspace = true
-indexmap.workspace = true
 
 ra-ap-rustc_type_ir.workspace = true
 

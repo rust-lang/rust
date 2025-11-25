@@ -546,6 +546,13 @@ impl Ctx<'_> {
 
         match resolution {
             hir::PathResolution::Def(def) if def.as_assoc_item(self.source_scope.db).is_none() => {
+                // Macros cannot be used in pattern position, and identifiers that happen
+                // to have the same name as macros (like parameter names `vec`, `format`, etc.)
+                // are bindings, not references. Don't qualify them.
+                if matches!(def, hir::ModuleDef::Macro(_)) {
+                    return None;
+                }
+
                 let cfg = FindPathConfig {
                     prefer_no_std: false,
                     prefer_prelude: true,
