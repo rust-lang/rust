@@ -52,6 +52,7 @@ the CI to build and test their PR (e.g. when developing on a slow machine).
 Rust has strong backwards-compatibility guarantees.
 Thus, new features can't just be implemented directly in stable Rust.
 Instead, we have 3 release channels: stable, beta, and nightly.
+See [The Rust Book] for more details on Rust’s train release model.
 
 - **Stable**: this is the latest stable release for general usage.
 - **Beta**: this is the next release (will be stable within 6 weeks).
@@ -61,6 +62,8 @@ Instead, we have 3 release channels: stable, beta, and nightly.
 
 See [this chapter on implementing new features](./implementing_new_features.md) for more
 information.
+
+[The Rust Book]: https://doc.rust-lang.org/book/appendix-07-nightly-rust.html
 
 ### Breaking changes
 
