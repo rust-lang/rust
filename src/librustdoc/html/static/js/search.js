@@ -3028,10 +3028,8 @@ class DocSearch {
                     )) {
                         continue;
                     }
-                    // @ts-expect-error
-                    if (fnType.id < 0) {
+                    if (fnType.id !== null && fnType.id < 0) {
                         const highlightedGenerics = unifyFunctionTypes(
-                            // @ts-expect-error
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
