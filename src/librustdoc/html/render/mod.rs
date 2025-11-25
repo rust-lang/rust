@@ -2020,13 +2020,11 @@ fn render_impl(
         let mut methods = Vec::new();
 
         if !impl_.is_negative_trait_impl() {
-            for trait_item in &impl_.items {
-                match trait_item.kind {
-                    clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
-                        methods.push(trait_item)
-                    }
+            for impl_item in &impl_.items {
+                match impl_item.kind {
+                    clean::MethodItem(..) | clean::RequiredMethodItem(_) => methods.push(impl_item),
                     clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
-                        assoc_types.push(trait_item)
+                        assoc_types.push(impl_item)
                     }
                     clean::RequiredAssocConstItem(..)
                     | clean::ProvidedAssocConstItem(_)
@@ -2036,7 +2034,7 @@ fn render_impl(
                             &mut default_impl_items,
                             &mut impl_items,
                             cx,
-                            trait_item,
+                            impl_item,
                             if trait_.is_some() { &i.impl_item } else { parent },
                             link,
                             render_mode,
