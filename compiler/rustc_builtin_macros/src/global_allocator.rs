@@ -37,7 +37,15 @@ pub(crate) fn expand(
         ecx.dcx().emit_err(errors::AllocMustStatics { span: item.span() });
         return vec![orig_item];
     };
-
+    
+    // Check if the static item also has the `#[thread_local]` attribute, which is incompatible with `#[global_allocator]`.
+    if item.attrs.iter().any(|a| a.path().is_ident(sym::thread_local)) {
+        ecx.dcx().emit_err(errors::GlobalAllocatorThreadLocalConflict {
+            span: item.span,
+        });
+        return vec![orig_item];
+    }    
+    
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
     let f = AllocFnFactory { span, ty_span, global: ident, cx: ecx };
