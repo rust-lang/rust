@@ -1,6 +1,24 @@
 //! Utils that need libc.
 #![allow(dead_code)]
 
+use std::{fmt, io};
+
+/// Handles the usual libc function that returns `-1` to indicate an error.
+#[track_caller]
+pub fn errno_result<T: From<i8> + Ord>(ret: T) -> io::Result<T> {
+    use std::cmp::Ordering;
+    match ret.cmp(&(-1i8).into()) {
+        Ordering::Equal => Err(io::Error::last_os_error()),
+        Ordering::Greater => Ok(ret),
+        Ordering::Less => panic!("unexpected return value: less than -1"),
+    }
+}
+/// Check that a function with errno error handling succeeded (i.e., returned 0).
+#[track_caller]
+pub fn errno_check<T: From<i8> + Ord + fmt::Debug>(ret: T) {
+    assert_eq!(errno_result(ret).unwrap(), 0i8.into(), "wrong successful result");
+}
+
 pub unsafe fn read_all(
     fd: libc::c_int,
     buf: *mut libc::c_void,

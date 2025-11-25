@@ -3,11 +3,13 @@
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::fs::File;
-use std::io::Error;
 use std::os::fd::AsRawFd;
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
 #[path = "../../utils/mod.rs"]
 mod utils;
+use libc_utils::*;
 
 fn main() {
     let bytes = b"Hello, World!\n";
@@ -17,57 +19,44 @@ fn main() {
 
     // Test that we can apply many shared locks
     for file in files.iter() {
-        let fd = file.as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_SH) };
-        if ret != 0 {
-            panic!("flock error: {}", Error::last_os_error());
-        }
+        errno_check(unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_SH) });
     }
 
     // Test that shared lock prevents exclusive lock
     {
         let fd = files[0].as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
-        assert_eq!(ret, -1);
-        let err = Error::last_os_error().raw_os_error().unwrap();
-        assert_eq!(err, libc::EWOULDBLOCK);
+        let err =
+            errno_result(unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) }).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EWOULDBLOCK);
     }
 
     // Unlock shared lock
     for file in files.iter() {
-        let fd = file.as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_UN) };
-        if ret != 0 {
-            panic!("flock error: {}", Error::last_os_error());
-        }
+        errno_check(unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_UN) });
     }
 
     // Take exclusive lock
     {
         let fd = files[0].as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_EX) };
-        assert_eq!(ret, 0);
+        errno_check(unsafe { libc::flock(fd, libc::LOCK_EX) });
     }
 
     // Test that shared lock prevents exclusive and shared locks
     {
         let fd = files[1].as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
-        assert_eq!(ret, -1);
-        let err = Error::last_os_error().raw_os_error().unwrap();
-        assert_eq!(err, libc::EWOULDBLOCK);
+        let err =
+            errno_result(unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) }).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EWOULDBLOCK);
 
         let fd = files[2].as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_SH | libc::LOCK_NB) };
-        assert_eq!(ret, -1);
-        let err = Error::last_os_error().raw_os_error().unwrap();
-        assert_eq!(err, libc::EWOULDBLOCK);
+        let err =
+            errno_result(unsafe { libc::flock(fd, libc::LOCK_SH | libc::LOCK_NB) }).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EWOULDBLOCK);
     }
 
     // Unlock exclusive lock
     {
         let fd = files[0].as_raw_fd();
-        let ret = unsafe { libc::flock(fd, libc::LOCK_UN) };
-        assert_eq!(ret, 0);
+        errno_check(unsafe { libc::flock(fd, libc::LOCK_UN) });
     }
 }
