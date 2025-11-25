@@ -3242,6 +3242,77 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
+    /// Partially sorts the slice in ascending order **without** preserving the initial order
+    /// of equal elements.
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable<R>(&mut self, range: R)
+    where
+        T: Ord,
+        R: RangeBounds<usize>,
+    {
+        self.partial_sort_unstable_by(range, T::cmp);
+    }
+
+    /// Partially sorts the slice in ascending order with a comparison function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    /// v.partial_sort_unstable_by(.., |a, b| a.cmp(b));
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    ///
+    /// // reverse sorting
+    /// v.partial_sort_unstable_by(.., |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
+    /// ```
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by<F, R>(&mut self, range: R, mut compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+        R: RangeBounds<usize>,
+    {
+        let len = self.len();
+        let Range { start, end } = slice::range(range, ..len);
+
+        if start == end {
+            // empty range, nothing to do
+            return;
+        }
+
+        let index = start;
+        let (_, _, rest) =
+            sort::select::partition_at_index(self, index, |a, b| compare(a, b) == Less);
+
+        if start + 2 > end {
+            // the rest slice is of length 0 or 1, already sorted
+            return;
+        }
+
+        let index = end - start - 2;
+        let (rest, _, _) =
+            sort::select::partition_at_index(rest, index, |a, b| compare(a, b) == Less);
+        sort::unstable::sort(rest, &mut |a, b| compare(a, b) == Less);
+    }
+
+    /// Partially sorts the slice in ascending order with a key extraction function, **without**
+    /// preserving the initial order of equal elements.
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by_key<K, F, R>(&mut self, range: R, mut f: F)
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+        R: RangeBounds<usize>,
+    {
+        self.partial_sort_unstable_by(range, |a, b| f(a).cmp(&f(b)));
+    }
+
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
     /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
     /// it.
