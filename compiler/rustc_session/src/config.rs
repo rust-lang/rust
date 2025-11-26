@@ -32,6 +32,7 @@ use rustc_target::spec::{
 use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
+use crate::config::enforced_mitigations::EnforcedMitigationKind;
 use crate::config::native_libs::parse_native_libs;
 pub use crate::config::print_request::{PrintKind, PrintRequest};
 use crate::errors::FileWriteFail;
