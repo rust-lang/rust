@@ -621,7 +621,8 @@ impl Config {
             vendor: dist_vendor,
         } = toml.dist.unwrap_or_default();
 
-        let Gcc { download_ci_gcc: gcc_download_ci_gcc, libgccjit_libs_dir } = toml.gcc.unwrap_or_default();
+        let Gcc { download_ci_gcc: gcc_download_ci_gcc, libgccjit_libs_dir } =
+            toml.gcc.unwrap_or_default();
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(

@@ -46,10 +46,8 @@ impl GccOutput {
             // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
             // which wouldn't work.
-            let actual_libgccjit_path = t!(
-                path.canonicalize(),
-                format!("Cannot find libgccjit at {}", path.display())
-            );
+            let actual_libgccjit_path =
+                t!(path.canonicalize(), format!("Cannot find libgccjit at {}", path.display()));
 
             let dst = directory.join(&target_filename);
             builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
@@ -61,7 +59,10 @@ impl GccOutput {
             let source = path.join(host_target);
             let dst = directory;
 
-            let targets = builder.config.targets.iter()
+            let targets = builder
+                .config
+                .targets
+                .iter()
                 .map(|target| target.triple)
                 .chain(std::iter::once(host_target));
 
@@ -83,7 +84,6 @@ impl GccOutput {
                 builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
             }
         }
-
     }
 }
 
