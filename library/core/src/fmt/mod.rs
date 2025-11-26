@@ -625,7 +625,7 @@ impl<'a> Formatter<'a> {
 //
 // 2) Placeholders representation (e.g. format_args!("hello {name}\n"))
 //             ┌────────────────────────────────┐
-//   template: │           *const u8            │ ─▷ b"\x06hello \x80\x01\n\x00"
+//   template: │           *const u8            │ ─▷ b"\x06hello \xC0\x01\n\x00"
 //             ├────────────────────────────────┤
 //   args:     │     &'a [Argument<'a>; _]     0│ (lower bit is 0 due to alignment of Argument type)
 //             └────────────────────────────────┘
