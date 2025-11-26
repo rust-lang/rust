@@ -59,21 +59,14 @@ jobs:
           sudo ln -s /usr/share/intel-sde/sde /usr/bin/sde
           sudo ln -s /usr/share/intel-sde/sde64 /usr/bin/sde64
 
-    - name: Set env
+    - name: Set config
       run: |
-        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
         echo 'download-gccjit = true' > config.toml
 
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
         ./y.sh build --sysroot --release --release-sysroot
-
-    - name: Set env (part 2)
-      run: |
-        # Set the `LD_LIBRARY_PATH` and `LIBRARY_PATH` env variables...
-        echo "LD_LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
-        echo "LIBRARY_PATH="$(./y.sh info | grep -v Using) >> $GITHUB_ENV
 
     - name: Clean
       if: ${{ !matrix.cargo_runner }}
