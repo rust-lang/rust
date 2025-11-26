@@ -3,7 +3,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use rustc_ast::ast;
 use rustc_ast::token::TokenKind;
 use rustc_parse::exp;
-use rustc_parse::parser::ForceCollect;
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::symbol::kw;
 
 use crate::parse::macros::build_stream_parser;
