@@ -1293,14 +1293,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 .best_blame_constraint(longer_fr, NllRegionVariableOrigin::FreeRegion, shorter_fr)
                 .0;
 
-            // Grow `shorter_fr` until we find some non-local regions. (We
-            // always will.)  We'll call them `shorter_fr+` -- they're ever
-            // so slightly larger than `shorter_fr`.
+            // Grow `shorter_fr` until we find some non-local regions.
+            // We will always find at least one: `'static`. We'll call
+            // them `shorter_fr+` -- they're ever so slightly larger
+            // than `shorter_fr`.
             let shorter_fr_plus =
                 self.universal_region_relations.non_local_upper_bounds(shorter_fr);
             debug!("try_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus);
 
-            // We then create constraints `longer_fr-: shorter_fr+` that may or may not be propagated (see below).
+            // We then create constraints `longer_fr-: shorter_fr+` that may or may not
+            // be propagated (see below).
             let mut constraints = vec![];
             for fr_minus in longer_fr_minus {
                 for shorter_fr_plus in &shorter_fr_plus {
@@ -1308,19 +1310,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            // If any of the `shorter_fr+` regions are already outlived by `longer_fr-`, we propagate only those.
-            // Otherwise, we might incorrectly reject valid code.
+            // We only need to propagate at least one of the constraints for
+            // soundness. However, we want to avoid arbitrary choices here
+            // and currently don't support returning OR constraints.
+            //
+            // If any of the `shorter_fr+` regions are already outlived by `longer_fr-`,
+            // we propagate only those.
             //
             // Consider this example (`'b: 'a` == `a -> b`), where we try to propagate `'d: 'a`:
             // a --> b --> d
             //  \
             //   \-> c
             // Here, `shorter_fr+` of `'a` == `['b, 'c]`.
-            // Propagating `'d: 'b` is correct and should occur; `'d: 'c` is redundant because of `'d: 'b`
-            // and could reject valid code.
+            // Propagating `'d: 'b` is correct and should occur; `'d: 'c` is redundant because of
+            // `'d: 'b` and could reject valid code.
             //
-            // So we filter the constraints to regions already outlived by `longer_fr-`, but if the filter yields an empty set,
-            // we fall back to the original one.
+            // So we filter the constraints to regions already outlived by `longer_fr-`, but if
+            // the filter yields an empty set, we fall back to the original one.
             let subset: Vec<_> = constraints
                 .iter()
                 .filter(|&&(fr_minus, shorter_fr_plus)| {
