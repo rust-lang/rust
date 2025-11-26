@@ -72,7 +72,7 @@ use std::any::Any;
 use std::ffi::CString;
 use std::fmt::Debug;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -180,13 +180,17 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
-fn load_libgccjit_if_needed() {
+fn load_libgccjit_if_needed(sysroot_path: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
         return;
     }
 
-    let string = CString::new("libgccjit.so").expect("string to libgccjit path");
+    let sysroot_lib_dir = sysroot_path.join("lib");
+    let libgccjit_target_lib_file = sysroot_lib_dir.join("libgccjit.so");
+    let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
+
+    let string = CString::new(path).expect("string to libgccjit path");
 
     if let Err(error) = gccjit::load(&string) {
         panic!("Cannot load libgccjit.so: {}", error);
@@ -202,12 +206,12 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, _sess: &Session) {
-        load_libgccjit_if_needed();
+    fn init(&self, sess: &Session) {
+        load_libgccjit_if_needed(sess.opts.sysroot.path());
 
         #[cfg(feature = "master")]
         {
-            let target_cpu = target_cpu(_sess);
+            let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
