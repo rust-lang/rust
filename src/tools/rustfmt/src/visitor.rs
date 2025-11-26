@@ -7,7 +7,9 @@ use rustc_span::{BytePos, Ident, Pos, Span, symbol};
 use tracing::debug;
 
 use crate::attr::*;
-use crate::comment::{CodeCharKind, CommentCodeSlices, contains_comment, rewrite_comment};
+use crate::comment::{
+    CodeCharKind, CommentCodeSlices, contains_comment, recover_comment_removed, rewrite_comment,
+};
 use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
@@ -532,6 +534,28 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
                 ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => {
                     self.visit_static(&StaticParts::from_item(item));
+                }
+                ast::ItemKind::ConstBlock(ast::ConstBlockItem {
+                    id: _,
+                    span,
+                    ref block,
+                }) => {
+                    let context = &self.get_context();
+                    let offset = self.block_indent;
+                    self.push_rewrite(
+                        item.span,
+                        block
+                            .rewrite(
+                                context,
+                                Shape::legacy(
+                                    context.budget(offset.block_indent),
+                                    offset.block_only(),
+                                ),
+                            )
+                            .map(|rhs| {
+                                recover_comment_removed(format!("const {rhs}"), span, context)
+                            }),
+                    );
                 }
                 ast::ItemKind::Fn(ref fn_kind) => {
                     let ast::Fn {

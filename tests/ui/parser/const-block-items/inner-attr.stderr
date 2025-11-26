@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/inner-attr.rs:4:5
+  --> $DIR/inner-attr.rs:7:5
    |
 LL |     #![expect(unused)]
    |     ^^^^^^^^^^^^^^^^^^
