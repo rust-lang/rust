@@ -364,15 +364,16 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {
+        let abi_required_features = sess.target.abi_required_features();
         let (target_features, unstable_target_features) = cfg_target_feature::<0>(
             sess,
             |_feature| Default::default(),
             |feature| {
                 // This is a standin for the list of features a backend is expected to enable.
                 // It would be better to parse target.features instead and handle implied features,
-                // but target.features is a list of LLVM target features, not Rust target features.
-                // The dummy backend doesn't know the mapping between LLVM and Rust target features.
-                sess.target.abi_required_features().required.contains(&feature)
+                // but target.features doesn't contain features that are enabled by default for an
+                // architecture or target cpu.
+                abi_required_features.required.contains(&feature)
             },
         );
 
