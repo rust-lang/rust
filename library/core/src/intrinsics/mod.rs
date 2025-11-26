@@ -3324,6 +3324,38 @@ pub const fn copysignf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
+/// Generates the LLVM body of a wrapper function to offload a kernel `f`.
+///
+/// Type Parameters:
+/// - `F`: The kernel to offload. Must be a function item.
+/// - `T`: A tuple of arguments passed to `f`.
+/// - `R`: The return type of the kernel.
+///
+/// Example usage (pseudocode):
+///
+/// ```rust,ignore (pseudocode)
+/// fn kernel(x: *mut [f64; 128]) {
+///     core::intrinsics::offload(kernel_1, (x,))
+/// }
+///
+/// #[cfg(target_os = "linux")]
+/// extern "C" {
+///     pub fn kernel_1(array_b: *mut [f64; 128]);
+/// }
+///
+/// #[cfg(not(target_os = "linux"))]
+/// #[rustc_offload_kernel]
+/// extern "gpu-kernel" fn kernel_1(x: *mut [f64; 128]) {
+///     unsafe { (*x)[0] = 21.0 };
+/// }
+/// ```
+///
+/// For reference, see the Clang documentation on offloading:
+/// <https://clang.llvm.org/docs/OffloadingDesign.html>.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
