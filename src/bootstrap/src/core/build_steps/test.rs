@@ -3966,9 +3966,7 @@ impl Step for CodegenGCC {
             .arg("--std-tests");
 
         if let Some(ref path) = gcc.libgccjit {
-            cargo
-                .arg("--gcc-path")
-                .arg(path.parent().unwrap());
+            cargo.arg("--gcc-path").arg(path.parent().unwrap());
         }
         cargo.args(builder.config.test_args());
 
