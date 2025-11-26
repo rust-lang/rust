@@ -7,27 +7,27 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print *ref_v0
-// gdb-check:$1 = 0
+//@ gdb-command:run
+//@ gdb-command:print *ref_v0
+//@ gdb-check:$1 = 0
 
-// gdb-command:print *ref_v1
-// gdb-check:$2 = 1
+//@ gdb-command:print *ref_v1
+//@ gdb-check:$2 = 1
 
-// gdb-command:print *ref_v2
-// gdb-check:$3 = 2
+//@ gdb-command:print *ref_v2
+//@ gdb-check:$3 = 2
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
-// lldb-command:v *ref_v0
-// lldb-check:[...] 0
+//@ lldb-command:run
+//@ lldb-command:v *ref_v0
+//@ lldb-check:[...] 0
 
-// lldb-command:v *ref_v1
-// lldb-check:[...] 1
+//@ lldb-command:v *ref_v1
+//@ lldb-check:[...] 1
 
-// lldb-command:v *ref_v2
-// lldb-check:[...] 2
+//@ lldb-command:v *ref_v2
+//@ lldb-check:[...] 2
 
 #![allow(unused_variables)]
 

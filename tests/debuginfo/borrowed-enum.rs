@@ -6,28 +6,28 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
+//@ gdb-command:run
 
-// gdb-command:print *the_a_ref
-// gdb-check:$1 = borrowed_enum::ABC::TheA{x: 0, y: 8970181431921507452}
+//@ gdb-command:print *the_a_ref
+//@ gdb-check:$1 = borrowed_enum::ABC::TheA{x: 0, y: 8970181431921507452}
 
-// gdb-command:print *the_b_ref
-// gdb-check:$2 = borrowed_enum::ABC::TheB(0, 286331153, 286331153)
+//@ gdb-command:print *the_b_ref
+//@ gdb-check:$2 = borrowed_enum::ABC::TheB(0, 286331153, 286331153)
 
-// gdb-command:print *univariant_ref
-// gdb-check:$3 = borrowed_enum::Univariant::TheOnlyCase(4820353753753434)
+//@ gdb-command:print *univariant_ref
+//@ gdb-check:$3 = borrowed_enum::Univariant::TheOnlyCase(4820353753753434)
 
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
+//@ lldb-command:run
 
-// lldb-command:v *the_a_ref
-// lldb-check:(borrowed_enum::ABC) *the_a_ref = TheA{x:0, y:8970181431921507452} { x = 0 y = 8970181431921507452 }
-// lldb-command:v *the_b_ref
-// lldb-check:(borrowed_enum::ABC) *the_b_ref = TheB(0, 286331153, 286331153) { 0 = 0 1 = 286331153 2 = 286331153 }
-// lldb-command:v *univariant_ref
-// lldb-check:(borrowed_enum::Univariant) *univariant_ref = TheOnlyCase(4820353753753434) { 0 = 4820353753753434 }
+//@ lldb-command:v *the_a_ref
+//@ lldb-check:(borrowed_enum::ABC) *the_a_ref = TheA{x:0, y:8970181431921507452} { x = 0 y = 8970181431921507452 }
+//@ lldb-command:v *the_b_ref
+//@ lldb-check:(borrowed_enum::ABC) *the_b_ref = TheB(0, 286331153, 286331153) { 0 = 0 1 = 286331153 2 = 286331153 }
+//@ lldb-command:v *univariant_ref
+//@ lldb-check:(borrowed_enum::Univariant) *univariant_ref = TheOnlyCase(4820353753753434) { 0 = 4820353753753434 }
 
 #![allow(unused_variables)]
 
