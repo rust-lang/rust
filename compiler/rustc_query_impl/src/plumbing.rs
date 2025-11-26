@@ -309,6 +309,18 @@ macro_rules! call_provider {
     };
 }
 
+macro_rules! if_fatal_cycle {
+    ([] $if:block else $else:block) => {
+        $else
+    };
+    ([(fatal_cycle) $($modifiers:tt)*] $if:block else $else:block) => {
+        $if
+    };
+    ([$other:tt $($modifiers:tt)*] $if:block else $else:block) => {
+        if_fatal_cycle!([$($modifiers)*] $if else $else)
+    };
+}
+
 macro_rules! call_fallback_provider {
     ([][$tcx:expr, $name:ident, $key:expr, $cycle:expr, $guar:expr]) => {{
         ($tcx.query_system.fns.fallback_providers.$name)($tcx, $key, $cycle, $guar)
@@ -704,11 +716,16 @@ macro_rules! define_queries {
                     } {
                         |_tcx, _key, _prev_index, _index| None
                     }),
-                    execute_fallback: |tcx, key, cycle, guar| {
-                        queries::$name::provided_to_erased(
-                            tcx,
-                            call_fallback_provider!([$($modifiers)*][tcx, $name, key, cycle, guar]),
-                        )
+                    execute_fallback: |_tcx, key, _cycle, _guar| {
+                        if_fatal_cycle!([$($modifiers)*] {
+                            rustc_middle::bug!("tried to call fallback for a query marked with `fatal_cycle`: {}({:?})", stringify!($name), key)
+                        } else {
+                            queries::$name::provided_to_erased(
+                                _tcx,
+                                call_fallback_provider!([$($modifiers)*][_tcx, $name, key, _cycle, _guar])
+                            )
+                        })
+
                     },
                     loadable_from_disk: |_tcx, _key, _index| {
                         should_ever_cache_on_disk!([$($modifiers)*] {

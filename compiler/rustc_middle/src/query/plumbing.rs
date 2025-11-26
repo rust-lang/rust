@@ -174,6 +174,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+/// For cases when fallback query is unused (aka marked with `fatal_cycle`) makes it impossible to
+/// assign `providers.fallback_queries.<name>` a function to avoid possible confusion.
+#[derive(Clone, Copy)]
+pub struct DisabledWithFatalCycle;
+
 /// Calls either `query_ensure` or `query_ensure_error_guaranteed`, depending
 /// on whether the list of modifiers contains `return_result_from_ensure_ok`.
 macro_rules! query_ensure_select {
@@ -455,12 +460,14 @@ macro_rules! define_callbacks {
         }
 
         pub struct FallbackProviders {
-            $(pub $name: for<'tcx> fn(
-                TyCtxt<'tcx>,
-                queries::$name::LocalKey<'tcx>,
-                cycle: &$crate::query::plumbing::CycleError,
-                guar: $crate::query::plumbing::ErrorGuaranteed,
-            ) -> queries::$name::ProvidedValue<'tcx>,)*
+            $(pub $name: disable_on_fatal_cycle!([$($modifiers)*]{
+                for<'tcx> fn(
+                    TyCtxt<'tcx>,
+                    queries::$name::LocalKey<'tcx>,
+                    cycle: &$crate::query::plumbing::CycleError,
+                    guar: $crate::query::plumbing::ErrorGuaranteed,
+                ) -> queries::$name::ProvidedValue<'tcx>
+            }),)*
         }
 
         impl Default for Providers {
@@ -482,7 +489,11 @@ macro_rules! define_callbacks {
         impl Default for FallbackProviders {
             fn default() -> Self {
                 FallbackProviders {
-                    $($name: |tcx, key, cycle, guar| $crate::query::plumbing::default_fallback_query(tcx, stringify!($name), &key, cycle, guar)),*
+                    $($name: disable_on_fatal_cycle!([$($modifiers)*]{
+                        |tcx, key, cycle, guar| {
+                            $crate::query::plumbing::default_fallback_query(tcx, stringify!($name), &key, cycle, guar)
+                        }
+                    })),*
                 }
             }
         }
@@ -523,6 +534,18 @@ macro_rules! hash_result {
     }};
     ([$other:tt $($modifiers:tt)*]) => {
         hash_result!([$($modifiers)*])
+    };
+}
+
+macro_rules! disable_on_fatal_cycle {
+    ([]{$($code:tt)*}) => {
+        $($code)*
+    };
+    ([(fatal_cycle) $($rest:tt)*]{$($code:tt)*}) => {
+        $crate::query::plumbing::DisabledWithFatalCycle
+    };
+    ([$other:tt $($modifiers:tt)*]{$($code:tt)*}) => {
+        disable_on_fatal_cycle!([$($modifiers)*]{$($code)*})
     };
 }
 

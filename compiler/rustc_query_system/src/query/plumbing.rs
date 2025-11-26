@@ -150,6 +150,11 @@ where
             query.execute_fallback(*qcx.dep_context(), key, cycle_error, guar)
         }
         Fatal => {
+            // NOTE: This branch doesn't execute a fallback query, as such for any query marked
+            // `fatal_cycle` field `providers.fallback_queries.<name>` to avoid confusion
+            // instead of being a function pointer becomes a zero-sized type named
+            // `rustc_middle::query::plumbing::DisabledWithFatalCycle`, making it impossible to
+            // assign a function.
             error.emit();
             qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
