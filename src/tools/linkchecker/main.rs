@@ -78,6 +78,11 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
                                     "#method.sort_by_cached_key"]),
+
+    // these links are changed in #149328 , and running linkchecker locally does not fail,
+    // but CI is checking docs built off `main` I think?
+    ("book/print.html", &["std/string/struct.String.html"]),
+    ("book/ch02-00-guessing-game-tutorial.html", &["std/string/struct.String.html"]),
 ];
 
 #[rustfmt::skip]
