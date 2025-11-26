@@ -926,6 +926,7 @@ impl f64 {
     /// let y = 2.0_f64;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f64::NAN), x);
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -948,6 +949,7 @@ impl f64 {
     /// let y = 2.0_f64;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f64::NAN), x);
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
