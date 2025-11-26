@@ -857,7 +857,7 @@ impl BindingMode {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub enum RangeEnd {
     /// `..=` or `...`
     Included(RangeSyntax),
@@ -865,7 +865,7 @@ pub enum RangeEnd {
     Excluded,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Walkable)]
 pub enum RangeSyntax {
     /// `...`
     DotDotDot,
@@ -1915,7 +1915,7 @@ pub enum ForLoopKind {
 }
 
 /// Used to differentiate between `async {}` blocks and `gen {}` blocks.
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, Walkable)]
 pub enum GenBlockKind {
     Async,
     Gen,

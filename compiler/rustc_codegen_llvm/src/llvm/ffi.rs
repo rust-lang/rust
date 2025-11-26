@@ -1160,13 +1160,9 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
-    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
-    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
-    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -2484,6 +2480,8 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
+    pub(crate) fn LLVMRustGetInsertPoint<'a>(B: &Builder<'a>) -> &'a Value;
+    pub(crate) fn LLVMRustRestoreInsertPoint<'a>(B: &Builder<'a>, IP: &'a Value);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
     pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);

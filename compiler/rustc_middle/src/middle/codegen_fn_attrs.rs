@@ -190,6 +190,8 @@ bitflags::bitflags! {
         const NO_BUILTINS               = 1 << 15;
         /// Marks foreign items, to make `contains_extern_indicator` cheaper.
         const FOREIGN_ITEM              = 1 << 16;
+        /// `#[rustc_offload_kernel]`: indicates that this is an offload kernel, an extra ptr arg will be added.
+        const OFFLOAD_KERNEL = 1 << 17;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
