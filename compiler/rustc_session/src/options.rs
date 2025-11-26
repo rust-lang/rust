@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
-use std::str::{self, FromStr};
+use std::str;
 
 use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
@@ -10,7 +10,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{BlobDecodable, Decodable, Encodable};
+use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
@@ -19,6 +19,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
+use crate::config::enforced_mitigations::MitigationEnablement;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -83,150 +84,7 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub enum EnforcedMitigationLevel {
-    // Enabled(false) should be the bottom of the Ord hierarchy
-    Enabled(bool),
-    StackProtector(StackProtector),
-}
-
-impl EnforcedMitigationLevel {
-    pub fn level_str(&self) -> &'static str {
-        match self {
-            EnforcedMitigationLevel::StackProtector(StackProtector::All) => "=all",
-            EnforcedMitigationLevel::StackProtector(StackProtector::Basic) => "=basic",
-            EnforcedMitigationLevel::StackProtector(StackProtector::Strong) => "=strong",
-            // currently `=disabled` should not appear
-            EnforcedMitigationLevel::Enabled(false) => "=disabled",
-            EnforcedMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcedMitigationLevel::Enabled(true) => "",
-        }
-    }
-}
-
-impl std::fmt::Display for EnforcedMitigationLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EnforcedMitigationLevel::StackProtector(StackProtector::All) => {
-                write!(f, "all")
-            }
-            EnforcedMitigationLevel::StackProtector(StackProtector::Basic) => {
-                write!(f, "basic")
-            }
-            EnforcedMitigationLevel::StackProtector(StackProtector::Strong) => {
-                write!(f, "strong")
-            }
-            EnforcedMitigationLevel::Enabled(true) => {
-                write!(f, "enabled")
-            }
-            EnforcedMitigationLevel::StackProtector(StackProtector::None)
-            | EnforcedMitigationLevel::Enabled(false) => {
-                write!(f, "disabled")
-            }
-        }
-    }
-}
-
-impl From<bool> for EnforcedMitigationLevel {
-    fn from(value: bool) -> Self {
-        EnforcedMitigationLevel::Enabled(value)
-    }
-}
-
-impl From<StackProtector> for EnforcedMitigationLevel {
-    fn from(value: StackProtector) -> Self {
-        EnforcedMitigationLevel::StackProtector(value)
-    }
-}
-
-pub struct EnforcedMitigationKindParseError;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, Decodable)]
-pub struct MitigationEnablement {
-    pub kind: EnforcedMitigationKind,
-    pub enabled: bool,
-}
-
-macro_rules! intersperse {
-    ($sep:expr, ($first:expr $(, $rest:expr)* $(,)?)) => {
-        concat!($first $(, $sep, $rest)*)
-    };
-}
-
-macro_rules! enforced_mitigations {
-    ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
-        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
-        pub enum EnforcedMitigationKind {
-            $($name),*
-        }
-
-        impl std::fmt::Display for EnforcedMitigationKind {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(EnforcedMitigationKind::$name => write!(f, $text)),*
-                }
-            }
-        }
-
-        impl EnforcedMitigationKind {
-            const KINDS: &'static str = concat!("comma-separated list of mitigation kinds (available: ",
-                intersperse!(", ", ($(concat!("`", $text, "`")),*)), ")");
-        }
-
-        impl FromStr for EnforcedMitigationKind {
-            type Err = EnforcedMitigationKindParseError;
-
-            fn from_str(v: &str) -> Result<EnforcedMitigationKind, EnforcedMitigationKindParseError> {
-                match v {
-                    $($text => Ok(EnforcedMitigationKind::$name)),*
-                    ,
-                    _ => Err(EnforcedMitigationKindParseError),
-                }
-            }
-        }
-
-        #[allow(unused)]
-        impl EnforcedMitigationKind {
-            pub fn enforced_since(&self) -> Edition {
-                match self {
-                    // Should change the enforced-since edition of StackProtector to 2015
-                    // (all editions) when `-C stack-protector` is stabilized.
-                    $(EnforcedMitigationKind::$name => Edition::$since),*
-                }
-            }
-        }
-
-        impl Session {
-            pub fn gather_enabled_enforced_mitigations(&$self) -> Vec<EnforcedMitigation> {
-                let mut mitigations = [
-                    $(
-                    EnforcedMitigation {
-                        kind: EnforcedMitigationKind::$name,
-                        level: From::from($code),
-                    }
-                    ),*
-                ];
-                mitigations.sort();
-                mitigations.into_iter().collect()
-            }
-        }
-    }
-}
-
-enforced_mitigations! {
-    [self]
-    enum EnforcedMitigationKind {
-        (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
-        (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
-    }
-}
-
-/// Enforced mitigations, see [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
-pub struct EnforcedMitigation {
-    pub kind: EnforcedMitigationKind,
-    pub level: EnforcedMitigationLevel,
-}
+pub mod enforced_mitigations;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -1026,13 +884,15 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
-    pub(crate) const parse_allow_partial_mitigations: &str = super::EnforcedMitigationKind::KINDS;
+    pub(crate) const parse_allow_partial_mitigations: &str =
+        super::enforced_mitigations::EnforcedMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    use crate::config::enforced_mitigations::MitigationEnablement;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value, and are true simply

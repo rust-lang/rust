@@ -25,9 +25,10 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
+use rustc_session::config::enforced_mitigations::EnforcedMitigationLevel;
 use rustc_session::config::{
-    CrateType, EnforcedMitigationLevel, ExtendedTargetModifierInfo, ExternLocation, Externs,
-    OptionsTargetModifiers, TargetModifier,
+    CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
+    TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
