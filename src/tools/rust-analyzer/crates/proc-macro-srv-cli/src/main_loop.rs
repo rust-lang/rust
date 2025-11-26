@@ -37,8 +37,8 @@ impl SpanTransformer for SpanTrans {
 
 pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
-        ProtocolFormat::Json => run_::<JsonProtocol>(),
-        ProtocolFormat::Postcard => run_::<PostcardProtocol>(),
+        ProtocolFormat::JsonLegacy => run_::<JsonProtocol>(),
+        ProtocolFormat::PostcardLegacy => run_::<PostcardProtocol>(),
     }
 }
 
