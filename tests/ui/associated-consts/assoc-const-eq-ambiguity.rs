@@ -10,7 +10,7 @@ trait Parent0<T> {
     const K: ();
 }
 
-fn take0(_: impl Trait0<K = { () }>) {}
+fn take0(_: impl Trait0<K = const { () }>) {}
 //~^ ERROR ambiguous associated constant `K` in bounds of `Trait0`
 
 trait Trait1: Parent1 + Parent2 {}
@@ -23,7 +23,7 @@ trait Parent2 {
     const C: &'static str;
 }
 
-fn take1(_: impl Trait1<C = "?">) {}
+fn take1(_: impl Trait1<C = const { "?" }>) {}
 //~^ ERROR ambiguous associated constant `C` in bounds of `Trait1`
 
 fn main() {}

@@ -4,9 +4,9 @@
 struct S;
 
 // FIXME(mgca): need support for ctors without anon const
-// (we use double-braces to trigger an anon const here)
+// (we use a const-block to trigger an anon const here)
 #[type_const]
-const FREE: S = { { S } };
+const FREE: S = const { S };
 //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 trait Tr {
@@ -17,9 +17,9 @@ trait Tr {
 
 impl Tr for S {
     // FIXME(mgca): need support for ctors without anon const
-    // (we use double-braces to trigger an anon const here)
+    // (we use a const-block to trigger an anon const here)
     #[type_const]
-    const N: S = { { S } };
+    const N: S = const { S };
     //~^ ERROR `S` must implement `ConstParamTy` to be used as the type of a const generic parameter
 }
 

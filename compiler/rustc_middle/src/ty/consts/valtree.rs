@@ -3,48 +3,19 @@ use std::ops::Deref;
 
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def::Namespace;
-use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{
+    HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension,
+};
 
 use super::ScalarInt;
 use crate::mir::interpret::{ErrorHandled, Scalar};
 use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt};
 
-/// This datastructure is used to represent the value of constants used in the type system.
-///
-/// We explicitly choose a different datastructure from the way values are processed within
-/// CTFE, as in the type system equal values (according to their `PartialEq`) must also have
-/// equal representation (`==` on the rustc data structure, e.g. `ValTree`) and vice versa.
-/// Since CTFE uses `AllocId` to represent pointers, it often happens that two different
-/// `AllocId`s point to equal values. So we may end up with different representations for
-/// two constants whose value is `&42`. Furthermore any kind of struct that has padding will
-/// have arbitrary values within that padding, even if the values of the struct are the same.
-///
-/// `ValTree` does not have this problem with representation, as it only contains integers or
-/// lists of (nested) `ValTree`.
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub enum ValTreeKind<'tcx> {
-    /// integers, `bool`, `char` are represented as scalars.
-    /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
-    /// of these types have the same representation.
-    Leaf(ScalarInt),
-
-    //SliceOrStr(ValSlice<'tcx>),
-    // don't use SliceOrStr for now
-    /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
-    /// listing their fields' values in order.
-    ///
-    /// Enums are represented by storing their variant index as a u32 field, followed by all
-    /// the fields of the variant.
-    ///
-    /// ZST types are represented as an empty slice.
-    Branch(Box<[ValTree<'tcx>]>),
-}
-
-impl<'tcx> ValTreeKind<'tcx> {
+#[extension(pub trait ValTreeKindExt<'tcx>)]
+impl<'tcx> ty::ValTreeKind<TyCtxt<'tcx>> {
     #[inline]
-    pub fn unwrap_leaf(&self) -> ScalarInt {
+    fn unwrap_leaf(&self) -> ScalarInt {
         match self {
             Self::Leaf(s) => *s,
             _ => bug!("expected leaf, got {:?}", self),
@@ -52,25 +23,25 @@ impl<'tcx> ValTreeKind<'tcx> {
     }
 
     #[inline]
-    pub fn unwrap_branch(&self) -> &[ValTree<'tcx>] {
+    fn unwrap_branch(&self) -> &[ty::Const<'tcx>] {
         match self {
             Self::Branch(branch) => &**branch,
             _ => bug!("expected branch, got {:?}", self),
         }
     }
 
-    pub fn try_to_scalar(&self) -> Option<Scalar> {
+    fn try_to_scalar(&self) -> Option<Scalar> {
         self.try_to_scalar_int().map(Scalar::Int)
     }
 
-    pub fn try_to_scalar_int(&self) -> Option<ScalarInt> {
+    fn try_to_scalar_int(&self) -> Option<ScalarInt> {
         match self {
             Self::Leaf(s) => Some(*s),
             Self::Branch(_) => None,
         }
     }
 
-    pub fn try_to_branch(&self) -> Option<&[ValTree<'tcx>]> {
+    fn try_to_branch(&self) -> Option<&[ty::Const<'tcx>]> {
         match self {
             Self::Branch(branch) => Some(&**branch),
             Self::Leaf(_) => None,
@@ -80,12 +51,18 @@ impl<'tcx> ValTreeKind<'tcx> {
 
 /// An interned valtree. Use this rather than `ValTreeKind`, whenever possible.
 ///
-/// See the docs of [`ValTreeKind`] or the [dev guide] for an explanation of this type.
+/// See the docs of [`ty::ValTreeKind`] or the [dev guide] for an explanation of this type.
 ///
 /// [dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html#valtrees
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 #[derive(HashStable)]
-pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ValTreeKind<'tcx>>);
+pub struct ValTree<'tcx>(pub(crate) Interned<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>);
+
+impl<'tcx> rustc_type_ir::inherent::ValTree<TyCtxt<'tcx>> for ValTree<'tcx> {
+    fn kind(&self) -> &ty::ValTreeKind<TyCtxt<'tcx>> {
+        &self
+    }
+}
 
 impl<'tcx> ValTree<'tcx> {
     /// Returns the zero-sized valtree: `Branch([])`.
@@ -94,28 +71,33 @@ impl<'tcx> ValTree<'tcx> {
     }
 
     pub fn is_zst(self) -> bool {
-        matches!(*self, ValTreeKind::Branch(box []))
+        matches!(*self, ty::ValTreeKind::Branch(box []))
     }
 
     pub fn from_raw_bytes(tcx: TyCtxt<'tcx>, bytes: &[u8]) -> Self {
-        let branches = bytes.iter().map(|&b| Self::from_scalar_int(tcx, b.into()));
+        let branches = bytes.iter().map(|&b| {
+            ty::Const::new_value(tcx, Self::from_scalar_int(tcx, b.into()), tcx.types.u8)
+        });
         Self::from_branches(tcx, branches)
     }
 
-    pub fn from_branches(tcx: TyCtxt<'tcx>, branches: impl IntoIterator<Item = Self>) -> Self {
-        tcx.intern_valtree(ValTreeKind::Branch(branches.into_iter().collect()))
+    pub fn from_branches(
+        tcx: TyCtxt<'tcx>,
+        branches: impl IntoIterator<Item = ty::Const<'tcx>>,
+    ) -> Self {
+        tcx.intern_valtree(ty::ValTreeKind::Branch(branches.into_iter().collect()))
     }
 
     pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt) -> Self {
-        tcx.intern_valtree(ValTreeKind::Leaf(i))
+        tcx.intern_valtree(ty::ValTreeKind::Leaf(i))
     }
 }
 
 impl<'tcx> Deref for ValTree<'tcx> {
-    type Target = &'tcx ValTreeKind<'tcx>;
+    type Target = &'tcx ty::ValTreeKind<TyCtxt<'tcx>>;
 
     #[inline]
-    fn deref(&self) -> &&'tcx ValTreeKind<'tcx> {
+    fn deref(&self) -> &&'tcx ty::ValTreeKind<TyCtxt<'tcx>> {
         &self.0.0
     }
 }
@@ -192,9 +174,14 @@ impl<'tcx> Value<'tcx> {
             _ => return None,
         }
 
-        Some(tcx.arena.alloc_from_iter(
-            self.valtree.unwrap_branch().into_iter().map(|v| v.unwrap_leaf().to_u8()),
-        ))
+        Some(
+            tcx.arena.alloc_from_iter(
+                self.valtree
+                    .unwrap_branch()
+                    .into_iter()
+                    .map(|ct| ct.to_value().valtree.unwrap_leaf().to_u8()),
+            ),
+        )
     }
 }
 

@@ -15,6 +15,6 @@ fn bar<const N: u64, T: Foo<ASSOC<N> = { N }>>() {}
 //~^ ERROR: the constant `N` is not of type `u32`
 
 fn main() {
-    bar::<10_u64, ()>();
+    bar::<const { 10_u64 }, ()>();
     //~^ ERROR: the constant `10` is not of type `u32`
 }

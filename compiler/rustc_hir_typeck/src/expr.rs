@@ -439,6 +439,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Node::Block(_)
             | hir::Node::Arm(_)
             | hir::Node::ExprField(_)
+            | hir::Node::ConstArgExprField(_)
             | hir::Node::AnonConst(_)
             | hir::Node::ConstBlock(_)
             | hir::Node::ConstArg(_)

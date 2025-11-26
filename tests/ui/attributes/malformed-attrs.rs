@@ -148,7 +148,7 @@ struct Test;
 trait Hey {
     #[type_const = 1]
     //~^ ERROR malformed
-    const HEY: usize = 5;
+    const HEY: usize = const { 5 };
 }
 
 struct Empty;

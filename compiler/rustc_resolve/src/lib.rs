@@ -191,6 +191,7 @@ struct InvocationParent {
     parent_def: LocalDefId,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
+    in_direct_const_arg: bool,
 }
 
 impl InvocationParent {
@@ -198,6 +199,7 @@ impl InvocationParent {
         parent_def: CRATE_DEF_ID,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
+        in_direct_const_arg: false,
     };
 }
 
