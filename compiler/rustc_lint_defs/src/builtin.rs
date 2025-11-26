@@ -4439,14 +4439,14 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `ambiguous_trait_glob_imports` lint reports uses of traits that are
+    /// The `ambiguous_glob_imported_trait` lint reports uses of traits that are
     /// imported ambiguously via glob imports. Previously, this was not enforced
     /// due to a bug in rustc.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(ambiguous_trait_glob_imports)]
+    /// #![deny(ambiguous_glob_imported_trait)]
     /// mod m1 {
     ///    pub trait Trait {
     ///            fn method1(&self) {}
