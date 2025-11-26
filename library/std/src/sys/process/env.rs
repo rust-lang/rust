@@ -113,3 +113,35 @@ impl<'a> ExactSizeIterator for CommandEnvs<'a> {
         self.iter.is_empty()
     }
 }
+
+/// An iterator over the fully resolved environment variables.
+///
+/// This struct is returned by `Command::get_resolved_envs`.
+#[derive(Debug)]
+pub struct ResolvedEnvs {
+    inner: crate::collections::btree_map::IntoIter<EnvKey, OsString>,
+}
+
+impl ResolvedEnvs {
+    pub(crate) fn new(map: BTreeMap<EnvKey, OsString>) -> Self {
+        Self { inner: map.into_iter() }
+    }
+}
+
+impl Iterator for ResolvedEnvs {
+    type Item = (OsString, OsString);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(|(key, value)| (key.into(), value))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+impl ExactSizeIterator for ResolvedEnvs {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
