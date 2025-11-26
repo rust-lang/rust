@@ -1,5 +1,5 @@
 error[E0646]: `main` function is not allowed to have a `where` clause
-  --> $DIR/issue-50714.rs:3:11
+  --> $DIR/main-where-fn-bound.rs:3:11
    |
 LL | fn main() where fn(&()): Eq {}
    |           ^^^^^^^^^^^^^^^^^ `main` cannot have a `where` clause
