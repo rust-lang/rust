@@ -347,6 +347,7 @@ parse_frontmatter_invalid_opening_preceding_whitespace = invalid preceding white
 parse_frontmatter_length_mismatch = frontmatter close does not match the opening
     .label_opening = the opening here has {$len_opening} dashes...
     .label_close = ...while the close has {$len_close} dashes
+parse_frontmatter_too_many_dashes = too many `-` symbols: frontmatter openings may be delimited by up to 255 `-` symbols, but found {$len_opening}
 parse_frontmatter_unclosed = unclosed frontmatter
     .note = frontmatter opening here was not closed
 

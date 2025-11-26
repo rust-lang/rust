@@ -665,6 +665,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             });
         }
 
+        // Only up to 255 `-`s are allowed in code fences
+        if u8::try_from(len_opening).is_err() {
+            self.dcx().emit_err(errors::FrontmatterTooManyDashes { len_opening });
+        }
+
         if !rest.trim_matches(is_horizontal_whitespace).is_empty() {
             let span = self.mk_sp(last_line_start_pos, self.pos);
             self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span });
