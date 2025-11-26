@@ -1,0 +1,24 @@
+error[E0308]: mismatched types
+  --> $DIR/const-result-no-expect-suggestion.rs:5:19
+   |
+LL | const TEST: u32 = f(2);
+   |                   ^^^^ expected `u32`, found `Result<u32, ()>`
+   |
+   = note: expected type `u32`
+              found enum `Result<u32, ()>`
+
+error[E0599]: no method named `len` found for enum `Result<T, E>` in the current scope
+  --> $DIR/const-result-no-expect-suggestion.rs:12:26
+   |
+LL | const TEST2: usize = g().len();
+   |                          ^^^
+   |
+note: the method `len` exists on the type `String`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
+help: there is a method `le` with a similar name, but with different arguments
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0599.
+For more information about an error, try `rustc --explain E0308`.
