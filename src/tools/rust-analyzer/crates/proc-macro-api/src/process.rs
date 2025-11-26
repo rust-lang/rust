@@ -274,9 +274,9 @@ fn mk_child<'a>(
     #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
     if matches!(protocol, Protocol::LegacyJson { .. }) {
-        cmd.args(["--format", "json"]);
+        cmd.args(["--format", "json-legacy"]);
     } else {
-        cmd.args(["--format", "postcard"]);
+        cmd.args(["--format", "postcard-legacy"]);
     }
     for env in extra_env {
         match env {
