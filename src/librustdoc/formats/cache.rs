@@ -170,7 +170,7 @@ impl Cache {
         cx.cache.traits = mem::take(&mut krate.external_traits);
 
         let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
-        let dst = &render_options.output;
+        let dst = render_options.output_dir_html(); // FIXME: This is sus for json
 
         // Make `--extern-html-root-url` support the same names as `--extern` whenever possible
         let cstore = CStore::from_tcx(tcx);
