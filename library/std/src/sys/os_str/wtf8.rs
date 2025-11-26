@@ -272,11 +272,6 @@ impl Slice {
     }
 
     #[inline]
-    pub fn into_box(&self) -> Box<Slice> {
-        unsafe { mem::transmute(self.inner.into_box()) }
-    }
-
-    #[inline]
     pub fn empty_box() -> Box<Slice> {
         unsafe { mem::transmute(Wtf8::empty_box()) }
     }

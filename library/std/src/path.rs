@@ -1877,9 +1877,7 @@ impl From<&Path> for Box<Path> {
     ///
     /// This will allocate and clone `path` to it.
     fn from(path: &Path) -> Box<Path> {
-        let boxed: Box<OsStr> = path.inner.into();
-        let rw = Box::into_raw(boxed) as *mut Path;
-        unsafe { Box::from_raw(rw) }
+        Box::clone_from_ref(path)
     }
 }
 
