@@ -51,12 +51,6 @@ jobs:
     - name: Setup path to libgccjit
       run: echo 'gcc-path = "/usr/lib/gcc/x86_64-linux-gnu/12"' > config.toml
 
-    - name: Set env
-      run: |
-        echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12" >> $GITHUB_ENV
-
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
       #if: ${{ contains(matrix.commands, 'rustc') }}

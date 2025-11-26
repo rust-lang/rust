@@ -633,6 +633,7 @@ pub fn optimize_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }*/
+    // FIXME: switch to #[expect] when the clippy bug is fixed.
     #[allow(clippy::let_and_return)]
     module
 }
