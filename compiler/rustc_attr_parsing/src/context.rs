@@ -28,6 +28,7 @@ use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
     CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
     RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
+    WindowsSubsystemParser,
 };
 use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -211,6 +212,7 @@ attribute_parsers!(
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
         Single<TypeLengthLimitParser>,
+        Single<WindowsSubsystemParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,

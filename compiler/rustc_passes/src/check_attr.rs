@@ -283,7 +283,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)
-                    | AttributeKind::PinV2(..),
+                    | AttributeKind::PinV2(..)
+                    | AttributeKind::WindowsSubsystem(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -354,7 +355,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::instruction_set // broken on stable!!!
-                            | sym::windows_subsystem // broken on stable!!!
                             | sym::patchable_function_entry // FIXME(patchable_function_entry)
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
