@@ -1604,6 +1604,7 @@ pub mod tracked {
 
     use std::env::{self, VarError};
     use std::ffi::OsStr;
+    use std::path::Path;
 
     /// Retrieve an environment variable and add it to build dependency info.
     /// The build system executing the compiler will know that the variable was accessed during
@@ -1623,8 +1624,8 @@ pub mod tracked {
     ///
     /// Commonly used for tracking asset preprocessing.
     #[unstable(feature = "proc_macro_tracked_path", issue = "99515")]
-    pub fn path<P: AsRef<str>>(path: P) {
-        let path: &str = path.as_ref();
+    pub fn path<P: AsRef<Path>>(path: P) {
+        let path: &str = path.as_ref().to_str().unwrap();
         crate::bridge::client::FreeFunctions::track_path(path);
     }
 }
