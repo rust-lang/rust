@@ -24,6 +24,16 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     }
 }
 
+impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> Self {
+        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
+    }
+}
+
 impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
         Err(CyclePlaceholder(guar))
@@ -73,52 +83,6 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe { std::mem::transmute::<ty::PolyFnSig<'tcx>, ty::Binder<'_, ty::FnSig<'_>>>(fn_sig) }
-    }
-}
-
-impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
-    fn from_cycle_error(
-        tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
-        _guar: ErrorGuaranteed,
-    ) -> Self {
-        let mut item_and_field_ids = Vec::new();
-        let mut representable_ids = FxHashSet::default();
-        for info in &cycle_error.cycle {
-            if info.query.dep_kind == dep_kinds::representability
-                && let Some(field_id) = info.query.def_id
-                && let Some(field_id) = field_id.as_local()
-                && let Some(DefKind::Field) = info.query.info.def_kind
-            {
-                let parent_id = tcx.parent(field_id.to_def_id());
-                let item_id = match tcx.def_kind(parent_id) {
-                    DefKind::Variant => tcx.parent(parent_id),
-                    _ => parent_id,
-                };
-                item_and_field_ids.push((item_id.expect_local(), field_id));
-            }
-        }
-        for info in &cycle_error.cycle {
-            if info.query.dep_kind == dep_kinds::representability_adt_ty
-                && let Some(def_id) = info.query.def_id_for_ty_in_cycle
-                && let Some(def_id) = def_id.as_local()
-                && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
-            {
-                representable_ids.insert(def_id);
-            }
-        }
-        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-        Representability::Infinite(guar)
-    }
-}
-
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
-    fn from_cycle_error(
-        tcx: TyCtxt<'tcx>,
-        cycle_error: &CycleError,
-        guar: ErrorGuaranteed,
-    ) -> Self {
-        ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
     }
 }
 
@@ -268,6 +232,42 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
         // tcx.arena.alloc is pretty much equal to leaking).
         Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
+    }
+}
+
+impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
+    fn from_cycle_error(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Self {
+        let mut item_and_field_ids = Vec::new();
+        let mut representable_ids = FxHashSet::default();
+        for info in &cycle_error.cycle {
+            if info.query.dep_kind == dep_kinds::representability
+                && let Some(field_id) = info.query.def_id
+                && let Some(field_id) = field_id.as_local()
+                && let Some(DefKind::Field) = info.query.info.def_kind
+            {
+                let parent_id = tcx.parent(field_id.to_def_id());
+                let item_id = match tcx.def_kind(parent_id) {
+                    DefKind::Variant => tcx.parent(parent_id),
+                    _ => parent_id,
+                };
+                item_and_field_ids.push((item_id.expect_local(), field_id));
+            }
+        }
+        for info in &cycle_error.cycle {
+            if info.query.dep_kind == dep_kinds::representability_adt_ty
+                && let Some(def_id) = info.query.def_id_for_ty_in_cycle
+                && let Some(def_id) = def_id.as_local()
+                && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
+            {
+                representable_ids.insert(def_id);
+            }
+        }
+        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
+        Representability::Infinite(guar)
     }
 }
 
