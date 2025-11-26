@@ -3,6 +3,8 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
+use std::iter;
+
 use itertools::Itertools;
 use rustc_arena::DroplessArena;
 use rustc_hir as hir;
@@ -12,6 +14,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
 };
+use rustc_middle::util::Providers;
 use tracing::{debug, instrument};
 
 /// Defines the `TermsContext` basically houses an arena where we can
@@ -26,7 +29,16 @@ mod solve;
 
 pub(crate) mod dump;
 
-pub(super) fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
+pub(crate) fn provide(providers: &mut Providers) {
+    providers.variances_of = variances_of;
+    providers.fallback_queries.variances_of = |tcx, def_id, _cycle_error, _guar| {
+        let n = tcx.generics_of(def_id).own_params.len();
+        tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
+    };
+    providers.crate_variances = crate_variances;
+}
+
+fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
     let arena = DroplessArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
