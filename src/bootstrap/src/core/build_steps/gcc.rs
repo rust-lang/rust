@@ -207,7 +207,7 @@ fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
     if matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::CopyFromLibsDir) {
-        // TODO: check if this is OK.
+        // FIXME: check if this is OK.
         return GccBuildStatus::InLibsDir;
     }
 
