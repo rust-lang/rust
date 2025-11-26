@@ -129,7 +129,7 @@ impl ProcMacroClient {
         let process = ProcMacroServerProcess::run(
             process_path,
             env,
-            process::Protocol::Postcard { mode: SpanMode::Id },
+            process::Protocol::LegacyJson { mode: SpanMode::Id },
         )?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }

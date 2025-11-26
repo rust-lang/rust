@@ -30,8 +30,13 @@ pub(crate) struct ProcMacroServerProcess {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Protocol {
-    LegacyJson { mode: SpanMode },
-    Postcard { mode: SpanMode },
+    LegacyJson {
+        mode: SpanMode,
+    },
+    #[expected(dead_code)]
+    Postcard {
+        mode: SpanMode,
+    },
 }
 
 /// Maintains the state of the proc-macro server process.
