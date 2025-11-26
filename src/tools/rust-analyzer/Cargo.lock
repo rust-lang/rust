@@ -1838,6 +1838,7 @@ dependencies = [
  "postcard",
  "proc-macro-srv",
  "rustc-hash 2.1.1",
+ "semver",
  "serde",
  "serde_derive",
  "serde_json",
