@@ -18,6 +18,7 @@ pub mod legacy_protocol;
 mod process;
 
 use paths::{AbsPath, AbsPathBuf};
+use semver::Version;
 use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
@@ -125,8 +126,9 @@ impl ProcMacroClient {
         env: impl IntoIterator<
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
+        version: Option<&Version>,
     ) -> io::Result<ProcMacroClient> {
-        let process = ProcMacroServerProcess::run(process_path, env)?;
+        let process = ProcMacroServerProcess::run(process_path, env, version)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
