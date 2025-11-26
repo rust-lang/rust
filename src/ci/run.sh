@@ -110,6 +110,8 @@ fi
 export RUST_RELEASE_CHANNEL=$(releaseChannel)
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
+export NO_LLVM_ASSERTIONS="1"
+
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   if [[ "$CI_JOB_NAME" == *ohos* ]]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
