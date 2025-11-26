@@ -1,0 +1,27 @@
+error[E0080]: evaluation panicked: assertion failed: false
+  --> $DIR/assert-fail.rs:5:9
+   |
+LL | const { assert!(false) }
+   |         ^^^^^^^^^^^^^^ evaluation of `_::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/assert-fail.rs:5:1
+   |
+LL | const { assert!(false) }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0080]: evaluation panicked: assertion failed: 2 + 2 == 5
+  --> $DIR/assert-fail.rs:7:9
+   |
+LL | const { assert!(2 + 2 == 5) }
+   |         ^^^^^^^^^^^^^^^^^^^ evaluation of `_::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/assert-fail.rs:7:1
+   |
+LL | const { assert!(2 + 2 == 5) }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

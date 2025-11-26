@@ -3926,7 +3926,7 @@ pub enum ItemKind {
     /// E.g., `const FOO: i32 = 42;`.
     Const(Box<ConstItem>),
     /// A module-level const block.
-    /// Equivalent to `const _: () = const { ... }`.
+    /// Equivalent to `const _: () = const { ... };`.
     ///
     /// E.g., `const { assert!(true) }`.
     ConstBlock(ConstBlockItem),
