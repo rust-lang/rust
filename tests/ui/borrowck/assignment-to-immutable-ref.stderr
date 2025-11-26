@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
-  --> $DIR/issue-51515.rs:4:5
+  --> $DIR/assignment-to-immutable-ref.rs:8:5
    |
 LL |     *foo = 32;
    |     ^^^^^^^^^ `foo` is a `&` reference, so it cannot be written to
@@ -10,7 +10,7 @@ LL |     let foo = &mut 16;
    |                +++
 
 error[E0594]: cannot assign to `*bar`, which is behind a `&` reference
-  --> $DIR/issue-51515.rs:8:5
+  --> $DIR/assignment-to-immutable-ref.rs:12:5
    |
 LL |     *bar = 64;
    |     ^^^^^^^^^ `bar` is a `&` reference, so it cannot be written to
