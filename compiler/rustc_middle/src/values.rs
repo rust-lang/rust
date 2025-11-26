@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -7,168 +8,73 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_query_system::Value;
 use rustc_query_system::query::{CycleError, report_cycle};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::dep_graph::dep_kinds;
-use crate::query::plumbing::CyclePlaceholder;
+use crate::query::plumbing::{CyclePlaceholder, default_fallback_query};
+use crate::ty::layout::{LayoutError, TyAndLayout};
 use crate::ty::{self, Representability, Ty, TyCtxt};
 use crate::util::Providers;
 
 pub fn provide(providers: &mut Providers) {
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
-        fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
-            // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
-            // FIXME: Represent the above fact in the trait system somehow.
-            unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_error(tcx, guar)) }
-        }
-    }
-
     providers.fallback_queries.erase_and_anonymize_regions_ty =
-        |tcx, _key, cycle_error, guar| Ty::from_cycle_error(tcx, cycle_error, guar);
+        |tcx, _key, _cycle_error, guar| Ty::new_error(tcx, guar);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            guar: ErrorGuaranteed,
-        ) -> Self {
-            ty::EarlyBinder::bind(Ty::from_cycle_error(tcx, cycle_error, guar))
-        }
-    }
-
-    providers.fallback_queries.type_of = |tcx, _key, cycle_error, guar| {
-        ty::EarlyBinder::<Ty<'_>>::from_cycle_error(tcx, cycle_error, guar)
-    };
-    providers.fallback_queries.type_of_opaque_hir_typeck = |tcx, _key, cycle_error, guar| {
-        ty::EarlyBinder::<Ty<'_>>::from_cycle_error(tcx, cycle_error, guar)
-    };
+    providers.fallback_queries.type_of =
+        |tcx, _key, _cycle_error, guar| ty::EarlyBinder::bind(Ty::new_error(tcx, guar));
+    providers.fallback_queries.type_of_opaque_hir_typeck =
+        |tcx, _key, _cycle_error, guar| ty::EarlyBinder::bind(Ty::new_error(tcx, guar));
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
-        fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
-            Err(CyclePlaceholder(guar))
-        }
-    }
-
-    providers.fallback_queries.type_of_opaque = |tcx, _key, cycle_error, guar| {
-        Result::<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder>::from_cycle_error(
-            tcx,
-            cycle_error,
-            guar,
-        )
-    };
+    providers.fallback_queries.type_of_opaque =
+        |_tcx, _key, _cycle_error, guar| Err(CyclePlaceholder(guar));
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
-        fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, _guar: ErrorGuaranteed) -> Self {
-            // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
-            // FIXME: Represent the above fact in the trait system somehow.
-            unsafe {
-                std::mem::transmute::<ty::SymbolName<'tcx>, ty::SymbolName<'_>>(
-                    ty::SymbolName::new(tcx, "<error>"),
-                )
-            }
-        }
-    }
 
     providers.fallback_queries.symbol_name =
-        |tcx, _key, cycle_error, guar| ty::SymbolName::from_cycle_error(tcx, cycle_error, guar);
+        |tcx, _key, _cycle_error, _guar| ty::SymbolName::new(tcx, "<error>");
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    // `ty::Binder<'a, ty::FnSig<'a>>` is the type behind type alias `ty::PolyFnSig<'a>`
-    impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            guar: ErrorGuaranteed,
-        ) -> Self {
-            let err = Ty::new_error(tcx, guar);
+    fn poly_fn_sig_from_cycle_error<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        cycle_error: &CycleError,
+        guar: ErrorGuaranteed,
+    ) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
+        let arity = tcx
+            .hir_node_by_def_id(def_id)
+            .fn_sig()
+            .unwrap_or_else(|| default_fallback_query(tcx, "fn_sig", &def_id, cycle_error, guar))
+            .decl
+            .inputs
+            .len();
 
-            let arity = if let Some(frame) = cycle_error.cycle.get(0)
-                && frame.query.dep_kind == dep_kinds::fn_sig
-                && let Some(def_id) = frame.query.def_id
-                && let Some(node) = tcx.hir_get_if_local(def_id)
-                && let Some(sig) = node.fn_sig()
-            {
-                sig.decl.inputs.len()
-            } else {
-                tcx.dcx().abort_if_errors();
-                unreachable!()
-            };
-
-            let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-                std::iter::repeat_n(err, arity),
-                err,
-                false,
-                rustc_hir::Safety::Safe,
-                rustc_abi::ExternAbi::Rust,
-            ));
-
-            // SAFETY: This is never called when `Self` is not `ty::Binder<'tcx, ty::FnSig<'tcx>>`.
-            // FIXME: Represent the above fact in the trait system somehow.
-            unsafe {
-                std::mem::transmute::<ty::PolyFnSig<'tcx>, ty::Binder<'_, ty::FnSig<'_>>>(fn_sig)
-            }
-        }
+        ty::EarlyBinder::bind(ty::Binder::dummy(tcx.mk_fn_sig(
+            std::iter::repeat_n(Ty::new_error(tcx, guar), arity),
+            Ty::new_error(tcx, guar),
+            false,
+            rustc_hir::Safety::Safe,
+            rustc_abi::ExternAbi::Rust,
+        )))
     }
 
-    impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, ty::Binder<'_, ty::FnSig<'_>>> {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            guar: ErrorGuaranteed,
-        ) -> Self {
-            ty::EarlyBinder::bind(ty::Binder::from_cycle_error(tcx, cycle_error, guar))
-        }
-    }
+    providers.fallback_queries.fn_sig =
+        |tcx, key, cycle_error, guar| poly_fn_sig_from_cycle_error(tcx, key, cycle_error, guar);
 
-    providers.fallback_queries.fn_sig = |tcx, _key, cycle_error, guar| {
-        ty::EarlyBinder::<ty::PolyFnSig<'_>>::from_cycle_error(tcx, cycle_error, guar)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    providers.fallback_queries.variances_of = |tcx, def_id, _cycle_error, guar| {
+        let n = tcx.generics_of(def_id).own_params.len();
+        tcx.arena.alloc_from_iter(iter::repeat_n(ty::Bivariant, n))
     };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            _guar: ErrorGuaranteed,
-        ) -> Self {
-            search_for_cycle_permutation(
-                &cycle_error.cycle,
-                |cycle| {
-                    if let Some(frame) = cycle.get(0)
-                        && frame.query.dep_kind == dep_kinds::variances_of
-                        && let Some(def_id) = frame.query.def_id
-                    {
-                        let n = tcx.generics_of(def_id).own_params.len();
-                        ControlFlow::Break(vec![ty::Bivariant; n].leak())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
-                },
-                || {
-                    span_bug!(
-                        cycle_error.usage.as_ref().unwrap().0,
-                        "only `variances_of` returns `&[ty::Variance]`"
-                    )
-                },
-            )
-        }
-    }
-
-    providers.fallback_queries.variances_of =
-        |tcx, _key, cycle_error, guar| <&[ty::Variance]>::from_cycle_error(tcx, cycle_error, guar);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -191,140 +97,131 @@ pub fn provide(providers: &mut Providers) {
         otherwise()
     }
 
-    impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            _guar: ErrorGuaranteed,
-        ) -> Self {
-            let diag = search_for_cycle_permutation(
-                &cycle_error.cycle,
-                |cycle| {
-                    if cycle[0].query.dep_kind == dep_kinds::layout_of
-                        && let Some(def_id) = cycle[0].query.def_id_for_ty_in_cycle
-                        && let Some(def_id) = def_id.as_local()
-                        && let def_kind = tcx.def_kind(def_id)
-                        && matches!(def_kind, DefKind::Closure)
-                        && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
-                    {
-                        // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
-                        // due to interactions between the desugaring into a closure expr and the
-                        // def_span code. I'm not motivated to fix it, because I tried and it was
-                        // not working, so just hack around it by grabbing the parent fn's span.
-                        let span = if coroutine_kind.is_fn_like() {
-                            tcx.def_span(tcx.local_parent(def_id))
-                        } else {
-                            tcx.def_span(def_id)
-                        };
-                        let mut diag = struct_span_code_err!(
-                            tcx.sess.dcx(),
-                            span,
-                            E0733,
-                            "recursion in {} {} requires boxing",
-                            tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
-                            tcx.def_kind_descr(def_kind, def_id.to_def_id()),
-                        );
-                        for (i, frame) in cycle.iter().enumerate() {
-                            if frame.query.dep_kind != dep_kinds::layout_of {
-                                continue;
-                            }
-                            let Some(frame_def_id) = frame.query.def_id_for_ty_in_cycle else {
-                                continue;
-                            };
-                            let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id)
-                            else {
-                                continue;
-                            };
-                            let frame_span =
-                                frame.query.info.default_span(cycle[(i + 1) % cycle.len()].span);
-                            if frame_span.is_dummy() {
-                                continue;
-                            }
-                            if i == 0 {
-                                diag.span_label(frame_span, "recursive call here");
-                            } else {
-                                let coroutine_span: Span = if frame_coroutine_kind.is_fn_like() {
-                                    tcx.def_span(tcx.parent(frame_def_id))
-                                } else {
-                                    tcx.def_span(frame_def_id)
-                                };
-                                let mut multispan = MultiSpan::from_span(coroutine_span);
-                                multispan.push_span_label(
-                                    frame_span,
-                                    "...leading to this recursive call",
-                                );
-                                diag.span_note(
-                                    multispan,
-                                    format!("which leads to this {}", tcx.def_descr(frame_def_id)),
-                                );
-                            }
-                        }
-                        // FIXME: We could report a structured suggestion if we had
-                        // enough info here... Maybe we can use a hacky HIR walker.
-                        if matches!(
-                            coroutine_kind,
-                            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
-                        ) {
-                            diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
-                        }
-
-                        ControlFlow::Break(diag)
+    fn layout_from_cycle<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        _query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
+        // FIXME: Due to current cycle creation implementation in multi-threaded mode it
+        let diag = search_for_cycle_permutation(
+            &cycle_error.cycle,
+            |cycle| {
+                if cycle[0].query.dep_kind == dep_kinds::layout_of
+                    && let Some(def_id) = cycle[0].query.def_id_for_ty_in_cycle
+                    && let Some(def_id) = def_id.as_local()
+                    && let def_kind = tcx.def_kind(def_id)
+                    && matches!(def_kind, DefKind::Closure)
+                    && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
+                {
+                    // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
+                    // due to interactions between the desugaring into a closure expr and the
+                    // def_span code. I'm not motivated to fix it, because I tried and it was
+                    // not working, so just hack around it by grabbing the parent fn's span.
+                    let span = if coroutine_kind.is_fn_like() {
+                        tcx.def_span(tcx.local_parent(def_id))
                     } else {
-                        ControlFlow::Continue(())
+                        tcx.def_span(def_id)
+                    };
+                    let mut diag = struct_span_code_err!(
+                        tcx.sess.dcx(),
+                        span,
+                        E0733,
+                        "recursion in {} {} requires boxing",
+                        tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
+                        tcx.def_kind_descr(def_kind, def_id.to_def_id()),
+                    );
+                    for (i, frame) in cycle.iter().enumerate() {
+                        if frame.query.dep_kind != dep_kinds::layout_of {
+                            continue;
+                        }
+                        let Some(frame_def_id) = frame.query.def_id_for_ty_in_cycle else {
+                            continue;
+                        };
+                        let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {
+                            continue;
+                        };
+                        let frame_span =
+                            frame.query.info.default_span(cycle[(i + 1) % cycle.len()].span);
+                        if frame_span.is_dummy() {
+                            continue;
+                        }
+                        if i == 0 {
+                            diag.span_label(frame_span, "recursive call here");
+                        } else {
+                            let coroutine_span: Span = if frame_coroutine_kind.is_fn_like() {
+                                tcx.def_span(tcx.parent(frame_def_id))
+                            } else {
+                                tcx.def_span(frame_def_id)
+                            };
+                            let mut multispan = MultiSpan::from_span(coroutine_span);
+                            multispan
+                                .push_span_label(frame_span, "...leading to this recursive call");
+                            diag.span_note(
+                                multispan,
+                                format!("which leads to this {}", tcx.def_descr(frame_def_id)),
+                            );
+                        }
                     }
-                },
-                || report_cycle(tcx.sess, cycle_error),
-            );
+                    // FIXME: We could report a structured suggestion if we had
+                    // enough info here... Maybe we can use a hacky HIR walker.
+                    if matches!(
+                        coroutine_kind,
+                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                    ) {
+                        diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+                    }
 
-            let guar = diag.emit();
+                    ControlFlow::Break(diag)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+            || report_cycle(tcx.sess, cycle_error),
+        );
 
-            // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
-            // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
-            // tcx.arena.alloc is pretty much equal to leaking).
-            Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
-        }
+        let guar = diag.emit();
+
+        Err(tcx.arena.alloc(LayoutError::Cycle(guar)))
     }
 
-    providers.fallback_queries.layout_of = |tcx, _key, cycle_error, guar| {
-        Result::<_, &'_ ty::layout::LayoutError<'_>>::from_cycle_error(tcx, cycle_error, guar)
-    };
+    providers.fallback_queries.layout_of =
+        |tcx, key, cycle_error, guar| layout_from_cycle(tcx, key, cycle_error, guar);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
-        fn from_cycle_error(
-            tcx: TyCtxt<'tcx>,
-            cycle_error: &CycleError,
-            _guar: ErrorGuaranteed,
-        ) -> Self {
-            let mut item_and_field_ids = Vec::new();
-            let mut representable_ids = FxHashSet::default();
-            for info in &cycle_error.cycle {
-                if info.query.dep_kind == dep_kinds::representability
-                    && let Some(field_id) = info.query.def_id
-                    && let Some(field_id) = field_id.as_local()
-                    && let Some(DefKind::Field) = info.query.info.def_kind
-                {
-                    let parent_id = tcx.parent(field_id.to_def_id());
-                    let item_id = match tcx.def_kind(parent_id) {
-                        DefKind::Variant => tcx.parent(parent_id),
-                        _ => parent_id,
-                    };
-                    item_and_field_ids.push((item_id.expect_local(), field_id));
-                }
+    fn representability_from_cycle<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
+    ) -> Representability {
+        let mut item_and_field_ids = Vec::new();
+        let mut representable_ids = FxHashSet::default();
+        for info in &cycle_error.cycle {
+            if info.query.dep_kind == dep_kinds::representability
+                && let Some(field_id) = info.query.def_id
+                && let Some(field_id) = field_id.as_local()
+                && let Some(DefKind::Field) = info.query.info.def_kind
+            {
+                let parent_id = tcx.parent(field_id.to_def_id());
+                let item_id = match tcx.def_kind(parent_id) {
+                    DefKind::Variant => tcx.parent(parent_id),
+                    _ => parent_id,
+                };
+                item_and_field_ids.push((item_id.expect_local(), field_id));
             }
-            for info in &cycle_error.cycle {
-                if info.query.dep_kind == dep_kinds::representability_adt_ty
-                    && let Some(def_id) = info.query.def_id_for_ty_in_cycle
-                    && let Some(def_id) = def_id.as_local()
-                    && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
-                {
-                    representable_ids.insert(def_id);
-                }
-            }
-            let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
-            Representability::Infinite(guar)
         }
+        for info in &cycle_error.cycle {
+            if info.query.dep_kind == dep_kinds::representability_adt_ty
+                && let Some(def_id) = info.query.def_id_for_ty_in_cycle
+                && let Some(def_id) = def_id.as_local()
+                && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
+            {
+                representable_ids.insert(def_id);
+            }
+        }
+        let guar = recursive_type_error(tcx, item_and_field_ids, &representable_ids);
+        Representability::Infinite(guar)
     }
 
     // item_and_field_ids should form a cycle where each field contains the
@@ -462,7 +359,7 @@ pub fn provide(providers: &mut Providers) {
     }
 
     providers.fallback_queries.representability =
-        |tcx, _key, cycle_error, guar| Representability::from_cycle_error(tcx, cycle_error, guar);
+        |tcx, _key, cycle_error, guar| representability_from_cycle(tcx, cycle_error, guar);
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
 }

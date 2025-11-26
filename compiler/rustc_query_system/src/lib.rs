@@ -10,9 +10,7 @@ pub mod dep_graph;
 mod error;
 pub mod ich;
 pub mod query;
-mod values;
 
 pub use error::{HandleCycleError, QueryOverflow, QueryOverflowNote};
-pub use values::Value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
