@@ -83,7 +83,7 @@ impl GccOutput {
                     std::fs::create_dir_all(&target_dir),
                     format!("Cannot create target dir {} for libgccjit", target_dir.display())
                 );
-                let dst = target_dir.join(&target_filename);
+                let dst = target_dir.join(target_filename);
                 builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
             }
         }
