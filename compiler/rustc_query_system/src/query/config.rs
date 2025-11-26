@@ -58,6 +58,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn value_from_cycle_error(
         self,
         tcx: Qcx::DepContext,
+        key: Self::Key,
         cycle_error: &CycleError<QueryStackFrameExtra>,
         guar: ErrorGuaranteed,
     ) -> Self::Value;

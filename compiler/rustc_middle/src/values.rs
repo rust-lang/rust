@@ -15,9 +15,10 @@ use rustc_span::{ErrorGuaranteed, Span};
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
 use crate::ty::{self, Representability, Ty, TyCtxt};
+use crate::util::Providers;
 
-mod git_diff_indentation {
-    use super::*;
+pub fn provide(providers: &mut Providers) {
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
         fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
@@ -26,6 +27,11 @@ mod git_diff_indentation {
             unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(Ty::new_error(tcx, guar)) }
         }
     }
+
+    providers.fallback_queries.erase_and_anonymize_regions_ty =
+        |tcx, _key, cycle_error, guar| Ty::from_cycle_error(tcx, cycle_error, guar);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<'_, Ty<'_>> {
         fn from_cycle_error(
@@ -37,11 +43,30 @@ mod git_diff_indentation {
         }
     }
 
+    providers.fallback_queries.type_of = |tcx, _key, cycle_error, guar| {
+        ty::EarlyBinder::<Ty<'_>>::from_cycle_error(tcx, cycle_error, guar)
+    };
+    providers.fallback_queries.type_of_opaque_hir_typeck = |tcx, _key, cycle_error, guar| {
+        ty::EarlyBinder::<Ty<'_>>::from_cycle_error(tcx, cycle_error, guar)
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
     impl<'tcx> Value<TyCtxt<'tcx>> for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
         fn from_cycle_error(_tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
             Err(CyclePlaceholder(guar))
         }
     }
+
+    providers.fallback_queries.type_of_opaque = |tcx, _key, cycle_error, guar| {
+        Result::<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder>::from_cycle_error(
+            tcx,
+            cycle_error,
+            guar,
+        )
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
         fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, _guar: ErrorGuaranteed) -> Self {
@@ -55,6 +80,12 @@ mod git_diff_indentation {
         }
     }
 
+    providers.fallback_queries.symbol_name =
+        |tcx, _key, cycle_error, guar| ty::SymbolName::from_cycle_error(tcx, cycle_error, guar);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    // `ty::Binder<'a, ty::FnSig<'a>>` is the type behind type alias `ty::PolyFnSig<'a>`
     impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         fn from_cycle_error(
             tcx: TyCtxt<'tcx>,
@@ -101,6 +132,12 @@ mod git_diff_indentation {
         }
     }
 
+    providers.fallback_queries.fn_sig = |tcx, _key, cycle_error, guar| {
+        ty::EarlyBinder::<ty::PolyFnSig<'_>>::from_cycle_error(tcx, cycle_error, guar)
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
     impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
         fn from_cycle_error(
             tcx: TyCtxt<'tcx>,
@@ -129,6 +166,11 @@ mod git_diff_indentation {
             )
         }
     }
+
+    providers.fallback_queries.variances_of =
+        |tcx, _key, cycle_error, guar| <&[ty::Variance]>::from_cycle_error(tcx, cycle_error, guar);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     // Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
     fn search_for_cycle_permutation<Q, T>(
@@ -242,6 +284,12 @@ mod git_diff_indentation {
             Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
         }
     }
+
+    providers.fallback_queries.layout_of = |tcx, _key, cycle_error, guar| {
+        Result::<_, &'_ ty::layout::LayoutError<'_>>::from_cycle_error(tcx, cycle_error, guar)
+    };
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
         fn from_cycle_error(
@@ -412,4 +460,9 @@ mod git_diff_indentation {
             _ => {}
         }
     }
+
+    providers.fallback_queries.representability =
+        |tcx, _key, cycle_error, guar| Representability::from_cycle_error(tcx, cycle_error, guar);
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 }
