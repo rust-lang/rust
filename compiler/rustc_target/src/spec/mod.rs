@@ -2615,6 +2615,10 @@ impl TargetOptions {
         // XCOFF and MachO don't support COMDAT.
         !self.is_like_aix && !self.is_like_darwin
     }
+
+    pub fn uses_pdb_debuginfo(&self) -> bool {
+        self.debuginfo_kind == DebuginfoKind::Pdb
+    }
 }
 
 impl TargetOptions {
