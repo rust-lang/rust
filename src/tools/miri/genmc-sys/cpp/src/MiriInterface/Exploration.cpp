@@ -288,11 +288,11 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
     return ret_val.get();
 }
 
-auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> bool {
-    const auto pos = inc_pos(thread_id);
-    GenMCDriver::handleFree(nullptr, pos, SAddr(address), EventDeps());
-    // FIXME(genmc): use returned error from `handleFree` once implemented in GenMC.
-    return getResult().status.has_value();
+auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address)
+    -> std::unique_ptr<std::string> {
+    auto pos = inc_pos(thread_id);
+    auto ret = GenMCDriver::handleFree(nullptr, pos, SAddr(address), EventDeps());
+    return ret.has_value() ? format_error(*ret) : nullptr;
 }
 
 /**** Estimation mode result ****/
