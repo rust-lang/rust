@@ -89,7 +89,6 @@
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
-#![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(assert_matches)]
 #![feature(async_fn_traits)]
