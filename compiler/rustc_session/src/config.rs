@@ -32,7 +32,6 @@ use rustc_target::spec::{
 use tracing::debug;
 
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
-use crate::config::enforced_mitigations::EnforcedMitigationKind;
 use crate::config::native_libs::parse_native_libs;
 pub use crate::config::print_request::{PrintKind, PrintRequest};
 use crate::errors::FileWriteFail;
@@ -1462,18 +1461,6 @@ impl Options {
     #[inline]
     pub fn autodiff_enabled(&self) -> bool {
         self.unstable_opts.autodiff.contains(&AutoDiff::Enable)
-    }
-
-    pub fn allowed_partial_mitigations(&self) -> impl Iterator<Item = EnforcedMitigationKind> {
-        let mut result = BTreeSet::default();
-        for mitigation in &self.unstable_opts.allow_partial_mitigations {
-            if mitigation.enabled {
-                result.insert(mitigation.kind);
-            } else {
-                result.remove(&mitigation.kind);
-            }
-        }
-        result.into_iter()
     }
 }
 
