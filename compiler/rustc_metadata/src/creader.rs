@@ -195,6 +195,7 @@ impl<'a> CrateOrigin<'a> {
             CrateOrigin::IndirectDependency { parent_private, dep, .. } => {
                 Some(dep.is_private || *parent_private)
             }
+            CrateOrigin::Injected => Some(true),
             _ => None,
         }
     }
@@ -546,17 +547,7 @@ impl CStore {
     /// Sometimes the directly dependent crate is not specified by `--extern`, in this case,
     /// `private-dep` is none during loading. This is equivalent to the scenario where the
     /// command parameter is set to `public-dependency`
-    fn is_private_dep(
-        &self,
-        externs: &Externs,
-        name: Symbol,
-        private_dep: Option<bool>,
-        origin: CrateOrigin<'_>,
-    ) -> bool {
-        if matches!(origin, CrateOrigin::Injected) {
-            return true;
-        }
-
+    fn is_private_dep(&self, externs: &Externs, name: Symbol, private_dep: Option<bool>) -> bool {
         let extern_private = externs.get(name.as_str()).map(|e| e.is_private_dep);
         match (extern_private, private_dep) {
             // Explicit non-private via `--extern`, explicit non-private from metadata, or
@@ -583,7 +574,7 @@ impl CStore {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep, origin);
+        let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
 
         // Claim this crate number and cache it
         let feed = self.intern_stable_crate_id(tcx, &crate_root)?;
@@ -814,8 +805,7 @@ impl CStore {
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
-                let private_dep =
-                    self.is_private_dep(&tcx.sess.opts.externs, name, private_dep, origin);
+                let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
                 let data = self.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
