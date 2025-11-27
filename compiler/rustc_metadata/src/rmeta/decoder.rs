@@ -29,7 +29,8 @@ use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
-use rustc_session::config::{EnforcedMitigation, TargetModifier};
+use rustc_session::config::TargetModifier;
+use rustc_session::config::enforced_mitigations::EnforcedMitigation;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{

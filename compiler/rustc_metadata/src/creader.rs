@@ -25,9 +25,10 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::Session;
+use rustc_session::config::enforced_mitigations::EnforcedMitigationLevel;
 use rustc_session::config::{
-    CrateType, EnforcedMitigationLevel, ExtendedTargetModifierInfo, ExternLocation, Externs,
-    OptionsTargetModifiers, TargetModifier,
+    CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
+    TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
@@ -483,12 +484,9 @@ impl CStore {
 
     pub fn report_incompatible_enforced_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         let my_mitigations = tcx.sess.gather_enabled_enforced_mitigations();
-        let mut my_mitigations: BTreeMap<_, _> = my_mitigations
-            .iter()
-            .filter(|mitigation| mitigation.kind.enforced_since() <= tcx.sess.edition())
-            .map(|mitigation| (mitigation.kind, mitigation))
-            .collect();
-        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations() {
+        let mut my_mitigations: BTreeMap<_, _> =
+            my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
+        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
             my_mitigations.remove(&skipped_mitigation);
         }
         const MAX_ERRORS_PER_MITIGATION: usize = 5;
