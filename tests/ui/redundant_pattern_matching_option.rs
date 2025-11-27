@@ -202,3 +202,32 @@ fn issue13902() {
         //~^ redundant_pattern_matching
     }
 }
+
+fn issue16045() {
+    fn f() -> Result<(), ()> {
+        let x = Ok::<_, ()>(Some(123));
+        if let Some(_) = x? {
+            //~^ redundant_pattern_matching
+        }
+
+        Ok(())
+    }
+
+    async fn g() {
+        struct F {
+            x: Option<u32>,
+        }
+
+        impl Future for F {
+            type Output = Option<u32>;
+
+            fn poll(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+                std::task::Poll::Ready(self.x)
+            }
+        }
+        let x = F { x: Some(123) };
+        if let Some(_) = x.await {
+            //~^ redundant_pattern_matching
+        }
+    }
+}
