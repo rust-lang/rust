@@ -16,7 +16,7 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_public;
 
-use rustc_public::ty::{Ty, ForeignItemKind};
+use rustc_public::ty::{ForeignItemKind, Ty};
 use rustc_public::*;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -29,11 +29,11 @@ fn test_def_tys() -> ControlFlow<()> {
     for item in &items {
         // Type from crate items.
         let ty = item.ty();
-        match item.name().as_str() {
+        match item.trimmed_name().as_str() {
             "STATIC_STR" => assert!(ty.kind().is_ref()),
             "CONST_U32" => assert!(ty.kind().is_integral()),
-            "main" => { check_fn_def(ty) }
-            _ => unreachable!("Unexpected item: `{item:?}`")
+            "main" => check_fn_def(ty),
+            _ => unreachable!("Unexpected item: `{item:?}`"),
         }
     }
 
@@ -42,7 +42,7 @@ fn test_def_tys() -> ControlFlow<()> {
         // Type from foreign items.
         let ty = item.ty();
         let item_kind = item.kind();
-        let name = item.name();
+        let name = item.trimmed_name();
         match item_kind {
             ForeignItemKind::Fn(fn_def) => {
                 assert_eq!(&name, "extern_fn");
@@ -54,7 +54,7 @@ fn test_def_tys() -> ControlFlow<()> {
                 assert_eq!(ty, def.ty());
                 assert!(ty.kind().is_integral())
             }
-            _ => unreachable!("Unexpected kind: {item_kind:?}")
+            _ => unreachable!("Unexpected kind: {item_kind:?}"),
         };
     }
 
