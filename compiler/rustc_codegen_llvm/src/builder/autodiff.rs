@@ -29,9 +29,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     let sig = fn_ptr_ty.fn_sig(tcx).skip_binder();
 
     // FIXME(Sa4dUs): pass proper varargs once we have support for differentiating variadic functions
-    let Ok(fn_abi) =
-        tcx.fn_abi_of_fn_ptr(fn_ptr_ty, ty::List::empty());
-    else {
+    let Ok(fn_abi) = tcx.fn_abi_of_fn_ptr(fn_ptr_ty, ty::List::empty()) else {
         bug!("failed to get fn_abi of fn_ptr with empty varargs");
     };
 
