@@ -709,6 +709,7 @@ impl f128 {
     /// let y = 2.0f128;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f128::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -736,6 +737,7 @@ impl f128 {
     /// let y = 2.0f128;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f128::NAN), x);
     /// # }
     /// ```
     #[inline]
