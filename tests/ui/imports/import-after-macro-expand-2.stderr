@@ -1,0 +1,33 @@
+error[E0659]: `Thing` is ambiguous
+  --> $DIR/import-after-macro-expand-2.rs:14:35
+   |
+LL |         let thing: crate::Thing = Thing::Foo;
+   |                                   ^^^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Thing` could refer to the enum imported here
+  --> $DIR/import-after-macro-expand-2.rs:11:9
+   |
+LL |     use super::*;
+   |         ^^^^^^^^
+   = help: consider adding an explicit import of `Thing` to disambiguate
+note: `Thing` could also refer to the enum imported here
+  --> $DIR/import-after-macro-expand-2.rs:11:9
+   |
+LL |     use super::*;
+   |         ^^^^^^^^
+   = help: consider adding an explicit import of `Thing` to disambiguate
+
+error[E0599]: no variant or associated item named `Foo` found for enum `thing::Thing` in the current scope
+  --> $DIR/import-after-macro-expand-2.rs:14:42
+   |
+LL |         let thing: crate::Thing = Thing::Foo;
+   |                                          ^^^ variant or associated item not found in `thing::Thing`
+...
+LL |     pub enum Thing {
+   |     -------------- variant or associated item `Foo` not found for this enum
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0659.
+For more information about an error, try `rustc --explain E0599`.

@@ -728,7 +728,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         ident: orig_ident,
                                         b1: innermost_binding,
                                         b2: binding,
-                                        warning: false,
                                         misc1: misc(innermost_flags),
                                         misc2: misc(flags),
                                     });
@@ -1072,7 +1071,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 b1: binding,
                 b2: shadowed_glob,
-                warning: false,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
             });

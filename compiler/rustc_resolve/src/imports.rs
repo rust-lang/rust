@@ -326,7 +326,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.arenas.alloc_name_binding(NameBindingData {
             kind: NameBindingKind::Import { binding, import },
             ambiguity: None,
-            warn_ambiguity: false,
             span: import.span,
             vis,
             expansion: import.parent_scope.expansion,
@@ -340,7 +339,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         binding: NameBinding<'ra>,
-        warn_ambiguity: bool,
     ) -> Result<(), NameBinding<'ra>> {
         let res = binding.res();
         self.check_reserved_macro_name(ident, res);
@@ -352,7 +350,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module.underscore_disambiguator.update_unchecked(|d| d + 1);
             module.underscore_disambiguator.get()
         });
-        self.update_local_resolution(module, key, warn_ambiguity, |this, resolution| {
+        self.update_local_resolution(module, key, |this, resolution| {
             if let Some(old_binding) = resolution.best_binding() {
                 if res == Res::Err && old_binding.res() != Res::Err {
                     // Do not override real bindings with `Res::Err`s from error recovery.
@@ -361,30 +359,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
                         let (glob_binding, old_glob_binding) = (binding, old_binding);
-                        // FIXME: remove `!binding.is_ambiguity_recursive()` after delete the warning ambiguity.
-                        if !binding.is_ambiguity_recursive()
-                            && let NameBindingKind::Import { import: old_import, .. } =
-                                old_glob_binding.kind
-                            && let NameBindingKind::Import { import, .. } = glob_binding.kind
-                            && old_import == import
-                        {
-                            // When imported from the same glob-import statement, we should replace
-                            // `old_glob_binding` with `glob_binding`, regardless of whether
-                            // they have the same resolution or not.
-                            resolution.glob_binding = Some(glob_binding);
-                        } else if res != old_glob_binding.res() {
+                        if res != old_glob_binding.res() {
                             resolution.glob_binding = Some(this.new_ambiguity_binding(
                                 AmbiguityKind::GlobVsGlob,
                                 old_glob_binding,
                                 glob_binding,
-                                warn_ambiguity,
                             ));
-                        } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
+                        } else if !old_glob_binding.vis.is_at_least(glob_binding.vis, this.tcx)
+                            || glob_binding.is_ambiguity_recursive()
+                        {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.glob_binding = Some(glob_binding);
-                        } else if binding.is_ambiguity_recursive() {
-                            resolution.glob_binding =
-                                Some(this.new_warn_ambiguity_binding(glob_binding));
                         }
                     }
                     (old_glob @ true, false) | (old_glob @ false, true) => {
@@ -398,7 +383,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 AmbiguityKind::GlobVsExpanded,
                                 non_glob_binding,
                                 glob_binding,
-                                false,
                             ));
                         } else {
                             resolution.non_glob_binding = Some(non_glob_binding);
@@ -411,9 +395,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     AmbiguityKind::GlobVsGlob,
                                     old_glob_binding,
                                     glob_binding,
-                                    false,
                                 ));
-                            } else if !old_glob_binding.vis.is_at_least(binding.vis, this.tcx) {
+                            } else if !old_glob_binding.vis.is_at_least(glob_binding.vis, this.tcx)
+                                || glob_binding.is_ambiguity_recursive()
+                            {
+                                // We are glob-importing the same item but with greater visibility.
                                 resolution.glob_binding = Some(glob_binding);
                             }
                         } else {
@@ -441,33 +427,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ambiguity_kind: AmbiguityKind,
         primary_binding: NameBinding<'ra>,
         secondary_binding: NameBinding<'ra>,
-        warn_ambiguity: bool,
     ) -> NameBinding<'ra> {
         let ambiguity = Some((secondary_binding, ambiguity_kind));
-        let data = NameBindingData { ambiguity, warn_ambiguity, ..*primary_binding };
+        let data = NameBindingData { ambiguity, ..*primary_binding };
         self.arenas.alloc_name_binding(data)
-    }
-
-    fn new_warn_ambiguity_binding(&self, binding: NameBinding<'ra>) -> NameBinding<'ra> {
-        assert!(binding.is_ambiguity_recursive());
-        self.arenas.alloc_name_binding(NameBindingData { warn_ambiguity: true, ..*binding })
     }
 
     // Use `f` to mutate the resolution of the name in the module.
     // If the resolution becomes a success, define it in the module's glob importers.
-    fn update_local_resolution<T, F>(
-        &mut self,
-        module: Module<'ra>,
-        key: BindingKey,
-        warn_ambiguity: bool,
-        f: F,
-    ) -> T
+    fn update_local_resolution<T, F>(&mut self, module: Module<'ra>, key: BindingKey, f: F) -> T
     where
         F: FnOnce(&Resolver<'ra, 'tcx>, &mut NameResolution<'ra>) -> T,
     {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
-        let (binding, t, warn_ambiguity) = {
+        let (binding, t) = {
             let resolution = &mut *self.resolution_or_default(module, key).borrow_mut_unchecked();
             let old_binding = resolution.binding();
 
@@ -476,7 +450,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if let Some(binding) = resolution.binding()
                 && old_binding != Some(binding)
             {
-                (binding, t, warn_ambiguity || old_binding.is_some())
+                (binding, t)
             } else {
                 return t;
             }
@@ -501,7 +475,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ident.0,
                     key.ns,
                     imported_binding,
-                    warn_ambiguity,
                 );
             }
         }
@@ -522,11 +495,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_binding = self.import(dummy_binding, import);
             self.per_ns(|this, ns| {
                 let module = import.parent_scope.module;
-                let _ = this.try_define_local(module, target, ns, dummy_binding, false);
+                let _ = this.try_define_local(module, target, ns, dummy_binding);
                 // Don't remove underscores from `single_imports`, they were never added.
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(target, ns);
-                    this.update_local_resolution(module, key, false, |_, resolution| {
+                    this.update_local_resolution(module, key, |_, resolution| {
                         resolution.single_imports.swap_remove(&import);
                     })
                 }
@@ -916,7 +889,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,
-                                false,
                                 |_, resolution| {
                                     resolution.single_imports.swap_remove(&import);
                                 },
@@ -945,8 +917,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { bindings, .. } => bindings[TypeNS].get().binding(),
             _ => None,
         };
-        let ambiguity_errors_len =
-            |errors: &Vec<AmbiguityError<'_>>| errors.iter().filter(|error| !error.warning).count();
+        let ambiguity_errors_len = |errors: &Vec<AmbiguityError<'_>>| errors.iter().count();
         let prev_ambiguity_errors_len = ambiguity_errors_len(&self.ambiguity_errors);
         let finalize = Finalize::with_root_span(import.root_id, import.span, import.root_span);
 
@@ -1160,9 +1131,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             initial_binding.res()
                         });
                         let res = binding.res();
-                        let has_ambiguity_error =
-                            this.ambiguity_errors.iter().any(|error| !error.warning);
-                        if res == Res::Err || has_ambiguity_error {
+                        if res == Res::Err || !this.ambiguity_errors.is_empty() {
                             this.dcx()
                                 .span_delayed_bug(import.span, "some error happened for an import");
                             return;
@@ -1520,16 +1489,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, import);
-                let warn_ambiguity = self
-                    .resolution(import.parent_scope.module, key)
-                    .and_then(|r| r.binding())
-                    .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define_local(
                     import.parent_scope.module,
                     key.ident.0,
                     key.ns,
                     imported_binding,
-                    warn_ambiguity,
                 );
             }
         }
@@ -1554,8 +1518,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
-            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
-            if res != def::Res::Err && !error_ambiguity {
+            if res != def::Res::Err && !binding.is_ambiguity_recursive() {
                 let mut reexport_chain = SmallVec::new();
                 let mut next_binding = binding;
                 while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
