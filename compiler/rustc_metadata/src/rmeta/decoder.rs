@@ -214,12 +214,12 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 /// Decoding of some types, like `Span` require some information to already been read.
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
-    cdata: Option<CrateMetadataRef<'a>>,
+    cdata: CrateMetadataRef<'a>,
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
-    alloc_decoding_session: Option<AllocDecodingSession<'a>>,
+    alloc_decoding_session: AllocDecodingSession<'a>,
 }
 
 impl<'a, 'tcx> LazyDecoder for MetadataDecodeContext<'a, 'tcx> {
@@ -257,9 +257,7 @@ pub(super) trait BlobMetadata<'a, 'tcx>: Copy {
 pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn _blob(self) -> &'a MetadataBlob;
 
-    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
-        None
-    }
+    fn cdata(self) -> CrateMetadataRef<'a>;
     fn sess(self) -> Option<&'tcx Session> {
         None
     }
@@ -280,14 +278,13 @@ where
 
     fn decoder(self, pos: usize) -> MetadataDecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
+        let cdata = self.cdata();
         MetadataDecodeContext {
             blob_decoder: self.blob().decoder(pos),
-            cdata: self.cdata(),
+            cdata,
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
-            alloc_decoding_session: self
-                .cdata()
-                .map(|cdata| cdata.cdata.alloc_decoding_state.new_decoding_session()),
+            alloc_decoding_session: cdata.cdata.alloc_decoding_state.new_decoding_session(),
         }
     }
 }
@@ -321,8 +318,8 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for CrateMetadataRef<'a> {
         &self.cdata.blob
     }
     #[inline]
-    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
-        Some(self)
+    fn cdata(self) -> CrateMetadataRef<'a> {
+        self
     }
 }
 
@@ -332,8 +329,8 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, &'tcx Session) {
         &self.0.cdata.blob
     }
     #[inline]
-    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
-        Some(self.0)
+    fn cdata(self) -> CrateMetadataRef<'a> {
+        self.0
     }
     #[inline]
     fn sess(self) -> Option<&'tcx Session> {
@@ -347,8 +344,8 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
         &self.0.cdata.blob
     }
     #[inline]
-    fn cdata(self) -> Option<CrateMetadataRef<'a>> {
-        Some(self.0)
+    fn cdata(self) -> CrateMetadataRef<'a> {
+        self.0
     }
     #[inline]
     fn tcx(self) -> Option<TyCtxt<'tcx>> {
@@ -424,14 +421,8 @@ impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    fn cdata(&self) -> CrateMetadataRef<'a> {
-        debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
-        self.cdata.unwrap()
-    }
-
-    #[inline]
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        self.cdata().map_encoded_cnum_to_current(cnum)
+        self.cdata.map_encoded_cnum_to_current(cnum)
     }
 }
 
@@ -483,7 +474,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     {
         let tcx = self.tcx();
 
-        let key = ty::CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
+        let key = ty::CReaderCacheKey { cnum: Some(self.cdata.cnum), pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
             return ty;
@@ -508,11 +499,8 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     }
 
     fn decode_alloc_id(&mut self) -> rustc_middle::mir::interpret::AllocId {
-        if let Some(alloc_decoding_session) = self.alloc_decoding_session {
-            alloc_decoding_session.decode_alloc_id(self)
-        } else {
-            bug!("Attempting to decode interpret::AllocId without CrateMetadata")
-        }
+        let ads = self.alloc_decoding_session;
+        ads.decode_alloc_id(self)
     }
 }
 
@@ -539,8 +527,7 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     }
 
     fn decode_syntax_context(&mut self) -> SyntaxContext {
-        let cdata = self.cdata();
-
+        let cdata = self.cdata;
         let Some(sess) = self.sess else {
             bug!(
                 "Cannot decode SyntaxContext without Session.\
@@ -561,7 +548,7 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
-        let local_cdata = self.cdata();
+        let local_cdata = self.cdata;
 
         let Some(sess) = self.sess else {
             bug!(
@@ -712,18 +699,17 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
         // we can call `imported_source_file` for the proper crate, and binary search
         // through the returned slice using our span.
         let source_file = if tag.kind() == SpanKind::Local {
-            decoder.cdata().imported_source_file(metadata_index, sess)
+            decoder.cdata.imported_source_file(metadata_index, sess)
         } else {
             // When we encode a proc-macro crate, all `Span`s should be encoded
             // with `TAG_VALID_SPAN_LOCAL`
-            if decoder.cdata().root.is_proc_macro_crate() {
+            if decoder.cdata.root.is_proc_macro_crate() {
                 // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
                 // since we don't have `cnum_map` populated.
                 let cnum = u32::decode(decoder);
                 panic!(
                     "Decoding of crate {:?} tried to access proc-macro dep {:?}",
-                    decoder.cdata().root.header.name,
-                    cnum
+                    decoder.cdata.root.header.name, cnum
                 );
             }
             // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
@@ -733,7 +719,7 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
                 cnum
             );
 
-            let foreign_data = decoder.cdata().cstore.get_crate_data(cnum);
+            let foreign_data = decoder.cdata.cstore.get_crate_data(cnum);
             foreign_data.imported_source_file(metadata_index, sess)
         };
 
