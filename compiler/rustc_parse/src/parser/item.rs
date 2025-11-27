@@ -228,8 +228,8 @@ impl<'a> Parser<'a> {
                 body,
                 define_opaque: None,
             }))
-        } else if self.eat_keyword(exp!(Extern)) {
-            if self.eat_keyword(exp!(Crate)) {
+        } else if self.eat_keyword_case(exp!(Extern), case) {
+            if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
                 self.parse_item_extern_crate()?
             } else {
@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
             self.bump(); // `static`
             let mutability = self.parse_mutability();
             self.parse_static_item(safety, mutability)?
-        } else if self.check_keyword(exp!(Trait)) || self.check_trait_front_matter() {
+        } else if self.check_keyword_case(exp!(Trait), case) || self.check_trait_front_matter() {
             // TRAIT ITEM
             self.parse_item_trait(attrs, lo)?
         } else if self.check_impl_frontmatter() {
@@ -268,18 +268,18 @@ impl<'a> Parser<'a> {
             }))
         } else if self.is_reuse_path_item() {
             self.parse_item_delegation()?
-        } else if self.check_keyword(exp!(Mod))
-            || self.check_keyword(exp!(Unsafe)) && self.is_keyword_ahead(1, &[kw::Mod])
+        } else if self.check_keyword_case(exp!(Mod), case)
+            || self.check_keyword_case(exp!(Unsafe), case) && self.is_keyword_ahead(1, &[kw::Mod])
         {
             // MODULE ITEM
             self.parse_item_mod(attrs)?
-        } else if self.eat_keyword(exp!(Type)) {
+        } else if self.eat_keyword_case(exp!(Type), case) {
             // TYPE ITEM
             self.parse_type_alias(def_())?
-        } else if self.eat_keyword(exp!(Enum)) {
+        } else if self.eat_keyword_case(exp!(Enum), case) {
             // ENUM ITEM
             self.parse_item_enum()?
-        } else if self.eat_keyword(exp!(Struct)) {
+        } else if self.eat_keyword_case(exp!(Struct), case) {
             // STRUCT ITEM
             self.parse_item_struct()?
         } else if self.is_kw_followed_by_ident(kw::Union) {
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
         } else if self.is_builtin() {
             // BUILTIN# ITEM
             return self.parse_item_builtin();
-        } else if self.eat_keyword(exp!(Macro)) {
+        } else if self.eat_keyword_case(exp!(Macro), case) {
             // MACROS 2.0 ITEM
             self.parse_item_decl_macro(lo)?
         } else if let IsMacroRulesItem::Yes { has_bang } = self.is_macro_rules_item() {
