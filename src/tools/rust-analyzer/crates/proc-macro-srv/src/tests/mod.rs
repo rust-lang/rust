@@ -228,7 +228,7 @@ fn test_derive_error() {
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
             GROUP () 1 1 1
-              LITER 1 Str #[derive(DeriveError)] struct S {field 58 u32}
+              LITER 1 Str #[derive(DeriveError)] struct S {field : u32}
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
@@ -242,9 +242,9 @@ fn test_derive_error() {
 
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@63..64#ROOT2024 42:Root[0000, 0]@14..64#ROOT2024
-              LITER 42:Root[0000, 0]@15..63#ROOT2024 Str #[derive(DeriveError)] struct S {field 58 u32}
-            PUNCT 42:Root[0000, 0]@64..65#ROOT2024 ; [alone]
+            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@62..63#ROOT2024 42:Root[0000, 0]@14..63#ROOT2024
+              LITER 42:Root[0000, 0]@15..62#ROOT2024 Str #[derive(DeriveError)] struct S {field : u32}
+            PUNCT 42:Root[0000, 0]@63..64#ROOT2024 ; [alone]
         "#]],
     );
 }
