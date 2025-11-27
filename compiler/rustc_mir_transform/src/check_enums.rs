@@ -186,10 +186,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EnumFinder<'a, 'tcx> {
             };
 
             match enum_layout.variants {
-                Variants::Empty if op_layout.is_uninhabited() => return,
+                Variants::Empty { .. } if op_layout.is_uninhabited() => return,
                 // An empty enum that tries to be constructed from an inhabited value, this
                 // is never correct.
-                Variants::Empty => {
+                Variants::Empty { .. } => {
                     // The enum layout is uninhabited but we construct it from sth inhabited.
                     // This is always UB.
                     self.enums.push(EnumCheckType::Uninhabited);
