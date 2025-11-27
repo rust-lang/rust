@@ -4,6 +4,12 @@ use crate::num::NonZero;
 use crate::thread::ThreadInit;
 use crate::time::Duration;
 
+// Silence dead code warnings for the otherwise unused ThreadInit::init() call.
+#[expect(dead_code)]
+fn dummy_init_call(init: Box<ThreadInit>) {
+    drop(init.init());
+}
+
 pub struct Thread(!);
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 64 * 1024;
