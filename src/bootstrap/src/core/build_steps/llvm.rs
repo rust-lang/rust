@@ -988,8 +988,16 @@ impl Step for Openmp {
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("TARGET_TRIPLE", &target.triple)
             .define("LLVM_ENABLE_RUNTIMES", "offload")
-            .define("CMAKE_C_COMPILER", builder.cc(target))
-            .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
+            //.define("CMAKE_C_COMPILER", builder.cc(target))
+            //.define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
+            .define(
+                "CMAKE_C_COMPILER",
+                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
+            )
+            .define(
+                "CMAKE_CXX_COMPILER",
+                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
+            )
             .define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
             .define("OFFLOAD_STANDALONE_BUILD", "ON")
             .define(
@@ -1042,7 +1050,7 @@ impl Step for Offload {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/llvm-project/openmp")
+        run.path("src/llvm-project/offload")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1063,7 +1071,7 @@ impl Step for Offload {
         //let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
         //    generate_smart_stamp_hash(
         //        builder,
-        //        &builder.config.src.join("src/llvm-project/openmp"),
+        //        &builder.config.src.join("src/llvm-project/offload"),
         //        builder.offload_info.sha().unwrap_or_default(),
         //    )
         //});
@@ -1085,8 +1093,8 @@ impl Step for Offload {
         //    return out_dir;
         //}
 
-        trace!(?target, "(re)building openmp artifacts");
-        builder.info(&format!("Building OpenMP for {target}"));
+        trace!(?target, "(re)building offload artifacts");
+        builder.info(&format!("Building Offload for {target}"));
         //t!(stamp.remove());
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
@@ -1111,8 +1119,16 @@ impl Step for Offload {
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("TARGET_TRIPLE", &target.triple)
             .define("LLVM_ENABLE_RUNTIMES", "openmp")
-            .define("CMAKE_C_COMPILER", builder.cc(target))
-            .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
+            .define(
+                "CMAKE_C_COMPILER",
+                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
+            )
+            .define(
+                "CMAKE_CXX_COMPILER",
+                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
+            )
+            //.define("CMAKE_C_COMPILER", builder.cc(target))
+            //.define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
             .define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define(
