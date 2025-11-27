@@ -26,12 +26,8 @@ impl Foo for () {
 fn main() {
     let x = String::from("hello, world");
     let _ = identity(<() as Foo>::copy_me(&x));
-    //~^ ERROR overflow evaluating the requirement `String <: <() as Foo>::Item`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item well-formed`
-    //~| ERROR overflow evaluating the requirement `&<() as Foo>::Item well-formed`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
+    //~^ ERROR type mismatch resolving `<() as Foo>::Item normalizes-to String`
+    //~| ERROR type mismatch resolving `<() as Foo>::Item normalizes-to String`
+    //~| ERROR mismatched types
     println!("{x}");
 }

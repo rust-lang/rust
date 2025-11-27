@@ -22,7 +22,9 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_type_ir::Interner;
 use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{debug, instrument, trace};
 
 mod stack;
@@ -122,13 +124,14 @@ pub trait Delegate: Sized {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub enum PathKind {
     /// A path consisting of only inductive/unproductive steps. Their initial
     /// provisional result is `Err(NoSolution)`. We currently treat them as
     /// `PathKind::Unknown` during coherence until we're fully confident in
     /// our approach.
     Inductive,
-    /// A path which is not be coinductive right now but we may want
+    /// A path which is not coinductive right now but we may want
     /// to change of them to be so in the future. We return an ambiguous
     /// result in this case to prevent people from relying on this.
     Unknown,
