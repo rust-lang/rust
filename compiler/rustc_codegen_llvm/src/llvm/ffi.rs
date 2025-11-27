@@ -1160,13 +1160,9 @@ unsafe extern "C" {
     ) -> &'a BasicBlock;
 
     // Operations on instructions
-    pub(crate) fn LLVMGetInstructionParent(Inst: &Value) -> &BasicBlock;
-    pub(crate) fn LLVMGetCalledValue(CallInst: &Value) -> Option<&Value>;
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
-    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
-    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -1718,6 +1714,37 @@ unsafe extern "C" {
     ) -> &'a Value;
 }
 
+#[cfg(feature = "llvm_offload")]
+pub(crate) use self::Offload::*;
+
+#[cfg(feature = "llvm_offload")]
+mod Offload {
+    use super::*;
+    unsafe extern "C" {
+        /// Processes the module and writes it in an offload compatible way into a "host.out" file.
+        pub(crate) fn LLVMRustBundleImages<'a>(M: &'a Module, TM: &'a TargetMachine) -> bool;
+        pub(crate) fn LLVMRustOffloadMapper<'a>(OldFn: &'a Value, NewFn: &'a Value);
+    }
+}
+
+#[cfg(not(feature = "llvm_offload"))]
+pub(crate) use self::Offload_fallback::*;
+
+#[cfg(not(feature = "llvm_offload"))]
+mod Offload_fallback {
+    use super::*;
+    /// Processes the module and writes it in an offload compatible way into a "host.out" file.
+    /// Marked as unsafe to match the real offload wrapper which is unsafe due to FFI.
+    #[allow(unused_unsafe)]
+    pub(crate) unsafe fn LLVMRustBundleImages<'a>(_M: &'a Module, _TM: &'a TargetMachine) -> bool {
+        unimplemented!("This rustc version was not built with LLVM Offload support!");
+    }
+    #[allow(unused_unsafe)]
+    pub(crate) unsafe fn LLVMRustOffloadMapper<'a>(_OldFn: &'a Value, _NewFn: &'a Value) {
+        unimplemented!("This rustc version was not built with LLVM Offload support!");
+    }
+}
+
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
 // Try to keep these in the same order as in `llvm/include/llvm-c/DebugInfo.h`.
 //
@@ -2025,7 +2052,6 @@ unsafe extern "C" {
     ) -> &Attribute;
 
     // Operations on functions
-    pub(crate) fn LLVMRustOffloadMapper<'a>(Fn: &'a Value, Fn: &'a Value);
     pub(crate) fn LLVMRustGetOrInsertFunction<'a>(
         M: &'a Module,
         Name: *const c_char,
@@ -2454,6 +2480,8 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustPositionBuilderPastAllocas<'a>(B: &Builder<'a>, Fn: &'a Value);
     pub(crate) fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);
+    pub(crate) fn LLVMRustGetInsertPoint<'a>(B: &Builder<'a>) -> &'a Value;
+    pub(crate) fn LLVMRustRestoreInsertPoint<'a>(B: &Builder<'a>, IP: &'a Value);
 
     pub(crate) fn LLVMRustSetModulePICLevel(M: &Module);
     pub(crate) fn LLVMRustSetModulePIELevel(M: &Module);

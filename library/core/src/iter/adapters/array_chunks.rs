@@ -40,17 +40,17 @@ where
     /// # // Also serves as a regression test for https://github.com/rust-lang/rust/issues/123333
     /// # #![feature(iter_array_chunks)]
     /// let x = [1,2,3,4,5].into_iter().array_chunks::<2>();
-    /// let mut rem = x.into_remainder().unwrap();
+    /// let mut rem = x.into_remainder();
     /// assert_eq!(rem.next(), Some(5));
     /// assert_eq!(rem.next(), None);
     /// ```
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "100450")]
     #[inline]
-    pub fn into_remainder(mut self) -> Option<array::IntoIter<I::Item, N>> {
+    pub fn into_remainder(mut self) -> array::IntoIter<I::Item, N> {
         if self.remainder.is_none() {
             while let Some(_) = self.next() {}
         }
-        self.remainder
+        self.remainder.unwrap_or_default()
     }
 }
 

@@ -295,12 +295,50 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     }
 }
 
+fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
+    if builder.config.dry_run() {
+        return;
+    }
+
+    let (_, lib_path) = get_cc_search_dirs(target, builder);
+
+    // Libraries necessary to link the windows-gnullvm toolchains.
+    // System libraries will be preferred if they are available (see #67429).
+    let target_libs = [
+        // MinGW libs
+        "libunwind.a",
+        "libunwind.dll.a",
+        "libmingw32.a",
+        "libmingwex.a",
+        "libmsvcrt.a",
+        // Windows import libs, remove them once std transitions to raw-dylib
+        "libkernel32.a",
+        "libuser32.a",
+        "libntdll.a",
+        "libuserenv.a",
+        "libws2_32.a",
+        "libdbghelp.a",
+    ];
+
+    //Find mingw artifacts we want to bundle
+    let target_libs = find_files(&target_libs, &lib_path);
+
+    //Copy platform libs to platform-specific lib directory
+    let plat_target_lib_self_contained_dir =
+        plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
+    fs::create_dir_all(&plat_target_lib_self_contained_dir)
+        .expect("creating plat_target_lib_self_contained_dir failed");
+    for src in target_libs {
+        builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
+    }
+}
+
 fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
     if builder.config.dry_run() {
         return;
     }
 
-    let (bin_path, libs_path) = get_cc_search_dirs(target, builder);
+    let (bin_path, _) = get_cc_search_dirs(target, builder);
 
     let mut rustc_dlls = vec![];
     // windows-gnu and windows-gnullvm require different runtime libs
@@ -316,15 +354,6 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
     } else {
         panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
     }
-    // FIXME(#144656): Remove this whole `let ...`
-    let bin_path = if target.ends_with("windows-gnullvm") && builder.host_target != target {
-        bin_path
-            .into_iter()
-            .chain(libs_path.iter().map(|path| path.with_file_name("bin")))
-            .collect()
-    } else {
-        bin_path
-    };
     let rustc_dlls = find_files(&rustc_dlls, &bin_path);
 
     // Copy runtime dlls next to rustc.exe
@@ -394,14 +423,20 @@ impl Step for Mingw {
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
-        if !target.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
+        if !target.contains("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
             return None;
         }
 
         let mut tarball = Tarball::new(builder, "rust-mingw", &target.triple);
         tarball.set_product_name("Rust MinGW");
 
-        make_win_dist(tarball.image_dir(), target, builder);
+        if target.ends_with("pc-windows-gnu") {
+            make_win_dist(tarball.image_dir(), target, builder);
+        } else if target.ends_with("pc-windows-gnullvm") {
+            make_win_llvm_dist(tarball.image_dir(), target, builder);
+        } else {
+            unreachable!();
+        }
 
         Some(tarball.generate())
     }
@@ -1677,7 +1712,7 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { target_compiler }));
         tarballs.push(builder.ensure(Std { build_compiler, target }).expect("missing std"));
 
-        if target.is_windows_gnu() {
+        if target.is_windows_gnu() || target.is_windows_gnullvm() {
             tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));
         }
 
@@ -1824,8 +1859,7 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        // FIXME(mati865): `gnullvm` here is temporary, remove it once it can host itself
-        if target.is_windows() && !target.contains("gnullvm") {
+        if target.is_windows() {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
@@ -1863,7 +1897,7 @@ impl Step for Extended {
                     prepare(tool);
                 }
             }
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 prepare("rust-mingw");
             }
 
@@ -2028,7 +2062,7 @@ impl Step for Extended {
                 .arg("-t")
                 .arg(etc.join("msi/remove-duplicates.xsl"))
                 .run(builder);
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
@@ -2077,7 +2111,7 @@ impl Step for Extended {
                 if built_tools.contains("miri") {
                     cmd.arg("-dMiriDir=miri");
                 }
-                if target.is_windows_gnu() {
+                if target.is_windows_gnu() || target.is_windows_gnullvm() {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
                 cmd.run(builder);
@@ -2105,7 +2139,7 @@ impl Step for Extended {
             }
             candle("AnalysisGroup.wxs".as_ref());
 
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 candle("GccGroup.wxs".as_ref());
             }
 
@@ -2148,7 +2182,7 @@ impl Step for Extended {
                 cmd.arg("DocsGroup.wixobj");
             }
 
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 cmd.arg("GccGroup.wixobj");
             }
             // ICE57 wrongly complains about the shortcuts
@@ -2187,7 +2221,7 @@ fn add_env(
         .env("CFG_BUILD", target.triple)
         .env("CFG_CHANNEL", &builder.config.channel);
 
-    if target.contains("windows-gnullvm") {
+    if target.is_windows_gnullvm() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "LLVM");
     } else if target.is_windows_gnu() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");

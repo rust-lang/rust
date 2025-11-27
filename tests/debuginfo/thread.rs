@@ -6,15 +6,15 @@
 
 // === CDB TESTS ==================================================================================
 //
-// cdb-command:g
+//@ cdb-command:g
 //
-// cdb-command:dx join_handle,d
-// cdb-check:join_handle,d    [Type: std::thread::JoinHandle<tuple$<> >]
-// cdb-check:    [...] __0              [Type: std::thread::JoinInner<tuple$<> >]
+//@ cdb-command:dx join_handle,d
+//@ cdb-check:join_handle,d    [Type: std::thread::JoinHandle<tuple$<> >]
+//@ cdb-check:    [...] __0              [Type: std::thread::JoinInner<tuple$<> >]
 //
-// cdb-command:dx t,d
-// cdb-check:t,d              : [...] [Type: std::thread::Thread *]
-// cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::sync::Arc<std::thread::Inner,alloc::alloc::Global> >]
+//@ cdb-command:dx t,d
+//@ cdb-check:t,d              : [...] [Type: std::thread::Thread *]
+//@ cdb-check:[...] inner [...][Type: core::pin::Pin<alloc::sync::Arc<std::thread::Inner,alloc::alloc::Global> >]
 
 use std::thread;
 

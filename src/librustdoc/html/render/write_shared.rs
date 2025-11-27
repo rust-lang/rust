@@ -14,7 +14,7 @@
 //!    or contains "invocation-specific".
 
 use std::cell::RefCell;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{self, Write as _};
 use std::iter::once;
@@ -84,9 +84,11 @@ pub(crate) fn write_shared(
     };
 
     if let Some(parts_out_dir) = &opt.parts_out_dir {
-        create_parents(&parts_out_dir.0)?;
+        let mut parts_out_file = parts_out_dir.0.clone();
+        parts_out_file.push(&format!("{crate_name}.json"));
+        create_parents(&parts_out_file)?;
         try_err!(
-            fs::write(&parts_out_dir.0, serde_json::to_string(&info).unwrap()),
+            fs::write(&parts_out_file, serde_json::to_string(&info).unwrap()),
             &parts_out_dir.0
         );
     }
@@ -238,13 +240,25 @@ impl CrateInfo {
     pub(crate) fn read_many(parts_paths: &[PathToParts]) -> Result<Vec<Self>, Error> {
         parts_paths
             .iter()
-            .map(|parts_path| {
-                let path = &parts_path.0;
-                let parts = try_err!(fs::read(path), &path);
-                let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), &path);
-                Ok::<_, Error>(parts)
+            .fold(Ok(Vec::new()), |acc, parts_path| {
+                let mut acc = acc?;
+                let dir = &parts_path.0;
+                acc.append(&mut try_err!(std::fs::read_dir(dir), dir.as_path())
+                    .filter_map(|file| {
+                        let to_crate_info = |file: Result<std::fs::DirEntry, std::io::Error>| -> Result<Option<CrateInfo>, Error> {
+                            let file = try_err!(file, dir.as_path());
+                            if file.path().extension() != Some(OsStr::new("json")) {
+                                return Ok(None);
+                            }
+                            let parts = try_err!(fs::read(file.path()), file.path());
+                            let parts: CrateInfo = try_err!(serde_json::from_slice(&parts), file.path());
+                            Ok(Some(parts))
+                        };
+                        to_crate_info(file).transpose()
+                    })
+                    .collect::<Result<Vec<CrateInfo>, Error>>()?);
+                Ok(acc)
             })
-            .collect::<Result<Vec<CrateInfo>, Error>>()
     }
 }
 
@@ -568,18 +582,14 @@ impl TypeAliasPart {
                         if let Some(ret) = &mut ret {
                             ret.aliases.push(type_alias_fqp);
                         } else {
-                            let target_did = impl_
-                                .inner_impl()
-                                .trait_
-                                .as_ref()
-                                .map(|trait_| trait_.def_id())
-                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let target_trait_did =
+                                impl_.inner_impl().trait_.as_ref().map(|trait_| trait_.def_id());
                             let provided_methods;
-                            let assoc_link = if let Some(target_did) = target_did {
+                            let assoc_link = if let Some(target_trait_did) = target_trait_did {
                                 provided_methods =
                                     impl_.inner_impl().provided_trait_methods(cx.tcx());
                                 AssocItemLink::GotoSource(
-                                    ItemId::DefId(target_did),
+                                    ItemId::DefId(target_trait_did),
                                     &provided_methods,
                                 )
                             } else {

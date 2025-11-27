@@ -596,4 +596,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The `-Zannotate-moves` option is now always enabled when building rustc, sysroot and tools.",
     },
+    ChangeInfo {
+        change_id: 148795,
+        severity: ChangeSeverity::Info,
+        summary: "New options `rust.rustflags` for all targets and `rustflags` par target that will pass specified flags to rustc for all stages. Target specific flags override global `rust.rustflags` ones.",
+    },
 ];

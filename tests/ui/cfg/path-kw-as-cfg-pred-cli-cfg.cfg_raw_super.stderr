@@ -1,0 +1,6 @@
+error: `super` cannot be a raw identifier
+  |
+  = note: this occurred on the command line: `--cfg=r#super`
+
+error: invalid `--cfg` argument: `r#super` (expected `key` or `key="value"`)
+

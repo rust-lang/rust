@@ -19,7 +19,7 @@
 // implementations, so, we'll have to add more doc(hidden)s anyway
 #![doc(hidden)]
 
-use crate::char::encode_utf16_raw;
+use crate::char::{EscapeDebugExtArgs, encode_utf16_raw};
 use crate::clone::CloneToUninit;
 use crate::fmt::{self, Write};
 use crate::hash::{Hash, Hasher};
@@ -144,14 +144,20 @@ impl AsRef<[u8]> for Wtf8 {
 impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn write_str_escaped(f: &mut fmt::Formatter<'_>, s: &str) -> fmt::Result {
-            use crate::fmt::Write;
-            for c in s.chars().flat_map(|c| c.escape_debug()) {
+            use crate::fmt::Write as _;
+            for c in s.chars().flat_map(|c| {
+                c.escape_debug_ext(EscapeDebugExtArgs {
+                    escape_grapheme_extended: true,
+                    escape_single_quote: false,
+                    escape_double_quote: true,
+                })
+            }) {
                 f.write_char(c)?
             }
             Ok(())
         }
 
-        formatter.write_str("\"")?;
+        formatter.write_char('"')?;
         let mut pos = 0;
         while let Some((surrogate_pos, surrogate)) = self.next_surrogate(pos) {
             // SAFETY: next_surrogate provides an index for a range of valid UTF-8 bytes.
@@ -164,7 +170,7 @@ impl fmt::Debug for Wtf8 {
 
         // SAFETY: after next_surrogate returns None, the remainder is valid UTF-8.
         write_str_escaped(formatter, unsafe { str::from_utf8_unchecked(&self.bytes[pos..]) })?;
-        formatter.write_str("\"")
+        formatter.write_char('"')
     }
 }
 

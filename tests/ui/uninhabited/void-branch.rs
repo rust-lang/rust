@@ -6,8 +6,9 @@ enum Void {}
 fn with_void() {
     if false {
         unsafe {
-            //~^ ERROR unreachable expression
             std::mem::uninitialized::<Void>();
+            println!();
+            //~^ ERROR unreachable expression
         }
     }
 
@@ -20,8 +21,9 @@ fn infallible() -> std::convert::Infallible {
 
 fn with_infallible() {
     if false {
-        //~^ ERROR unreachable expression
         infallible();
+        println!()
+        //~^ ERROR unreachable expression
     }
 
     println!()

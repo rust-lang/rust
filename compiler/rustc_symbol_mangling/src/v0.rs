@@ -882,11 +882,11 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::OpaqueTy => 'i',
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
+            DefPathData::GlobalAsm => 'a',
 
             // These should never show up as `print_path_with_simple` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
-            | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)

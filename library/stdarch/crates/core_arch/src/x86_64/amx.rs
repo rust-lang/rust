@@ -1,3 +1,5 @@
+use crate::core_arch::{simd::*, x86::*};
+
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
@@ -242,6 +244,206 @@ pub unsafe fn _tile_cmmrlfp16ps<const DST: i32, const A: i32, const B: i32>() {
     tcmmrlfp16ps(DST as i8, A as i8, B as i8);
 }
 
+/// Compute dot-product of BF8 (8-bit E5M2) floating-point elements in tile a and BF8 (8-bit E5M2)
+/// floating-point elements in tile b, accumulating the intermediate single-precision
+/// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
+/// back to tile dst.
+#[inline]
+#[rustc_legacy_const_generics(0, 1, 2)]
+#[target_feature(enable = "amx-fp8")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tdpbf8ps, DST = 0, A = 1, B = 2)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_dpbf8ps<const DST: i32, const A: i32, const B: i32>() {
+    static_assert_uimm_bits!(DST, 3);
+    static_assert_uimm_bits!(A, 3);
+    static_assert_uimm_bits!(B, 3);
+    tdpbf8ps(DST as i8, A as i8, B as i8);
+}
+
+/// Compute dot-product of BF8 (8-bit E5M2) floating-point elements in tile a and HF8
+/// (8-bit E4M3) floating-point elements in tile b, accumulating the intermediate single-precision
+/// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
+/// back to tile dst.
+#[inline]
+#[rustc_legacy_const_generics(0, 1, 2)]
+#[target_feature(enable = "amx-fp8")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tdpbhf8ps, DST = 0, A = 1, B = 2)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_dpbhf8ps<const DST: i32, const A: i32, const B: i32>() {
+    static_assert_uimm_bits!(DST, 3);
+    static_assert_uimm_bits!(A, 3);
+    static_assert_uimm_bits!(B, 3);
+    tdpbhf8ps(DST as i8, A as i8, B as i8);
+}
+
+/// Compute dot-product of HF8 (8-bit E4M3) floating-point elements in tile a and BF8
+/// (8-bit E5M2) floating-point elements in tile b, accumulating the intermediate single-precision
+/// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
+/// back to tile dst.
+#[inline]
+#[rustc_legacy_const_generics(0, 1, 2)]
+#[target_feature(enable = "amx-fp8")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tdphbf8ps, DST = 0, A = 1, B = 2)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_dphbf8ps<const DST: i32, const A: i32, const B: i32>() {
+    static_assert_uimm_bits!(DST, 3);
+    static_assert_uimm_bits!(A, 3);
+    static_assert_uimm_bits!(B, 3);
+    tdphbf8ps(DST as i8, A as i8, B as i8);
+}
+
+/// Compute dot-product of HF8 (8-bit E4M3) floating-point elements in tile a and HF8 (8-bit E4M3)
+/// floating-point elements in tile b, accumulating the intermediate single-precision
+/// (32-bit) floating-point elements with elements in dst, and store the 32-bit result
+/// back to tile dst.
+#[inline]
+#[rustc_legacy_const_generics(0, 1, 2)]
+#[target_feature(enable = "amx-fp8")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tdphf8ps, DST = 0, A = 1, B = 2)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_dphf8ps<const DST: i32, const A: i32, const B: i32>() {
+    static_assert_uimm_bits!(DST, 3);
+    static_assert_uimm_bits!(A, 3);
+    static_assert_uimm_bits!(B, 3);
+    tdphf8ps(DST as i8, A as i8, B as i8);
+}
+
+/// Load tile rows from memory specified by base address and stride into destination tile dst
+/// using the tile configuration previously configured via _tile_loadconfig.
+/// Additionally, this intrinsic indicates the source memory location is likely to become
+/// read-shared by multiple processors, i.e., read in the future by at least one other processor
+/// before it is written, assuming it is ever written in the future.
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-movrs")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tileloaddrs, DST = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
+    static_assert_uimm_bits!(DST, 3);
+    tileloaddrs64(DST as i8, base, stride);
+}
+
+/// Load tile rows from memory specified by base address and stride into destination tile dst
+/// using the tile configuration previously configured via _tile_loadconfig.
+/// Provides a hint to the implementation that the data would be reused but does not need
+/// to be resident in the nearest cache levels.
+/// Additionally, this intrinsic indicates the source memory location is likely to become
+/// read-shared by multiple processors, i.e., read in the future by at least one other processor
+/// before it is written, assuming it is ever written in the future.
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-movrs")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tileloaddrst1, DST = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_stream_loaddrs<const DST: i32>(base: *const u8, stride: usize) {
+    static_assert_uimm_bits!(DST, 3);
+    tileloaddrst164(DST as i8, base, stride);
+}
+
+/// Perform matrix multiplication of two tiles a and b, containing packed single precision (32-bit)
+/// floating-point elements, which are converted to TF32 (tensor-float32) format, and accumulate the
+///  results into a packed single precision tile.
+/// For each possible combination of (row of a, column of b), it performs
+///  - convert to TF32
+///  - multiply the corresponding elements of a and b
+///  - accumulate the results into the corresponding row and column of dst using round-to-nearest-even
+/// rounding mode.
+/// Output FP32 denormals are always flushed to zero, input single precision denormals are always
+/// handled and *not* treated as zero.
+#[inline]
+#[rustc_legacy_const_generics(0, 1, 2)]
+#[target_feature(enable = "amx-tf32")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tmmultf32ps, DST = 0, A = 1, B = 2)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_mmultf32ps<const DST: i32, const A: i32, const B: i32>() {
+    static_assert_uimm_bits!(DST, 3);
+    static_assert_uimm_bits!(A, 3);
+    static_assert_uimm_bits!(B, 3);
+    tmmultf32ps(DST as i8, A as i8, B as i8);
+}
+
+/// Moves a row from a tile register to a zmm register, converting the packed 32-bit signed integer
+/// elements to packed single-precision (32-bit) floating-point elements.
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-avx512,avx10.2")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tcvtrowd2ps, TILE = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_cvtrowd2ps<const TILE: i32>(row: u32) -> __m512 {
+    static_assert_uimm_bits!(TILE, 3);
+    tcvtrowd2ps(TILE as i8, row).as_m512()
+}
+
+/// Moves a row from a tile register to a zmm register, converting the packed single-precision (32-bit)
+/// floating-point elements to packed half-precision (16-bit) floating-point elements. The resulting
+/// 16-bit elements are placed in the high 16-bits within each 32-bit element of the returned vector.
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-avx512,avx10.2")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tcvtrowps2phh, TILE = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_cvtrowps2phh<const TILE: i32>(row: u32) -> __m512h {
+    static_assert_uimm_bits!(TILE, 3);
+    tcvtrowps2phh(TILE as i8, row).as_m512h()
+}
+
+/// Moves a row from a tile register to a zmm register, converting the packed single-precision (32-bit)
+/// floating-point elements to packed half-precision (16-bit) floating-point elements. The resulting
+/// 16-bit elements are placed in the low 16-bits within each 32-bit element of the returned vector.
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-avx512,avx10.2")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tcvtrowps2phl, TILE = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_cvtrowps2phl<const TILE: i32>(row: u32) -> __m512h {
+    static_assert_uimm_bits!(TILE, 3);
+    tcvtrowps2phl(TILE as i8, row).as_m512h()
+}
+
+/// Moves one row of tile data into a zmm vector register
+#[inline]
+#[rustc_legacy_const_generics(0)]
+#[target_feature(enable = "amx-avx512,avx10.2")]
+#[cfg_attr(
+    all(test, any(target_os = "linux", target_env = "msvc")),
+    assert_instr(tilemovrow, TILE = 0)
+)]
+#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
+pub unsafe fn _tile_movrow<const TILE: i32>(row: u32) -> __m512i {
+    static_assert_uimm_bits!(TILE, 3);
+    tilemovrow(TILE as i8, row).as_m512i()
+}
+
 #[allow(improper_ctypes)]
 unsafe extern "C" {
     #[link_name = "llvm.x86.ldtilecfg"]
@@ -274,13 +476,35 @@ unsafe extern "C" {
     fn tcmmimfp16ps(dst: i8, a: i8, b: i8);
     #[link_name = "llvm.x86.tcmmrlfp16ps"]
     fn tcmmrlfp16ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tdpbf8ps"]
+    fn tdpbf8ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tdpbhf8ps"]
+    fn tdpbhf8ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tdphbf8ps"]
+    fn tdphbf8ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tdphf8ps"]
+    fn tdphf8ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tileloaddrs64"]
+    fn tileloaddrs64(dst: i8, base: *const u8, stride: usize);
+    #[link_name = "llvm.x86.tileloaddrst164"]
+    fn tileloaddrst164(dst: i8, base: *const u8, stride: usize);
+    #[link_name = "llvm.x86.tmmultf32ps"]
+    fn tmmultf32ps(dst: i8, a: i8, b: i8);
+    #[link_name = "llvm.x86.tcvtrowd2ps"]
+    fn tcvtrowd2ps(tile: i8, row: u32) -> f32x16;
+    #[link_name = "llvm.x86.tcvtrowps2phh"]
+    fn tcvtrowps2phh(tile: i8, row: u32) -> f16x32;
+    #[link_name = "llvm.x86.tcvtrowps2phl"]
+    fn tcvtrowps2phl(tile: i8, row: u32) -> f16x32;
+    #[link_name = "llvm.x86.tilemovrow"]
+    fn tilemovrow(tile: i8, row: u32) -> i32x16;
 }
 
 #[cfg(test)]
 mod tests {
     use crate::core_arch::x86::_mm_cvtness_sbh;
     use crate::core_arch::x86_64::*;
-    use core::mem::transmute;
+    use core::{array, mem::transmute};
     use stdarch_test::simd_test;
     #[cfg(target_os = "linux")]
     use syscalls::{Sysno, syscall};
@@ -618,5 +842,231 @@ mod tests {
         _tile_stored::<0>(&mut res as *mut [f32; 16] as *mut u8, 64);
         _tile_release();
         assert_eq!(res, [[0f32; 16]; 16]);
+    }
+
+    const BF8_ONE: u8 = 0x3c;
+    const BF8_TWO: u8 = 0x40;
+    const HF8_ONE: u8 = 0x38;
+    const HF8_TWO: u8 = 0x40;
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dpbf8ps() {
+        _init_amx();
+        let ones = [BF8_ONE; 1024];
+        let twos = [BF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dpbf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dpbhf8ps() {
+        _init_amx();
+        let ones = [BF8_ONE; 1024];
+        let twos = [HF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dpbhf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dphbf8ps() {
+        _init_amx();
+        let ones = [HF8_ONE; 1024];
+        let twos = [BF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dphbf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-fp8")]
+    unsafe fn test_tile_dphf8ps() {
+        _init_amx();
+        let ones = [HF8_ONE; 1024];
+        let twos = [HF8_TWO; 1024];
+        let mut res = [[0.0_f32; 16]; 16];
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(&ones as *const u8, 64);
+        _tile_loadd::<2>(&twos as *const u8, 64);
+        _tile_dphf8ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+        assert_eq!(res, [[128.0_f32; 16]; 16]);
+    }
+
+    #[simd_test(enable = "amx-movrs")]
+    unsafe fn test_tile_loaddrs() {
+        _init_amx();
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        let mat = [1_i8; 1024];
+        _tile_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+        let mut out = [[0_i8; 64]; 16];
+        _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+        _tile_release();
+        assert_eq!(out, [[1; 64]; 16]);
+    }
+
+    #[simd_test(enable = "amx-movrs")]
+    unsafe fn test_tile_stream_loaddrs() {
+        _init_amx();
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        let mat = [1_i8; 1024];
+        _tile_stream_loaddrs::<0>(&mat as *const i8 as *const u8, 64);
+        let mut out = [[0_i8; 64]; 16];
+        _tile_stored::<0>(&mut out as *mut [i8; 64] as *mut u8, 64);
+        _tile_release();
+        assert_eq!(out, [[1; 64]; 16]);
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_movrow() {
+        _init_amx();
+        let array: [[u8; 64]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_movrow::<0>(i);
+            assert_eq!(*row.as_u8x64().as_array(), [i as _; _]);
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowd2ps() {
+        _init_amx();
+        let array: [[u32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowd2ps::<0>(i);
+            assert_eq!(*row.as_f32x16().as_array(), [i as _; _]);
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowps2phh() {
+        _init_amx();
+        let array: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowps2phh::<0>(i);
+            assert_eq!(
+                *row.as_f16x32().as_array(),
+                array::from_fn(|j| if j & 1 == 0 { 0.0 } else { i as _ })
+            );
+        }
+    }
+
+    #[simd_test(enable = "amx-avx512,avx10.2")]
+    unsafe fn test_tile_cvtrowps2phl() {
+        _init_amx();
+        let array: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        config.colsb[0] = 64;
+        config.rows[0] = 16;
+        _tile_loadconfig(config.as_ptr());
+        _tile_loadd::<0>(array.as_ptr().cast(), 64);
+        for i in 0..16 {
+            let row = _tile_cvtrowps2phl::<0>(i);
+            assert_eq!(
+                *row.as_f16x32().as_array(),
+                array::from_fn(|j| if j & 1 == 0 { i as _ } else { 0.0 })
+            );
+        }
+    }
+
+    #[simd_test(enable = "amx-tf32")]
+    unsafe fn test_tile_mmultf32ps() {
+        _init_amx();
+        let a: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
+        let b: [[f32; 16]; 16] = [array::from_fn(|j| j as _); _];
+        let mut res = [[0.0; 16]; 16];
+
+        let mut config = __tilecfg::default();
+        config.palette = 1;
+        (0..=2).for_each(|i| {
+            config.colsb[i] = 64;
+            config.rows[i] = 16;
+        });
+        _tile_loadconfig(config.as_ptr());
+        _tile_zero::<0>();
+        _tile_loadd::<1>(a.as_ptr().cast(), 64);
+        _tile_loadd::<2>(b.as_ptr().cast(), 64);
+        _tile_mmultf32ps::<0, 1, 2>();
+        _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
+        _tile_release();
+
+        let expected = array::from_fn(|i| array::from_fn(|j| 16.0 * i as f32 * j as f32));
+        assert_eq!(res, expected);
     }
 }

@@ -1118,6 +1118,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: &[r#""...""#]), DuplicatesOk,
         EncodeCrossCrate::Yes,
     ),
+        rustc_attr!(
+        rustc_offload_kernel, Normal,
+        template!(Word), DuplicatesOk,
+        EncodeCrossCrate::Yes,
+    ),
     // Traces that are left when `cfg` and `cfg_attr` attributes are expanded.
     // The attributes are not gated, to avoid stability errors, but they cannot be used in stable
     // or unstable code directly because `sym::cfg_(attr_)trace` are not valid identifiers, they
@@ -1266,6 +1271,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_as_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "`#[rustc_as_ptr]` is used to mark functions returning pointers to their inner allocations."
+    ),
+    rustc_attr!(
+        rustc_should_not_be_called_on_const_items, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes,
+        "`#[rustc_should_not_be_called_on_const_items]` is used to mark methods that don't make sense to be called on interior mutable consts."
     ),
     rustc_attr!(
         rustc_pass_by_value, Normal, template!(Word), ErrorFollowing,

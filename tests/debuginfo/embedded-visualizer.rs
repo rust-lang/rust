@@ -4,59 +4,59 @@
 
 // === CDB TESTS ==================================================================================
 
-// cdb-command: g
+//@ cdb-command: g
 
 // The .nvlist command in cdb does not always have a deterministic output
 // for the order that NatVis files are displayed.
 
-// cdb-command: .nvlist
-// cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-0.natvis")
+//@ cdb-command: .nvlist
+//@ cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-0.natvis")
 
-// cdb-command: .nvlist
-// cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-1.natvis")
+//@ cdb-command: .nvlist
+//@ cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-1.natvis")
 
-// cdb-command: .nvlist
-// cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-2.natvis")
+//@ cdb-command: .nvlist
+//@ cdb-check:    [...].exe (embedded NatVis "[...]embedded_visualizer-2.natvis")
 
-// cdb-command: dx point_a
-// cdb-check:point_a          : (0, 0) [Type: embedded_visualizer::point::Point]
-// cdb-check:    [<Raw View>]     [Type: embedded_visualizer::point::Point]
-// cdb-check:    [x]              : 0 [Type: int]
-// cdb-check:    [y]              : 0 [Type: int]
+//@ cdb-command: dx point_a
+//@ cdb-check:point_a          : (0, 0) [Type: embedded_visualizer::point::Point]
+//@ cdb-check:    [<Raw View>]     [Type: embedded_visualizer::point::Point]
+//@ cdb-check:    [x]              : 0 [Type: int]
+//@ cdb-check:    [y]              : 0 [Type: int]
 
-// cdb-command: dx point_b
-// cdb-check:point_b          : (5, 8) [Type: embedded_visualizer::point::Point]
-// cdb-check:    [<Raw View>]     [Type: embedded_visualizer::point::Point]
-// cdb-check:    [x]              : 5 [Type: int]
-// cdb-check:    [y]              : 8 [Type: int]
+//@ cdb-command: dx point_b
+//@ cdb-check:point_b          : (5, 8) [Type: embedded_visualizer::point::Point]
+//@ cdb-check:    [<Raw View>]     [Type: embedded_visualizer::point::Point]
+//@ cdb-check:    [x]              : 5 [Type: int]
+//@ cdb-check:    [y]              : 8 [Type: int]
 
-// cdb-command: dx line
-// cdb-check:line             : ((0, 0), (5, 8)) [Type: embedded_visualizer::Line]
-// cdb-check:    [<Raw View>]     [Type: embedded_visualizer::Line]
-// cdb-check:    [a]              : (0, 0) [Type: embedded_visualizer::point::Point]
-// cdb-check:    [b]              : (5, 8) [Type: embedded_visualizer::point::Point]
+//@ cdb-command: dx line
+//@ cdb-check:line             : ((0, 0), (5, 8)) [Type: embedded_visualizer::Line]
+//@ cdb-check:    [<Raw View>]     [Type: embedded_visualizer::Line]
+//@ cdb-check:    [a]              : (0, 0) [Type: embedded_visualizer::point::Point]
+//@ cdb-check:    [b]              : (5, 8) [Type: embedded_visualizer::point::Point]
 
-// cdb-command: dx person
-// cdb-check:person           : "Person A" is 10 years old. [Type: dependency_with_embedded_visualizers::Person]
-// cdb-check:    [<Raw View>]     [Type: dependency_with_embedded_visualizers::Person]
-// cdb-check:    [name]           : "Person A" [Type: alloc::string::String]
-// cdb-check:    [age]            : 10 [Type: int]
+//@ cdb-command: dx person
+//@ cdb-check:person           : "Person A" is 10 years old. [Type: dependency_with_embedded_visualizers::Person]
+//@ cdb-check:    [<Raw View>]     [Type: dependency_with_embedded_visualizers::Person]
+//@ cdb-check:    [name]           : "Person A" [Type: alloc::string::String]
+//@ cdb-check:    [age]            : 10 [Type: int]
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command: run
+//@ gdb-command: run
 
-// gdb-command: info auto-load python-scripts
-// gdb-check:Yes     pretty-printer-embedded_visualizer-0
-// gdb-check:Yes     pretty-printer-embedded_visualizer-1
-// gdb-command: print point_a
-// gdb-check:$1 = (0, 0)
-// gdb-command: print point_b
-// gdb-check:$2 = (5, 8)
-// gdb-command: print line
-// gdb-check:$3 = ((0, 0), (5, 8))
-// gdb-command: print person
-// gdb-check:$4 = "Person A" is 10 years old.
+//@ gdb-command: info auto-load python-scripts
+//@ gdb-check:Yes     pretty-printer-embedded_visualizer-0
+//@ gdb-check:Yes     pretty-printer-embedded_visualizer-1
+//@ gdb-command: print point_a
+//@ gdb-check:$1 = (0, 0)
+//@ gdb-command: print point_b
+//@ gdb-check:$2 = (5, 8)
+//@ gdb-command: print line
+//@ gdb-check:$3 = ((0, 0), (5, 8))
+//@ gdb-command: print person
+//@ gdb-check:$4 = "Person A" is 10 years old.
 
 #![allow(unused_variables)]
 #![debugger_visualizer(natvis_file = "embedded-visualizer.natvis")]

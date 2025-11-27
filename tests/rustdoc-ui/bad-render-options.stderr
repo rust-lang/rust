@@ -1,0 +1,58 @@
+error: `doc(html_favicon_url)` expects a string value
+  --> $DIR/bad-render-options.rs:3:8
+   |
+LL | #![doc(html_favicon_url)]
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: `doc(html_logo_url)` expects a string value
+  --> $DIR/bad-render-options.rs:4:8
+   |
+LL | #![doc(html_logo_url)]
+   |        ^^^^^^^^^^^^^
+
+error: `doc(html_playground_url)` expects a string value
+  --> $DIR/bad-render-options.rs:5:8
+   |
+LL | #![doc(html_playground_url)]
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: `doc(issue_tracker_base_url)` expects a string value
+  --> $DIR/bad-render-options.rs:6:8
+   |
+LL | #![doc(issue_tracker_base_url)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `doc(html_favicon_url)` expects a string value
+  --> $DIR/bad-render-options.rs:7:8
+   |
+LL | #![doc(html_favicon_url = 1)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: `doc(html_logo_url)` expects a string value
+  --> $DIR/bad-render-options.rs:8:8
+   |
+LL | #![doc(html_logo_url = 2)]
+   |        ^^^^^^^^^^^^^^^^^
+
+error: `doc(html_playground_url)` expects a string value
+  --> $DIR/bad-render-options.rs:9:8
+   |
+LL | #![doc(html_playground_url = 3)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `doc(issue_tracker_base_url)` expects a string value
+  --> $DIR/bad-render-options.rs:10:8
+   |
+LL | #![doc(issue_tracker_base_url = 4)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `doc(html_no_source)` does not accept a value
+  --> $DIR/bad-render-options.rs:11:8
+   |
+LL | #![doc(html_no_source = "asdf")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

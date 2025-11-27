@@ -76,7 +76,7 @@ pub(crate) struct TraitFnConst {
 pub(crate) struct AsyncFnInConstTraitOrTraitImpl {
     #[primary_span]
     pub async_keyword: Span,
-    pub in_impl: bool,
+    pub context: &'static str,
     #[label]
     pub const_keyword: Span,
 }
@@ -427,6 +427,14 @@ pub(crate) struct AutoTraitItems {
     pub total: Span,
     #[label]
     pub ident: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_const_auto_trait)]
+#[help]
+pub(crate) struct ConstAutoTrait {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

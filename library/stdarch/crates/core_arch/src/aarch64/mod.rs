@@ -21,10 +21,6 @@ mod neon;
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::neon::*;
 
-mod tme;
-#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
-pub use self::tme::*;
-
 mod prefetch;
 #[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
 pub use self::prefetch::*;

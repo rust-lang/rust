@@ -79,12 +79,16 @@ pub trait SupportedArchitectureTest {
                 trace!("compiling mod_{i}.cpp");
                 if let Some(cpp_compiler) = cpp_compiler_wrapped.as_ref() {
                     let compile_output = cpp_compiler
-                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"));
+                        .compile_object_file(&format!("mod_{i}.cpp"), &format!("mod_{i}.o"))
+                        .map_err(|e| format!("Error compiling mod_{i}.cpp: {e:?}"))?;
+
+                    assert!(
+                        compile_output.status.success(),
+                        "{}",
+                        String::from_utf8_lossy(&compile_output.stderr)
+                    );
 
                     trace!("finished compiling mod_{i}.cpp");
-                    if let Err(compile_error) = compile_output {
-                        return Err(format!("Error compiling mod_{i}.cpp: {compile_error:?}"));
-                    }
                 }
                 Ok(())
             })

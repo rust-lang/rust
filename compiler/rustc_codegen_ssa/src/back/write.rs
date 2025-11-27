@@ -1208,6 +1208,7 @@ pub struct CguMessage;
 // - `is_lint`: lints aren't relevant during codegen.
 // - `emitted_at`: not used for codegen diagnostics.
 struct Diagnostic {
+    span: Vec<SpanData>,
     level: Level,
     messages: Vec<(DiagMessage, Style)>,
     code: Option<ErrCode>,
@@ -1218,7 +1219,7 @@ struct Diagnostic {
 // A cut-down version of `rustc_errors::Subdiag` that impls `Send`. It's
 // missing the following fields from `rustc_errors::Subdiag`.
 // - `span`: it doesn't impl `Send`.
-pub(crate) struct Subdiagnostic {
+struct Subdiagnostic {
     level: Level,
     messages: Vec<(DiagMessage, Style)>,
 }
@@ -1897,8 +1898,15 @@ fn spawn_thin_lto_work<'a, B: ExtraBackendMethods>(
 
 enum SharedEmitterMessage {
     Diagnostic(Diagnostic),
-    InlineAsmError(SpanData, String, Level, Option<(String, Vec<InnerSpan>)>),
+    InlineAsmError(InlineAsmError),
     Fatal(String),
+}
+
+pub struct InlineAsmError {
+    pub span: SpanData,
+    pub msg: String,
+    pub level: Level,
+    pub source: Option<(String, Vec<InnerSpan>)>,
 }
 
 #[derive(Clone)]
@@ -1917,14 +1925,8 @@ impl SharedEmitter {
         (SharedEmitter { sender }, SharedEmitterMain { receiver })
     }
 
-    pub fn inline_asm_error(
-        &self,
-        span: SpanData,
-        msg: String,
-        level: Level,
-        source: Option<(String, Vec<InnerSpan>)>,
-    ) {
-        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(span, msg, level, source)));
+    pub fn inline_asm_error(&self, err: InlineAsmError) {
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(err)));
     }
 
     fn fatal(&self, msg: &str) {
@@ -1940,7 +1942,7 @@ impl Emitter for SharedEmitter {
     ) {
         // Check that we aren't missing anything interesting when converting to
         // the cut-down local `DiagInner`.
-        assert_eq!(diag.span, MultiSpan::new());
+        assert!(!diag.span.has_span_labels());
         assert_eq!(diag.suggestions, Suggestions::Enabled(vec![]));
         assert_eq!(diag.sort_span, rustc_span::DUMMY_SP);
         assert_eq!(diag.is_lint, None);
@@ -1949,6 +1951,7 @@ impl Emitter for SharedEmitter {
         let args = mem::replace(&mut diag.args, DiagArgMap::default());
         drop(
             self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+                span: diag.span.primary_spans().iter().map(|span| span.data()).collect::<Vec<_>>(),
                 level: diag.level(),
                 messages: diag.messages,
                 code: diag.code,
@@ -1993,6 +1996,9 @@ impl SharedEmitterMain {
                     let dcx = sess.dcx();
                     let mut d =
                         rustc_errors::DiagInner::new_with_messages(diag.level, diag.messages);
+                    d.span = MultiSpan::from_spans(
+                        diag.span.into_iter().map(|span| span.span()).collect(),
+                    );
                     d.code = diag.code; // may be `None`, that's ok
                     d.children = diag
                         .children
@@ -2007,15 +2013,15 @@ impl SharedEmitterMain {
                     dcx.emit_diagnostic(d);
                     sess.dcx().abort_if_errors();
                 }
-                Ok(SharedEmitterMessage::InlineAsmError(span, msg, level, source)) => {
-                    assert_matches!(level, Level::Error | Level::Warning | Level::Note);
-                    let mut err = Diag::<()>::new(sess.dcx(), level, msg);
-                    if !span.is_dummy() {
-                        err.span(span.span());
+                Ok(SharedEmitterMessage::InlineAsmError(inner)) => {
+                    assert_matches!(inner.level, Level::Error | Level::Warning | Level::Note);
+                    let mut err = Diag::<()>::new(sess.dcx(), inner.level, inner.msg);
+                    if !inner.span.is_dummy() {
+                        err.span(inner.span.span());
                     }
 
                     // Point to the generated assembly if it is available.
-                    if let Some((buffer, spans)) = source {
+                    if let Some((buffer, spans)) = inner.source {
                         let source = sess
                             .source_map()
                             .new_source_file(FileName::inline_asm_source_code(&buffer), buffer);

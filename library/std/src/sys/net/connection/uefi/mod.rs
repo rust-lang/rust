@@ -69,12 +69,11 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        // FIXME: UEFI does support vectored read, so implement that.
-        crate::io::default_read_vectored(|b| self.read(b), buf)
+        self.inner.read_vectored(buf, self.read_timeout()?)
     }
 
     pub fn is_read_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
