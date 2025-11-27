@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Wrapper` in this scope
-  --> $DIR/issue-53300.rs:7:18
+  --> $DIR/cannot-find-wrapper-with-impl-trait.rs:8:18
    |
 LL | fn addition() -> Wrapper<impl A> {}
    |                  ^^^^^^^ not found in this scope
