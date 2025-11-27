@@ -514,55 +514,20 @@ impl CStore {
         }
     }
 
-    fn existing_match(
-        &self,
-        externs: &Externs,
-        name: Symbol,
-        hash: Option<Svh>,
-    ) -> Option<CrateNum> {
+    fn existing_match(&self, name: Symbol, hash: Option<Svh>) -> Option<CrateNum> {
+        let hash = hash?;
+
         for (cnum, data) in self.iter_crate_data() {
             if data.name() != name {
                 trace!("{} did not match {}", data.name(), name);
                 continue;
             }
 
-            match hash {
-                Some(hash) if hash == data.hash() => return Some(cnum),
-                Some(hash) => {
-                    debug!("actual hash {} did not match expected {}", hash, data.hash());
-                    continue;
-                }
-                None => {}
+            if hash == data.hash() {
+                return Some(cnum);
+            } else {
+                debug!("actual hash {} did not match expected {}", hash, data.hash());
             }
-
-            // When the hash is None we're dealing with a top-level dependency
-            // in which case we may have a specification on the command line for
-            // this library. Even though an upstream library may have loaded
-            // something of the same name, we have to make sure it was loaded
-            // from the exact same location as well.
-            //
-            // We're also sure to compare *paths*, not actual byte slices. The
-            // `source` stores paths which are normalized which may be different
-            // from the strings on the command line.
-            let source = data.source();
-            if let Some(entry) = externs.get(name.as_str()) {
-                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                if let Some(mut files) = entry.files() {
-                    if files.any(|l| {
-                        let l = l.canonicalized();
-                        source.dylib.as_ref() == Some(l)
-                            || source.rlib.as_ref() == Some(l)
-                            || source.rmeta.as_ref() == Some(l)
-                    }) {
-                        return Some(cnum);
-                    }
-                }
-                continue;
-            }
-
-            // While the crate name matched, no --extern crate_name=path matched. It is possible
-            // that we have already loaded the target crate, but if that happens CStore::load will
-            // indicate so and we gracefully handle this, just potentially wasting a bit of time.
         }
 
         None
@@ -799,7 +764,7 @@ impl CStore {
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
         let private_dep = origin.private_dep();
 
-        let result = if let Some(cnum) = self.existing_match(&tcx.sess.opts.externs, name, hash) {
+        let result = if let Some(cnum) = self.existing_match(name, hash) {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
