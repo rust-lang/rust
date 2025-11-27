@@ -51,6 +51,7 @@ fn check_(
     let res = mac.expand(
         &arg_tt,
         |_| (),
+        crate::MacroCallStyle::FnLike,
         Span {
             range: TextRange::up_to(TextSize::of(arg)),
             anchor: call_anchor,

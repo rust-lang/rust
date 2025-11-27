@@ -101,6 +101,7 @@ pub(crate) fn complete_pattern(
                 hir::ModuleDef::Const(..) => refutable,
                 hir::ModuleDef::Module(..) => true,
                 hir::ModuleDef::Macro(mac) => mac.is_fn_like(ctx.db),
+                hir::ModuleDef::TypeAlias(_) => true,
                 _ => false,
             },
             hir::ScopeDef::ImplSelfType(impl_) => match impl_.self_ty(ctx.db).as_adt() {

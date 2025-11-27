@@ -1651,3 +1651,132 @@ pub mod prelude {
         "#]],
     );
 }
+
+#[test]
+fn macro_rules_mixed_style() {
+    check(
+        r#"
+
+macro_rules! foo {
+             () => {};
+      attr() () => {};
+    derive() () => {};
+}
+
+use foo;
+"#,
+        expect![[r#"
+    crate
+    - foo : macro!# (import)
+    - (legacy) foo : macro!#
+"#]],
+    );
+}
+
+#[test]
+fn macro_2_mixed_style() {
+    check(
+        r#"
+
+macro foo {
+             () => {};
+      attr() () => {};
+    derive() () => {};
+}
+
+use foo;
+"#,
+        expect![[r#"
+            crate
+            - foo : macro!#
+        "#]],
+    );
+}
+
+#[test]
+fn macro_rules_attr() {
+    check(
+        r#"
+
+macro_rules! my_attr {
+    attr() ($($tt:tt)*) => { fn attr_fn() {} }
+}
+
+#[my_attr]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+    crate
+    - attr_fn : value
+    - (legacy) my_attr : macro#
+"#]],
+    );
+}
+
+#[test]
+fn macro_2_attr() {
+    check(
+        r#"
+
+macro my_attr {
+    attr() ($($tt:tt)*) => { fn attr_fn() {} }
+}
+
+#[my_attr]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+    crate
+    - attr_fn : value
+    - my_attr : macro#
+"#]],
+    );
+}
+
+#[test]
+fn macro_rules_derive() {
+    check(
+        r#"
+//- minicore: derive
+
+macro_rules! MyDerive {
+    derive() ($($tt:tt)*) => { fn derived_fn() {} }
+}
+
+#[derive(MyDerive)]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+            crate
+            - MyEnum : type
+            - derived_fn : value
+            - (legacy) MyDerive : macro#
+        "#]],
+    );
+}
+
+#[test]
+fn macro_2_derive() {
+    check(
+        r#"
+//- minicore: derive
+
+macro MyDerive {
+    derive() ($($tt:tt)*) => { fn derived_fn() {} }
+}
+
+#[derive(MyDerive)]
+enum MyEnum {}
+
+"#,
+        expect![[r#"
+            crate
+            - MyDerive : macro#
+            - MyEnum : type
+            - derived_fn : value
+        "#]],
+    );
+}
