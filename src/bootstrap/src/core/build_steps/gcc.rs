@@ -36,10 +36,6 @@ impl GccOutput {
             return;
         }
 
-        // At build time, cg_gcc has to link to libgccjit.so (the unversioned symbol).
-        // However, at runtime, it will by default look for libgccjit.so.0.
-        // So when we install the built libgccjit.so file to the target `directory`, we add it there
-        // with the `.0` suffix.
         let target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
 
         // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
