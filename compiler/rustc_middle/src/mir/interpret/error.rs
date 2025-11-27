@@ -819,7 +819,7 @@ impl<'tcx, T> ops::Residual<T> for InterpResult<'tcx, convert::Infallible> {
     type TryType = InterpResult<'tcx, T>;
 }
 
-impl<'tcx, T> ops::FromResidual for InterpResult<'tcx, T> {
+impl<'tcx, T> ops::FromResidual<InterpResult<'tcx, convert::Infallible>> for InterpResult<'tcx, T> {
     #[inline]
     #[track_caller]
     fn from_residual(residual: InterpResult<'tcx, convert::Infallible>) -> Self {

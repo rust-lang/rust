@@ -129,7 +129,7 @@ use crate::ops::ControlFlow;
 #[doc(alias = "?")]
 #[lang = "Try"]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait Try: [const] FromResidual {
+pub const trait Try: [const] FromResidual<Self::Residual> {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Output;
@@ -306,7 +306,7 @@ pub const trait Try: [const] FromResidual {
 #[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub const trait FromResidual<R = <Self as Try>::Residual> {
+pub const trait FromResidual<R> {
     /// Constructs the type from a compatible `Residual` type.
     ///
     /// This should be implemented consistently with the `branch` method such
@@ -432,7 +432,7 @@ impl<T> Try for NeverShortCircuit<T> {
     }
 }
 
-impl<T> FromResidual for NeverShortCircuit<T> {
+impl<T> FromResidual<NeverShortCircuitResidual> for NeverShortCircuit<T> {
     #[inline]
     fn from_residual(never: NeverShortCircuitResidual) -> Self {
         match never {}
