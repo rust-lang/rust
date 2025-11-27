@@ -5,6 +5,7 @@
 //@ [all] compile-flags: -C stack-protector=all
 //@ [strong] compile-flags: -C stack-protector=strong
 //@ [all-z] compile-flags: -Z stack-protector=all
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
