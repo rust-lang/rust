@@ -1295,6 +1295,21 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
+    fn get_ambig_module_children(
+        self,
+        id: DefIndex,
+        sess: &Session,
+    ) -> impl Iterator<Item = AmbigModChild> {
+        gen move {
+            let children = self.root.tables.ambig_module_children.get(self, id);
+            if !children.is_default() {
+                for child in children.decode((self, sess)) {
+                    yield child;
+                }
+            }
+        }
+    }
+
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.mir_for_ctfe.get(self, id).is_some()
     }
