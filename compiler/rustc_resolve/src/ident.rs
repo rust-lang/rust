@@ -43,6 +43,17 @@ enum Shadowing {
     Unrestricted,
 }
 
+bitflags::bitflags! {
+    #[derive(Clone, Copy)]
+    struct Flags: u8 {
+        const MACRO_RULES          = 1 << 0;
+        const MODULE               = 1 << 1;
+        const MISC_SUGGEST_CRATE   = 1 << 2;
+        const MISC_SUGGEST_SELF    = 1 << 3;
+        const MISC_FROM_PRELUDE    = 1 << 4;
+    }
+}
+
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
@@ -392,17 +403,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, Determinacy> {
-        bitflags::bitflags! {
-            #[derive(Clone, Copy)]
-            struct Flags: u8 {
-                const MACRO_RULES          = 1 << 0;
-                const MODULE               = 1 << 1;
-                const MISC_SUGGEST_CRATE   = 1 << 2;
-                const MISC_SUGGEST_SELF    = 1 << 3;
-                const MISC_FROM_PRELUDE    = 1 << 4;
-            }
-        }
-
         assert!(force || finalize.is_none()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
@@ -431,10 +431,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut determinacy = Determinacy::Determined;
         let mut extern_prelude_item_binding = None;
         let mut extern_prelude_flag_binding = None;
-        // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
-        macro finalize_scope() {
-            if innermost_result.is_none() { finalize } else { None }
-        }
 
         // Go through all the scopes and try to resolve the name.
         let derive_fallback_lint_id = match finalize {
@@ -447,202 +443,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
-                let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
-                let result = match scope {
-                    Scope::DeriveHelpers(expn_id) => {
-                        if let Some(binding) = this.helper_attrs.get(&expn_id).and_then(|attrs| {
-                            attrs.iter().rfind(|(i, _)| ident == *i).map(|(_, binding)| *binding)
-                        }) {
-                            Ok((binding, Flags::empty()))
-                        } else {
-                            Err(Determinacy::Determined)
-                        }
-                    }
-                    Scope::DeriveHelpersCompat => {
-                        let mut result = Err(Determinacy::Determined);
-                        for derive in parent_scope.derives {
-                            let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
-                            match this.reborrow().resolve_derive_macro_path(
-                                derive,
-                                parent_scope,
-                                force,
-                                ignore_import,
-                            ) {
-                                Ok((Some(ext), _)) => {
-                                    if ext.helper_attrs.contains(&ident.name) {
-                                        let binding = this.arenas.new_pub_res_binding(
-                                            Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
-                                            derive.span,
-                                            LocalExpnId::ROOT,
-                                        );
-                                        result = Ok((binding, Flags::empty()));
-                                        break;
-                                    }
-                                }
-                                Ok(_) | Err(Determinacy::Determined) => {}
-                                Err(Determinacy::Undetermined) => {
-                                    result = Err(Determinacy::Undetermined)
-                                }
-                            }
-                        }
-                        result
-                    }
-                    Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
-                        MacroRulesScope::Binding(macro_rules_binding)
-                            if ident == macro_rules_binding.ident =>
-                        {
-                            Ok((macro_rules_binding.binding, Flags::MACRO_RULES))
-                        }
-                        MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
-                        _ => Err(Determinacy::Determined),
-                    },
-                    Scope::Module(module, derive_fallback_lint_id) => {
-                        let (adjusted_parent_scope, adjusted_finalize) =
-                            if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
-                                (parent_scope, finalize_scope!())
-                            } else {
-                                (
-                                    &ParentScope { module, ..*parent_scope },
-                                    finalize_scope!().map(|f| Finalize { used: Used::Scope, ..f }),
-                                )
-                            };
-                        let binding = this.reborrow().resolve_ident_in_module_unadjusted(
-                            ModuleOrUniformRoot::Module(module),
-                            ident,
-                            ns,
-                            adjusted_parent_scope,
-                            Shadowing::Restricted,
-                            adjusted_finalize,
-                            ignore_binding,
-                            ignore_import,
-                        );
-                        match binding {
-                            Ok(binding) => {
-                                if let Some(lint_id) = derive_fallback_lint_id {
-                                    this.get_mut().lint_buffer.buffer_lint(
-                                        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-                                        lint_id,
-                                        orig_ident.span,
-                                        errors::ProcMacroDeriveResolutionFallback {
-                                            span: orig_ident.span,
-                                            ns_descr: ns.descr(),
-                                            ident,
-                                        },
-                                    );
-                                }
-                                let misc_flags = if module == this.graph_root {
-                                    Flags::MISC_SUGGEST_CRATE
-                                } else if module.is_normal() {
-                                    Flags::MISC_SUGGEST_SELF
-                                } else {
-                                    Flags::empty()
-                                };
-                                Ok((binding, Flags::MODULE | misc_flags))
-                            }
-                            Err((Determinacy::Undetermined, Weak::No)) => {
-                                return ControlFlow::Break(Err(Determinacy::determined(force)));
-                            }
-                            Err((Determinacy::Undetermined, Weak::Yes)) => {
-                                Err(Determinacy::Undetermined)
-                            }
-                            Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
-                        }
-                    }
-                    Scope::MacroUsePrelude => {
-                        match this.macro_use_prelude.get(&ident.name).cloned() {
-                            Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
-                            None => Err(Determinacy::determined(
-                                this.graph_root.unexpanded_invocations.borrow().is_empty(),
-                            )),
-                        }
-                    }
-                    Scope::BuiltinAttrs => match this.builtin_attrs_bindings.get(&ident.name) {
-                        Some(binding) => Ok((*binding, Flags::empty())),
-                        None => Err(Determinacy::Determined),
-                    },
-                    Scope::ExternPreludeItems => {
-                        match this
-                            .reborrow()
-                            .extern_prelude_get_item(ident, finalize_scope!().is_some())
-                        {
-                            Some(binding) => {
-                                extern_prelude_item_binding = Some(binding);
-                                Ok((binding, Flags::empty()))
-                            }
-                            None => Err(Determinacy::determined(
-                                this.graph_root.unexpanded_invocations.borrow().is_empty(),
-                            )),
-                        }
-                    }
-                    Scope::ExternPreludeFlags => {
-                        match this.extern_prelude_get_flag(ident, finalize_scope!().is_some()) {
-                            Some(binding) => {
-                                extern_prelude_flag_binding = Some(binding);
-                                Ok((binding, Flags::empty()))
-                            }
-                            None => Err(Determinacy::Determined),
-                        }
-                    }
-                    Scope::ToolPrelude => match this.registered_tool_bindings.get(&ident) {
-                        Some(binding) => Ok((*binding, Flags::empty())),
-                        None => Err(Determinacy::Determined),
-                    },
-                    Scope::StdLibPrelude => {
-                        let mut result = Err(Determinacy::Determined);
-                        if let Some(prelude) = this.prelude
-                            && let Ok(binding) = this.reborrow().resolve_ident_in_module_unadjusted(
-                                ModuleOrUniformRoot::Module(prelude),
-                                ident,
-                                ns,
-                                parent_scope,
-                                Shadowing::Unrestricted,
-                                None,
-                                ignore_binding,
-                                ignore_import,
-                            )
-                            && (matches!(use_prelude, UsePrelude::Yes)
-                                || this.is_builtin_macro(binding.res()))
-                        {
-                            result = Ok((binding, Flags::MISC_FROM_PRELUDE));
-                        }
-
-                        result
-                    }
-                    Scope::BuiltinTypes => match this.builtin_types_bindings.get(&ident.name) {
-                        Some(binding) => {
-                            if matches!(ident.name, sym::f16)
-                                && !this.tcx.features().f16()
-                                && !ident.span.allows_unstable(sym::f16)
-                                && finalize_scope!().is_some()
-                            {
-                                feature_err(
-                                    this.tcx.sess,
-                                    sym::f16,
-                                    ident.span,
-                                    "the type `f16` is unstable",
-                                )
-                                .emit();
-                            }
-                            if matches!(ident.name, sym::f128)
-                                && !this.tcx.features().f128()
-                                && !ident.span.allows_unstable(sym::f128)
-                                && finalize_scope!().is_some()
-                            {
-                                feature_err(
-                                    this.tcx.sess,
-                                    sym::f128,
-                                    ident.span,
-                                    "the type `f128` is unstable",
-                                )
-                                .emit();
-                            }
-                            Ok((*binding, Flags::empty()))
-                        }
-                        None => Err(Determinacy::Determined),
-                    },
-                };
-
-                match result {
+                match this.reborrow().resolve_ident_in_scope(
+                    orig_ident,
+                    ns,
+                    scope,
+                    use_prelude,
+                    ctxt,
+                    scope_set,
+                    parent_scope,
+                    // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
+                    if innermost_result.is_none() { finalize } else { None },
+                    force,
+                    ignore_binding,
+                    ignore_import,
+                    &mut extern_prelude_item_binding,
+                    &mut extern_prelude_flag_binding,
+                )? {
                     Ok((binding, flags)) => {
                         if !sub_namespace_match(binding.macro_kinds(), macro_kind) {
                             return ControlFlow::Continue(());
@@ -762,6 +578,214 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
+    }
+
+    fn resolve_ident_in_scope<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        orig_ident: Ident,
+        ns: Namespace,
+        scope: Scope<'ra>,
+        use_prelude: UsePrelude,
+        ctxt: SyntaxContext,
+        scope_set: ScopeSet<'ra>,
+        parent_scope: &ParentScope<'ra>,
+        finalize: Option<Finalize>,
+        force: bool,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+        extern_prelude_item_binding: &mut Option<NameBinding<'ra>>,
+        extern_prelude_flag_binding: &mut Option<NameBinding<'ra>>,
+    ) -> ControlFlow<
+        Result<NameBinding<'ra>, Determinacy>,
+        Result<(NameBinding<'ra>, Flags), Determinacy>,
+    > {
+        let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
+        let ret = match scope {
+            Scope::DeriveHelpers(expn_id) => {
+                if let Some(binding) = self.helper_attrs.get(&expn_id).and_then(|attrs| {
+                    attrs.iter().rfind(|(i, _)| ident == *i).map(|(_, binding)| *binding)
+                }) {
+                    Ok((binding, Flags::empty()))
+                } else {
+                    Err(Determinacy::Determined)
+                }
+            }
+            Scope::DeriveHelpersCompat => {
+                let mut result = Err(Determinacy::Determined);
+                for derive in parent_scope.derives {
+                    let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
+                    match self.reborrow().resolve_derive_macro_path(
+                        derive,
+                        parent_scope,
+                        force,
+                        ignore_import,
+                    ) {
+                        Ok((Some(ext), _)) => {
+                            if ext.helper_attrs.contains(&ident.name) {
+                                let binding = self.arenas.new_pub_res_binding(
+                                    Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat),
+                                    derive.span,
+                                    LocalExpnId::ROOT,
+                                );
+                                result = Ok((binding, Flags::empty()));
+                                break;
+                            }
+                        }
+                        Ok(_) | Err(Determinacy::Determined) => {}
+                        Err(Determinacy::Undetermined) => result = Err(Determinacy::Undetermined),
+                    }
+                }
+                result
+            }
+            Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+                MacroRulesScope::Binding(macro_rules_binding)
+                    if ident == macro_rules_binding.ident =>
+                {
+                    Ok((macro_rules_binding.binding, Flags::MACRO_RULES))
+                }
+                MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
+                _ => Err(Determinacy::Determined),
+            },
+            Scope::Module(module, derive_fallback_lint_id) => {
+                let (adjusted_parent_scope, adjusted_finalize) =
+                    if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
+                        (parent_scope, finalize)
+                    } else {
+                        (
+                            &ParentScope { module, ..*parent_scope },
+                            finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                        )
+                    };
+                let binding = self.reborrow().resolve_ident_in_module_unadjusted(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    ns,
+                    adjusted_parent_scope,
+                    Shadowing::Restricted,
+                    adjusted_finalize,
+                    ignore_binding,
+                    ignore_import,
+                );
+                match binding {
+                    Ok(binding) => {
+                        if let Some(lint_id) = derive_fallback_lint_id {
+                            self.get_mut().lint_buffer.buffer_lint(
+                                PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+                                lint_id,
+                                orig_ident.span,
+                                errors::ProcMacroDeriveResolutionFallback {
+                                    span: orig_ident.span,
+                                    ns_descr: ns.descr(),
+                                    ident,
+                                },
+                            );
+                        }
+                        let misc_flags = if module == self.graph_root {
+                            Flags::MISC_SUGGEST_CRATE
+                        } else if module.is_normal() {
+                            Flags::MISC_SUGGEST_SELF
+                        } else {
+                            Flags::empty()
+                        };
+                        Ok((binding, Flags::MODULE | misc_flags))
+                    }
+                    Err((Determinacy::Undetermined, Weak::No)) => {
+                        return ControlFlow::Break(Err(Determinacy::determined(force)));
+                    }
+                    Err((Determinacy::Undetermined, Weak::Yes)) => Err(Determinacy::Undetermined),
+                    Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
+                }
+            }
+            Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
+                Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
+                None => Err(Determinacy::determined(
+                    self.graph_root.unexpanded_invocations.borrow().is_empty(),
+                )),
+            },
+            Scope::BuiltinAttrs => match self.builtin_attrs_bindings.get(&ident.name) {
+                Some(binding) => Ok((*binding, Flags::empty())),
+                None => Err(Determinacy::Determined),
+            },
+            Scope::ExternPreludeItems => {
+                match self.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
+                    Some(binding) => {
+                        *extern_prelude_item_binding = Some(binding);
+                        Ok((binding, Flags::empty()))
+                    }
+                    None => Err(Determinacy::determined(
+                        self.graph_root.unexpanded_invocations.borrow().is_empty(),
+                    )),
+                }
+            }
+            Scope::ExternPreludeFlags => {
+                match self.extern_prelude_get_flag(ident, finalize.is_some()) {
+                    Some(binding) => {
+                        *extern_prelude_flag_binding = Some(binding);
+                        Ok((binding, Flags::empty()))
+                    }
+                    None => Err(Determinacy::Determined),
+                }
+            }
+            Scope::ToolPrelude => match self.registered_tool_bindings.get(&ident) {
+                Some(binding) => Ok((*binding, Flags::empty())),
+                None => Err(Determinacy::Determined),
+            },
+            Scope::StdLibPrelude => {
+                let mut result = Err(Determinacy::Determined);
+                if let Some(prelude) = self.prelude
+                    && let Ok(binding) = self.reborrow().resolve_ident_in_module_unadjusted(
+                        ModuleOrUniformRoot::Module(prelude),
+                        ident,
+                        ns,
+                        parent_scope,
+                        Shadowing::Unrestricted,
+                        None,
+                        ignore_binding,
+                        ignore_import,
+                    )
+                    && (matches!(use_prelude, UsePrelude::Yes)
+                        || self.is_builtin_macro(binding.res()))
+                {
+                    result = Ok((binding, Flags::MISC_FROM_PRELUDE));
+                }
+
+                result
+            }
+            Scope::BuiltinTypes => match self.builtin_types_bindings.get(&ident.name) {
+                Some(binding) => {
+                    if matches!(ident.name, sym::f16)
+                        && !self.tcx.features().f16()
+                        && !ident.span.allows_unstable(sym::f16)
+                        && finalize.is_some()
+                    {
+                        feature_err(
+                            self.tcx.sess,
+                            sym::f16,
+                            ident.span,
+                            "the type `f16` is unstable",
+                        )
+                        .emit();
+                    }
+                    if matches!(ident.name, sym::f128)
+                        && !self.tcx.features().f128()
+                        && !ident.span.allows_unstable(sym::f128)
+                        && finalize.is_some()
+                    {
+                        feature_err(
+                            self.tcx.sess,
+                            sym::f128,
+                            ident.span,
+                            "the type `f128` is unstable",
+                        )
+                        .emit();
+                    }
+                    Ok((*binding, Flags::empty()))
+                }
+                None => Err(Determinacy::Determined),
+            },
+        };
+
+        ControlFlow::Continue(ret)
     }
 
     #[instrument(level = "debug", skip(self))]
