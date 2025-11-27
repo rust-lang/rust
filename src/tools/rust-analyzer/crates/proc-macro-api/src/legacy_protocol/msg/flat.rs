@@ -303,6 +303,7 @@ impl FlatTree {
     pub fn to_tokenstream_unresolved<T: SpanTransformer<Table = ()>>(
         self,
         version: u32,
+        span_join: impl Fn(T::Span, T::Span) -> T::Span,
     ) -> proc_macro_srv::TokenStream<T::Span> {
         Reader::<T> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -326,13 +327,14 @@ impl FlatTree {
             span_data_table: &(),
             version,
         }
-        .read_tokenstream()
+        .read_tokenstream(span_join)
     }
 
     pub fn to_tokenstream_resolved(
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
+        span_join: impl Fn(Span, Span) -> Span,
     ) -> proc_macro_srv::TokenStream<Span> {
         Reader::<Span> {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -356,7 +358,7 @@ impl FlatTree {
             span_data_table,
             version,
         }
-        .read_tokenstream()
+        .read_tokenstream(span_join)
     }
 }
 
@@ -842,7 +844,10 @@ impl<T: SpanTransformer> Reader<'_, T> {
 
 #[cfg(feature = "sysroot-abi")]
 impl<T: SpanTransformer> Reader<'_, T> {
-    pub(crate) fn read_tokenstream(self) -> proc_macro_srv::TokenStream<T::Span> {
+    pub(crate) fn read_tokenstream(
+        self,
+        span_join: impl Fn(T::Span, T::Span) -> T::Span,
+    ) -> proc_macro_srv::TokenStream<T::Span> {
         let mut res: Vec<Option<proc_macro_srv::Group<T::Span>>> = vec![None; self.subtree.len()];
         let read_span = |id| T::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
@@ -935,6 +940,8 @@ impl<T: SpanTransformer> Reader<'_, T> {
                     }
                 })
                 .collect::<Vec<_>>();
+            let open = read_span(repr.open);
+            let close = read_span(repr.close);
             let g = proc_macro_srv::Group {
                 delimiter: match repr.kind {
                     tt::DelimiterKind::Parenthesis => proc_macro_srv::Delimiter::Parenthesis,
@@ -944,10 +951,10 @@ impl<T: SpanTransformer> Reader<'_, T> {
                 },
                 stream: if stream.is_empty() { None } else { Some(TokenStream::new(stream)) },
                 span: proc_macro_srv::DelimSpan {
-                    open: read_span(repr.open),
-                    close: read_span(repr.close),
-                    // FIXME
-                    entire: read_span(repr.close),
+                    open,
+                    close,
+                    // FIXME: The protocol does not yet encode entire spans ...
+                    entire: span_join(open, close),
                 },
             };
             res[i] = Some(g);

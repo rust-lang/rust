@@ -90,10 +90,10 @@ fn run_<C: Codec>() -> io::Result<()> {
                         let call_site = SpanId(call_site as u32);
                         let mixed_site = SpanId(mixed_site as u32);
 
-                        let macro_body =
-                            macro_body.to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION);
+                        let macro_body = macro_body
+                            .to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION, |_, b| b);
                         let attributes = attributes.map(|it| {
-                            it.to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION)
+                            it.to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION, |_, b| b)
                         });
 
                         srv.expand(
@@ -124,10 +124,17 @@ fn run_<C: Codec>() -> io::Result<()> {
                         let call_site = span_data_table[call_site];
                         let mixed_site = span_data_table[mixed_site];
 
-                        let macro_body = macro_body
-                            .to_tokenstream_resolved(CURRENT_API_VERSION, &span_data_table);
+                        let macro_body = macro_body.to_tokenstream_resolved(
+                            CURRENT_API_VERSION,
+                            &span_data_table,
+                            |a, b| srv.join_spans(a, b).unwrap_or(b),
+                        );
                         let attributes = attributes.map(|it| {
-                            it.to_tokenstream_resolved(CURRENT_API_VERSION, &span_data_table)
+                            it.to_tokenstream_resolved(
+                                CURRENT_API_VERSION,
+                                &span_data_table,
+                                |a, b| srv.join_spans(a, b).unwrap_or(b),
+                            )
                         });
                         srv.expand(
                             lib,
