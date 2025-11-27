@@ -1,4 +1,5 @@
 #![feature(generic_const_exprs)]
+#![allow(unconstructable_pub_struct)]
 
 // library portion of regression test for #87674
 pub struct Foo<const N: usize>([(); N + 1])

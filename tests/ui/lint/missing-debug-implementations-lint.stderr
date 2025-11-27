@@ -1,5 +1,5 @@
 error: type does not implement `Debug`; consider adding `#[derive(Debug)]` or a manual implementation
-  --> $DIR/missing-debug-implementations-lint.rs:11:1
+  --> $DIR/missing-debug-implementations-lint.rs:12:1
    |
 LL | pub enum A {}
    | ^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL | #![deny(missing_debug_implementations)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type does not implement `Debug`; consider adding `#[derive(Debug)]` or a manual implementation
-  --> $DIR/missing-debug-implementations-lint.rs:23:1
+  --> $DIR/missing-debug-implementations-lint.rs:24:1
    |
 LL | pub struct Foo;
    | ^^^^^^^^^^^^^^^

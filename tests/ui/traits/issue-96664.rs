@@ -1,6 +1,7 @@
 //@ check-pass
 
 #![feature(trait_alias)]
+#![allow(unconstructable_pub_struct)]
 
 pub trait State = Clone + Send + Sync + PartialOrd + PartialEq + std::fmt::Display;
 pub trait RandState<S: State> = FnMut() -> S + Send;

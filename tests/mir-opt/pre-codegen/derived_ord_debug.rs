@@ -2,6 +2,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]
+#![allow(unconstructable_pub_struct)]
 
 #[derive(PartialOrd, Ord, PartialEq, Eq)]
 pub struct MultiField(char, i16);

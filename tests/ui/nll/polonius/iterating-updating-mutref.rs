@@ -15,6 +15,8 @@
 //@ [legacy] check-pass
 //@ [legacy] compile-flags: -Z polonius=legacy
 
+#![allow(unconstructable_pub_struct)]
+
 // The #46859 OP
 struct List<T> {
     value: T,

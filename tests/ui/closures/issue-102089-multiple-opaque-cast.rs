@@ -1,6 +1,8 @@
 //@ edition:2021
 //@ check-pass
 
+#![allow(unconstructable_pub_struct)]
+
 pub struct Example<'a, T> {
   a: T,
   b: &'a T,

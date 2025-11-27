@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `self.buf_read` as mutable more than once at a time
-  --> $DIR/iterating-updating-mutref.rs:61:23
+  --> $DIR/iterating-updating-mutref.rs:63:23
    |
 LL |     pub fn next<'a>(&'a mut self) -> &'a str {
    |                 -- lifetime `'a` defined here

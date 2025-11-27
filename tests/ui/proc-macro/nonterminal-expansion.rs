@@ -1,6 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Z span-debug
 //@ proc-macro: test-macros.rs
+#![allow(unconstructable_pub_struct)]
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

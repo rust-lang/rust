@@ -5,6 +5,8 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
+#![allow(unconstructable_pub_struct)]
+
 use std::slice;
 
 pub struct PhfMapEntries<'a, T: 'a> {

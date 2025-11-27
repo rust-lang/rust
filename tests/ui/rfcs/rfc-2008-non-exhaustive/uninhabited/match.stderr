@@ -5,7 +5,7 @@ LL |     match x {}
    |           ^
    |
 note: `uninhabited::UninhabitedEnum` defined here
-  --> $DIR/auxiliary/uninhabited.rs:5:1
+  --> $DIR/auxiliary/uninhabited.rs:6:1
    |
 LL | pub enum UninhabitedEnum {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     match x {}
    |           ^
    |
 note: `uninhabited::PrivatelyUninhabitedStruct` defined here
-  --> $DIR/auxiliary/uninhabited.rs:15:1
+  --> $DIR/auxiliary/uninhabited.rs:16:1
    |
 LL | pub struct PrivatelyUninhabitedStruct {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

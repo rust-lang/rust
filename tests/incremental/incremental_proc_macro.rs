@@ -7,6 +7,7 @@
 // when we compile proc-macros incrementally (see #47292).
 
 #![crate_type = "rlib"]
+#![allow(unconstructable_pub_struct)]
 
 #[macro_use]
 extern crate incremental_proc_macro_aux;
