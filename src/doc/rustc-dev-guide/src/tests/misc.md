@@ -38,3 +38,21 @@ fn main() {
         .run();
 }
 ```
+
+## `RUSTC_TEST_GIT_HASH` env var
+
+> Context:
+>
+> - <https://github.com/rust-lang/rust/issues/132875>
+> - <https://github.com/rust-lang/rust/issues/132845>
+
+`RUSTC_TEST_GIT_HASH` is a special env var used intentionally to bypass
+bootstrap to make sure that the built rustc and rustdoc binaries correctly
+report git hash information. We can't rely on information reported by bootstrap
+regarding git hash availability because the bootstrap logic itself can be wrong
+(see linked issues above).
+
+- This env var must be set in CI.
+- To run `tests/run-make/version-verbose-commit-hash` locally, set
+  `RUSTC_TEST_GIT_HASH` to any non-empty value. Otherwise, this test will be
+  skipped.
