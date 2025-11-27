@@ -54,8 +54,10 @@ pub(crate) struct DocContext<'tcx> {
     // therefore wouldn't use the corresp. generic arg anyway. Add support for them.
     pub(crate) args: DefIdMap<clean::GenericArg>,
     pub(crate) current_type_aliases: DefIdMap<usize>,
-    /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
-    pub(crate) impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
+    /// Table of synthetic type parameter
+    /// for `impl Trait` in argument position -> (bounds, trait origin)
+    pub(crate) impl_trait_bounds:
+        FxHashMap<ImplTraitParam, (Vec<clean::GenericBound>, clean::ImplTraitOrigin)>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub(crate) generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
