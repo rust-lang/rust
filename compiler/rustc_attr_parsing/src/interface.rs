@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast as ast;
 use rustc_ast::{AttrStyle, NodeId, Safety};
+use rustc_ast::token::CommentKind;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -281,7 +282,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             // that's expanded right? But no, sometimes, when parsing attributes on macros,
             // we already use the lowering logic and these are still there. So, when `omit_doc`
             // is set we *also* want to ignore these.
-            if omit_doc == OmitDoc::Skip && attr.has_name(sym::doc) {
+            let is_doc_attribute = attr.has_name(sym::doc);
+            if omit_doc == OmitDoc::Skip && is_doc_attribute {
                 continue;
             }
 
@@ -323,6 +325,39 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             continue;
                         };
                         let args = parser.args();
+
+                        // Special-case handling for `#[doc = "..."]`: if we go through with
+                        // `DocParser`, the order of doc comments will be messed up because `///`
+                        // doc comments are added into `attributes` whereas attributes parsed with
+                        // `DocParser` are added into `parsed_attributes` which are then appended
+                        // to `attributes`. So if you have:
+                        //
+                        // /// bla
+                        // #[doc = "a"]
+                        // /// blob
+                        //
+                        // You would get:
+                        //
+                        // bla
+                        // blob
+                        // a
+                        if is_doc_attribute
+                            && let ArgParser::NameValue(nv) = args
+                            // If not a string key/value, it should emit an error, but to make
+                            // things simpler, it's handled in `DocParser` because it's simpler to
+                            // emit an error with `AcceptContext`.
+                            && let Some(comment) = nv.value_as_str()
+                        {
+                            attributes.push(Attribute::Parsed(AttributeKind::DocComment {
+                                style: attr.style,
+                                kind: CommentKind::Block,
+                                span: nv.value_span,
+                                comment,
+                            }));
+                            continue;
+                        }
+
+                        let path = parser.path();
                         for accept in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
                                 shared: SharedContext {

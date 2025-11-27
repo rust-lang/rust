@@ -2,7 +2,6 @@
 #![allow(unused_imports)]
 
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_ast::token::CommentKind;
 use rustc_errors::MultiSpan;
 use rustc_feature::template;
 use rustc_hir::attrs::{
@@ -81,19 +80,10 @@ fn parse_keyword_and_attribute<'c, S, F>(
     *attr_value = Some((value, path.span()));
 }
 
-#[derive(Debug)]
-struct DocComment {
-    style: AttrStyle,
-    kind: CommentKind,
-    span: Span,
-    comment: Symbol,
-}
-
 #[derive(Default, Debug)]
 pub(crate) struct DocParser {
     attribute: DocAttribute,
     nb_doc_attrs: usize,
-    doc_comment: Option<DocComment>,
 }
 
 impl DocParser {
@@ -481,17 +471,11 @@ impl DocParser {
                 }
             }
             ArgParser::NameValue(nv) => {
-                let Some(comment) = nv.value_as_str() else {
+                if nv.value_as_str().is_none() {
                     cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
-                    return;
-                };
-
-                self.doc_comment = Some(DocComment {
-                    style: cx.attr_style,
-                    kind: CommentKind::Block,
-                    span: nv.value_span,
-                    comment,
-                });
+                } else {
+                    unreachable!("Should have been handled at the same time as sugar-syntaxed doc comments");
+                }
             }
         }
     }
@@ -537,9 +521,7 @@ impl<S: Stage> AttributeParser<S> for DocParser {
     ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        if let Some(DocComment { style, kind, span, comment }) = self.doc_comment {
-            Some(AttributeKind::DocComment { style, kind, span, comment })
-        } else if self.nb_doc_attrs != 0 {
+        if self.nb_doc_attrs != 0 {
             Some(AttributeKind::Doc(Box::new(self.attribute)))
         } else {
             None
