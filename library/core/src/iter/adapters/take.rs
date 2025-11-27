@@ -238,7 +238,14 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Take<I>
+where
+    I: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        cmp::min(self.n, self.iter.len())
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}

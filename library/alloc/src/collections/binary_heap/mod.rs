@@ -1720,7 +1720,12 @@ impl<T: Ord, A: Allocator> Iterator for IntoIterSorted<T, A> {
 }
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
-impl<T: Ord, A: Allocator> ExactSizeIterator for IntoIterSorted<T, A> {}
+impl<T: Ord, A: Allocator> ExactSizeIterator for IntoIterSorted<T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[unstable(feature = "binary_heap_into_iter_sorted", issue = "59278")]
 impl<T: Ord, A: Allocator> FusedIterator for IntoIterSorted<T, A> {}
@@ -1846,7 +1851,12 @@ impl<T: Ord, A: Allocator> Iterator for DrainSorted<'_, T, A> {
 }
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
-impl<T: Ord, A: Allocator> ExactSizeIterator for DrainSorted<'_, T, A> {}
+impl<T: Ord, A: Allocator> ExactSizeIterator for DrainSorted<'_, T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[unstable(feature = "binary_heap_drain_sorted", issue = "59278")]
 impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
