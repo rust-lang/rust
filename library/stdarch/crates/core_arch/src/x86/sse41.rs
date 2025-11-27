@@ -312,11 +312,7 @@ pub fn _mm_insert_epi32<const IMM8: i32>(a: __m128i, i: i32) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epi8(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i8x16();
-        let b = b.as_i8x16();
-        transmute(simd_select::<i8x16, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i8x16(), b.as_i8x16()).as_m128i() }
 }
 
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns packed
@@ -328,11 +324,7 @@ pub fn _mm_max_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epu16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u16x8();
-        let b = b.as_u16x8();
-        transmute(simd_select::<i16x8, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u16x8(), b.as_u16x8()).as_m128i() }
 }
 
 /// Compares packed 32-bit integers in `a` and `b`, and returns packed maximum
@@ -344,11 +336,7 @@ pub fn _mm_max_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i32x4();
-        let b = b.as_i32x4();
-        transmute(simd_select::<i32x4, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i32x4(), b.as_i32x4()).as_m128i() }
 }
 
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns packed
@@ -360,11 +348,7 @@ pub fn _mm_max_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxud))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epu32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u32x4();
-        let b = b.as_u32x4();
-        transmute(simd_select::<i32x4, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u32x4(), b.as_u32x4()).as_m128i() }
 }
 
 /// Compares packed 8-bit integers in `a` and `b` and returns packed minimum
@@ -376,11 +360,7 @@ pub fn _mm_max_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epi8(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i8x16();
-        let b = b.as_i8x16();
-        transmute(simd_select::<i8x16, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i8x16(), b.as_i8x16()).as_m128i() }
 }
 
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns packed
@@ -392,11 +372,7 @@ pub fn _mm_min_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epu16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u16x8();
-        let b = b.as_u16x8();
-        transmute(simd_select::<i16x8, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u16x8(), b.as_u16x8()).as_m128i() }
 }
 
 /// Compares packed 32-bit integers in `a` and `b`, and returns packed minimum
@@ -408,11 +384,7 @@ pub fn _mm_min_epu16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i32x4();
-        let b = b.as_i32x4();
-        transmute(simd_select::<i32x4, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i32x4(), b.as_i32x4()).as_m128i() }
 }
 
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns packed
@@ -424,11 +396,7 @@ pub fn _mm_min_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminud))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epu32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u32x4();
-        let b = b.as_u32x4();
-        transmute(simd_select::<i32x4, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u32x4(), b.as_u32x4()).as_m128i() }
 }
 
 /// Converts packed 32-bit integers from `a` and `b` to packed 16-bit integers

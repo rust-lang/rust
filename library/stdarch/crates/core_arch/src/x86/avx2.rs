@@ -1897,11 +1897,7 @@ pub unsafe fn _mm256_maskstore_epi64(mem_addr: *mut i64, mask: __m256i, a: __m25
 #[cfg_attr(test, assert_instr(vpmaxsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i16x16();
-        let b = b.as_i16x16();
-        transmute(simd_select::<i16x16, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i16x16(), b.as_i16x16()).as_m256i() }
 }
 
 /// Compares packed 32-bit integers in `a` and `b`, and returns the packed
@@ -1913,11 +1909,7 @@ pub fn _mm256_max_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaxsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i32x8();
-        let b = b.as_i32x8();
-        transmute(simd_select::<i32x8, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i32x8(), b.as_i32x8()).as_m256i() }
 }
 
 /// Compares packed 8-bit integers in `a` and `b`, and returns the packed
@@ -1929,11 +1921,7 @@ pub fn _mm256_max_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaxsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epi8(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i8x32();
-        let b = b.as_i8x32();
-        transmute(simd_select::<i8x32, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i8x32(), b.as_i8x32()).as_m256i() }
 }
 
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns
@@ -1945,11 +1933,7 @@ pub fn _mm256_max_epi8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaxuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epu16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u16x16();
-        let b = b.as_u16x16();
-        transmute(simd_select::<i16x16, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u16x16(), b.as_u16x16()).as_m256i() }
 }
 
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns
@@ -1961,11 +1945,7 @@ pub fn _mm256_max_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaxud))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epu32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u32x8();
-        let b = b.as_u32x8();
-        transmute(simd_select::<i32x8, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u32x8(), b.as_u32x8()).as_m256i() }
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns
@@ -1977,11 +1957,7 @@ pub fn _mm256_max_epu32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmaxub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_max_epu8(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u8x32();
-        let b = b.as_u8x32();
-        transmute(simd_select::<i8x32, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u8x32(), b.as_u8x32()).as_m256i() }
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -1993,11 +1969,7 @@ pub fn _mm256_max_epu8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epi16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i16x16();
-        let b = b.as_i16x16();
-        transmute(simd_select::<i16x16, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i16x16(), b.as_i16x16()).as_m256i() }
 }
 
 /// Compares packed 32-bit integers in `a` and `b`, and returns the packed
@@ -2009,11 +1981,7 @@ pub fn _mm256_min_epi16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i32x8();
-        let b = b.as_i32x8();
-        transmute(simd_select::<i32x8, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i32x8(), b.as_i32x8()).as_m256i() }
 }
 
 /// Compares packed 8-bit integers in `a` and `b`, and returns the packed
@@ -2025,11 +1993,7 @@ pub fn _mm256_min_epi32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminsb))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epi8(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_i8x32();
-        let b = b.as_i8x32();
-        transmute(simd_select::<i8x32, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i8x32(), b.as_i8x32()).as_m256i() }
 }
 
 /// Compares packed unsigned 16-bit integers in `a` and `b`, and returns
@@ -2041,11 +2005,7 @@ pub fn _mm256_min_epi8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminuw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epu16(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u16x16();
-        let b = b.as_u16x16();
-        transmute(simd_select::<i16x16, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u16x16(), b.as_u16x16()).as_m256i() }
 }
 
 /// Compares packed unsigned 32-bit integers in `a` and `b`, and returns
@@ -2057,11 +2017,7 @@ pub fn _mm256_min_epu16(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminud))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epu32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u32x8();
-        let b = b.as_u32x8();
-        transmute(simd_select::<i32x8, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u32x8(), b.as_u32x8()).as_m256i() }
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns
@@ -2073,11 +2029,7 @@ pub fn _mm256_min_epu32(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpminub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm256_min_epu8(a: __m256i, b: __m256i) -> __m256i {
-    unsafe {
-        let a = a.as_u8x32();
-        let b = b.as_u8x32();
-        transmute(simd_select::<i8x32, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u8x32(), b.as_u8x32()).as_m256i() }
 }
 
 /// Creates mask from the most significant bit of each 8-bit element in `a`,
