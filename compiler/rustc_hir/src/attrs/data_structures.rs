@@ -404,6 +404,22 @@ pub enum RtsanSetting {
     Caller,
 }
 
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Encodable, Decodable, HashStable_Generic, PrintAttribute)]
+pub enum WindowsSubsystemKind {
+    Console,
+    Windows,
+}
+
+impl WindowsSubsystemKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WindowsSubsystemKind::Console => "console",
+            WindowsSubsystemKind::Windows => "windows",
+        }
+    }
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -759,5 +775,8 @@ pub enum AttributeKind {
 
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
+
+    /// Represents `#[windows_subsystem]`.
+    WindowsSubsystem(WindowsSubsystemKind, Span),
     // tidy-alphabetical-end
 }
