@@ -8,13 +8,19 @@ LL |     foo(1 as u32 +
 help: the following other types implement trait `Add<Rhs>`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u32` implements `Add<u32>`
+   = note: `u32` implements `Add`
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-   = note: `&u32` implements `Add`
+   = note: in this macro invocation
+  --> $SRC_DIR/core/src/internal_macros.rs:LL:COL
+   |
+   = note: `&u32` implements `Add<u32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
    = note: `u32` implements `Add<&u32>`
+  ::: $SRC_DIR/core/src/internal_macros.rs:LL:COL
    |
-   = note: `u32` implements `Add`
+   = note: `&u32` implements `Add`
    = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
