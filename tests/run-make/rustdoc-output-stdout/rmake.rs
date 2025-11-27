@@ -7,9 +7,22 @@ use run_make_support::path_helpers::{cwd, has_extension, read_dir_entries_recurs
 use run_make_support::{rustdoc, serde_json};
 
 fn main() {
+    check("-o");
+    check("--output");
+
+    // Then we check it didn't generate any JSON file.
+    read_dir_entries_recursive(cwd(), |path| {
+        if path.is_file() && has_extension(path, "json") {
+            panic!("Found a JSON file {path:?}");
+        }
+    });
+}
+
+fn check(out_arg: &str) {
     let json_string = rustdoc()
         .input("foo.rs")
-        .out_dir("-")
+        .arg(out_arg)
+        .arg("-")
         .arg("-Zunstable-options")
         .output_format("json")
         .run()
@@ -26,11 +39,4 @@ fn main() {
         .as_i64()
         .expect("json output should contain format_version field");
     assert!(format_version > 30);
-
-    // Then we check it didn't generate any JSON file.
-    read_dir_entries_recursive(cwd(), |path| {
-        if path.is_file() && has_extension(path, "json") {
-            panic!("Found a JSON file {path:?}");
-        }
-    });
 }
