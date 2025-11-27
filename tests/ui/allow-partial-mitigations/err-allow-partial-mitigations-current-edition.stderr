@@ -1,0 +1,32 @@
+error: your program uses the crate `std`, that is not protected by `control-flow-guard`
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+
+error: your program uses the crate `core`, that is not protected by `control-flow-guard`
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+
+error: your program uses the crate `alloc`, that is not protected by `control-flow-guard`
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+
+error: your program uses the crate `compiler_builtins`, that is not protected by `control-flow-guard`
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+
+error: your program uses the crate `libc`, that is not protected by `control-flow-guard`
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:12:1
+   |
+LL | fn main() {}
+   | ^
+
+error: aborting due to 5 previous errors
+

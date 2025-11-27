@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::str::FromStr;
 
 use rustc_macros::{BlobDecodable, Encodable};
@@ -5,6 +6,7 @@ use rustc_span::edition::Edition;
 use rustc_target::spec::StackProtector;
 
 use crate::Session;
+use crate::config::Options;
 use crate::options::CFGuard;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
@@ -120,6 +122,12 @@ macro_rules! enforced_mitigations {
             }
         }
 
+        impl Options {
+            pub fn all_enforced_mitigations(&self) -> impl Iterator<Item = EnforcedMitigationKind> {
+                [$(EnforcedMitigationKind::$name),*].into_iter()
+            }
+        }
+
         impl Session {
             pub fn gather_enabled_enforced_mitigations(&$self) -> Vec<EnforcedMitigation> {
                 let mut mitigations = [
@@ -150,4 +158,25 @@ enforced_mitigations! {
 pub struct EnforcedMitigation {
     pub kind: EnforcedMitigationKind,
     pub level: EnforcedMitigationLevel,
+}
+
+impl Options {
+    // Return the list of mitigations that are allowed to be partial
+    pub fn allowed_partial_mitigations(
+        &self,
+        edition: Edition,
+    ) -> impl Iterator<Item = EnforcedMitigationKind> {
+        let mut result: BTreeSet<_> = self
+            .all_enforced_mitigations()
+            .filter(|mitigation| mitigation.enforced_since() > edition)
+            .collect();
+        for mitigation in &self.unstable_opts.allow_partial_mitigations {
+            if mitigation.enabled {
+                result.insert(mitigation.kind);
+            } else {
+                result.remove(&mitigation.kind);
+            }
+        }
+        result.into_iter()
+    }
 }
