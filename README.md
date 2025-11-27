@@ -64,7 +64,7 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 ## Trademark
 
 [The Rust Foundation][rust-foundation] owns and protects the Rust and Cargo
-trademarks and logos (the "Rust Trademarks").
+trademarks and logos (the "Rust Trademarks")!
 
 If you want to use these names or brands, please read the
 [Rust language trademark policy][trademark-policy].
