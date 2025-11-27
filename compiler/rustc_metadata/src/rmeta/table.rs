@@ -1,6 +1,7 @@
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
+use crate::rmeta::decoder::BlobMetadata;
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -522,7 +523,11 @@ where
     for<'tcx> T::Value<'tcx>: FixedSizeEncoding<ByteArray = [u8; N]>,
 {
     /// Given the metadata, extract out the value at a particular index (if any).
-    pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
+    pub(super) fn get<'a, 'tcx, M: BlobMetadata<'a, 'tcx>>(
+        &self,
+        metadata: M,
+        i: I,
+    ) -> T::Value<'tcx> {
         // Access past the end of the table returns a Default
         if i.index() >= self.len {
             return Default::default();

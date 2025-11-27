@@ -78,7 +78,18 @@ decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);
 decl_derive!([TyDecodable] => serialize::type_decodable_derive);
 decl_derive!([TyEncodable] => serialize::type_encodable_derive);
-decl_derive!([MetadataDecodable] => serialize::meta_decodable_derive);
+decl_derive!([MetadataDecodable] =>
+    /// This constrains the decoder to be specifically the decoder that can decode LazyArrays in metadata.
+    /// Therefore, we only use this on things containing LazyArray really.
+    /// Anything else should either be `NoContext`, if possible `BlobDecodable`, or otherwise just `Decodable`.
+    serialize::meta_decodable_derive
+);
+decl_derive!([BlobDecodable] =>
+    /// For anything that is "simple" to decode, without needing anything but the original data,
+    /// but for which the Decoder can customize some things
+    /// (unlike Decodable_NoContext which individual decoders can't customize).
+    serialize::blob_decodable_derive
+);
 decl_derive!([MetadataEncodable] => serialize::meta_encodable_derive);
 decl_derive!(
     [TypeFoldable, attributes(type_foldable)] =>

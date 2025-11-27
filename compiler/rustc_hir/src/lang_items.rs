@@ -10,7 +10,7 @@
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{BlobDecodable, Encodable, HashStable_Generic};
 use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::def_id::DefId;
@@ -75,7 +75,7 @@ macro_rules! language_item_table {
         $( $(#[$attr:meta])* $variant:ident, $module:ident :: $name:ident, $method:ident, $target:expr, $generics:expr; )*
     ) => {
         /// A representation of all the valid lang items in Rust.
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
         pub enum LangItem {
             $(
                 #[doc = concat!("The `", stringify!($name), "` lang item.")]

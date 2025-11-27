@@ -15,12 +15,13 @@ use rustc_middle::query::{ExternProviders, LocalCrate};
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
+use rustc_serialize::Decoder;
 use rustc_session::cstore::{CrateStore, ExternCrate};
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::ExpnId;
 use rustc_span::{Span, Symbol, kw};
 
-use super::{Decodable, DecodeContext, DecodeIterator};
+use super::{Decodable, DecodeIterator};
 use crate::creader::{CStore, LoadedMacro};
 use crate::rmeta::AttrFlags;
 use crate::rmeta::table::IsDefault;
@@ -65,8 +66,8 @@ impl<T, E> ProcessQueryValue<'_, Result<Option<T>, E>> for Option<T> {
     }
 }
 
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'tcx, &'tcx [T]>
-    for Option<DecodeIterator<'a, 'tcx, T>>
+impl<'tcx, D: Decoder, T: Copy + Decodable<D>> ProcessQueryValue<'tcx, &'tcx [T]>
+    for Option<DecodeIterator<T, D>>
 {
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
@@ -74,8 +75,8 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     }
 }
 
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, Option<&'tcx [T]>> for Option<DecodeIterator<'a, 'tcx, T>>
+impl<'tcx, D: Decoder, T: Copy + Decodable<D>> ProcessQueryValue<'tcx, Option<&'tcx [T]>>
+    for Option<DecodeIterator<T, D>>
 {
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, _err: impl Fn() -> !) -> Option<&'tcx [T]> {

@@ -41,8 +41,8 @@ use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
-    Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
-    extension,
+    BlobDecodable, Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable,
+    TypeVisitable, extension,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
@@ -264,7 +264,7 @@ impl Asyncness {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, Decodable, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, HashStable)]
 pub enum Visibility<Id = LocalDefId> {
     /// Visible everywhere (including in other crates).
     Public,

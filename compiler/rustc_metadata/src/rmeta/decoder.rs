@@ -1,6 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use std::iter::TrustedLen;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::{io, mem};
@@ -33,7 +34,8 @@ use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
-    BytePos, ByteSymbol, DUMMY_SP, Pos, SpanData, SpanDecoder, Symbol, SyntaxContext, kw,
+    BlobDecoder, BytePos, ByteSymbol, DUMMY_SP, Pos, SpanData, SpanDecoder, Symbol, SyntaxContext,
+    kw,
 };
 use tracing::debug;
 
@@ -154,22 +156,106 @@ struct ImportedSourceFile {
     translated_source_file: Arc<rustc_span::SourceFile>,
 }
 
-pub(super) struct DecodeContext<'a, 'tcx> {
+/// Decode context used when we just have a blob,
+/// and we still have to read the header etc.
+pub(super) struct BlobDecodeContext<'a> {
     opaque: MemDecoder<'a>,
-    cdata: Option<CrateMetadataRef<'a>>,
     blob: &'a MetadataBlob,
+    lazy_state: LazyState,
+}
+
+/// trait for anything containing `LazyState` and is a decoder.
+// TODO: might need to live in rustc_middle
+pub(super) trait LazyDecoder: BlobDecoder {
+    fn set_lazy_state(&mut self, state: LazyState);
+    fn get_lazy_state(&self) -> LazyState;
+
+    fn read_lazy<T>(&mut self) -> LazyValue<T> {
+        self.read_lazy_offset_then(|pos| LazyValue::from_position(pos))
+    }
+
+    fn read_lazy_array<T>(&mut self, len: usize) -> LazyArray<T> {
+        self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
+    }
+
+    fn read_lazy_table<I, T>(&mut self, width: usize, len: usize) -> LazyTable<I, T> {
+        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
+    }
+
+    #[inline]
+    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZero<usize>) -> T) -> T {
+        let distance = self.read_usize();
+        let position = match self.get_lazy_state() {
+            LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
+            LazyState::NodeStart(start) => {
+                let start = start.get();
+                assert!(distance <= start);
+                start - distance
+            }
+            LazyState::Previous(last_pos) => last_pos.get() + distance,
+        };
+        let position = NonZero::new(position).unwrap();
+        self.set_lazy_state(LazyState::Previous(position));
+        f(position)
+    }
+}
+
+impl<'a> LazyDecoder for BlobDecodeContext<'a> {
+    fn set_lazy_state(&mut self, state: LazyState) {
+        self.lazy_state = state;
+    }
+
+    fn get_lazy_state(&self) -> LazyState {
+        self.lazy_state
+    }
+}
+
+/// This is the decode context used when crate metadata was already read.
+/// Decoding of some types, like `Span` require some information to already been read.
+pub(super) struct MetadataDecodeContext<'a, 'tcx> {
+    blob_decoder: BlobDecodeContext<'a>,
+    cdata: Option<CrateMetadataRef<'a>>,
     sess: Option<&'tcx Session>,
     tcx: Option<TyCtxt<'tcx>>,
-
-    lazy_state: LazyState,
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_session: Option<AllocDecodingSession<'a>>,
 }
 
+impl<'a, 'tcx> LazyDecoder for MetadataDecodeContext<'a, 'tcx> {
+    fn set_lazy_state(&mut self, state: LazyState) {
+        self.lazy_state = state;
+    }
+
+    fn get_lazy_state(&self) -> LazyState {
+        self.lazy_state
+    }
+}
+
+impl<'a, 'tcx> DerefMut for MetadataDecodeContext<'a, 'tcx> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.blob_decoder
+    }
+}
+
+impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
+    type Target = BlobDecodeContext<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.blob_decoder
+    }
+}
+
+pub(super) trait BlobMetadata<'a, 'tcx>: Copy {
+    type Context: BlobDecoder + LazyDecoder;
+
+    fn blob(self) -> &'a MetadataBlob;
+    fn decoder(self, pos: usize) -> Self::Context;
+}
+
 /// Abstract over the various ways one can create metadata decoders.
 pub(super) trait Metadata<'a, 'tcx>: Copy {
-    fn blob(self) -> &'a MetadataBlob;
+    fn _blob(self) -> &'a MetadataBlob;
 
     fn cdata(self) -> Option<CrateMetadataRef<'a>> {
         None
@@ -180,23 +266,25 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn tcx(self) -> Option<TyCtxt<'tcx>> {
         None
     }
+}
 
-    fn decoder(self, pos: usize) -> DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> BlobMetadata<'a, 'tcx> for T
+where
+    T: Metadata<'a, 'tcx>,
+{
+    type Context = MetadataDecodeContext<'a, 'tcx>;
+
+    fn blob(self) -> &'a MetadataBlob {
+        self._blob()
+    }
+
+    fn decoder(self, pos: usize) -> MetadataDecodeContext<'a, 'tcx> {
         let tcx = self.tcx();
-        DecodeContext {
-            // FIXME: This unwrap should never panic because we check that it won't when creating
-            // `MetadataBlob`. Ideally we'd just have a `MetadataDecoder` and hand out subslices of
-            // it as we do elsewhere in the compiler using `MetadataDecoder::split_at`. But we own
-            // the data for the decoder so holding onto the `MemDecoder` too would make us a
-            // self-referential struct which is downright goofy because `MetadataBlob` is already
-            // self-referential. Probably `MemDecoder` should contain an `OwnedSlice`, but that
-            // demands a significant refactoring due to our crate graph.
-            opaque: MemDecoder::new(self.blob(), pos).unwrap(),
+        MetadataDecodeContext {
+            blob_decoder: self.blob().decoder(pos),
             cdata: self.cdata(),
-            blob: self.blob(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
             tcx,
-            lazy_state: LazyState::NoNode,
             alloc_decoding_session: self
                 .cdata()
                 .map(|cdata| cdata.cdata.alloc_decoding_state.new_decoding_session()),
@@ -204,16 +292,32 @@ pub(super) trait Metadata<'a, 'tcx>: Copy {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
-    #[inline]
+impl<'a, 'tcx> BlobMetadata<'a, 'tcx> for &'a MetadataBlob {
+    type Context = BlobDecodeContext<'a>;
+
     fn blob(self) -> &'a MetadataBlob {
         self
+    }
+
+    fn decoder(self, pos: usize) -> Self::Context {
+        BlobDecodeContext {
+            // FIXME: This unwrap should never panic because we check that it won't when creating
+            // `MetadataBlob`. Ideally we'd just have a `MetadataDecoder` and hand out subslices of
+            // it as we do elsewhere in the compiler using `MetadataDecoder::split_at`. But we own
+            // the data for the decoder so holding onto the `MemDecoder` too would make us a
+            // self-referential struct which is downright goofy because `MetadataBlob` is already
+            // self-referential. Probably `MemDecoder` should contain an `OwnedSlice`, but that
+            // demands a significant refactoring due to our crate graph.
+            opaque: MemDecoder::new(self, pos).unwrap(),
+            lazy_state: LazyState::NoNode,
+            blob: self.blob(),
+        }
     }
 }
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for CrateMetadataRef<'a> {
     #[inline]
-    fn blob(self) -> &'a MetadataBlob {
+    fn _blob(self) -> &'a MetadataBlob {
         &self.cdata.blob
     }
     #[inline]
@@ -224,7 +328,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for CrateMetadataRef<'a> {
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, &'tcx Session) {
     #[inline]
-    fn blob(self) -> &'a MetadataBlob {
+    fn _blob(self) -> &'a MetadataBlob {
         &self.0.cdata.blob
     }
     #[inline]
@@ -239,7 +343,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, &'tcx Session) {
 
 impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     #[inline]
-    fn blob(self) -> &'a MetadataBlob {
+    fn _blob(self) -> &'a MetadataBlob {
         &self.0.cdata.blob
     }
     #[inline]
@@ -254,23 +358,23 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
 
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(self, metadata: M) -> T::Value<'tcx>
+    fn decode<'a, 'tcx, M: BlobMetadata<'a, 'tcx>>(self, metadata: M) -> T::Value<'tcx>
     where
-        T::Value<'tcx>: Decodable<DecodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Decodable<M::Context>,
     {
         let mut dcx = metadata.decoder(self.position.get());
-        dcx.lazy_state = LazyState::NodeStart(self.position);
+        dcx.set_lazy_state(LazyState::NodeStart(self.position));
         T::Value::decode(&mut dcx)
     }
 }
 
-struct DecodeIterator<'a, 'tcx, T> {
+struct DecodeIterator<T, D> {
     elem_counter: std::ops::Range<usize>,
-    dcx: DecodeContext<'a, 'tcx>,
+    dcx: D,
     _phantom: PhantomData<fn() -> T>,
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterator<'a, 'tcx, T> {
+impl<D: Decoder, T: Decodable<D>> Iterator for DecodeIterator<T, D> {
     type Item = T;
 
     #[inline(always)]
@@ -284,35 +388,30 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Iterator for DecodeIterato
     }
 }
 
-impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> ExactSizeIterator
-    for DecodeIterator<'a, 'tcx, T>
-{
+impl<D: Decoder, T: Decodable<D>> ExactSizeIterator for DecodeIterator<T, D> {
     fn len(&self) -> usize {
         self.elem_counter.len()
     }
 }
 
-unsafe impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> TrustedLen
-    for DecodeIterator<'a, 'tcx, T>
-{
-}
+unsafe impl<D: Decoder, T: Decodable<D>> TrustedLen for DecodeIterator<T, D> {}
 
 impl<T: ParameterizedOverTcx> LazyArray<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+    fn decode<'a, 'tcx, M: BlobMetadata<'a, 'tcx>>(
         self,
         metadata: M,
-    ) -> DecodeIterator<'a, 'tcx, T::Value<'tcx>>
+    ) -> DecodeIterator<T::Value<'tcx>, M::Context>
     where
-        T::Value<'tcx>: Decodable<DecodeContext<'a, 'tcx>>,
+        T::Value<'tcx>: Decodable<M::Context>,
     {
         let mut dcx = metadata.decoder(self.position.get());
-        dcx.lazy_state = LazyState::NodeStart(self.position);
+        dcx.set_lazy_state(LazyState::NodeStart(self.position));
         DecodeIterator { elem_counter: (0..self.num_elems), dcx, _phantom: PhantomData }
     }
 }
 
-impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
         let Some(tcx) = self.tcx else {
@@ -325,11 +424,6 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub(crate) fn blob(&self) -> &'a MetadataBlob {
-        self.blob
-    }
-
-    #[inline]
     fn cdata(&self) -> CrateMetadataRef<'a> {
         debug_assert!(self.cdata.is_some(), "missing CrateMetadata in DecodeContext");
         self.cdata.unwrap()
@@ -339,34 +433,12 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
         self.cdata().map_encoded_cnum_to_current(cnum)
     }
+}
 
+impl<'a> BlobDecodeContext<'a> {
     #[inline]
-    fn read_lazy_offset_then<T>(&mut self, f: impl Fn(NonZero<usize>) -> T) -> T {
-        let distance = self.read_usize();
-        let position = match self.lazy_state {
-            LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
-            LazyState::NodeStart(start) => {
-                let start = start.get();
-                assert!(distance <= start);
-                start - distance
-            }
-            LazyState::Previous(last_pos) => last_pos.get() + distance,
-        };
-        let position = NonZero::new(position).unwrap();
-        self.lazy_state = LazyState::Previous(position);
-        f(position)
-    }
-
-    fn read_lazy<T>(&mut self) -> LazyValue<T> {
-        self.read_lazy_offset_then(|pos| LazyValue::from_position(pos))
-    }
-
-    fn read_lazy_array<T>(&mut self, len: usize) -> LazyArray<T> {
-        self.read_lazy_offset_then(|pos| LazyArray::from_position_and_num_elems(pos, len))
-    }
-
-    fn read_lazy_table<I, T>(&mut self, width: usize, len: usize) -> LazyTable<I, T> {
-        self.read_lazy_offset_then(|pos| LazyTable::from_position_and_encoded_size(pos, width, len))
+    pub(crate) fn blob(&self) -> &'a MetadataBlob {
+        self.blob
     }
 
     #[inline]
@@ -397,7 +469,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
     #[inline]
@@ -426,12 +498,12 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        let new_opaque = self.opaque.split_at(pos);
-        let old_opaque = mem::replace(&mut self.opaque, new_opaque);
-        let old_state = mem::replace(&mut self.lazy_state, LazyState::NoNode);
+        let new_opaque = self.blob_decoder.opaque.split_at(pos);
+        let old_opaque = mem::replace(&mut self.blob_decoder.opaque, new_opaque);
+        let old_state = mem::replace(&mut self.blob_decoder.lazy_state, LazyState::NoNode);
         let r = f(self);
-        self.opaque = old_opaque;
-        self.lazy_state = old_state;
+        self.blob_decoder.opaque = old_opaque;
+        self.blob_decoder.lazy_state = old_state;
         r
     }
 
@@ -444,14 +516,14 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
+impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for ExpnIndex {
     #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
+    fn decode(d: &mut MetadataDecodeContext<'a, 'tcx>) -> ExpnIndex {
         ExpnIndex::from_u32(d.read_u32())
     }
 }
 
-impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
         let sess = self.sess.expect("can't decode AttrId without Session");
         sess.psess.attr_id_generator.mk_attr_id()
@@ -460,10 +532,6 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     fn decode_crate_num(&mut self) -> CrateNum {
         let cnum = CrateNum::from_u32(self.read_u32());
         self.map_encoded_cnum_to_current(cnum)
-    }
-
-    fn decode_def_index(&mut self) -> DefIndex {
-        DefIndex::from_u32(self.read_u32())
     }
 
     fn decode_def_id(&mut self) -> DefId {
@@ -554,7 +622,25 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
         };
         data.span()
     }
+}
 
+impl<'a, 'tcx> BlobDecoder for MetadataDecodeContext<'a, 'tcx> {
+    fn decode_def_index(&mut self) -> DefIndex {
+        self.blob_decoder.decode_def_index()
+    }
+    fn decode_symbol(&mut self) -> Symbol {
+        self.blob_decoder.decode_symbol()
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        self.blob_decoder.decode_byte_symbol()
+    }
+}
+
+impl<'a> BlobDecoder for BlobDecodeContext<'a> {
+    fn decode_def_index(&mut self) -> DefIndex {
+        DefIndex::from_u32(self.read_u32())
+    }
     fn decode_symbol(&mut self) -> Symbol {
         self.decode_symbol_or_byte_symbol(
             Symbol::new,
@@ -572,8 +658,8 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SpanData {
+impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
+    fn decode(decoder: &mut MetadataDecodeContext<'a, 'tcx>) -> SpanData {
         let tag = SpanTag::decode(decoder);
         let ctxt = tag.context().unwrap_or_else(|| SyntaxContext::decode(decoder));
 
@@ -677,43 +763,50 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
+impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for &'tcx [(ty::Clause<'tcx>, Span)] {
+    fn decode(d: &mut MetadataDecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
     }
 }
 
-impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyValue<T> {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+impl<D: LazyDecoder, T> Decodable<D> for LazyValue<T> {
+    fn decode(decoder: &mut D) -> Self {
         decoder.read_lazy()
     }
 }
 
-impl<'a, 'tcx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyArray<T> {
+impl<D: LazyDecoder, T> Decodable<D> for LazyArray<T> {
     #[inline]
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+    fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
         if len == 0 { LazyArray::default() } else { decoder.read_lazy_array(len) }
     }
 }
 
-impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for LazyTable<I, T> {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+impl<I: Idx, D: LazyDecoder, T> Decodable<D> for LazyTable<I, T> {
+    fn decode(decoder: &mut D) -> Self {
         let width = decoder.read_usize();
         let len = decoder.read_usize();
         decoder.read_lazy_table(width, len)
     }
 }
 
-implement_ty_decoder!(DecodeContext<'a, 'tcx>);
+mod meta {
+    use super::*;
+    implement_ty_decoder!(MetadataDecodeContext<'a, 'tcx>);
+}
+mod blob {
+    use super::*;
+    implement_ty_decoder!(BlobDecodeContext<'a>);
+}
 
 impl MetadataBlob {
     pub(crate) fn check_compatibility(
         &self,
         cfg_version: &'static str,
     ) -> Result<(), Option<String>> {
-        if !self.blob().starts_with(METADATA_HEADER) {
-            if self.blob().starts_with(b"rust") {
+        if !self.starts_with(METADATA_HEADER) {
+            if self.starts_with(b"rust") {
                 return Err(Some("<unknown rustc version>".to_owned()));
             }
             return Err(None);
@@ -731,7 +824,7 @@ impl MetadataBlob {
 
     fn root_pos(&self) -> NonZero<usize> {
         let offset = METADATA_HEADER.len();
-        let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
+        let pos_bytes = self[offset..][..8].try_into().unwrap();
         let pos = u64::from_le_bytes(pos_bytes);
         NonZero::new(pos as usize).unwrap()
     }
@@ -1897,11 +1990,12 @@ impl CrateMetadata {
         };
 
         // Need `CrateMetadataRef` to decode `DefId`s in simplified types.
+        let cref = CrateMetadataRef { cdata: &cdata, cstore };
         cdata.incoherent_impls = cdata
             .root
             .incoherent_impls
-            .decode(CrateMetadataRef { cdata: &cdata, cstore })
-            .map(|incoherent_impls| (incoherent_impls.self_ty, incoherent_impls.impls))
+            .decode(cref)
+            .map(|incoherent_impls| (incoherent_impls.self_ty.decode(cref), incoherent_impls.impls))
             .collect();
 
         cdata
