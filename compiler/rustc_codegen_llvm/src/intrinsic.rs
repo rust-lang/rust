@@ -1331,7 +1331,7 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     let fn_ty = fn_source.ty(tcx, TypingEnv::fully_monomorphized());
     let fn_sig = fn_ty.fn_sig(tcx);
-    let fn_ptr_ty = tcx.mk_fn_ptr(fn_sig);
+    let fn_ptr_ty = Ty::new_fn_ptr(tcx, fn_sig);
 
     adjust_activity_to_abi(
         tcx,
