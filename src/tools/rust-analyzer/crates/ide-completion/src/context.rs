@@ -53,6 +53,7 @@ pub(crate) struct QualifierCtx {
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
+    pub(crate) abi_node: Option<ast::Abi>,
 }
 
 impl QualifierCtx {
@@ -61,6 +62,7 @@ impl QualifierCtx {
             && self.unsafe_tok.is_none()
             && self.safe_tok.is_none()
             && self.vis_node.is_none()
+            && self.abi_node.is_none()
     }
 }
 
