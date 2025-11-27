@@ -448,6 +448,7 @@ target | std | host | notes
 [`x86_64-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ | ✓ | 64-bit Windows 7 support
 [`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
+[`x86_64-asan-linux-gnu`](platform-support/x86_64-asan-linux-gnu.md) | ✓ |  | 64-bit Linux (kernel 3.2+, glibc 2.17+) with ASAN enabled by default
 [`xtensa-esp32-espidf`](platform-support/esp-idf.md) | ✓ |  | Xtensa ESP32
 [`xtensa-esp32-none-elf`](platform-support/xtensa.md) | * |  | Xtensa ESP32
 [`xtensa-esp32s2-espidf`](platform-support/esp-idf.md) | ✓ |  | Xtensa ESP32-S2
