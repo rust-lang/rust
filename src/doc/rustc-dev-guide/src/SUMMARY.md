@@ -52,6 +52,7 @@
 - [Mastering @rustbot](./rustbot.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [Implementing new language features](./implementing_new_features.md)
+- [Stability guarantees](./stability-guarantees.md)
 - [Stability attributes](./stability.md)
 - [Stabilizing language features](./stabilization_guide.md)
     - [Stabilization report template](./stabilization_report_template.md)
