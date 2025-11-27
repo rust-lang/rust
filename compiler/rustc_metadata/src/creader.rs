@@ -985,6 +985,8 @@ impl CStore {
         };
         info!("panic runtime not found -- loading {}", name);
 
+        // This has to be implicit as both panic_unwind and panic_abort may be present in the crate
+        // graph at the same time. One of them will later be activated in dependency_formats.
         let Some(cnum) =
             self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
         else {
@@ -1016,7 +1018,7 @@ impl CStore {
 
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
         let Some(cnum) =
-            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
+            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Explicit, CrateOrigin::Injected)
         else {
             return;
         };
