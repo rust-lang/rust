@@ -358,30 +358,31 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
         *ret_val != MUTEX_UNLOCKED && *ret_val != MUTEX_LOCKED,
         "Mutex read value was neither 0 nor 1"
     );
-    const bool is_lock_acquired = *ret_val == MUTEX_UNLOCKED;
-    if (is_lock_acquired) {
-        const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::LockCasWrite>(
-            nullptr,
-            inc_pos(thread_id),
-            old_val,
-            address,
-            size,
-            EventDeps()
-        );
-        if (const auto* err = std::get_if<VerificationError>(&store_ret))
-            return MutexLockResultExt::from_error(format_error(*err));
-        // We don't update Miri's memory for this operation so we don't need to know if the store
-        // was the co-maximal store, but we still check that we at least get a boolean as the result
-        // of the store.
-        const auto* is_co_max = std::get_if<bool>(&store_ret);
-        ERROR_ON(!is_co_max, "Unimplemented: mutex_try_lock store returned unexpected result.");
-    } else {
+    auto is_lock_acquired = *ret_val == MUTEX_UNLOCKED;
+    if (!is_lock_acquired) {
         // We did not acquire the mutex, so we tell GenMC to block the thread until we can acquire
         // it. GenMC determines this based on the annotation we pass with the load further up in
         // this function, namely when that load will read a value other than `MUTEX_LOCKED`.
         this->handle_assume_block(thread_id, AssumeType::Spinloop);
+        return MutexLockResultExt::ok(false);
     }
-    return MutexLockResultExt::ok(is_lock_acquired);
+
+    const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::LockCasWrite>(
+        nullptr,
+        inc_pos(thread_id),
+        old_val,
+        address,
+        size,
+        EventDeps()
+    );
+    if (const auto* err = std::get_if<VerificationError>(&store_ret))
+        return MutexLockResultExt::from_error(format_error(*err));
+    // We don't update Miri's memory for this operation so we don't need to know if the store
+    // was the co-maximal store, but we still check that we at least get a boolean as the result
+    // of the store.
+    const auto* is_co_max = std::get_if<bool>(&store_ret);
+    ERROR_ON(!is_co_max, "Unimplemented: mutex_try_lock store returned unexpected result.");
+    return MutexLockResultExt::ok(true);
 }
 
 auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
