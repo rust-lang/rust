@@ -891,12 +891,6 @@ Exercise *Link-Time Optimization* (LTO), involving the flags `-C lto` or `-Z thi
 
 Tests on changes to inference variable lattice LUB/GLB, see <https://github.com/rust-lang/rust/pull/45853>.
 
-## `tests/ui/macro_backtrace/`: `-Zmacro-backtrace`
-
-Contains a single test, checking the unstable command-line flag to enable detailed macro backtraces.
-
-**FIXME**: This could be merged with `ui/macros`, which already contains other macro backtrace tests.
-
 ## `tests/ui/macros/`
 
 Broad category of tests on macros.
