@@ -1,3 +1,11 @@
+error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc == _`
+  --> $DIR/normalize-param-env-2.rs:22:5
+   |
+LL | /     fn f()
+LL | |     where
+LL | |         Self::Assoc: A<T>,
+   | |__________________________^
+
 error[E0275]: overflow evaluating the requirement `<() as A<T>>::Assoc: A<T>`
   --> $DIR/normalize-param-env-2.rs:24:22
    |
@@ -46,6 +54,6 @@ LL |     where
 LL |         Self::Assoc: A<T>,
    |                      ^^^^ required by this bound in `A::f`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
