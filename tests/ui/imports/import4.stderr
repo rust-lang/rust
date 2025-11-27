@@ -1,8 +1,8 @@
-error[E0432]: unresolved import `crate::a::foo`
-  --> $DIR/import4.rs:2:17
+error[E0432]: unresolved import `crate::b::foo`
+  --> $DIR/import4.rs:1:17
    |
-LL | mod b { pub use crate::a::foo; }
-   |                 ^^^^^^^^^^^^^ no `foo` in `a`
+LL | mod a { pub use crate::b::foo; }
+   |                 ^^^^^^^^^^^^^ no `foo` in `b`
 
 error: aborting due to 1 previous error
 
