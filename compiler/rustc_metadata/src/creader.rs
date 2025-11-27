@@ -488,12 +488,9 @@ impl CStore {
 
     pub fn report_incompatible_enforced_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         let my_mitigations = tcx.sess.gather_enabled_enforced_mitigations();
-        let mut my_mitigations: BTreeMap<_, _> = my_mitigations
-            .iter()
-            .filter(|mitigation| mitigation.kind.enforced_since() <= tcx.sess.edition())
-            .map(|mitigation| (mitigation.kind, mitigation))
-            .collect();
-        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations() {
+        let mut my_mitigations: BTreeMap<_, _> =
+            my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
+        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
             my_mitigations.remove(&skipped_mitigation);
         }
         const MAX_ERRORS_PER_MITIGATION: usize = 5;
