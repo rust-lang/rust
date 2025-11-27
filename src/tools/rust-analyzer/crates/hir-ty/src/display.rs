@@ -10,8 +10,7 @@ use std::{
 use base_db::Crate;
 use either::Either;
 use hir_def::{
-    FindPathConfig, GeneralConstId, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    FindPathConfig, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -52,6 +51,7 @@ use crate::{
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
+    lower::GenericPredicates,
     mir::pad16,
     next_solver::{
         AliasTy, Clause, ClauseKind, Const, ConstKind, DbInterner, EarlyBinder,
@@ -625,23 +625,20 @@ fn write_projection<'db>(
     {
         // FIXME: We shouldn't use `param.id`, it should be removed. We should know the
         // `GenericDefId` from the formatted type (store it inside the `HirFormatter`).
-        let bounds =
-            f.db.generic_predicates(param.id.parent())
-                .instantiate_identity()
-                .into_iter()
-                .flatten()
-                .filter(|wc| {
-                    let ty = match wc.kind().skip_binder() {
-                        ClauseKind::Trait(tr) => tr.self_ty(),
-                        ClauseKind::TypeOutlives(t) => t.0,
-                        _ => return false,
-                    };
-                    let TyKind::Alias(AliasTyKind::Projection, a) = ty.kind() else {
-                        return false;
-                    };
-                    a == *alias
-                })
-                .collect::<Vec<_>>();
+        let bounds = GenericPredicates::query_all(f.db, param.id.parent())
+            .iter_identity_copied()
+            .filter(|wc| {
+                let ty = match wc.kind().skip_binder() {
+                    ClauseKind::Trait(tr) => tr.self_ty(),
+                    ClauseKind::TypeOutlives(t) => t.0,
+                    _ => return false,
+                };
+                let TyKind::Alias(AliasTyKind::Projection, a) = ty.kind() else {
+                    return false;
+                };
+                a == *alias
+            })
+            .collect::<Vec<_>>();
         if !bounds.is_empty() {
             return f.format_bounds_with(*alias, |f| {
                 write_bounds_like_dyn_trait_with_prefix(
@@ -702,11 +699,7 @@ impl<'db> HirDisplay<'db> for Const<'db> {
                 const_bytes.ty,
             ),
             ConstKind::Unevaluated(unev) => {
-                let c = match unev.def {
-                    SolverDefId::ConstId(id) => GeneralConstId::ConstId(id),
-                    SolverDefId::StaticId(id) => GeneralConstId::StaticId(id),
-                    _ => unreachable!(),
-                };
+                let c = unev.def.0;
                 write!(f, "{}", c.name(f.db))?;
                 hir_fmt_generics(f, unev.args.as_slice(), c.generic_def(f.db), None)?;
                 Ok(())
@@ -1122,13 +1115,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             _ => unreachable!(),
                         };
                         let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
-                        if let ImplTraitId::ReturnTypeImplTrait(func, idx) = impl_trait_id {
-                            let datas = db
-                                .return_type_impl_traits(func)
-                                .expect("impl trait id without data");
-                            let data = (*datas)
-                                .as_ref()
-                                .map_bound(|rpit| &rpit.impl_traits[idx].predicates);
+                        if let ImplTraitId::ReturnTypeImplTrait(func, _) = impl_trait_id {
+                            let data = impl_trait_id.predicates(db);
                             let bounds =
                                 || data.iter_instantiated_copied(f.interner, ty.args.as_slice());
                             let mut len = bounds().count();
@@ -1354,43 +1342,24 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ));
                 }
                 let impl_trait_id = db.lookup_intern_impl_trait_id(opaque_ty_id);
-                match impl_trait_id {
-                    ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                        let datas =
-                            db.return_type_impl_traits(func).expect("impl trait id without data");
-                        let data =
-                            (*datas).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
-                        let bounds = data
-                            .iter_instantiated_copied(interner, alias_ty.args.as_slice())
-                            .collect::<Vec<_>>();
-                        let krate = func.krate(db);
-                        write_bounds_like_dyn_trait_with_prefix(
-                            f,
-                            "impl",
-                            Either::Left(*self),
-                            &bounds,
-                            SizedByDefault::Sized { anchor: krate },
-                        )?;
+                let data = impl_trait_id.predicates(db);
+                let bounds = data
+                    .iter_instantiated_copied(interner, alias_ty.args.as_slice())
+                    .collect::<Vec<_>>();
+                let krate = match impl_trait_id {
+                    ImplTraitId::ReturnTypeImplTrait(func, _) => {
+                        func.krate(db)
                         // FIXME: it would maybe be good to distinguish this from the alias type (when debug printing), and to show the substitution
                     }
-                    ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                        let datas =
-                            db.type_alias_impl_traits(alias).expect("impl trait id without data");
-                        let data =
-                            (*datas).as_ref().map_bound(|rpit| &rpit.impl_traits[idx].predicates);
-                        let bounds = data
-                            .iter_instantiated_copied(interner, alias_ty.args.as_slice())
-                            .collect::<Vec<_>>();
-                        let krate = alias.krate(db);
-                        write_bounds_like_dyn_trait_with_prefix(
-                            f,
-                            "impl",
-                            Either::Left(*self),
-                            &bounds,
-                            SizedByDefault::Sized { anchor: krate },
-                        )?;
-                    }
-                }
+                    ImplTraitId::TypeAliasImplTrait(alias, _) => alias.krate(db),
+                };
+                write_bounds_like_dyn_trait_with_prefix(
+                    f,
+                    "impl",
+                    Either::Left(*self),
+                    &bounds,
+                    SizedByDefault::Sized { anchor: krate },
+                )?;
             }
             TyKind::Closure(id, substs) => {
                 let id = id.0;
@@ -1541,11 +1510,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             )?
                         }
                         TypeParamProvenance::ArgumentImplTrait => {
-                            let bounds = db
-                                .generic_predicates(param.id.parent())
-                                .instantiate_identity()
-                                .into_iter()
-                                .flatten()
+                            let bounds = GenericPredicates::query_all(f.db, param.id.parent())
+                                .iter_identity_copied()
                                 .filter(|wc| match wc.kind().skip_binder() {
                                     ClauseKind::Trait(tr) => tr.self_ty() == *self,
                                     ClauseKind::Projection(proj) => proj.self_ty() == *self,

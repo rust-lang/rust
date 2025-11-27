@@ -81,7 +81,6 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
-#![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(new_range_api)]
@@ -115,6 +114,7 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(uint_bit_width)]
+#![feature(uint_gather_scatter_bits)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end

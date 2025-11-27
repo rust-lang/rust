@@ -1,5 +1,5 @@
 error: pointers cannot be reliably compared during const eval
-  --> $DIR/different-fn-ptr-binders-during-ctfe.rs:2:5
+  --> $DIR/different-fn-ptr-binders-during-ctfe.rs:5:5
    |
 LL |     x == y
    |     ^^^^^^

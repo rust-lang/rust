@@ -2697,8 +2697,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,no_run
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
+    /// # #![cfg_attr(bootstrap, deny(deref_nullptr))]
     /// use std::ptr;
     /// unsafe {
     ///     let x = &*ptr::null::<i32>();
@@ -2716,7 +2717,7 @@ declare_lint! {
     ///
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub DEREF_NULLPTR,
-    Warn,
+    Deny,
     "detects when an null pointer is dereferenced"
 }
 
@@ -2726,6 +2727,16 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
         /// test if expression is a null ptr
         fn is_null_ptr(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+            let pointer_ty = cx.typeck_results().expr_ty(expr);
+            let ty::RawPtr(pointee, _) = pointer_ty.kind() else {
+                return false;
+            };
+            if let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(*pointee)) {
+                if layout.layout.size() == rustc_abi::Size::ZERO {
+                    return false;
+                }
+            }
+
             match &expr.kind {
                 hir::ExprKind::Cast(expr, ty) => {
                     if let hir::TyKind::Ptr(_) = ty.kind {

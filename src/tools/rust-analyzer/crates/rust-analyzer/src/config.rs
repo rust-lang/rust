@@ -263,6 +263,9 @@ config_data! {
         /// Show inlay hints for the implied type parameter `Sized` bound.
         inlayHints_implicitSizedBoundHints_enable: bool = false,
 
+        /// Show inlay hints for the implied `dyn` keyword in trait object types.
+        inlayHints_impliedDynTraitHints_enable: bool = true,
+
         /// Show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = LifetimeElisionDef::Never,
 
@@ -1983,6 +1986,7 @@ impl Config {
                 &client_capability_fields,
             ),
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
+            implied_dyn_trait_hints: self.inlayHints_impliedDynTraitHints_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
             minicore,
         }

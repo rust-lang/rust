@@ -4,7 +4,7 @@ use hir_def::{DefWithBodyId, ModuleDefId};
 use salsa::EventKind;
 use test_fixture::WithFixture;
 
-use crate::{db::HirDatabase, test_db::TestDB};
+use crate::{db::HirDatabase, method_resolution::TraitImpls, test_db::TestDB};
 
 use super::visit_module;
 
@@ -44,10 +44,12 @@ fn foo() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
-                "expr_scopes_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "lang_item",
                 "crate_lang_items",
+                "ImplTraits < 'db >::return_type_impl_traits_",
+                "expr_scopes_shim",
+                "lang_item",
             ]
         "#]],
     );
@@ -131,19 +133,22 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
-                "expr_scopes_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "lang_item",
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
+                "ImplTraits < 'db >::return_type_impl_traits_",
+                "expr_scopes_shim",
+                "lang_item",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
                 "infer_shim",
                 "function_signature_shim",
@@ -151,7 +156,8 @@ fn baz() -> i32 {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
             ]
         "#]],
@@ -230,9 +236,9 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "source_root_crates_shim",
@@ -241,7 +247,7 @@ $0",
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -267,9 +273,9 @@ pub struct NewStruct {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -277,7 +283,7 @@ pub struct NewStruct {
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -302,9 +308,9 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "source_root_crates_shim",
@@ -313,7 +319,7 @@ $0",
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -340,9 +346,9 @@ pub enum SomeEnum {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -350,7 +356,7 @@ pub enum SomeEnum {
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -375,9 +381,9 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "source_root_crates_shim",
@@ -386,7 +392,7 @@ $0",
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -410,9 +416,9 @@ fn bar() -> f32 {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -420,7 +426,7 @@ fn bar() -> f32 {
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -449,9 +455,9 @@ $0",
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "source_root_crates_shim",
@@ -460,7 +466,7 @@ $0",
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
             ]
         "#]],
     );
@@ -492,9 +498,9 @@ impl SomeStruct {
         || {
             let module = db.module_for_file(pos.file_id.file_id(&db));
             let _crate_def_map = module.def_map(&db);
-            db.trait_impls_in_crate(module.krate());
+            TraitImpls::for_crate(&db, module.krate());
         },
-        &[("trait_impls_in_crate_shim", 1)],
+        &[("TraitImpls::for_crate_", 1)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -502,7 +508,7 @@ impl SomeStruct {
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "crate_local_def_map",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
                 "attrs_shim",
                 "impl_trait_with_diagnostics_shim",
                 "impl_signature_shim",
@@ -581,37 +587,37 @@ fn main() {
                 "body_shim",
                 "body_with_source_map_shim",
                 "trait_environment_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "lang_item",
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
-                "generic_predicates_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "infer_shim",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "trait_environment_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
                 "struct_signature_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "value_ty_shim",
                 "VariantFields::firewall_",
                 "VariantFields::query_",
                 "lang_item",
-                "lang_item",
-                "inherent_impls_in_crate_shim",
+                "InherentImpls::for_crate_",
                 "impl_signature_shim",
                 "impl_signature_with_source_map_shim",
                 "callable_item_signature_shim",
-                "trait_impls_in_deps_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_and_deps_",
+                "TraitImpls::for_crate_",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "generic_predicates_shim",
-                "value_ty_shim",
-                "generic_predicates_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "lang_item",
             ]
         "#]],
     );
@@ -678,29 +684,29 @@ fn main() {
                 "function_signature_shim",
                 "body_with_source_map_shim",
                 "body_shim",
-                "trait_environment_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "crate_lang_items",
                 "attrs_shim",
                 "attrs_shim",
                 "attrs_shim",
-                "generic_predicates_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "infer_shim",
                 "function_signature_with_source_map_shim",
-                "return_type_impl_traits_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
+                "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
                 "struct_signature_with_source_map_shim",
-                "generic_predicates_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
                 "VariantFields::query_",
-                "inherent_impls_in_crate_shim",
+                "InherentImpls::for_crate_",
                 "impl_signature_with_source_map_shim",
                 "impl_signature_shim",
                 "callable_item_signature_shim",
-                "trait_impls_in_crate_shim",
+                "TraitImpls::for_crate_",
                 "impl_trait_with_diagnostics_shim",
                 "impl_self_ty_with_diagnostics_shim",
-                "generic_predicates_shim",
-                "generic_predicates_shim",
+                "GenericPredicates < 'db >::query_with_diagnostics_",
             ]
         "#]],
     );

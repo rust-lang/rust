@@ -2,7 +2,7 @@
 
 use proc_macro::bridge;
 
-use crate::{ProcMacroKind, ProcMacroSrvSpan, server_impl::TopSubtree};
+use crate::{ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
@@ -17,18 +17,13 @@ impl ProcMacros {
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: TopSubtree<S>,
-        attributes: Option<TopSubtree<S>>,
+        macro_body: TokenStream<S>,
+        attribute: Option<TokenStream<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<TopSubtree<S>, crate::PanicMessage> {
-        let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
-
-        let parsed_attributes = attributes
-            .map_or_else(crate::server_impl::TokenStream::default, |attr| {
-                crate::server_impl::TokenStream::with_subtree(attr)
-            });
+    ) -> Result<TokenStream<S>, crate::PanicMessage> {
+        let parsed_attributes = attribute.unwrap_or_default();
 
         for proc_macro in &self.0 {
             match proc_macro {
@@ -38,35 +33,29 @@ impl ProcMacros {
                     let res = client.run(
                         &bridge::server::SameThread,
                         S::make_server(call_site, def_site, mixed_site),
-                        parsed_body,
+                        macro_body,
                         cfg!(debug_assertions),
                     );
-                    return res
-                        .map(|it| it.into_subtree(call_site))
-                        .map_err(crate::PanicMessage::from);
+                    return res.map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
                         S::make_server(call_site, def_site, mixed_site),
-                        parsed_body,
+                        macro_body,
                         cfg!(debug_assertions),
                     );
-                    return res
-                        .map(|it| it.into_subtree(call_site))
-                        .map_err(crate::PanicMessage::from);
+                    return res.map_err(crate::PanicMessage::from);
                 }
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
                         S::make_server(call_site, def_site, mixed_site),
                         parsed_attributes,
-                        parsed_body,
+                        macro_body,
                         cfg!(debug_assertions),
                     );
-                    return res
-                        .map(|it| it.into_subtree(call_site))
-                        .map_err(crate::PanicMessage::from);
+                    return res.map_err(crate::PanicMessage::from);
                 }
                 _ => continue,
             }

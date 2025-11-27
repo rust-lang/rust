@@ -1,7 +1,6 @@
 [book]
 authors = ["The rust-analyzer authors"]
 language = "en"
-multilingual = false
 src = "src"
 title = "rust-analyzer"
 

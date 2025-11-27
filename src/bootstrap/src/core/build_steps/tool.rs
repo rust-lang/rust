@@ -228,9 +228,8 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
-    // Note that `miri` always uses jemalloc. As such, there is no checking of the jemalloc build flag.
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {
@@ -1567,6 +1566,11 @@ tool_rustc_extended!(Miri {
     tool_name: "miri",
     stable: false,
     add_bins_to_sysroot: ["miri"],
+    add_features: |builder, target, features| {
+        if builder.config.jemalloc(target) {
+            features.push("jemalloc".to_string());
+        }
+    },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });

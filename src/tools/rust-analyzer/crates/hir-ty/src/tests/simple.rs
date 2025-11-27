@@ -645,9 +645,12 @@ impl E {
 fn infer_binary_op() {
     check_infer(
         r#"
+//- minicore: add, builtin_impls
 fn f(x: bool) -> i32 {
     0i32
 }
+
+const CONST_2: isize = 0;
 
 fn test() -> bool {
     let x = a && b;
@@ -658,8 +661,9 @@ fn test() -> bool {
     let h = minus_forty <= CONST_2;
     let c = f(z || y) + 5;
     let d = b;
-    let g = minus_forty ^= i;
+    let g = minus_forty += i;
     let ten: usize = 10;
+    let some_num = 0usize;
     let ten_is_eleven = ten == some_num;
 
     ten < 3
@@ -669,53 +673,56 @@ fn test() -> bool {
             5..6 'x': bool
             21..33 '{     0i32 }': i32
             27..31 '0i32': i32
-            53..369 '{     ... < 3 }': bool
-            63..64 'x': bool
-            67..68 'a': bool
-            67..73 'a && b': bool
-            72..73 'b': bool
-            83..84 'y': bool
-            87..91 'true': bool
-            87..100 'true || false': bool
-            95..100 'false': bool
-            110..111 'z': bool
-            114..115 'x': bool
-            114..120 'x == y': bool
-            119..120 'y': bool
-            130..131 't': bool
-            134..135 'x': bool
-            134..140 'x != y': bool
-            139..140 'y': bool
-            150..161 'minus_forty': isize
-            171..179 '-40isize': isize
-            172..179 '40isize': isize
-            189..190 'h': bool
-            193..204 'minus_forty': isize
-            193..215 'minus_...ONST_2': bool
-            208..215 'CONST_2': isize
-            225..226 'c': i32
-            229..230 'f': fn f(bool) -> i32
-            229..238 'f(z || y)': i32
-            229..242 'f(z || y) + 5': i32
-            231..232 'z': bool
-            231..237 'z || y': bool
-            236..237 'y': bool
-            241..242 '5': i32
-            252..253 'd': {unknown}
-            256..257 'b': {unknown}
-            267..268 'g': ()
-            271..282 'minus_forty': isize
-            271..287 'minus_...y ^= i': ()
-            286..287 'i': isize
-            297..300 'ten': usize
-            310..312 '10': usize
-            322..335 'ten_is_eleven': bool
-            338..341 'ten': usize
-            338..353 'ten == some_num': bool
-            345..353 'some_num': usize
-            360..363 'ten': usize
-            360..367 'ten < 3': bool
-            366..367 '3': usize
+            58..59 '0': isize
+            80..423 '{     ... < 3 }': bool
+            90..91 'x': bool
+            94..95 'a': bool
+            94..100 'a && b': bool
+            99..100 'b': bool
+            110..111 'y': bool
+            114..118 'true': bool
+            114..127 'true || false': bool
+            122..127 'false': bool
+            137..138 'z': bool
+            141..142 'x': bool
+            141..147 'x == y': bool
+            146..147 'y': bool
+            157..158 't': bool
+            161..162 'x': bool
+            161..167 'x != y': bool
+            166..167 'y': bool
+            177..188 'minus_forty': isize
+            198..206 '-40isize': isize
+            199..206 '40isize': isize
+            216..217 'h': bool
+            220..231 'minus_forty': isize
+            220..242 'minus_...ONST_2': bool
+            235..242 'CONST_2': isize
+            252..253 'c': i32
+            256..257 'f': fn f(bool) -> i32
+            256..265 'f(z || y)': i32
+            256..269 'f(z || y) + 5': i32
+            258..259 'z': bool
+            258..264 'z || y': bool
+            263..264 'y': bool
+            268..269 '5': i32
+            279..280 'd': {unknown}
+            283..284 'b': {unknown}
+            294..295 'g': ()
+            298..309 'minus_forty': isize
+            298..314 'minus_...y += i': ()
+            313..314 'i': isize
+            324..327 'ten': usize
+            337..339 '10': usize
+            349..357 'some_num': usize
+            360..366 '0usize': usize
+            376..389 'ten_is_eleven': bool
+            392..395 'ten': usize
+            392..407 'ten == some_num': bool
+            399..407 'some_num': usize
+            414..417 'ten': usize
+            414..421 'ten < 3': bool
+            420..421 '3': usize
         "#]],
     );
 }
@@ -1071,6 +1078,7 @@ fn infer_inherent_method() {
 fn infer_inherent_method_str() {
     check_infer(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 #[lang = "str"]
 impl str {
@@ -2691,6 +2699,7 @@ fn inner_use_enum_rename() {
 fn box_into_vec() {
     check_infer(
         r#"
+//- /core.rs crate:core
 #[lang = "sized"]
 pub trait Sized {}
 
@@ -3932,5 +3941,18 @@ fn foo() {
             59..257 '{     ...   } }': ()
             65..255 'unsafe...     }': ()
         "#]],
+    );
+}
+
+#[test]
+fn infer_array_size() {
+    check_no_mismatches(
+        r#"
+fn foo(a: [u8; 3]) {}
+
+fn bar() {
+    foo([0; _]);
+}
+    "#,
     );
 }

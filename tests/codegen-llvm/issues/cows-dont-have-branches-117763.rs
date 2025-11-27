@@ -9,7 +9,7 @@
 // CHECK-LABEL: @branchless_cow_slices
 #[no_mangle]
 pub fn branchless_cow_slices<'a>(cow: &'a std::borrow::Cow<'a, [u8]>) -> &'a [u8] {
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: select
     // CHECK-NOT: icmp
     // CHECK: ret { ptr, {{i32|i64}} }

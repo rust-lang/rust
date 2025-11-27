@@ -10,50 +10,50 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:run
-// gdb-command:print b
-// gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{_ref__a: 0x[...]}
-// gdb-command:continue
-// gdb-command:print b
-// gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
-// gdb-command:continue
-// gdb-command:print b
-// gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
-// gdb-command:continue
-// gdb-command:print b
-// gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned{_ref__a: 0x[...]}
+//@ gdb-command:run
+//@ gdb-command:print b
+//@ gdb-check:$1 = coroutine_objects::main::{coroutine_env#0}::Unresumed{_ref__a: 0x[...]}
+//@ gdb-command:continue
+//@ gdb-command:print b
+//@ gdb-check:$2 = coroutine_objects::main::{coroutine_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
+//@ gdb-command:continue
+//@ gdb-command:print b
+//@ gdb-check:$3 = coroutine_objects::main::{coroutine_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
+//@ gdb-command:continue
+//@ gdb-command:print b
+//@ gdb-check:$4 = coroutine_objects::main::{coroutine_env#0}::Returned{_ref__a: 0x[...]}
 
 // === LLDB TESTS ==================================================================================
 
-// lldb-command:run
-// lldb-command:v b
-// lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = 0{_ref__a:0x[...]} { _ref__a = 0x[...] }
+//@ lldb-command:run
+//@ lldb-command:v b
+//@ lldb-check:(coroutine_objects::main::{coroutine_env#0}) b = 0{_ref__a:0x[...]} { _ref__a = 0x[...] }
 
 // === CDB TESTS ===================================================================================
 
-// cdb-command: g
-// cdb-command: dx b
-// cdb-check: b                : Unresumed [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
-// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
+//@ cdb-command: g
+//@ cdb-command: dx b
+//@ cdb-check: b                : Unresumed [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
+//@ cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
 
-// cdb-command: g
-// cdb-command: dx b
-// cdb-check: b                : Suspend0 [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
-// cdb-check:    [+0x[...]] c                : 6 [Type: int]
-// cdb-check:    [+0x[...]] d                : 7 [Type: int]
-// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
+//@ cdb-command: g
+//@ cdb-command: dx b
+//@ cdb-check: b                : Suspend0 [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
+//@ cdb-check:    [+0x[...]] c                : 6 [Type: int]
+//@ cdb-check:    [+0x[...]] d                : 7 [Type: int]
+//@ cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 5 [Type: int *]
 
-// cdb-command: g
-// cdb-command: dx b
-// cdb-check: b                : Suspend1 [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
-// cdb-check:    [+0x[...]] c                : 7 [Type: int]
-// cdb-check:    [+0x[...]] d                : 8 [Type: int]
-// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
+//@ cdb-command: g
+//@ cdb-command: dx b
+//@ cdb-check: b                : Suspend1 [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
+//@ cdb-check:    [+0x[...]] c                : 7 [Type: int]
+//@ cdb-check:    [+0x[...]] d                : 8 [Type: int]
+//@ cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
-// cdb-command: g
-// cdb-command: dx b
-// cdb-check: b                : Returned [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
-// cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
+//@ cdb-command: g
+//@ cdb-command: dx b
+//@ cdb-check: b                : Returned [Type: enum2$<coroutine_objects::main::coroutine_env$0>]
+//@ cdb-check:    [+0x[...]] _ref__a          : 0x[...] : 6 [Type: int *]
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 

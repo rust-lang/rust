@@ -602,7 +602,7 @@ impl DefMap {
         let mut arc;
         let mut current_map = self;
         while let Some(block) = current_map.block {
-            go(&mut buf, db, current_map, "block scope", Self::ROOT);
+            go(&mut buf, db, current_map, "(block scope)", Self::ROOT);
             buf.push('\n');
             arc = block.parent.def_map(db, self.krate);
             current_map = arc;
@@ -814,7 +814,7 @@ pub enum MacroSubNs {
 }
 
 impl MacroSubNs {
-    fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
+    pub(crate) fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
         let expander = match macro_id {
             MacroId::Macro2Id(it) => it.lookup(db).expander,
             MacroId::MacroRulesId(it) => it.lookup(db).expander,

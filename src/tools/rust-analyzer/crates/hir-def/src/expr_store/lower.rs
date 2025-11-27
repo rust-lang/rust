@@ -2409,7 +2409,11 @@ impl ExprCollector<'_> {
                 };
                 let start = range_part_lower(p.start());
                 let end = range_part_lower(p.end());
-                Pat::Range { start, end }
+                // FIXME: Exclusive ended pattern range is stabilised
+                match p.op_kind() {
+                    Some(range_type) => Pat::Range { start, end, range_type },
+                    None => Pat::Missing,
+                }
             }
         };
         let ptr = AstPtr::new(&pat);

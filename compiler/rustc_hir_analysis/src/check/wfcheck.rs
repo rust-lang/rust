@@ -1186,14 +1186,21 @@ pub(crate) fn check_static_item<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, item_id, |wfcx| {
         let span = tcx.ty_span(item_id);
-        let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
+        let loc = Some(WellFormedLoc::Ty(item_id));
+        let item_ty = wfcx.deeply_normalize(span, loc, ty);
 
         let is_foreign_item = tcx.is_foreign_item(item_id);
+        let is_structurally_foreign_item = || {
+            let tail = tcx.struct_tail_raw(
+                item_ty,
+                &ObligationCause::dummy(),
+                |ty| wfcx.deeply_normalize(span, loc, ty),
+                || {},
+            );
 
-        let forbid_unsized = !is_foreign_item || {
-            let tail = tcx.struct_tail_for_codegen(item_ty, wfcx.infcx.typing_env(wfcx.param_env));
-            !matches!(tail.kind(), ty::Foreign(_))
+            matches!(tail.kind(), ty::Foreign(_))
         };
+        let forbid_unsized = !(is_foreign_item && is_structurally_foreign_item());
 
         wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(item_id)), item_ty.into());
         if forbid_unsized {

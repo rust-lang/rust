@@ -126,13 +126,12 @@ pub(crate) fn complete_expr_path(
                 ctx.db,
                 &ctx.scope,
                 &ctx.traits_in_scope(),
-                Some(ctx.module),
                 None,
                 PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
             );
 
             // Iterate assoc types separately
-            ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
+            ty.iterate_assoc_items(ctx.db, |item| {
                 if let hir::AssocItem::TypeAlias(ty) = item {
                     acc.add_type_alias(ctx, ty)
                 }
@@ -196,13 +195,12 @@ pub(crate) fn complete_expr_path(
                         ctx.db,
                         &ctx.scope,
                         &ctx.traits_in_scope(),
-                        Some(ctx.module),
                         None,
                         PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
                     );
 
                     // Iterate assoc types separately
-                    ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
+                    ty.iterate_assoc_items(ctx.db, |item| {
                         if let hir::AssocItem::TypeAlias(ty) = item {
                             acc.add_type_alias(ctx, ty)
                         }
@@ -232,7 +230,6 @@ pub(crate) fn complete_expr_path(
                         ctx.db,
                         &ctx.scope,
                         &ctx.traits_in_scope(),
-                        Some(ctx.module),
                         None,
                         PathCallback { ctx, acc, add_assoc_item, seen: FxHashSet::default() },
                     );
@@ -355,7 +352,10 @@ pub(crate) fn complete_expr_path(
 
                     if !in_block_expr {
                         add_keyword("unsafe", "unsafe {\n    $0\n}");
-                        add_keyword("const", "const {\n    $0\n}");
+                        if !wants_const_token {
+                            // Avoid having two `const` items in `&raw $0`
+                            add_keyword("const", "const {\n    $0\n}");
+                        }
                     }
                     add_keyword("match", "match $1 {\n    $0\n}");
                     add_keyword("while", "while $1 {\n    $0\n}");
