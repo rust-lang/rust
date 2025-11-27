@@ -79,7 +79,7 @@ impl BodyValidationDiagnostic {
         let infer = db.infer(owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate, env.block);
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));
         let mut validator = ExprValidator {

@@ -80,7 +80,7 @@ fn eval_goal(
         })
         .unwrap();
     crate::attach_db(&db, || {
-        let interner = DbInterner::new_with(&db, None, None);
+        let interner = DbInterner::new_no_crate(&db);
         let goal_ty = match adt_or_type_alias_id {
             Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
                 interner,

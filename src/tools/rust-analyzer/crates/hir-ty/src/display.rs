@@ -309,8 +309,7 @@ pub trait HirDisplay<'db> {
         allow_opaque: bool,
     ) -> Result<String, DisplaySourceCodeError> {
         let mut result = String::new();
-        let interner =
-            DbInterner::new_with(db, Some(module_id.krate()), module_id.containing_block());
+        let interner = DbInterner::new_with(db, module_id.krate(), module_id.containing_block());
         match self.hir_fmt(&mut HirFormatter {
             db,
             interner,
@@ -544,7 +543,7 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
             DisplayKind::SourceCode { target_module_id, .. } => target_module_id.containing_block(),
             DisplayKind::Diagnostics | DisplayKind::Test => None,
         };
-        let interner = DbInterner::new_with(self.db, Some(krate), block);
+        let interner = DbInterner::new_with(self.db, krate, block);
         self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             interner,

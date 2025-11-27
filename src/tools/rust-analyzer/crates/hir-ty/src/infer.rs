@@ -167,7 +167,7 @@ pub(crate) fn infer_cycle_result(
 ) -> Arc<InferenceResult<'_>> {
     Arc::new(InferenceResult {
         has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_with(db, None, None), ErrorGuaranteed))
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
     })
 }
 

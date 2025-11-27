@@ -267,7 +267,7 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         ty: &ast::Type,
     ) -> Option<Type<'db>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
 
         let type_ref = self.type_id(ty)?;
 
@@ -410,7 +410,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<Callable<'db>> {
         let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (func, args) = self.infer()?.method_resolution(expr_id)?;
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = db.value_ty(func.into())?.instantiate(interner, args);
         let ty = Type::new_with_resolver(db, &self.resolver, ty);
         let mut res = ty.as_callable(db)?;
@@ -592,7 +592,7 @@ impl<'db> SourceAnalyzer<'db> {
         let poll_fn = LangItem::FuturePoll.resolve_function(db, self.resolver.krate())?;
         // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
         // doesn't have any generic parameters, so we skip building another subst for `poll()`.
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let substs = GenericArgs::new_from_iter(interner, [ty.into()]);
         Some(self.resolve_impl_method_or_trait_def(db, poll_fn, substs))
     }
@@ -632,7 +632,7 @@ impl<'db> SourceAnalyzer<'db> {
 
         let ty = self.ty_of_expr(prefix_expr.expr()?)?;
 
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = GenericArgs::new_from_iter(interner, [ty.into()]);
@@ -665,7 +665,7 @@ impl<'db> SourceAnalyzer<'db> {
             .unwrap_or(index_fn);
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let substs = GenericArgs::new_from_iter(interner, [base_ty.into(), index_ty.into()]);
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
     }
@@ -684,7 +684,7 @@ impl<'db> SourceAnalyzer<'db> {
         })?;
         // HACK: subst for `index()` coincides with that for `Index` because `index()` itself
         // doesn't have any generic parameters, so we skip building another subst for `index()`.
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let substs = GenericArgs::new_from_iter(interner, [lhs.into(), rhs.into()]);
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
@@ -700,7 +700,7 @@ impl<'db> SourceAnalyzer<'db> {
         let op_fn = LangItem::TryTraitBranch.resolve_function(db, self.resolver.krate())?;
         // HACK: subst for `branch()` coincides with that for `Try` because `branch()` itself
         // doesn't have any generic parameters, so we skip building another subst for `branch()`.
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let substs = GenericArgs::new_from_iter(interner, [ty.into()]);
 
         Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
@@ -714,7 +714,7 @@ impl<'db> SourceAnalyzer<'db> {
         let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let expr = ast::Expr::from(record_expr);
         let expr_id = self.store_sm()?.node_expr(InFile::new(self.file_id, &expr))?;
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
 
         let ast_name = field.field_name()?;
         let local_name = ast_name.as_name();
@@ -755,7 +755,7 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         field: &ast::RecordPatField,
     ) -> Option<(Field, Type<'db>, GenericSubstitution<'db>)> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let field_name = field.field_name()?.as_name();
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
@@ -817,7 +817,7 @@ impl<'db> SourceAnalyzer<'db> {
 
         let trait_env = container.env;
 
-        let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
+        let interner = DbInterner::new_with(db, trait_env.krate, trait_env.block);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
         let mut container = Either::Right(container.ty);
@@ -1273,7 +1273,7 @@ impl<'db> SourceAnalyzer<'db> {
         variant: VariantId,
         missing_fields: Vec<LocalFieldId>,
     ) -> Vec<(Field, Type<'db>)> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let field_types = db.field_types(variant);
 
         missing_fields
@@ -1423,7 +1423,7 @@ impl<'db> SourceAnalyzer<'db> {
             None => return (const_id, subs),
         };
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate, env.block);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         method_resolution::lookup_impl_const(&infcx, env, const_id, subs)
     }

@@ -288,12 +288,18 @@ impl<'db> DbInterner<'db> {
         })
     }
 
+    /// Creates a new interner without an active crate. Good only for interning things, not for trait solving etc..
+    /// As a rule of thumb, when you create an `InferCtxt`, you need to provide the crate (and the block).
+    pub fn new_no_crate(db: &'db dyn HirDatabase) -> Self {
+        DbInterner { db, krate: None, block: None }
+    }
+
     pub fn new_with(
         db: &'db dyn HirDatabase,
-        krate: Option<Crate>,
+        krate: Crate,
         block: Option<BlockId>,
     ) -> DbInterner<'db> {
-        DbInterner { db, krate, block }
+        DbInterner { db, krate: Some(krate), block }
     }
 
     #[inline]

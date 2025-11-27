@@ -597,7 +597,7 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let bool_ty = Ty::new_bool(interner);
     let unit_ty = Ty::new_unit(interner);
     [

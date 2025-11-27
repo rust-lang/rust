@@ -641,7 +641,7 @@ impl<'db> Evaluator<'db> {
             Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
         };
         let cached_ptr_size = target_data_layout.pointer_size().bytes_usize();
-        let interner = DbInterner::new_with(db, Some(crate_id), module.containing_block());
+        let interner = DbInterner::new_with(db, crate_id, module.containing_block());
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         Ok(Evaluator {
             target_data_layout,

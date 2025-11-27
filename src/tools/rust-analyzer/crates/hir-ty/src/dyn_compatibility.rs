@@ -53,7 +53,7 @@ pub fn dyn_compatibility(
     db: &dyn HirDatabase,
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
-    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    let interner = DbInterner::new_no_crate(db);
     for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()) {
         if let Some(v) = db.dyn_compatibility_of_trait(super_trait.0) {
             return if super_trait.0 == trait_ {
@@ -75,7 +75,7 @@ pub fn dyn_compatibility_with_callback<F>(
 where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
-    let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    let interner = DbInterner::new_no_crate(db);
     for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()).skip(1) {
         if db.dyn_compatibility_of_trait(super_trait.0).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
@@ -135,7 +135,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
         return false;
     };
 
-    let interner = DbInterner::new_with(db, Some(krate), None);
+    let interner = DbInterner::new_no_crate(db);
     let predicates = GenericPredicates::query_explicit(db, def);
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
@@ -234,34 +234,34 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
             &mut self,
             ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
         ) -> Self::Result {
-            let interner = DbInterner::new_with(self.db, None, None);
+            let interner = DbInterner::new_no_crate(self.db);
             match ty.kind() {
                 rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
                 rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
-                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => match self
-                    .allow_self_projection
-                {
-                    AllowSelfProjection::Yes => {
-                        let trait_ = proj.trait_def_id(DbInterner::new_with(self.db, None, None));
-                        let trait_ = match trait_ {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        if self.super_traits.is_none() {
-                            self.super_traits = Some(
-                                elaborate::supertrait_def_ids(interner, self.trait_.into())
-                                    .map(|super_trait| super_trait.0)
-                                    .collect(),
-                            )
+                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
+                    match self.allow_self_projection {
+                        AllowSelfProjection::Yes => {
+                            let trait_ = proj.trait_def_id(interner);
+                            let trait_ = match trait_ {
+                                SolverDefId::TraitId(id) => id,
+                                _ => unreachable!(),
+                            };
+                            if self.super_traits.is_none() {
+                                self.super_traits = Some(
+                                    elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                        .map(|super_trait| super_trait.0)
+                                        .collect(),
+                                )
+                            }
+                            if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
+                                ControlFlow::Continue(())
+                            } else {
+                                ty.super_visit_with(self)
+                            }
                         }
-                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
-                            ControlFlow::Continue(())
-                        } else {
-                            ty.super_visit_with(self)
-                        }
+                        AllowSelfProjection::No => ty.super_visit_with(self),
                     }
-                    AllowSelfProjection::No => ty.super_visit_with(self),
-                },
+                }
                 _ => ty.super_visit_with(self),
             }
         }
@@ -401,7 +401,8 @@ fn receiver_is_dispatchable<'db>(
 ) -> bool {
     let sig = sig.instantiate_identity();
 
-    let interner: DbInterner<'_> = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    let module = trait_.module(db);
+    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
     let self_param_id = TypeParamId::from_unchecked(TypeOrConstParamId {
         parent: trait_.into(),
         local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),

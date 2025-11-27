@@ -1655,7 +1655,7 @@ impl<'db> SemanticsImpl<'db> {
         func: Function,
         subst: impl IntoIterator<Item = Type<'db>>,
     ) -> Option<Function> {
-        let interner = DbInterner::new_with(self.db, None, None);
+        let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
         let substs =
             hir_ty::next_solver::GenericArgs::for_item(interner, trait_.id.into(), |_, id, _| {
