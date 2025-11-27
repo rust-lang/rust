@@ -420,16 +420,15 @@ compound_traits!(
 pub struct DelimSpan<Span> {
     pub open: Span,
     pub close: Span,
-    pub entire: Span,
 }
 
 impl<Span: Copy> DelimSpan<Span> {
     pub fn from_single(span: Span) -> Self {
-        DelimSpan { open: span, close: span, entire: span }
+        DelimSpan { open: span, close: span }
     }
 }
 
-compound_traits!(struct DelimSpan<Span> { open, close, entire });
+compound_traits!(struct DelimSpan<Span> { open, close });
 
 #[derive(Clone)]
 pub struct Group<TokenStream, Span> {

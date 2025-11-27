@@ -222,6 +222,7 @@ impl FlatTree {
             span: proc_macro_srv::DelimSpan {
                 open: call_site,
                 close: call_site,
+                #[cfg(bootstrap)]
                 entire: call_site,
             },
         };
@@ -273,6 +274,7 @@ impl FlatTree {
             span: proc_macro_srv::DelimSpan {
                 open: call_site,
                 close: call_site,
+                #[cfg(bootstrap)]
                 entire: call_site,
             },
         };
@@ -947,6 +949,7 @@ impl<T: SpanTransformer> Reader<'_, T> {
                     open: read_span(repr.open),
                     close: read_span(repr.close),
                     // FIXME
+                    #[cfg(bootstrap)]
                     entire: read_span(repr.close),
                 },
             };
