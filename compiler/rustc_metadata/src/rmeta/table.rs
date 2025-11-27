@@ -112,6 +112,43 @@ macro_rules! fixed_size_enum {
     }
 }
 
+macro_rules! defaulted_enum {
+    ($ty:ty { $(($($pat:tt)*))* } $( unreachable { $(($($upat:tt)*))+ } )?) => {
+        impl FixedSizeEncoding for $ty {
+            type ByteArray = [u8; 1];
+
+            #[inline]
+            fn from_bytes(b: &[u8; 1]) -> Self {
+                use $ty::*;
+                let val = match b[0] {
+                    $(${index()} => $($pat)*,)*
+                    _ => panic!("Unexpected {} code: {:?}", stringify!($ty), b[0]),
+                };
+                // Make sure the first entry is always the default value,
+                // and none of the other values are the default value
+                debug_assert_ne!((b[0] != 0), IsDefault::is_default(&val));
+                val
+            }
+
+            #[inline]
+            fn write_to_bytes(self, b: &mut [u8; 1]) {
+                debug_assert!(!IsDefault::is_default(&self));
+                use $ty::*;
+                b[0] = match self {
+                    $($($pat)* => ${index()},)*
+                    $($($($upat)*)|+ => unreachable!(),)?
+                };
+                debug_assert_ne!(b[0], 0);
+            }
+        }
+        impl IsDefault for $ty {
+            fn is_default(&self) -> bool {
+                <$ty as Default>::default() == *self
+            }
+        }
+    }
+}
+
 // Workaround; need const traits to construct bitflags in a const
 macro_rules! const_macro_kinds {
     ($($name:ident),+$(,)?) => (MacroKinds::from_bits_truncate($(MacroKinds::$name.bits())|+))
@@ -178,14 +215,7 @@ fixed_size_enum! {
     }
 }
 
-fixed_size_enum! {
-    hir::Constness {
-        ( NotConst )
-        ( Const    )
-    }
-}
-
-fixed_size_enum! {
+defaulted_enum! {
     hir::Defaultness {
         ( Final                        )
         ( Default { has_value: false } )
@@ -193,17 +223,24 @@ fixed_size_enum! {
     }
 }
 
-fixed_size_enum! {
-    hir::Safety {
-        ( Unsafe )
-        ( Safe   )
+defaulted_enum! {
+    ty::Asyncness {
+        ( No  )
+        ( Yes )
     }
 }
 
-fixed_size_enum! {
-    ty::Asyncness {
-        ( Yes )
-        ( No  )
+defaulted_enum! {
+    hir::Constness {
+        ( Const    )
+        ( NotConst )
+    }
+}
+
+defaulted_enum! {
+    hir::Safety {
+        ( Unsafe )
+        ( Safe   )
     }
 }
 

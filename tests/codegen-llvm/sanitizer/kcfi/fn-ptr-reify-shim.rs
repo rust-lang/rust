@@ -54,11 +54,11 @@ pub fn main() {
     // `DynCompatible` is indeed dyn-compatible.
     let _: &dyn DynCompatible = &s;
 
-    // CHECK: call <fn_ptr_reify_shim::S as fn_ptr_reify_shim::DynCompatible>::dyn_name{{.*}}reify.shim.fnptr
+    // CHECK: call <fn_ptr_reify_shim::S as fn_ptr_reify_shim::DynCompatible>::dyn_name::{shim:reify_fnptr#0}
     let dyn_name = S::dyn_name as fn(&S) -> &str;
     let _unused = dyn_name(&s);
 
-    // CHECK: call fn_ptr_reify_shim::DynCompatible::dyn_name_default{{.*}}reify.shim.fnptr
+    // CHECK: call <fn_ptr_reify_shim::S as fn_ptr_reify_shim::DynCompatible>::dyn_name_default::{shim:reify_fnptr#0}
     let dyn_name_default = S::dyn_name_default as fn(&S) -> &str;
     let _unused = dyn_name_default(&s);
 
@@ -68,7 +68,7 @@ pub fn main() {
     let not_dyn_name = S::not_dyn_name as fn() -> &'static str;
     let _unused = not_dyn_name();
 
-    // CHECK: call fn_ptr_reify_shim::NotDynCompatible::not_dyn_name_default{{$}}
+    // CHECK: call <fn_ptr_reify_shim::S as fn_ptr_reify_shim::NotDynCompatible>::not_dyn_name_default{{$}}
     let not_dyn_name_default = S::not_dyn_name_default as fn() -> &'static str;
     let _unused = not_dyn_name_default();
 }

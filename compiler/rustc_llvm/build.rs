@@ -214,6 +214,10 @@ fn main() {
         cfg.define("ENZYME", None);
     }
 
+    if tracked_env_var_os("LLVM_OFFLOAD").is_some() {
+        cfg.define("OFFLOAD", None);
+    }
+
     if tracked_env_var_os("LLVM_RUSTLLVM").is_some() {
         cfg.define("LLVM_RUSTLLVM", None);
     }

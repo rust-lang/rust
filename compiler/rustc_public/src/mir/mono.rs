@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty};
-use crate::{CrateItem, DefId, Error, IndexedVal, ItemKind, Opaque, Symbol, with};
+use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty, index_impl};
+use crate::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, ThreadLocalIndex, with};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum MonoItem {
@@ -241,8 +241,9 @@ impl From<StaticDef> for CrateItem {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct InstanceDef(usize);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct InstanceDef(usize, ThreadLocalIndex);
+index_impl!(InstanceDef);
 
 impl CrateDef for InstanceDef {
     fn def_id(&self) -> DefId {
@@ -292,14 +293,5 @@ impl StaticDef {
     /// Evaluate a static's initializer, returning the allocation of the initializer's memory.
     pub fn eval_initializer(&self) -> Result<Allocation, Error> {
         with(|cx| cx.eval_static_initializer(*self))
-    }
-}
-
-impl IndexedVal for InstanceDef {
-    fn to_val(index: usize) -> Self {
-        InstanceDef(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
     }
 }

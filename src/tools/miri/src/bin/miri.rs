@@ -20,6 +20,15 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
+/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
+/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
+///
+/// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
+/// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
+/// https://github.com/rust-lang/cc-rs/issues/1613.
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemalloc_sys as _;
+
 mod log;
 
 use std::env;
@@ -395,48 +404,7 @@ fn parse_range(val: &str) -> Result<Range<u32>, &'static str> {
     Ok(from..to)
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-fn jemalloc_magic() {
-    // These magic runes are copied from
-    // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
-    // See there for further comments.
-    use std::os::raw::{c_int, c_void};
-
-    use tikv_jemalloc_sys as jemalloc_sys;
-
-    #[used]
-    static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
-    #[used]
-    static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
-        jemalloc_sys::posix_memalign;
-    #[used]
-    static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
-    #[used]
-    static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
-    #[used]
-    static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
-    #[used]
-    static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
-
-    // On OSX, jemalloc doesn't directly override malloc/free, but instead
-    // registers itself with the allocator's zone APIs in a ctor. However,
-    // the linker doesn't seem to consider ctors as "used" when statically
-    // linking, so we need to explicitly depend on the function.
-    #[cfg(target_os = "macos")]
-    {
-        unsafe extern "C" {
-            fn _rjem_je_zone_register();
-        }
-
-        #[used]
-        static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
-    }
-}
-
 fn main() {
-    #[cfg(any(target_os = "linux", target_os = "macos"))]
-    jemalloc_magic();
-
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.

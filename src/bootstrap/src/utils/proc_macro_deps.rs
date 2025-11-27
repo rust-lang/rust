@@ -3,7 +3,6 @@
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
-    "allocator-api2",
     "annotate-snippets",
     "anstyle",
     "askama_parser",
@@ -22,7 +21,6 @@ pub static CRATES: &[&str] = &[
     "fluent-langneg",
     "fluent-syntax",
     "fnv",
-    "foldhash",
     "generic-array",
     "hashbrown",
     "heck",
@@ -31,7 +29,6 @@ pub static CRATES: &[&str] = &[
     "intl-memoizer",
     "intl_pluralrules",
     "libc",
-    "log",
     "memchr",
     "minimal-lexical",
     "nom",
@@ -62,7 +59,6 @@ pub static CRATES: &[&str] = &[
     "unicode-ident",
     "unicode-width",
     "version_check",
-    "wasm-bindgen-backend",
     "wasm-bindgen-macro-support",
     "wasm-bindgen-shared",
     "winnow",

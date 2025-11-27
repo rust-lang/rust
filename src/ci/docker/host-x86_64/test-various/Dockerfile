@@ -41,9 +41,9 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-27/wasi-sdk-27.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-29/wasi-sdk-29.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/wasi-sdk-27.0-x86_64-linux
+ENV WASI_SDK_PATH=/wasi-sdk-29.0-x86_64-linux
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \
@@ -56,9 +56,9 @@ ENV RUST_CONFIGURE_ARGS \
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v19.0.0/wasmtime-v19.0.0-x86_64-linux.tar.xz | \
+RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v38.0.4/wasmtime-v38.0.4-x86_64-linux.tar.xz | \
   tar -xJ
-ENV PATH "$PATH:/wasmtime-v19.0.0-x86_64-linux"
+ENV PATH "$PATH:/wasmtime-v38.0.4-x86_64-linux"
 
 ENV WASM_WASIP_TARGET=wasm32-wasip1
 ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_WASIP_TARGET \

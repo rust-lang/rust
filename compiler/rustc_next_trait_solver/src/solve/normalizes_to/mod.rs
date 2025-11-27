@@ -184,6 +184,20 @@ where
         then(ecx)
     }
 
+    // Hack for trait-system-refactor-initiative#245.
+    // FIXME(-Zhigher-ranked-assumptions): this impl differs from trait goals and we should unify
+    // them again once we properly support binders.
+    fn probe_and_consider_object_bound_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        source: CandidateSource<I>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<Candidate<I>, NoSolution> {
+        Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
+    }
+
     fn consider_additional_alias_assumptions(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

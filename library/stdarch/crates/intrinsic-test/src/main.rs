@@ -34,7 +34,7 @@ fn run(test_environment: impl SupportedArchitectureTest) {
     if !test_environment.build_rust_file() {
         std::process::exit(3);
     }
-    info!("comaparing outputs");
+    info!("comparing outputs");
     if !test_environment.compare_outputs() {
         std::process::exit(1);
     }

@@ -7,8 +7,8 @@ use serde::Serialize;
 use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
-use crate::ty::{Align, Ty, VariantIdx};
-use crate::{Error, Opaque, error};
+use crate::ty::{Align, Ty, VariantIdx, index_impl};
+use crate::{Error, Opaque, ThreadLocalIndex, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -109,21 +109,13 @@ impl LayoutShape {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
-pub struct Layout(usize);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Layout(usize, ThreadLocalIndex);
+index_impl!(Layout);
 
 impl Layout {
     pub fn shape(self) -> LayoutShape {
         with(|cx| cx.layout_shape(self))
-    }
-}
-
-impl crate::IndexedVal for Layout {
-    fn to_val(index: usize) -> Self {
-        Layout(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
     }
 }
 

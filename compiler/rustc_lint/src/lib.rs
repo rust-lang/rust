@@ -48,6 +48,7 @@ mod foreign_modules;
 mod function_cast_as_integer;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
+mod interior_mutable_consts;
 mod internal;
 mod invalid_from_utf8;
 mod late;
@@ -93,6 +94,7 @@ use for_loops_over_fallibles::*;
 use function_cast_as_integer::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
+use interior_mutable_consts::*;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
@@ -239,6 +241,7 @@ late_lint_methods!(
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
+            InteriorMutableConsts: InteriorMutableConsts,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,

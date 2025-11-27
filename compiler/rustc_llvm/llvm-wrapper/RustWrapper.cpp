@@ -39,6 +39,14 @@
 #include "llvm/Transforms/Utils/ValueMapper.h"
 #include <iostream>
 
+// Some of the functions below rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
+#include "llvm/Object/OffloadBinary.h"
+#include "llvm/Target/TargetMachine.h"
+#endif
+
 // for raw `write` in the bad-alloc handler
 #ifdef _MSC_VER
 #include <io.h>
@@ -144,6 +152,55 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
+// Some of the functions here rely on LLVM modules that may not always be
+// available. As such, we only try to build it in the first place, if
+// llvm.offload is enabled.
+#ifdef OFFLOAD
+static Error writeFile(StringRef Filename, StringRef Data) {
+  Expected<std::unique_ptr<FileOutputBuffer>> OutputOrErr =
+      FileOutputBuffer::create(Filename, Data.size());
+  if (!OutputOrErr)
+    return OutputOrErr.takeError();
+  std::unique_ptr<FileOutputBuffer> Output = std::move(*OutputOrErr);
+  llvm::copy(Data, Output->getBufferStart());
+  if (Error E = Output->commit())
+    return E;
+  return Error::success();
+}
+
+// This is the first of many steps in creating a binary using llvm offload,
+// to run code on the gpu. Concrete, it replaces the following binary use:
+// clang-offload-packager -o host.out
+//  --image=file=device.bc,triple=amdgcn-amd-amdhsa,arch=gfx90a,kind=openmp
+// The input module is the rust code compiled for a gpu target like amdgpu.
+// Based on clang/tools/clang-offload-packager/ClangOffloadPackager.cpp
+extern "C" bool LLVMRustBundleImages(LLVMModuleRef M, TargetMachine &TM) {
+  std::string Storage;
+  llvm::raw_string_ostream OS1(Storage);
+  llvm::WriteBitcodeToFile(*unwrap(M), OS1);
+  OS1.flush();
+  auto MB = llvm::MemoryBuffer::getMemBufferCopy(Storage, "module.bc");
+
+  SmallVector<char, 1024> BinaryData;
+  raw_svector_ostream OS2(BinaryData);
+
+  OffloadBinary::OffloadingImage ImageBinary{};
+  ImageBinary.TheImageKind = object::IMG_Bitcode;
+  ImageBinary.Image = std::move(MB);
+  ImageBinary.TheOffloadKind = object::OFK_OpenMP;
+  ImageBinary.StringData["triple"] = TM.getTargetTriple().str();
+  ImageBinary.StringData["arch"] = TM.getTargetCPU();
+  llvm::SmallString<0> Buffer = OffloadBinary::write(ImageBinary);
+  if (Buffer.size() % OffloadBinary::getAlignment() != 0)
+    // Offload binary has invalid size alignment
+    return false;
+  OS2 << Buffer;
+  if (Error E = writeFile("host.out",
+                          StringRef(BinaryData.begin(), BinaryData.size())))
+    return false;
+  return true;
+}
+
 extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
   llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
@@ -163,6 +220,7 @@ extern "C" void LLVMRustOffloadMapper(LLVMValueRef OldFn, LLVMValueRef NewFn) {
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
 }
+#endif
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
                                               size_t NameLen) {
@@ -1376,6 +1434,39 @@ extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
     auto J = I->getNextNode();
     unwrap(B)->SetInsertPoint(J);
   }
+}
+
+extern "C" LLVMValueRef LLVMRustGetInsertPoint(LLVMBuilderRef B) {
+  llvm::IRBuilderBase &IRB = *unwrap(B);
+
+  llvm::IRBuilderBase::InsertPoint ip = IRB.saveIP();
+  llvm::BasicBlock *BB = ip.getBlock();
+
+  if (!BB)
+    return nullptr;
+
+  auto it = ip.getPoint();
+
+  if (it == BB->end())
+    return nullptr;
+
+  llvm::Instruction *I = &*it;
+  return wrap(I);
+}
+
+extern "C" void LLVMRustRestoreInsertPoint(LLVMBuilderRef B,
+                                           LLVMValueRef Instr) {
+  llvm::IRBuilderBase &IRB = *unwrap(B);
+
+  if (!Instr) {
+    llvm::BasicBlock *BB = IRB.GetInsertBlock();
+    if (BB)
+      IRB.SetInsertPoint(BB);
+    return;
+  }
+
+  llvm::Instruction *I = unwrap<llvm::Instruction>(Instr);
+  IRB.SetInsertPoint(I);
 }
 
 extern "C" LLVMValueRef

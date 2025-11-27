@@ -3324,6 +3324,38 @@ pub const fn copysignf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
+/// Generates the LLVM body of a wrapper function to offload a kernel `f`.
+///
+/// Type Parameters:
+/// - `F`: The kernel to offload. Must be a function item.
+/// - `T`: A tuple of arguments passed to `f`.
+/// - `R`: The return type of the kernel.
+///
+/// Example usage (pseudocode):
+///
+/// ```rust,ignore (pseudocode)
+/// fn kernel(x: *mut [f64; 128]) {
+///     core::intrinsics::offload(kernel_1, (x,))
+/// }
+///
+/// #[cfg(target_os = "linux")]
+/// extern "C" {
+///     pub fn kernel_1(array_b: *mut [f64; 128]);
+/// }
+///
+/// #[cfg(not(target_os = "linux"))]
+/// #[rustc_offload_kernel]
+/// extern "gpu-kernel" fn kernel_1(x: *mut [f64; 128]) {
+///     unsafe { (*x)[0] = 21.0 };
+/// }
+/// ```
+///
+/// For reference, see the Clang documentation on offloading:
+/// <https://clang.llvm.org/docs/OffloadingDesign.html>.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload<F, T: crate::marker::Tuple, R>(f: F, args: T) -> R;
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
@@ -3350,7 +3382,13 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
 
 /// Copies the current location of arglist `src` to the arglist `dst`.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// You must check the following invariants before you call this function:
+///
+/// - `dest` must be non-null and point to valid, writable memory.
+/// - `dest` must not alias `src`.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
@@ -3358,14 +3396,27 @@ pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// This function is only sound to call when:
+///
+/// - there is a next variable argument available.
+/// - the next argument's type must be ABI-compatible with the type `T`.
+/// - the next argument must have a properly initialized value of type `T`.
+///
+/// Calling this function with an incompatible type, an invalid value, or when there
+/// are no more variable arguments, is unsound.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
 
 /// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
 ///
-/// FIXME: document safety requirements
+/// # Safety
+///
+/// `ap` must not be used to access variable arguments after this call.
+///
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn va_end(ap: &mut VaListImpl<'_>);

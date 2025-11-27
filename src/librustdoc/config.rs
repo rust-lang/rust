@@ -978,15 +978,16 @@ fn parse_extern_html_roots(
     Ok(externs)
 }
 
-/// Path directly to crate-info file.
+/// Path directly to crate-info directory.
 ///
-/// For example, `/home/user/project/target/doc.parts/<crate>/crate-info`.
+/// For example, `/home/user/project/target/doc.parts`.
+/// Each crate has its info stored in a file called `CRATENAME.json`.
 #[derive(Clone, Debug)]
 pub(crate) struct PathToParts(pub(crate) PathBuf);
 
 impl PathToParts {
     fn from_flag(path: String) -> Result<PathToParts, String> {
-        let mut path = PathBuf::from(path);
+        let path = PathBuf::from(path);
         // check here is for diagnostics
         if path.exists() && !path.is_dir() {
             Err(format!(
@@ -995,20 +996,22 @@ impl PathToParts {
             ))
         } else {
             // if it doesn't exist, we'll create it. worry about that in write_shared
-            path.push("crate-info");
             Ok(PathToParts(path))
         }
     }
 }
 
-/// Reports error if --include-parts-dir / crate-info is not a file
+/// Reports error if --include-parts-dir is not a directory
 fn parse_include_parts_dir(m: &getopts::Matches) -> Result<Vec<PathToParts>, String> {
     let mut ret = Vec::new();
     for p in m.opt_strs("include-parts-dir") {
         let p = PathToParts::from_flag(p)?;
         // this is just for diagnostic
-        if !p.0.is_file() {
-            return Err(format!("--include-parts-dir expected {} to be a file", p.0.display()));
+        if !p.0.is_dir() {
+            return Err(format!(
+                "--include-parts-dir expected {} to be a directory",
+                p.0.display()
+            ));
         }
         ret.push(p);
     }

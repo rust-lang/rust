@@ -312,9 +312,15 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
+        let context = match parent {
+            TraitOrImpl::Trait { .. } => "trait",
+            TraitOrImpl::TraitImpl { .. } => "trait_impl",
+            TraitOrImpl::Impl { .. } => "impl",
+        };
+
         self.dcx().emit_err(errors::AsyncFnInConstTraitOrTraitImpl {
             async_keyword,
-            in_impl: matches!(parent, TraitOrImpl::TraitImpl { .. }),
+            context,
             const_keyword,
         });
     }
@@ -814,6 +820,12 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
     }
 
+    fn deny_const_auto_traits(&self, constness: Const) {
+        if let Const::Yes(span) = constness {
+            self.dcx().emit_err(errors::ConstAutoTrait { span });
+        }
+    }
+
     fn deny_generic_params(&self, generics: &Generics, ident_span: Span) {
         if !generics.params.is_empty() {
             self.dcx()
@@ -1251,6 +1263,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 if *is_auto == IsAuto::Yes {
+                    // For why we reject `const auto trait`, see rust-lang/rust#149285.
+                    self.deny_const_auto_traits(*constness);
                     // Auto traits cannot have generics, super traits nor contain items.
                     self.deny_generic_params(generics, ident.span);
                     self.deny_super_traits(bounds, ident.span);
@@ -1714,9 +1728,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_async_fn_in_const_trait_or_impl(sig, parent);
                 }
             }
-            Some(TraitOrImpl::Impl { constness }) => {
+            Some(parent @ TraitOrImpl::Impl { constness }) => {
                 if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                     self.check_impl_fn_not_const(sig.header.constness, *constness);
+                    self.check_async_fn_in_const_trait_or_impl(sig, parent);
                 }
             }
             None => {}

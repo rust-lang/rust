@@ -2918,7 +2918,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::canonicalize(path.as_ref())
 }
 
-/// Creates a new, empty directory at the provided path
+/// Creates a new, empty directory at the provided path.
 ///
 /// # Platform-specific behavior
 ///

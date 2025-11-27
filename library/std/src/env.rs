@@ -170,7 +170,7 @@ impl Iterator for Vars {
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self { inner: VarsOs { inner } } = self;
-        f.debug_struct("Vars").field("inner", &inner.str_debug()).finish()
+        f.debug_struct("Vars").field("inner", inner).finish()
     }
 }
 
@@ -1097,7 +1097,7 @@ pub mod consts {
     /// * `"nto"`
     /// * `"redox"`
     /// * `"solaris"`
-    /// * `"solid_asp3`
+    /// * `"solid_asp3"`
     /// * `"vexos"`
     /// * `"vita"`
     /// * `"vxworks"`

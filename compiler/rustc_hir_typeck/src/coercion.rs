@@ -1291,14 +1291,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.safety()))
                 }
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
+                ty::FnDef(def_id, ..) => {
+                    // Intrinsics are not coercible to function pointers
+                    if self.tcx.intrinsic(def_id).is_some() {
+                        return Err(TypeError::IntrinsicCast);
+                    }
+                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
+                }
                 _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.safety()))
                 }
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
+                ty::FnDef(def_id, ..) => {
+                    // Intrinsics are not coercible to function pointers
+                    if self.tcx.intrinsic(def_id).is_some() {
+                        return Err(TypeError::IntrinsicCast);
+                    }
+                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
+                }
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
