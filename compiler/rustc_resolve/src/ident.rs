@@ -415,6 +415,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
+        let derive_fallback_lint_id = match finalize {
+            Some(Finalize { node_id, stage: Stage::Late, .. }) => Some(node_id),
+            _ => None,
+        };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
         // However, sometimes this result is "weak" because it comes from a glob import or
@@ -433,16 +437,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut extern_prelude_flag_binding = None;
 
         // Go through all the scopes and try to resolve the name.
-        let derive_fallback_lint_id = match finalize {
-            Some(Finalize { node_id, stage: Stage::Late, .. }) => Some(node_id),
-            _ => None,
-        };
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
+                // We can break with an error at this step, it means we cannot determine the
+                // resolution right now, but we must block and wait until we can instead of
+                // considering outer scopes.
                 match this.reborrow().resolve_ident_in_scope(
                     orig_ident,
                     ns,
@@ -459,11 +462,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &mut extern_prelude_item_binding,
                     &mut extern_prelude_flag_binding,
                 )? {
-                    Ok((binding, flags)) => {
-                        if !sub_namespace_match(binding.macro_kinds(), macro_kind) {
-                            return ControlFlow::Continue(());
-                        }
-
+                    Ok((binding, flags))
+                        if sub_namespace_match(binding.macro_kinds(), macro_kind) =>
+                    {
                         // Below we report various ambiguity errors.
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
@@ -484,6 +485,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 extern_prelude_item_binding,
                                 extern_prelude_flag_binding,
                             ) {
+                                // No need to search for more potential ambiguities, one is enough.
                                 return ControlFlow::Break(Ok(innermost_binding));
                             }
                         } else {
@@ -491,7 +493,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             innermost_result = Some((binding, flags));
                         }
                     }
-                    Err(Determinacy::Determined) => {}
+                    Ok(_) | Err(Determinacy::Determined) => {}
                     Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
                 }
 
@@ -499,16 +501,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
         );
 
+        // Scope visiting returned some result early.
         if let Some(break_result) = break_result {
             return break_result;
         }
 
-        // The first found solution was the only one, return it.
-        if let Some((binding, _)) = innermost_result {
-            return Ok(binding);
+        // Scope visiting walked all the scopes and maybe found something in one of them.
+        match innermost_result {
+            Some((binding, _)) => Ok(binding),
+            None => Err(Determinacy::determined(determinacy == Determinacy::Determined || force)),
         }
-
-        Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
     fn resolve_ident_in_scope<'r>(
