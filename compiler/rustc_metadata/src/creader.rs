@@ -737,7 +737,7 @@ impl CStore {
                     .maybe_resolve_crate(
                         tcx,
                         sym::core,
-                        CrateDepKind::Explicit,
+                        CrateDepKind::Unconditional,
                         CrateOrigin::Extern,
                     )
                     .is_err();
@@ -985,11 +985,15 @@ impl CStore {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        // This has to be implicit as both panic_unwind and panic_abort may be present in the crate
-        // graph at the same time. One of them will later be activated in dependency_formats.
-        let Some(cnum) =
-            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Implicit, CrateOrigin::Injected)
-        else {
+        // This has to be conditional as both panic_unwind and panic_abort may be present in the
+        // crate graph at the same time. One of them will later be activated in dependency_formats.
+        let Some(cnum) = self.resolve_crate(
+            tcx,
+            name,
+            DUMMY_SP,
+            CrateDepKind::Conditional,
+            CrateOrigin::Injected,
+        ) else {
             return;
         };
         let data = self.get_crate_data(cnum);
@@ -1017,9 +1021,13 @@ impl CStore {
         info!("loading profiler");
 
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
-        let Some(cnum) =
-            self.resolve_crate(tcx, name, DUMMY_SP, CrateDepKind::Explicit, CrateOrigin::Injected)
-        else {
+        let Some(cnum) = self.resolve_crate(
+            tcx,
+            name,
+            DUMMY_SP,
+            CrateDepKind::Unconditional,
+            CrateOrigin::Injected,
+        ) else {
             return;
         };
         let data = self.get_crate_data(cnum);
@@ -1139,7 +1147,7 @@ impl CStore {
                         tcx,
                         name_interned,
                         DUMMY_SP,
-                        CrateDepKind::Explicit,
+                        CrateDepKind::Unconditional,
                         CrateOrigin::Extern,
                     );
                 }
@@ -1171,7 +1179,7 @@ impl CStore {
             tcx,
             sym::compiler_builtins,
             krate.spans.inner_span.shrink_to_lo(),
-            CrateDepKind::Explicit,
+            CrateDepKind::Unconditional,
             CrateOrigin::Injected,
         ) else {
             info!("`compiler_builtins` not resolved");
@@ -1288,7 +1296,7 @@ impl CStore {
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
                 } else {
-                    CrateDepKind::Explicit
+                    CrateDepKind::Unconditional
                 };
 
                 let cnum =
@@ -1318,7 +1326,7 @@ impl CStore {
         span: Span,
     ) -> Option<CrateNum> {
         let cnum =
-            self.resolve_crate(tcx, name, span, CrateDepKind::Explicit, CrateOrigin::Extern)?;
+            self.resolve_crate(tcx, name, span, CrateDepKind::Unconditional, CrateOrigin::Extern)?;
 
         self.update_extern_crate(
             cnum,
@@ -1336,7 +1344,7 @@ impl CStore {
     }
 
     pub fn maybe_process_path_extern(&mut self, tcx: TyCtxt<'_>, name: Symbol) -> Option<CrateNum> {
-        self.maybe_resolve_crate(tcx, name, CrateDepKind::Explicit, CrateOrigin::Extern).ok()
+        self.maybe_resolve_crate(tcx, name, CrateDepKind::Unconditional, CrateOrigin::Extern).ok()
     }
 }
 
