@@ -156,8 +156,8 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
 enum CrateOrigin<'a> {
     /// This crate was a dependency of another crate.
     IndirectDependency {
-        /// Where this dependency was included from.
-        dep_root: &'a CratePaths,
+        /// Where this dependency was included from. Should only be used in error messages.
+        dep_root_for_errors: &'a CratePaths,
         /// True if the parent is private, meaning the dependent should also be private.
         parent_private: bool,
         /// Dependency info about this crate.
@@ -171,9 +171,11 @@ enum CrateOrigin<'a> {
 
 impl<'a> CrateOrigin<'a> {
     /// Return the dependency root, if any.
-    fn dep_root(&self) -> Option<&'a CratePaths> {
+    fn dep_root_for_errors(&self) -> Option<&'a CratePaths> {
         match self {
-            CrateOrigin::IndirectDependency { dep_root, .. } => Some(dep_root),
+            CrateOrigin::IndirectDependency { dep_root_for_errors, .. } => {
+                Some(dep_root_for_errors)
+            }
             _ => None,
         }
     }
@@ -597,8 +599,8 @@ impl CStore {
         // Maintain a reference to the top most crate.
         // Stash paths for top-most crate locally if necessary.
         let crate_paths;
-        let dep_root = if let Some(dep_root) = origin.dep_root() {
-            dep_root
+        let dep_root_for_errors = if let Some(dep_root_for_errors) = origin.dep_root_for_errors() {
+            dep_root_for_errors
         } else {
             crate_paths = CratePaths::new(crate_root.name(), source.clone());
             &crate_paths
@@ -606,7 +608,7 @@ impl CStore {
 
         let cnum_map = self.resolve_crate_deps(
             tcx,
-            dep_root,
+            dep_root_for_errors,
             &crate_root,
             &metadata,
             cnum,
@@ -757,7 +759,7 @@ impl CStore {
             return Err(CrateError::NonAsciiName(name));
         }
 
-        let dep_root = origin.dep_root();
+        let dep_root_for_errors = origin.dep_root_for_errors();
         let dep = origin.dep();
         let hash = dep.map(|d| d.hash);
         let host_hash = dep.map(|d| d.host_hash).flatten();
@@ -795,7 +797,11 @@ impl CStore {
                         host_hash,
                     )? {
                         Some(res) => res,
-                        None => return Err(locator.into_error(crate_rejections, dep_root.cloned())),
+                        None => {
+                            return Err(
+                                locator.into_error(crate_rejections, dep_root_for_errors.cloned())
+                            );
+                        }
                     }
                 }
             }
@@ -856,7 +862,7 @@ impl CStore {
     fn resolve_crate_deps(
         &mut self,
         tcx: TyCtxt<'_>,
-        dep_root: &CratePaths,
+        dep_root_for_errors: &CratePaths,
         crate_root: &CrateRoot,
         metadata: &MetadataBlob,
         krate: CrateNum,
@@ -866,7 +872,7 @@ impl CStore {
         debug!(
             "resolving deps of external crate `{}` with dep root `{}`",
             crate_root.name(),
-            dep_root.name
+            dep_root_for_errors.name
         );
         if crate_root.is_proc_macro_crate() {
             return Ok(CrateNumMap::new());
@@ -896,7 +902,7 @@ impl CStore {
                 dep.name,
                 dep_kind,
                 CrateOrigin::IndirectDependency {
-                    dep_root,
+                    dep_root_for_errors,
                     parent_private: parent_is_private,
                     dep: &dep,
                 },
