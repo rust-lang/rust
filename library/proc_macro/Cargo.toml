@@ -14,3 +14,6 @@ rustc-literal-escaper = { version = "0.0.5", features = ["rustc-dep-of-std"] }
 [features]
 default = ["rustc-dep-of-std"]
 rustc-dep-of-std = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }

@@ -36,21 +36,21 @@ enum MulAddType {
 
 #[derive(Copy, Clone)]
 pub(crate) enum MinMax {
-    /// The IEEE `Minimum` operation - see `f32::minimum` etc
+    /// The IEEE-2019 `minimum` operation - see `f32::minimum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Minimum,
-    /// The IEEE `MinNum` operation - see `f32::min` etc
+    /// The IEEE-2008 `minNum` operation - see `f32::min` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
-    /// and is one argument is NaN, the other one is returned.
+    /// and if one argument is NaN, the other one is returned.
     MinNum,
-    /// The IEEE `Maximum` operation - see `f32::maximum` etc
+    /// The IEEE-2019 `maximum` operation - see `f32::maximum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Maximum,
-    /// The IEEE `MaxNum` operation - see `f32::max` etc
+    /// The IEEE-2008 `maxNum` operation - see `f32::max` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
-    /// and is one argument is NaN, the other one is returned.
+    /// and if one argument is NaN, the other one is returned.
     MaxNum,
 }
 
