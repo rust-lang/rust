@@ -474,86 +474,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
                             // Found another solution, if the first one was "weak", report an error.
-                            let (res, innermost_res) = (binding.res(), innermost_binding.res());
-                            if res != innermost_res {
-                                let is_builtin = |res| {
-                                    matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)))
-                                };
-                                let derive_helper =
-                                    Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                                let derive_helper_compat =
-                                    Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
-
-                                let ambiguity_error_kind = if is_builtin(innermost_res)
-                                    || is_builtin(res)
-                                {
-                                    Some(AmbiguityKind::BuiltinAttr)
-                                } else if innermost_res == derive_helper_compat
-                                    || res == derive_helper_compat && innermost_res != derive_helper
-                                {
-                                    Some(AmbiguityKind::DeriveHelper)
-                                } else if innermost_flags.contains(Flags::MACRO_RULES)
-                                    && flags.contains(Flags::MODULE)
-                                    && !this.disambiguate_macro_rules_vs_modularized(
-                                        innermost_binding,
-                                        binding,
-                                    )
-                                {
-                                    Some(AmbiguityKind::MacroRulesVsModularized)
-                                } else if flags.contains(Flags::MACRO_RULES)
-                                    && innermost_flags.contains(Flags::MODULE)
-                                {
-                                    // should be impossible because of visitation order in
-                                    // visit_scopes
-                                    //
-                                    // we visit all macro_rules scopes (e.g. textual scope macros)
-                                    // before we visit any modules (e.g. path-based scope macros)
-                                    span_bug!(
-                                        orig_ident.span,
-                                        "ambiguous scoped macro resolutions with path-based \
-                                        scope resolution as first candidate"
-                                    )
-                                } else if innermost_binding.is_glob_import() {
-                                    Some(AmbiguityKind::GlobVsOuter)
-                                } else if innermost_binding
-                                    .may_appear_after(parent_scope.expansion, binding)
-                                {
-                                    Some(AmbiguityKind::MoreExpandedVsOuter)
-                                } else {
-                                    None
-                                };
-                                // Skip ambiguity errors for extern flag bindings "overridden"
-                                // by extern item bindings.
-                                // FIXME: Remove with lang team approval.
-                                let issue_145575_hack = Some(binding)
-                                    == extern_prelude_flag_binding
-                                    && extern_prelude_item_binding.is_some()
-                                    && extern_prelude_item_binding != Some(innermost_binding);
-                                if let Some(kind) = ambiguity_error_kind
-                                    && !issue_145575_hack
-                                {
-                                    let misc = |f: Flags| {
-                                        if f.contains(Flags::MISC_SUGGEST_CRATE) {
-                                            AmbiguityErrorMisc::SuggestCrate
-                                        } else if f.contains(Flags::MISC_SUGGEST_SELF) {
-                                            AmbiguityErrorMisc::SuggestSelf
-                                        } else if f.contains(Flags::MISC_FROM_PRELUDE) {
-                                            AmbiguityErrorMisc::FromPrelude
-                                        } else {
-                                            AmbiguityErrorMisc::None
-                                        }
-                                    };
-                                    this.get_mut().ambiguity_errors.push(AmbiguityError {
-                                        kind,
-                                        ident: orig_ident,
-                                        b1: innermost_binding,
-                                        b2: binding,
-                                        warning: false,
-                                        misc1: misc(innermost_flags),
-                                        misc2: misc(flags),
-                                    });
-                                    return ControlFlow::Break(Ok(innermost_binding));
-                                }
+                            if this.get_mut().maybe_push_ambiguity(
+                                orig_ident,
+                                parent_scope,
+                                binding,
+                                innermost_binding,
+                                flags,
+                                innermost_flags,
+                                extern_prelude_item_binding,
+                                extern_prelude_flag_binding,
+                            ) {
+                                return ControlFlow::Break(Ok(innermost_binding));
                             }
                         } else {
                             // Found the first solution.
@@ -786,6 +717,90 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         ControlFlow::Continue(ret)
+    }
+
+    fn maybe_push_ambiguity(
+        &mut self,
+        orig_ident: Ident,
+        parent_scope: &ParentScope<'ra>,
+        binding: NameBinding<'ra>,
+        innermost_binding: NameBinding<'ra>,
+        flags: Flags,
+        innermost_flags: Flags,
+        extern_prelude_item_binding: Option<NameBinding<'ra>>,
+        extern_prelude_flag_binding: Option<NameBinding<'ra>>,
+    ) -> bool {
+        let (res, innermost_res) = (binding.res(), innermost_binding.res());
+        if res == innermost_res {
+            return false;
+        }
+
+        let is_builtin = |res| matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)));
+        let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+        let derive_helper_compat = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelperCompat);
+
+        let ambiguity_error_kind = if is_builtin(innermost_res) || is_builtin(res) {
+            Some(AmbiguityKind::BuiltinAttr)
+        } else if innermost_res == derive_helper_compat
+            || res == derive_helper_compat && innermost_res != derive_helper
+        {
+            Some(AmbiguityKind::DeriveHelper)
+        } else if innermost_flags.contains(Flags::MACRO_RULES)
+            && flags.contains(Flags::MODULE)
+            && !self.disambiguate_macro_rules_vs_modularized(innermost_binding, binding)
+        {
+            Some(AmbiguityKind::MacroRulesVsModularized)
+        } else if flags.contains(Flags::MACRO_RULES) && innermost_flags.contains(Flags::MODULE) {
+            // should be impossible because of visitation order in
+            // visit_scopes
+            //
+            // we visit all macro_rules scopes (e.g. textual scope macros)
+            // before we visit any modules (e.g. path-based scope macros)
+            span_bug!(
+                orig_ident.span,
+                "ambiguous scoped macro resolutions with path-based \
+                                        scope resolution as first candidate"
+            )
+        } else if innermost_binding.is_glob_import() {
+            Some(AmbiguityKind::GlobVsOuter)
+        } else if innermost_binding.may_appear_after(parent_scope.expansion, binding) {
+            Some(AmbiguityKind::MoreExpandedVsOuter)
+        } else {
+            None
+        };
+        // Skip ambiguity errors for extern flag bindings "overridden"
+        // by extern item bindings.
+        // FIXME: Remove with lang team approval.
+        let issue_145575_hack = Some(binding) == extern_prelude_flag_binding
+            && extern_prelude_item_binding.is_some()
+            && extern_prelude_item_binding != Some(innermost_binding);
+        if let Some(kind) = ambiguity_error_kind
+            && !issue_145575_hack
+        {
+            let misc = |f: Flags| {
+                if f.contains(Flags::MISC_SUGGEST_CRATE) {
+                    AmbiguityErrorMisc::SuggestCrate
+                } else if f.contains(Flags::MISC_SUGGEST_SELF) {
+                    AmbiguityErrorMisc::SuggestSelf
+                } else if f.contains(Flags::MISC_FROM_PRELUDE) {
+                    AmbiguityErrorMisc::FromPrelude
+                } else {
+                    AmbiguityErrorMisc::None
+                }
+            };
+            self.ambiguity_errors.push(AmbiguityError {
+                kind,
+                ident: orig_ident,
+                b1: innermost_binding,
+                b2: binding,
+                warning: false,
+                misc1: misc(innermost_flags),
+                misc2: misc(flags),
+            });
+            return true;
+        }
+
+        false
     }
 
     #[instrument(level = "debug", skip(self))]
