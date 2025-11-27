@@ -1431,6 +1431,11 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         cargo.env("LLVM_OFFLOAD", "1");
     }
     let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+    if builder.config.llvm_enzyme {
+        builder.ensure(llvm::Offload { target });
+        cargo.env("LLVM_OFFLOAD", "1");
+    }
+
     cargo.env("LLVM_CONFIG", &host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
