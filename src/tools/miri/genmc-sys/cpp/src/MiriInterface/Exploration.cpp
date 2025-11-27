@@ -104,8 +104,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
         return LoadResultExt::from_error(format_error(*err));
     const auto* ret_val = std::get_if<SVal>(&ret);
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
-    if (ret_val == nullptr)
-        ERROR("Unimplemented: load returned unexpected result.");
+    ERROR_ON(!ret_val, "Unimplemented: load returned unexpected result.");
     return LoadResultExt::from_value(*ret_val);
 }
 
@@ -133,13 +132,10 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
     if (const auto* err = std::get_if<VerificationError>(&ret))
         return StoreResultExt::from_error(format_error(*err));
 
-    const bool* is_coherence_order_maximal_write = std::get_if<bool>(&ret);
+    const auto* is_co_max = std::get_if<bool>(&ret);
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
-    ERROR_ON(
-        nullptr == is_coherence_order_maximal_write,
-        "Unimplemented: Store returned unexpected result."
-    );
-    return StoreResultExt::ok(*is_coherence_order_maximal_write);
+    ERROR_ON(!is_co_max, "Unimplemented: Store returned unexpected result.");
+    return StoreResultExt::ok(*is_co_max);
 }
 
 void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
@@ -178,9 +174,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
     const auto* ret_val = std::get_if<SVal>(&load_ret);
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
-    if (nullptr == ret_val) {
-        ERROR("Unimplemented: read-modify-write returned unexpected result.");
-    }
+    ERROR_ON(!ret_val, "Unimplemented: read-modify-write returned unexpected result.");
     const auto read_old_val = *ret_val;
     const auto new_value =
         executeRMWBinOp(read_old_val, GenmcScalarExt::to_sval(rhs_value), size, rmw_op);
@@ -199,16 +193,13 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     if (const auto* err = std::get_if<VerificationError>(&store_ret))
         return ReadModifyWriteResultExt::from_error(format_error(*err));
 
-    const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
+    const auto* is_co_max = std::get_if<bool>(&store_ret);
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
-    ERROR_ON(
-        nullptr == is_coherence_order_maximal_write,
-        "Unimplemented: RMW store returned unexpected result."
-    );
+    ERROR_ON(!is_co_max, "Unimplemented: RMW store returned unexpected result.");
     return ReadModifyWriteResultExt::ok(
         /* old_value: */ read_old_val,
         new_value,
-        *is_coherence_order_maximal_write
+        *is_co_max
     );
 }
 
@@ -266,13 +257,10 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     );
     if (const auto* err = std::get_if<VerificationError>(&store_ret))
         return CompareExchangeResultExt::from_error(format_error(*err));
-    const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
+    const auto* is_co_max = std::get_if<bool>(&store_ret);
     // FIXME(genmc): handle `HandleResult::{Invalid, Reset}` return values.
-    ERROR_ON(
-        nullptr == is_coherence_order_maximal_write,
-        "Unimplemented: compare-exchange store returned unexpected result."
-    );
-    return CompareExchangeResultExt::success(read_old_val, *is_coherence_order_maximal_write);
+    ERROR_ON(!is_co_max, "Unimplemented: compare-exchange store returned unexpected result.");
+    return CompareExchangeResultExt::success(read_old_val, *is_co_max);
 }
 
 /**** Memory (de)allocation ****/
@@ -385,11 +373,8 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
         // We don't update Miri's memory for this operation so we don't need to know if the store
         // was the co-maximal store, but we still check that we at least get a boolean as the result
         // of the store.
-        const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
-        ERROR_ON(
-            nullptr == is_coherence_order_maximal_write,
-            "Unimplemented: store part of mutex try_lock returned unexpected result."
-        );
+        const auto* is_co_max = std::get_if<bool>(&store_ret);
+        ERROR_ON(!is_co_max, "Unimplemented: mutex_try_lock store returned unexpected result.");
     } else {
         // We did not acquire the mutex, so we tell GenMC to block the thread until we can acquire
         // it. GenMC determines this based on the annotation we pass with the load further up in
@@ -416,18 +401,15 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
     if (const auto* err = std::get_if<VerificationError>(&load_ret))
         return MutexLockResultExt::from_error(format_error(*err));
     const auto* ret_val = std::get_if<SVal>(&load_ret);
-    if (nullptr == ret_val) {
-        ERROR("Unimplemented: mutex trylock load returned unexpected result.");
-    }
+    ERROR_ON(!ret_val, "Unimplemented: mutex trylock load returned unexpected result.");
 
     ERROR_ON(
         *ret_val != MUTEX_UNLOCKED && *ret_val != MUTEX_LOCKED,
         "Mutex read value was neither 0 nor 1"
     );
     const bool is_lock_acquired = *ret_val == MUTEX_UNLOCKED;
-    if (!is_lock_acquired) {
+    if (!is_lock_acquired)
         return MutexLockResultExt::ok(false); /* Lock already held. */
-    }
 
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::TrylockCasWrite>(
         nullptr,
@@ -440,11 +422,8 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
         return MutexLockResultExt::from_error(format_error(*err));
     // We don't update Miri's memory for this operation so we don't need to know if the store was
     // co-maximal, but we still check that we get a boolean result.
-    const bool* is_coherence_order_maximal_write = std::get_if<bool>(&store_ret);
-    ERROR_ON(
-        nullptr == is_coherence_order_maximal_write,
-        "Unimplemented: store part of mutex try_lock returned unexpected result."
-    );
+    const auto* is_co_max = std::get_if<bool>(&store_ret);
+    ERROR_ON(!is_co_max, "Unimplemented: store part of mutex try_lock returned unexpected result.");
     return MutexLockResultExt::ok(true);
 }
 
@@ -467,12 +446,9 @@ auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, ui
     );
     if (const auto* err = std::get_if<VerificationError>(&ret))
         return StoreResultExt::from_error(format_error(*err));
-    const bool* is_coherence_order_maximal_write = std::get_if<bool>(&ret);
-    ERROR_ON(
-        nullptr == is_coherence_order_maximal_write,
-        "Unimplemented: store part of mutex unlock returned unexpected result."
-    );
-    return StoreResultExt::ok(*is_coherence_order_maximal_write);
+    const auto* is_co_max = std::get_if<bool>(&ret);
+    ERROR_ON(!is_co_max, "Unimplemented: store part of mutex unlock returned unexpected result.");
+    return StoreResultExt::ok(*is_co_max);
 }
 
 /** Thread creation/joining */
