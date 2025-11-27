@@ -11,7 +11,7 @@
 
 use std::error::Report;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::vec;
 
@@ -20,9 +20,9 @@ use derive_setters::Setters;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_error_messages::FluentArgs;
 use rustc_lint_defs::Applicability;
-use rustc_span::Span;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{FileName, RealFileName, Span};
 use serde::Serialize;
 
 use crate::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
@@ -490,8 +490,14 @@ impl DiagnosticSpan {
             None => {
                 span = rustc_span::DUMMY_SP;
                 empty_source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
-                empty_source_map
-                    .new_source_file(std::path::PathBuf::from("empty.rs").into(), String::new());
+                empty_source_map.new_source_file(
+                    FileName::Real(
+                        empty_source_map
+                            .path_mapping()
+                            .to_real_filename(&RealFileName::empty(), PathBuf::from("empty.rs")),
+                    ),
+                    String::new(),
+                );
                 &empty_source_map
             }
         };
