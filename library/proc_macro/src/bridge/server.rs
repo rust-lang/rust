@@ -12,12 +12,12 @@ macro_rules! define_server_handles {
     ) => {
         #[allow(non_snake_case)]
         pub(super) struct HandleStore<S: Types> {
-            $($oty: handle::OwnedStore<S::$oty>,)*
-            $($ity: handle::InternedStore<S::$ity>,)*
+            $(pub(super) $oty: handle::OwnedStore<S::$oty>,)*
+            $(pub(super) $ity: handle::InternedStore<S::$ity>,)*
         }
 
         impl<S: Types> HandleStore<S> {
-            fn new(handle_counters: &'static client::HandleCounters) -> Self {
+            pub(super) fn new(handle_counters: &'static client::HandleCounters) -> Self {
                 HandleStore {
                     $($oty: handle::OwnedStore::new(&handle_counters.$oty),)*
                     $($ity: handle::InternedStore::new(&handle_counters.$ity),)*
@@ -119,7 +119,7 @@ macro_rules! declare_server_traits {
 }
 with_api!(Self, self_, declare_server_traits);
 
-pub(super) struct MarkedTypes<S: Types>(S);
+pub(super) struct MarkedTypes<S: Types>(pub(super) S);
 
 impl<S: Server> Server for MarkedTypes<S> {
     fn globals(&mut self) -> ExpnGlobals<Self::Span> {
@@ -150,9 +150,9 @@ macro_rules! define_mark_types_impls {
 }
 with_api!(Self, self_, define_mark_types_impls);
 
-struct Dispatcher<S: Types> {
-    handle_store: HandleStore<S>,
-    server: S,
+pub(super) struct Dispatcher<S: Types> {
+    pub(super) handle_store: HandleStore<MarkedTypes<S>>,
+    pub(super) server: MarkedTypes<S>,
 }
 
 macro_rules! define_dispatcher_impl {
@@ -167,7 +167,7 @@ macro_rules! define_dispatcher_impl {
             fn dispatch(&mut self, buf: Buffer) -> Buffer;
         }
 
-        impl<S: Server> DispatcherTrait for Dispatcher<MarkedTypes<S>> {
+        impl<S: Server> DispatcherTrait for Dispatcher<S> {
             $(type $name = <MarkedTypes<S> as Types>::$name;)*
 
             fn dispatch(&mut self, mut buf: Buffer) -> Buffer {
