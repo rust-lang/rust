@@ -475,7 +475,7 @@ fn display_token_tree<S>(
         }
         TokenTree::Punct(Punct { ch, joint, span: _ }) => {
             *emit_whitespace = !*joint;
-            write!(f, "{ch}")?;
+            write!(f, "{}", *ch as char)?;
         }
         TokenTree::Ident(Ident { sym, is_raw, span: _ }) => {
             if *is_raw {
@@ -745,14 +745,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn roundtrip() {
-        let token_stream = TokenStream::from_str("struct T {\"string\"}", ()).unwrap();
-        assert_eq!(token_stream.to_string(), "struct T {\"string\"}");
-    }
-
-    #[test]
-    fn ident_ts_no_trailing_whitespace_to_string() {
-        let token_stream = TokenStream::from_str("this_is_an_ident", ()).unwrap();
-        assert_eq!(token_stream.to_string(), "this_is_an_ident");
+    fn ts_to_string() {
+        let token_stream =
+            TokenStream::from_str("{} () [] <> ;/., \"gfhdgfuiofghd\" 0f32 r#\"dff\"# 'r#lt", ())
+                .unwrap();
+        assert_eq!(token_stream.to_string(), "{}()[]<> ;/., \"gfhdgfuiofghd\"0f32 r#\"dff\"#'r#lt");
     }
 }
