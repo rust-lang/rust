@@ -24,7 +24,7 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
-use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
+use crate::core::build_steps::vendor::Vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
@@ -1306,16 +1306,12 @@ impl Step for PlainSourceTarball {
                 });
 
             // Vendor all Cargo dependencies
-            let vendor = builder.ensure(Vendor {
+            builder.ensure(Vendor {
                 sync_args: pkgs_for_pgo_training.collect(),
                 versioned_dirs: true,
                 root_dir: plain_dst_src.into(),
-                output_dir: VENDOR_DIR.into(),
+                output_dir: None,
             });
-
-            let cargo_config_dir = plain_dst_src.join(".cargo");
-            builder.create_dir(&cargo_config_dir);
-            builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
         }
 
         // Delete extraneous directories
