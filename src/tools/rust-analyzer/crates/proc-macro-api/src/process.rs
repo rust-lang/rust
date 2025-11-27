@@ -7,12 +7,18 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
+use base_db::SourceDatabase;
 use paths::AbsPath;
 use semver::Version;
+use span::Span;
 use stdx::JodChild;
 
 use crate::{
-    ProcMacroKind, ServerError,
+    Codec, ProcMacro, ProcMacroKind, ServerError,
+    bidirectional_protocol::{
+        self, ClientCallbacks,
+        msg::{Payload, RequestId},
+    },
     legacy_protocol::{self, SpanMode},
     version,
 };
@@ -33,6 +39,8 @@ pub(crate) struct ProcMacroServerProcess {
 pub(crate) enum Protocol {
     LegacyJson { mode: SpanMode },
     LegacyPostcard { mode: SpanMode },
+    NewPostcard { mode: SpanMode },
+    NewJson { mode: SpanMode },
 }
 
 /// Maintains the state of the proc-macro server process.
@@ -62,6 +70,8 @@ impl ProcMacroServerProcess {
             && has_working_format_flag
         {
             &[
+                (Some("postcard-new"), Protocol::NewPostcard { mode: SpanMode::Id }),
+                (Some("json-new"), Protocol::NewJson { mode: SpanMode::Id }),
                 (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
                 (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
             ]
@@ -105,9 +115,10 @@ impl ProcMacroServerProcess {
                         && let Ok(new_mode) = srv.enable_rust_analyzer_spans()
                     {
                         match &mut srv.protocol {
-                            Protocol::LegacyJson { mode } | Protocol::LegacyPostcard { mode } => {
-                                *mode = new_mode
-                            }
+                            Protocol::LegacyJson { mode }
+                            | Protocol::LegacyPostcard { mode }
+                            | Protocol::NewJson { mode }
+                            | Protocol::NewPostcard { mode } => *mode = new_mode,
                         }
                     }
                     tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
@@ -143,22 +154,32 @@ impl ProcMacroServerProcess {
         match self.protocol {
             Protocol::LegacyJson { mode } => mode == SpanMode::RustAnalyzer,
             Protocol::LegacyPostcard { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::NewJson { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::NewPostcard { mode } => mode == SpanMode::RustAnalyzer,
         }
     }
 
     /// Checks the API version of the running proc-macro server.
     fn version_check(&self) -> Result<u32, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::version_check(self),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::version_check(self),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::version_check(self)
+            }
+            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+                bidirectional_protocol::version_check(self)
+            }
         }
     }
 
     /// Enable support for rust-analyzer span mode if the server supports it.
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::enable_rust_analyzer_spans(self)
+            }
+            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+                bidirectional_protocol::enable_rust_analyzer_spans(self)
+            }
         }
     }
 
@@ -168,28 +189,69 @@ impl ProcMacroServerProcess {
         dylib_path: &AbsPath,
     ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
         match self.protocol {
-            Protocol::LegacyJson { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
-            Protocol::LegacyPostcard { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::find_proc_macros(self, dylib_path)
+            }
+            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+                bidirectional_protocol::find_proc_macros(self, dylib_path)
+            }
         }
     }
 
-    pub(crate) fn send_task<Request, Response, Buf>(
+    pub(crate) fn expand(
         &self,
-        serialize_req: impl FnOnce(
+        db: &dyn SourceDatabase,
+        proc_macro: &ProcMacro,
+        subtree: tt::SubtreeView<'_, Span>,
+        attr: Option<tt::SubtreeView<'_, Span>>,
+        env: Vec<(String, String)>,
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
+        current_dir: String,
+    ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
+        match self.protocol {
+            Protocol::LegacyJson { .. } | Protocol::LegacyPostcard { .. } => {
+                legacy_protocol::expand(
+                    proc_macro,
+                    db,
+                    subtree,
+                    attr,
+                    env,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                    current_dir,
+                )
+            }
+            Protocol::NewJson { .. } | Protocol::NewPostcard { .. } => {
+                bidirectional_protocol::expand(
+                    proc_macro,
+                    db,
+                    subtree,
+                    attr,
+                    env,
+                    def_site,
+                    call_site,
+                    mixed_site,
+                    current_dir,
+                )
+            }
+        }
+    }
+
+    pub(crate) fn send_task<Request, Response, C: Codec>(
+        &self,
+        send: impl FnOnce(
             &mut dyn Write,
             &mut dyn BufRead,
             Request,
-            &mut Buf,
+            &mut C::Buf,
         ) -> Result<Option<Response>, ServerError>,
         req: Request,
-    ) -> Result<Response, ServerError>
-    where
-        Buf: Default,
-    {
-        let state = &mut *self.state.lock().unwrap();
-        let mut buf = Buf::default();
-        serialize_req(&mut state.stdin, &mut state.stdout, req, &mut buf)
-            .and_then(|res| {
+    ) -> Result<Response, ServerError> {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
+            send(writer, reader, req, buf).and_then(|res| {
                 res.ok_or_else(|| {
                     let message = "proc-macro server did not respond with data".to_owned();
                     ServerError {
@@ -201,33 +263,54 @@ impl ProcMacroServerProcess {
                     }
                 })
             })
-            .map_err(|e| {
-                if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
-                    match state.process.child.try_wait() {
-                        Ok(None) | Err(_) => e,
-                        Ok(Some(status)) => {
-                            let mut msg = String::new();
-                            if !status.success()
-                                && let Some(stderr) = state.process.child.stderr.as_mut()
-                            {
-                                _ = stderr.read_to_string(&mut msg);
-                            }
-                            let server_error = ServerError {
-                                message: format!(
-                                    "proc-macro server exited with {status}{}{msg}",
-                                    if msg.is_empty() { "" } else { ": " }
-                                ),
-                                io: None,
-                            };
-                            // `AssertUnwindSafe` is fine here, we already correct initialized
-                            // server_error at this point.
-                            self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
+        })
+    }
+
+    pub(crate) fn with_locked_io<C: Codec, R>(
+        &self,
+        f: impl FnOnce(&mut dyn Write, &mut dyn BufRead, &mut C::Buf) -> Result<R, ServerError>,
+    ) -> Result<R, ServerError> {
+        let state = &mut *self.state.lock().unwrap();
+        let mut buf = C::Buf::default();
+
+        f(&mut state.stdin, &mut state.stdout, &mut buf).map_err(|e| {
+            if e.io.as_ref().map(|it| it.kind()) == Some(io::ErrorKind::BrokenPipe) {
+                match state.process.child.try_wait() {
+                    Ok(None) | Err(_) => e,
+                    Ok(Some(status)) => {
+                        let mut msg = String::new();
+                        if !status.success()
+                            && let Some(stderr) = state.process.child.stderr.as_mut()
+                        {
+                            _ = stderr.read_to_string(&mut msg);
                         }
+                        let server_error = ServerError {
+                            message: format!(
+                                "proc-macro server exited with {status}{}{msg}",
+                                if msg.is_empty() { "" } else { ": " }
+                            ),
+                            io: None,
+                        };
+                        self.exited.get_or_init(|| AssertUnwindSafe(server_error)).0.clone()
                     }
-                } else {
-                    e
                 }
-            })
+            } else {
+                e
+            }
+        })
+    }
+
+    pub(crate) fn run_bidirectional<C: Codec>(
+        &self,
+        id: RequestId,
+        initial: Payload,
+        callbacks: &mut dyn ClientCallbacks,
+    ) -> Result<Payload, ServerError> {
+        self.with_locked_io::<C, _>(|writer, reader, buf| {
+            bidirectional_protocol::run_conversation::<C>(
+                writer, reader, buf, id, initial, callbacks,
+            )
+        })
     }
 }
 

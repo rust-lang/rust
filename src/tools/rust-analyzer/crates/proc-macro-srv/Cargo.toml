@@ -22,6 +22,7 @@ paths.workspace = true
 # span = {workspace = true, default-features = false} does not work
 span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
+crossbeam-channel.workspace = true
 
 ra-ap-rustc_lexer.workspace = true
 

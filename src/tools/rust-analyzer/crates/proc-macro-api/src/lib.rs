@@ -16,18 +16,19 @@
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
-mod codec;
-mod framing;
+pub mod bidirectional_protocol;
 pub mod legacy_protocol;
 mod process;
+pub mod transport;
 
+use base_db::SourceDatabase;
 use paths::{AbsPath, AbsPathBuf};
 use semver::Version;
 use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
-pub use crate::codec::Codec;
 use crate::process::ProcMacroServerProcess;
+pub use crate::transport::codec::Codec;
 
 /// The versions of the server protocol
 pub mod version {
@@ -218,6 +219,7 @@ impl ProcMacro {
     /// This includes span information and environmental context.
     pub fn expand(
         &self,
+        db: &dyn SourceDatabase,
         subtree: tt::SubtreeView<'_, Span>,
         attr: Option<tt::SubtreeView<'_, Span>>,
         env: Vec<(String, String)>,
@@ -240,7 +242,8 @@ impl ProcMacro {
             }
         }
 
-        legacy_protocol::expand(
+        self.process.expand(
+            db,
             self,
             subtree,
             attr,

@@ -1,0 +1,114 @@
+//! Bidirectional protocol messages
+
+use paths::Utf8PathBuf;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    ProcMacroKind,
+    legacy_protocol::msg::{FlatTree, Message, PanicMessage, ServerConfig},
+};
+
+pub type RequestId = u64;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Envelope {
+    pub id: RequestId,
+    pub kind: Kind,
+    pub payload: Payload,
+}
+
+impl From<(RequestId, Kind, Payload)> for Envelope {
+    fn from(value: (RequestId, Kind, Payload)) -> Self {
+        Envelope { id: value.0, kind: value.1, payload: value.2 }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Request,
+    Response,
+    SubRequest,
+    SubResponse,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SubRequest {
+    SourceText { file_id: u32, start: u32, end: u32 },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SubResponse {
+    SourceTextResult { text: Option<String> },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Payload {
+    Request(Request),
+    Response(Response),
+    SubRequest(SubRequest),
+    SubResponse(SubResponse),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Request {
+    ListMacros { dylib_path: Utf8PathBuf },
+    ExpandMacro(Box<ExpandMacro>),
+    ApiVersionCheck {},
+    SetConfig(ServerConfig),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Response {
+    ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
+    ExpandMacro(Result<FlatTree, PanicMessage>),
+    ApiVersionCheck(u32),
+    SetConfig(ServerConfig),
+    ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacro {
+    pub lib: Utf8PathBuf,
+    pub env: Vec<(String, String)>,
+    pub current_dir: Option<String>,
+    #[serde(flatten)]
+    pub data: ExpandMacroData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacroExtended {
+    pub tree: FlatTree,
+    pub span_data_table: Vec<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExpandMacroData {
+    pub macro_body: FlatTree,
+    pub macro_name: String,
+    pub attributes: Option<FlatTree>,
+    #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
+    #[serde(default)]
+    pub has_global_spans: ExpnGlobals,
+
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub span_data_table: Vec<u32>,
+}
+
+#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
+pub struct ExpnGlobals {
+    #[serde(skip_serializing)]
+    #[serde(default)]
+    pub serialize: bool,
+    pub def_site: usize,
+    pub call_site: usize,
+    pub mixed_site: usize,
+}
+
+impl ExpnGlobals {
+    fn skip_serializing_if(&self) -> bool {
+        !self.serialize
+    }
+}
+
+impl Message for Envelope {}

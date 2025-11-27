@@ -1,5 +1,4 @@
 //! Proc macro ABI
-
 use proc_macro::bridge;
 
 use crate::{ProcMacroKind, ProcMacroSrvSpan, token_stream::TokenStream};
@@ -32,7 +31,7 @@ impl ProcMacros {
                 {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, None, None),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -41,7 +40,7 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, None, None),
                         macro_body,
                         cfg!(debug_assertions),
                     );
@@ -50,7 +49,77 @@ impl ProcMacros {
                 bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
                     let res = client.run(
                         &bridge::server::SameThread,
-                        S::make_server(call_site, def_site, mixed_site),
+                        S::make_server(call_site, def_site, mixed_site, None, None),
+                        parsed_attributes,
+                        macro_body,
+                        cfg!(debug_assertions),
+                    );
+                    return res.map_err(crate::PanicMessage::from);
+                }
+                _ => continue,
+            }
+        }
+
+        Err(bridge::PanicMessage::String(format!("proc-macro `{macro_name}` is missing")).into())
+    }
+
+    pub(crate) fn expand_with_channels<S: ProcMacroSrvSpan>(
+        &self,
+        macro_name: &str,
+        macro_body: TokenStream<S>,
+        attribute: Option<TokenStream<S>>,
+        def_site: S,
+        call_site: S,
+        mixed_site: S,
+        cli_to_server: crossbeam_channel::Receiver<crate::SubResponse>,
+        server_to_cli: crossbeam_channel::Sender<crate::SubRequest>,
+    ) -> Result<TokenStream<S>, crate::PanicMessage> {
+        let parsed_attributes = attribute.unwrap_or_default();
+
+        for proc_macro in &self.0 {
+            match proc_macro {
+                bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
+                    if *trait_name == macro_name =>
+                {
+                    let res = client.run(
+                        &bridge::server::SameThread,
+                        S::make_server(
+                            call_site,
+                            def_site,
+                            mixed_site,
+                            Some(cli_to_server),
+                            Some(server_to_cli),
+                        ),
+                        macro_body,
+                        cfg!(debug_assertions),
+                    );
+                    return res.map_err(crate::PanicMessage::from);
+                }
+                bridge::client::ProcMacro::Bang { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &bridge::server::SameThread,
+                        S::make_server(
+                            call_site,
+                            def_site,
+                            mixed_site,
+                            Some(cli_to_server),
+                            Some(server_to_cli),
+                        ),
+                        macro_body,
+                        cfg!(debug_assertions),
+                    );
+                    return res.map_err(crate::PanicMessage::from);
+                }
+                bridge::client::ProcMacro::Attr { name, client } if *name == macro_name => {
+                    let res = client.run(
+                        &bridge::server::SameThread,
+                        S::make_server(
+                            call_site,
+                            def_site,
+                            mixed_site,
+                            Some(cli_to_server),
+                            Some(server_to_cli),
+                        ),
                         parsed_attributes,
                         macro_body,
                         cfg!(debug_assertions),

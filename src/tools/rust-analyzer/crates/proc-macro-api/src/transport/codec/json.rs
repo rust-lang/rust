@@ -3,14 +3,14 @@ use std::io::{self, BufRead, Write};
 
 use serde::{Serialize, de::DeserializeOwned};
 
-use crate::{codec::Codec, framing::Framing};
+use crate::{Codec, transport::framing::Framing};
 
 pub struct JsonProtocol;
 
 impl Framing for JsonProtocol {
     type Buf = String;
 
-    fn read<'a, R: BufRead>(
+    fn read<'a, R: BufRead + ?Sized>(
         inp: &mut R,
         buf: &'a mut String,
     ) -> io::Result<Option<&'a mut String>> {
@@ -35,7 +35,7 @@ impl Framing for JsonProtocol {
         }
     }
 
-    fn write<W: Write>(out: &mut W, buf: &String) -> io::Result<()> {
+    fn write<W: Write + ?Sized>(out: &mut W, buf: &String) -> io::Result<()> {
         tracing::debug!("> {}", buf);
         out.write_all(buf.as_bytes())?;
         out.write_all(b"\n")?;

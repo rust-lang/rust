@@ -1836,6 +1836,7 @@ dependencies = [
 name = "proc-macro-api"
 version = "0.0.0"
 dependencies = [
+ "base-db",
  "indexmap",
  "intern",
  "paths",
@@ -1856,6 +1857,7 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
+ "crossbeam-channel",
  "expect-test",
  "intern",
  "libc",
@@ -1874,6 +1876,7 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "crossbeam-channel",
  "postcard",
  "proc-macro-api",
  "proc-macro-srv",

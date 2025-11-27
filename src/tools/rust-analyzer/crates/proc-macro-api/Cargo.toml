@@ -19,6 +19,7 @@ serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing.workspace = true
 rustc-hash.workspace = true
 indexmap.workspace = true
+base-db.workspace = true
 
 # local deps
 paths = { workspace = true, features = ["serde1"] }

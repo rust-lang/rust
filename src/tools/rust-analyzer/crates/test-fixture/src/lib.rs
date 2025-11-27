@@ -732,6 +732,7 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -754,6 +755,7 @@ struct Issue18089ProcMacroExpander;
 impl ProcMacroExpander for Issue18089ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -789,6 +791,7 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         _: &TopSubtree,
         attrs: Option<&TopSubtree>,
         _: &Env,
@@ -812,6 +815,7 @@ struct Issue18840ProcMacroExpander;
 impl ProcMacroExpander for Issue18840ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         fn_: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -847,6 +851,7 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -885,6 +890,7 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -927,6 +933,7 @@ struct Issue17479ProcMacroExpander;
 impl ProcMacroExpander for Issue17479ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -956,6 +963,7 @@ struct Issue18898ProcMacroExpander;
 impl ProcMacroExpander for Issue18898ProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1011,6 +1019,7 @@ struct DisallowCfgProcMacroExpander;
 impl ProcMacroExpander for DisallowCfgProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1042,6 +1051,7 @@ struct GenerateSuffixedTypeProcMacroExpander;
 impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
     fn expand(
         &self,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _attrs: Option<&TopSubtree>,
         _env: &Env,

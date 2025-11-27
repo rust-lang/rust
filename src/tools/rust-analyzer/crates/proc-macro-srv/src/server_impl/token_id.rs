@@ -9,6 +9,7 @@ use intern::Symbol;
 use proc_macro::bridge::server;
 
 use crate::{
+    SubRequest, SubResponse,
     bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
     server_impl::literal_from_str,
 };
@@ -34,6 +35,8 @@ pub struct SpanIdServer {
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
+    pub cli_to_server: Option<crossbeam_channel::Receiver<SubResponse>>,
+    pub server_to_cli: Option<crossbeam_channel::Sender<SubRequest>>,
 }
 
 impl server::Types for SpanIdServer {
@@ -139,6 +142,7 @@ impl server::Span for SpanIdServer {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, _span: Self::Span) -> Option<String> {
+        // FIXME requires db, needs special handling wrt fixup spans
         None
     }
 

@@ -15,6 +15,7 @@ proc-macro-srv.workspace = true
 proc-macro-api.workspace = true
 tt.workspace = true
 postcard.workspace = true
+crossbeam-channel.workspace = true
 clap = {version = "4.5.42", default-features = false, features = ["std"]}
 
 [features]
