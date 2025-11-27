@@ -1523,9 +1523,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
+            let n = self.v.len().div_ceil(self.chunk_size);
             (n, Some(n))
         }
     }
@@ -1705,9 +1703,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
+            let n = self.v.len().div_ceil(self.chunk_size);
             (n, Some(n))
         }
     }
@@ -2347,9 +2343,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
+            let n = self.v.len().div_ceil(self.chunk_size);
             (n, Some(n))
         }
     }
@@ -2520,9 +2514,7 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
         if self.v.is_empty() {
             (0, Some(0))
         } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
+            let n = self.v.len().div_ceil(self.chunk_size);
             (n, Some(n))
         }
     }
