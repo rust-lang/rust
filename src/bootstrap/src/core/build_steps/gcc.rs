@@ -40,8 +40,7 @@ impl GccOutput {
         // However, at runtime, it will by default look for libgccjit.so.0.
         // So when we install the built libgccjit.so file to the target `directory`, we add it there
         // with the `.0` suffix.
-        let mut target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
-        target_filename.push_str(".0");
+        let target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
 
         // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
         // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
