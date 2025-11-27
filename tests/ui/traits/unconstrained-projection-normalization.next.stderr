@@ -1,9 +1,3 @@
-error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-projection-normalization.rs:13:6
-   |
-LL | impl<T: ?Sized> Every for Thing {
-   |      ^ unconstrained type parameter
-
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/unconstrained-projection-normalization.rs:15:18
    |
@@ -27,6 +21,12 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL |     type Assoc: ?Sized;
    |               ++++++++
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-projection-normalization.rs:13:6
+   |
+LL | impl<T: ?Sized> Every for Thing {
+   |      ^ unconstrained type parameter
 
 error: aborting due to 2 previous errors
 
