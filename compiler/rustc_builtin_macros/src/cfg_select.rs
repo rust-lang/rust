@@ -10,6 +10,7 @@ use crate::errors::{CfgSelectNoMatches, CfgSelectUnreachable};
 
 /// Selects the first arm whose predicate evaluates to true.
 fn select_arm(ecx: &ExtCtxt<'_>, branches: CfgSelectBranches) -> Option<(TokenStream, Span)> {
+    let mut result = None;
     for (cfg, tt, arm_span) in branches.reachable {
         if let EvalConfigResult::True = attr::eval_config_entry(
             &ecx.sess,
@@ -17,11 +18,13 @@ fn select_arm(ecx: &ExtCtxt<'_>, branches: CfgSelectBranches) -> Option<(TokenSt
             ecx.current_expansion.lint_node_id,
             ShouldEmit::ErrorsAndLints,
         ) {
-            return Some((tt, arm_span));
+            // FIXME(#149215) Ideally we should short-circuit here, but `eval_config_entry` currently emits lints so we cannot do this yet.
+            result.get_or_insert((tt, arm_span));
         }
     }
 
-    branches.wildcard.map(|(_, tt, span)| (tt, span))
+    let wildcard = branches.wildcard.map(|(_, tt, span)| (tt, span));
+    result.or(wildcard)
 }
 
 pub(super) fn expand_cfg_select<'cx>(
