@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use Determinacy::*;
 use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
@@ -56,7 +58,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Scope<'ra>,
             UsePrelude,
             SyntaxContext,
-        ) -> Option<T>,
+        ) -> ControlFlow<T>,
     ) -> Option<T> {
         // General principles:
         // 1. Not controlled (user-defined) names should have higher priority than controlled names
@@ -156,8 +158,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if visit {
                 let use_prelude = if use_prelude { UsePrelude::Yes } else { UsePrelude::No };
-                if let break_result @ Some(..) = visitor(&mut self, scope, use_prelude, ctxt) {
-                    return break_result;
+                if let ControlFlow::Break(break_result) =
+                    visitor(&mut self, scope, use_prelude, ctxt)
+                {
+                    return Some(break_result);
                 }
             }
 
@@ -536,7 +540,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 Ok((binding, Flags::MODULE | misc_flags))
                             }
                             Err((Determinacy::Undetermined, Weak::No)) => {
-                                return Some(Err(Determinacy::determined(force)));
+                                return ControlFlow::Break(Err(Determinacy::determined(force)));
                             }
                             Err((Determinacy::Undetermined, Weak::Yes)) => {
                                 Err(Determinacy::Undetermined)
@@ -641,7 +645,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 match result {
                     Ok((binding, flags)) => {
                         if !sub_namespace_match(binding.macro_kinds(), macro_kind) {
-                            return None;
+                            return ControlFlow::Continue(());
                         }
 
                         // Below we report various ambiguity errors.
@@ -649,7 +653,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
                         if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
-                            return Some(Ok(binding));
+                            return ControlFlow::Break(Ok(binding));
                         }
 
                         if let Some((innermost_binding, innermost_flags)) = innermost_result {
@@ -732,7 +736,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         misc1: misc(innermost_flags),
                                         misc2: misc(flags),
                                     });
-                                    return Some(Ok(innermost_binding));
+                                    return ControlFlow::Break(Ok(innermost_binding));
                                 }
                             }
                         } else {
@@ -744,7 +748,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
                 }
 
-                None
+                ControlFlow::Continue(())
             },
         );
 
