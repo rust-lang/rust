@@ -274,15 +274,20 @@ struct MiriBeRustCompilerCalls {
 impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
     #[allow(rustc::potential_query_instability)] // rustc_codegen_ssa (where this code is copied from) also allows this lint
     fn config(&mut self, config: &mut Config) {
-        if self.target_crate {
-            config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+        if !self.target_crate {
+            // For a host crate, we fully behave like rustc.
+            return;
         }
+        // For a target crate, we emit an rlib that Miri can later consume.
+        config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
 
-        if config.opts.prints.is_empty() && self.target_crate {
+        // Avoid warnings about unsupported crate types. However, only do that we we are *not* being
+        // queried by cargo about the supported crate types so that cargo still receives the
+        // warnings it expects.
+        if config.opts.prints.is_empty() {
             #[allow(rustc::bad_opt_access)] // tcx does not exist yet
             {
                 let any_crate_types = !config.opts.crate_types.is_empty();
-                // Avoid warnings about unsupported crate types.
                 config
                     .opts
                     .crate_types
@@ -293,66 +298,63 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                     assert!(!config.opts.crate_types.is_empty());
                 }
             }
-
-            // Queries overridden here affect the data stored in `rmeta` files of dependencies,
-            // which will be used later in non-`MIRI_BE_RUSTC` mode.
-            config.override_queries = Some(|_, local_providers| {
-                // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
-                // FIXME handle this somehow in rustc itself to avoid this hack.
-                local_providers.exported_non_generic_symbols = |tcx, LocalCrate| {
-                    let reachable_set = tcx.with_stable_hashing_context(|hcx| {
-                        tcx.reachable_set(()).to_sorted(&hcx, true)
-                    });
-                    tcx.arena.alloc_from_iter(
-                        // This is based on:
-                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
-                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
-                        reachable_set.into_iter().filter_map(|&local_def_id| {
-                            // Do the same filtering that rustc does:
-                            // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
-                            // Otherwise it may cause unexpected behaviours and ICEs
-                            // (https://github.com/rust-lang/rust/issues/86261).
-                            let is_reachable_non_generic = matches!(
-                                tcx.hir_node_by_def_id(local_def_id),
-                                Node::Item(&hir::Item {
-                                    kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn{ .. },
-                                    ..
-                                }) | Node::ImplItem(&hir::ImplItem {
-                                    kind: hir::ImplItemKind::Fn(..),
-                                    ..
-                                })
-                                if !tcx.generics_of(local_def_id).requires_monomorphization(tcx)
-                            );
-                            if !is_reachable_non_generic {
-                                return None;
-                            }
-                            let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
-                            if codegen_fn_attrs.contains_extern_indicator()
-                                || codegen_fn_attrs
-                                    .flags
-                                    .contains(CodegenFnAttrFlags::USED_COMPILER)
-                                || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-                            {
-                                Some((
-                                    ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
-                                    // Some dummy `SymbolExportInfo` here. We only use
-                                    // `exported_symbols` in shims/foreign_items.rs and the export info
-                                    // is ignored.
-                                    SymbolExportInfo {
-                                        level: SymbolExportLevel::C,
-                                        kind: SymbolExportKind::Text,
-                                        used: false,
-                                        rustc_std_internal_symbol: false,
-                                    },
-                                ))
-                            } else {
-                                None
-                            }
-                        }),
-                    )
-                }
-            });
         }
+
+        // Queries overridden here affect the data stored in `rmeta` files of dependencies,
+        // which will be used later in non-`MIRI_BE_RUSTC` mode.
+        config.override_queries = Some(|_, local_providers| {
+            // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
+            // FIXME handle this somehow in rustc itself to avoid this hack.
+            local_providers.exported_non_generic_symbols = |tcx, LocalCrate| {
+                let reachable_set = tcx
+                    .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
+                tcx.arena.alloc_from_iter(
+                    // This is based on:
+                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
+                    // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L174
+                    reachable_set.into_iter().filter_map(|&local_def_id| {
+                        // Do the same filtering that rustc does:
+                        // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L84-L102
+                        // Otherwise it may cause unexpected behaviours and ICEs
+                        // (https://github.com/rust-lang/rust/issues/86261).
+                        let is_reachable_non_generic = matches!(
+                            tcx.hir_node_by_def_id(local_def_id),
+                            Node::Item(&hir::Item {
+                                kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn{ .. },
+                                ..
+                            }) | Node::ImplItem(&hir::ImplItem {
+                                kind: hir::ImplItemKind::Fn(..),
+                                ..
+                            })
+                            if !tcx.generics_of(local_def_id).requires_monomorphization(tcx)
+                        );
+                        if !is_reachable_non_generic {
+                            return None;
+                        }
+                        let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
+                        if codegen_fn_attrs.contains_extern_indicator()
+                            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
+                            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+                        {
+                            Some((
+                                ExportedSymbol::NonGeneric(local_def_id.to_def_id()),
+                                // Some dummy `SymbolExportInfo` here. We only use
+                                // `exported_symbols` in shims/foreign_items.rs and the export info
+                                // is ignored.
+                                SymbolExportInfo {
+                                    level: SymbolExportLevel::C,
+                                    kind: SymbolExportKind::Text,
+                                    used: false,
+                                    rustc_std_internal_symbol: false,
+                                },
+                            ))
+                        } else {
+                            None
+                        }
+                    }),
+                )
+            }
+        });
     }
 
     fn after_analysis<'tcx>(
