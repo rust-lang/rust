@@ -1,7 +1,7 @@
 error[E0131]: `main` function is not allowed to have generic parameters
-  --> $DIR/issue-51022.rs:1:8
+  --> $DIR/main-with-lifetime-param.rs:3:8
    |
-LL | fn main<'a>() { }
+LL | fn main<'a>() {}
    |        ^^^^ `main` cannot have generic parameters
 
 error: aborting due to 1 previous error
