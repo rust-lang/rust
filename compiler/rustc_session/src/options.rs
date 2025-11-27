@@ -12,7 +12,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Encodable};
 use rustc_span::edition::Edition;
-use rustc_span::{RealFileName, SourceFileHashAlgorithm};
+use rustc_span::{RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility,
