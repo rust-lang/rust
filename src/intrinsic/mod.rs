@@ -1160,14 +1160,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let res = func.new_local(self.location, result_type, "saturating_sum");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
-                let func_name = match width {
-                    8 => "__builtin_add_overflow",
-                    16 => "__builtin_add_overflow",
-                    32 => "__builtin_sadd_overflow",
-                    64 => "__builtin_saddll_overflow",
-                    128 => "__builtin_add_overflow",
-                    _ => unreachable!(),
-                };
+                let func_name = "__builtin_add_overflow";
                 let overflow_func = self.context.get_builtin_function(func_name);
                 self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(self.location)], None)
             } else {
@@ -1231,14 +1224,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let res = func.new_local(self.location, result_type, "saturating_diff");
             let supports_native_type = self.is_native_int_type(result_type);
             let overflow = if supports_native_type {
-                let func_name = match width {
-                    8 => "__builtin_sub_overflow",
-                    16 => "__builtin_sub_overflow",
-                    32 => "__builtin_ssub_overflow",
-                    64 => "__builtin_ssubll_overflow",
-                    128 => "__builtin_sub_overflow",
-                    _ => unreachable!(),
-                };
+                let func_name = "__builtin_sub_overflow";
                 let overflow_func = self.context.get_builtin_function(func_name);
                 self.overflow_call(overflow_func, &[lhs, rhs, res.get_address(self.location)], None)
             } else {
