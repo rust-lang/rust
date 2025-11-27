@@ -2,7 +2,7 @@
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
-// gdb-command:run
+//@ gdb-command:run
 
 // Test whether compiling a recursive enum definition crashes debug info generation. The test case
 // is taken from issue #11083 and #135093.

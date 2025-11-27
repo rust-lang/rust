@@ -243,6 +243,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
                 "fp16" => Some(LLVMFeature::new("fullfp16")),
                 // Filter out features that are not supported by the current LLVM version
                 "fpmr" => None, // only existed in 18
+                // Withdrawn by ARM; removed from LLVM in 22
+                "tme" if major >= 22 => None,
                 s => Some(LLVMFeature::new(s)),
             }
         }
@@ -626,6 +628,10 @@ pub(crate) fn target_cpu(sess: &Session) -> &str {
 
 /// The target features for compiler flags other than `-Ctarget-features`.
 fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
+    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
+        features.push("+exception-handling".into());
+    }
+
     target_features::retpoline_features_by_flags(sess, features);
 
     // -Zfixed-x18
@@ -691,36 +697,35 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
         Some(_) | None => {}
     };
 
-    // Features implied by an implicit or explicit `--target`.
-    features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
+    let mut extend_backend_features = |feature: &str, enable: bool| {
+        let enable_disable = if enable { '+' } else { '-' };
+        // We run through `to_llvm_features` when
+        // passing requests down to LLVM. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the LLVM name and the Rust name differ.
+        let Some(llvm_feature) = to_llvm_features(sess, feature) else { return };
 
-    if wants_wasm_eh(sess) && sess.panic_strategy() == PanicStrategy::Unwind {
-        features.push("+exception-handling".into());
-    }
+        features.extend(
+            std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name)).chain(
+                llvm_feature.dependencies.into_iter().filter_map(move |feat| {
+                    match (enable, feat) {
+                        (_, TargetFeatureFoldStrength::Both(f))
+                        | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {
+                            Some(format!("{enable_disable}{f}"))
+                        }
+                        _ => None,
+                    }
+                }),
+            ),
+        );
+    };
+
+    // Features implied by an implicit or explicit `--target`.
+    target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
 
     // -Ctarget-features
     if !only_base_features {
-        target_features::flag_to_backend_features(sess, |feature, enable| {
-            let enable_disable = if enable { '+' } else { '-' };
-            // We run through `to_llvm_features` when
-            // passing requests down to LLVM. This means that all in-language
-            // features also work on the command line instead of having two
-            // different names when the LLVM name and the Rust name differ.
-            let Some(llvm_feature) = to_llvm_features(sess, feature) else { return };
-
-            features.extend(
-                std::iter::once(format!("{}{}", enable_disable, llvm_feature.llvm_feature_name))
-                    .chain(llvm_feature.dependencies.into_iter().filter_map(move |feat| {
-                        match (enable, feat) {
-                            (_, TargetFeatureFoldStrength::Both(f))
-                            | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {
-                                Some(format!("{enable_disable}{f}"))
-                            }
-                            _ => None,
-                        }
-                    })),
-            )
-        });
+        target_features::flag_to_backend_features(sess, extend_backend_features);
     }
 
     // We add this in the "base target" so that these show up in `sess.unstable_target_features`.

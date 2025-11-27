@@ -1436,6 +1436,39 @@ extern "C" void LLVMRustPositionAfter(LLVMBuilderRef B, LLVMValueRef Instr) {
   }
 }
 
+extern "C" LLVMValueRef LLVMRustGetInsertPoint(LLVMBuilderRef B) {
+  llvm::IRBuilderBase &IRB = *unwrap(B);
+
+  llvm::IRBuilderBase::InsertPoint ip = IRB.saveIP();
+  llvm::BasicBlock *BB = ip.getBlock();
+
+  if (!BB)
+    return nullptr;
+
+  auto it = ip.getPoint();
+
+  if (it == BB->end())
+    return nullptr;
+
+  llvm::Instruction *I = &*it;
+  return wrap(I);
+}
+
+extern "C" void LLVMRustRestoreInsertPoint(LLVMBuilderRef B,
+                                           LLVMValueRef Instr) {
+  llvm::IRBuilderBase &IRB = *unwrap(B);
+
+  if (!Instr) {
+    llvm::BasicBlock *BB = IRB.GetInsertBlock();
+    if (BB)
+      IRB.SetInsertPoint(BB);
+    return;
+  }
+
+  llvm::Instruction *I = unwrap<llvm::Instruction>(Instr);
+  IRB.SetInsertPoint(I);
+}
+
 extern "C" LLVMValueRef
 LLVMRustGetFunctionCall(LLVMValueRef Fn, const char *Name, size_t NameLen) {
   auto targetName = StringRef(Name, NameLen);

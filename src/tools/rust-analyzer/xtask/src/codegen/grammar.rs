@@ -706,7 +706,23 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         }
     };
 
-    add_preamble(crate::flags::CodegenType::Grammar, reformat(ast.to_string()))
+    let result = add_preamble(crate::flags::CodegenType::Grammar, reformat(ast.to_string()));
+
+    if let Some(start) = result.find("macro_rules ! T_")
+        && let Some(macro_end) = result[start..].find("\nimpl ::core::marker::Copy")
+    {
+        let macro_section = &result[start..start + macro_end];
+        let formatted_macro = macro_section
+            .replace("T_ { [", "T_ {\n    [")
+            .replace(" ; [", ";\n    [")
+            .replace(" ; }", ";\n}")
+            .trim_end()
+            .to_owned()
+            + "\n";
+        return result.replace(macro_section, &formatted_macro);
+    }
+
+    result
 }
 
 fn to_upper_snake_case(s: &str) -> String {

@@ -8,7 +8,6 @@ use std::{iter, ops::Not};
 use either::Either;
 use hir::{
     DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
-    db::DefDatabase,
 };
 use ide_db::{
     FileRange, FxIndexSet, MiniCore, Ranker, RootDatabase,
@@ -522,9 +521,8 @@ fn notable_traits<'db>(
         return Vec::new();
     }
 
-    db.notable_traits_in_deps(ty.krate(db).into())
-        .iter()
-        .flat_map(|it| &**it)
+    ty.krate(db)
+        .notable_traits_in_deps(db)
         .filter_map(move |&trait_| {
             let trait_ = trait_.into();
             ty.impls_trait(db, trait_, &[]).then(|| {

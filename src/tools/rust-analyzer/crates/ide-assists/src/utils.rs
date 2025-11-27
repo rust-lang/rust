@@ -1080,6 +1080,18 @@ fn test_string_prefix() {
     assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
 }
 
+pub(crate) fn add_group_separators(s: &str, group_size: usize) -> String {
+    let mut chars = Vec::new();
+    for (i, ch) in s.chars().filter(|&ch| ch != '_').rev().enumerate() {
+        if i > 0 && i % group_size == 0 && ch != '-' {
+            chars.push('_');
+        }
+        chars.push(ch);
+    }
+
+    chars.into_iter().rev().collect()
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
@@ -1161,6 +1173,15 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
         }
         expr = rest?;
     }
+}
+
+pub(crate) fn is_selected(
+    it: &impl AstNode,
+    selection: syntax::TextRange,
+    allow_empty: bool,
+) -> bool {
+    selection.intersect(it.syntax().text_range()).is_some_and(|it| !it.is_empty())
+        || allow_empty && it.syntax().text_range().contains_range(selection)
 }
 
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {

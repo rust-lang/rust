@@ -9,10 +9,10 @@ extern crate rustc_driver as _;
 
 mod version;
 
-#[cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#[cfg(feature = "sysroot-abi")]
 mod main_loop;
 use clap::{Command, ValueEnum};
-#[cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#[cfg(feature = "sysroot-abi")]
 use main_loop::run;
 
 fn main() -> std::io::Result<()> {
@@ -77,7 +77,7 @@ impl ValueEnum for ProtocolFormat {
     }
 }
 
-#[cfg(not(any(feature = "sysroot-abi", rust_analyzer)))]
+#[cfg(not(feature = "sysroot-abi"))]
 fn run(_: ProtocolFormat) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,

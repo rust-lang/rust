@@ -49,4 +49,25 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn dyn_super_trait_assoc_type() {
+        check_diagnostics(
+            r#"
+//- minicore: future, send
+
+use core::{future::Future, marker::Send, pin::Pin};
+
+trait FusedFuture: Future {
+    fn is_terminated(&self) -> bool;
+}
+
+struct Box<T: ?Sized>(*const T);
+
+fn main() {
+    let _fut: Pin<Box<dyn FusedFuture<Output = ()> + Send>> = loop {};
+}
+"#,
+        );
+    }
 }

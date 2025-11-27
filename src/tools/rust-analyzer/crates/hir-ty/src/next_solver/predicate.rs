@@ -13,7 +13,7 @@ use rustc_type_ir::{
 };
 use smallvec::SmallVec;
 
-use crate::next_solver::{InternedWrapperNoDebug, TraitIdWrapper};
+use crate::next_solver::{GenericArg, InternedWrapperNoDebug, TraitIdWrapper};
 
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty, interned_vec_db};
 
@@ -43,6 +43,7 @@ pub type PolyProjectionPredicate<'db> = Binder<'db, ProjectionPredicate<'db>>;
 pub type PolyTraitRef<'db> = Binder<'db, TraitRef<'db>>;
 pub type PolyExistentialTraitRef<'db> = Binder<'db, ExistentialTraitRef<'db>>;
 pub type PolyExistentialProjection<'db> = Binder<'db, ExistentialProjection<'db>>;
+pub type ArgOutlivesPredicate<'db> = OutlivesPredicate<'db, GenericArg<'db>>;
 
 /// Compares via an ordering that will not change if modules are reordered or other changes are
 /// made to the tree. In particular, this ordering is preserved across incremental compilations.

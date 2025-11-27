@@ -802,6 +802,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
+            check_diagnostic_attrs(tcx, def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
                 res = res.and(
@@ -824,7 +825,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             tcx.ensure_ok().associated_items(def_id);
             let assoc_items = tcx.associated_items(def_id);
-            check_on_unimplemented(tcx, def_id);
+            check_diagnostic_attrs(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
@@ -1112,7 +1113,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
     })
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(super) fn check_diagnostic_attrs(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // an error would be reported if this fails.
     let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
 }

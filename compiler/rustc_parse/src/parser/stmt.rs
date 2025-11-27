@@ -867,7 +867,7 @@ impl<'a> Parser<'a> {
         if let_else || !if_let {
             err.span_suggestion_verbose(
                 block_span.shrink_to_lo(),
-                format!("{alternatively}you might have meant to use `let else`"),
+                format!("{alternatively}you might have meant to use `let...else`"),
                 "else ".to_string(),
                 if let_else {
                     Applicability::MachineApplicable

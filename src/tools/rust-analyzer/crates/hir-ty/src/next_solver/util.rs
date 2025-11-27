@@ -1,39 +1,30 @@
 //! Various utilities for the next-trait-solver.
 
-use std::{
-    iter,
-    ops::{self, ControlFlow},
-};
+use std::ops::ControlFlow;
 
-use base_db::Crate;
-use hir_def::{BlockId, HasModule, lang_item::LangItem};
-use la_arena::Idx;
+use hir_def::TraitId;
 use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
 use rustc_type_ir::{
     ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, INNERMOST, IntTy, Interner,
     PredicatePolarity, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex,
-    inherent::{
-        AdtDef, GenericArg as _, GenericArgs as _, IntoKind, ParamEnv as _, SliceLike, Ty as _,
-    },
+    TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex, elaborate,
+    inherent::{AdtDef, GenericArg as _, IntoKind, ParamEnv as _, SliceLike, Ty as _},
     lang_items::SolverTraitLangItem,
     solve::SizedTraitKind,
 };
 
-use crate::{
-    db::HirDatabase,
-    lower::{LifetimeElisionKind, TyLoweringContext},
-    method_resolution::{TraitImpls, TyFingerprint},
-    next_solver::{
-        BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
-        infer::InferCtxt,
+use crate::next_solver::{
+    BoundConst, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
+    PolyTraitRef,
+    infer::{
+        InferCtxt,
+        traits::{Obligation, ObligationCause, PredicateObligation},
     },
 };
 
 use super::{
-    Binder, BoundRegion, BoundTy, Clause, ClauseKind, Clauses, Const, DbInterner, EarlyBinder,
-    GenericArgs, Predicate, PredicateKind, Region, SolverDefId, TraitPredicate, TraitRef, Ty,
-    TyKind,
+    Binder, BoundRegion, BoundTy, Clause, ClauseKind, Const, DbInterner, EarlyBinder, GenericArgs,
+    Predicate, PredicateKind, Region, SolverDefId, Ty, TyKind,
     fold::{BoundVarReplacer, FnMutDelegate},
 };
 
@@ -388,54 +379,6 @@ where
     }
 }
 
-pub(crate) fn for_trait_impls(
-    db: &dyn HirDatabase,
-    krate: Crate,
-    block: Option<BlockId>,
-    trait_id: hir_def::TraitId,
-    self_ty_fp: Option<TyFingerprint>,
-    mut f: impl FnMut(&TraitImpls) -> ControlFlow<()>,
-) -> ControlFlow<()> {
-    // Note: Since we're using `impls_for_trait` and `impl_provided_for`,
-    // only impls where the trait can be resolved should ever reach Chalk.
-    // `impl_datum` relies on that and will panic if the trait can't be resolved.
-    let in_self_and_deps = db.trait_impls_in_deps(krate);
-    let trait_module = trait_id.module(db);
-    let type_module = match self_ty_fp {
-        Some(TyFingerprint::Adt(adt_id)) => Some(adt_id.module(db)),
-        Some(TyFingerprint::ForeignType(type_id)) => Some(type_id.module(db)),
-        Some(TyFingerprint::Dyn(trait_id)) => Some(trait_id.module(db)),
-        _ => None,
-    };
-
-    let mut def_blocks =
-        [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())];
-
-    let block_impls = iter::successors(block, |&block_id| {
-        cov_mark::hit!(block_local_impls);
-        block_id.loc(db).module.containing_block()
-    })
-    .inspect(|&block_id| {
-        // make sure we don't search the same block twice
-        def_blocks.iter_mut().for_each(|block| {
-            if *block == Some(block_id) {
-                *block = None;
-            }
-        });
-    })
-    .filter_map(|block_id| db.trait_impls_in_block(block_id));
-    for it in in_self_and_deps.iter().map(ops::Deref::deref) {
-        f(it)?;
-    }
-    for it in block_impls {
-        f(&it)?;
-    }
-    for it in def_blocks.into_iter().flatten().filter_map(|it| db.trait_impls_in_block(it)) {
-        f(&it)?;
-    }
-    ControlFlow::Continue(())
-}
-
 // FIXME(next-trait-solver): uplift
 pub fn sizedness_constraint_for_ty<'db>(
     interner: DbInterner<'db>,
@@ -507,79 +450,14 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
 pub fn explicit_item_bounds<'db>(
     interner: DbInterner<'db>,
     def_id: SolverDefId,
-) -> EarlyBinder<'db, Clauses<'db>> {
+) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
     let db = interner.db();
-    match def_id {
-        SolverDefId::TypeAliasId(type_alias) => {
-            // Lower bounds -- we could/should maybe move this to a separate query in `lower`
-            let type_alias_data = db.type_alias_signature(type_alias);
-            let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
-            let mut ctx = TyLoweringContext::new(
-                db,
-                &resolver,
-                &type_alias_data.store,
-                type_alias.into(),
-                LifetimeElisionKind::AnonymousReportError,
-            );
-
-            let item_args = GenericArgs::identity_for_item(interner, def_id);
-            let interner_ty = Ty::new_projection_from_args(interner, def_id, item_args);
-
-            let mut bounds = Vec::new();
-            for bound in &type_alias_data.bounds {
-                ctx.lower_type_bound(bound, interner_ty, false).for_each(|pred| {
-                    bounds.push(pred);
-                });
-            }
-
-            if !ctx.unsized_types.contains(&interner_ty) {
-                let sized_trait = LangItem::Sized
-                    .resolve_trait(ctx.db, interner.krate.expect("Must have interner.krate"));
-                let sized_bound = sized_trait.map(|trait_id| {
-                    let trait_ref = TraitRef::new_from_args(
-                        interner,
-                        trait_id.into(),
-                        GenericArgs::new_from_iter(interner, [interner_ty.into()]),
-                    );
-                    Clause(Predicate::new(
-                        interner,
-                        Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                            rustc_type_ir::ClauseKind::Trait(TraitPredicate {
-                                trait_ref,
-                                polarity: rustc_type_ir::PredicatePolarity::Positive,
-                            }),
-                        )),
-                    ))
-                });
-                bounds.extend(sized_bound);
-                bounds.shrink_to_fit();
-            }
-
-            rustc_type_ir::EarlyBinder::bind(Clauses::new_from_iter(interner, bounds))
-        }
-        SolverDefId::InternedOpaqueTyId(id) => {
-            let full_id = db.lookup_intern_impl_trait_id(id);
-            match full_id {
-                crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                    let datas = db
-                        .return_type_impl_traits(func)
-                        .expect("impl trait id without impl traits");
-                    let datas = (*datas).as_ref().skip_binder();
-                    let data = &datas.impl_traits[Idx::from_raw(idx.into_raw())];
-                    EarlyBinder::bind(Clauses::new_from_iter(interner, data.predicates.clone()))
-                }
-                crate::ImplTraitId::TypeAliasImplTrait(alias, idx) => {
-                    let datas = db
-                        .type_alias_impl_traits(alias)
-                        .expect("impl trait id without impl traits");
-                    let datas = (*datas).as_ref().skip_binder();
-                    let data = &datas.impl_traits[Idx::from_raw(idx.into_raw())];
-                    EarlyBinder::bind(Clauses::new_from_iter(interner, data.predicates.clone()))
-                }
-            }
-        }
+    let clauses = match def_id {
+        SolverDefId::TypeAliasId(type_alias) => crate::lower::type_alias_bounds(db, type_alias),
+        SolverDefId::InternedOpaqueTyId(id) => id.predicates(db),
         _ => panic!("Unexpected GenericDefId"),
-    }
+    };
+    clauses.map_bound(|clauses| clauses.iter().copied())
 }
 
 pub struct ContainsTypeErrors;
@@ -791,4 +669,35 @@ pub fn sizedness_fast_path<'db>(
     }
 
     false
+}
+
+/// Casts a trait reference into a reference to one of its super
+/// traits; returns `None` if `target_trait_def_id` is not a
+/// supertrait.
+pub(crate) fn upcast_choices<'db>(
+    interner: DbInterner<'db>,
+    source_trait_ref: PolyTraitRef<'db>,
+    target_trait_def_id: TraitId,
+) -> Vec<PolyTraitRef<'db>> {
+    if source_trait_ref.def_id().0 == target_trait_def_id {
+        return vec![source_trait_ref]; // Shortcut the most common case.
+    }
+
+    elaborate::supertraits(interner, source_trait_ref)
+        .filter(|r| r.def_id().0 == target_trait_def_id)
+        .collect()
+}
+
+#[inline]
+pub(crate) fn clauses_as_obligations<'db>(
+    clauses: impl IntoIterator<Item = Clause<'db>>,
+    cause: ObligationCause,
+    param_env: ParamEnv<'db>,
+) -> impl Iterator<Item = PredicateObligation<'db>> {
+    clauses.into_iter().map(move |clause| Obligation {
+        cause: cause.clone(),
+        param_env,
+        predicate: clause.as_predicate(),
+        recursion_depth: 0,
+    })
 }

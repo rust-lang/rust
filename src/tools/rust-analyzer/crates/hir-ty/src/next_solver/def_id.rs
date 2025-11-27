@@ -1,8 +1,9 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, CallableDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GeneralConstId, GenericDefId, ImplId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AttrDefId, CallableDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GeneralConstId, GenericDefId, HasModule, ImplId, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, UnionId, db::DefDatabase,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -154,6 +155,28 @@ impl From<DefWithBodyId> for SolverDefId {
     }
 }
 
+impl TryFrom<SolverDefId> for AttrDefId {
+    type Error = ();
+    #[inline]
+    fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+        match value {
+            SolverDefId::AdtId(it) => Ok(it.into()),
+            SolverDefId::ConstId(it) => Ok(it.into()),
+            SolverDefId::FunctionId(it) => Ok(it.into()),
+            SolverDefId::ImplId(it) => Ok(it.into()),
+            SolverDefId::StaticId(it) => Ok(it.into()),
+            SolverDefId::TraitId(it) => Ok(it.into()),
+            SolverDefId::TypeAliasId(it) => Ok(it.into()),
+            SolverDefId::EnumVariantId(it) => Ok(it.into()),
+            SolverDefId::Ctor(Ctor::Struct(it)) => Ok(it.into()),
+            SolverDefId::Ctor(Ctor::Enum(it)) => Ok(it.into()),
+            SolverDefId::InternedClosureId(_)
+            | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedOpaqueTyId(_) => Err(()),
+        }
+    }
+}
+
 impl TryFrom<SolverDefId> for DefWithBodyId {
     type Error = ();
 
@@ -214,6 +237,28 @@ impl SolverDefId {
         match self {
             SolverDefId::TypeAliasId(it) => it,
             _ => panic!("expected type alias, found {self:?}"),
+        }
+    }
+}
+
+impl HasModule for SolverDefId {
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        match *self {
+            SolverDefId::AdtId(id) => id.module(db),
+            SolverDefId::ConstId(id) => id.module(db),
+            SolverDefId::FunctionId(id) => id.module(db),
+            SolverDefId::ImplId(id) => id.module(db),
+            SolverDefId::StaticId(id) => id.module(db),
+            SolverDefId::TraitId(id) => id.module(db),
+            SolverDefId::TypeAliasId(id) => id.module(db),
+            SolverDefId::InternedClosureId(id) => id.loc(db).0.module(db),
+            SolverDefId::InternedCoroutineId(id) => id.loc(db).0.module(db),
+            SolverDefId::InternedOpaqueTyId(id) => match id.loc(db) {
+                crate::ImplTraitId::ReturnTypeImplTrait(owner, _) => owner.module(db),
+                crate::ImplTraitId::TypeAliasImplTrait(owner, _) => owner.module(db),
+            },
+            SolverDefId::Ctor(Ctor::Enum(id)) | SolverDefId::EnumVariantId(id) => id.module(db),
+            SolverDefId::Ctor(Ctor::Struct(id)) => id.module(db),
         }
     }
 }
@@ -288,6 +333,55 @@ declare_id_wrapper!(ClosureIdWrapper, InternedClosureId);
 declare_id_wrapper!(CoroutineIdWrapper, InternedCoroutineId);
 declare_id_wrapper!(AdtIdWrapper, AdtId);
 declare_id_wrapper!(ImplIdWrapper, ImplId);
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GeneralConstIdWrapper(pub GeneralConstId);
+
+impl std::fmt::Debug for GeneralConstIdWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+impl From<GeneralConstIdWrapper> for GeneralConstId {
+    #[inline]
+    fn from(value: GeneralConstIdWrapper) -> GeneralConstId {
+        value.0
+    }
+}
+impl From<GeneralConstId> for GeneralConstIdWrapper {
+    #[inline]
+    fn from(value: GeneralConstId) -> GeneralConstIdWrapper {
+        Self(value)
+    }
+}
+impl From<GeneralConstIdWrapper> for SolverDefId {
+    #[inline]
+    fn from(value: GeneralConstIdWrapper) -> SolverDefId {
+        match value.0 {
+            GeneralConstId::ConstId(id) => SolverDefId::ConstId(id),
+            GeneralConstId::StaticId(id) => SolverDefId::StaticId(id),
+        }
+    }
+}
+impl TryFrom<SolverDefId> for GeneralConstIdWrapper {
+    type Error = ();
+    #[inline]
+    fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+        match value {
+            SolverDefId::ConstId(it) => Ok(Self(it.into())),
+            SolverDefId::StaticId(it) => Ok(Self(it.into())),
+            _ => Err(()),
+        }
+    }
+}
+impl<'db> inherent::DefId<DbInterner<'db>> for GeneralConstIdWrapper {
+    fn as_local(self) -> Option<SolverDefId> {
+        Some(self.into())
+    }
+    fn is_local(self) -> bool {
+        true
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CallableIdWrapper(pub CallableDefId);

@@ -287,7 +287,31 @@ fn compute_symbol_name<'tcx>(
             export::compute_hash_of_export_fn(tcx, instance)
         ),
         false => match mangling_version {
-            SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
+            SymbolManglingVersion::Legacy => {
+                let mangled_name = legacy::mangle(tcx, instance, instantiating_crate);
+
+                let mangled_name_too_long = {
+                    // The PDB debug info format cannot store mangled symbol names for which its
+                    // internal record exceeds u16::MAX bytes, a limit multiple Rust projects have been
+                    // hitting due to the verbosity of legacy name mangling. Depending on the linker version
+                    // in use, such symbol names can lead to linker crashes or incomprehensible linker error
+                    // about a limit being hit.
+                    // Mangle those symbols with v0 mangling instead, which gives us more room to breathe
+                    // as v0 mangling is more compact.
+                    // Empirical testing has shown the limit for the symbol name to be 65521 bytes; use
+                    // 65000 bytes to leave some room for prefixes / suffixes as well as unknown scenarios
+                    // with a different limit.
+                    const MAX_SYMBOL_LENGTH: usize = 65000;
+
+                    tcx.sess.target.uses_pdb_debuginfo() && mangled_name.len() > MAX_SYMBOL_LENGTH
+                };
+
+                if mangled_name_too_long {
+                    v0::mangle(tcx, instance, instantiating_crate, false)
+                } else {
+                    mangled_name
+                }
+            }
             SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
             SymbolManglingVersion::Hashed => {
                 hashed::mangle(tcx, instance, instantiating_crate, || {

@@ -544,7 +544,7 @@ fn main() {
 fn for_loop() {
     check_pass(
         r#"
-//- minicore: iterator, add
+//- minicore: iterator, add, builtin_impls
 fn should_not_reach() {
     _ // FIXME: replace this function with panic when that works
 }
@@ -706,7 +706,7 @@ fn main() {
 fn closure_state() {
     check_pass(
         r#"
-//- minicore: fn, add, copy
+//- minicore: fn, add, copy, builtin_impls
 fn should_not_reach() {
     _ // FIXME: replace this function with panic when that works
 }

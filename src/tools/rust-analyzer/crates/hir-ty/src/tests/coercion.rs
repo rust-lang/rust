@@ -49,7 +49,7 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
-                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not)), Pointer(Unsize)
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
                          // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
@@ -88,6 +88,47 @@ fn test(a: A<[u8; 2]>, b: B<[u8; 2]>, c: C<[u8; 2]>) {
 }
 
 #[test]
+fn unsized_from_keeps_type_info() {
+    check_types(
+        r#"
+//- minicore: coerce_unsized, from
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct MyBox<T: ?Sized> {
+    ptr: *const T,
+}
+
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<MyBox<U>> for MyBox<T> {}
+
+struct MyRc<T: ?Sized> {
+    ptr: *const T,
+}
+
+impl<T: ?Sized> core::convert::From<MyBox<T>> for MyRc<T> {
+    fn from(_: MyBox<T>) -> MyRc<T> {
+        loop {}
+    }
+}
+
+fn make_box() -> MyBox<[i32; 2]> {
+    loop {}
+}
+
+fn take<T: ?Sized>(value: MyRc<T>) -> MyRc<T> {
+    value
+}
+
+fn test() {
+    let boxed: MyBox<[i32]> = make_box();
+    let rc = MyRc::from(boxed);
+      //^^ MyRc<[i32]>
+    let _: MyRc<[i32]> = take(rc);
+}
+"#,
+    );
+}
+
+#[test]
 fn if_coerce() {
     check_no_mismatches(
         r#"
@@ -96,7 +137,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +189,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -268,7 +309,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{region error}, Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
 }
 "#,
     );
@@ -833,11 +874,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 }
         "#,
     );
@@ -854,8 +895,8 @@ impl core::cmp::PartialEq for Struct {
 }
 fn test() {
     Struct == Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
-           // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
+           // ^^^^^^ adjustments: Borrow(Ref(Not))
 }",
     );
 }
@@ -871,7 +912,7 @@ impl core::ops::AddAssign for Struct {
 }
 fn test() {
     Struct += Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Mut))
+ // ^^^^^^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: Yes }))
            // ^^^^^^ adjustments:
 }",
     );
@@ -885,7 +926,7 @@ fn adjust_index() {
 fn test() {
     let x = [1, 2, 3];
     x[2] = 6;
- // ^ adjustments: Borrow(Ref('?0, Mut))
+ // ^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: No }))
 }
     ",
     );
@@ -910,11 +951,11 @@ impl core::ops::IndexMut<usize> for StructMut {
 }
 fn test() {
     Struct[0];
- // ^^^^^^ adjustments: Borrow(Ref('?0, Not))
+ // ^^^^^^ adjustments: Borrow(Ref(Not))
     StructMut[0];
- // ^^^^^^^^^ adjustments: Borrow(Ref('?1, Not))
+ // ^^^^^^^^^ adjustments: Borrow(Ref(Not))
     &mut StructMut[0];
-      // ^^^^^^^^^ adjustments: Borrow(Ref('?2, Mut))
+      // ^^^^^^^^^ adjustments: Borrow(Ref(Mut { allow_two_phase_borrow: No }))
 }",
     );
 }

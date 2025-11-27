@@ -1511,3 +1511,45 @@ fn main() {
         false,
     );
 }
+
+#[test]
+fn test_deprecated_highlighting() {
+    check_highlighting(
+        r#"
+//- /foo.rs crate:foo deps:bar
+#![deprecated]
+use crate as _;
+extern crate bar;
+#[deprecated]
+macro_rules! macro_ {
+    () => {};
+}
+#[deprecated]
+mod mod_ {}
+#[deprecated]
+fn func() {}
+#[deprecated]
+struct Struct {
+    #[deprecated]
+    field: u32
+}
+#[deprecated]
+enum Enum {
+    #[deprecated]
+    Variant
+}
+#[deprecated]
+const CONST: () = ();
+#[deprecated]
+trait Trait {}
+#[deprecated]
+type Alias = ();
+#[deprecated]
+static STATIC: () = ();
+//- /bar.rs crate:bar
+#![deprecated]
+        "#,
+        expect_file!["./test_data/highlight_deprecated.html"],
+        false,
+    );
+}

@@ -2348,21 +2348,9 @@ fn run_rustfmt(
     let file_id = try_default!(from_proto::file_id(snap, &text_document.uri)?);
     let file = snap.analysis.file_text(file_id)?;
 
-    // Determine the edition of the crate the file belongs to (if there's multiple, we pick the
-    // highest edition).
-    let Ok(editions) = snap
-        .analysis
-        .relevant_crates_for(file_id)?
-        .into_iter()
-        .map(|crate_id| snap.analysis.crate_edition(crate_id))
-        .collect::<Result<Vec<_>, _>>()
-    else {
-        return Ok(None);
-    };
-    let edition = editions.iter().copied().max();
-
     let line_index = snap.file_line_index(file_id)?;
     let source_root_id = snap.analysis.source_root_id(file_id).ok();
+    let crates = snap.analysis.relevant_crates_for(file_id)?;
 
     // try to chdir to the file so we can respect `rustfmt.toml`
     // FIXME: use `rustfmt --config-path` once
@@ -2383,6 +2371,17 @@ fn run_rustfmt(
 
     let mut command = match snap.config.rustfmt(source_root_id) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
+            // Determine the edition of the crate the file belongs to (if there's multiple, we pick the
+            // highest edition).
+            let Ok(editions) = crates
+                .iter()
+                .map(|&crate_id| snap.analysis.crate_edition(crate_id))
+                .collect::<Result<Vec<_>, _>>()
+            else {
+                return Ok(None);
+            };
+            let edition = editions.iter().copied().max();
+
             // FIXME: Set RUSTUP_TOOLCHAIN
             let mut cmd = toolchain::command(
                 toolchain::Tool::Rustfmt.path(),
@@ -2429,7 +2428,8 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = Utf8PathBuf::from(&command);
-            let target_spec = TargetSpec::for_file(snap, file_id)?;
+            let target_spec =
+                crates.first().and_then(|&crate_id| snap.target_spec_for_file(file_id, crate_id));
             let extra_env = snap.config.extra_env(source_root_id);
             let mut cmd = match target_spec {
                 Some(TargetSpec::Cargo(_)) => {

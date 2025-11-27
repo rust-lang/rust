@@ -144,6 +144,13 @@ impl AssertLintKind {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(mir_transform_asm_unwind_call)]
+pub(crate) struct AsmUnwindCall {
+    #[label(mir_transform_asm_unwind_call)]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(mir_transform_ffi_unwind_call)]
 pub(crate) struct FfiUnwindCall {
     #[label(mir_transform_ffi_unwind_call)]

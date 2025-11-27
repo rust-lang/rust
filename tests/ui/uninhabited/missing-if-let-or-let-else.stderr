@@ -15,7 +15,7 @@ error: expected one of `.`, `;`, `?`, `else`, or an operator, found `{`
 LL |     let Some(x) = foo() {
    |                         ^ expected one of `.`, `;`, `?`, `else`, or an operator
    |
-help: you might have meant to use `let else`
+help: you might have meant to use `let...else`
    |
 LL |     let Some(x) = foo() else {
    |                         ++++
@@ -30,7 +30,7 @@ help: you might have meant to use `if let`
    |
 LL |     if let Some(x) = foo() {
    |     ++
-help: alternatively, you might have meant to use `let else`
+help: alternatively, you might have meant to use `let...else`
    |
 LL |     let Some(x) = foo() else {
    |                         ++++

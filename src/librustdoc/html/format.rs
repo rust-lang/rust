@@ -1252,9 +1252,9 @@ struct Indent(usize);
 
 impl Display for Indent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (0..self.0).for_each(|_| {
-            f.write_char(' ').unwrap();
-        });
+        for _ in 0..self.0 {
+            f.write_char(' ')?;
+        }
         Ok(())
     }
 }

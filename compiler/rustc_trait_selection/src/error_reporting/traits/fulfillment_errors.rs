@@ -43,6 +43,7 @@ use super::{
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
+use crate::error_reporting::traits::on_unimplemented::OnUnimplementedDirective;
 use crate::error_reporting::traits::report_dyn_incompatibility;
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch, CoroClosureNotFn};
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
@@ -587,7 +588,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        self.report_host_effect_error(bound_predicate.rebind(predicate), obligation.param_env, span)
+                        self.report_host_effect_error(bound_predicate.rebind(predicate), &obligation, span)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -808,20 +809,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_host_effect_error(
         &self,
         predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        main_obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Diag<'a> {
         // FIXME(const_trait_impl): We should recompute the predicate with `[const]`
         // if it's `const`, and if it holds, explain that this bound only
-        // *conditionally* holds. If that fails, we should also do selection
-        // to drill this down to an impl or built-in source, so we can
-        // point at it and explain that while the trait *is* implemented,
-        // that implementation is not const.
+        // *conditionally* holds.
         let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
             trait_ref: predicate.trait_ref,
             polarity: ty::PredicatePolarity::Positive,
         });
         let mut file = None;
+
         let err_msg = self.get_standard_error_message(
             trait_ref,
             None,
@@ -832,18 +831,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
         *diag.long_ty_path() = file;
-        if !self.predicate_may_hold(&Obligation::new(
+        let obligation = Obligation::new(
             self.tcx,
             ObligationCause::dummy(),
-            param_env,
+            main_obligation.param_env,
             trait_ref,
-        )) {
+        );
+        if !self.predicate_may_hold(&obligation) {
             diag.downgrade_to_delayed_bug();
         }
-        for candidate in self.find_similar_impl_candidates(trait_ref) {
-            let CandidateSimilarity::Exact { .. } = candidate.similarity else { continue };
-            let impl_did = candidate.impl_def_id;
-            let trait_did = candidate.trait_ref.def_id;
+
+        if let Ok(Some(ImplSource::UserDefined(impl_data))) =
+            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+        {
+            let impl_did = impl_data.impl_def_id;
+            let trait_did = trait_ref.def_id();
             let impl_span = self.tcx.def_span(impl_did);
             let trait_name = self.tcx.item_name(trait_did);
 
@@ -865,6 +867,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         impl_span,
                         format!("trait `{trait_name}` is implemented but not `const`"),
                     );
+
+                    let (condition_options, format_args) = self.on_unimplemented_components(
+                        trait_ref,
+                        main_obligation,
+                        diag.long_ty_path(),
+                    );
+
+                    if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, impl_did)
+                    {
+                        let note = command.evaluate(
+                            self.tcx,
+                            predicate.skip_binder().trait_ref,
+                            &condition_options,
+                            &format_args,
+                        );
+                        let OnUnimplementedNote {
+                            message,
+                            label,
+                            notes,
+                            parent_label,
+                            append_const_msg: _,
+                        } = note;
+
+                        if let Some(message) = message {
+                            diag.primary_message(message);
+                        }
+                        if let Some(label) = label {
+                            diag.span_label(impl_span, label);
+                        }
+                        for note in notes {
+                            diag.note(note);
+                        }
+                        if let Some(parent_label) = parent_label {
+                            diag.span_label(impl_span, parent_label);
+                        }
+                    }
                 }
             }
         }

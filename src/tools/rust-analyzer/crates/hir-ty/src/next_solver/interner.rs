@@ -1,14 +1,15 @@
 //! Things related to the Interner in the next-trait-solver.
 
-use std::{fmt, ops::ControlFlow};
+use std::fmt;
 
+use rustc_ast_ir::{FloatTy, IntTy, UintTy};
 pub use tls_cache::clear_tls_solver_cache;
 pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AttrDefId, BlockId, CallableDefId, DefWithBodyId, EnumVariantId, ItemContainerId,
-    StructId, UnionId, VariantId,
+    AdtId, AttrDefId, BlockId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule,
+    ItemContainerId, StructId, UnionId, VariantId,
     lang_item::LangItem,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
 };
@@ -19,9 +20,10 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTermKind, AliasTyKind, BoundVar, CollectAndApply, CoroutineWitnessTypes, DebruijnIndex,
     EarlyBinder, FlagComputation, Flags, GenericArgKind, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
+    fast_reject,
     inherent::{self, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
     solve::SizedTraitKind,
@@ -30,12 +32,13 @@ use rustc_type_ir::{
 use crate::{
     FnAbi,
     db::{HirDatabase, InternedCoroutine, InternedCoroutineId},
-    method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint},
+    lower::GenericPredicates,
+    method_resolution::TraitImpls,
     next_solver::{
         AdtIdWrapper, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, ImplIdWrapper, OpaqueTypeKey,
-        RegionAssumptions, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
-        util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls},
+        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, ImplIdWrapper,
+        OpaqueTypeKey, RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds,
+        TraitIdWrapper, TypeAliasIdWrapper, util::explicit_item_bounds,
     },
 };
 
@@ -211,6 +214,10 @@ macro_rules! _interned_vec_db {
         }
 
         impl<'db> $name<'db> {
+            pub fn empty(interner: DbInterner<'db>) -> Self {
+                $name::new_(interner.db(), smallvec::SmallVec::new())
+            }
+
             pub fn new_from_iter(
                 interner: DbInterner<'db>,
                 data: impl IntoIterator<Item = $ty<'db>>,
@@ -583,6 +590,10 @@ impl AdtDef {
         self.inner().flags.is_enum
     }
 
+    pub fn is_box(&self) -> bool {
+        self.inner().flags.is_box
+    }
+
     #[inline]
     pub fn repr(self) -> ReprOptions {
         self.inner().repr
@@ -759,7 +770,7 @@ impl<'db> Pattern<'db> {
 }
 
 impl<'db> Flags for Pattern<'db> {
-    fn flags(&self) -> rustc_type_ir::TypeFlags {
+    fn flags(&self) -> TypeFlags {
         match self.inner() {
             PatternKind::Range { start, end } => {
                 FlagComputation::for_const_kind(&start.kind()).flags
@@ -772,6 +783,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 flags
             }
+            PatternKind::NotNull => TypeFlags::empty(),
         }
     }
 
@@ -787,6 +799,7 @@ impl<'db> Flags for Pattern<'db> {
                 }
                 idx
             }
+            PatternKind::NotNull => rustc_type_ir::INNERMOST,
         }
     }
 }
@@ -824,7 +837,10 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
                 )?;
                 Ok(Pattern::new(tcx, PatternKind::Or(pats)))
             }
-            (PatternKind::Range { .. } | PatternKind::Or(_), _) => Err(TypeError::Mismatch),
+            (PatternKind::NotNull, PatternKind::NotNull) => Ok(a),
+            (PatternKind::Range { .. } | PatternKind::Or(_) | PatternKind::NotNull, _) => {
+                Err(TypeError::Mismatch)
+            }
         }
     }
 }
@@ -867,6 +883,7 @@ impl<'db> Interner for DbInterner<'db> {
     type CoroutineId = CoroutineIdWrapper;
     type AdtId = AdtIdWrapper;
     type ImplId = ImplIdWrapper;
+    type UnevaluatedConstId = GeneralConstIdWrapper;
     type Span = Span;
 
     type GenericArgs = GenericArgs<'db>;
@@ -1264,27 +1281,21 @@ impl<'db> Interner for DbInterner<'db> {
         })
     }
 
-    #[tracing::instrument(skip(self), ret)]
+    #[tracing::instrument(skip(self))]
     fn item_bounds(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_bounds(self, def_id).map_bound(|bounds| {
-            Clauses::new_from_iter(self, elaborate(self, bounds).collect::<Vec<_>>())
-        })
+        explicit_item_bounds(self, def_id).map_bound(|bounds| elaborate(self, bounds))
     }
 
-    #[tracing::instrument(skip(self), ret)]
+    #[tracing::instrument(skip(self))]
     fn item_self_bounds(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_bounds(self, def_id).map_bound(|bounds| {
-            Clauses::new_from_iter(
-                self,
-                elaborate(self, bounds).filter_only_self().collect::<Vec<_>>(),
-            )
-        })
+        explicit_item_bounds(self, def_id)
+            .map_bound(|bounds| elaborate(self, bounds).filter_only_self())
     }
 
     fn item_non_self_bounds(
@@ -1309,9 +1320,8 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates(def_id.try_into().unwrap());
-        let predicates: Vec<_> = predicates.iter().cloned().collect();
-        EarlyBinder::bind(predicates.into_iter())
+        GenericPredicates::query_all(self.db, def_id.try_into().unwrap())
+            .map_bound(|it| it.iter().copied())
     }
 
     #[tracing::instrument(level = "debug", skip(self), ret)]
@@ -1319,9 +1329,8 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let predicates = self.db().generic_predicates_without_parent(def_id.try_into().unwrap());
-        let predicates: Vec<_> = predicates.iter().cloned().collect();
-        EarlyBinder::bind(predicates.into_iter())
+        GenericPredicates::query_own(self.db, def_id.try_into().unwrap())
+            .map_bound(|it| it.iter().copied())
     }
 
     #[tracing::instrument(skip(self), ret)]
@@ -1334,23 +1343,21 @@ impl<'db> Interner for DbInterner<'db> {
             _ => false,
         };
 
-        let predicates: Vec<(Clause<'db>, Span)> = self
-            .db()
-            .generic_predicates(def_id.0.into())
-            .iter()
-            .filter(|p| match p.kind().skip_binder() {
-                // rustc has the following assertion:
-                // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
-                rustc_type_ir::ClauseKind::Trait(it) => is_self(it.self_ty()),
-                rustc_type_ir::ClauseKind::TypeOutlives(it) => is_self(it.0),
-                rustc_type_ir::ClauseKind::Projection(it) => is_self(it.self_ty()),
-                rustc_type_ir::ClauseKind::HostEffect(it) => is_self(it.self_ty()),
-                _ => false,
-            })
-            .cloned()
-            .map(|p| (p, Span::dummy()))
-            .collect();
-        EarlyBinder::bind(predicates)
+        GenericPredicates::query_explicit(self.db, def_id.0.into()).map_bound(move |predicates| {
+            predicates
+                .iter()
+                .copied()
+                .filter(move |p| match p.kind().skip_binder() {
+                    // rustc has the following assertion:
+                    // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
+                    ClauseKind::Trait(it) => is_self(it.self_ty()),
+                    ClauseKind::TypeOutlives(it) => is_self(it.0),
+                    ClauseKind::Projection(it) => is_self(it.self_ty()),
+                    ClauseKind::HostEffect(it) => is_self(it.self_ty()),
+                    _ => false,
+                })
+                .map(|p| (p, Span::dummy()))
+        })
     }
 
     #[tracing::instrument(skip(self), ret)]
@@ -1368,25 +1375,25 @@ impl<'db> Interner for DbInterner<'db> {
             }
         }
 
-        let predicates: Vec<(Clause<'db>, Span)> = self
-            .db()
-            .generic_predicates(def_id.try_into().unwrap())
-            .iter()
-            .filter(|p| match p.kind().skip_binder() {
-                rustc_type_ir::ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
-                rustc_type_ir::ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
-                rustc_type_ir::ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
-                rustc_type_ir::ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
-                // FIXME: Not sure is this correct to allow other clauses but we might replace
-                // `generic_predicates_ns` query here with something closer to rustc's
-                // `implied_bounds_with_filter`, which is more granular lowering than this
-                // "lower at once and then filter" implementation.
-                _ => true,
-            })
-            .cloned()
-            .map(|p| (p, Span::dummy()))
-            .collect();
-        EarlyBinder::bind(predicates)
+        GenericPredicates::query_explicit(self.db, def_id.try_into().unwrap()).map_bound(
+            |predicates| {
+                predicates
+                    .iter()
+                    .copied()
+                    .filter(|p| match p.kind().skip_binder() {
+                        ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
+                        ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
+                        ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
+                        ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
+                        // FIXME: Not sure is this correct to allow other clauses but we might replace
+                        // `generic_predicates_ns` query here with something closer to rustc's
+                        // `implied_bounds_with_filter`, which is more granular lowering than this
+                        // "lower at once and then filter" implementation.
+                        _ => true,
+                    })
+                    .map(|p| (p, Span::dummy()))
+            },
+        )
     }
 
     fn impl_super_outlives(
@@ -1396,15 +1403,12 @@ impl<'db> Interner for DbInterner<'db> {
         let trait_ref = self.db().impl_trait(impl_id.0).expect("expected an impl of trait");
         trait_ref.map_bound(|trait_ref| {
             let clause: Clause<'_> = trait_ref.upcast(self);
-            Clauses::new_from_iter(
-                self,
-                rustc_type_ir::elaborate::elaborate(self, [clause]).filter(|clause| {
-                    matches!(
-                        clause.kind().skip_binder(),
-                        ClauseKind::TypeOutlives(_) | ClauseKind::RegionOutlives(_)
-                    )
-                }),
-            )
+            elaborate(self, [clause]).filter(|clause| {
+                matches!(
+                    clause.kind().skip_binder(),
+                    ClauseKind::TypeOutlives(_) | ClauseKind::RegionOutlives(_)
+                )
+            })
         })
     }
 
@@ -1599,89 +1603,161 @@ impl<'db> Interner for DbInterner<'db> {
         )
     }
 
-    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId> {
-        let trait_ = match def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        trait_.trait_items(self.db()).associated_types().map(|id| id.into())
+    fn associated_type_def_ids(
+        self,
+        def_id: Self::TraitId,
+    ) -> impl IntoIterator<Item = Self::DefId> {
+        def_id.0.trait_items(self.db()).associated_types().map(|id| id.into())
     }
 
     fn for_each_relevant_impl(
         self,
-        trait_: Self::TraitId,
+        trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
         mut f: impl FnMut(Self::ImplId),
     ) {
-        let trait_ = trait_.0;
-        let self_ty_fp = TyFingerprint::for_trait_impl(self_ty);
-        let fps: &[TyFingerprint] = match self_ty.kind() {
-            TyKind::Infer(InferTy::IntVar(..)) => &ALL_INT_FPS,
-            TyKind::Infer(InferTy::FloatVar(..)) => &ALL_FLOAT_FPS,
-            _ => self_ty_fp.as_slice(),
+        let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
+        let trait_block = trait_def_id.0.loc(self.db).container.containing_block();
+        let mut consider_impls_for_simplified_type = |simp: SimplifiedType| {
+            let type_block = simp.def().and_then(|def_id| {
+                let module = match def_id {
+                    SolverDefId::AdtId(AdtId::StructId(id)) => id.module(self.db),
+                    SolverDefId::AdtId(AdtId::EnumId(id)) => id.module(self.db),
+                    SolverDefId::AdtId(AdtId::UnionId(id)) => id.module(self.db),
+                    SolverDefId::TraitId(id) => id.module(self.db),
+                    SolverDefId::TypeAliasId(id) => id.module(self.db),
+                    SolverDefId::ConstId(_)
+                    | SolverDefId::FunctionId(_)
+                    | SolverDefId::ImplId(_)
+                    | SolverDefId::StaticId(_)
+                    | SolverDefId::InternedClosureId(_)
+                    | SolverDefId::InternedCoroutineId(_)
+                    | SolverDefId::InternedOpaqueTyId(_)
+                    | SolverDefId::EnumVariantId(_)
+                    | SolverDefId::Ctor(_) => return None,
+                };
+                module.containing_block()
+            });
+            TraitImpls::for_each_crate_and_block_trait_and_type(
+                self.db,
+                krate,
+                type_block,
+                trait_block,
+                &mut |impls| {
+                    for &impl_ in impls.for_trait_and_self_ty(trait_def_id.0, &simp) {
+                        f(impl_.into());
+                    }
+                },
+            );
         };
 
-        if fps.is_empty() {
-            _ = for_trait_impls(
-                self.db(),
-                self.krate.expect("Must have self.krate"),
-                self.block,
-                trait_,
-                self_ty_fp,
-                |impls| {
-                    for i in impls.for_trait(trait_) {
-                        use rustc_type_ir::TypeVisitable;
-                        let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
-                            b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
-                        });
-                        if contains_errors {
-                            continue;
-                        }
+        match self_ty.kind() {
+            TyKind::Bool
+            | TyKind::Char
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Adt(_, _)
+            | TyKind::Foreign(_)
+            | TyKind::Str
+            | TyKind::Array(_, _)
+            | TyKind::Pat(_, _)
+            | TyKind::Slice(_)
+            | TyKind::RawPtr(_, _)
+            | TyKind::Ref(_, _, _)
+            | TyKind::FnDef(_, _)
+            | TyKind::FnPtr(..)
+            | TyKind::Dynamic(_, _)
+            | TyKind::Closure(..)
+            | TyKind::CoroutineClosure(..)
+            | TyKind::Coroutine(_, _)
+            | TyKind::Never
+            | TyKind::Tuple(_)
+            | TyKind::UnsafeBinder(_) => {
+                let simp =
+                    fast_reject::simplify_type(self, self_ty, fast_reject::TreatParams::AsRigid)
+                        .unwrap();
+                consider_impls_for_simplified_type(simp);
+            }
 
-                        f(i.into());
-                    }
-                    ControlFlow::Continue(())
-                },
-            );
-        } else {
-            _ = for_trait_impls(
-                self.db(),
-                self.krate.expect("Must have self.krate"),
-                self.block,
-                trait_,
-                self_ty_fp,
-                |impls| {
-                    for fp in fps {
-                        for i in impls.for_trait_and_self_ty(trait_, *fp) {
-                            use rustc_type_ir::TypeVisitable;
-                            let contains_errors = self.db().impl_trait(i).map_or(false, |b| {
-                                b.skip_binder().visit_with(&mut ContainsTypeErrors).is_break()
-                            });
-                            if contains_errors {
-                                continue;
-                            }
+            // HACK: For integer and float variables we have to manually look at all impls
+            // which have some integer or float as a self type.
+            TyKind::Infer(InferTy::IntVar(_)) => {
+                use IntTy::*;
+                use UintTy::*;
+                // This causes a compiler error if any new integer kinds are added.
+                let (I8 | I16 | I32 | I64 | I128 | Isize): IntTy;
+                let (U8 | U16 | U32 | U64 | U128 | Usize): UintTy;
+                let possible_integers = [
+                    // signed integers
+                    SimplifiedType::Int(I8),
+                    SimplifiedType::Int(I16),
+                    SimplifiedType::Int(I32),
+                    SimplifiedType::Int(I64),
+                    SimplifiedType::Int(I128),
+                    SimplifiedType::Int(Isize),
+                    // unsigned integers
+                    SimplifiedType::Uint(U8),
+                    SimplifiedType::Uint(U16),
+                    SimplifiedType::Uint(U32),
+                    SimplifiedType::Uint(U64),
+                    SimplifiedType::Uint(U128),
+                    SimplifiedType::Uint(Usize),
+                ];
+                for simp in possible_integers {
+                    consider_impls_for_simplified_type(simp);
+                }
+            }
 
-                            f(i.into());
-                        }
-                    }
-                    ControlFlow::Continue(())
-                },
-            );
+            TyKind::Infer(InferTy::FloatVar(_)) => {
+                // This causes a compiler error if any new float kinds are added.
+                let (FloatTy::F16 | FloatTy::F32 | FloatTy::F64 | FloatTy::F128);
+                let possible_floats = [
+                    SimplifiedType::Float(FloatTy::F16),
+                    SimplifiedType::Float(FloatTy::F32),
+                    SimplifiedType::Float(FloatTy::F64),
+                    SimplifiedType::Float(FloatTy::F128),
+                ];
+
+                for simp in possible_floats {
+                    consider_impls_for_simplified_type(simp);
+                }
+            }
+
+            // The only traits applying to aliases and placeholders are blanket impls.
+            //
+            // Impls which apply to an alias after normalization are handled by
+            // `assemble_candidates_after_normalizing_self_ty`.
+            TyKind::Alias(_, _) | TyKind::Placeholder(..) | TyKind::Error(_) => (),
+
+            // FIXME: These should ideally not exist as a self type. It would be nice for
+            // the builtin auto trait impls of coroutines to instead directly recurse
+            // into the witness.
+            TyKind::CoroutineWitness(..) => (),
+
+            // These variants should not exist as a self type.
+            TyKind::Infer(
+                InferTy::TyVar(_)
+                | InferTy::FreshTy(_)
+                | InferTy::FreshIntTy(_)
+                | InferTy::FreshFloatTy(_),
+            )
+            | TyKind::Param(_)
+            | TyKind::Bound(_, _) => panic!("unexpected self type: {self_ty:?}"),
         }
+
+        self.for_each_blanket_impl(trait_def_id, f)
     }
 
     fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
         let Some(krate) = self.krate else { return };
+        let block = trait_def_id.0.loc(self.db).container.containing_block();
 
-        for impls in self.db.trait_impls_in_deps(krate).iter() {
-            for impl_id in impls.for_trait(trait_def_id.0) {
-                let impl_data = self.db.impl_signature(impl_id);
-                let self_ty_ref = &impl_data.store[impl_data.self_ty];
-                if matches!(self_ty_ref, hir_def::type_ref::TypeRef::TypeParam(_)) {
-                    f(impl_id.into());
-                }
+        TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
+            for &impl_ in impls.blanket_impls(trait_def_id.0) {
+                f(impl_.into());
             }
-        }
+        });
     }
 
     fn has_item_definition(self, _def_id: Self::DefId) -> bool {
@@ -2145,6 +2221,7 @@ TrivialTypeTraversalImpls! {
     CoroutineIdWrapper,
     AdtIdWrapper,
     ImplIdWrapper,
+    GeneralConstIdWrapper,
     Pattern<'db>,
     Safety,
     FnAbi,

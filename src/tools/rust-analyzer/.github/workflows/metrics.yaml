@@ -7,7 +7,7 @@ on:
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
-  RUSTFLAGS: "-D warnings -W unreachable-pub"
+  RUSTFLAGS: "-D warnings -W unreachable-pub --cfg no_salsa_async_drops"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:

@@ -23,11 +23,10 @@ indexmap.workspace = true
 itertools.workspace = true
 la-arena.workspace = true
 rustc-hash.workspace = true
-tracing.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 smallvec.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.3"
-text-size.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 query-group.workspace = true
