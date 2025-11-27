@@ -3,9 +3,7 @@ use std::ops::{CoerceShared, Reborrow};
 
 struct CustomMut<'a, T>(&'a mut T);
 impl<'a, T> Reborrow for CustomMut<'a, T> {}
-impl<'a, T> CoerceShared for CustomMut<'a, T> {
-    type Target = CustomRef<'a, T>;
-}
+impl<'a, T> CoerceShared<CustomRef<'a, T>> for CustomMut<'a, T> {}
 
 struct CustomRef<'a, T>(&'a T);
 

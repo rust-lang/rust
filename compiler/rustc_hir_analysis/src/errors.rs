@@ -1194,6 +1194,14 @@ pub(crate) struct CoerceMulti {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
+pub(crate) struct CoerceSharedNotSingleLifetimeParam {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = E0377)]
 pub(crate) struct CoerceSharedNonStruct {
     #[primary_span]
     pub span: Span,

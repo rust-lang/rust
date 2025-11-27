@@ -13,6 +13,7 @@ use rustc_infer::infer::{self, InferCtxt, RegionResolutionError, SubregionOrigin
 use rustc_infer::traits::{Obligation, PredicateObligations};
 use rustc_middle::ty::adjustment::{CoerceSharedInfo, CoerceUnsizedInfo};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
+use rustc_middle::ty::relate::solver_relating::RelateExt;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeVisitableExt, TypingMode, suggest_constraining_type_params,
 };
@@ -430,20 +431,27 @@ pub(crate) fn coerce_shared_info<'tcx>(
     let trait_name = "CoerceShared";
 
     let coerce_shared_trait = tcx.require_lang_item(LangItem::CoerceShared, span);
-    let coerce_shared_target = tcx.require_lang_item(LangItem::CoerceSharedTarget, span);
     let _copy_trait = tcx.require_lang_item(LangItem::Copy, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
+    let lifetime_params_count = tcx
+        .generics_of(impl_did)
+        .own_params
+        .iter()
+        .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+        .count();
+
+    if lifetime_params_count != 1 {
+        return Err(tcx
+            .dcx()
+            .emit_err(errors::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+    }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
-    let Some((target, _obligations)) = structurally_normalize_ty(
-        tcx,
-        &infcx,
-        impl_did,
-        span,
-        Ty::new_projection(tcx, coerce_shared_target, trait_ref.args),
-    ) else {
+    let Some((target, _obligations)) =
+        structurally_normalize_ty(tcx, &infcx, impl_did, span, trait_ref.args.type_at(1))
+    else {
         // return Err(tcx.dcx().emit_err(todo!()));
         todo!();
     };
@@ -465,6 +473,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
 
             // Parent { Child, u32, i32 }, Child { u64, u32 } => ParentRef { ChildRef, u32 }, ChildRef { u64 }
 
+            let a_lifetimes_count = args_a.iter().filter(|arg| arg.as_region().is_some()).count();
             let a_data_fields = def_a
                 .non_enum_variant()
                 .fields
@@ -489,6 +498,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
                     Some((i, a, tcx.def_span(f.did)))
                 })
                 .collect::<Vec<_>>();
+            let b_lifetimes_count = args_b.iter().filter(|arg| arg.as_region().is_some()).count();
             let b_data_fields = def_b
                 .non_enum_variant()
                 .fields
@@ -505,7 +515,9 @@ pub(crate) fn coerce_shared_info<'tcx>(
                 })
                 .collect::<Vec<_>>();
 
-            if a_data_fields.len() > 1
+            if a_lifetimes_count != 1
+                || b_lifetimes_count != 1
+                || a_data_fields.len() > 1
                 || b_data_fields.len() > 1
                 || a_data_fields.len() != b_data_fields.len()
             {
@@ -544,27 +556,34 @@ pub(crate) fn coerce_shared_info<'tcx>(
         }
     };
 
-    if let Some((source, target, trait_def_id, _kind, _source_field_span, _target_field_span)) =
-        data
+    // We've proven that we have two types with one lifetime each and 0 or 1 data fields each.
+    if let Some((source, target, trait_def_id, _kind, source_field_span, _target_field_span)) = data
     {
-        // Register an obligation for `A: Trait<B>`.
-        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-        let cause = traits::ObligationCause::misc(span, impl_did);
-        let obligation = Obligation::new(
-            tcx,
-            cause,
-            param_env,
-            ty::TraitRef::new(tcx, trait_def_id, [source, target]),
-        );
-        ocx.register_obligation(obligation);
-        let errors = ocx.evaluate_obligations_error_on_ambiguity();
+        // 1 data field each.
+        if infcx
+            .eq_structurally_relating_aliases(param_env, source, target, source_field_span)
+            .is_err()
+        {
+            // The two data fields don't agree on a common type; this means
+            // that they must be `A: CoerceShared<B>`. Register an obligation
+            // for that.
+            let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+            let cause = traits::ObligationCause::misc(span, impl_did);
+            let obligation = Obligation::new(
+                tcx,
+                cause,
+                param_env,
+                ty::TraitRef::new(tcx, trait_def_id, [source, target]),
+            );
+            ocx.register_obligation(obligation);
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
-        if !errors.is_empty() {
-            return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+            if !errors.is_empty() {
+                return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+            }
+            // Finally, resolve all regions.
+            ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
         }
-
-        // Finally, resolve all regions.
-        ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
     }
 
     Ok(CoerceSharedInfo {})

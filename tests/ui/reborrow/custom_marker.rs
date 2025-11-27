@@ -7,9 +7,8 @@ struct CustomMarker<'a>(PhantomData<&'a ()>);
 #[derive(Debug, Clone, Copy)]
 struct CustomMarkerRef<'a>(PhantomData<&'a ()>);
 impl<'a> Reborrow for CustomMarker<'a> {}
-impl<'a> CoerceShared for CustomMarker<'a> {
-    type Target = CustomMarkerRef<'a>;
-}
+
+impl<'a> CoerceShared<CustomMarkerRef<'a>> for CustomMarker<'a> {}
 
 impl<'a> From<CustomMarker<'a>> for CustomMarkerRef<'a> {
     fn from(value: CustomMarker<'a>) -> Self {
