@@ -432,11 +432,6 @@ impl<'a> BlobDecodeContext<'a> {
         self.blob
     }
 
-    #[inline]
-    fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
-        self.opaque.read_raw_bytes(len)
-    }
-
     fn decode_symbol_or_byte_symbol<S>(
         &mut self,
         new_from_index: impl Fn(u32) -> S,
