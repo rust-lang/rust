@@ -125,7 +125,7 @@ impl TestCx<'_> {
             // `extern run_make_support;`.
             .arg("--extern")
             .arg(format!("run_make_support={}", &support_lib_path))
-            .arg("--edition=2021")
+            .arg("--edition=2024")
             .arg(&self.testpaths.file.join("rmake.rs"))
             .arg("-Cprefer-dynamic");
 
