@@ -657,7 +657,7 @@ fn expected_type_and_name<'db>(
                     cov_mark::hit!(expected_type_fn_param);
                     ActiveParameter::at_token(
                         sema,
-                       token.clone(),
+                        token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
                         (Some(ap.ty), name)
@@ -1635,7 +1635,7 @@ fn classify_name_ref<'db>(
                 && let Some(t) = top.first_token()
                 && let Some(prev) =
                     t.prev_token().and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
-                && ![T![;], T!['}'], T!['{']].contains(&prev.kind())
+                && ![T![;], T!['}'], T!['{'], T![']']].contains(&prev.kind())
             {
                 // This was inferred to be an item position path, but it seems
                 // to be part of some other broken node which leaked into an item

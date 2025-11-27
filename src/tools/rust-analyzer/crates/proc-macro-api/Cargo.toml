@@ -29,6 +29,8 @@ proc-macro-srv = {workspace = true, optional = true}
 span = { path = "../span", version = "0.0.0", default-features = false}
 
 intern.workspace = true
+postcard.workspace = true
+semver.workspace = true
 
 [features]
 sysroot-abi = ["proc-macro-srv", "proc-macro-srv/sysroot-abi"]

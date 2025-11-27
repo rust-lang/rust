@@ -41,7 +41,7 @@ use hir_def::{
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     signatures::{ConstSignature, StaticSignature},
-    type_ref::{ConstRef, LifetimeRefId, TypeRefId},
+    type_ref::{ConstRef, LifetimeRefId, TypeRef, TypeRefId},
 };
 use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
@@ -60,6 +60,7 @@ use triomphe::Arc;
 
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
+    collect_type_inference_vars,
     db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
     infer::{
         coerce::{CoerceMany, DynamicCoerceMany},
@@ -497,6 +498,7 @@ pub struct InferenceResult<'db> {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub(crate) type_of_pat: ArenaMap<PatId, Ty<'db>>,
     pub(crate) type_of_binding: ArenaMap<BindingId, Ty<'db>>,
+    pub(crate) type_of_type_placeholder: ArenaMap<TypeRefId, Ty<'db>>,
     pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
     pub(crate) type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch<'db>>,
     /// Whether there are any type-mismatching errors in the result.
@@ -542,6 +544,7 @@ impl<'db> InferenceResult<'db> {
             type_of_expr: Default::default(),
             type_of_pat: Default::default(),
             type_of_binding: Default::default(),
+            type_of_type_placeholder: Default::default(),
             type_of_opaque: Default::default(),
             type_mismatches: Default::default(),
             has_errors: Default::default(),
@@ -605,6 +608,12 @@ impl<'db> InferenceResult<'db> {
             ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
             _ => None,
         })
+    }
+    pub fn placeholder_types(&self) -> impl Iterator<Item = (TypeRefId, &Ty<'db>)> {
+        self.type_of_type_placeholder.iter()
+    }
+    pub fn type_of_type_placeholder(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
+        self.type_of_type_placeholder.get(type_ref).copied()
     }
     pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem<'db>>, FnTrait) {
         self.closure_info.get(&closure).unwrap()
@@ -1014,6 +1023,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             type_of_expr,
             type_of_pat,
             type_of_binding,
+            type_of_type_placeholder,
             type_of_opaque,
             type_mismatches,
             has_errors,
@@ -1046,6 +1056,11 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             *has_errors = *has_errors || ty.references_non_lt_error();
         }
         type_of_binding.shrink_to_fit();
+        for ty in type_of_type_placeholder.values_mut() {
+            *ty = table.resolve_completely(*ty);
+            *has_errors = *has_errors || ty.references_non_lt_error();
+        }
+        type_of_type_placeholder.shrink_to_fit();
         type_of_opaque.shrink_to_fit();
 
         *has_errors |= !type_mismatches.is_empty();
@@ -1285,6 +1300,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.result.type_of_pat.insert(pat, ty);
     }
 
+    fn write_type_placeholder_ty(&mut self, type_ref: TypeRefId, ty: Ty<'db>) {
+        self.result.type_of_type_placeholder.insert(type_ref, ty);
+    }
+
     fn write_binding_ty(&mut self, id: BindingId, ty: Ty<'db>) {
         self.result.type_of_binding.insert(id, ty);
     }
@@ -1333,7 +1352,27 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     ) -> Ty<'db> {
         let ty = self
             .with_ty_lowering(store, type_source, lifetime_elision, |ctx| ctx.lower_ty(type_ref));
-        self.process_user_written_ty(ty)
+        let ty = self.process_user_written_ty(ty);
+
+        // Record the association from placeholders' TypeRefId to type variables.
+        // We only record them if their number matches. This assumes TypeRef::walk and TypeVisitable process the items in the same order.
+        let type_variables = collect_type_inference_vars(&ty);
+        let mut placeholder_ids = vec![];
+        TypeRef::walk(type_ref, store, &mut |type_ref_id, type_ref| {
+            if matches!(type_ref, TypeRef::Placeholder) {
+                placeholder_ids.push(type_ref_id);
+            }
+        });
+
+        if placeholder_ids.len() == type_variables.len() {
+            for (placeholder_id, type_variable) in
+                placeholder_ids.into_iter().zip(type_variables.into_iter())
+            {
+                self.write_type_placeholder_ty(placeholder_id, type_variable);
+            }
+        }
+
+        ty
     }
 
     pub(crate) fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {

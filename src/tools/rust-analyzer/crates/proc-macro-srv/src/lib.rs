@@ -81,6 +81,35 @@ impl<'env> ProcMacroSrv<'env> {
             temp_dir: TempDir::with_prefix("proc-macro-srv").unwrap(),
         }
     }
+
+    pub fn join_spans(&self, first: Span, second: Span) -> Option<Span> {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
+        // prefer the non-fixup span.
+        if first.anchor.ast_id == span::FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(second);
+        }
+        if second.anchor.ast_id == span::FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(first);
+        }
+        // FIXME: Once we can talk back to the client, implement a "long join" request for anchors
+        // that differ in [AstId]s as joining those spans requires resolving the AstIds.
+        if first.anchor != second.anchor {
+            return None;
+        }
+        // Differing context, we can't merge these so prefer the one that's root
+        if first.ctx != second.ctx {
+            if first.ctx.is_root() {
+                return Some(second);
+            } else if second.ctx.is_root() {
+                return Some(first);
+            }
+        }
+        Some(Span {
+            range: first.range.cover(second.range),
+            anchor: second.anchor,
+            ctx: second.ctx,
+        })
+    }
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;

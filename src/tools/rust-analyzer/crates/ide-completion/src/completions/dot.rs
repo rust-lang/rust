@@ -91,9 +91,9 @@ pub(crate) fn complete_dot(
         // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
         // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
         let iter = receiver_ty
-            .strip_references()
-            .add_reference(hir::Mutability::Shared)
-            .into_iterator_iter(ctx.db)
+            .autoderef(ctx.db)
+            .map(|ty| ty.strip_references().add_reference(hir::Mutability::Shared))
+            .find_map(|ty| ty.into_iterator_iter(ctx.db))
             .map(|ty| (ty, SmolStr::new_static("iter()")));
         // Does <receiver_ty as IntoIterator>::IntoIter` exist?
         let into_iter = || {
@@ -1464,6 +1464,40 @@ fn foo() {
                 me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
+            "#]],
+        );
+        check_no_kw(
+            r#"
+//- minicore: iterator, deref
+struct Foo;
+impl Foo { fn iter(&self) -> Iter { Iter } }
+impl IntoIterator for &Foo {
+    type Item = ();
+    type IntoIter = Iter;
+    fn into_iter(self) -> Self::IntoIter { Iter }
+}
+struct Ref;
+impl core::ops::Deref for Ref {
+    type Target = Foo;
+    fn deref(&self) -> &Self::Target { &Foo }
+}
+struct Iter;
+impl Iterator for Iter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+fn foo() {
+    Ref.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref)                 fn(&self) -> &<Self as Deref>::Target
+                me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter()                                                             fn(&self) -> Iter
+                me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
+                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
+                me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
         );
     }

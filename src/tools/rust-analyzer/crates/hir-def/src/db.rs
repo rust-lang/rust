@@ -338,7 +338,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
     let kind = |expander, file_id, m| {
         let in_file = InFile::new(file_id, m);
         match expander {
-            MacroExpander::Declarative => MacroDefKind::Declarative(in_file),
+            MacroExpander::Declarative { styles } => MacroDefKind::Declarative(in_file, styles),
             MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(in_file, it),
             MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(in_file, it),
             MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(in_file, it),

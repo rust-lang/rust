@@ -77,7 +77,7 @@ use tt::TextRange;
 
 use crate::{
     AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, FxIndexMap,
-    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    LocalModuleId, Lookup, MacroCallStyles, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::TreeId,
@@ -813,26 +813,25 @@ pub enum MacroSubNs {
     Attr,
 }
 
-impl MacroSubNs {
-    pub(crate) fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
-        let expander = match macro_id {
-            MacroId::Macro2Id(it) => it.lookup(db).expander,
-            MacroId::MacroRulesId(it) => it.lookup(db).expander,
-            MacroId::ProcMacroId(it) => {
-                return match it.lookup(db).kind {
-                    ProcMacroKind::CustomDerive | ProcMacroKind::Attr => Self::Attr,
-                    ProcMacroKind::Bang => Self::Bang,
-                };
-            }
-        };
-
-        // Eager macros aren't *guaranteed* to be bang macros, but they *are* all bang macros currently.
-        match expander {
-            MacroExpander::Declarative
-            | MacroExpander::BuiltIn(_)
-            | MacroExpander::BuiltInEager(_) => Self::Bang,
-            MacroExpander::BuiltInAttr(_) | MacroExpander::BuiltInDerive(_) => Self::Attr,
+pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> MacroCallStyles {
+    let expander = match macro_id {
+        MacroId::Macro2Id(it) => it.lookup(db).expander,
+        MacroId::MacroRulesId(it) => it.lookup(db).expander,
+        MacroId::ProcMacroId(it) => {
+            return match it.lookup(db).kind {
+                ProcMacroKind::CustomDerive => MacroCallStyles::DERIVE,
+                ProcMacroKind::Bang => MacroCallStyles::FN_LIKE,
+                ProcMacroKind::Attr => MacroCallStyles::ATTR,
+            };
         }
+    };
+
+    match expander {
+        MacroExpander::Declarative { styles } => styles,
+        // Eager macros aren't *guaranteed* to be bang macros, but they *are* all bang macros currently.
+        MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroCallStyles::FN_LIKE,
+        MacroExpander::BuiltInAttr(_) => MacroCallStyles::ATTR,
+        MacroExpander::BuiltInDerive(_) => MacroCallStyles::DERIVE,
     }
 }
 
@@ -842,9 +841,19 @@ impl MacroSubNs {
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
 ///
 /// [rustc]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/rustc_resolve/src/macros.rs#L75
-fn sub_namespace_match(candidate: Option<MacroSubNs>, expected: Option<MacroSubNs>) -> bool {
-    match (candidate, expected) {
-        (Some(candidate), Some(expected)) => candidate == expected,
-        _ => true,
+fn sub_namespace_match(
+    db: &dyn DefDatabase,
+    macro_id: MacroId,
+    expected: Option<MacroSubNs>,
+) -> bool {
+    let candidate = macro_styles_from_id(db, macro_id);
+    match expected {
+        Some(MacroSubNs::Bang) => candidate.contains(MacroCallStyles::FN_LIKE),
+        Some(MacroSubNs::Attr) => {
+            candidate.contains(MacroCallStyles::ATTR) || candidate.contains(MacroCallStyles::DERIVE)
+        }
+        // If we aren't expecting a specific sub-namespace
+        // (e.g. in `use` declarations), match any macro.
+        None => true,
     }
 }

@@ -1,7 +1,7 @@
 //! The proc-macro server token stream implementation.
 
 use core::fmt;
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 
 use intern::Symbol;
 use proc_macro::Delimiter;
@@ -431,14 +431,22 @@ impl<S> TokenStream<S> {
 
 impl<S> fmt::Display for TokenStream<S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut emit_whitespace = false;
         for tt in self.0.iter() {
-            display_token_tree(tt, f)?;
+            display_token_tree(tt, &mut emit_whitespace, f)?;
         }
         Ok(())
     }
 }
 
-fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+fn display_token_tree<S>(
+    tt: &TokenTree<S>,
+    emit_whitespace: &mut bool,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    if mem::take(emit_whitespace) {
+        write!(f, " ")?;
+    }
     match tt {
         TokenTree::Group(Group { delimiter, stream, span: _ }) => {
             write!(
@@ -466,13 +474,15 @@ fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> 
             )?;
         }
         TokenTree::Punct(Punct { ch, joint, span: _ }) => {
-            write!(f, "{ch}{}", if *joint { "" } else { " " })?
+            *emit_whitespace = !*joint;
+            write!(f, "{}", *ch as char)?;
         }
         TokenTree::Ident(Ident { sym, is_raw, span: _ }) => {
             if *is_raw {
                 write!(f, "r#")?;
             }
-            write!(f, "{sym} ")?;
+            write!(f, "{sym}")?;
+            *emit_whitespace = true;
         }
         TokenTree::Literal(lit) => {
             display_fmt_literal(lit, f)?;
@@ -485,9 +495,7 @@ fn display_token_tree<S>(tt: &TokenTree<S>, f: &mut std::fmt::Formatter<'_>) -> 
                 | LitKind::CStrRaw(_) => true,
                 _ => false,
             };
-            if !joint {
-                write!(f, " ")?;
-            }
+            *emit_whitespace = !joint;
         }
     }
     Ok(())
@@ -737,9 +745,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn roundtrip() {
-        let token_stream = TokenStream::from_str("struct T {\"string\"}", ()).unwrap();
-        token_stream.to_string();
-        assert_eq!(token_stream.to_string(), "struct T {\"string\"}");
+    fn ts_to_string() {
+        let token_stream =
+            TokenStream::from_str("{} () [] <> ;/., \"gfhdgfuiofghd\" 0f32 r#\"dff\"# 'r#lt", ())
+                .unwrap();
+        assert_eq!(token_stream.to_string(), "{}()[]<> ;/., \"gfhdgfuiofghd\"0f32 r#\"dff\"#'r#lt");
     }
 }
