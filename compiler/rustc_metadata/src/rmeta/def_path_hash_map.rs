@@ -3,7 +3,8 @@ use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
-use crate::rmeta::{DecodeContext, EncodeContext};
+use crate::rmeta::EncodeContext;
+use crate::rmeta::decoder::BlobDecodeContext;
 
 pub(crate) enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>),
@@ -40,8 +41,8 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static> {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefPathHashMapRef<'static> {
+impl<'a> Decodable<BlobDecodeContext<'a>> for DefPathHashMapRef<'static> {
+    fn decode(d: &mut BlobDecodeContext<'a>) -> DefPathHashMapRef<'static> {
         let len = d.read_usize();
         let pos = d.position();
         let o = d.blob().bytes().clone().slice(|blob| &blob[pos..pos + len]);

@@ -1296,18 +1296,35 @@ impl<E: SpanEncoder> Encodable<E> for AttrId {
     }
 }
 
-/// This trait is used to allow decoder specific encodings of certain types.
-/// It is similar to rustc_type_ir's TyDecoder.
-pub trait SpanDecoder: Decoder {
-    fn decode_span(&mut self) -> Span;
+pub trait BlobDecoder: Decoder {
     fn decode_symbol(&mut self) -> Symbol;
     fn decode_byte_symbol(&mut self) -> ByteSymbol;
+    fn decode_def_index(&mut self) -> DefIndex;
+}
+
+/// This trait is used to allow decoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyDecoder.
+pub trait SpanDecoder: BlobDecoder {
+    fn decode_span(&mut self) -> Span;
     fn decode_expn_id(&mut self) -> ExpnId;
     fn decode_syntax_context(&mut self) -> SyntaxContext;
     fn decode_crate_num(&mut self) -> CrateNum;
-    fn decode_def_index(&mut self) -> DefIndex;
     fn decode_def_id(&mut self) -> DefId;
     fn decode_attr_id(&mut self) -> AttrId;
+}
+
+impl BlobDecoder for MemDecoder<'_> {
+    fn decode_symbol(&mut self) -> Symbol {
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        ByteSymbol::intern(self.read_byte_str())
+    }
+
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
 }
 
 impl SpanDecoder for MemDecoder<'_> {
@@ -1316,14 +1333,6 @@ impl SpanDecoder for MemDecoder<'_> {
         let hi = Decodable::decode(self);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
-    }
-
-    fn decode_symbol(&mut self) -> Symbol {
-        Symbol::intern(self.read_str())
-    }
-
-    fn decode_byte_symbol(&mut self) -> ByteSymbol {
-        ByteSymbol::intern(self.read_byte_str())
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
@@ -1336,10 +1345,6 @@ impl SpanDecoder for MemDecoder<'_> {
 
     fn decode_crate_num(&mut self) -> CrateNum {
         CrateNum::from_u32(self.read_u32())
-    }
-
-    fn decode_def_index(&mut self) -> DefIndex {
-        panic!("cannot decode `DefIndex` with `MemDecoder`");
     }
 
     fn decode_def_id(&mut self) -> DefId {
@@ -1357,13 +1362,13 @@ impl<D: SpanDecoder> Decodable<D> for Span {
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for Symbol {
+impl<D: BlobDecoder> Decodable<D> for Symbol {
     fn decode(s: &mut D) -> Symbol {
         s.decode_symbol()
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for ByteSymbol {
+impl<D: BlobDecoder> Decodable<D> for ByteSymbol {
     fn decode(s: &mut D) -> ByteSymbol {
         s.decode_byte_symbol()
     }
@@ -1387,7 +1392,7 @@ impl<D: SpanDecoder> Decodable<D> for CrateNum {
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for DefIndex {
+impl<D: BlobDecoder> Decodable<D> for DefIndex {
     fn decode(s: &mut D) -> DefIndex {
         s.decode_def_index()
     }

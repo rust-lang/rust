@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
+use decoder::LazyDecoder;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
-use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
 pub use encoder::{EncodedMetadata, encode_metadata, rendered_const};
@@ -19,7 +19,8 @@ use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
-    Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
+    BlobDecodable, Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable,
+    TyEncodable,
 };
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -201,7 +202,7 @@ pub(crate) struct ProcMacroData {
 /// See #76720 for more details.
 ///
 /// If you do modify this struct, also bump the [`METADATA_VERSION`] constant.
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(MetadataEncodable, BlobDecodable)]
 pub(crate) struct CrateHeader {
     pub(crate) triple: TargetTuple,
     pub(crate) hash: Svh,
@@ -323,7 +324,7 @@ impl RawDefId {
     }
 }
 
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, BlobDecodable)]
 pub(crate) struct CrateDep {
     pub name: Symbol,
     pub hash: Svh,
@@ -341,7 +342,7 @@ pub(crate) struct TraitImpls {
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct IncoherentImpls {
-    self_ty: SimplifiedType,
+    self_ty: LazyValue<SimplifiedType>,
     impls: LazyArray<DefIndex>,
 }
 
