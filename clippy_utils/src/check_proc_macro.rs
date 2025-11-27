@@ -524,11 +524,10 @@ fn ast_ty_search_pat(ty: &ast::Ty) -> (Pat, Pat) {
         TyKind::ImplicitSelf
 
         // experimental
-        |TyKind::Pat(..)
+        | TyKind::Pat(..)
 
         // unused
         | TyKind::CVarArgs
-        | TyKind::Typeof(_)
 
         // placeholder
         | TyKind::Dummy
