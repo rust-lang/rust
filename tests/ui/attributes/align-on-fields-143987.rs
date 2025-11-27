@@ -1,4 +1,4 @@
-// Regression test for issue #143987
+// Regression test for issue https://github.com/rust-lang/rust/issues/143987
 // Ensure that using `#[align]` on struct fields produces an error
 // instead of causing an ICE (Internal Compiler Error)
 
