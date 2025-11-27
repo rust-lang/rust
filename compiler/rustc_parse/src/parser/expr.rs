@@ -15,8 +15,8 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Label, MacCall, MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind,
-    UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param, RangeLimits,
+    StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -85,8 +85,11 @@ impl<'a> Parser<'a> {
         )
     }
 
-    pub fn parse_expr_anon_const(&mut self) -> PResult<'a, AnonConst> {
-        self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
+    pub fn parse_expr_anon_const(
+        &mut self,
+        mgca_disambiguation: MgcaDisambiguation,
+    ) -> PResult<'a, AnonConst> {
+        self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value, mgca_disambiguation })
     }
 
     fn parse_expr_catch_underscore(
@@ -1615,7 +1618,13 @@ impl<'a> Parser<'a> {
             let first_expr = self.parse_expr()?;
             if self.eat(exp!(Semi)) {
                 // Repeating array syntax: `[ 0; 512 ]`
-                let count = self.parse_expr_anon_const()?;
+                let count = if self.token.is_keyword(kw::Const)
+                    && self.look_ahead(1, |t| *t == token::OpenBrace)
+                {
+                    self.parse_expr_anon_const(MgcaDisambiguation::AnonConst)?
+                } else {
+                    self.parse_expr_anon_const(MgcaDisambiguation::Direct)?
+                };
                 self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(exp!(Comma)) {

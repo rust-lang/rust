@@ -16,11 +16,11 @@ pub struct S;
 
 impl<const X: usize> Tr<X> for S {
     #[type_const]
-    const N1<T>: usize = 0;
+    const N1<T>: usize = const { 0 };
     #[type_const]
-    const N2<const I: usize>: usize = 1;
+    const N2<const I: usize>: usize = const { 1 };
     #[type_const]
-    const N3: usize = 2;
+    const N3: usize = const { 2 };
 }
 
 fn main() {}

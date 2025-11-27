@@ -1,8 +1,8 @@
 error: these where clauses contain repeated elements
   --> tests/ui/trait_duplication_in_bounds_assoc_const_eq.rs:11:8
    |
-LL |     T: AssocConstTrait<ASSOC = 0> + AssocConstTrait<ASSOC = 0>,
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `AssocConstTrait<ASSOC = 0>`
+LL |     T: AssocConstTrait<ASSOC = const { 0 }> + AssocConstTrait<ASSOC = const { 0 }>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `AssocConstTrait<ASSOC = const { 0 }>`
    |
 note: the lint level is defined here
   --> tests/ui/trait_duplication_in_bounds_assoc_const_eq.rs:1:9
