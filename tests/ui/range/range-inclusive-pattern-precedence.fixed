@@ -1,3 +1,4 @@
+//@ edition:2015
 // In expression, `&a..=b` is treated as `(&a)..=(b)` and `box a..=b` is
 // `(box a)..=(b)`. In a pattern, however, `&a..=b` means `&(a..=b)`. This may
 // lead to confusion.

@@ -1,5 +1,5 @@
 error[E0407]: method `foo3` is not a member of trait `Trait`
-  --> $DIR/explicit-paths.rs:49:9
+  --> $DIR/explicit-paths.rs:50:9
    |
 LL |         reuse to_reuse::foo3;
    |         ^^^^^^^^^^^^^^^^----^
@@ -8,7 +8,7 @@ LL |         reuse to_reuse::foo3;
    |         not a member of trait `Trait`
 
 error[E0407]: method `foo4` is not a member of trait `Trait`
-  --> $DIR/explicit-paths.rs:51:9
+  --> $DIR/explicit-paths.rs:52:9
    |
 LL |         reuse F::foo4 { &self.0 }
    |         ^^^^^^^^^----^^^^^^^^^^^^
@@ -17,49 +17,49 @@ LL |         reuse F::foo4 { &self.0 }
    |         not a member of trait `Trait`
 
 error[E0425]: cannot find function `foo4` in `S`
-  --> $DIR/explicit-paths.rs:27:14
+  --> $DIR/explicit-paths.rs:28:14
    |
 LL |     reuse S::foo4;
    |              ^^^^ not found in `S`
 
 error[E0425]: cannot find function `foo4` in `F`
-  --> $DIR/explicit-paths.rs:38:18
+  --> $DIR/explicit-paths.rs:39:18
    |
 LL |         reuse F::foo4 { &self.0 }
    |                  ^^^^ not found in `F`
    |
 note: function `fn_to_other::foo4` exists but is inaccessible
-  --> $DIR/explicit-paths.rs:27:5
+  --> $DIR/explicit-paths.rs:28:5
    |
 LL |     reuse S::foo4;
    |     ^^^^^^^^^^^^^^ not accessible
 
 error[E0425]: cannot find function `foo4` in `F`
-  --> $DIR/explicit-paths.rs:51:18
+  --> $DIR/explicit-paths.rs:52:18
    |
 LL |         reuse F::foo4 { &self.0 }
    |                  ^^^^ not found in `F`
    |
 note: function `fn_to_other::foo4` exists but is inaccessible
-  --> $DIR/explicit-paths.rs:27:5
+  --> $DIR/explicit-paths.rs:28:5
    |
 LL |     reuse S::foo4;
    |     ^^^^^^^^^^^^^^ not accessible
 
 error[E0425]: cannot find function `foo4` in `F`
-  --> $DIR/explicit-paths.rs:65:18
+  --> $DIR/explicit-paths.rs:66:18
    |
 LL |         reuse F::foo4 { &F }
    |                  ^^^^ not found in `F`
    |
 note: function `fn_to_other::foo4` exists but is inaccessible
-  --> $DIR/explicit-paths.rs:27:5
+  --> $DIR/explicit-paths.rs:28:5
    |
 LL |     reuse S::foo4;
    |     ^^^^^^^^^^^^^^ not accessible
 
 error[E0119]: conflicting implementations of trait `Trait` for type `S`
-  --> $DIR/explicit-paths.rs:74:5
+  --> $DIR/explicit-paths.rs:75:5
    |
 LL |     impl Trait for S {
    |     ---------------- first implementation here
@@ -68,7 +68,7 @@ LL |     impl Trait for S {
    |     ^^^^^^^^^^^^^^^^ conflicting implementation for `S`
 
 error[E0308]: mismatched types
-  --> $DIR/explicit-paths.rs:61:36
+  --> $DIR/explicit-paths.rs:62:36
    |
 LL |     trait Trait2 : Trait {
    |     -------------------- found this type parameter
@@ -80,24 +80,24 @@ LL |         reuse <F as Trait>::foo1 { self }
    = note: expected reference `&F`
               found reference `&Self`
 note: method defined here
-  --> $DIR/explicit-paths.rs:5:8
+  --> $DIR/explicit-paths.rs:6:8
    |
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 
 error[E0277]: the trait bound `S2: Trait` is not satisfied
-  --> $DIR/explicit-paths.rs:76:16
+  --> $DIR/explicit-paths.rs:77:16
    |
 LL |         reuse <S2 as Trait>::foo1;
    |                ^^ unsatisfied trait bound
    |
 help: the trait `Trait` is not implemented for `S2`
-  --> $DIR/explicit-paths.rs:73:5
+  --> $DIR/explicit-paths.rs:74:5
    |
 LL |     struct S2;
    |     ^^^^^^^^^
 help: the following other types implement trait `Trait`
-  --> $DIR/explicit-paths.rs:10:1
+  --> $DIR/explicit-paths.rs:11:1
    |
 LL | impl Trait for F {}
    | ^^^^^^^^^^^^^^^^ `F`
@@ -109,7 +109,7 @@ LL |     impl Trait for S {
    |     ^^^^^^^^^^^^^^^^ `S`
 
 error[E0308]: mismatched types
-  --> $DIR/explicit-paths.rs:76:30
+  --> $DIR/explicit-paths.rs:77:30
    |
 LL |         reuse <S2 as Trait>::foo1;
    |                              ^^^^
@@ -120,7 +120,7 @@ LL |         reuse <S2 as Trait>::foo1;
    = note: expected reference `&S2`
               found reference `&S`
 note: method defined here
-  --> $DIR/explicit-paths.rs:5:8
+  --> $DIR/explicit-paths.rs:6:8
    |
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
