@@ -209,6 +209,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
         ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-asan-linux-gnu", false),
         ("x86_64-apple-darwin", true),
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
@@ -1292,6 +1293,11 @@ fn supported_sanitizers(
             "linux",
             "x86_64",
             &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
+        ),
+        "x86_64-asan-linux-gnu" => common_libs(
+            "linux",
+            "x86_64",
+            &["asan"],
         ),
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
