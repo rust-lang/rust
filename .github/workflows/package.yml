@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - packagetest
 
 defaults:
   run:
