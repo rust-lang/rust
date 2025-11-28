@@ -588,13 +588,13 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
-#if LLVM_VERSION_LT(23, 0)
+#if LLVM_VERSION_LT(22, 0)
   auto FS = vfs::getRealFileSystem();
 #endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
         PGOGenPath, "", "", "", PGOOptions::IRInstr, PGOOptions::NoCSAction,
 #else
         PGOGenPath, "", "", "", FS, PGOOptions::IRInstr, PGOOptions::NoCSAction,
@@ -603,7 +603,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
     PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
         PGOUsePath, "", "", "", PGOOptions::IRUse, PGOOptions::NoCSAction,
 #else
         PGOUsePath, "", "", "", FS, PGOOptions::IRUse, PGOOptions::NoCSAction,
@@ -611,7 +611,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt =
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
         PGOOptions(PGOSampleUsePath, "", "", "", PGOOptions::SampleUse,
 #else
         PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
@@ -620,7 +620,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                    DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt = PGOOptions(
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
         "", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
 #else
         "", "", "", "", FS, PGOOptions::NoAction, PGOOptions::NoCSAction,
@@ -1242,7 +1242,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // being lifted from `lib/LTO/LTO.cpp` as well
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
     const auto &SummaryList = I.second.getSummaryList();
 #else
     const auto &SummaryList = I.second.SummaryList;
@@ -1279,7 +1279,7 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-#if LLVM_VERSION_GE(23, 0)
+#if LLVM_VERSION_GE(22, 0)
     const auto &SummaryList = List.second.getSummaryList();
 #else
     const auto &SummaryList = List.second.SummaryList;

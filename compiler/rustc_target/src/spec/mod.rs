@@ -1881,6 +1881,7 @@ crate::target_spec_enum! {
         Sparc = "sparc",
         Sparc64 = "sparc64",
         SpirV = "spirv",
+        V810 = "v810",
         Wasm32 = "wasm32",
         Wasm64 = "wasm64",
         X86 = "x86",
@@ -1919,6 +1920,7 @@ impl Arch {
             Self::Sparc => sym::sparc,
             Self::Sparc64 => sym::sparc64,
             Self::SpirV => sym::spirv,
+            Self::V810 => sym::v810,
             Self::Wasm32 => sym::wasm32,
             Self::Wasm64 => sym::wasm64,
             Self::X86 => sym::x86,
@@ -3421,6 +3423,7 @@ impl Target {
             Arch::AmdGpu
             | Arch::Nvptx64
             | Arch::PowerPC64LE
+            | Arch::V810
             | Arch::SpirV
             | Arch::Wasm32
             | Arch::Wasm64

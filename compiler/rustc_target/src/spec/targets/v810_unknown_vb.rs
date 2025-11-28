@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let base = opts();
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "e-p:32:32-i32:32-i64:32-f32:32-a:0:32-n32:32-S32".into(),
-        arch: "v810".into(),
+        arch: Arch::V810,
         options: base,
     }
 }

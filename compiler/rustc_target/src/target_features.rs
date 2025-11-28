@@ -739,6 +739,14 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+static V810_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("app-regs", Stable, &[]),
+    ("gprel", Stable, &[]),
+    ("nintendo", Stable, &[]),
+    // tidy-alphabetical-end
+];
+
 static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("atomics", Unstable(sym::wasm_target_feature), &[]),
@@ -897,6 +905,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
         .chain(MIPS_FEATURES.iter())
         .chain(NVPTX_FEATURES.iter())
         .chain(RISCV_FEATURES.iter())
+        .chain(V810_FEATURES.iter())
         .chain(WASM_FEATURES.iter())
         .chain(BPF_FEATURES.iter())
         .chain(CSKY_FEATURES)
@@ -965,6 +974,7 @@ impl Target {
             Arch::PowerPC | Arch::PowerPC64 => POWERPC_FEATURES,
             Arch::RiscV32 | Arch::RiscV64 => RISCV_FEATURES,
             Arch::Wasm32 | Arch::Wasm64 => WASM_FEATURES,
+            Arch::V810 => V810_FEATURES,
             Arch::Bpf => BPF_FEATURES,
             Arch::CSky => CSKY_FEATURES,
             Arch::LoongArch32 | Arch::LoongArch64 => LOONGARCH_FEATURES,
@@ -1005,6 +1015,7 @@ impl Target {
             | Arch::Msp430
             | Arch::PowerPC64LE
             | Arch::SpirV
+            | Arch::V810
             | Arch::Xtensa
             | Arch::Other(_) => &[],
         }
