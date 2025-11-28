@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 pub use ReprAttr::*;
 use rustc_abi::Align;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, ast};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
@@ -648,7 +648,7 @@ pub enum AttributeKind {
 
     /// Represents specifically [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     /// i.e. doc comments.
-    DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
+    DocComment { style: AttrStyle, kind: DocFragmentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
     Dummy,

@@ -13,7 +13,9 @@ use crate::ast::{
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
     PathSegment, Safety,
 };
-use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
+use crate::token::{
+    self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
+};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
@@ -179,15 +181,21 @@ impl AttributeExt for Attribute {
     }
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
-    /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
-    /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
+    /// * `///doc` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Line)))`.
+    /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block)))`.
+    /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
-            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                normal.item.value_str().map(|s| (s, CommentKind::Line))
+                if let Some(value) = normal.item.value_str()
+                    && let Some(value_span) = normal.item.value_span()
+                {
+                    Some((value, DocFragmentKind::Raw(value_span)))
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -301,6 +309,25 @@ impl AttrItem {
                 }
                 _ => None,
             },
+            AttrArgs::Delimited(_) | AttrArgs::Empty => None,
+        }
+    }
+
+    /// Returns the span in:
+    ///
+    /// ```text
+    /// #[attribute = "value"]
+    ///               ^^^^^^^
+    /// ```
+    ///
+    /// It returns `None` in any other cases like:
+    ///
+    /// ```text
+    /// #[attr("value")]
+    /// ```
+    fn value_span(&self) -> Option<Span> {
+        match &self.args {
+            AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
     }
@@ -825,7 +852,7 @@ pub trait AttributeExt: Debug {
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)>;
 
     /// Returns outer or inner if this is a doc attribute or a sugared doc
     /// comment, otherwise None.
@@ -910,7 +937,7 @@ impl Attribute {
         AttributeExt::is_proc_macro_attr(self)
     }
 
-    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        AttributeExt::doc_str_and_comment_kind(self)
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }

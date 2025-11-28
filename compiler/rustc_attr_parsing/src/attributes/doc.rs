@@ -474,7 +474,9 @@ impl DocParser {
                 if nv.value_as_str().is_none() {
                     cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                 } else {
-                    unreachable!("Should have been handled at the same time as sugar-syntaxed doc comments");
+                    unreachable!(
+                        "Should have been handled at the same time as sugar-syntaxed doc comments"
+                    );
                 }
             }
         }

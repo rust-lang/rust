@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast as ast;
 use rustc_ast::{AttrStyle, NodeId, Safety};
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::DocFragmentKind;
 use rustc_errors::DiagCtxtHandle;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -295,7 +295,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
-                        kind: *comment_kind,
+                        kind: DocFragmentKind::Sugared(*comment_kind),
                         span: lower_span(attr.span),
                         comment: *symbol,
                     }))
@@ -350,8 +350,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         {
                             attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                                 style: attr.style,
-                                kind: CommentKind::Block,
-                                span: nv.value_span,
+                                kind: DocFragmentKind::Raw(nv.value_span),
+                                span: attr.span,
                                 comment,
                             }));
                             continue;
