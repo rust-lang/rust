@@ -459,14 +459,11 @@ impl ConfigInfo {
 
     pub fn show_usage() {
         println!(
-            "\
-    --features [arg]       : Add a new feature [arg]
+            "    --features [arg]       : Add a new feature [arg]
     --target-triple [arg]  : Set the target triple to [arg]
     --target [arg]         : Set the target to [arg]
+    --release              : Build backend in release mode with optimized dependencies
     --out-dir              : Location where the files will be generated
-    --release              : Build in release mode
-    --release-sysroot      : Build sysroot in release mode
-    --sysroot-panic-abort  : Build the sysroot without unwinding support
     --config-file          : Location of the config file to be used
     --gcc-path             : Location of the GCC root folder
     --cg_gcc-path          : Location of the rustc_codegen_gcc root folder (used
