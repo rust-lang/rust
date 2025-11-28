@@ -1743,11 +1743,7 @@ pub fn _mm_maskz_mullo_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxuw))]
 pub fn _mm512_max_epu16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_u16x32();
-        let b = b.as_u16x32();
-        transmute(simd_select::<i16x32, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u16x32(), b.as_u16x32()).as_m512i() }
 }
 
 /// Compare packed unsigned 16-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1842,11 +1838,7 @@ pub fn _mm_maskz_max_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxub))]
 pub fn _mm512_max_epu8(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_u8x64();
-        let b = b.as_u8x64();
-        transmute(simd_select::<i8x64, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u8x64(), b.as_u8x64()).as_m512i() }
 }
 
 /// Compare packed unsigned 8-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -1941,11 +1933,7 @@ pub fn _mm_maskz_max_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsw))]
 pub fn _mm512_max_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_i16x32();
-        let b = b.as_i16x32();
-        transmute(simd_select::<i16x32, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i16x32(), b.as_i16x32()).as_m512i() }
 }
 
 /// Compare packed signed 16-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2040,11 +2028,7 @@ pub fn _mm_maskz_max_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmaxsb))]
 pub fn _mm512_max_epi8(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_i8x64();
-        let b = b.as_i8x64();
-        transmute(simd_select::<i8x64, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i8x64(), b.as_i8x64()).as_m512i() }
 }
 
 /// Compare packed signed 8-bit integers in a and b, and store packed maximum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2139,11 +2123,7 @@ pub fn _mm_maskz_max_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminuw))]
 pub fn _mm512_min_epu16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_u16x32();
-        let b = b.as_u16x32();
-        transmute(simd_select::<i16x32, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u16x32(), b.as_u16x32()).as_m512i() }
 }
 
 /// Compare packed unsigned 16-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2238,11 +2218,7 @@ pub fn _mm_maskz_min_epu16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminub))]
 pub fn _mm512_min_epu8(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_u8x64();
-        let b = b.as_u8x64();
-        transmute(simd_select::<i8x64, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u8x64(), b.as_u8x64()).as_m512i() }
 }
 
 /// Compare packed unsigned 8-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2337,11 +2313,7 @@ pub fn _mm_maskz_min_epu8(k: __mmask16, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsw))]
 pub fn _mm512_min_epi16(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_i16x32();
-        let b = b.as_i16x32();
-        transmute(simd_select::<i16x32, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i16x32(), b.as_i16x32()).as_m512i() }
 }
 
 /// Compare packed signed 16-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -2436,11 +2408,7 @@ pub fn _mm_maskz_min_epi16(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpminsb))]
 pub fn _mm512_min_epi8(a: __m512i, b: __m512i) -> __m512i {
-    unsafe {
-        let a = a.as_i8x64();
-        let b = b.as_i8x64();
-        transmute(simd_select::<i8x64, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i8x64(), b.as_i8x64()).as_m512i() }
 }
 
 /// Compare packed signed 8-bit integers in a and b, and store packed minimum values in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -10767,11 +10735,11 @@ pub fn _mm_maskz_cvtepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm512_cvtsepi16_epi8(a: __m512i) -> __m256i {
     unsafe {
-        transmute(vpmovswb(
-            a.as_i16x32(),
-            i8x32::ZERO,
-            0b11111111_11111111_11111111_11111111,
+        simd_cast::<_, i8x32>(simd_imax(
+            simd_imin(a.as_i16x32(), i16x32::splat(i8::MAX as _)),
+            i16x32::splat(i8::MIN as _),
         ))
+        .as_m256i()
     }
 }
 
@@ -10783,7 +10751,9 @@ pub fn _mm512_cvtsepi16_epi8(a: __m512i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm512_mask_cvtsepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m256i {
-    unsafe { transmute(vpmovswb(a.as_i16x32(), src.as_i8x32(), k)) }
+    unsafe {
+        simd_select_bitmask(k, _mm512_cvtsepi16_epi8(a).as_i8x32(), src.as_i8x32()).as_m256i()
+    }
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -10794,7 +10764,7 @@ pub fn _mm512_mask_cvtsepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm512_maskz_cvtsepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
-    unsafe { transmute(vpmovswb(a.as_i16x32(), i8x32::ZERO, k)) }
+    unsafe { simd_select_bitmask(k, _mm512_cvtsepi16_epi8(a).as_i8x32(), i8x32::ZERO).as_m256i() }
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst.
@@ -10805,7 +10775,13 @@ pub fn _mm512_maskz_cvtsepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm256_cvtsepi16_epi8(a: __m256i) -> __m128i {
-    unsafe { transmute(vpmovswb256(a.as_i16x16(), i8x16::ZERO, 0b11111111_11111111)) }
+    unsafe {
+        simd_cast::<_, i8x16>(simd_imax(
+            simd_imin(a.as_i16x16(), i16x16::splat(i8::MAX as _)),
+            i16x16::splat(i8::MIN as _),
+        ))
+        .as_m128i()
+    }
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -10816,7 +10792,9 @@ pub fn _mm256_cvtsepi16_epi8(a: __m256i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm256_mask_cvtsepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m128i {
-    unsafe { transmute(vpmovswb256(a.as_i16x16(), src.as_i8x16(), k)) }
+    unsafe {
+        simd_select_bitmask(k, _mm256_cvtsepi16_epi8(a).as_i8x16(), src.as_i8x16()).as_m128i()
+    }
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -10827,7 +10805,7 @@ pub fn _mm256_mask_cvtsepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovswb))]
 pub fn _mm256_maskz_cvtsepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
-    unsafe { transmute(vpmovswb256(a.as_i16x16(), i8x16::ZERO, k)) }
+    unsafe { simd_select_bitmask(k, _mm256_cvtsepi16_epi8(a).as_i8x16(), i8x16::ZERO).as_m128i() }
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst.
@@ -10872,11 +10850,7 @@ pub fn _mm_maskz_cvtsepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm512_cvtusepi16_epi8(a: __m512i) -> __m256i {
     unsafe {
-        transmute(vpmovuswb(
-            a.as_u16x32(),
-            u8x32::ZERO,
-            0b11111111_11111111_11111111_11111111,
-        ))
+        simd_cast::<_, u8x32>(simd_imin(a.as_u16x32(), u16x32::splat(u8::MAX as _))).as_m256i()
     }
 }
 
@@ -10888,7 +10862,9 @@ pub fn _mm512_cvtusepi16_epi8(a: __m512i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm512_mask_cvtusepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __m256i {
-    unsafe { transmute(vpmovuswb(a.as_u16x32(), src.as_u8x32(), k)) }
+    unsafe {
+        simd_select_bitmask(k, _mm512_cvtusepi16_epi8(a).as_u8x32(), src.as_u8x32()).as_m256i()
+    }
 }
 
 /// Convert packed unsigned 16-bit integers in a to packed unsigned 8-bit integers with unsigned saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -10899,7 +10875,7 @@ pub fn _mm512_mask_cvtusepi16_epi8(src: __m256i, k: __mmask32, a: __m512i) -> __
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm512_maskz_cvtusepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
-    unsafe { transmute(vpmovuswb(a.as_u16x32(), u8x32::ZERO, k)) }
+    unsafe { simd_select_bitmask(k, _mm512_cvtusepi16_epi8(a).as_u8x32(), u8x32::ZERO).as_m256i() }
 }
 
 /// Convert packed unsigned 16-bit integers in a to packed unsigned 8-bit integers with unsigned saturation, and store the results in dst.
@@ -10911,11 +10887,7 @@ pub fn _mm512_maskz_cvtusepi16_epi8(k: __mmask32, a: __m512i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm256_cvtusepi16_epi8(a: __m256i) -> __m128i {
     unsafe {
-        transmute(vpmovuswb256(
-            a.as_u16x16(),
-            u8x16::ZERO,
-            0b11111111_11111111,
-        ))
+        simd_cast::<_, u8x16>(simd_imin(a.as_u16x16(), u16x16::splat(u8::MAX as _))).as_m128i()
     }
 }
 
@@ -10927,7 +10899,9 @@ pub fn _mm256_cvtusepi16_epi8(a: __m256i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm256_mask_cvtusepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __m128i {
-    unsafe { transmute(vpmovuswb256(a.as_u16x16(), src.as_u8x16(), k)) }
+    unsafe {
+        simd_select_bitmask(k, _mm256_cvtusepi16_epi8(a).as_u8x16(), src.as_u8x16()).as_m128i()
+    }
 }
 
 /// Convert packed unsigned 16-bit integers in a to packed unsigned 8-bit integers with unsigned saturation, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -10938,7 +10912,7 @@ pub fn _mm256_mask_cvtusepi16_epi8(src: __m128i, k: __mmask16, a: __m256i) -> __
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovuswb))]
 pub fn _mm256_maskz_cvtusepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
-    unsafe { transmute(vpmovuswb256(a.as_u16x16(), u8x16::ZERO, k)) }
+    unsafe { simd_select_bitmask(k, _mm256_cvtusepi16_epi8(a).as_u8x16(), u8x16::ZERO).as_m128i() }
 }
 
 /// Convert packed unsigned 16-bit integers in a to packed unsigned 8-bit integers with unsigned saturation, and store the results in dst.
@@ -11624,7 +11598,9 @@ pub unsafe fn _mm_mask_cvtsepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a: 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
 pub unsafe fn _mm512_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask32, a: __m512i) {
-    vpmovwbmem(mem_addr, a.as_i16x32(), k);
+    let result = _mm512_cvtepi16_epi8(a).as_i8x32();
+    let mask = simd_select_bitmask(k, i8x32::splat(!0), i8x32::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, result);
 }
 
 /// Convert packed 16-bit integers in a to packed 8-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -11635,7 +11611,9 @@ pub unsafe fn _mm512_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask32, 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
 pub unsafe fn _mm256_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask16, a: __m256i) {
-    vpmovwbmem256(mem_addr, a.as_i16x16(), k);
+    let result = _mm256_cvtepi16_epi8(a).as_i8x16();
+    let mask = simd_select_bitmask(k, i8x16::splat(!0), i8x16::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, result);
 }
 
 /// Convert packed 16-bit integers in a to packed 8-bit integers with truncation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -11646,7 +11624,13 @@ pub unsafe fn _mm256_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask16, 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
 pub unsafe fn _mm_mask_cvtepi16_storeu_epi8(mem_addr: *mut i8, k: __mmask8, a: __m128i) {
-    vpmovwbmem128(mem_addr, a.as_i16x8(), k);
+    let result: i8x8 = simd_shuffle!(
+        _mm_cvtepi16_epi8(a).as_i8x16(),
+        i8x16::ZERO,
+        [0, 1, 2, 3, 4, 5, 6, 7]
+    );
+    let mask = simd_select_bitmask(k, i8x8::splat(!0), i8x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, result);
 }
 
 /// Convert packed unsigned 16-bit integers in a to packed unsigned 8-bit integers with unsigned saturation, and store the active results (those with their respective bit set in writemask k) to unaligned memory at base_addr.
@@ -11735,17 +11719,9 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.dbpsadbw.128"]
     fn vdbpsadbw128(a: u8x16, b: u8x16, imm8: i32) -> u16x8;
 
-    #[link_name = "llvm.x86.avx512.mask.pmovs.wb.512"]
-    fn vpmovswb(a: i16x32, src: i8x32, mask: u32) -> i8x32;
-    #[link_name = "llvm.x86.avx512.mask.pmovs.wb.256"]
-    fn vpmovswb256(a: i16x16, src: i8x16, mask: u16) -> i8x16;
     #[link_name = "llvm.x86.avx512.mask.pmovs.wb.128"]
     fn vpmovswb128(a: i16x8, src: i8x16, mask: u8) -> i8x16;
 
-    #[link_name = "llvm.x86.avx512.mask.pmovus.wb.512"]
-    fn vpmovuswb(a: u16x32, src: u8x32, mask: u32) -> u8x32;
-    #[link_name = "llvm.x86.avx512.mask.pmovus.wb.256"]
-    fn vpmovuswb256(a: u16x16, src: u8x16, mask: u16) -> u8x16;
     #[link_name = "llvm.x86.avx512.mask.pmovus.wb.128"]
     fn vpmovuswb128(a: u16x8, src: u8x16, mask: u8) -> u8x16;
 
@@ -11755,13 +11731,6 @@ unsafe extern "C" {
     fn vpmovswbmem256(mem_addr: *mut i8, a: i16x16, mask: u16);
     #[link_name = "llvm.x86.avx512.mask.pmovs.wb.mem.128"]
     fn vpmovswbmem128(mem_addr: *mut i8, a: i16x8, mask: u8);
-
-    #[link_name = "llvm.x86.avx512.mask.pmov.wb.mem.512"]
-    fn vpmovwbmem(mem_addr: *mut i8, a: i16x32, mask: u32);
-    #[link_name = "llvm.x86.avx512.mask.pmov.wb.mem.256"]
-    fn vpmovwbmem256(mem_addr: *mut i8, a: i16x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.pmov.wb.mem.128"]
-    fn vpmovwbmem128(mem_addr: *mut i8, a: i16x8, mask: u8);
 
     #[link_name = "llvm.x86.avx512.mask.pmovus.wb.mem.512"]
     fn vpmovuswbmem(mem_addr: *mut i8, a: i16x32, mask: u32);
@@ -21172,7 +21141,7 @@ mod tests {
         let e = _mm_set_epi8(
             0, 0, 0, 0,
             0, 0, 0, 0,
-            u8::MAX as i8, u8::MAX as i8, u8::MAX as i8, u8::MAX as i8, 
+            u8::MAX as i8, u8::MAX as i8, u8::MAX as i8, u8::MAX as i8,
             u8::MAX as i8, u8::MAX as i8, u8::MAX as i8, u8::MAX as i8,
         );
         assert_eq_m128i(r, e);

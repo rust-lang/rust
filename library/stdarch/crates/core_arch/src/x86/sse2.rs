@@ -218,11 +218,7 @@ pub fn _mm_madd_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i16x8();
-        let b = b.as_i16x8();
-        transmute(simd_select::<i16x8, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_i16x8(), b.as_i16x8()).as_m128i() }
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns the
@@ -234,11 +230,7 @@ pub fn _mm_max_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pmaxub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u8x16();
-        let b = b.as_u8x16();
-        transmute(simd_select::<i8x16, _>(simd_gt(a, b), a, b))
-    }
+    unsafe { simd_imax(a.as_u8x16(), b.as_u8x16()).as_m128i() }
 }
 
 /// Compares packed 16-bit integers in `a` and `b`, and returns the packed
@@ -250,11 +242,7 @@ pub fn _mm_max_epu8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminsw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_i16x8();
-        let b = b.as_i16x8();
-        transmute(simd_select::<i16x8, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_i16x8(), b.as_i16x8()).as_m128i() }
 }
 
 /// Compares packed unsigned 8-bit integers in `a` and `b`, and returns the
@@ -266,11 +254,7 @@ pub fn _mm_min_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(pminub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub fn _mm_min_epu8(a: __m128i, b: __m128i) -> __m128i {
-    unsafe {
-        let a = a.as_u8x16();
-        let b = b.as_u8x16();
-        transmute(simd_select::<i8x16, _>(simd_lt(a, b), a, b))
-    }
+    unsafe { simd_imin(a.as_u8x16(), b.as_u8x16()).as_m128i() }
 }
 
 /// Multiplies the packed 16-bit integers in `a` and `b`.

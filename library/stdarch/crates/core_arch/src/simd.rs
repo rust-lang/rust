@@ -2,6 +2,18 @@
 
 #![allow(non_camel_case_types)]
 
+#[inline(always)]
+pub(crate) unsafe fn simd_imax<T: Copy>(a: T, b: T) -> T {
+    let mask: T = crate::intrinsics::simd::simd_gt(a, b);
+    crate::intrinsics::simd::simd_select(mask, a, b)
+}
+
+#[inline(always)]
+pub(crate) unsafe fn simd_imin<T: Copy>(a: T, b: T) -> T {
+    let mask: T = crate::intrinsics::simd::simd_lt(a, b);
+    crate::intrinsics::simd::simd_select(mask, a, b)
+}
+
 macro_rules! simd_ty {
     ($id:ident [$elem_type:ty ; $len:literal]: $($param_name:ident),*) => {
         #[repr(simd)]
