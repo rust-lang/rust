@@ -9,7 +9,7 @@ use project_model::ProjectJsonData;
 use serde::{Deserialize, Serialize};
 use tracing::{info_span, span::EnteredSpan};
 
-use crate::command::{CargoParser, CommandHandle};
+use crate::command::{CommandHandle, JsonLinesParser};
 
 pub(crate) const ARG_PLACEHOLDER: &str = "{arg}";
 
@@ -118,7 +118,7 @@ impl DiscoverProjectMessage {
 
 struct DiscoverProjectParser;
 
-impl CargoParser<DiscoverProjectMessage> for DiscoverProjectParser {
+impl JsonLinesParser<DiscoverProjectMessage> for DiscoverProjectParser {
     fn from_line(&self, line: &str, _error: &mut String) -> Option<DiscoverProjectMessage> {
         match serde_json::from_str::<DiscoverProjectData>(line) {
             Ok(data) => {
