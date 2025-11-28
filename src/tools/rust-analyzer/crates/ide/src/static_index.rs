@@ -44,7 +44,15 @@ pub struct ReferenceData {
 pub struct TokenStaticData {
     pub documentation: Option<Documentation>,
     pub hover: Option<HoverResult>,
+    /// The position of the token itself.
+    ///
+    /// For example, in `fn foo() {}` this is the position of `foo`.
     pub definition: Option<FileRange>,
+    /// The position of the entire definition that this token belongs to.
+    ///
+    /// For example, in `fn foo() {}` this is the position from `fn`
+    /// to the closing brace.
+    pub definition_body: Option<FileRange>,
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
     pub display_name: Option<String>,
@@ -248,6 +256,10 @@ impl StaticIndex<'_> {
                     definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
+                    definition_body: def
+                        .try_to_nav(&sema)
+                        .map(UpmappingResult::call_site)
+                        .map(|it| FileRange { file_id: it.file_id, range: it.full_range }),
                     references: vec![],
                     moniker: current_crate.and_then(|cc| def_to_moniker(self.db, def, cc)),
                     display_name: def
