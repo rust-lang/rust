@@ -2666,7 +2666,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// and the `MoveFileExW` or `SetFileInformationByHandle` function on Windows.
 ///
 /// Because of this, the behavior when both `from` and `to` exist differs. On
-/// Unix, if `from` is a directory, `to` must either not exist or be an empty directory. If
+/// Unix, if `from` is a directory, `to` must be an empty directory or non-existent. If
 /// `from` is not a directory, `to` must also be not a directory. The behavior
 /// on Windows is the same on Windows 10 1607 and higher if `FileRenameInfoEx`
 /// is supported by the filesystem; otherwise, `from` can be anything, but
