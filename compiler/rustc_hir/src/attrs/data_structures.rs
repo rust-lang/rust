@@ -197,13 +197,37 @@ pub enum CfgEntry {
 
 impl CfgEntry {
     pub fn span(&self) -> Span {
-        let (CfgEntry::All(_, span)
-        | CfgEntry::Any(_, span)
-        | CfgEntry::Not(_, span)
-        | CfgEntry::Bool(_, span)
-        | CfgEntry::NameValue { span, .. }
-        | CfgEntry::Version(_, span)) = self;
+        let (Self::All(_, span)
+        | Self::Any(_, span)
+        | Self::Not(_, span)
+        | Self::Bool(_, span)
+        | Self::NameValue { span, .. }
+        | Self::Version(_, span)) = self;
         *span
+    }
+
+    /// Same as `PartialEq` but doesn't check spans and ignore order of cfgs.
+    pub fn is_equivalent_to(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::All(a, _), Self::All(b, _)) | (Self::Any(a, _), Self::Any(b, _)) => {
+                a.len() == b.len() && a.iter().all(|a| b.iter().any(|b| a.is_equivalent_to(b)))
+            }
+            (Self::Not(a, _), Self::Not(b, _)) => a.is_equivalent_to(b),
+            (Self::Bool(a, _), Self::Bool(b, _)) => a == b,
+            (
+                Self::NameValue { name: name1, value: value1, .. },
+                Self::NameValue { name: name2, value: value2, .. },
+            ) => {
+                name1 == name2
+                    && match (value1, value2) {
+                        (Some((a, _)), Some((b, _))) => a == b,
+                        (None, None) => true,
+                        _ => false,
+                    }
+            }
+            (Self::Version(a, _), Self::Version(b, _)) => a == b,
+            _ => false,
+        }
     }
 }
 

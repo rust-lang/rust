@@ -280,13 +280,12 @@ impl Cfg {
 
     fn should_append_only_to_description(&self) -> bool {
         match self.0 {
-            CfgEntry::Bool(..) => false,
             CfgEntry::Any(..)
             | CfgEntry::All(..)
             | CfgEntry::NameValue { .. }
-            | CfgEntry::Version(..) => true,
-            CfgEntry::Not(box CfgEntry::NameValue { .. }, _) => true,
-            CfgEntry::Not(..) => false,
+            | CfgEntry::Version(..)
+            | CfgEntry::Not(box CfgEntry::NameValue { .. }, _) => true,
+            CfgEntry::Not(..) | CfgEntry::Bool(..) => false,
         }
     }
 
@@ -347,25 +346,25 @@ impl ops::BitAndAssign for Cfg {
             (s @ CfgEntry::Bool(true, _), b) => *s = b,
             (CfgEntry::All(a, _), CfgEntry::All(ref mut b, _)) => {
                 for c in b.drain(..) {
-                    if !a.contains(&c) {
+                    if !a.iter().any(|a| a.is_equivalent_to(&c)) {
                         a.push(c);
                     }
                 }
             }
             (CfgEntry::All(a, _), ref mut b) => {
-                if !a.contains(b) {
+                if !a.iter().any(|a| a.is_equivalent_to(b)) {
                     a.push(mem::replace(b, CfgEntry::Bool(true, DUMMY_SP)));
                 }
             }
             (s, CfgEntry::All(mut a, _)) => {
                 let b = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
-                if !a.contains(&b) {
+                if !a.iter().any(|a| a.is_equivalent_to(&b)) {
                     a.push(b);
                 }
                 *s = CfgEntry::All(a, DUMMY_SP);
             }
             (s, b) => {
-                if *s != b {
+                if !s.is_equivalent_to(&b) {
                     let a = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
                     *s = CfgEntry::All(thin_vec![a, b], DUMMY_SP);
                 }
@@ -391,25 +390,25 @@ impl ops::BitOrAssign for Cfg {
             (s @ CfgEntry::Bool(false, _), b) => *s = b,
             (CfgEntry::Any(a, _), CfgEntry::Any(ref mut b, _)) => {
                 for c in b.drain(..) {
-                    if !a.contains(&c) {
+                    if !a.iter().any(|a| a.is_equivalent_to(&c)) {
                         a.push(c);
                     }
                 }
             }
             (CfgEntry::Any(a, _), ref mut b) => {
-                if !a.contains(b) {
+                if !a.iter().any(|a| a.is_equivalent_to(b)) {
                     a.push(mem::replace(b, CfgEntry::Bool(true, DUMMY_SP)));
                 }
             }
             (s, CfgEntry::Any(mut a, _)) => {
                 let b = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
-                if !a.contains(&b) {
+                if !a.iter().any(|a| a.is_equivalent_to(&b)) {
                     a.push(b);
                 }
                 *s = CfgEntry::Any(a, DUMMY_SP);
             }
             (s, b) => {
-                if *s != b {
+                if !s.is_equivalent_to(&b) {
                     let a = mem::replace(s, CfgEntry::Bool(true, DUMMY_SP));
                     *s = CfgEntry::Any(thin_vec![a, b], DUMMY_SP);
                 }
@@ -757,6 +756,7 @@ fn handle_auto_cfg_hide_show(
     {
         for item in items {
             // FIXME: Report in case `Cfg::parse` reports an error?
+
             let Ok(cfg) = Cfg::parse(item) else { continue };
             if let CfgEntry::NameValue { name, value, .. } = cfg.0 {
                 let value = value.map(|(v, _)| v);
