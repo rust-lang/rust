@@ -98,8 +98,7 @@ fn mut_to_ref_shorten_in_dyn<'a>(
 
 //////////////////////////////////////////////////
 
-// &mut T -> &mut U has a CoerceUnsized impl that does not allow shortening lifetimes.
-// This may change in the future.
+// &mut T -> &mut U has a CoerceUnsized impl that allows shortening lifetimes
 
 // Check that unsize-coercion works if the lifetime doesn't change.
 fn mut_to_mut_same_lifetime<'a>(x: Cell<&'a mut Thing>) -> Cell<&'a mut (dyn Trait + 'static)> {
@@ -119,7 +118,6 @@ fn mut_to_mut_sized_to_dyn<'a: 'b, 'b>(
 ) -> Cell<&'b mut (dyn Trait + 'static)> {
     x
 }
-//~^^ ERROR lifetime may not live long enough
 
 // Trait upcasting is an unsize coercion.
 fn mut_to_mut_upcast<'a: 'b, 'b>(
@@ -127,7 +125,6 @@ fn mut_to_mut_upcast<'a: 'b, 'b>(
 ) -> Cell<&'b mut (dyn Trait + 'static)> {
     x
 }
-//~^^ ERROR lifetime may not live long enough
 
 // An "identity" coercion from a trait object to itself is an unsize coercion.
 fn mut_to_mut_dyn_same<'a: 'b, 'b>(
@@ -135,7 +132,6 @@ fn mut_to_mut_dyn_same<'a: 'b, 'b>(
 ) -> Cell<&'b mut (dyn Trait + 'static)> {
     x
 }
-//~^^ ERROR lifetime may not live long enough
 
 // An unsize coercion can, surprisingly, shorten the lifetime inside a trait object.
 // This ignores whether CoerceUnsized allows shortening lifetimes or not,
