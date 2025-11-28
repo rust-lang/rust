@@ -59,6 +59,9 @@ exclude = [
   "obj",
 ]
 
+[profile.release]
+opt-level = 1
+
 [profile.release.package.rustc_thread_pool]
 # The rustc fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)

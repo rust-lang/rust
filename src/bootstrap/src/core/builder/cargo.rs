@@ -1387,6 +1387,10 @@ impl Builder<'_> {
             rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
         }
 
+        if !matches!(mode, Mode::Std) {
+            cargo.env(cargo_profile_var("OPT_LEVEL", &self.config), "1");
+        }
+
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
         let extra_rustflags = self
             .config
