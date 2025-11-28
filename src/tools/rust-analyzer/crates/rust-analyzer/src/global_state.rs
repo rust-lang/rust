@@ -121,9 +121,10 @@ pub(crate) struct GlobalState {
     pub(crate) test_run_remaining_jobs: usize,
 
     // Project loading
-    pub(crate) discover_handle: Option<discover::DiscoverHandle>,
+    pub(crate) discover_handles: Vec<discover::DiscoverHandle>,
     pub(crate) discover_sender: Sender<discover::DiscoverProjectMessage>,
     pub(crate) discover_receiver: Receiver<discover::DiscoverProjectMessage>,
+    pub(crate) discover_jobs_active: u32,
 
     // Debouncing channel for fetching the workspace
     // we want to delay it until the VFS looks stable-ish (and thus is not currently in the middle
@@ -175,7 +176,6 @@ pub(crate) struct GlobalState {
     pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
     pub(crate) fetch_proc_macros_queue: OpQueue<(ChangeWithProcMacros, Vec<ProcMacroPaths>), bool>,
     pub(crate) prime_caches_queue: OpQueue,
-    pub(crate) discover_workspace_queue: OpQueue,
 
     /// A deferred task queue.
     ///
@@ -291,9 +291,10 @@ impl GlobalState {
             test_run_receiver,
             test_run_remaining_jobs: 0,
 
-            discover_handle: None,
+            discover_handles: vec![],
             discover_sender,
             discover_receiver,
+            discover_jobs_active: 0,
 
             fetch_ws_receiver: None,
 
@@ -312,7 +313,6 @@ impl GlobalState {
             fetch_proc_macros_queue: OpQueue::default(),
 
             prime_caches_queue: OpQueue::default(),
-            discover_workspace_queue: OpQueue::default(),
 
             deferred_task_queue: task_queue,
             incomplete_crate_graph: false,
