@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, DocFragmentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -381,15 +381,24 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
 }
 
 pub fn doc_comment_to_string(
-    comment_kind: CommentKind,
+    fragment_kind: DocFragmentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,
 ) -> String {
-    match (comment_kind, attr_style) {
-        (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
-        (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
-        (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
-        (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
+    match fragment_kind {
+        DocFragmentKind::Sugared(comment_kind) => match (comment_kind, attr_style) {
+            (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
+            (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
+            (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
+            (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
+        },
+        DocFragmentKind::Raw(_) => {
+            format!(
+                "#{}[doc = {:?}]",
+                if attr_style == ast::AttrStyle::Inner { "!" } else { "" },
+                data.to_string(),
+            )
+        }
     }
 }
 
@@ -665,7 +674,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.word("]");
             }
             ast::AttrKind::DocComment(comment_kind, data) => {
-                self.word(doc_comment_to_string(*comment_kind, attr.style, *data));
+                self.word(doc_comment_to_string(
+                    DocFragmentKind::Sugared(*comment_kind),
+                    attr.style,
+                    *data,
+                ));
                 self.hardbreak()
             }
         }
@@ -1029,7 +1042,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Other */
             token::DocComment(comment_kind, attr_style, data) => {
-                doc_comment_to_string(comment_kind, attr_style, data).into()
+                doc_comment_to_string(DocFragmentKind::Sugared(comment_kind), attr_style, data)
+                    .into()
             }
             token::Eof => "<eof>".into(),
         }

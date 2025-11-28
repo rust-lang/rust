@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use rustc_abi::Align;
-use rustc_ast::token::CommentKind;
+use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_ast::{AttrStyle, IntTy, UintTy};
 use rustc_ast_pretty::pp::Printer;
 use rustc_data_structures::fx::FxIndexMap;
@@ -167,6 +167,7 @@ print_debug!(
     Align,
     AttrStyle,
     CommentKind,
+    DocFragmentKind,
     Transparency,
     SanitizerSet,
 );

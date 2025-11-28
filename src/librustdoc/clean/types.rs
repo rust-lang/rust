@@ -2403,7 +2403,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Crate, 16); // frequently moved by-value
-    static_assert_size!(DocFragment, 32);
+    static_assert_size!(DocFragment, 48);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
