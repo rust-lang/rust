@@ -12,7 +12,8 @@ use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
-use crate::mem::{self, MaybeUninit};
+use crate::marker::Destruct;
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
@@ -25,7 +26,6 @@ mod drain;
 mod equality;
 mod iter;
 
-pub(crate) use drain::drain_array_with;
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
 
@@ -105,9 +105,10 @@ pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
 /// ```
 #[inline]
 #[stable(feature = "array_from_fn", since = "1.63.0")]
-pub fn from_fn<T, const N: usize, F>(f: F) -> [T; N]
+#[rustc_const_unstable(feature = "const_array", issue = "147606")]
+pub const fn from_fn<T: [const] Destruct, const N: usize, F>(f: F) -> [T; N]
 where
-    F: FnMut(usize) -> T,
+    F: [const] FnMut(usize) -> T + [const] Destruct,
 {
     try_from_fn(NeverShortCircuit::wrap_mut_1(f)).0
 }
@@ -143,11 +144,11 @@ where
 /// ```
 #[inline]
 #[unstable(feature = "array_try_from_fn", issue = "89379")]
-pub fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
+#[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+pub const fn try_from_fn<R, const N: usize, F>(cb: F) -> ChangeOutputType<R, [R::Output; N]>
 where
-    F: FnMut(usize) -> R,
-    R: Try,
-    R::Residual: Residual<[R::Output; N]>,
+    R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
+    F: [const] FnMut(usize) -> R + [const] Destruct,
 {
     let mut array = [const { MaybeUninit::uninit() }; N];
     match try_from_fn_erased(&mut array, cb) {
@@ -549,9 +550,12 @@ impl<T, const N: usize> [T; N] {
     /// ```
     #[must_use]
     #[stable(feature = "array_map", since = "1.55.0")]
-    pub fn map<F, U>(self, f: F) -> [U; N]
+    #[rustc_const_unstable(feature = "const_array", issue = "147606")]
+    pub const fn map<F, U>(self, f: F) -> [U; N]
     where
-        F: FnMut(T) -> U,
+        F: [const] FnMut(T) -> U + [const] Destruct,
+        U: [const] Destruct,
+        T: [const] Destruct,
     {
         self.try_map(NeverShortCircuit::wrap_mut_1(f)).0
     }
@@ -587,11 +591,19 @@ impl<T, const N: usize> [T; N] {
     /// assert_eq!(c, Some(a));
     /// ```
     #[unstable(feature = "array_try_map", issue = "79711")]
-    pub fn try_map<R>(self, f: impl FnMut(T) -> R) -> ChangeOutputType<R, [R::Output; N]>
+    #[rustc_const_unstable(feature = "array_try_map", issue = "79711")]
+    pub const fn try_map<R>(
+        self,
+        mut f: impl [const] FnMut(T) -> R + [const] Destruct,
+    ) -> ChangeOutputType<R, [R::Output; N]>
     where
-        R: Try<Residual: Residual<[R::Output; N]>>,
+        R: [const] Try<Residual: [const] Residual<[R::Output; N]>, Output: [const] Destruct>,
+        T: [const] Destruct,
     {
-        drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
+        let mut me = ManuallyDrop::new(self);
+        // SAFETY: try_from_fn calls `f` N times.
+        let mut f = unsafe { drain::Drain::new(&mut me, &mut f) };
+        try_from_fn(&mut f)
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
@@ -885,13 +897,11 @@ where
 /// not optimizing away.  So if you give it a shot, make sure to watch what
 /// happens in the codegen tests.
 #[inline]
-fn try_from_fn_erased<T, R>(
-    buffer: &mut [MaybeUninit<T>],
-    mut generator: impl FnMut(usize) -> R,
-) -> ControlFlow<R::Residual>
-where
-    R: Try<Output = T>,
-{
+#[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+const fn try_from_fn_erased<R: [const] Try<Output: [const] Destruct>>(
+    buffer: &mut [MaybeUninit<R::Output>],
+    mut generator: impl [const] FnMut(usize) -> R + [const] Destruct,
+) -> ControlFlow<R::Residual> {
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
 
     while guard.initialized < guard.array_mut.len() {
@@ -930,7 +940,8 @@ impl<T> Guard<'_, T> {
     ///
     /// No more than N elements must be initialized.
     #[inline]
-    pub(crate) unsafe fn push_unchecked(&mut self, item: T) {
+    #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+    pub(crate) const unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
         // invoke this method more than N times then writes will be in-bounds
         // and slots will not be initialized more than once.
@@ -941,11 +952,11 @@ impl<T> Guard<'_, T> {
     }
 }
 
-impl<T> Drop for Guard<'_, T> {
+#[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
+impl<T: [const] Destruct> const Drop for Guard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         debug_assert!(self.initialized <= self.array_mut.len());
-
         // SAFETY: this slice will contain only initialized objects.
         unsafe {
             self.array_mut.get_unchecked_mut(..self.initialized).assume_init_drop();

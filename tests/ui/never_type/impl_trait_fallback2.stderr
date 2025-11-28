@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `(): T` is not satisfied
-  --> $DIR/impl_trait_fallback2.rs:8:25
+  --> $DIR/impl_trait_fallback2.rs:9:25
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^ the trait `T` is not implemented for `()`
@@ -8,13 +8,13 @@ LL |     panic!()
    |     -------- return type was inferred to be `_` here
    |
 help: the trait `T` is implemented for `i32`
-  --> $DIR/impl_trait_fallback2.rs:6:1
+  --> $DIR/impl_trait_fallback2.rs:7:1
    |
 LL | impl T for i32 {}
    | ^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): T` is not satisfied
-  --> $DIR/impl_trait_fallback2.rs:16:11
+  --> $DIR/impl_trait_fallback2.rs:17:11
    |
 LL | fn a() -> Foo {
    |           ^^^ the trait `T` is not implemented for `()`
@@ -23,7 +23,7 @@ LL |     panic!()
    |     -------- return type was inferred to be `_` here
    |
 help: the trait `T` is implemented for `i32`
-  --> $DIR/impl_trait_fallback2.rs:6:1
+  --> $DIR/impl_trait_fallback2.rs:7:1
    |
 LL | impl T for i32 {}
    | ^^^^^^^^^^^^^^

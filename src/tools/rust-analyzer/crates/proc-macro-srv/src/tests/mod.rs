@@ -53,6 +53,165 @@ fn test_derive_empty() {
 }
 
 #[test]
+fn test_derive_reemit_helpers() {
+    assert_expand(
+        "DeriveReemit",
+        r#"
+#[helper(build_fn(private, name = "partial_build"))]
+pub struct Foo {
+    /// The domain where this federated instance is running
+    #[helper(setter(into))]
+    pub(crate) domain: String,
+}
+"#,
+        expect![[r#"
+            PUNCT 1 # [joint]
+            GROUP [] 1 1 1
+              IDENT 1 helper
+              GROUP () 1 1 1
+                IDENT 1 build_fn
+                GROUP () 1 1 1
+                  IDENT 1 private
+                  PUNCT 1 , [alone]
+                  IDENT 1 name
+                  PUNCT 1 = [alone]
+                  LITER 1 Str partial_build
+            IDENT 1 pub
+            IDENT 1 struct
+            IDENT 1 Foo
+            GROUP {} 1 1 1
+              PUNCT 1 # [alone]
+              GROUP [] 1 1 1
+                IDENT 1 doc
+                PUNCT 1 = [alone]
+                LITER 1 Str / The domain where this federated instance is running
+              PUNCT 1 # [joint]
+              GROUP [] 1 1 1
+                IDENT 1 helper
+                GROUP () 1 1 1
+                  IDENT 1 setter
+                  GROUP () 1 1 1
+                    IDENT 1 into
+              IDENT 1 pub
+              GROUP () 1 1 1
+                IDENT 1 crate
+              IDENT 1 domain
+              PUNCT 1 : [alone]
+              IDENT 1 String
+              PUNCT 1 , [alone]
+
+
+            PUNCT 1 # [joint]
+            GROUP [] 1 1 1
+              IDENT 1 helper
+              GROUP () 1 1 1
+                IDENT 1 build_fn
+                GROUP () 1 1 1
+                  IDENT 1 private
+                  PUNCT 1 , [alone]
+                  IDENT 1 name
+                  PUNCT 1 = [alone]
+                  LITER 1 Str partial_build
+            IDENT 1 pub
+            IDENT 1 struct
+            IDENT 1 Foo
+            GROUP {} 1 1 1
+              PUNCT 1 # [alone]
+              GROUP [] 1 1 1
+                IDENT 1 doc
+                PUNCT 1 = [alone]
+                LITER 1 Str / The domain where this federated instance is running
+              PUNCT 1 # [joint]
+              GROUP [] 1 1 1
+                IDENT 1 helper
+                GROUP () 1 1 1
+                  IDENT 1 setter
+                  GROUP () 1 1 1
+                    IDENT 1 into
+              IDENT 1 pub
+              GROUP () 1 1 1
+                IDENT 1 crate
+              IDENT 1 domain
+              PUNCT 1 : [alone]
+              IDENT 1 String
+              PUNCT 1 , [alone]
+        "#]],
+        expect![[r#"
+            PUNCT 42:Root[0000, 0]@1..2#ROOT2024 # [joint]
+            GROUP [] 42:Root[0000, 0]@2..3#ROOT2024 42:Root[0000, 0]@52..53#ROOT2024 42:Root[0000, 0]@2..53#ROOT2024
+              IDENT 42:Root[0000, 0]@3..9#ROOT2024 helper
+              GROUP () 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@51..52#ROOT2024 42:Root[0000, 0]@9..52#ROOT2024
+                IDENT 42:Root[0000, 0]@10..18#ROOT2024 build_fn
+                GROUP () 42:Root[0000, 0]@18..19#ROOT2024 42:Root[0000, 0]@50..51#ROOT2024 42:Root[0000, 0]@18..51#ROOT2024
+                  IDENT 42:Root[0000, 0]@19..26#ROOT2024 private
+                  PUNCT 42:Root[0000, 0]@26..27#ROOT2024 , [alone]
+                  IDENT 42:Root[0000, 0]@28..32#ROOT2024 name
+                  PUNCT 42:Root[0000, 0]@33..34#ROOT2024 = [alone]
+                  LITER 42:Root[0000, 0]@35..50#ROOT2024 Str partial_build
+            IDENT 42:Root[0000, 0]@54..57#ROOT2024 pub
+            IDENT 42:Root[0000, 0]@58..64#ROOT2024 struct
+            IDENT 42:Root[0000, 0]@65..68#ROOT2024 Foo
+            GROUP {} 42:Root[0000, 0]@69..70#ROOT2024 42:Root[0000, 0]@190..191#ROOT2024 42:Root[0000, 0]@69..191#ROOT2024
+              PUNCT 42:Root[0000, 0]@0..0#ROOT2024 # [alone]
+              GROUP [] 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024
+                IDENT 42:Root[0000, 0]@0..0#ROOT2024 doc
+                PUNCT 42:Root[0000, 0]@0..0#ROOT2024 = [alone]
+                LITER 42:Root[0000, 0]@75..130#ROOT2024 Str / The domain where this federated instance is running
+              PUNCT 42:Root[0000, 0]@135..136#ROOT2024 # [joint]
+              GROUP [] 42:Root[0000, 0]@136..137#ROOT2024 42:Root[0000, 0]@157..158#ROOT2024 42:Root[0000, 0]@136..158#ROOT2024
+                IDENT 42:Root[0000, 0]@137..143#ROOT2024 helper
+                GROUP () 42:Root[0000, 0]@143..144#ROOT2024 42:Root[0000, 0]@156..157#ROOT2024 42:Root[0000, 0]@143..157#ROOT2024
+                  IDENT 42:Root[0000, 0]@144..150#ROOT2024 setter
+                  GROUP () 42:Root[0000, 0]@150..151#ROOT2024 42:Root[0000, 0]@155..156#ROOT2024 42:Root[0000, 0]@150..156#ROOT2024
+                    IDENT 42:Root[0000, 0]@151..155#ROOT2024 into
+              IDENT 42:Root[0000, 0]@163..166#ROOT2024 pub
+              GROUP () 42:Root[0000, 0]@166..167#ROOT2024 42:Root[0000, 0]@172..173#ROOT2024 42:Root[0000, 0]@166..173#ROOT2024
+                IDENT 42:Root[0000, 0]@167..172#ROOT2024 crate
+              IDENT 42:Root[0000, 0]@174..180#ROOT2024 domain
+              PUNCT 42:Root[0000, 0]@180..181#ROOT2024 : [alone]
+              IDENT 42:Root[0000, 0]@182..188#ROOT2024 String
+              PUNCT 42:Root[0000, 0]@188..189#ROOT2024 , [alone]
+
+
+            PUNCT 42:Root[0000, 0]@1..2#ROOT2024 # [joint]
+            GROUP [] 42:Root[0000, 0]@2..3#ROOT2024 42:Root[0000, 0]@52..53#ROOT2024 42:Root[0000, 0]@2..53#ROOT2024
+              IDENT 42:Root[0000, 0]@3..9#ROOT2024 helper
+              GROUP () 42:Root[0000, 0]@9..10#ROOT2024 42:Root[0000, 0]@51..52#ROOT2024 42:Root[0000, 0]@9..52#ROOT2024
+                IDENT 42:Root[0000, 0]@10..18#ROOT2024 build_fn
+                GROUP () 42:Root[0000, 0]@18..19#ROOT2024 42:Root[0000, 0]@50..51#ROOT2024 42:Root[0000, 0]@18..51#ROOT2024
+                  IDENT 42:Root[0000, 0]@19..26#ROOT2024 private
+                  PUNCT 42:Root[0000, 0]@26..27#ROOT2024 , [alone]
+                  IDENT 42:Root[0000, 0]@28..32#ROOT2024 name
+                  PUNCT 42:Root[0000, 0]@33..34#ROOT2024 = [alone]
+                  LITER 42:Root[0000, 0]@35..50#ROOT2024 Str partial_build
+            IDENT 42:Root[0000, 0]@54..57#ROOT2024 pub
+            IDENT 42:Root[0000, 0]@58..64#ROOT2024 struct
+            IDENT 42:Root[0000, 0]@65..68#ROOT2024 Foo
+            GROUP {} 42:Root[0000, 0]@69..70#ROOT2024 42:Root[0000, 0]@190..191#ROOT2024 42:Root[0000, 0]@69..191#ROOT2024
+              PUNCT 42:Root[0000, 0]@0..0#ROOT2024 # [alone]
+              GROUP [] 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024 42:Root[0000, 0]@0..0#ROOT2024
+                IDENT 42:Root[0000, 0]@0..0#ROOT2024 doc
+                PUNCT 42:Root[0000, 0]@0..0#ROOT2024 = [alone]
+                LITER 42:Root[0000, 0]@75..130#ROOT2024 Str / The domain where this federated instance is running
+              PUNCT 42:Root[0000, 0]@135..136#ROOT2024 # [joint]
+              GROUP [] 42:Root[0000, 0]@136..137#ROOT2024 42:Root[0000, 0]@157..158#ROOT2024 42:Root[0000, 0]@136..158#ROOT2024
+                IDENT 42:Root[0000, 0]@137..143#ROOT2024 helper
+                GROUP () 42:Root[0000, 0]@143..144#ROOT2024 42:Root[0000, 0]@156..157#ROOT2024 42:Root[0000, 0]@143..157#ROOT2024
+                  IDENT 42:Root[0000, 0]@144..150#ROOT2024 setter
+                  GROUP () 42:Root[0000, 0]@150..151#ROOT2024 42:Root[0000, 0]@155..156#ROOT2024 42:Root[0000, 0]@150..156#ROOT2024
+                    IDENT 42:Root[0000, 0]@151..155#ROOT2024 into
+              IDENT 42:Root[0000, 0]@163..166#ROOT2024 pub
+              GROUP () 42:Root[0000, 0]@166..167#ROOT2024 42:Root[0000, 0]@172..173#ROOT2024 42:Root[0000, 0]@166..173#ROOT2024
+                IDENT 42:Root[0000, 0]@167..172#ROOT2024 crate
+              IDENT 42:Root[0000, 0]@174..180#ROOT2024 domain
+              PUNCT 42:Root[0000, 0]@180..181#ROOT2024 : [alone]
+              IDENT 42:Root[0000, 0]@182..188#ROOT2024 String
+              PUNCT 42:Root[0000, 0]@188..189#ROOT2024 , [alone]
+        "#]],
+    );
+}
+
+#[test]
 fn test_derive_error() {
     assert_expand(
         "DeriveError",
@@ -69,7 +228,7 @@ fn test_derive_error() {
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
             GROUP () 1 1 1
-              LITER 1 Str #[derive(DeriveError)] struct S {field 58 u32 }
+              LITER 1 Str #[derive(DeriveError)] struct S {field : u32}
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
@@ -83,9 +242,9 @@ fn test_derive_error() {
 
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@64..65#ROOT2024 42:Root[0000, 0]@14..65#ROOT2024
-              LITER 42:Root[0000, 0]@15..64#ROOT2024 Str #[derive(DeriveError)] struct S {field 58 u32 }
-            PUNCT 42:Root[0000, 0]@65..66#ROOT2024 ; [alone]
+            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@62..63#ROOT2024 42:Root[0000, 0]@14..63#ROOT2024
+              LITER 42:Root[0000, 0]@15..62#ROOT2024 Str #[derive(DeriveError)] struct S {field : u32}
+            PUNCT 42:Root[0000, 0]@63..64#ROOT2024 ; [alone]
         "#]],
     );
 }
@@ -472,7 +631,7 @@ fn test_attr_macro() {
             IDENT 1 compile_error
             PUNCT 1 ! [joint]
             GROUP () 1 1 1
-              LITER 1 Str #[attr_error(some arguments )] mod m {}
+              LITER 1 Str #[attr_error(some arguments)] mod m {}
             PUNCT 1 ; [alone]
         "#]],
         expect![[r#"
@@ -487,9 +646,9 @@ fn test_attr_macro() {
 
             IDENT 42:Root[0000, 0]@0..13#ROOT2024 compile_error
             PUNCT 42:Root[0000, 0]@13..14#ROOT2024 ! [joint]
-            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@56..57#ROOT2024 42:Root[0000, 0]@14..57#ROOT2024
-              LITER 42:Root[0000, 0]@15..56#ROOT2024 Str #[attr_error(some arguments )] mod m {}
-            PUNCT 42:Root[0000, 0]@57..58#ROOT2024 ; [alone]
+            GROUP () 42:Root[0000, 0]@14..15#ROOT2024 42:Root[0000, 0]@55..56#ROOT2024 42:Root[0000, 0]@14..56#ROOT2024
+              LITER 42:Root[0000, 0]@15..55#ROOT2024 Str #[attr_error(some arguments)] mod m {}
+            PUNCT 42:Root[0000, 0]@56..57#ROOT2024 ; [alone]
         "#]],
     );
 }
@@ -535,6 +694,7 @@ fn list_test_macros() {
         attr_noop [Attr]
         attr_panic [Attr]
         attr_error [Attr]
+        DeriveReemit [CustomDerive]
         DeriveEmpty [CustomDerive]
         DerivePanic [CustomDerive]
         DeriveError [CustomDerive]"#]]

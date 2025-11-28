@@ -1,5 +1,5 @@
 warning: anonymous parameters are deprecated and will be removed in the next edition
-  --> $DIR/issue-89280-emitter-overflow-splice-lines.rs:4:21
+  --> $DIR/issue-89280-emitter-overflow-splice-lines.rs:5:21
    |
 LL |       fn test(x: u32, (
    |  _____________________^

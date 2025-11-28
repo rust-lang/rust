@@ -1,5 +1,6 @@
 //@revisions: e2021 e2015
 //@[e2021]edition: 2021
+//@[e2015]edition: 2015
 trait Foo<T> {
     fn id(me: T) -> T;
 }

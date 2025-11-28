@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:namespace-mix.rs
 
 extern crate namespace_mix;

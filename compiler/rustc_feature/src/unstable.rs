@@ -382,8 +382,6 @@ declare_features! (
     (unstable, arbitrary_self_types, "1.23.0", Some(44874)),
     /// Allows inherent and trait methods with arbitrary self types that are raw pointers.
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
-    /// Allows #[cfg(...)] on inline assembly templates and operands.
-    (unstable, asm_cfg, "1.89.0", Some(140364)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
@@ -485,6 +483,8 @@ declare_features! (
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
+    /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
+    (unstable, diagnostic_on_const, "CURRENT_RUSTC_VERSION", Some(143874)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.

@@ -2582,7 +2582,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = self.lower_const_arg(length, FeedConstTy::No);
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
-            hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
             hir::TyKind::Infer(()) => {
                 // Infer also appears as the type of arguments or return
                 // values in an ExprKind::Closure, or as

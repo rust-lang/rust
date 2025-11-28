@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `single_err::something`
-  --> $DIR/issue-57015.rs:10:5
+  --> $DIR/issue-57015.rs:11:5
    |
 LL | use single_err::something;
    |     ^^^^^^^^^^^^^^^^^^^^^ no `something` in `single_err`

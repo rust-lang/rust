@@ -22,6 +22,24 @@ help: consider inserting whitespace here
 LL | c 'r'
    |  +
 
+error: prefix `r` is unknown
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: prefix `c` is unknown
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: unexpected closing delimiter: `)`
   --> $DIR/nonfatal-parsing.rs:15:5
    |
@@ -192,6 +210,6 @@ error: invalid digit for a base 2 literal
 LL | /*a*/ 0b2 //
    |         ^
 
-error: aborting due to 22 previous errors
+error: aborting due to 24 previous errors
 
 For more information about this error, try `rustc --explain E0768`.

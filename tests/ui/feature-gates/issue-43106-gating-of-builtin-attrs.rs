@@ -814,26 +814,26 @@ mod must_use {
 
 #[windows_subsystem = "windows"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod windows_subsystem {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![windows_subsystem="windows"] }
-    //~^ WARN crate-level attribute should be in the root module
+    //~^ WARN the `#![windows_subsystem]` attribute can only be used at the crate root
 
     #[windows_subsystem = "windows"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[windows_subsystem = "windows"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[windows_subsystem = "windows"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[windows_subsystem = "windows"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES

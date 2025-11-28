@@ -8,6 +8,7 @@ use std::{
 };
 
 use paths::AbsPath;
+use semver::Version;
 use stdx::JodChild;
 
 use crate::{
@@ -28,9 +29,10 @@ pub(crate) struct ProcMacroServerProcess {
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
 }
 
-#[derive(Debug)]
-enum Protocol {
+#[derive(Debug, Clone)]
+pub(crate) enum Protocol {
     LegacyJson { mode: SpanMode },
+    LegacyPostcard { mode: SpanMode },
 }
 
 /// Maintains the state of the proc-macro server process.
@@ -48,55 +50,85 @@ impl ProcMacroServerProcess {
         env: impl IntoIterator<
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         > + Clone,
+        version: Option<&Version>,
     ) -> io::Result<ProcMacroServerProcess> {
-        let create_srv = || {
-            let mut process = Process::run(process_path, env.clone())?;
-            let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
+        const VERSION: Version = Version::new(1, 93, 0);
+        // we do `>` for nightly as this started working in the middle of the 1.93 nightly release, so we dont want to break on half of the nightlies
+        let has_working_format_flag = version.map_or(false, |v| {
+            if v.pre.as_str() == "nightly" { *v > VERSION } else { *v >= VERSION }
+        });
 
-            io::Result::Ok(ProcMacroServerProcess {
-                state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
-                version: 0,
-                protocol: Protocol::LegacyJson { mode: SpanMode::Id },
-                exited: OnceLock::new(),
-            })
+        let formats: &[_] = if has_working_format_flag {
+            &[
+                (Some("postcard-legacy"), Protocol::LegacyPostcard { mode: SpanMode::Id }),
+                (Some("json-legacy"), Protocol::LegacyJson { mode: SpanMode::Id }),
+            ]
+        } else {
+            &[(None, Protocol::LegacyJson { mode: SpanMode::Id })]
         };
-        let mut srv = create_srv()?;
-        tracing::info!("sending proc-macro server version check");
-        match srv.version_check() {
-            Ok(v) if v > version::CURRENT_API_VERSION => {
-                #[allow(clippy::disallowed_methods)]
-                let process_version = Command::new(process_path)
-                    .arg("--version")
-                    .output()
-                    .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
-                    .unwrap_or_else(|_| "unknown version".to_owned());
-                Err(io::Error::other(format!(
-                    "Your installed proc-macro server is too new for your rust-analyzer. API version: {}, server version: {process_version}. \
+
+        let mut err = None;
+        for &(format, ref protocol) in formats {
+            let create_srv = || {
+                let mut process = Process::run(process_path, env.clone(), format)?;
+                let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
+
+                io::Result::Ok(ProcMacroServerProcess {
+                    state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
+                    version: 0,
+                    protocol: protocol.clone(),
+                    exited: OnceLock::new(),
+                })
+            };
+            let mut srv = create_srv()?;
+            tracing::info!("sending proc-macro server version check");
+            match srv.version_check() {
+                Ok(v) if v > version::CURRENT_API_VERSION => {
+                    #[allow(clippy::disallowed_methods)]
+                    let process_version = Command::new(process_path)
+                        .arg("--version")
+                        .output()
+                        .map(|output| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+                        .unwrap_or_else(|_| "unknown version".to_owned());
+                    err = Some(io::Error::other(format!(
+                        "Your installed proc-macro server is too new for your rust-analyzer. API version: {}, server version: {process_version}. \
                         This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain.",
-                    version::CURRENT_API_VERSION
-                )))
-            }
-            Ok(v) => {
-                tracing::info!("Proc-macro server version: {v}");
-                srv.version = v;
-                if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT
-                    && let Ok(mode) = srv.enable_rust_analyzer_spans()
-                {
-                    srv.protocol = Protocol::LegacyJson { mode };
+                        version::CURRENT_API_VERSION
+                    )));
                 }
-                tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
-                Ok(srv)
-            }
-            Err(e) => {
-                tracing::info!(%e, "proc-macro version check failed");
-                Err(io::Error::other(format!("proc-macro server version check failed: {e}")))
+                Ok(v) => {
+                    tracing::info!("Proc-macro server version: {v}");
+                    srv.version = v;
+                    if srv.version >= version::RUST_ANALYZER_SPAN_SUPPORT
+                        && let Ok(new_mode) = srv.enable_rust_analyzer_spans()
+                    {
+                        match &mut srv.protocol {
+                            Protocol::LegacyJson { mode } | Protocol::LegacyPostcard { mode } => {
+                                *mode = new_mode
+                            }
+                        }
+                    }
+                    tracing::info!("Proc-macro server protocol: {:?}", srv.protocol);
+                    return Ok(srv);
+                }
+                Err(e) => {
+                    tracing::info!(%e, "proc-macro version check failed");
+                    err = Some(io::Error::other(format!(
+                        "proc-macro server version check failed: {e}"
+                    )))
+                }
             }
         }
+        Err(err.unwrap())
     }
 
     /// Returns the server error if the process has exited.
     pub(crate) fn exited(&self) -> Option<&ServerError> {
         self.exited.get().map(|it| &it.0)
+    }
+
+    pub(crate) fn use_postcard(&self) -> bool {
+        matches!(self.protocol, Protocol::LegacyPostcard { .. })
     }
 
     /// Retrieves the API version of the proc-macro server.
@@ -108,6 +140,7 @@ impl ProcMacroServerProcess {
     pub(crate) fn rust_analyzer_spans(&self) -> bool {
         match self.protocol {
             Protocol::LegacyJson { mode } => mode == SpanMode::RustAnalyzer,
+            Protocol::LegacyPostcard { mode } => mode == SpanMode::RustAnalyzer,
         }
     }
 
@@ -115,6 +148,7 @@ impl ProcMacroServerProcess {
     fn version_check(&self) -> Result<u32, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::version_check(self),
+            Protocol::LegacyPostcard { .. } => legacy_protocol::version_check(self),
         }
     }
 
@@ -122,6 +156,7 @@ impl ProcMacroServerProcess {
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
+            Protocol::LegacyPostcard { .. } => legacy_protocol::enable_rust_analyzer_spans(self),
         }
     }
 
@@ -132,21 +167,25 @@ impl ProcMacroServerProcess {
     ) -> Result<Result<Vec<(String, ProcMacroKind)>, String>, ServerError> {
         match self.protocol {
             Protocol::LegacyJson { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
+            Protocol::LegacyPostcard { .. } => legacy_protocol::find_proc_macros(self, dylib_path),
         }
     }
 
-    pub(crate) fn send_task<Request, Response>(
+    pub(crate) fn send_task<Request, Response, Buf>(
         &self,
         serialize_req: impl FnOnce(
             &mut dyn Write,
             &mut dyn BufRead,
             Request,
-            &mut String,
+            &mut Buf,
         ) -> Result<Option<Response>, ServerError>,
         req: Request,
-    ) -> Result<Response, ServerError> {
+    ) -> Result<Response, ServerError>
+    where
+        Buf: Default,
+    {
         let state = &mut *self.state.lock().unwrap();
-        let mut buf = String::new();
+        let mut buf = Buf::default();
         serialize_req(&mut state.stdin, &mut state.stdout, req, &mut buf)
             .and_then(|res| {
                 res.ok_or_else(|| {
@@ -203,8 +242,9 @@ impl Process {
         env: impl IntoIterator<
             Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
         >,
+        format: Option<&str>,
     ) -> io::Result<Process> {
-        let child = JodChild(mk_child(path, env)?);
+        let child = JodChild(mk_child(path, env, format)?);
         Ok(Process { child })
     }
 
@@ -224,6 +264,7 @@ fn mk_child<'a>(
     extra_env: impl IntoIterator<
         Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
     >,
+    format: Option<&str>,
 ) -> io::Result<Child> {
     #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
@@ -232,6 +273,10 @@ fn mk_child<'a>(
             (key, Some(val)) => cmd.env(key, val),
             (key, None) => cmd.env_remove(key),
         };
+    }
+    if let Some(format) = format {
+        cmd.arg("--format");
+        cmd.arg(format);
     }
     cmd.env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())

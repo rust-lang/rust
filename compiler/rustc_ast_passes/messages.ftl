@@ -89,6 +89,9 @@ ast_passes_const_and_coroutine = functions cannot be both `const` and `{$corouti
     .coroutine = `{$coroutine_kind}` because of this
     .label = {""}
 
+ast_passes_const_auto_trait = auto traits cannot be const
+    .help = remove the `const` keyword
+
 ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
 
 ast_passes_const_without_body =

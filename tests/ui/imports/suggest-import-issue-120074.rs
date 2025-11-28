@@ -1,4 +1,6 @@
-//@ revisions: edition2015 edition2021
+//@ revisions: edition2015 post2015
+//@[edition2015] edition: 2015
+//@[post2015] edition: 2018..
 
 pub mod foo {
     pub mod bar {

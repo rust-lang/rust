@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:hidden-struct.rs
 
 extern crate hidden_struct;

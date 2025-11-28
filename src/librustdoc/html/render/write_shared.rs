@@ -582,18 +582,14 @@ impl TypeAliasPart {
                         if let Some(ret) = &mut ret {
                             ret.aliases.push(type_alias_fqp);
                         } else {
-                            let target_did = impl_
-                                .inner_impl()
-                                .trait_
-                                .as_ref()
-                                .map(|trait_| trait_.def_id())
-                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let target_trait_did =
+                                impl_.inner_impl().trait_.as_ref().map(|trait_| trait_.def_id());
                             let provided_methods;
-                            let assoc_link = if let Some(target_did) = target_did {
+                            let assoc_link = if let Some(target_trait_did) = target_trait_did {
                                 provided_methods =
                                     impl_.inner_impl().provided_trait_methods(cx.tcx());
                                 AssocItemLink::GotoSource(
-                                    ItemId::DefId(target_did),
+                                    ItemId::DefId(target_trait_did),
                                     &provided_methods,
                                 )
                             } else {

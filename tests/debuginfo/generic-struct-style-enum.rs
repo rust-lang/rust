@@ -2,20 +2,20 @@
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
 
-// gdb-command:set print union on
-// gdb-command:run
+//@ gdb-command:set print union on
+//@ gdb-command:run
 
-// gdb-command:print case1
-// gdb-check:$1 = generic_struct_style_enum::Regular<u16, u32, i64>::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
+//@ gdb-command:print case1
+//@ gdb-check:$1 = generic_struct_style_enum::Regular<u16, u32, i64>::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
-// gdb-command:print case2
-// gdb-check:$2 = generic_struct_style_enum::Regular<i16, u32, i64>::Case2{a: 0, b: 286331153, c: 286331153}
+//@ gdb-command:print case2
+//@ gdb-check:$2 = generic_struct_style_enum::Regular<i16, u32, i64>::Case2{a: 0, b: 286331153, c: 286331153}
 
-// gdb-command:print case3
-// gdb-check:$3 = generic_struct_style_enum::Regular<u16, i32, u64>::Case3{a: 0, b: 6438275382588823897}
+//@ gdb-command:print case3
+//@ gdb-check:$3 = generic_struct_style_enum::Regular<u16, i32, u64>::Case3{a: 0, b: 6438275382588823897}
 
-// gdb-command:print univariant
-// gdb-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
+//@ gdb-command:print univariant
+//@ gdb-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
 
 
 use self::Regular::{Case1, Case2, Case3};

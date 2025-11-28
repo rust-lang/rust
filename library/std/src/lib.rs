@@ -349,7 +349,6 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_slice)]
-#![feature(maybe_uninit_write_slice)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
 #![feature(pin_coerce_unsized_trait)]
@@ -374,6 +373,7 @@
 // tidy-alphabetical-start
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
+#![feature(clone_from_ref)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]
 #![feature(slice_concat_trait)]

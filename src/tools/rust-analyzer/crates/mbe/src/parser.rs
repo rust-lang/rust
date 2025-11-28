@@ -11,7 +11,34 @@ use tt::{
     iter::{TtElement, TtIter},
 };
 
-use crate::ParseError;
+use crate::{MacroCallStyle, ParseError};
+
+pub(crate) fn parse_rule_style(src: &mut TtIter<'_, Span>) -> Result<MacroCallStyle, ParseError> {
+    // Skip an optional `unsafe`. This is only actually allowed for `attr`
+    // rules, but we'll let rustc worry about that.
+    if let Some(TtElement::Leaf(tt::Leaf::Ident(ident))) = src.peek()
+        && ident.sym == sym::unsafe_
+    {
+        src.next().expect("already peeked");
+    }
+
+    let kind = match src.peek() {
+        Some(TtElement::Leaf(tt::Leaf::Ident(ident))) if ident.sym == sym::attr => {
+            src.next().expect("already peeked");
+            // FIXME: Add support for `attr(..)` rules with attribute arguments,
+            // which would be inside these parens.
+            src.expect_subtree().map_err(|_| ParseError::expected("expected `()`"))?;
+            MacroCallStyle::Attr
+        }
+        Some(TtElement::Leaf(tt::Leaf::Ident(ident))) if ident.sym == sym::derive => {
+            src.next().expect("already peeked");
+            src.expect_subtree().map_err(|_| ParseError::expected("expected `()`"))?;
+            MacroCallStyle::Derive
+        }
+        _ => MacroCallStyle::FnLike,
+    };
+    Ok(kind)
+}
 
 /// Consider
 ///

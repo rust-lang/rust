@@ -67,9 +67,9 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ compile-flags",
     "// error-pattern",
     "//@ error-pattern",
-    "// gdb",
-    "// lldb",
-    "// cdb",
+    "//@ gdb",
+    "//@ lldb",
+    "//@ cdb",
     "//@ normalize-stderr",
 ];
 
@@ -445,6 +445,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         let mut comment_block: Option<(usize, usize)> = None;
         let is_test = file.components().any(|c| c.as_os_str() == "tests")
             || file.file_stem().unwrap() == "tests";
+        let is_codegen_test = is_test && file.components().any(|c| c.as_os_str() == "codegen-llvm");
         let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
         let is_test_for_this_file =
             is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
@@ -486,6 +487,11 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     skip_dbg,
                     "`dbg!` macro is intended as a debugging tool. It should not be in version control."
                 )
+            }
+
+            if is_codegen_test && trimmed.contains("CHECK") && trimmed.ends_with(": br") {
+                err("`CHECK: br` and `CHECK-NOT: br` in codegen tests are fragile to false \
+                    positives in mangled symbols. Try using `br {{.*}}` instead.")
             }
 
             if !under_rustfmt

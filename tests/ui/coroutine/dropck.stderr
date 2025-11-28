@@ -1,5 +1,5 @@
 error[E0597]: `*cell` does not live long enough
-  --> $DIR/dropck.rs:10:40
+  --> $DIR/dropck.rs:11:40
    |
 LL |     let (mut gen, cell);
    |                   ---- binding `cell` declared here
@@ -16,7 +16,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are defined
 
 error[E0597]: `ref_` does not live long enough
-  --> $DIR/dropck.rs:16:18
+  --> $DIR/dropck.rs:17:18
    |
 LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
    |         ---- binding `ref_` declared here

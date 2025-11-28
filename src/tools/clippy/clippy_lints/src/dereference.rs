@@ -830,7 +830,6 @@ impl TyCoercionStability {
                 TyKind::OpaqueDef(..)
                 | TyKind::TraitAscription(..)
                 | TyKind::Infer(())
-                | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
@@ -911,7 +910,7 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
         }
 
         fn visit_ty(&mut self, ty: &hir::Ty<'_, AmbigArg>) {
-            if self.0 || matches!(ty.kind, TyKind::OpaqueDef(..) | TyKind::Typeof(_) | TyKind::Err(_)) {
+            if self.0 || matches!(ty.kind, TyKind::OpaqueDef(..) | TyKind::Err(_)) {
                 self.0 = true;
             } else {
                 walk_ty(self, ty);

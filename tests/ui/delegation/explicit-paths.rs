@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 

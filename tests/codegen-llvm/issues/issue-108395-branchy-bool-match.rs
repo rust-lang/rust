@@ -6,7 +6,7 @@
 // CHECK-LABEL: @wildcard(
 #[no_mangle]
 pub fn wildcard(a: u16, b: u16, v: u16) -> u16 {
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     match (a == v, b == v) {
         (true, false) => 0,
         (false, true) => u16::MAX,
@@ -17,7 +17,7 @@ pub fn wildcard(a: u16, b: u16, v: u16) -> u16 {
 // CHECK-LABEL: @exhaustive(
 #[no_mangle]
 pub fn exhaustive(a: u16, b: u16, v: u16) -> u16 {
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     match (a == v, b == v) {
         (true, false) => 0,
         (false, true) => u16::MAX,
