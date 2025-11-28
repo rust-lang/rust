@@ -165,7 +165,6 @@ pub use crate::shims::unwind::{CatchUnwindData, EvalContextExt as _};
 /// Also disable the MIR pass that inserts an alignment check on every pointer dereference. Miri
 /// does that too, and with a better error message.
 pub const MIRI_DEFAULT_ARGS: &[&str] = &[
-    "-Zcodegen-backend=dummy",
     "--cfg=miri",
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
