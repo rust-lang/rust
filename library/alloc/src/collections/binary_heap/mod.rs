@@ -466,7 +466,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for BinaryHeap<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Default for BinaryHeap<T> {
+impl<T> Default for BinaryHeap<T> {
     /// Creates an empty `BinaryHeap<T>`.
     #[inline]
     fn default() -> BinaryHeap<T> {
@@ -496,7 +496,7 @@ impl<T: Ord, A: Allocator> Drop for RebuildOnDrop<'_, T, A> {
     }
 }
 
-impl<T: Ord> BinaryHeap<T> {
+impl<T> BinaryHeap<T> {
     /// Creates an empty `BinaryHeap` as a max-heap.
     ///
     /// # Examples
@@ -537,7 +537,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 }
 
-impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
+impl<T, A: Allocator> BinaryHeap<T, A> {
     /// Creates an empty `BinaryHeap` as a max-heap, using `A` as allocator.
     ///
     /// # Examples
@@ -615,7 +615,9 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
         if self.is_empty() { None } else { Some(PeekMut { heap: self, original_len: None }) }
     }
+}
 
+impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
     /// is empty.
     ///
