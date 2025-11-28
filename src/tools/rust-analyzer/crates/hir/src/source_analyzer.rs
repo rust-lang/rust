@@ -18,7 +18,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
     },
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
-    lang_item::LangItem,
+    lang_item::LangItems,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypeRef, TypeRefId},
@@ -589,7 +589,7 @@ impl<'db> SourceAnalyzer<'db> {
             }
         }
 
-        let poll_fn = LangItem::FuturePoll.resolve_function(db, self.resolver.krate())?;
+        let poll_fn = self.lang_items(db).FuturePoll?;
         // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
         // doesn't have any generic parameters, so we skip building another subst for `poll()`.
         let interner = DbInterner::new_no_crate(db);
@@ -607,15 +607,18 @@ impl<'db> SourceAnalyzer<'db> {
                 // This can be either `Deref::deref` or `DerefMut::deref_mut`.
                 // Since deref kind is inferenced and stored in `InferenceResult.method_resolution`,
                 // use that result to find out which one it is.
-                let (deref_trait, deref) =
-                    self.lang_trait_fn(db, LangItem::Deref, &Name::new_symbol_root(sym::deref))?;
+                let (deref_trait, deref) = self.lang_trait_fn(
+                    db,
+                    self.lang_items(db).Deref,
+                    &Name::new_symbol_root(sym::deref),
+                )?;
                 self.infer()
                     .and_then(|infer| {
                         let expr = self.expr_id(prefix_expr.clone().into())?.as_expr()?;
                         let (func, _) = infer.method_resolution(expr)?;
                         let (deref_mut_trait, deref_mut) = self.lang_trait_fn(
                             db,
-                            LangItem::DerefMut,
+                            self.lang_items(db).DerefMut,
                             &Name::new_symbol_root(sym::deref_mut),
                         )?;
                         if func == deref_mut { Some((deref_mut_trait, deref_mut)) } else { None }
@@ -623,10 +626,10 @@ impl<'db> SourceAnalyzer<'db> {
                     .unwrap_or((deref_trait, deref))
             }
             ast::UnaryOp::Not => {
-                self.lang_trait_fn(db, LangItem::Not, &Name::new_symbol_root(sym::not))?
+                self.lang_trait_fn(db, self.lang_items(db).Not, &Name::new_symbol_root(sym::not))?
             }
             ast::UnaryOp::Neg => {
-                self.lang_trait_fn(db, LangItem::Neg, &Name::new_symbol_root(sym::neg))?
+                self.lang_trait_fn(db, self.lang_items(db).Neg, &Name::new_symbol_root(sym::neg))?
             }
         };
 
@@ -649,7 +652,7 @@ impl<'db> SourceAnalyzer<'db> {
         let index_ty = self.ty_of_expr(index_expr.index()?)?;
 
         let (_index_trait, index_fn) =
-            self.lang_trait_fn(db, LangItem::Index, &Name::new_symbol_root(sym::index))?;
+            self.lang_trait_fn(db, self.lang_items(db).Index, &Name::new_symbol_root(sym::index))?;
         let op_fn = self
             .infer()
             .and_then(|infer| {
@@ -657,7 +660,7 @@ impl<'db> SourceAnalyzer<'db> {
                 let (func, _) = infer.method_resolution(expr)?;
                 let (_index_mut_trait, index_mut_fn) = self.lang_trait_fn(
                     db,
-                    LangItem::IndexMut,
+                    self.lang_items(db).IndexMut,
                     &Name::new_symbol_root(sym::index_mut),
                 )?;
                 if func == index_mut_fn { Some(index_mut_fn) } else { None }
@@ -679,9 +682,10 @@ impl<'db> SourceAnalyzer<'db> {
         let lhs = self.ty_of_expr(binop_expr.lhs()?)?;
         let rhs = self.ty_of_expr(binop_expr.rhs()?)?;
 
-        let (_op_trait, op_fn) = lang_items_for_bin_op(op).and_then(|(name, lang_item)| {
-            self.lang_trait_fn(db, lang_item, &Name::new_symbol_root(name))
-        })?;
+        let (_op_trait, op_fn) =
+            lang_items_for_bin_op(self.lang_items(db), op).and_then(|(name, lang_item)| {
+                self.lang_trait_fn(db, lang_item, &Name::new_symbol_root(name))
+            })?;
         // HACK: subst for `index()` coincides with that for `Index` because `index()` itself
         // doesn't have any generic parameters, so we skip building another subst for `index()`.
         let interner = DbInterner::new_no_crate(db);
@@ -697,7 +701,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<FunctionId> {
         let ty = self.ty_of_expr(try_expr.expr()?)?;
 
-        let op_fn = LangItem::TryTraitBranch.resolve_function(db, self.resolver.krate())?;
+        let op_fn = self.lang_items(db).TryTraitBranch?;
         // HACK: subst for `branch()` coincides with that for `Try` because `branch()` itself
         // doesn't have any generic parameters, so we skip building another subst for `branch()`.
         let interner = DbInterner::new_no_crate(db);
@@ -1428,13 +1432,17 @@ impl<'db> SourceAnalyzer<'db> {
         method_resolution::lookup_impl_const(&infcx, env, const_id, subs)
     }
 
+    fn lang_items<'a>(&self, db: &'a dyn HirDatabase) -> &'a LangItems {
+        hir_def::lang_item::lang_items(db, self.resolver.krate())
+    }
+
     fn lang_trait_fn(
         &self,
         db: &'db dyn HirDatabase,
-        lang_trait: LangItem,
+        lang_trait: Option<TraitId>,
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
-        let trait_id = lang_trait.resolve_trait(db, self.resolver.krate())?;
+        let trait_id = lang_trait?;
         let fn_id = trait_id.trait_items(db).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }

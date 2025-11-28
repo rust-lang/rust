@@ -31,7 +31,6 @@ use crate::{
     },
     hir::{ExprId, PatId, generics::GenericParams},
     item_tree::{FieldsShape, RawVisibility, visibility_from_ast},
-    lang_item::LangItem,
     src::HasSource,
     type_ref::{TraitRef, TypeBound, TypeRefId},
 };
@@ -86,11 +85,11 @@ impl StructSignature {
         }
         if let Some(lang) = attrs.lang_item() {
             match lang {
-                LangItem::PhantomData => flags |= StructFlags::IS_PHANTOM_DATA,
-                LangItem::OwnedBox => flags |= StructFlags::IS_BOX,
-                LangItem::ManuallyDrop => flags |= StructFlags::IS_MANUALLY_DROP,
-                LangItem::UnsafeCell => flags |= StructFlags::IS_UNSAFE_CELL,
-                LangItem::UnsafePinned => flags |= StructFlags::IS_UNSAFE_PINNED,
+                _ if *lang == sym::phantom_data => flags |= StructFlags::IS_PHANTOM_DATA,
+                _ if *lang == sym::owned_box => flags |= StructFlags::IS_BOX,
+                _ if *lang == sym::manually_drop => flags |= StructFlags::IS_MANUALLY_DROP,
+                _ if *lang == sym::unsafe_cell => flags |= StructFlags::IS_UNSAFE_CELL,
+                _ if *lang == sym::unsafe_pinned => flags |= StructFlags::IS_UNSAFE_PINNED,
                 _ => (),
             }
         }

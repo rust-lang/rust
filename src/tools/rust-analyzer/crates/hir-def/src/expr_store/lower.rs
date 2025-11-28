@@ -5,7 +5,7 @@ mod asm;
 mod generics;
 mod path;
 
-use std::mem;
+use std::{cell::OnceCell, mem};
 
 use base_db::FxIndexSet;
 use cfg::CfgOptions;
@@ -57,7 +57,7 @@ use crate::{
     },
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
-    lang_item::LangItem,
+    lang_item::{LangItemTarget, LangItems},
     nameres::{DefMap, LocalDefMap, MacroSubNs, block_def_map},
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
@@ -416,6 +416,7 @@ pub struct ExprCollector<'db> {
     def_map: &'db DefMap,
     local_def_map: &'db LocalDefMap,
     module: ModuleId,
+    lang_items: OnceCell<&'db LangItems>,
     pub store: ExpressionStoreBuilder,
 
     // state stuff
@@ -513,7 +514,7 @@ impl BindingList {
     }
 }
 
-impl ExprCollector<'_> {
+impl<'db> ExprCollector<'db> {
     pub fn new(
         db: &dyn DefDatabase,
         module: ModuleId,
@@ -527,6 +528,7 @@ impl ExprCollector<'_> {
             module,
             def_map,
             local_def_map,
+            lang_items: OnceCell::new(),
             store: ExpressionStoreBuilder::default(),
             expander,
             current_try_block_label: None,
@@ -537,6 +539,11 @@ impl ExprCollector<'_> {
             current_block_legacy_macro_defs_count: FxHashMap::default(),
             outer_impl_trait: false,
         }
+    }
+
+    #[inline]
+    pub(crate) fn lang_items(&self) -> &'db LangItems {
+        self.lang_items.get_or_init(|| crate::lang_item::lang_items(self.db, self.module.krate))
     }
 
     #[inline]
@@ -1654,7 +1661,7 @@ impl ExprCollector<'_> {
     /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
     fn desugar_try_block(&mut self, e: BlockExpr) -> ExprId {
-        let try_from_output = self.lang_path(LangItem::TryTraitFromOutput);
+        let try_from_output = self.lang_path(self.lang_items().TryTraitFromOutput);
         let label = self.alloc_label_desugared(Label {
             name: Name::generate_new_name(self.store.labels.len()),
         });
@@ -1753,10 +1760,11 @@ impl ExprCollector<'_> {
     /// }
     /// ```
     fn collect_for_loop(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::ForExpr) -> ExprId {
-        let into_iter_fn = self.lang_path(LangItem::IntoIterIntoIter);
-        let iter_next_fn = self.lang_path(LangItem::IteratorNext);
-        let option_some = self.lang_path(LangItem::OptionSome);
-        let option_none = self.lang_path(LangItem::OptionNone);
+        let lang_items = self.lang_items();
+        let into_iter_fn = self.lang_path(lang_items.IntoIterIntoIter);
+        let iter_next_fn = self.lang_path(lang_items.IteratorNext);
+        let option_some = self.lang_path(lang_items.OptionSome);
+        let option_none = self.lang_path(lang_items.OptionNone);
         let head = self.collect_expr_opt(e.iterable());
         let into_iter_fn_expr =
             self.alloc_expr(into_iter_fn.map_or(Expr::Missing, Expr::Path), syntax_ptr);
@@ -1836,10 +1844,11 @@ impl ExprCollector<'_> {
     /// }
     /// ```
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
-        let try_branch = self.lang_path(LangItem::TryTraitBranch);
-        let cf_continue = self.lang_path(LangItem::ControlFlowContinue);
-        let cf_break = self.lang_path(LangItem::ControlFlowBreak);
-        let try_from_residual = self.lang_path(LangItem::TryTraitFromResidual);
+        let lang_items = self.lang_items();
+        let try_branch = self.lang_path(lang_items.TryTraitBranch);
+        let cf_continue = self.lang_path(lang_items.ControlFlowContinue);
+        let cf_break = self.lang_path(lang_items.ControlFlowBreak);
+        let try_from_residual = self.lang_path(lang_items.TryTraitFromResidual);
         let operand = self.collect_expr_opt(e.expr());
         let try_branch = self.alloc_expr(try_branch.map_or(Expr::Missing, Expr::Path), syntax_ptr);
         let expr = self
@@ -2773,11 +2782,10 @@ impl ExprCollector<'_> {
 
         // Assume that rustc version >= 1.89.0 iff lang item `format_arguments` exists
         // but `format_unsafe_arg` does not
-        let fmt_args =
-            || crate::lang_item::lang_item(self.db, self.module.krate(), LangItem::FormatArguments);
-        let fmt_unsafe_arg =
-            || crate::lang_item::lang_item(self.db, self.module.krate(), LangItem::FormatUnsafeArg);
-        let use_format_args_since_1_89_0 = fmt_args().is_some() && fmt_unsafe_arg().is_none();
+        let lang_items = self.lang_items();
+        let fmt_args = lang_items.FormatArguments;
+        let fmt_unsafe_arg = lang_items.FormatUnsafeArg;
+        let use_format_args_since_1_89_0 = fmt_args.is_some() && fmt_unsafe_arg.is_none();
 
         let idx = if use_format_args_since_1_89_0 {
             self.collect_format_args_impl(syntax_ptr, fmt, argmap, lit_pieces, format_options)
@@ -2856,16 +2864,13 @@ impl ExprCollector<'_> {
         //         unsafe { ::core::fmt::UnsafeArg::new() }
         //     )
 
-        let new_v1_formatted = LangItem::FormatArguments.ty_rel_path(
-            self.db,
-            self.module.krate(),
+        let lang_items = self.lang_items();
+        let new_v1_formatted = self.ty_rel_lang_path(
+            lang_items.FormatArguments,
             Name::new_symbol_root(sym::new_v1_formatted),
         );
-        let unsafe_arg_new = LangItem::FormatUnsafeArg.ty_rel_path(
-            self.db,
-            self.module.krate(),
-            Name::new_symbol_root(sym::new),
-        );
+        let unsafe_arg_new =
+            self.ty_rel_lang_path(lang_items.FormatUnsafeArg, Name::new_symbol_root(sym::new));
         let new_v1_formatted =
             self.alloc_expr_desugared(new_v1_formatted.map_or(Expr::Missing, Expr::Path));
 
@@ -3044,9 +3049,8 @@ impl ExprCollector<'_> {
             //         )
             //     }
 
-            let new_v1_formatted = LangItem::FormatArguments.ty_rel_path(
-                self.db,
-                self.module.krate(),
+            let new_v1_formatted = self.ty_rel_lang_path(
+                self.lang_items().FormatArguments,
                 Name::new_symbol_root(sym::new_v1_formatted),
             );
             let new_v1_formatted =
@@ -3099,6 +3103,7 @@ impl ExprCollector<'_> {
         placeholder: &FormatPlaceholder,
         argmap: &mut FxIndexSet<(usize, ArgumentType)>,
     ) -> ExprId {
+        let lang_items = self.lang_items();
         let position = match placeholder.argument.index {
             Ok(arg_index) => {
                 let (i, _) =
@@ -3159,15 +3164,14 @@ impl ExprCollector<'_> {
             let width =
                 RecordLitField { name: Name::new_symbol_root(sym::width), expr: width_expr };
             self.alloc_expr_desugared(Expr::RecordLit {
-                path: LangItem::FormatPlaceholder.path(self.db, self.module.krate()).map(Box::new),
+                path: self.lang_path(lang_items.FormatPlaceholder).map(Box::new),
                 fields: Box::new([position, flags, precision, width]),
                 spread: None,
             })
         } else {
             let format_placeholder_new = {
-                let format_placeholder_new = LangItem::FormatPlaceholder.ty_rel_path(
-                    self.db,
-                    self.module.krate(),
+                let format_placeholder_new = self.ty_rel_lang_path(
+                    lang_items.FormatPlaceholder,
                     Name::new_symbol_root(sym::new),
                 );
                 match format_placeholder_new {
@@ -3188,9 +3192,8 @@ impl ExprCollector<'_> {
             )));
             let fill = self.alloc_expr_desugared(Expr::Literal(Literal::Char(fill.unwrap_or(' '))));
             let align = {
-                let align = LangItem::FormatAlignment.ty_rel_path(
-                    self.db,
-                    self.module.krate(),
+                let align = self.ty_rel_lang_path(
+                    lang_items.FormatAlignment,
                     match alignment {
                         Some(FormatAlignment::Left) => Name::new_symbol_root(sym::Left),
                         Some(FormatAlignment::Right) => Name::new_symbol_root(sym::Right),
@@ -3234,6 +3237,7 @@ impl ExprCollector<'_> {
         count: &Option<FormatCount>,
         argmap: &mut FxIndexSet<(usize, ArgumentType)>,
     ) -> ExprId {
+        let lang_items = self.lang_items();
         match count {
             Some(FormatCount::Literal(n)) => {
                 let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
@@ -3241,11 +3245,9 @@ impl ExprCollector<'_> {
                     // FIXME: Change this to Some(BuiltinUint::U16) once we drop support for toolchains < 1.88
                     None,
                 )));
-                let count_is = match LangItem::FormatCount.ty_rel_path(
-                    self.db,
-                    self.module.krate(),
-                    Name::new_symbol_root(sym::Is),
-                ) {
+                let count_is = match self
+                    .ty_rel_lang_path(lang_items.FormatCount, Name::new_symbol_root(sym::Is))
+                {
                     Some(count_is) => self.alloc_expr_desugared(Expr::Path(count_is)),
                     None => self.missing_expr(),
                 };
@@ -3259,11 +3261,9 @@ impl ExprCollector<'_> {
                         i as u128,
                         Some(BuiltinUint::Usize),
                     )));
-                    let count_param = match LangItem::FormatCount.ty_rel_path(
-                        self.db,
-                        self.module.krate(),
-                        Name::new_symbol_root(sym::Param),
-                    ) {
+                    let count_param = match self
+                        .ty_rel_lang_path(lang_items.FormatCount, Name::new_symbol_root(sym::Param))
+                    {
                         Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                         None => self.missing_expr(),
                     };
@@ -3277,11 +3277,9 @@ impl ExprCollector<'_> {
                     self.missing_expr()
                 }
             }
-            None => match LangItem::FormatCount.ty_rel_path(
-                self.db,
-                self.module.krate(),
-                Name::new_symbol_root(sym::Implied),
-            ) {
+            None => match self
+                .ty_rel_lang_path(lang_items.FormatCount, Name::new_symbol_root(sym::Implied))
+            {
                 Some(count_param) => self.alloc_expr_desugared(Expr::Path(count_param)),
                 None => self.missing_expr(),
             },
@@ -3299,9 +3297,8 @@ impl ExprCollector<'_> {
         use ArgumentType::*;
         use FormatTrait::*;
 
-        let new_fn = match LangItem::FormatArgument.ty_rel_path(
-            self.db,
-            self.module.krate(),
+        let new_fn = match self.ty_rel_lang_path(
+            self.lang_items().FormatArgument,
             Name::new_symbol_root(match ty {
                 Format(Display) => sym::new_display,
                 Format(Debug) => sym::new_debug,
@@ -3323,8 +3320,16 @@ impl ExprCollector<'_> {
 
     // endregion: format
 
-    fn lang_path(&self, lang: LangItem) -> Option<Path> {
-        lang.path(self.db, self.module.krate())
+    fn lang_path(&self, lang: Option<impl Into<LangItemTarget>>) -> Option<Path> {
+        Some(Path::LangItem(lang?.into(), None))
+    }
+
+    fn ty_rel_lang_path(
+        &self,
+        lang: Option<impl Into<LangItemTarget>>,
+        relative_name: Name,
+    ) -> Option<Path> {
+        Some(Path::LangItem(lang?.into(), Some(relative_name)))
     }
 }
 

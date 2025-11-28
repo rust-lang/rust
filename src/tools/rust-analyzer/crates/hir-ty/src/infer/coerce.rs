@@ -38,7 +38,6 @@
 use hir_def::{
     CallableDefId,
     hir::{ExprId, ExprOrPatId},
-    lang_item::LangItem,
     signatures::FunctionSignature,
 };
 use intern::sym;
@@ -612,10 +611,8 @@ where
             return Err(TypeError::Mismatch);
         }
 
-        let traits = (
-            LangItem::Unsize.resolve_trait(self.db(), self.env().krate),
-            LangItem::CoerceUnsized.resolve_trait(self.db(), self.env().krate),
-        );
+        let lang_items = self.interner().lang_items();
+        let traits = (lang_items.Unsize, lang_items.CoerceUnsized);
         let (Some(unsize_did), Some(coerce_unsized_did)) = traits else {
             debug!("missing Unsize or CoerceUnsized traits");
             return Err(TypeError::Mismatch);

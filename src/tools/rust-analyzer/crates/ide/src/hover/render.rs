@@ -1083,8 +1083,8 @@ fn closure_ty(
     };
     let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, display_target));
 
-    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
-        push_new_def(hir::Trait::from(trait_).into())
+    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db)) {
+        push_new_def(trait_.into())
     }
     if let Some(layout) = render_memory_layout(
         config.memory_layout,

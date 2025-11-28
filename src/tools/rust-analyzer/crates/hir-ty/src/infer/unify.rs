@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use hir_def::{AdtId, DefWithBodyId, GenericParamId, lang_item::LangItem};
+use hir_def::{AdtId, DefWithBodyId, GenericParamId};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashSet;
@@ -174,7 +174,7 @@ impl<'db> InferenceTable<'db> {
     }
 
     pub(crate) fn type_var_is_sized(&self, self_ty: TyVid) -> bool {
-        let Some(sized_did) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
+        let Some(sized_did) = self.interner().lang_items().Sized else {
             return true;
         };
         self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
@@ -520,13 +520,13 @@ impl<'db> InferenceTable<'db> {
         ty: Ty<'db>,
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty<'db>>, Ty<'db>)> {
+        let lang_items = self.interner().lang_items();
         for (fn_trait_name, output_assoc_name, subtraits) in [
             (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
             (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
             (FnTrait::AsyncFnOnce, sym::CallOnceFuture, &[]),
         ] {
-            let krate = self.trait_env.krate;
-            let fn_trait = fn_trait_name.get_id(self.db, krate)?;
+            let fn_trait = fn_trait_name.get_id(lang_items)?;
             let trait_data = fn_trait.trait_items(self.db);
             let output_assoc_type =
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
@@ -558,7 +558,7 @@ impl<'db> InferenceTable<'db> {
                 self.register_obligation(pred);
                 let return_ty = self.normalize_alias_ty(projection);
                 for &fn_x in subtraits {
-                    let fn_x_trait = fn_x.get_id(self.db, krate)?;
+                    let fn_x_trait = fn_x.get_id(lang_items)?;
                     let trait_ref = TraitRef::new(self.interner(), fn_x_trait.into(), args);
                     let pred = Predicate::upcast_from(trait_ref, self.interner());
                     if !self.try_obligation(pred).no_solution() {
@@ -658,7 +658,7 @@ impl<'db> InferenceTable<'db> {
             }
         }
 
-        let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
+        let Some(sized) = self.interner().lang_items().Sized else {
             return false;
         };
         let sized_pred = Predicate::upcast_from(

@@ -59,6 +59,7 @@ use hir_def::{
         generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     },
     item_tree::ImportAlias,
+    lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{
         assoc::TraitItems,
@@ -91,7 +92,7 @@ use hir_ty::{
         PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
-    traits::{self, FnTrait, is_inherent_impl_coherent, structurally_normalize_ty},
+    traits::{self, is_inherent_impl_coherent, structurally_normalize_ty},
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -138,7 +139,7 @@ pub use {
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         find_path::PrefixKind,
         import_map,
-        lang_item::{LangItem, crate_lang_items},
+        lang_item::{LangItemEnum as LangItem, crate_lang_items},
         nameres::{DefMap, ModuleSource, crate_def_map},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
@@ -818,7 +819,7 @@ impl Module {
             let drop_maybe_dangle = (|| {
                 // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
                 let trait_ = trait_?;
-                let drop_trait = LangItem::Drop.resolve_trait(db, self.krate().into())?;
+                let drop_trait = interner.lang_items().Drop?;
                 if drop_trait != trait_.into() {
                     return None;
                 }
@@ -2436,11 +2437,11 @@ impl Function {
 
         let ret_type = self.ret_type(db);
         let Some(impl_traits) = ret_type.as_impl_traits(db) else { return false };
-        let Some(future_trait_id) = LangItem::Future.resolve_trait(db, self.ty(db).env.krate)
-        else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.krate(db).id);
+        let Some(future_trait_id) = lang_items.Future else {
             return false;
         };
-        let Some(sized_trait_id) = LangItem::Sized.resolve_trait(db, self.ty(db).env.krate) else {
+        let Some(sized_trait_id) = lang_items.Sized else {
             return false;
         };
 
@@ -2905,8 +2906,12 @@ pub struct Trait {
 }
 
 impl Trait {
-    pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
-        LangItem::from_name(name)?.resolve_trait(db, krate.into()).map(Into::into)
+    pub fn lang(db: &dyn HirDatabase, krate: Crate, lang_item: LangItem) -> Option<Trait> {
+        let lang_items = hir_def::lang_item::lang_items(db, krate.id);
+        match lang_item.from_lang_items(lang_items)? {
+            LangItemTarget::TraitId(it) => Some(it.into()),
+            _ => None,
+        }
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -4650,7 +4655,7 @@ impl<'db> Closure<'db> {
                 let owner = db.lookup_intern_closure(id).0;
                 let infer = db.infer(owner);
                 let info = infer.closure_info(id);
-                info.1
+                info.1.into()
             }
             AnyClosureId::CoroutineClosureId(_id) => {
                 // FIXME: Infer kind for coroutine closures.
@@ -4661,6 +4666,71 @@ impl<'db> Closure<'db> {
                 }
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FnTrait {
+    FnOnce,
+    FnMut,
+    Fn,
+
+    AsyncFnOnce,
+    AsyncFnMut,
+    AsyncFn,
+}
+
+impl From<traits::FnTrait> for FnTrait {
+    fn from(value: traits::FnTrait) -> Self {
+        match value {
+            traits::FnTrait::FnOnce => FnTrait::FnOnce,
+            traits::FnTrait::FnMut => FnTrait::FnMut,
+            traits::FnTrait::Fn => FnTrait::Fn,
+            traits::FnTrait::AsyncFnOnce => FnTrait::AsyncFnOnce,
+            traits::FnTrait::AsyncFnMut => FnTrait::AsyncFnMut,
+            traits::FnTrait::AsyncFn => FnTrait::AsyncFn,
+        }
+    }
+}
+
+impl fmt::Display for FnTrait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FnTrait::FnOnce => write!(f, "FnOnce"),
+            FnTrait::FnMut => write!(f, "FnMut"),
+            FnTrait::Fn => write!(f, "Fn"),
+            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
+            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
+            FnTrait::AsyncFn => write!(f, "AsyncFn"),
+        }
+    }
+}
+
+impl FnTrait {
+    pub const fn function_name(&self) -> &'static str {
+        match self {
+            FnTrait::FnOnce => "call_once",
+            FnTrait::FnMut => "call_mut",
+            FnTrait::Fn => "call",
+            FnTrait::AsyncFnOnce => "async_call_once",
+            FnTrait::AsyncFnMut => "async_call_mut",
+            FnTrait::AsyncFn => "async_call",
+        }
+    }
+
+    pub fn lang_item(self) -> LangItem {
+        match self {
+            FnTrait::FnOnce => LangItem::FnOnce,
+            FnTrait::FnMut => LangItem::FnMut,
+            FnTrait::Fn => LangItem::Fn,
+            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
+            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
+            FnTrait::AsyncFn => LangItem::AsyncFn,
+        }
+    }
+
+    pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<Trait> {
+        Trait::lang(db, krate, self.lang_item())
     }
 }
 
@@ -5052,14 +5122,15 @@ impl<'db> Type<'db> {
     /// `std::future::Future` and returns the `Output` associated type.
     /// This function is used in `.await` syntax completion.
     pub fn into_future_output(&self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let trait_ = LangItem::IntoFutureIntoFuture
-            .resolve_function(db, self.env.krate)
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let trait_ = lang_items
+            .IntoFutureIntoFuture
             .and_then(|into_future_fn| {
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
                 let into_future_trait = assoc_item.container_or_implemented_trait(db)?;
                 Some(into_future_trait.id)
             })
-            .or_else(|| LangItem::Future.resolve_trait(db, self.env.krate))?;
+            .or(lang_items.Future)?;
 
         if !traits::implements_trait_unique(self.ty, db, self.env.clone(), trait_) {
             return None;
@@ -5072,13 +5143,15 @@ impl<'db> Type<'db> {
 
     /// This does **not** resolve `IntoFuture`, only `Future`.
     pub fn future_output(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let future_output = LangItem::FutureOutput.resolve_type_alias(db, self.env.krate)?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let future_output = lang_items.FutureOutput?;
         self.normalize_trait_assoc_type(db, &[], future_output.into())
     }
 
     /// This does **not** resolve `IntoIterator`, only `Iterator`.
     pub fn iterator_item(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let iterator_trait = LangItem::Iterator.resolve_trait(db, self.env.krate)?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let iterator_trait = lang_items.Iterator?;
         let iterator_item = iterator_trait
             .trait_items(db)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
@@ -5086,7 +5159,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn impls_iterator(self, db: &'db dyn HirDatabase) -> bool {
-        let Some(iterator_trait) = LangItem::Iterator.resolve_trait(db, self.env.krate) else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let Some(iterator_trait) = lang_items.Iterator else {
             return false;
         };
         traits::implements_trait_unique(self.ty, db, self.env.clone(), iterator_trait)
@@ -5094,13 +5168,12 @@ impl<'db> Type<'db> {
 
     /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
     pub fn into_iterator_iter(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let trait_ = LangItem::IntoIterIntoIter.resolve_function(db, self.env.krate).and_then(
-            |into_iter_fn| {
-                let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
-                let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
-                Some(into_iter_trait.id)
-            },
-        )?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let trait_ = lang_items.IntoIterIntoIter.and_then(|into_iter_fn| {
+            let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
+            let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
+            Some(into_iter_trait.id)
+        })?;
 
         if !traits::implements_trait_unique(self.ty, db, self.env.clone(), trait_) {
             return None;
@@ -5117,7 +5190,8 @@ impl<'db> Type<'db> {
     /// This function can be used to check if a particular type is callable, since FnOnce is a
     /// supertrait of Fn and FnMut, so all callable types implements at least FnOnce.
     pub fn impls_fnonce(&self, db: &'db dyn HirDatabase) -> bool {
-        let fnonce_trait = match FnTrait::FnOnce.get_id(db, self.env.krate) {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let fnonce_trait = match lang_items.FnOnce {
             Some(it) => it,
             None => return false,
         };
@@ -5161,7 +5235,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn is_copy(&self, db: &'db dyn HirDatabase) -> bool {
-        let Some(copy_trait) = LangItem::Copy.resolve_trait(db, self.env.krate) else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let Some(copy_trait) = lang_items.Copy else {
             return false;
         };
         self.impls_trait(db, copy_trait.into(), &[])
@@ -5913,7 +5988,7 @@ enum Callee<'db> {
     Closure(InternedClosureId, GenericArgs<'db>),
     CoroutineClosure(InternedCoroutineId, GenericArgs<'db>),
     FnPtr,
-    FnImpl(FnTrait),
+    FnImpl(traits::FnTrait),
 }
 
 pub enum CallableKind<'db> {
@@ -5940,7 +6015,7 @@ impl<'db> Callable<'db> {
                 CallableKind::Closure(Closure { id: AnyClosureId::CoroutineClosureId(id), subst })
             }
             Callee::FnPtr => CallableKind::FnPtr,
-            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_),
+            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_.into()),
         }
     }
     pub fn receiver_param(&self, db: &'db dyn HirDatabase) -> Option<(SelfParam, Type<'db>)> {

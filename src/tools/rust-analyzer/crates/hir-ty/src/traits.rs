@@ -1,12 +1,11 @@
 //! Trait solving using next trait solver.
 
-use core::fmt;
 use std::hash::Hash;
 
 use base_db::Crate;
 use hir_def::{
     AdtId, AssocItemId, BlockId, HasModule, ImplId, Lookup, TraitId,
-    lang_item::LangItem,
+    lang_item::LangItems,
     nameres::DefMap,
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
@@ -165,54 +164,7 @@ pub enum FnTrait {
     AsyncFn,
 }
 
-impl fmt::Display for FnTrait {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FnTrait::FnOnce => write!(f, "FnOnce"),
-            FnTrait::FnMut => write!(f, "FnMut"),
-            FnTrait::Fn => write!(f, "Fn"),
-            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
-            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
-            FnTrait::AsyncFn => write!(f, "AsyncFn"),
-        }
-    }
-}
-
 impl FnTrait {
-    pub const fn function_name(&self) -> &'static str {
-        match self {
-            FnTrait::FnOnce => "call_once",
-            FnTrait::FnMut => "call_mut",
-            FnTrait::Fn => "call",
-            FnTrait::AsyncFnOnce => "async_call_once",
-            FnTrait::AsyncFnMut => "async_call_mut",
-            FnTrait::AsyncFn => "async_call",
-        }
-    }
-
-    const fn lang_item(self) -> LangItem {
-        match self {
-            FnTrait::FnOnce => LangItem::FnOnce,
-            FnTrait::FnMut => LangItem::FnMut,
-            FnTrait::Fn => LangItem::Fn,
-            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
-            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
-            FnTrait::AsyncFn => LangItem::AsyncFn,
-        }
-    }
-
-    pub const fn from_lang_item(lang_item: LangItem) -> Option<Self> {
-        match lang_item {
-            LangItem::FnOnce => Some(FnTrait::FnOnce),
-            LangItem::FnMut => Some(FnTrait::FnMut),
-            LangItem::Fn => Some(FnTrait::Fn),
-            LangItem::AsyncFnOnce => Some(FnTrait::AsyncFnOnce),
-            LangItem::AsyncFnMut => Some(FnTrait::AsyncFnMut),
-            LangItem::AsyncFn => Some(FnTrait::AsyncFn),
-            _ => None,
-        }
-    }
-
     pub fn method_name(self) -> Name {
         match self {
             FnTrait::FnOnce => Name::new_symbol_root(sym::call_once),
@@ -224,8 +176,15 @@ impl FnTrait {
         }
     }
 
-    pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
-        self.lang_item().resolve_trait(db, krate)
+    pub fn get_id(self, lang_items: &LangItems) -> Option<TraitId> {
+        match self {
+            FnTrait::FnOnce => lang_items.FnOnce,
+            FnTrait::FnMut => lang_items.FnMut,
+            FnTrait::Fn => lang_items.Fn,
+            FnTrait::AsyncFnOnce => lang_items.AsyncFnOnce,
+            FnTrait::AsyncFnMut => lang_items.AsyncFnMut,
+            FnTrait::AsyncFn => lang_items.AsyncFn,
+        }
     }
 }
 

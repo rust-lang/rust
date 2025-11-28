@@ -11,7 +11,6 @@ pub(crate) mod path;
 use std::{cell::OnceCell, iter, mem};
 
 use arrayvec::ArrayVec;
-use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
@@ -24,7 +23,7 @@ use hir_def::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
     },
     item_tree::FieldsShape,
-    lang_item::LangItem,
+    lang_item::LangItems,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs, ValueNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
@@ -166,6 +165,7 @@ impl<'db> LifetimeElisionKind<'db> {
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
     interner: DbInterner<'db>,
+    lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
     store: &'a ExpressionStore,
     def: GenericDefId,
@@ -194,6 +194,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         Self {
             db,
             interner: DbInterner::new_no_crate(db),
+            lang_items: hir_def::lang_item::lang_items(db, resolver.krate()),
             resolver,
             def,
             generics: Default::default(),
@@ -490,7 +491,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // away instead of two.
                         let actual_opaque_type_data = self
                             .with_debruijn(DebruijnIndex::ZERO, |ctx| {
-                                ctx.lower_impl_trait(opaque_ty_id, bounds, self.resolver.krate())
+                                ctx.lower_impl_trait(opaque_ty_id, bounds)
                             });
                         self.impl_trait_mode.opaque_type_data[idx] = actual_opaque_type_data;
 
@@ -658,6 +659,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         ignore_bindings: bool,
     ) -> impl Iterator<Item = Clause<'db>> + use<'b, 'a, 'db> {
         let interner = self.interner;
+        let meta_sized = self.lang_items.MetaSized;
+        let pointee_sized = self.lang_items.PointeeSized;
         let mut assoc_bounds = None;
         let mut clause = None;
         match bound {
@@ -666,10 +669,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 if let Some((trait_ref, mut ctx)) = self.lower_trait_ref_from_path(path, self_ty) {
                     // FIXME(sized-hierarchy): Remove this bound modifications once we have implemented
                     // sized-hierarchy correctly.
-                    let meta_sized = LangItem::MetaSized
-                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
-                    let pointee_sized = LangItem::PointeeSized
-                        .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
                     if meta_sized.is_some_and(|it| it == trait_ref.def_id.0) {
                         // Ignore this bound
                     } else if pointee_sized.is_some_and(|it| it == trait_ref.def_id.0) {
@@ -692,7 +691,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 }
             }
             &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
-                let sized_trait = LangItem::Sized.resolve_trait(self.db, self.resolver.krate());
+                let sized_trait = self.lang_items.Sized;
                 // Don't lower associated type bindings as the only possible relaxed trait bound
                 // `?Sized` has no of them.
                 // If we got another trait here ignore the bound completely.
@@ -873,12 +872,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         }
     }
 
-    fn lower_impl_trait(
-        &mut self,
-        def_id: SolverDefId,
-        bounds: &[TypeBound],
-        krate: Crate,
-    ) -> ImplTrait<'db> {
+    fn lower_impl_trait(&mut self, def_id: SolverDefId, bounds: &[TypeBound]) -> ImplTrait<'db> {
         let interner = self.interner;
         cov_mark::hit!(lower_rpit);
         let args = GenericArgs::identity_for_item(interner, def_id);
@@ -894,7 +888,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             }
 
             if !ctx.unsized_types.contains(&self_ty) {
-                let sized_trait = LangItem::Sized.resolve_trait(self.db, krate);
+                let sized_trait = self.lang_items.Sized;
                 let sized_clause = sized_trait.map(|trait_id| {
                     let trait_ref = TraitRef::new_from_args(
                         interner,
@@ -1400,9 +1394,7 @@ pub(crate) fn generic_predicates_for_param<'db>(
                             let TypeRef::Path(path) = &ctx.store[path.type_ref()] else {
                                 return false;
                             };
-                            let Some(pointee_sized) =
-                                LangItem::PointeeSized.resolve_trait(ctx.db, ctx.resolver.krate())
-                            else {
+                            let Some(pointee_sized) = ctx.lang_items.PointeeSized else {
                                 return false;
                             };
                             // Lower the path directly with `Resolver` instead of PathLoweringContext`
@@ -1465,9 +1457,13 @@ pub(crate) fn generic_predicates_for_param<'db>(
     let args = GenericArgs::identity_for_item(interner, def.into());
     if !args.is_empty() {
         let explicitly_unsized_tys = ctx.unsized_types;
-        if let Some(implicitly_sized_predicates) =
-            implicitly_sized_clauses(db, param_id.parent, &explicitly_unsized_tys, &args, &resolver)
-        {
+        if let Some(implicitly_sized_predicates) = implicitly_sized_clauses(
+            db,
+            ctx.lang_items,
+            param_id.parent,
+            &explicitly_unsized_tys,
+            &args,
+        ) {
             predicates.extend(implicitly_sized_predicates);
         };
     }
@@ -1519,7 +1515,7 @@ pub fn type_alias_bounds_with_diagnostics<'db>(
     }
 
     if !ctx.unsized_types.contains(&interner_ty) {
-        let sized_trait = LangItem::Sized.resolve_trait(ctx.db, resolver.krate());
+        let sized_trait = ctx.lang_items.Sized;
         if let Some(sized_trait) = sized_trait {
             let trait_ref = TraitRef::new_from_args(
                 interner,
@@ -1623,7 +1619,7 @@ pub(crate) fn trait_environment_query<'db>(
     def: GenericDefId,
 ) -> Arc<TraitEnvironment<'db>> {
     let module = def.module(db);
-    let interner = DbInterner::new_no_crate(db);
+    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
     let predicates = GenericPredicates::query_all(db, def);
     let traits_in_scope = predicates
         .iter_identity_copied()
@@ -1669,7 +1665,7 @@ where
         def,
         LifetimeElisionKind::AnonymousReportError,
     );
-    let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
+    let sized_trait = ctx.lang_items.Sized;
 
     let mut predicates = Vec::new();
     let all_generics =
@@ -1837,13 +1833,13 @@ fn push_const_arg_has_type_predicates<'db>(
 /// Exception is Self of a trait def.
 fn implicitly_sized_clauses<'a, 'subst, 'db>(
     db: &'db dyn HirDatabase,
+    lang_items: &LangItems,
     def: GenericDefId,
     explicitly_unsized_tys: &'a FxHashSet<Ty<'db>>,
     args: &'subst GenericArgs<'db>,
-    resolver: &Resolver<'db>,
 ) -> Option<impl Iterator<Item = Clause<'db>> + Captures<'a> + Captures<'subst>> {
     let interner = DbInterner::new_no_crate(db);
-    let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate())?;
+    let sized_trait = lang_items.Sized?;
 
     let trait_self_idx = trait_self_param_idx(db, def);
 
@@ -2137,7 +2133,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
     }
 
     if !ctx.unsized_types.contains(&self_ty)
-        && let Some(sized_trait) = LangItem::Sized.resolve_trait(db, resolver.krate())
+        && let Some(sized_trait) = ctx.lang_items.Sized
     {
         let sized_clause = Binder::dummy(ExistentialPredicate::Trait(ExistentialTraitRef::new(
             interner,
@@ -2155,7 +2151,8 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
     trait_ref: TraitRef<'db>,
     name: &Name,
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
-    let interner = DbInterner::new_no_crate(db);
+    let module = trait_ref.def_id.0.module(db);
+    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
     rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
         let trait_id = t.as_ref().skip_binder().def_id.0;
         let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;

@@ -1,7 +1,6 @@
 //! Inference of *place operators*: deref and indexing (operators that create places, as opposed to values).
 
-use base_db::Crate;
-use hir_def::{hir::ExprId, lang_item::LangItem};
+use hir_def::hir::ExprId;
 use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
@@ -187,8 +186,8 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         debug!("try_overloaded_place_op({:?},{:?})", base_ty, op);
 
         let (Some(imm_tr), imm_op) = (match op {
-            PlaceOp::Deref => (LangItem::Deref.resolve_trait(self.db, self.krate()), sym::deref),
-            PlaceOp::Index => (LangItem::Index.resolve_trait(self.db, self.krate()), sym::index),
+            PlaceOp::Deref => (self.lang_items.Deref, sym::deref),
+            PlaceOp::Index => (self.lang_items.Index, sym::index),
         }) else {
             // Bail if `Deref` or `Index` isn't defined.
             return None;
@@ -209,16 +208,16 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     pub(super) fn try_mutable_overloaded_place_op(
         table: &InferenceTable<'db>,
-        krate: Crate,
         base_ty: Ty<'db>,
         opt_rhs_ty: Option<Ty<'db>>,
         op: PlaceOp,
     ) -> Option<InferOk<'db, MethodCallee<'db>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?})", base_ty, op);
 
+        let lang_items = table.interner().lang_items();
         let (Some(mut_tr), mut_op) = (match op {
-            PlaceOp::Deref => (LangItem::DerefMut.resolve_trait(table.db, krate), sym::deref_mut),
-            PlaceOp::Index => (LangItem::IndexMut.resolve_trait(table.db, krate), sym::index_mut),
+            PlaceOp::Deref => (lang_items.DerefMut, sym::deref_mut),
+            PlaceOp::Index => (lang_items.IndexMut, sym::index_mut),
         }) else {
             // Bail if `DerefMut` or `IndexMut` isn't defined.
             return None;
@@ -276,8 +275,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                 ))
             }
         };
-        let method =
-            Self::try_mutable_overloaded_place_op(&self.table, self.krate(), base_ty, arg_ty, op);
+        let method = Self::try_mutable_overloaded_place_op(&self.table, base_ty, arg_ty, op);
         let method = match method {
             Some(ok) => self.table.register_infer_ok(ok),
             // Couldn't find the mutable variant of the place op, keep the

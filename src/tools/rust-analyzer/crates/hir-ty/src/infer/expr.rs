@@ -10,7 +10,6 @@ use hir_def::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
         LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
-    lang_item::{LangItem, LangItemTarget},
     resolver::ValueNs,
 };
 use hir_def::{FunctionId, hir::ClosureKind};
@@ -874,14 +873,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 Literal::CString(..) => Ty::new_ref(
                     self.interner(),
                     self.types.re_static,
-                    self.resolve_lang_item(LangItem::CStr)
-                        .and_then(LangItemTarget::as_struct)
-                        .map_or_else(
-                            || self.err_ty(),
-                            |strukt| {
-                                Ty::new_adt(self.interner(), strukt.into(), self.types.empty_args)
-                            },
-                        ),
+                    self.lang_items.CStr.map_or_else(
+                        || self.err_ty(),
+                        |strukt| Ty::new_adt(self.interner(), strukt.into(), self.types.empty_args),
+                    ),
                     Mutability::Not,
                 ),
                 Literal::Char(..) => self.types.char,
@@ -1279,7 +1274,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
         }
-        let Some(trait_) = fn_x.get_id(self.db, self.table.trait_env.krate) else {
+        let Some(trait_) = fn_x.get_id(self.lang_items) else {
             return;
         };
         let trait_data = trait_.trait_items(self.db);

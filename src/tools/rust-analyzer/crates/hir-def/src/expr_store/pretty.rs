@@ -1091,15 +1091,15 @@ impl Printer<'_> {
                 }};
             }
             match *it {
-                LangItemTarget::ImplDef(it) => w!(self, "{it:?}"),
+                LangItemTarget::ImplId(it) => w!(self, "{it:?}"),
                 LangItemTarget::EnumId(it) => write_name!(it),
-                LangItemTarget::Function(it) => write_name!(it),
-                LangItemTarget::Static(it) => write_name!(it),
-                LangItemTarget::Struct(it) => write_name!(it),
-                LangItemTarget::Union(it) => write_name!(it),
-                LangItemTarget::TypeAlias(it) => write_name!(it),
-                LangItemTarget::Trait(it) => write_name!(it),
-                LangItemTarget::EnumVariant(it) => write_name!(it),
+                LangItemTarget::FunctionId(it) => write_name!(it),
+                LangItemTarget::StaticId(it) => write_name!(it),
+                LangItemTarget::StructId(it) => write_name!(it),
+                LangItemTarget::UnionId(it) => write_name!(it),
+                LangItemTarget::TypeAliasId(it) => write_name!(it),
+                LangItemTarget::TraitId(it) => write_name!(it),
+                LangItemTarget::EnumVariantId(it) => write_name!(it),
             }
 
             if let Some(s) = s {
