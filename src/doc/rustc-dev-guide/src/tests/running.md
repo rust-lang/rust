@@ -321,6 +321,10 @@ Tests are built on the machine running `x` not on the remote machine.
 Tests which fail to build unexpectedly (or `ui` tests producing incorrect build
 output) may fail without ever running on the remote machine.
 
+There is a default timeout of 30 minutes in case the `remote-test-server`
+cannot be reached by the `x` command. This timeout can be modified by using the
+`TEST_DEVICE_CONNECT_TIMEOUT_SECONDS` environment variable.
+
 ## Testing on emulators
 
 Some platforms are tested via an emulator for architectures that aren't readily available.

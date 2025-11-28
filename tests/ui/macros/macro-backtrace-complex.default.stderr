@@ -1,5 +1,5 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:10:20
+  --> $DIR/macro-backtrace-complex.rs:12:20
    |
 LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens
@@ -10,7 +10,7 @@ LL |     pong!();
    = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:10:20
+  --> $DIR/macro-backtrace-complex.rs:12:20
    |
 LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens
@@ -21,7 +21,7 @@ LL |     ping!();
    = note: this error originates in the macro `pong` which comes from the expansion of the macro `ping` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
-  --> $DIR/main.rs:10:20
+  --> $DIR/macro-backtrace-complex.rs:12:20
    |
 LL |     () => { syntax error };
    |                    ^^^^^ expected one of 8 possible tokens

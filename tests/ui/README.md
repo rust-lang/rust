@@ -891,12 +891,6 @@ Exercise *Link-Time Optimization* (LTO), involving the flags `-C lto` or `-Z thi
 
 Tests on changes to inference variable lattice LUB/GLB, see <https://github.com/rust-lang/rust/pull/45853>.
 
-## `tests/ui/macro_backtrace/`: `-Zmacro-backtrace`
-
-Contains a single test, checking the unstable command-line flag to enable detailed macro backtraces.
-
-**FIXME**: This could be merged with `ui/macros`, which already contains other macro backtrace tests.
-
 ## `tests/ui/macros/`
 
 Broad category of tests on macros.
@@ -945,12 +939,6 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
 
-## `tests/ui/missing_non_modrs_mod/`
-
-This directory is a small tree of `mod` dependencies, but the root, `foo.rs`, is looking for a file which does not exist. The test checks that the error is reported at the top-level module.
-
-**FIXME**: Merge with `tests/ui/modules/`.
-
 ## `tests/ui/missing-trait-bounds/`
 
 Tests for checking missing trait bounds, and their diagnostics.
@@ -962,10 +950,6 @@ Tests for checking missing trait bounds, and their diagnostics.
 Tests on the module system.
 
 **FIXME**: `tests/ui/imports/` should probably be merged with this.
-
-## `tests/ui/modules_and_files_visibility/`
-
-**FIXME**: Merge with `tests/ui/modules/`.
 
 ## `tests/ui/moves`
 
@@ -1134,12 +1118,6 @@ Contains only 2 tests, related to a single issue, which was about an error cause
 A large category about function and type public/private visibility, and its impact when using features across crates. Checks both visibility-related error messages and previously buggy cases.
 
 **FIXME**: merge with `tests/ui/privacy/`.
-
-## `tests/ui/qualified/`
-
-Contains few tests on qualified paths where a type parameter is provided at the end: `type A = <S as Tr>::A::f<u8>;`. The tests check if this fails during type checking, not parsing.
-
-**FIXME**: Should be rehomed to `ui/typeck`.
 
 ## `tests/ui/query-system/`
 
@@ -1582,12 +1560,6 @@ Tests on various well-formedness checks, e.g. [Type-checking normal functions](h
 ## `tests/ui/where-clauses/`
 
 Tests on `where` clauses. See [Where clauses | Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses).
-
-## `tests/ui/while/`
-
-Tests on the `while` keyword and the `while` construct.
-
-**FIXME**: merge with `ui/for-loop-while`.
 
 ## `tests/ui/windows-subsystem/`: `#![windows_subsystem = ""]`
 
