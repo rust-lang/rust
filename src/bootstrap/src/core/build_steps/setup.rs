@@ -103,13 +103,16 @@ impl fmt::Display for Profile {
 
 impl Step for Profile {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         for choice in Profile::all() {
             run = run.alias(choice.as_str());
         }
         run
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -231,10 +234,13 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 pub struct Link;
 impl Step for Link {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("link")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -450,10 +456,13 @@ pub struct Hook;
 
 impl Step for Hook {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("hook")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -588,6 +597,7 @@ Select which editor you would like to set up [default: None]: ";
                 "080955765db84bb6cbf178879f489c4e2369397626a6ecb3debedb94a9d0b3ce",
                 "f501475c6654187091c924ae26187fa5791d74d4a8ab3fb61fbbe4c0275aade1",
                 "54bc48fe1996177f5eef86d7231b33978e6d8b737cb0a899e622b7e975c95308",
+                "08d30e455ceec6e01d9bcef8b9449f2ddd14d278ca8627cdad90e02d9f44e938",
             ],
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
@@ -596,6 +606,7 @@ Select which editor you would like to set up [default: None]: ";
                 "198c195ed0c070d15907b279b8b4ea96198ca71b939f5376454f3d636ab54da5",
                 "1c43ead340b20792b91d02b08494ee68708e7e09f56b6766629b4b72079208f1",
                 "eec09a09452682060afd23dd5d3536ccac5615b3cdbf427366446901215fb9f6",
+                "cb653043852d9d5ff4a5be56407b859ff9928be055ad3f307eb309aad04765e6",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
@@ -613,6 +624,7 @@ Select which editor you would like to set up [default: None]: ";
                 "701b73751efd7abd6487f2c79348dab698af7ac4427b79fa3d2087c867144b12",
                 "a61df796c0c007cb6512127330564e49e57d558dec715703916a928b072a1054",
                 "02a49ac2d31f00ef6e4531c44e00dac51cea895112e480553f1ba060b3942a47",
+                "0aa4748848de0d1cb7ece92a0123c8897fef6de2f58aff8fda1426f098b7a798",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
@@ -621,6 +633,7 @@ Select which editor you would like to set up [default: None]: ";
                 "4fadd4c87389a601a27db0d3d74a142fa3a2e656ae78982e934dbe24bee32ad6",
                 "f0bb3d23ab1a49175ab0ef5c4071af95bb03d01d460776cdb716d91333443382",
                 "5ef83292111d9a8bb63b6afc3abf42d0bc78fe24985f0d2e039e73258b5dab8f",
+                "74420c13094b530a986b37c4f1d23cb58c0e8e2295f5858ded129fb1574e66f9",
             ],
         }
     }
@@ -670,10 +683,13 @@ pub struct Editor;
 
 impl Step for Editor {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("editor")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {

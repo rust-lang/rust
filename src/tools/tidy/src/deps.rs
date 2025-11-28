@@ -169,12 +169,6 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &["src/tools/rustc-perf"],
     },
     WorkspaceInfo {
-        path: "src/tools/test-float-parse",
-        exceptions: EXCEPTIONS,
-        crates_and_deps: None,
-        submodules: &[],
-    },
-    WorkspaceInfo {
         path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
         exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
         crates_and_deps: None,

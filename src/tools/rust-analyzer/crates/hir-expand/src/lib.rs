@@ -61,7 +61,7 @@ pub use crate::{
 };
 
 pub use base_db::EditionedFileId;
-pub use mbe::{DeclarativeMacro, ValueResult};
+pub use mbe::{DeclarativeMacro, MacroCallStyle, MacroCallStyles, ValueResult};
 
 pub mod tt {
     pub use span::Span;
@@ -266,7 +266,7 @@ pub struct MacroDefId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {
-    Declarative(AstId<ast::Macro>),
+    Declarative(AstId<ast::Macro>, MacroCallStyles),
     BuiltIn(AstId<ast::Macro>, BuiltinFnLikeExpander),
     BuiltInAttr(AstId<ast::Macro>, BuiltinAttrExpander),
     BuiltInDerive(AstId<ast::Macro>, BuiltinDeriveExpander),
@@ -338,6 +338,16 @@ pub enum MacroCallKind {
         /// out-of-line modules, which may have attributes spread across 2 files!
         invoc_attr_index: AttrId,
     },
+}
+
+impl MacroCallKind {
+    pub(crate) fn call_style(&self) -> MacroCallStyle {
+        match self {
+            MacroCallKind::FnLike { .. } => MacroCallStyle::FnLike,
+            MacroCallKind::Derive { .. } => MacroCallStyle::Derive,
+            MacroCallKind::Attr { .. } => MacroCallStyle::Attr,
+        }
+    }
 }
 
 impl HirFileId {
@@ -511,7 +521,7 @@ impl MacroDefId {
 
     pub fn definition_range(&self, db: &dyn ExpandDatabase) -> InFile<TextRange> {
         match self.kind {
-            MacroDefKind::Declarative(id)
+            MacroDefKind::Declarative(id, _)
             | MacroDefKind::BuiltIn(id, _)
             | MacroDefKind::BuiltInAttr(id, _)
             | MacroDefKind::BuiltInDerive(id, _)
@@ -527,7 +537,7 @@ impl MacroDefId {
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
         match self.kind {
             MacroDefKind::ProcMacro(id, ..) => Either::Right(id),
-            MacroDefKind::Declarative(id)
+            MacroDefKind::Declarative(id, _)
             | MacroDefKind::BuiltIn(id, _)
             | MacroDefKind::BuiltInAttr(id, _)
             | MacroDefKind::BuiltInDerive(id, _)
@@ -540,18 +550,22 @@ impl MacroDefId {
     }
 
     pub fn is_attribute(&self) -> bool {
-        matches!(
-            self.kind,
-            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr)
-        )
+        match self.kind {
+            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr) => {
+                true
+            }
+            MacroDefKind::Declarative(_, styles) => styles.contains(MacroCallStyles::ATTR),
+            _ => false,
+        }
     }
 
     pub fn is_derive(&self) -> bool {
-        matches!(
-            self.kind,
+        match self.kind {
             MacroDefKind::BuiltInDerive(..)
-                | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive)
-        )
+            | MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive) => true,
+            MacroDefKind::Declarative(_, styles) => styles.contains(MacroCallStyles::DERIVE),
+            _ => false,
+        }
     }
 
     pub fn is_fn_like(&self) -> bool {

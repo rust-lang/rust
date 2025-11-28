@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `crate::D::B`
-  --> $DIR/bad-import-with-rename.rs:7:9
+  --> $DIR/bad-import-with-rename.rs:8:9
    |
 LL |     use crate::D::B as _;
    |         ^^^^^^^^^^^^^^^^ no `B` in `D`
@@ -11,7 +11,7 @@ LL +     use A::B as _;
    |
 
 error[E0432]: unresolved import `crate::D::B2`
-  --> $DIR/bad-import-with-rename.rs:10:9
+  --> $DIR/bad-import-with-rename.rs:11:9
    |
 LL |     use crate::D::B2;
    |         ^^^^^^^^^^^^ no `B2` in `D`

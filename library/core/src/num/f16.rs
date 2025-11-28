@@ -701,6 +701,7 @@ impl f16 {
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f16::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -727,6 +728,7 @@ impl f16 {
     /// let y = 2.0f16;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f16::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -1215,7 +1217,8 @@ impl f16 {
     /// less than `min`. Otherwise this returns `self`.
     ///
     /// Note that this function returns NaN if the initial value was NaN as
-    /// well.
+    /// well. If the result is zero and among the three inputs `self`, `min`, and `max` there are
+    /// zeros with different sign, either `0.0` or `-0.0` is returned non-deterministically.
     ///
     /// # Panics
     ///
@@ -1231,6 +1234,12 @@ impl f16 {
     /// assert!((0.0f16).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f16).clamp(-2.0, 1.0) == 1.0);
     /// assert!((f16::NAN).clamp(-2.0, 1.0).is_nan());
+    ///
+    /// // These always returns zero, but the sign (which is ignored by `==`) is non-deterministic.
+    /// assert!((0.0f16).clamp(-0.0, -0.0) == 0.0);
+    /// assert!((1.0f16).clamp(-0.0, 0.0) == 0.0);
+    /// // This is definitely a negative zero.
+    /// assert!((-1.0f16).clamp(-0.0, 1.0).is_sign_negative());
     /// # }
     /// ```
     #[inline]

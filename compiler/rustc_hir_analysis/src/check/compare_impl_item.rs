@@ -236,7 +236,26 @@ fn compare_method_predicate_entailment<'tcx>(
 
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
-    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
+    // FIXME(-Zhigher-ranked-assumptions): The `hybrid_preds`
+    // should be well-formed. However, using them may result in
+    // region errors as we currently don't track placeholder
+    // assumptions.
+    //
+    // To avoid being backwards incompatible with the old solver,
+    // we also eagerly normalize the where-bounds in the new solver
+    // here while ignoring region constraints. This means we can then
+    // use where-bounds whose normalization results in placeholder
+    // errors further down without getting any errors.
+    //
+    // It should be sound to do so as the only region errors here
+    // should be due to missing implied bounds.
+    //
+    // cc trait-system-refactor-initiative/issues/166.
+    let param_env = if tcx.next_trait_solver_globally() {
+        traits::deeply_normalize_param_env_ignoring_regions(tcx, param_env, normalize_cause)
+    } else {
+        traits::normalize_param_env_or_error(tcx, param_env, normalize_cause)
+    };
     debug!(caller_bounds=?param_env.caller_bounds());
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());

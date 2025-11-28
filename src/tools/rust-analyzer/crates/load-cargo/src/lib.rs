@@ -96,12 +96,13 @@ pub fn load_workspace_into_db(
     tracing::debug!(?load_config, "LoadCargoConfig");
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws.find_sysroot_proc_macro_srv().map(|it| {
-            it.and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into)).map_err(
-                |e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()),
-            )
+            it.and_then(|it| {
+                ProcMacroClient::spawn(&it, extra_env, ws.toolchain.as_ref()).map_err(Into::into)
+            })
+            .map_err(|e| ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str()))
         }),
         ProcMacroServerChoice::Explicit(path) => {
-            Some(ProcMacroClient::spawn(path, extra_env).map_err(|e| {
+            Some(ProcMacroClient::spawn(path, extra_env, ws.toolchain.as_ref()).map_err(|e| {
                 ProcMacroLoadingError::ProcMacroSrvError(e.to_string().into_boxed_str())
             }))
         }

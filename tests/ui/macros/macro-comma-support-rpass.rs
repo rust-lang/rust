@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ run-pass
 // This is meant to be a comprehensive test of invocations with/without
 // trailing commas (or other, similar optionally-trailing separators).

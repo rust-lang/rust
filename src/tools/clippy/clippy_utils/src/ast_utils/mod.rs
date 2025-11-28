@@ -875,7 +875,6 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq.as_deref(), rq.as_deref(), eq_qself) && eq_path(lp, rp),
         (TraitObject(lg, ls), TraitObject(rg, rs)) => ls == rs && over(lg, rg, eq_generic_bound),
         (ImplTrait(_, lg), ImplTrait(_, rg)) => over(lg, rg, eq_generic_bound),
-        (Typeof(l), Typeof(r)) => eq_expr(&l.value, &r.value),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
     }

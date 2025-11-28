@@ -40,6 +40,7 @@ mod implicit_static;
 mod implied_dyn_trait;
 mod lifetime;
 mod param_name;
+mod placeholders;
 mod ra_fixture;
 mod range_exclusive;
 
@@ -289,6 +290,10 @@ fn hints(
                 },
                 ast::Type::DynTraitType(dyn_) => {
                     implied_dyn_trait::hints(hints, famous_defs, config, Either::Right(dyn_));
+                    Some(())
+                },
+                ast::Type::InferType(placeholder) => {
+                    placeholders::type_hints(hints, famous_defs, config, display_target, placeholder);
                     Some(())
                 },
                 _ => Some(()),

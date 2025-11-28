@@ -7,15 +7,12 @@ use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{
-    self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, fold_regions,
-};
+use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::check::wfcheck::check_static_item;
-use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
@@ -47,21 +44,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
         Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
             tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
-        }
-        // Sort of affects the type system, but only for the purpose of diagnostics
-        // so no need for ConstArg.
-        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
-            let ty = tcx.typeck(def_id).node_type(tcx.local_def_id_to_hir_id(def_id));
-            let ty = fold_regions(tcx, ty, |r, _| {
-                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
-            });
-            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                (ty, Some((span, Applicability::MachineApplicable)))
-            } else {
-                (ty, None)
-            };
-            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
-            return ty;
         }
 
         Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })

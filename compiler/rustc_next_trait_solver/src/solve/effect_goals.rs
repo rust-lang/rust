@@ -189,10 +189,11 @@ where
     }
 
     fn consider_auto_trait_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
+        ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("auto traits are never const")
+        ecx.cx().delay_bug("auto traits are never const");
+        Err(NoSolution)
     }
 
     fn consider_trait_alias_candidate(

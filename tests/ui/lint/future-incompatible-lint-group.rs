@@ -1,3 +1,4 @@
+//@ edition:2015
 //! Test that future_incompatible lint group only includes edition-independent lints
 
 // Ensure that the future_incompatible lint group only includes

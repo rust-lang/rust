@@ -1481,7 +1481,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         variable.to_rvalue()
     }
 
-    #[allow(dead_code)]
     fn va_arg(&mut self, _list: RValue<'gcc>, _ty: Type<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
@@ -2517,7 +2516,7 @@ impl ToGccComp for RealPredicate {
 }
 
 #[repr(C)]
-#[allow(non_camel_case_types)]
+#[expect(non_camel_case_types)]
 enum MemOrdering {
     __ATOMIC_RELAXED,
     __ATOMIC_CONSUME,

@@ -69,7 +69,7 @@ const N: usize = 100;
 #[no_mangle]
 pub fn u16_init_one_bytes() -> [u16; N] {
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK-NOT: switch
     // CHECK-NOT: icmp
     // CHECK: call void @llvm.memset.p0

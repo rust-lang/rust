@@ -220,6 +220,11 @@
 # which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
 # supplementary build information, like distro-specific package versions.
 #
+# IMPORTANT: Changing this value changes crate IDs and symbol name mangling, making
+# compiled artifacts incompatible. PGO profiles cannot be reused across different
+# descriptions, and incremental compilation caches are invalidated. Keep this value
+# consistent when reusing build artifacts.
+#
 # The Rust compiler will differentiate between versions of itself, including
 # based on this string, which means that if you wish to be compatible with
 # upstream Rust you need to set this to "". However, note that if you set this to "" but

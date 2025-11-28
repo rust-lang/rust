@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![feature(iter_macro, impl_trait_in_fn_trait_return, yield_expr)]
 
 use std::iter::iter;

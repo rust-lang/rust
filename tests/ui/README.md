@@ -585,10 +585,6 @@ Exercises the `format!` macro.
 
 A broad category of tests on functions.
 
-## `tests/ui/fn-main/`
-
-**FIXME**: Serves a duplicate purpose with `ui/entry-point`, should be combined.
-
 ## `tests/ui/for/`: `for` keyword
 
 Tests on the `for` keyword and some of its associated errors, such as attempting to write the faulty pattern `for _ in 0..1 {} else {}`.

@@ -8,7 +8,7 @@ use paths::Utf8PathBuf;
 use serde::de::DeserializeOwned;
 use serde_derive::{Deserialize, Serialize};
 
-use crate::ProcMacroKind;
+use crate::{ProcMacroKind, codec::Codec};
 
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
@@ -149,38 +149,20 @@ impl ExpnGlobals {
 }
 
 pub trait Message: serde::Serialize + DeserializeOwned {
-    fn read<R: BufRead>(
-        from_proto: ProtocolRead<R>,
-        inp: &mut R,
-        buf: &mut String,
-    ) -> io::Result<Option<Self>> {
-        Ok(match from_proto(inp, buf)? {
+    fn read<R: BufRead, C: Codec>(inp: &mut R, buf: &mut C::Buf) -> io::Result<Option<Self>> {
+        Ok(match C::read(inp, buf)? {
             None => None,
-            Some(text) => {
-                let mut deserializer = serde_json::Deserializer::from_str(text);
-                // Note that some proc-macro generate very deep syntax tree
-                // We have to disable the current limit of serde here
-                deserializer.disable_recursion_limit();
-                Some(Self::deserialize(&mut deserializer)?)
-            }
+            Some(buf) => Some(C::decode(buf)?),
         })
     }
-    fn write<W: Write>(self, to_proto: ProtocolWrite<W>, out: &mut W) -> io::Result<()> {
-        let text = serde_json::to_string(&self)?;
-        to_proto(out, &text)
+    fn write<W: Write, C: Codec>(self, out: &mut W) -> io::Result<()> {
+        let value = C::encode(&self)?;
+        C::write(out, &value)
     }
 }
 
 impl Message for Request {}
 impl Message for Response {}
-
-/// Type alias for a function that reads protocol messages from a buffered input stream.
-#[allow(type_alias_bounds)]
-type ProtocolRead<R: BufRead> =
-    for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
-/// Type alias for a function that writes protocol messages to an output stream.
-#[allow(type_alias_bounds)]
-type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
 
 #[cfg(test)]
 mod tests {

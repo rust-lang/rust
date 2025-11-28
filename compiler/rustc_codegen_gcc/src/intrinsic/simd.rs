@@ -53,6 +53,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         };
     }
 
+    // TODO(antoyo): refactor with the above require_simd macro that was changed in cg_llvm.
+    #[cfg(feature = "master")]
+    macro_rules! require_simd2 {
+        ($ty: expr, $variant:ident) => {{
+            require!($ty.is_simd(), InvalidMonomorphization::$variant { span, name, ty: $ty });
+            $ty.simd_size_and_type(bx.tcx())
+        }};
+    }
+
     if name == sym::simd_select_bitmask {
         require_simd!(
             args[1].layout.ty,
@@ -464,9 +473,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        // TODO: also support unsigned integers.
         match *m_elem_ty.kind() {
-            ty::Int(_) => {}
+            ty::Int(_) | ty::Uint(_) => {}
             _ => return_error!(InvalidMonomorphization::MaskWrongElementType {
                 span,
                 name,
@@ -1453,6 +1461,184 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     bitwise_red!(simd_reduce_xor: BinaryOp::BitwiseXor, false);
     bitwise_red!(simd_reduce_all: BinaryOp::BitwiseAnd, true);
     bitwise_red!(simd_reduce_any: BinaryOp::BitwiseOr, true);
+
+    #[cfg(feature = "master")]
+    if name == sym::simd_masked_load {
+        // simd_masked_load<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *_ T, values: <N x T>) -> <N x T>
+        // * N: number of elements in the input vectors
+        // * T: type of the element to load
+        // * M: any integer width is supported, will be truncated to i1
+        // Loads contiguous elements from memory behind `pointer`, but only for
+        // those lanes whose `mask` bit is enabled.
+        // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        // TODO: handle the alignment.
+
+        // The element type of the "mask" argument must be a signed integer type of any width
+        let mask_ty = in_ty;
+        let mask_len = in_len;
+
+        // The second argument must be a pointer matching the element type
+        let pointer_ty = args[1].layout.ty;
+
+        // The last argument is a passthrough vector providing values for disabled lanes
+        let values_ty = args[2].layout.ty;
+        let (values_len, values_elem) = require_simd2!(values_ty, SimdThird);
+
+        require_simd2!(ret_ty, SimdReturn);
+
+        // Of the same length:
+        require!(
+            values_len == mask_len,
+            InvalidMonomorphization::ThirdArgumentLength {
+                span,
+                name,
+                in_len: mask_len,
+                in_ty: mask_ty,
+                arg_ty: values_ty,
+                out_len: values_len
+            }
+        );
+
+        // The return type must match the last argument type
+        require!(
+            ret_ty == values_ty,
+            InvalidMonomorphization::ExpectedReturnType { span, name, in_ty: values_ty, ret_ty }
+        );
+
+        require!(
+            matches!(
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, _) if p_ty == values_elem && p_ty.kind() == values_elem.kind()
+            ),
+            InvalidMonomorphization::ExpectedElementType {
+                span,
+                name,
+                expected_element: values_elem,
+                second_arg: pointer_ty,
+                in_elem: values_elem,
+                in_ty: values_ty,
+                mutability: ExpectedPointerMutability::Not,
+            }
+        );
+
+        let mask = args[0].immediate();
+
+        let pointer = args[1].immediate();
+        let default = args[2].immediate();
+        let default_type = default.get_type();
+        let vector_type = default_type.unqualified().dyncast_vector().expect("vector type");
+        let value_type = vector_type.get_element_type();
+        let new_pointer_type = value_type.make_pointer();
+
+        let pointer = bx.context.new_cast(None, pointer, new_pointer_type);
+
+        let mask_vector_type = mask.get_type().unqualified().dyncast_vector().expect("vector type");
+        let elem_type = mask_vector_type.get_element_type();
+        let zero = bx.context.new_rvalue_zero(elem_type);
+        let mut elements = vec![];
+        for i in 0..mask_len {
+            let i = bx.context.new_rvalue_from_int(bx.int_type, i as i32);
+            let mask = bx.context.new_vector_access(None, mask, i).to_rvalue();
+            let mask = bx.context.new_comparison(None, ComparisonOp::NotEquals, mask, zero);
+            let then_val = bx.context.new_array_access(None, pointer, i).to_rvalue();
+            let else_val = bx.context.new_vector_access(None, default, i).to_rvalue();
+            let element = bx.select(mask, then_val, else_val);
+            elements.push(element);
+        }
+        let result = bx.context.new_rvalue_from_vector(None, default_type, &elements);
+        return Ok(result);
+    }
+
+    #[cfg(feature = "master")]
+    if name == sym::simd_masked_store {
+        // simd_masked_store<_, _, _, const ALIGN: SimdAlign>(mask: <N x i{M}>, pointer: *mut T, values: <N x T>) -> ()
+        // * N: number of elements in the input vectors
+        // * T: type of the element to load
+        // * M: any integer width is supported, will be truncated to i1
+        // Stores contiguous elements to memory behind `pointer`, but only for
+        // those lanes whose `mask` bit is enabled.
+        // The memory addresses corresponding to the “off” lanes are not accessed.
+
+        // TODO: handle the alignment.
+
+        // The element type of the "mask" argument must be a signed integer type of any width
+        let mask_ty = in_ty;
+        let mask_len = in_len;
+
+        // The second argument must be a pointer matching the element type
+        let pointer_ty = args[1].layout.ty;
+
+        // The last argument specifies the values to store to memory
+        let values_ty = args[2].layout.ty;
+        let (values_len, values_elem) = require_simd2!(values_ty, SimdThird);
+
+        // Of the same length:
+        require!(
+            values_len == mask_len,
+            InvalidMonomorphization::ThirdArgumentLength {
+                span,
+                name,
+                in_len: mask_len,
+                in_ty: mask_ty,
+                arg_ty: values_ty,
+                out_len: values_len
+            }
+        );
+
+        // The second argument must be a mutable pointer type matching the element type
+        require!(
+            matches!(
+                *pointer_ty.kind(),
+                ty::RawPtr(p_ty, p_mutbl)
+                    if p_ty == values_elem && p_ty.kind() == values_elem.kind() && p_mutbl.is_mut()
+            ),
+            InvalidMonomorphization::ExpectedElementType {
+                span,
+                name,
+                expected_element: values_elem,
+                second_arg: pointer_ty,
+                in_elem: values_elem,
+                in_ty: values_ty,
+                mutability: ExpectedPointerMutability::Mut,
+            }
+        );
+
+        let mask = args[0].immediate();
+        let pointer = args[1].immediate();
+        let values = args[2].immediate();
+        let values_type = values.get_type();
+        let vector_type = values_type.unqualified().dyncast_vector().expect("vector type");
+        let value_type = vector_type.get_element_type();
+        let new_pointer_type = value_type.make_pointer();
+
+        let pointer = bx.context.new_cast(None, pointer, new_pointer_type);
+
+        let vector_type = mask.get_type().unqualified().dyncast_vector().expect("vector type");
+        let elem_type = vector_type.get_element_type();
+        let zero = bx.context.new_rvalue_zero(elem_type);
+        for i in 0..mask_len {
+            let i = bx.context.new_rvalue_from_int(bx.int_type, i as i32);
+            let mask = bx.context.new_vector_access(None, mask, i).to_rvalue();
+            let mask = bx.context.new_comparison(None, ComparisonOp::NotEquals, mask, zero);
+
+            let after_block = bx.current_func().new_block("after");
+            let then_block = bx.current_func().new_block("then");
+            bx.llbb().end_with_conditional(None, mask, then_block, after_block);
+
+            bx.switch_to_block(then_block);
+            let lvalue = bx.context.new_array_access(None, pointer, i);
+            let value = bx.context.new_vector_access(None, values, i).to_rvalue();
+            bx.llbb().add_assignment(None, lvalue, value);
+            bx.llbb().end_with_jump(None, after_block);
+
+            bx.switch_to_block(after_block);
+        }
+
+        let dummy_value = bx.context.new_rvalue_zero(bx.int_type);
+
+        return Ok(dummy_value);
+    }
 
     unimplemented!("simd {}", name);
 }

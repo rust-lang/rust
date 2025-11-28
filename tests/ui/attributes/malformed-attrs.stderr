@@ -26,20 +26,6 @@ error[E0463]: can't find crate for `wloop`
 LL | extern crate wloop;
    | ^^^^^^^^^^^^^^^^^^^ can't find crate
 
-error: malformed `windows_subsystem` attribute input
-  --> $DIR/malformed-attrs.rs:26:1
-   |
-LL | #![windows_subsystem]
-   | ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
-help: the following are the possible correct uses
-   |
-LL | #![windows_subsystem = "console"]
-   |                      +++++++++++
-LL | #![windows_subsystem = "windows"]
-   |                      +++++++++++
-
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:112:1
    |
@@ -216,6 +202,22 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
+
+error[E0539]: malformed `windows_subsystem` attribute input
+  --> $DIR/malformed-attrs.rs:26:1
+   |
+LL | #![windows_subsystem]
+   | ^^^-----------------^
+   |    |
+   |    expected this to be of the form `windows_subsystem = "..."`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #![windows_subsystem = "console"]
+   |                      +++++++++++
+LL | #![windows_subsystem = "windows"]
+   |                      +++++++++++
 
 error[E0539]: malformed `export_name` attribute input
   --> $DIR/malformed-attrs.rs:29:1

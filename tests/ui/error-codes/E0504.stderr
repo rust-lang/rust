@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `fancy_num` because it is borrowed
-  --> $DIR/E0504.rs:9:13
+  --> $DIR/E0504.rs:10:13
    |
 LL |     let fancy_num = FancyNum { num: 5 };
    |         --------- binding `fancy_num` declared here
@@ -15,7 +15,7 @@ LL |     println!("main function: {}", fancy_ref.num);
    |                                   ------------- borrow later used here
    |
 note: if `FancyNum` implemented `Clone`, you could clone the value
-  --> $DIR/E0504.rs:1:1
+  --> $DIR/E0504.rs:2:1
    |
 LL | struct FancyNum {
    | ^^^^^^^^^^^^^^^ consider implementing `Clone` for this type

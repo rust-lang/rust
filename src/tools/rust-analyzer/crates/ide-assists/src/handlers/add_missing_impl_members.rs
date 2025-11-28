@@ -2503,4 +2503,38 @@ impl dep::Foo for Bar {
 "#,
         );
     }
+
+    #[test]
+    fn regression_test_for_when_impl_for_unit() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Test {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy;
+}
+impl Test for () {
+    $0
+}
+"#,
+            r#"
+trait Test {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy;
+}
+impl Test for () {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
 }

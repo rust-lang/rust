@@ -1,5 +1,5 @@
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-28344.rs:4:17
+  --> $DIR/issue-28344.rs:5:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                 ^^^^^^
@@ -13,13 +13,13 @@ LL |     let x: u8 = <dyn BitXor>::bitor(0 as u8, 0 as u8);
    |                 ++++       +
 
 error[E0191]: the value of the associated type `Output` in `BitXor<_>` must be specified
-  --> $DIR/issue-28344.rs:4:17
+  --> $DIR/issue-28344.rs:5:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                 ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-28344.rs:9:13
+  --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
    |             ^^^^^^
@@ -32,7 +32,7 @@ LL |     let g = <dyn BitXor>::bitor;
    |             ++++       +
 
 error[E0191]: the value of the associated type `Output` in `BitXor<_>` must be specified
-  --> $DIR/issue-28344.rs:9:13
+  --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
    |             ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
