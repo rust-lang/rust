@@ -27,6 +27,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-movrs`
 `amx-tf32`
 `amx-tile`
+`app-regs`
 `apxf`
 `atomics`
 `avx`
@@ -122,6 +123,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `frintts`
 `fxsr`
 `gfni`
+`gprel`
 `guarded-storage`
 `hard-float`
 `hard-float-abi`
@@ -180,6 +182,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `multivalue`
 `mutable-globals`
 `neon`
+`nintendo`
 `nnp-assist`
 `nontrapping-fptoint`
 `nvic`
