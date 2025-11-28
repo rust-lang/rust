@@ -1,4 +1,4 @@
-#![feature(proc_macro_track_path)]
+#![feature(proc_macro_tracked_path)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
