@@ -512,7 +512,7 @@ parse_keyword_lifetime =
     lifetimes cannot use keyword names
 
 parse_kw_bad_case = keyword `{$kw}` is written in the wrong case
-    .suggestion = write it in the correct case
+    .suggestion = write it in {$case}
 
 parse_label_inner_attr_does_not_annotate_this = the inner attribute doesn't annotate this {$item}
 parse_label_unexpected_token = unexpected token
