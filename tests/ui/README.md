@@ -1561,12 +1561,6 @@ Tests on various well-formedness checks, e.g. [Type-checking normal functions](h
 
 Tests on `where` clauses. See [Where clauses | Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses).
 
-## `tests/ui/while/`
-
-Tests on the `while` keyword and the `while` construct.
-
-**FIXME**: merge with `ui/for-loop-while`.
-
 ## `tests/ui/windows-subsystem/`: `#![windows_subsystem = ""]`
 
 See [the `windows_subsystem` attribute](https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute).
