@@ -9,6 +9,7 @@ use crate::ptr;
 const MIN_ALIGN: usize = if cfg!(any(
     all(target_arch = "riscv32", any(target_os = "espidf", target_os = "zkvm")),
     all(target_arch = "xtensa", target_os = "espidf"),
+    target_arch = "v810"
 )) {
     // The allocator on the esp-idf and zkvm platforms guarantees 4 byte alignment.
     4
