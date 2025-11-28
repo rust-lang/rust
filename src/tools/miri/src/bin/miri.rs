@@ -181,7 +181,7 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
     let target_config_backend =
-        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, &target);
+        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
     let target_config_backend_init = Once::new();
 
     Box::new(DummyCodegenBackend {
