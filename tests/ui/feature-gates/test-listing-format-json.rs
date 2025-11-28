@@ -3,7 +3,7 @@
 //@ run-flags: --list --format json -Zunstable-options
 //@ run-fail
 //@ check-run-results
-//@ ignore-test (broken because I messed with nightly)
+//@ ignore-nightly
 //@ unset-exec-env:RUSTC_BOOTSTRAP
 
 #![cfg(test)]

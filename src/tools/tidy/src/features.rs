@@ -201,7 +201,7 @@ pub fn check(
                 version::VERSION_PLACEHOLDER
             ));
         }
-        if channel != "nightly" && channel != "v810" && since == Version::CurrentPlaceholder {
+        if channel != "nightly" && since == Version::CurrentPlaceholder {
             check.error(format!(
                 "{file}:{line}: The placeholder use of {kind} feature `{feature_name}` is not allowed on the {channel} channel",
             ));

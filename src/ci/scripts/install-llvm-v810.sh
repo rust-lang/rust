@@ -7,7 +7,7 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
-BUILD_DATE="2025-11-22"
+BUILD_DATE="2025-11-28"
 
 if isMacOS; then
     targetName=darwin
