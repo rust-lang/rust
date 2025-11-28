@@ -581,7 +581,9 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     pub fn with_capacity_in(capacity: usize, alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::with_capacity_in(capacity, alloc) }
     }
+}
 
+impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// Returns a mutable reference to the greatest item in the binary heap, or
     /// `None` if it is empty.
     ///
@@ -615,9 +617,7 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T, A>> {
         if self.is_empty() { None } else { Some(PeekMut { heap: self, original_len: None }) }
     }
-}
 
-impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
     /// is empty.
     ///
