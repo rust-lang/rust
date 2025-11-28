@@ -929,37 +929,6 @@ pub(crate) struct Module {
     pub(crate) span: Span,
 }
 
-pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
-    attrs: I,
-    name: Symbol,
-) -> impl Iterator<Item = ast::MetaItemInner> + use<'a, I> {
-    attrs
-        .into_iter()
-        .filter(move |attr| attr.has_name(name))
-        .filter_map(ast::attr::AttributeExt::meta_item_list)
-        .flatten()
-}
-
-pub(crate) trait NestedAttributesExt {
-    /// Returns `true` if the attribute list contains a specific `word`
-    fn has_word(self, word: Symbol) -> bool
-    where
-        Self: Sized,
-    {
-        <Self as NestedAttributesExt>::get_word_attr(self, word).is_some()
-    }
-
-    /// Returns `Some(attr)` if the attribute list contains 'attr'
-    /// corresponding to a specific `word`
-    fn get_word_attr(self, word: Symbol) -> Option<ast::MetaItemInner>;
-}
-
-impl<I: Iterator<Item = ast::MetaItemInner>> NestedAttributesExt for I {
-    fn get_word_attr(mut self, word: Symbol) -> Option<ast::MetaItemInner> {
-        self.find(|attr| attr.is_word() && attr.has_name(word))
-    }
-}
-
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
