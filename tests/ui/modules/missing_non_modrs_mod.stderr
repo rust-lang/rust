@@ -1,10 +1,10 @@
 error[E0583]: file not found for module `missing`
-  --> $DIR/foo_inline.rs:4:5
+  --> $DIR/missing_mod.rs:3:1
    |
-LL |     mod missing;
-   |     ^^^^^^^^^^^^
+LL | mod missing;
+   | ^^^^^^^^^^^^
    |
-   = help: to create the module `missing`, create file "$DIR/foo_inline/inline/missing.rs" or "$DIR/foo_inline/inline/missing/mod.rs"
+   = help: to create the module `missing`, create file "$DIR/missing_mod/missing.rs" or "$DIR/missing_mod/missing/mod.rs"
    = note: if there is a `mod missing` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: aborting due to 1 previous error

@@ -939,12 +939,6 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
 
-## `tests/ui/missing_non_modrs_mod/`
-
-This directory is a small tree of `mod` dependencies, but the root, `foo.rs`, is looking for a file which does not exist. The test checks that the error is reported at the top-level module.
-
-**FIXME**: Merge with `tests/ui/modules/`.
-
 ## `tests/ui/missing-trait-bounds/`
 
 Tests for checking missing trait bounds, and their diagnostics.
