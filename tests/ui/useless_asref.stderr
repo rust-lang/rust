@@ -112,5 +112,35 @@ error: this call to `as_ref.map(...)` does nothing
 LL |         Some(1).as_ref().map(|&x| x.clone());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(1).clone()`
 
-error: aborting due to 18 previous errors
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:264:66
+   |
+LL |     let v: Vec<Cow<'_, str>> = exts.iter().map(|s| Cow::Borrowed(s.as_ref())).collect();
+   |                                                                  ^^^^^^^^^^ help: try: `*s`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:277:66
+   |
+LL |     let v: Vec<Cow<'_, str>> = exts.iter().map(|s| Cow::Borrowed(s.id().as_ref())).collect();
+   |                                                                  ^^^^^^^^^^^^^^^ help: try: `s.id()`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:282:32
+   |
+LL |         .map(|s| Cow::Borrowed(std::convert::identity(s).as_ref()))
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `*std::convert::identity(s)`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:288:72
+   |
+LL |     let v: Vec<Cow<'_, str>> = exts_field.iter().map(|w| Cow::Borrowed(w.0.as_ref())).collect();
+   |                                                                        ^^^^^^^^^^^^ help: try: `w.0`
+
+error: this call to `as_ref` does nothing
+  --> tests/ui/useless_asref.rs:292:74
+   |
+LL |     let v: Vec<Cow<'_, str>> = exts_index.iter().map(|arr| Cow::Borrowed(arr[0].as_ref())).collect();
+   |                                                                          ^^^^^^^^^^^^^^^ help: try: `arr[0]`
+
+error: aborting due to 23 previous errors
 

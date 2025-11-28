@@ -1,5 +1,4 @@
 #![warn(clippy::useless_vec)]
-#![allow(clippy::nonstandard_macro_braces, clippy::uninlined_format_args, unused)]
 
 use std::rc::Rc;
 
@@ -39,17 +38,14 @@ fn main() {
     on_mut_slice(&mut [1, 2]);
     //~^ useless_vec
 
-    on_slice(&[1, 2]);
-    //~^ useless_vec
-    on_slice(&[1, 2]);
-    on_mut_slice(&mut [1, 2]);
-    //~^ useless_vec
     #[rustfmt::skip]
-    on_slice(&[1, 2]);
-    //~^ useless_vec
-    on_slice(&[1, 2]);
-    on_mut_slice(&mut [1, 2]);
-    //~^ useless_vec
+    #[allow(clippy::nonstandard_macro_braces)] // not an `expect` as it will only lint _before_ the fix
+    {
+        on_slice(&[1, 2]);
+        //~^ useless_vec
+        on_mut_slice(&mut [1, 2]);
+        //~^ useless_vec
+    };
 
     on_slice(&[1; 2]);
     //~^ useless_vec
@@ -75,22 +71,24 @@ fn main() {
     on_vec(&vec![1; 201]); // Ok, size of `vec` higher than `too_large_for_stack`
     on_mut_vec(&mut vec![1; 201]); // Ok, size of `vec` higher than `too_large_for_stack`
 
-    // Ok
+    // Ok, size of `vec` higher than `too_large_for_stack`
     for a in vec![1; 201] {
-        println!("{:?}", a);
+        println!("{a:?}");
     }
 
     // https://github.com/rust-lang/rust-clippy/issues/2262#issuecomment-783979246
     let _x: i32 = [1, 2, 3].iter().sum();
     //~^ useless_vec
 
-    // Do lint
-    let mut x = [1, 2, 3];
-    //~^ useless_vec
-    x.fill(123);
-    dbg!(x[0]);
-    dbg!(x.len());
-    dbg!(x.iter().sum::<i32>());
+    // Do lint, only used as slice
+    {
+        let mut x = [1, 2, 3];
+        //~^ useless_vec
+        x.fill(123);
+        dbg!(x[0]);
+        dbg!(x.len());
+        dbg!(x.iter().sum::<i32>());
+    }
 
     let _x: &[i32] = &[1, 2, 3];
     //~^ useless_vec
