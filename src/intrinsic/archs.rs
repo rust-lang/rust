@@ -10,7 +10,7 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
     };
     match arch {
         "AMDGPU" => {
-            #[allow(non_snake_case)]
+            #[expect(non_snake_case)]
             fn AMDGPU(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // AMDGPU
@@ -48,7 +48,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             AMDGPU(name, full_name)
         }
         "aarch64" => {
-            #[allow(non_snake_case)]
             fn aarch64(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // aarch64
@@ -81,7 +80,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             aarch64(name, full_name)
         }
         "amdgcn" => {
-            #[allow(non_snake_case)]
             fn amdgcn(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // amdgcn
@@ -524,7 +522,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             amdgcn(name, full_name)
         }
         "arm" => {
-            #[allow(non_snake_case)]
             fn arm(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // arm
@@ -633,7 +630,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             arm(name, full_name)
         }
         "bpf" => {
-            #[allow(non_snake_case)]
             fn bpf(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // bpf
@@ -655,7 +651,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             bpf(name, full_name)
         }
         "cuda" => {
-            #[allow(non_snake_case)]
             fn cuda(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // cuda
@@ -666,7 +661,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             cuda(name, full_name)
         }
         "hexagon" => {
-            #[allow(non_snake_case)]
             fn hexagon(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // hexagon
@@ -2653,7 +2647,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             hexagon(name, full_name)
         }
         "loongarch" => {
-            #[allow(non_snake_case)]
             fn loongarch(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // loongarch
@@ -4162,7 +4155,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             loongarch(name, full_name)
         }
         "mips" => {
-            #[allow(non_snake_case)]
             fn mips(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // mips
@@ -4843,7 +4835,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             mips(name, full_name)
         }
         "nvvm" => {
-            #[allow(non_snake_case)]
             fn nvvm(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // nvvm
@@ -5652,7 +5643,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             nvvm(name, full_name)
         }
         "ppc" => {
-            #[allow(non_snake_case)]
             fn ppc(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ppc
@@ -6245,7 +6235,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ppc(name, full_name)
         }
         "ptx" => {
-            #[allow(non_snake_case)]
             fn ptx(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ptx
@@ -6273,7 +6262,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ptx(name, full_name)
         }
         "r600" => {
-            #[allow(non_snake_case)]
             fn r600(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // r600
@@ -6298,7 +6286,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             r600(name, full_name)
         }
         "riscv" => {
-            #[allow(non_snake_case)]
             fn riscv(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // riscv
@@ -6332,7 +6319,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             riscv(name, full_name)
         }
         "s390" => {
-            #[allow(non_snake_case)]
             fn s390(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // s390
@@ -6526,7 +6512,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             s390(name, full_name)
         }
         "spv" => {
-            #[allow(non_snake_case)]
             fn spv(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // spv
@@ -6543,7 +6528,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             spv(name, full_name)
         }
         "ve" => {
-            #[allow(non_snake_case)]
             fn ve(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // ve
@@ -7816,7 +7800,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             ve(name, full_name)
         }
         "x86" => {
-            #[allow(non_snake_case)]
             fn x86(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // x86
@@ -10384,7 +10367,6 @@ fn map_arch_intrinsic(full_name: &str) -> &'static str {
             x86(name, full_name)
         }
         "xcore" => {
-            #[allow(non_snake_case)]
             fn xcore(name: &str, full_name: &str) -> &'static str {
                 match name {
                     // xcore

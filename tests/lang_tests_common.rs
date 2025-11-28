@@ -2,11 +2,10 @@
 
 #![allow(clippy::uninlined_format_args)]
 
-use std::env::{self, current_dir};
+use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use boml::Toml;
 use lang_tester::LangTester;
 use tempfile::TempDir;
 
@@ -22,29 +21,6 @@ pub fn main_inner(profile: Profile) {
     let tempdir = TempDir::new().expect("temp dir");
     let current_dir = current_dir().expect("current dir");
     let current_dir = current_dir.to_str().expect("current dir").to_string();
-
-    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-
-    let gcc_path = std::fs::read_to_string(manifest_dir.join("config.toml"))
-        .ok()
-        .and_then(|v| {
-            let toml = Toml::parse(&v).expect("Failed to parse `config.toml`");
-            toml.get_string("gcc-path").map(PathBuf::from).ok()
-        })
-        .unwrap_or_else(|| {
-            // then we try to retrieve it from the `target` folder.
-            let commit = include_str!("../libgccjit.version").trim();
-            Path::new("build/libgccjit").join(commit)
-        });
-
-    let gcc_path = Path::new(&gcc_path)
-        .canonicalize()
-        .expect("failed to get absolute path of `gcc-path`")
-        .display()
-        .to_string();
-    unsafe {
-        env::set_var("LD_LIBRARY_PATH", gcc_path);
-    }
 
     fn rust_filter(path: &Path) -> bool {
         path.is_file() && path.extension().expect("extension").to_str().expect("to_str") == "rs"

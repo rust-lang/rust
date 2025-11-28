@@ -9,6 +9,14 @@ be useful.
 CG_RUSTFLAGS="-Clink-args=-save-temps -v" ../y.sh cargo build
 ```
 
+### How to send arguments to GCC
+
+The `-Cllvm-args` `rustc` flag is repurposed by `rustc_codegen_gcc` to pass arguments directly to the GCC backend. You can use it via the `CG_RUSTFLAGS` environment variable. For example, to pass a `-f` flag to GCC:
+
+```
+CG_RUSTFLAGS="-Cllvm-args=-fflag-name" ../y.sh cargo build
+```
+
 ### How to see the personality functions in the asm dump
 
 ```

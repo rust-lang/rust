@@ -429,19 +429,6 @@ impl ConfigInfo {
         // display metadata load errors
         env.insert("RUSTC_LOG".to_string(), "warn".to_string());
 
-        let sysroot = current_dir
-            .join(get_sysroot_dir())
-            .join(format!("sysroot/lib/rustlib/{}/lib", self.target_triple));
-        let ld_library_path = format!(
-            "{target}:{sysroot}:{gcc_path}",
-            target = self.cargo_target_dir,
-            sysroot = sysroot.display(),
-            gcc_path = gcc_path,
-        );
-        env.insert("LIBRARY_PATH".to_string(), ld_library_path.clone());
-        env.insert("LD_LIBRARY_PATH".to_string(), ld_library_path.clone());
-        env.insert("DYLD_LIBRARY_PATH".to_string(), ld_library_path);
-
         // NOTE: To avoid the -fno-inline errors, use /opt/gcc/bin/gcc instead of cc.
         // To do so, add a symlink for cc to /opt/gcc/bin/gcc in our PATH.
         // Another option would be to add the following Rust flag: -Clinker=/opt/gcc/bin/gcc
