@@ -16,7 +16,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -1405,14 +1405,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // Attributes on the function definition being called
             let fn_defn_attrs = self.cx.tcx.codegen_fn_attrs(instance.def_id());
             if let Some(fn_call_attrs) = fn_call_attrs
-                && !fn_call_attrs.target_features.is_empty()
                 // If there is an inline attribute and a target feature that matches
                 // we will add the attribute to the callsite otherwise we'll omit
                 // this and not add the attribute to prevent soundness issues.
                 && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, instance)
                 && self.cx.tcx.is_target_feature_call_safe(
-                    &fn_call_attrs.target_features,
                     &fn_defn_attrs.target_features,
+                    &fn_call_attrs.target_features.iter().cloned().chain(
+                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
+                            name: *feat,
+                            kind: TargetFeatureKind::Implied,
+                        })
+                    ).collect::<Vec<_>>(),
                 )
             {
                 attributes::apply_to_callsite(
