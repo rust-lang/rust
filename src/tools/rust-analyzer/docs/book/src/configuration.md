@@ -26,16 +26,18 @@ value.
 For example, a very common configuration is to enable proc-macro
 support, can be achieved by sending this JSON:
 
-    {
-      "cargo": {
-        "buildScripts": {
-          "enable": true,
-        },
-      },
-      "procMacro": {
-        "enable": true,
-      }
-    }
+```json
+{
+  "cargo": {
+    "buildScripts": {
+      "enable": true,
+    },
+  },
+  "procMacro": {
+    "enable": true,
+  }
+}
+```
 
 Please consult your editor’s documentation to learn more about how to
 configure [LSP
