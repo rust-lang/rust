@@ -1125,12 +1125,6 @@ A large category about function and type public/private visibility, and its impa
 
 **FIXME**: merge with `tests/ui/privacy/`.
 
-## `tests/ui/qualified/`
-
-Contains few tests on qualified paths where a type parameter is provided at the end: `type A = <S as Tr>::A::f<u8>;`. The tests check if this fails during type checking, not parsing.
-
-**FIXME**: Should be rehomed to `ui/typeck`.
-
 ## `tests/ui/query-system/`
 
 Tests on Rust methods and functions which use the query system, such as `std::mem::size_of`. These compute information about the current runtime and return it. See [Query system | rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/query.html).
