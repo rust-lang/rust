@@ -29,7 +29,6 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::Session;
 use rustc_session::config::TargetModifier;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
@@ -214,8 +213,7 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
     cdata: CrateMetadataRef<'a>,
-    sess: Option<&'tcx Session>,
-    tcx: Option<TyCtxt<'tcx>>,
+    tcx: TyCtxt<'tcx>,
 
     // Used for decoding interpret::AllocIds in a cached & thread-safe manner.
     alloc_decoding_session: AllocDecodingSession<'a>,
@@ -245,25 +243,14 @@ impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
     }
 }
 
-pub(super) trait BlobMetadata<'a>: Copy {
+pub(super) trait Metadata<'a>: Copy {
     type Context: BlobDecoder + LazyDecoder;
 
     fn blob(self) -> &'a MetadataBlob;
     fn decoder(self, pos: usize) -> Self::Context;
 }
 
-/// Abstract over the various ways one can create metadata decoders.
-pub(super) trait Metadata<'a, 'tcx>: Copy {
-    fn cdata(self) -> CrateMetadataRef<'a>;
-    fn sess(self) -> Option<&'tcx Session> {
-        None
-    }
-    fn tcx(self) -> Option<TyCtxt<'tcx>> {
-        None
-    }
-}
-
-impl<'a> BlobMetadata<'a> for &'a MetadataBlob {
+impl<'a> Metadata<'a> for &'a MetadataBlob {
     type Context = BlobDecodeContext<'a>;
 
     fn blob(self) -> &'a MetadataBlob {
@@ -286,7 +273,7 @@ impl<'a> BlobMetadata<'a> for &'a MetadataBlob {
     }
 }
 
-impl<'a, 'tcx> BlobMetadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
+impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     type Context = MetadataDecodeContext<'a, 'tcx>;
 
     fn blob(self) -> &'a MetadataBlob {
@@ -294,32 +281,18 @@ impl<'a, 'tcx> BlobMetadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     }
 
     fn decoder(self, pos: usize) -> MetadataDecodeContext<'a, 'tcx> {
-        let tcx = self.tcx();
-        let cdata = self.cdata();
         MetadataDecodeContext {
             blob_decoder: self.blob().decoder(pos),
-            cdata,
-            sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
-            tcx,
-            alloc_decoding_session: cdata.cdata.alloc_decoding_state.new_decoding_session(),
+            cdata: self.0,
+            tcx: self.1,
+            alloc_decoding_session: self.0.cdata.alloc_decoding_state.new_decoding_session(),
         }
-    }
-}
-
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
-    #[inline]
-    fn cdata(self) -> CrateMetadataRef<'a> {
-        self.0
-    }
-    #[inline]
-    fn tcx(self) -> Option<TyCtxt<'tcx>> {
-        Some(self.1)
     }
 }
 
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: BlobMetadata<'a>>(self, metadata: M) -> T::Value<'tcx>
+    fn decode<'a, 'tcx, M: Metadata<'a>>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -359,7 +332,7 @@ unsafe impl<D: Decoder, T: Decodable<D>> TrustedLen for DecodeIterator<T, D> {}
 
 impl<T: ParameterizedOverTcx> LazyArray<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: BlobMetadata<'a>>(
+    fn decode<'a, 'tcx, M: Metadata<'a>>(
         self,
         metadata: M,
     ) -> DecodeIterator<T::Value<'tcx>, M::Context>
@@ -373,17 +346,6 @@ impl<T: ParameterizedOverTcx> LazyArray<T> {
 }
 
 impl<'a, 'tcx> MetadataDecodeContext<'a, 'tcx> {
-    #[inline]
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        let Some(tcx) = self.tcx else {
-            bug!(
-                "No TyCtxt found for decoding. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
-            );
-        };
-        tcx
-    }
-
     #[inline]
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
         self.cdata.map_encoded_cnum_to_current(cnum)
@@ -424,14 +386,14 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
 
     #[inline]
     fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx()
+        self.tcx
     }
 
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
     {
-        let tcx = self.tcx();
+        let tcx = self.tcx;
 
         let key = ty::CReaderCacheKey { cnum: Some(self.cdata.cnum), pos: shorthand };
 
@@ -472,8 +434,7 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for ExpnIndex {
 
 impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
-        let sess = self.sess.expect("can't decode AttrId without Session");
-        sess.psess.attr_id_generator.mk_attr_id()
+        self.tcx.sess.psess.attr_id_generator.mk_attr_id()
     }
 
     fn decode_crate_num(&mut self) -> CrateNum {
@@ -487,12 +448,7 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
 
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let cdata = self.cdata;
-        let Some(tcx) = self.tcx else {
-            bug!(
-                "Cannot decode SyntaxContext without Session.\
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
-            );
-        };
+        let tcx = self.tcx;
 
         let cname = cdata.root.name();
         rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
@@ -509,13 +465,7 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
     fn decode_expn_id(&mut self) -> ExpnId {
         let local_cdata = self.cdata;
 
-        let Some(tcx) = self.tcx else {
-            bug!(
-                "Cannot decode ExpnId without Session. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
-            );
-        };
-
+        let tcx = self.tcx;
         let cnum = CrateNum::decode(self);
         let index = u32::decode(self);
 
@@ -619,12 +569,7 @@ impl<'a, 'tcx> Decodable<MetadataDecodeContext<'a, 'tcx>> for SpanData {
         let len = tag.length().unwrap_or_else(|| BytePos::decode(decoder));
         let hi = lo + len;
 
-        let Some(tcx) = decoder.tcx else {
-            bug!(
-                "Cannot decode Span without Session. \
-                You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
-            )
-        };
+        let tcx = decoder.tcx;
 
         // Index of the file in the corresponding crate's list of encoded files.
         let metadata_index = u32::decode(decoder);
