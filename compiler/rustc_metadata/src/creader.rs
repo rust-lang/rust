@@ -719,7 +719,7 @@ impl CStore {
         self.used_extern_options.insert(name);
         match self.maybe_resolve_crate(tcx, name, dep_kind, origin) {
             Ok(cnum) => {
-                self.set_used_recursively(tcx, cnum);
+                self.set_used_recursively(cnum);
                 Some(cnum)
             }
             Err(err) => {
