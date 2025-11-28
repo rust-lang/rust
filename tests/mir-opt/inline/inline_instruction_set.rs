@@ -4,6 +4,7 @@
 //
 //@ compile-flags: --target thumbv4t-none-eabi
 //@ needs-llvm-components: arm
+//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
