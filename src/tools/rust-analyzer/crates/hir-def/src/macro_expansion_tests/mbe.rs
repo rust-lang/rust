@@ -1959,28 +1959,6 @@ fn f() {
 }
 
 #[test]
-fn test_edition_handling_in() {
-    check(
-        r#"
-//- /main.rs crate:main deps:old edition:2021
-fn f() {
-    old::parse_try_old!(try!{});
-}
-//- /old.rs crate:old edition:2015
-#[macro_export]
-macro_rules! parse_try_old {
-    ($it:expr) => {};
-}
- "#,
-        expect![[r#"
-fn f() {
-    ;
-}
-"#]],
-    );
-}
-
-#[test]
 fn semicolon_does_not_glue() {
     check(
         r#"
@@ -2047,6 +2025,36 @@ macro_rules! m {
 }
 fn f() {
     let _ = stringify!(0 'b 1 'b 2);
+}
+    "#]],
+    );
+}
+
+#[test]
+fn per_token_edition() {
+    check(
+        r#"
+//- /foo.rs crate:foo edition:2024
+#[macro_export]
+macro_rules! m {
+    ($e:expr) => {};
+}
+//- /bar.rs crate:bar deps:foo edition:2021
+fn gen() -> usize {
+    0
+}
+
+fn foo() {
+    foo::m!(gen());
+}
+    "#,
+        expect![[r#"
+fn gen() -> usize {
+    0
+}
+
+fn foo() {
+    ;
 }
     "#]],
     );

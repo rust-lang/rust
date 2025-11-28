@@ -299,7 +299,7 @@ pub fn expand_speculative(
         }
         MacroDefKind::Declarative(it, _) => db
             .decl_macro_expander(loc.krate, it)
-            .expand_unhygienic(tt, loc.kind.call_style(), span, loc.def.edition),
+            .expand_unhygienic(db, tt, loc.kind.call_style(), span),
         MacroDefKind::BuiltIn(_, it) => {
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
