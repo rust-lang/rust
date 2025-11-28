@@ -7,6 +7,7 @@ use crate::mem;
 use crate::num::NonZero;
 #[cfg(target_feature = "atomics")]
 use crate::sys::os;
+#[cfg(target_feature = "atomics")]
 use crate::thread::ThreadInit;
 use crate::time::Duration;
 #[cfg(target_feature = "atomics")]
