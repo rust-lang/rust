@@ -277,9 +277,9 @@ default).
 Once you have successfully built `rustc`, you will have created a bunch
 of files in your `build` directory. In order to actually run the
 resulting `rustc`, we recommend creating rustup toolchains. The first
-command listed below runs the stage1 compiler, which was built in the
-steps above, with the name `stage1`. The second command runs the stage2 
-compiler using the stage1 compiler. This will be needed in the future 
+command listed below creates the stage1 toolchain, which was built in the
+steps above, with the name `stage1`. The second command creates the stage2 
+toolchain using the stage1 compiler. This will be needed in the future 
 if running the entire test suite, but will not be built in this page. 
 Building stage2 is done with the same `./x build` command as for stage1,
 specifying that the stage is 2 instead.
