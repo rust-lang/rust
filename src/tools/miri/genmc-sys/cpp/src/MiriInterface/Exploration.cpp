@@ -309,8 +309,14 @@ auto MiriGenmcShim::get_estimation_results() const -> EstimationResult {
 
 /** Mutexes */
 
-#define MUTEX_UNLOCKED SVal(0)
-#define MUTEX_LOCKED SVal(1)
+struct MutexState {
+    static constexpr SVal UNLOCKED { 0 };
+    static constexpr SVal LOCKED { 1 };
+
+    static constexpr bool isValid(SVal v) {
+        return v == UNLOCKED || v == LOCKED;
+    }
+};
 
 auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> MutexLockResult {
@@ -325,7 +331,7 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
                 // The `id` is ignored by GenMC; it is only used by the LLI frontend to substitute
                 // other variables from previous expressions that may be used here.
                 RegisterExpr<ModuleID::ID>::create(size_bits, /* id */ 0),
-                ConcreteExpr<ModuleID::ID>::create(size_bits, MUTEX_LOCKED)
+                ConcreteExpr<ModuleID::ID>::create(size_bits, MutexState::LOCKED)
             )
                 .release()
         )
@@ -334,7 +340,7 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
     // As usual, we need to tell GenMC which value was stored at this location before this atomic
     // access, if there previously was a non-atomic initializing access. We set the initial state of
     // a mutex to be "unlocked".
-    const auto old_val = MUTEX_UNLOCKED;
+    const auto old_val = MutexState::UNLOCKED;
     const auto load_ret = handle_load_reset_if_none<EventLabel::EventLabelKind::LockCasRead>(
         thread_id,
         old_val,
@@ -354,15 +360,11 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
 
     const auto* ret_val = std::get_if<SVal>(&load_ret);
     ERROR_ON(!ret_val, "Unimplemented: mutex lock returned unexpected result.");
-    ERROR_ON(
-        *ret_val != MUTEX_UNLOCKED && *ret_val != MUTEX_LOCKED,
-        "Mutex read value was neither 0 nor 1"
-    );
-    auto is_lock_acquired = *ret_val == MUTEX_UNLOCKED;
-    if (!is_lock_acquired) {
+    ERROR_ON(!MutexState::isValid(*ret_val), "Mutex read value was neither 0 nor 1");
+    if (*ret_val == MutexState::LOCKED) {
         // We did not acquire the mutex, so we tell GenMC to block the thread until we can acquire
         // it. GenMC determines this based on the annotation we pass with the load further up in
-        // this function, namely when that load will read a value other than `MUTEX_LOCKED`.
+        // this function, namely when that load will read a value other than `MutexState::LOCKED`.
         this->handle_assume_block(thread_id, AssumeType::Spinloop);
         return MutexLockResultExt::ok(false);
     }
@@ -391,7 +393,7 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
     // As usual, we need to tell GenMC which value was stored at this location before this atomic
     // access, if there previously was a non-atomic initializing access. We set the initial state of
     // a mutex to be "unlocked".
-    const auto old_val = MUTEX_UNLOCKED;
+    const auto old_val = MutexState::UNLOCKED;
     const auto load_ret = GenMCDriver::handleLoad<EventLabel::EventLabelKind::TrylockCasRead>(
         nullptr,
         ++currPos,
@@ -404,12 +406,8 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
     const auto* ret_val = std::get_if<SVal>(&load_ret);
     ERROR_ON(!ret_val, "Unimplemented: mutex trylock load returned unexpected result.");
 
-    ERROR_ON(
-        *ret_val != MUTEX_UNLOCKED && *ret_val != MUTEX_LOCKED,
-        "Mutex read value was neither 0 nor 1"
-    );
-    const bool is_lock_acquired = *ret_val == MUTEX_UNLOCKED;
-    if (!is_lock_acquired)
+    ERROR_ON(!MutexState::isValid(*ret_val), "Mutex read value was neither 0 nor 1");
+    if (*ret_val == MutexState::LOCKED)
         return MutexLockResultExt::ok(false); /* Lock already held. */
 
     const auto store_ret = GenMCDriver::handleStore<EventLabel::EventLabelKind::TrylockCasWrite>(
@@ -437,12 +435,12 @@ auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, ui
         // As usual, we need to tell GenMC which value was stored at this location before this
         // atomic access, if there previously was a non-atomic initializing access. We set the
         // initial state of a mutex to be "unlocked".
-        /* old_val */ MUTEX_UNLOCKED,
+        /* old_val */ MutexState::UNLOCKED,
         MemOrdering::Release,
         SAddr(address),
         ASize(size),
         AType::Signed,
-        /* store_value */ MUTEX_UNLOCKED,
+        /* store_value */ MutexState::UNLOCKED,
         EventDeps()
     );
     if (const auto* err = std::get_if<VerificationError>(&ret))
