@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: use of undeclared type `Complete`
+ --> foo.rs:3:12
+  |
+3 |     x.push(Complete::Item { name: "hello" });
+  |            ^^^^^^^^ use of undeclared type `Complete`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
