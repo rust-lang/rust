@@ -42,7 +42,7 @@ impl GccOutput {
         }
 
         if let Some(ref path) = self.libgccjit {
-            let mut target_filename = path.file_name().unwrap().to_str().unwrap().to_string();
+            let target_filename = path.file_name().unwrap().to_str().unwrap().to_string();
 
             // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
             // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
