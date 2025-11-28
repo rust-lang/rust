@@ -32,7 +32,7 @@ Rust, as well as publications about Rust.
 * [Scheduling techniques for concurrent systems](https://www.stanford.edu/~ouster/cgi-bin/papers/coscheduling.pdf)
 * [Singularity: rethinking the software stack](https://research.microsoft.com/pubs/69431/osr2007_rethinkingsoftwarestack.pdf)
 * [The data locality of work stealing](http://www.aladdin.cs.cmu.edu/papers/pdfs/y2000/locality_spaa00.pdf)
-* [Thread scheduling for multiprogramming multiprocessors](https://www.eecis.udel.edu/%7Ecavazos/cisc879-spring2008/papers/arora98thread.pdf)
+* [Thread scheduling for multiprogramming multiprocessors](https://dl.acm.org/doi/10.1145/277651.277678)
 * [Three layer cake for shared-memory programming](https://dl.acm.org/doi/10.1145/1953611.1953616)
 * [Work-first and help-first scheduling policies for async-finish task parallelism](https://dl.acm.org/doi/10.1109/IPDPS.2009.5161079) - More general than fully-strict work stealing
 

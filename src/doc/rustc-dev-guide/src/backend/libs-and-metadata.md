@@ -133,12 +133,12 @@ crate name, so they need to be disambiguated).
 
 Crate loading can have quite a few subtle complexities. During [name
 resolution], when an external crate is referenced (via an `extern crate` or
-path), the resolver uses the [`CrateLoader`] which is responsible for finding
+path), the resolver uses the [`CStore`] which is responsible for finding
 the crate libraries and loading the [metadata] for them. After the dependency
-is loaded, the `CrateLoader` will provide the information the resolver needs
+is loaded, the `CStore` will provide the information the resolver needs
 to perform its job (such as expanding macros, resolving paths, etc.).
 
-To load each external crate, the `CrateLoader` uses a [`CrateLocator`] to
+To load each external crate, the `CStore` uses a [`CrateLocator`] to
 actually find the correct files for one specific crate. There is some great
 documentation in the [`locator`] module that goes into detail on how loading
 works, and I strongly suggest reading it to get the full picture.
@@ -157,7 +157,6 @@ wrapped in the [`CrateMetadata`] struct. After resolution and expansion, the
 compilation.
 
 [name resolution]: ../name-resolution.md
-[`CrateLoader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/creader/struct.CrateLoader.html
 [`CrateLocator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/locator/struct.CrateLocator.html
 [`locator`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/locator/index.html
 [`CStore`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/creader/struct.CStore.html

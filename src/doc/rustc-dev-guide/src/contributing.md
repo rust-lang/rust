@@ -468,7 +468,7 @@ Just a few things to keep in mind:
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
-see [the rustc-dev-guide working group documentation].
+see [the rustc-dev-guide team documentation].
 
 ## Issue triage
 
@@ -485,7 +485,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
-[the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
+[the rustc-dev-guide team documentation]: https://forge.rust-lang.org/rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
 ### rfcbot labels
 
