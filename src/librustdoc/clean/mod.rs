@@ -196,9 +196,12 @@ fn generate_item_with_correct_attrs(
             // For glob re-exports the item may or may not exist to be re-exported (potentially the
             // cfgs on the path up until the glob can be removed, and only cfgs on the globbed item
             // itself matter), for non-inlined re-exports see #85043.
-            let import_is_inline = find_attr!(inline::load_attrs(cx, import_id.to_def_id()), AttributeKind::Doc(d) if d.inline.is_some())
-                || (is_glob_import(cx.tcx, import_id)
-                    && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
+            let import_is_inline = find_attr!(
+                inline::load_attrs(cx, import_id.to_def_id()),
+                AttributeKind::Doc(d)
+                if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline)
+            ) || (is_glob_import(cx.tcx, import_id)
+                && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -2666,10 +2669,10 @@ fn add_without_unwanted_attributes<'hir>(
                 let DocAttribute { hidden, inline, cfg, .. } = d;
                 let mut attr = DocAttribute::default();
                 if is_inline {
+                    attr.cfg = cfg.clone();
+                } else {
                     attr.inline = inline.clone();
                     attr.hidden = hidden.clone();
-                } else {
-                    attr.cfg = cfg.clone();
                 }
                 attrs.push((
                     Cow::Owned(hir::Attribute::Parsed(AttributeKind::Doc(Box::new(attr)))),
@@ -2914,10 +2917,12 @@ fn clean_extern_crate<'tcx>(
     let attrs = cx.tcx.hir_attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
-        && attrs.iter().any(|a| matches!(
+        && attrs.iter().any(|a| {
+            matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d)) if d.inline.is_some_and(|(i, _)| i == DocInline::Inline))
-        )
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.inline.is_some_and(|(i, _)| i == DocInline::Inline))
+        })
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
