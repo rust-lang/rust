@@ -220,9 +220,9 @@ pub fn with_replaced_escaping_bound_vars<
 /// The inverse of [`BoundVarReplacer`]: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
-    mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
+    mapped_regions: FxIndexMap<ty::PlaceholderRegion<'tcx>, ty::BoundRegion>,
+    mapped_types: FxIndexMap<ty::PlaceholderType<'tcx>, ty::BoundTy>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundConst>,
     universe_indices: &'a [Option<ty::UniverseIndex>],
     current_index: ty::DebruijnIndex,
 }
@@ -230,9 +230,9 @@ pub struct PlaceholderReplacer<'a, 'tcx> {
 impl<'a, 'tcx> PlaceholderReplacer<'a, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<TyCtxt<'tcx>>>(
         infcx: &'a InferCtxt<'tcx>,
-        mapped_regions: FxIndexMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        mapped_types: FxIndexMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: FxIndexMap<ty::PlaceholderConst, ty::BoundConst>,
+        mapped_regions: FxIndexMap<ty::PlaceholderRegion<'tcx>, ty::BoundRegion>,
+        mapped_types: FxIndexMap<ty::PlaceholderType<'tcx>, ty::BoundTy>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundConst>,
         universe_indices: &'a [Option<ty::UniverseIndex>],
         value: T,
     ) -> T {

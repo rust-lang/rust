@@ -113,7 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     fn fudge_inference<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
-        snapshot_vars: SnapshotVarData,
+        snapshot_vars: SnapshotVarData<'tcx>,
         value: T,
     ) -> T {
         // Micro-optimization: if no variables have been created, then
@@ -126,16 +126,16 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-struct SnapshotVarData {
-    region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin>),
+struct SnapshotVarData<'tcx> {
+    region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin<'tcx>>),
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
     float_vars: Range<FloatVid>,
     const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
 }
 
-impl SnapshotVarData {
-    fn new(infcx: &InferCtxt<'_>, vars_pre_snapshot: VariableLengths) -> SnapshotVarData {
+impl<'tcx> SnapshotVarData<'tcx> {
+    fn new(infcx: &InferCtxt<'tcx>, vars_pre_snapshot: VariableLengths) -> SnapshotVarData<'tcx> {
         let mut inner = infcx.inner.borrow_mut();
         let region_vars = inner
             .unwrap_region_constraints()
@@ -165,7 +165,7 @@ impl SnapshotVarData {
 
 struct InferenceFudger<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
-    snapshot_vars: SnapshotVarData,
+    snapshot_vars: SnapshotVarData<'tcx>,
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {

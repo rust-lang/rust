@@ -421,7 +421,7 @@ pub enum BoundRegionConversionTime {
 ///
 /// See `error_reporting` module for more details.
 #[derive(Copy, Clone, Debug)]
-pub enum RegionVariableOrigin {
+pub enum RegionVariableOrigin<'tcx> {
     /// Region variables created for ill-categorized reasons.
     ///
     /// They mostly indicate places in need of refactoring.
@@ -453,11 +453,11 @@ pub enum RegionVariableOrigin {
 
     /// This origin is used for the inference variables that we create
     /// during NLL region processing.
-    Nll(NllRegionVariableOrigin),
+    Nll(NllRegionVariableOrigin<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum NllRegionVariableOrigin {
+pub enum NllRegionVariableOrigin<'tcx> {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
     /// elsewhere. This origin indices we've got one of those.
@@ -465,7 +465,7 @@ pub enum NllRegionVariableOrigin {
 
     /// "Universal" instantiation of a higher-ranked region (e.g.,
     /// from a `for<'a> T` binder). Meant to represent "any region".
-    Placeholder(ty::PlaceholderRegion),
+    Placeholder(ty::PlaceholderRegion<'tcx>),
 
     Existential {
         name: Option<Symbol>,
@@ -838,7 +838,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Creates a fresh region variable with the next available index.
     /// The variable will be created in the maximum universe created
     /// thus far, allowing it to name any region created thus far.
-    pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region<'tcx> {
+    pub fn next_region_var(&self, origin: RegionVariableOrigin<'tcx>) -> ty::Region<'tcx> {
         self.next_region_var_in_universe(origin, self.universe())
     }
 
@@ -847,7 +847,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// `next_region_var` and just use the maximal universe.
     pub fn next_region_var_in_universe(
         &self,
-        origin: RegionVariableOrigin,
+        origin: RegionVariableOrigin<'tcx>,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
         let region_var =
@@ -878,7 +878,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Just a convenient wrapper of `next_region_var` for using during NLL.
     #[instrument(skip(self), level = "debug")]
-    pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin) -> ty::Region<'tcx> {
+    pub fn next_nll_region_var(&self, origin: NllRegionVariableOrigin<'tcx>) -> ty::Region<'tcx> {
         self.next_region_var(RegionVariableOrigin::Nll(origin))
     }
 
@@ -886,7 +886,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub fn next_nll_region_var_in_universe(
         &self,
-        origin: NllRegionVariableOrigin,
+        origin: NllRegionVariableOrigin<'tcx>,
         universe: ty::UniverseIndex,
     ) -> ty::Region<'tcx> {
         self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
@@ -954,7 +954,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tainted_by_errors.set(Some(e));
     }
 
-    pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin {
+    pub fn region_var_origin(&self, vid: ty::RegionVid) -> RegionVariableOrigin<'tcx> {
         let mut inner = self.inner.borrow_mut();
         let inner = &mut *inner;
         inner.unwrap_region_constraints().var_origin(vid)
@@ -962,7 +962,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Clone the list of variable regions. This is used only during NLL processing
     /// to put the set of region variables into the NLL region context.
-    pub fn get_region_var_infos(&self) -> VarInfos {
+    pub fn get_region_var_infos(&self) -> VarInfos<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
@@ -1649,7 +1649,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
     }
 }
 
-impl RegionVariableOrigin {
+impl<'tcx> RegionVariableOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
             RegionVariableOrigin::Misc(a)

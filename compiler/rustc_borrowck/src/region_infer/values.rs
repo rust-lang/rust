@@ -10,8 +10,8 @@ use rustc_middle::ty::{self, RegionVid};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::debug;
 
-use crate::BorrowIndex;
 use crate::polonius::LiveLoans;
+use crate::{BorrowIndex, TyCtxt};
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
@@ -22,7 +22,7 @@ rustc_index::newtype_index! {
 /// An individual element in a region value -- the value of a
 /// particular region variable consists of a set of these elements.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum RegionElement {
+pub(crate) enum RegionElement<'tcx> {
     /// A point in the control-flow graph.
     Location(Location),
 
@@ -32,7 +32,7 @@ pub(crate) enum RegionElement {
 
     /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
     /// type).
-    PlaceholderRegion(ty::PlaceholderRegion),
+    PlaceholderRegion(ty::PlaceholderRegion<'tcx>),
 }
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
@@ -196,25 +196,28 @@ impl LivenessValues {
 /// NLL.
 #[derive(Debug, Default)]
 #[derive(Clone)] // FIXME(#146079)
-pub(crate) struct PlaceholderIndices {
-    indices: FxIndexSet<ty::PlaceholderRegion>,
+pub(crate) struct PlaceholderIndices<'tcx> {
+    indices: FxIndexSet<ty::PlaceholderRegion<'tcx>>,
 }
 
-impl PlaceholderIndices {
+impl<'tcx> PlaceholderIndices<'tcx> {
     /// Returns the `PlaceholderIndex` for the inserted `PlaceholderRegion`
-    pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
+    pub(crate) fn insert(&mut self, placeholder: ty::PlaceholderRegion<'tcx>) -> PlaceholderIndex {
         let (index, _) = self.indices.insert_full(placeholder);
         index.into()
     }
 
-    pub(crate) fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
+    pub(crate) fn lookup_index(
+        &self,
+        placeholder: ty::PlaceholderRegion<'tcx>,
+    ) -> PlaceholderIndex {
         self.indices.get_index_of(&placeholder).unwrap().into()
     }
 
     pub(crate) fn lookup_placeholder(
         &self,
         placeholder: PlaceholderIndex,
-    ) -> ty::PlaceholderRegion {
+    ) -> ty::PlaceholderRegion<'tcx> {
         self.indices[placeholder.index()]
     }
 
@@ -241,9 +244,9 @@ impl PlaceholderIndices {
 /// Here, the variable `'0` would contain the free region `'a`,
 /// because (since it is returned) it must live for at least `'a`. But
 /// it would also contain various points from within the function.
-pub(crate) struct RegionValues<N: Idx> {
+pub(crate) struct RegionValues<'tcx, N: Idx> {
     location_map: Rc<DenseLocationMap>,
-    placeholder_indices: PlaceholderIndices,
+    placeholder_indices: PlaceholderIndices<'tcx>,
     points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
 
@@ -252,14 +255,14 @@ pub(crate) struct RegionValues<N: Idx> {
     placeholders: SparseBitMatrix<N, PlaceholderIndex>,
 }
 
-impl<N: Idx> RegionValues<N> {
+impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     /// Creates a new set of "region values" that tracks causal information.
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     pub(crate) fn new(
         location_map: Rc<DenseLocationMap>,
         num_universal_regions: usize,
-        placeholder_indices: PlaceholderIndices,
+        placeholder_indices: PlaceholderIndices<'tcx>,
     ) -> Self {
         let num_points = location_map.num_points();
         let num_placeholders = placeholder_indices.len();
@@ -274,7 +277,7 @@ impl<N: Idx> RegionValues<N> {
 
     /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
-    pub(crate) fn add_element(&mut self, r: N, elem: impl ToElementIndex) -> bool {
+    pub(crate) fn add_element(&mut self, r: N, elem: impl ToElementIndex<'tcx>) -> bool {
         debug!("add(r={:?}, elem={:?})", r, elem);
         elem.add_to_row(self, r)
     }
@@ -293,7 +296,7 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns `true` if the region `r` contains the given element.
-    pub(crate) fn contains(&self, r: N, elem: impl ToElementIndex) -> bool {
+    pub(crate) fn contains(&self, r: N, elem: impl ToElementIndex<'tcx>) -> bool {
         elem.contained_in_row(self, r)
     }
 
@@ -359,7 +362,7 @@ impl<N: Idx> RegionValues<N> {
     pub(crate) fn placeholders_contained_in(
         &self,
         r: N,
-    ) -> impl Iterator<Item = ty::PlaceholderRegion> {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion<'tcx>> {
         self.placeholders
             .row(r)
             .into_iter()
@@ -368,7 +371,7 @@ impl<N: Idx> RegionValues<N> {
     }
 
     /// Returns all the elements contained in a given region's value.
-    pub(crate) fn elements_contained_in(&self, r: N) -> impl Iterator<Item = RegionElement> {
+    pub(crate) fn elements_contained_in(&self, r: N) -> impl Iterator<Item = RegionElement<'tcx>> {
         let points_iter = self.locations_outlived_by(r).map(RegionElement::Location);
 
         let free_regions_iter =
@@ -386,42 +389,50 @@ impl<N: Idx> RegionValues<N> {
     }
 }
 
-pub(crate) trait ToElementIndex: Debug + Copy {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool;
+pub(crate) trait ToElementIndex<'tcx>: Debug + Copy {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool;
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool;
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool;
 }
 
-impl ToElementIndex for Location {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
+impl ToElementIndex<'_> for Location {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'_, N>, row: N) -> bool {
         let index = values.location_map.point_from_location(self);
         values.points.insert(row, index)
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<'_, N>, row: N) -> bool {
         let index = values.location_map.point_from_location(self);
         values.points.contains(row, index)
     }
 }
 
-impl ToElementIndex for RegionVid {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
+impl ToElementIndex<'_> for RegionVid {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'_, N>, row: N) -> bool {
         values.free_regions.insert(row, self)
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<'_, N>, row: N) -> bool {
         values.free_regions.contains(row, self)
     }
 }
 
-impl ToElementIndex for ty::PlaceholderRegion {
-    fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
-        let index = values.placeholder_indices.lookup_index(self);
+impl<'tcx> ToElementIndex<'tcx> for ty::PlaceholderRegion<'tcx> {
+    fn add_to_row<N: Idx>(self, values: &mut RegionValues<'tcx, N>, row: N) -> bool
+    where
+        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+    {
+        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.insert(row, index)
     }
 
-    fn contained_in_row<N: Idx>(self, values: &RegionValues<N>, row: N) -> bool {
-        let index = values.placeholder_indices.lookup_index(self);
+    fn contained_in_row<N: Idx>(self, values: &RegionValues<'tcx, N>, row: N) -> bool
+    where
+        Self: Into<ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion>>,
+    {
+        let placeholder: ty::Placeholder<TyCtxt<'tcx>, ty::BoundRegion> = self.into();
+        let index = values.placeholder_indices.lookup_index(placeholder);
         values.placeholders.contains(row, index)
     }
 }
@@ -441,7 +452,9 @@ pub(crate) fn pretty_print_points(
 }
 
 /// For debugging purposes, returns a pretty-printed string of the given region elements.
-fn pretty_print_region_elements(elements: impl IntoIterator<Item = RegionElement>) -> String {
+fn pretty_print_region_elements<'tcx>(
+    elements: impl IntoIterator<Item = RegionElement<'tcx>>,
+) -> String {
     let mut result = String::new();
     result.push('{');
 

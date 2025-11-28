@@ -61,7 +61,7 @@ pub use InferTy::*;
 pub use RegionKind::*;
 pub use TyKind::*;
 pub use Variance::*;
-pub use binder::*;
+pub use binder::{Placeholder, *};
 pub use canonical::*;
 pub use const_kind::*;
 pub use flags::*;
