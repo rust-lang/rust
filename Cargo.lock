@@ -298,7 +298,7 @@ checksum = "3888aaa89e4b2a40fca9848e400f6a658a5a3978de7be858e209cafa8be9a4a0"
 dependencies = [
  "arrayref",
  "arrayvec",
- "cc",
+ "cc 1.2.16",
  "cfg-if",
  "constant_time_eq",
 ]
@@ -407,7 +407,7 @@ version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2267cb8d16a1e4197863ec4284ffd1aec26fe7e57c58af46b02590a0235809a0"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
 ]
 
@@ -522,6 +522,14 @@ checksum = "be714c154be609ec7f5dad223a33bf1482fff90472de28f7362806e6d4832b8c"
 dependencies = [
  "jobserver",
  "libc",
+ "shlex",
+]
+
+[[package]]
+name = "cc"
+version = "1.2.30-v810"
+source = "git+https://github.com/SupernaviX/cc-rs.git?tag=1.2.30-v810#c93f2a84fe7f463d28b08a100909c53ad51d6ac9"
+dependencies = [
  "shlex",
 ]
 
@@ -717,7 +725,7 @@ version = "0.1.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
 dependencies = [
- "cc",
+ "cc 1.2.16",
 ]
 
 [[package]]
@@ -982,7 +990,7 @@ version = "0.4.84+curl-8.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abc4294dc41b882eaff37973c2ec3ae203d0091341ee68fbadd1d06e0c18a73b"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
  "libz-sys",
  "openssl-sys",
@@ -997,7 +1005,7 @@ version = "1.0.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47ac4eaf7ebe29e92f1b091ceefec7710a53a6f6154b2460afda626c113b65b9"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "cxx-build",
  "cxxbridge-cmd",
  "cxxbridge-flags",
@@ -1012,7 +1020,7 @@ version = "1.0.188"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2abd4c3021eefbac5149f994c117b426852bca3a0aad227698527bca6d4ea657"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "codespan-reporting",
  "indexmap",
  "proc-macro2",
@@ -1542,7 +1550,7 @@ dependencies = [
 name = "genmc-sys"
 version = "0.1.0"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "cmake",
  "cxx",
  "cxx-build",
@@ -1762,7 +1770,7 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
- "cc",
+ "cc 1.2.16",
 ]
 
 [[package]]
@@ -2173,7 +2181,7 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5cbe856efeb50e4681f010e9aaa2bf0a644e10139e54cde10fc83a307c23bd9f"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "pkg-config",
 ]
 
@@ -2193,7 +2201,7 @@ version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d722da8817ea580d0669da6babe2262d7b86a1af1103da24102b8bb9c101ce7"
 dependencies = [
- "cc",
+ "cc 1.2.16",
 ]
 
 [[package]]
@@ -2202,7 +2210,7 @@ version = "0.18.2+1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c42fe03df2bd3c53a3a9c7317ad91d80c81cd1fb0caec8d7cc4cd2bfa10c222"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
  "libz-sys",
  "openssl-sys",
@@ -2252,7 +2260,7 @@ version = "1.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15d118bbf3771060e7311cc7bb0545b01d08a8b4a7de949198dec1fa0ca1c0f7"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
  "pkg-config",
  "vcpkg",
@@ -2264,7 +2272,7 @@ version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f78c730aaa7d0b9336a299029ea49f9ee53b0ed06e9202e8cb7db9bae7b8c82"
 dependencies = [
- "cc",
+ "cc 1.2.16",
 ]
 
 [[package]]
@@ -2334,7 +2342,7 @@ version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fda04ab3764e6cde78b9974eec4f779acaba7c4e84b36eca3cf77c581b85d27"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
  "pkg-config",
 ]
@@ -2736,7 +2744,7 @@ version = "0.9.111"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82cab2d520aa75e3c58898289429321eb788c3106963d0dc886ec7a5f4adc321"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
  "pkg-config",
  "vcpkg",
@@ -3061,7 +3069,7 @@ version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e944464ec8536cd1beb0bbfd96987eb5e3b72f2ecdafdc5c769a37f1fa2ae1f"
 dependencies = [
- "cc",
+ "cc 1.2.16",
 ]
 
 [[package]]
@@ -4194,7 +4202,7 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
- "cc",
+ "cc 1.2.30-v810",
  "libc",
 ]
 
@@ -5316,7 +5324,7 @@ version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cddb07e32ddb770749da91081d8d0ac3a16f1a569a18b20348cd371f5dead06b"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "cfg-if",
  "libc",
  "psm",
@@ -5630,7 +5638,7 @@ version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
 dependencies = [
- "cc",
+ "cc 1.2.16",
  "libc",
 ]
 

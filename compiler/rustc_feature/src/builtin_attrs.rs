@@ -1551,6 +1551,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
+    ungated!(interrupt, Normal, template!(Word), ErrorPreceding, EncodeCrossCrate::Yes),
 ];
 
 pub fn is_builtin_attr_name(name: Symbol) -> bool {

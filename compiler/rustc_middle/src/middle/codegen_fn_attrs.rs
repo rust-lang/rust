@@ -192,6 +192,8 @@ bitflags::bitflags! {
         const FOREIGN_ITEM              = 1 << 16;
         /// `#[rustc_offload_kernel]`: indicates that this is an offload kernel, an extra ptr arg will be added.
         const OFFLOAD_KERNEL = 1 << 17;
+        /// `#[interrupt]`: this function is meant to serve as a platform-specific interrupt
+        const INTERRUPT                 = 1 << 18;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }

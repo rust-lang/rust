@@ -1079,9 +1079,12 @@ impl Config {
             );
         }
 
+        /*
+        It breaks my workflow to disable this
         if lld_enabled && is_host_system_llvm {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
+         */
 
         let download_rustc = download_rustc_commit.is_some();
 

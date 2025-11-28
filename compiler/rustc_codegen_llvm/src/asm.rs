@@ -277,6 +277,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     constraints.push("~{fcc3}".to_string());
                 }
                 InlineAsmArch::SpirV => {}
+                InlineAsmArch::V810 => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
                 InlineAsmArch::Msp430 => {
@@ -697,6 +698,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             S390x(S390xInlineAsmRegClass::areg) => {
                 unreachable!("clobber-only")
             }
+            V810(V810InlineAsmRegClass::reg) => "r",
+            V810(V810InlineAsmRegClass::sreg) => "r",
             Sparc(SparcInlineAsmRegClass::reg) => "r",
             Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
             Msp430(Msp430InlineAsmRegClass::reg) => "r",
@@ -798,6 +801,7 @@ fn modifier_to_llvm(
         },
         Avr(_) => None,
         S390x(_) => None,
+        V810(_) => modifier,
         Sparc(_) => None,
         Msp430(_) => None,
         SpirV(SpirVInlineAsmRegClass::reg) => bug!("LLVM backend does not support SPIR-V"),
@@ -885,6 +889,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         CSKY(CSKYInlineAsmRegClass::reg) => cx.type_i32(),
         CSKY(CSKYInlineAsmRegClass::freg) => cx.type_f32(),
         SpirV(SpirVInlineAsmRegClass::reg) => bug!("LLVM backend does not support SPIR-V"),
+        V810(V810InlineAsmRegClass::reg) => cx.type_i32(),
+        V810(V810InlineAsmRegClass::sreg) => cx.type_i32(),
         Err => unreachable!(),
     }
 }

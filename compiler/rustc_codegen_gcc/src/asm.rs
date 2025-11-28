@@ -743,6 +743,8 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
+        InlineAsmRegClass::V810(V810InlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::V810(V810InlineAsmRegClass::sreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Err => unreachable!(),
@@ -831,6 +833,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
             unreachable!("clobber-only")
         }
+        InlineAsmRegClass::V810(V810InlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::V810(V810InlineAsmRegClass::sreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
@@ -1026,6 +1030,7 @@ fn modifier_to_gcc(
         },
         InlineAsmRegClass::Avr(_) => None,
         InlineAsmRegClass::S390x(_) => None,
+        InlineAsmRegClass::V810(_) => modifier,
         InlineAsmRegClass::Sparc(_) => None,
         InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::M68k(_) => None,

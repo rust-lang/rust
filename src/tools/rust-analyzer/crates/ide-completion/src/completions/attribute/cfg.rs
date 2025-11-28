@@ -90,7 +90,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
 const CFG_CONDITION: &[(&str, &str)] =
     &[("all", "all($0)"), ("any", "any($0)"), ("not", "not($0)")];
 
-const KNOWN_ARCH: [&str; 20] = [
+const KNOWN_ARCH: [&str; 21] = [
     "aarch64",
     "arm",
     "avr",
@@ -107,6 +107,7 @@ const KNOWN_ARCH: [&str; 20] = [
     "s390x",
     "sparc",
     "sparc64",
+    "v810",
     "wasm32",
     "wasm64",
     "x86",

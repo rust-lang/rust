@@ -1,3 +1,13 @@
+# V810 Rust Compiler
+
+A fork of the Rust compiler which can target the v810 CPU. This 32-bit CPU is used in both the Virtual Boy and PC-FX.
+
+To build this, copy the contents of [bootstrap.v810.toml](./bootstrap.v810.toml) to `bootstrap.toml` (and fix the paths to match your machine). Note that you will need several binaries from [v810-llvm](https://github.com/SupernaviX/v810-llvm) to build this; you can download those from the Releases section.
+
+Use [rust-vb-platform](https://github.com/SupernaviX/rust-vb-platform) to actually develop homebrew with this.
+
+(original readme below to minimize git conflicts)
+
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-dark.svg">

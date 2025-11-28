@@ -10,8 +10,9 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-# `cc` updates often break things, so we pin it here.
-cc = "=1.2.16"
+# Pinned so `cargo update` bumps don't cause breakage. Please also update the
+# pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
+cc = { git = "https://github.com/SupernaviX/cc-rs.git", tag = "1.2.30-v810" }
 # tidy-alphabetical-end
 
 [features]

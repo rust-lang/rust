@@ -1258,6 +1258,7 @@ symbols! {
         integral,
         internal,
         internal_features,
+        interrupt,
         into_async_iter_into_iter,
         into_future,
         into_iter,

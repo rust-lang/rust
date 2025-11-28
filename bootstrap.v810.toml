@@ -1,0 +1,48 @@
+profile = "dist"
+change-id = 140438
+
+[llvm]
+assertions = true
+download-ci-llvm = false
+targets = "X86;V810"
+
+[build]
+docs = false
+host = ["x86_64-unknown-linux-gnu"]
+target = ["x86_64-unknown-linux-gnu", "v810-unknown-vb"]
+extended = true
+tools = [
+    "cargo",
+    "clippy",
+    "rustdoc",
+    "rustfmt",
+    "rust-analyzer",
+    "rust-analyzer-proc-macro-srv",
+    "analysis",
+    "src"
+]
+compiletest-use-stage0-libtest = false
+
+[install]
+prefix = "/home/simon/rust-v810"
+sysconfdir = "sysconf"
+
+[rust]
+channel = "nightly"
+codegen-backends = ["llvm"]
+lld = true
+#lld = false
+llvm-tools = true
+
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/home/simon/llvm-v810/bin/llvm-config"
+
+[target.v810-unknown-vb]
+ar = "v810-unknown-vb-llvm-ar"
+cc = "v810-unknown-vb-clang"
+cxx = "v810-unknown-vb-clang++"
+ranlib = "v810-unknown-vb-ranlib"
+linker = "v810-unknown-vb-ld.lld"
+
+llvm-config = "/home/simon/llvm-v810/bin/llvm-config"
+no-std = true
