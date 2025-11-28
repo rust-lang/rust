@@ -62,7 +62,7 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail6")]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
