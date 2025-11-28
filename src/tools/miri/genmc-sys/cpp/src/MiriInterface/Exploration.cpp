@@ -68,9 +68,8 @@ void MiriGenmcShim::handle_execution_start() {
 }
 
 auto MiriGenmcShim::handle_execution_end() -> std::unique_ptr<std::string> {
-    // FIXME(genmc): add error handling once GenMC returns an error here.
-    GenMCDriver::handleExecutionEnd();
-    return {};
+    auto ret = GenMCDriver::handleExecutionEnd();
+    return ret.has_value() ? format_error(*ret) : nullptr;
 }
 
 /**** Blocking instructions ****/
