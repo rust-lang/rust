@@ -13,7 +13,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
+use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet, snippet_with_context};
 use clippy_utils::sym;
 
 declare_clippy_lint! {
@@ -335,29 +335,29 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
                 return;
             }
 
-            match (self.cx.tcx.get_diagnostic_name(ty_did), method.ident.name) {
-                (Some(sym::HashMap), sym::new) => {
-                    self.suggestions.insert(e.span, "HashMap::default()".to_string());
+            let container_name = match self.cx.tcx.get_diagnostic_name(ty_did) {
+                Some(sym::HashMap) => "HashMap",
+                Some(sym::HashSet) => "HashSet",
+                _ => return,
+            };
+
+            match method.ident.name {
+                sym::new => {
+                    self.suggestions.insert(e.span, format!("{container_name}::default()"));
                 },
-                (Some(sym::HashMap), sym::with_capacity) => {
-                    self.suggestions.insert(
-                        e.span,
-                        format!(
-                            "HashMap::with_capacity_and_hasher({}, Default::default())",
-                            snippet(self.cx, args[0].span, "capacity"),
-                        ),
+                sym::with_capacity => {
+                    let (arg_snippet, _) = snippet_with_context(
+                        self.cx,
+                        args[0].span,
+                        e.span.ctxt(),
+                        "..",
+                        // We can throw-away the applicability here since the whole suggestion is
+                        // marked as `MaybeIncorrect` later.
+                        &mut Applicability::MaybeIncorrect,
                     );
-                },
-                (Some(sym::HashSet), sym::new) => {
-                    self.suggestions.insert(e.span, "HashSet::default()".to_string());
-                },
-                (Some(sym::HashSet), sym::with_capacity) => {
                     self.suggestions.insert(
                         e.span,
-                        format!(
-                            "HashSet::with_capacity_and_hasher({}, Default::default())",
-                            snippet(self.cx, args[0].span, "capacity"),
-                        ),
+                        format!("{container_name}::with_capacity_and_hasher({arg_snippet}, Default::default())",),
                     );
                 },
                 _ => {},

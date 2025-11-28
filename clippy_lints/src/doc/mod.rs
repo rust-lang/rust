@@ -27,6 +27,7 @@ use url::Url;
 
 mod broken_link;
 mod doc_comment_double_space_linebreaks;
+mod doc_paragraphs_missing_punctuation;
 mod doc_suspicious_footnotes;
 mod include_in_doc_without_cfg;
 mod lazy_continuation;
@@ -670,6 +671,33 @@ declare_clippy_lint! {
     "looks like a link or footnote ref, but with no definition"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for doc comments whose paragraphs do not end with a period or another punctuation mark.
+    /// Various Markdowns constructs are taken into account to avoid false positives.
+    ///
+    /// ### Why is this bad?
+    /// A project may wish to enforce consistent doc comments by making sure paragraphs end with a
+    /// punctuation mark.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// Returns a random number
+    /// ///
+    /// /// It was chosen by a fair dice roll
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// /// Returns a random number.
+    /// ///
+    /// /// It was chosen by a fair dice roll.
+    /// ```
+    #[clippy::version = "1.93.0"]
+    pub DOC_PARAGRAPHS_MISSING_PUNCTUATION,
+    restriction,
+    "missing terminal punctuation in doc comments"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -704,6 +732,7 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
     DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     DOC_SUSPICIOUS_FOOTNOTES,
+    DOC_PARAGRAPHS_MISSING_PUNCTUATION,
 ]);
 
 impl EarlyLintPass for Documentation {
@@ -868,6 +897,15 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
             Some(&mut fake_broken_link_callback),
         )
         .into_offset_iter(),
+        &doc,
+        Fragments {
+            doc: &doc,
+            fragments: &fragments,
+        },
+    );
+
+    doc_paragraphs_missing_punctuation::check(
+        cx,
         &doc,
         Fragments {
             doc: &doc,
