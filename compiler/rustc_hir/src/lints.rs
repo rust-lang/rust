@@ -1,6 +1,6 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use crate::{AttrPath, HirId, Target};
 
@@ -61,5 +61,15 @@ pub enum AttributeLintKind {
         is_used_as_inner: bool,
         target: Target,
         target_span: Span,
+    },
+    UnexpectedCfgName {
+        name: Symbol,
+        name_span: Span,
+        value: Option<(Symbol, Span)>,
+    },
+    UnexpectedCfgValue {
+        name: Symbol,
+        name_span: Span,
+        value: Option<(Symbol, Span)>,
     },
 }

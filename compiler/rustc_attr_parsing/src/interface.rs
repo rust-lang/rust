@@ -115,7 +115,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             OmitDoc::Skip,
             std::convert::identity,
             |lint| {
-                crate::lints::emit_attribute_lint(&lint, sess);
+                crate::lints::emit_attribute_lint(&lint, sess, sess);
             },
         )
     }
@@ -187,7 +187,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 target_span,
                 target_id: target_node_id,
                 emit_lint: &mut |lint| {
-                    crate::lints::emit_attribute_lint(&lint, sess);
+                    crate::lints::emit_attribute_lint(&lint, sess, sess);
                 },
             },
             attr_span,

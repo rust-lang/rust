@@ -1,7 +1,7 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::{
-    CfgSelectBranches, CfgSelectPredicate, EvalConfigResult, ShouldEmit, parse_cfg_select,
+    CfgSelectBranches, CfgSelectPredicate, EvalConfigResult, parse_cfg_select,
 };
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_span::{Ident, Span, sym};
@@ -11,12 +11,7 @@ use crate::errors::{CfgSelectNoMatches, CfgSelectUnreachable};
 /// Selects the first arm whose predicate evaluates to true.
 fn select_arm(ecx: &ExtCtxt<'_>, branches: CfgSelectBranches) -> Option<(TokenStream, Span)> {
     for (cfg, tt, arm_span) in branches.reachable {
-        if let EvalConfigResult::True = attr::eval_config_entry(
-            &ecx.sess,
-            &cfg,
-            ecx.current_expansion.lint_node_id,
-            ShouldEmit::ErrorsAndLints,
-        ) {
+        if let EvalConfigResult::True = attr::eval_config_entry(&ecx.sess, &cfg) {
             return Some((tt, arm_span));
         }
     }
