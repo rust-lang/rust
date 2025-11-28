@@ -99,12 +99,6 @@ use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-#[derive(Debug)]
-enum Weak {
-    Yes,
-    No,
-}
-
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
     Determined,
@@ -2490,6 +2484,7 @@ enum Stage {
     Late,
 }
 
+/// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.

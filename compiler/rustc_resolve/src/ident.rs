@@ -22,8 +22,14 @@ use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
     Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot,
     NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Stage, Used, Weak, errors,
+    Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
 };
+
+#[derive(Debug)]
+enum Weak {
+    Yes,
+    No,
+}
 
 #[derive(Copy, Clone)]
 pub enum UsePrelude {
@@ -815,7 +821,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, Determinacy> {
         self.resolve_ident_in_module(module, ident, ns, parent_scope, None, None, ignore_import)
-            .map_err(|(determinacy, _)| determinacy)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -828,7 +833,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: Option<Finalize>,
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
         match module {
@@ -851,15 +856,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             ns,
             adjusted_parent_scope,
-            Shadowing::Unrestricted,
             finalize,
             ignore_binding,
             ignore_import,
         )
     }
 
-    /// Attempts to resolve `ident` in namespaces `ns` of `module`.
-    /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
+    /// Attempts to resolve `ident` in namespace `ns` of `module`.
     #[instrument(level = "debug", skip(self))]
     fn resolve_ident_in_virt_module_unadjusted<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
@@ -867,43 +870,37 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
-        shadowing: Shadowing,
         finalize: Option<Finalize>,
-        // This binding should be ignored during in-module resolution, so that we don't get
-        // "self-confirming" import resolutions during import validation and checking.
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
+    ) -> Result<NameBinding<'ra>, Determinacy> {
         match module {
-            ModuleOrUniformRoot::Module(module) => self.resolve_ident_in_module_unadjusted(
-                module,
+            ModuleOrUniformRoot::Module(module) => self
+                .resolve_ident_in_module_unadjusted(
+                    module,
+                    ident,
+                    ns,
+                    parent_scope,
+                    Shadowing::Unrestricted,
+                    finalize,
+                    ignore_binding,
+                    ignore_import,
+                )
+                .map_err(|(determinacy, _)| determinacy),
+            ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
-                ns,
+                ScopeSet::ModuleAndExternPrelude(ns, module),
                 parent_scope,
-                shadowing,
                 finalize,
+                finalize.is_some(),
                 ignore_binding,
                 ignore_import,
             ),
-            ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
-                let binding = self.resolve_ident_in_scope_set(
-                    ident,
-                    ScopeSet::ModuleAndExternPrelude(ns, module),
-                    parent_scope,
-                    finalize,
-                    finalize.is_some(),
-                    ignore_binding,
-                    ignore_import,
-                );
-                return binding.map_err(|determinacy| (determinacy, Weak::No));
-            }
             ModuleOrUniformRoot::ExternPrelude => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
-                return if ns != TypeNS {
-                    Err((Determined, Weak::No))
+                if ns != TypeNS {
+                    Err(Determined)
                 } else {
-                    let binding = self.resolve_ident_in_scope_set(
+                    self.resolve_ident_in_scope_set(
                         ident,
                         ScopeSet::ExternPrelude,
                         parent_scope,
@@ -911,12 +908,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         finalize.is_some(),
                         ignore_binding,
                         ignore_import,
-                    );
-                    return binding.map_err(|determinacy| (determinacy, Weak::No));
-                };
+                    )
+                }
             }
             ModuleOrUniformRoot::CurrentScope => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
@@ -928,7 +923,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
 
-                let binding = self.resolve_ident_in_scope_set(
+                self.resolve_ident_in_scope_set(
                     ident,
                     ScopeSet::All(ns),
                     parent_scope,
@@ -936,12 +931,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                     ignore_binding,
                     ignore_import,
-                );
-                return binding.map_err(|determinacy| (determinacy, Weak::No));
+                )
             }
         }
     }
 
+    /// Attempts to resolve `ident` in namespace `ns` of `module`.
     fn resolve_ident_in_module_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
         module: Module<'ra>,
@@ -950,6 +945,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         shadowing: Shadowing,
         finalize: Option<Finalize>,
+        // This binding should be ignored during in-module resolution, so that we don't get
+        // "self-confirming" import resolutions during import validation and checking.
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
@@ -1236,15 +1233,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ignore_binding,
                 ignore_import,
             ) {
-                Err((Determined, _)) => continue,
+                Err(Determined) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
                 {
                     continue;
                 }
-                Ok(_) | Err((Undetermined, _)) => {
-                    return true;
-                }
+                Ok(_) | Err(Undetermined) => return true,
             }
         }
 
@@ -1761,17 +1756,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             let binding = if let Some(module) = module {
-                self.reborrow()
-                    .resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns,
-                        parent_scope,
-                        finalize,
-                        ignore_binding,
-                        ignore_import,
-                    )
-                    .map_err(|(determinacy, _)| determinacy)
+                self.reborrow().resolve_ident_in_module(
+                    module,
+                    ident,
+                    ns,
+                    parent_scope,
+                    finalize,
+                    ignore_binding,
+                    ignore_import,
+                )
             } else if let Some(ribs) = ribs
                 && let Some(TypeNS | ValueNS) = opt_ns
             {
