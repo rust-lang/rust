@@ -258,7 +258,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     ///
     /// To keep everything in sync, do not insert this set
     /// directly. Instead, use the `placeholder_region` helper.
-    pub(crate) placeholder_indices: PlaceholderIndices,
+    pub(crate) placeholder_indices: PlaceholderIndices<'tcx>,
 
     /// Each time we add a placeholder to `placeholder_indices`, we
     /// also create a corresponding "representative" region vid for
@@ -289,7 +289,7 @@ impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     pub(crate) fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
     ) -> ty::Region<'tcx> {
         let placeholder_index = self.placeholder_indices.insert(placeholder);
         match self.placeholder_index_to_region.get(placeholder_index) {

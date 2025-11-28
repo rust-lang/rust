@@ -109,15 +109,15 @@ pub(crate) enum RegionErrorKind<'tcx> {
         /// The placeholder free region.
         longer_fr: RegionVid,
         /// The region element that erroneously must be outlived by `longer_fr`.
-        error_element: RegionElement,
+        error_element: RegionElement<'tcx>,
         /// The placeholder region.
-        placeholder: ty::PlaceholderRegion,
+        placeholder: ty::PlaceholderRegion<'tcx>,
     },
 
     /// Any other lifetime error.
     RegionError {
         /// The origin of the region.
-        fr_origin: NllRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin<'tcx>,
         /// The region that should outlive `shorter_fr`.
         longer_fr: RegionVid,
         /// The region that should be shorter, but we can't prove it.
@@ -427,7 +427,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn report_region_error(
         &mut self,
         fr: RegionVid,
-        fr_origin: NllRegionVariableOrigin,
+        fr_origin: NllRegionVariableOrigin<'tcx>,
         outlived_fr: RegionVid,
         outlives_suggestion: &mut OutlivesSuggestionBuilder,
     ) {

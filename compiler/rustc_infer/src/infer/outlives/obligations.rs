@@ -394,7 +394,7 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        placeholder_ty: ty::PlaceholderType,
+        placeholder_ty: ty::PlaceholderType<'tcx>,
     ) {
         let verify_bound = self
             .verify_bound
