@@ -23,7 +23,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::{
-    self, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, Region, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
@@ -529,14 +529,26 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
 
         match goal.result() {
             Err(_) => {}
-            result => {
-                // FIXME(fmease): HACK that's most likely incorrect in general.
-                if let Ok(ty::solve::Certainty::AMBIGUOUS) = result
-                    && let Some(clause) = predicate.as_clause().map(ty::Clause::kind)
-                    && let ty::ClauseKind::ConstArgHasType(ct, ty) = clause.skip_binder()
-                    && let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind()
+            Ok(certainty) => {
+                if let ty::solve::Certainty::AMBIGUOUS = certainty
+                    && let Some(clause) = predicate.as_clause()
                 {
-                    self.const_var_tys.insert(vid, clause.rebind(ty));
+                    let kind = clause.kind();
+                    match kind.skip_binder() {
+                        ty::ClauseKind::ConstArgHasType(ct, ty)
+                            if let ty::ConstKind::Infer(ty::InferConst::Var(vid)) = ct.kind() =>
+                        {
+                            self.const_var_tys.insert(vid, kind.rebind(ty));
+                        }
+                        ty::ClauseKind::Trait(pred) if pred.has_infer() => {
+                            self.clauses.push(clause);
+                        }
+                        ty::ClauseKind::Projection(pred) if pred.has_infer() => {
+                            self.clauses.push(clause);
+                        }
+                        // FIXME: HostEffect
+                        _ => {}
+                    }
                 }
 
                 return ControlFlow::Continue(());
@@ -546,18 +558,28 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
         let candidates = goal.candidates();
         let candidate = match candidates.as_slice() {
             [] => {
-                // FIXME(fmease): What about outlives-predicates? Shouldn't they not matter here?
-                if let Some(clause) = predicate.as_clause()
-                    && let ty::ClauseKind::Trait(pred) = clause.kind().skip_binder()
-                    && let ty::Param(_) = pred.self_ty().kind()
-                {
-                    self.clauses.push(clause);
-                    return ControlFlow::Continue(());
+                // FIXME: legacy SATI also handles outlives.predicates.
+                //        Do we really need to handle them, too?
+                if let Some(clause) = predicate.as_clause() {
+                    match clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(pred) => {
+                            if let ty::Param(_) = pred.self_ty().kind() {
+                                self.clauses.push(clause);
+                                return ControlFlow::Continue(());
+                            }
+                        }
+                        // NOTE(const_trait_impl): We currently don't display bound constness in rustdoc.
+                        ty::ClauseKind::HostEffect(_) => {
+                            return ControlFlow::Continue(());
+                        }
+                        _ => {}
+                    }
                 }
 
                 return ControlFlow::Break(());
             }
             [candidate] => candidate,
+            // FIXME: Is this even reachable?
             _ => {
                 self.add(goal.goal());
                 return ControlFlow::Continue(());
@@ -572,7 +594,20 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
             return ControlFlow::Continue(());
         }
 
-        // FIXME(fmease): Or should this all happen in a probe?
+        // FIXME: HACK:
+        if let ty::PredicateKind::AliasRelate(term0, term1, ty::AliasRelationDirection::Equate) =
+            predicate.kind().skip_binder()
+            && let Some(ty0) = term0.as_type()
+            && let &ty::Alias(ty::Projection, alias_ty) = ty0.kind()
+        {
+            self.clauses.push(
+                ty::ProjectionPredicate { projection_term: alias_ty.into(), term: term1 }
+                    .upcast(tcx),
+            );
+            return ControlFlow::Continue(());
+        }
+
+        // FIXME(fmease): Shouldn't this all happen in a probe?
         let nested_goals = candidate.instantiate_nested_goals(self.span());
 
         // FIXME(fmease): Explainer
