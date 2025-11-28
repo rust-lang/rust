@@ -15,9 +15,12 @@ extern crate rustc_middle;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_public;
+extern crate rustc_public_bridge;
 
-use rustc_public::ty::{ForeignItemKind, Ty};
+use rustc_public::ty::VariantIdx;
+use rustc_public::ty::{ForeignItemKind, RigidTy, Ty};
 use rustc_public::*;
+use rustc_public_bridge::IndexedVal;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -32,6 +35,14 @@ fn test_def_tys() -> ControlFlow<()> {
         match item.trimmed_name().as_str() {
             "STATIC_STR" => assert!(ty.kind().is_ref()),
             "CONST_U32" => assert!(ty.kind().is_integral()),
+            "NONE" => {
+                let RigidTy::Adt(adt, _) = *ty.kind().rigid().unwrap() else { panic!() };
+                // Definition names include the entire path.
+                assert_eq!(adt.name(), "std::option::Option");
+                // Variant name only includes the actual variant name.
+                // I know, probably not the best name schema. o.O
+                assert_eq!(adt.variant(VariantIdx::to_val(0)).unwrap().name(), "None");
+            }
             "main" => check_fn_def(ty),
             _ => unreachable!("Unexpected item: `{item:?}`"),
         }
@@ -92,6 +103,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         r#"
         static STATIC_STR: &str = "foo";
         const CONST_U32: u32 = 0u32;
+        static NONE: Option<i32> = Option::None;
 
         fn main() {{
             let _c = core::char::from_u32(99);
