@@ -957,10 +957,6 @@ Tests on the module system.
 
 **FIXME**: `tests/ui/imports/` should probably be merged with this.
 
-## `tests/ui/modules_and_files_visibility/`
-
-**FIXME**: Merge with `tests/ui/modules/`.
-
 ## `tests/ui/moves`
 
 Tests on moves (destructive moves).
