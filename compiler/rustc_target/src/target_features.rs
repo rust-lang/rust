@@ -1211,11 +1211,13 @@ impl Target {
                 }
             }
             Arch::S390x => {
-                // We don't currently support a softfloat target on this architecture.
-                // As usual, we have to reject swapping the `soft-float` target feature.
-                // The "vector" target feature does not affect the ABI for floats
-                // because the vector and float registers overlap.
-                FeatureConstraints { required: &[], incompatible: &["soft-float"] }
+                // On s390x only the hard-float ABI is valid. However for kernel compilation we need to
+                // allow soft-float if and only if the ABI is explicitly set to soft-float.
+                if matches!(self.abi, Abi::SoftFloat) {
+                    FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                } else {
+                    FeatureConstraints { required: &[], incompatible: &["soft-float"] }
+                }
             }
             _ => NOTHING,
         }

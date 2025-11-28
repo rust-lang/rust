@@ -2182,6 +2182,8 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::overflow_checks` instead of this field")]
     overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use overflow checks for integer arithmetic"),
+    packed_stack: bool = (false, parse_bool, [TRACKED],
+        "use packed stack frames (s390x only) (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::panic_strategy` instead of this field")]
     panic: Option<PanicStrategy> = (None, parse_opt_panic_strategy, [TRACKED],
         "panic strategy to compile crate with"),

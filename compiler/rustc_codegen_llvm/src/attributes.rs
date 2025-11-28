@@ -311,6 +311,18 @@ fn backchain_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attrib
     if found_positive { Some(llvm::CreateAttrString(cx.llcx, "backchain")) } else { None }
 }
 
+fn packed_stack_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> Option<&'ll Attribute> {
+    if sess.target.arch != Arch::S390x {
+        return None;
+    }
+
+    if sess.opts.cg.packed_stack {
+        Some(llvm::CreateAttrString(cx.llcx, "packed-stack"))
+    } else {
+        None
+    }
+}
+
 pub(crate) fn target_cpu_attr<'ll>(cx: &SimpleCx<'ll>, sess: &Session) -> &'ll Attribute {
     let target_cpu = llvm_util::target_cpu(sess);
     llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
@@ -525,6 +537,10 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     if let Some(backchain) = backchain_attr(cx, sess) {
         to_add.push(backchain);
     }
+    if let Some(packed_stack) = packed_stack_attr(cx, sess) {
+        to_add.push(packed_stack);
+    }
+
     to_add.extend(patchable_function_entry_attrs(
         cx,
         sess,

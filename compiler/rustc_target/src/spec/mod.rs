@@ -3242,6 +3242,17 @@ impl Target {
                     ));
                 }
             }
+
+            // If both `packed-stack` and `backchain` are set we need to use soft-float ABI.
+            if self.arch == Arch::S390x
+                && features_enabled.contains("packed-stack")
+                && features_enabled.contains("backchain")
+                && !matches!(self.abi, Abi::SoftFloat)
+            {
+                return Err(format!(
+                    "Enabling both, `packed-stack` and `backchain` attributes is incompatible with the hard-float ABI. Enable soft-float ABI to use these attributes."
+                ));
+            }
         }
 
         Ok(())
