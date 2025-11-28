@@ -348,7 +348,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 )));
             } else if let RibKind::Block(Some(module)) = rib.kind
                 && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
-                    ModuleOrUniformRoot::Module(module),
+                    module,
                     ident,
                     ns,
                     parent_scope,
@@ -590,7 +590,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         )
                     };
                 let binding = self.reborrow().resolve_ident_in_module_unadjusted(
-                    ModuleOrUniformRoot::Module(module),
+                    module,
                     ident,
                     ns,
                     adjusted_parent_scope,
@@ -667,7 +667,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut result = Err(Determinacy::Determined);
                 if let Some(prelude) = self.prelude
                     && let Ok(binding) = self.reborrow().resolve_ident_in_module_unadjusted(
-                        ModuleOrUniformRoot::Module(prelude),
+                        prelude,
                         ident,
                         ns,
                         parent_scope,
@@ -846,7 +846,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // No adjustments
             }
         }
-        self.resolve_ident_in_module_unadjusted(
+        self.resolve_ident_in_virt_module_unadjusted(
             module,
             ident,
             ns,
@@ -857,11 +857,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ignore_import,
         )
     }
+
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
     #[instrument(level = "debug", skip(self))]
-    fn resolve_ident_in_module_unadjusted<'r>(
-        mut self: CmResolver<'r, 'ra, 'tcx>,
+    fn resolve_ident_in_virt_module_unadjusted<'r>(
+        self: CmResolver<'r, 'ra, 'tcx>,
         module: ModuleOrUniformRoot<'ra>,
         ident: Ident,
         ns: Namespace,
@@ -873,8 +874,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
-        let module = match module {
-            ModuleOrUniformRoot::Module(module) => module,
+        match module {
+            ModuleOrUniformRoot::Module(module) => self.resolve_ident_in_module_unadjusted(
+                module,
+                ident,
+                ns,
+                parent_scope,
+                shadowing,
+                finalize,
+                ignore_binding,
+                ignore_import,
+            ),
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 let binding = self.resolve_ident_in_scope_set(
@@ -929,8 +939,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
-        };
+        }
+    }
 
+    fn resolve_ident_in_module_unadjusted<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        module: Module<'ra>,
+        ident: Ident,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        shadowing: Shadowing,
+        finalize: Option<Finalize>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
@@ -1048,7 +1070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => continue,
             };
             let result = self.reborrow().resolve_ident_in_module_unadjusted(
-                ModuleOrUniformRoot::Module(module),
+                module,
                 ident,
                 ns,
                 adjusted_parent_scope,
