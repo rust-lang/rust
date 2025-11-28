@@ -1,9 +1,24 @@
 use std::collections::HashSet;
+use std::sync::LazyLock;
 
 use crate::common::{CompareMode, Config, Debugger};
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
+
+const EXTERNAL_IGNORES_LIST: &[&str] = &[
+    // tidy-alphabetical-start
+    "ignore-backends",
+    "ignore-gdb-version",
+    "ignore-llvm-version",
+    "ignore-pass",
+    // tidy-alphabetical-end
+];
+
+/// Directive names that begin with `ignore-`, but are disregarded by this
+/// module because they are handled elsewhere.
+pub(crate) static EXTERNAL_IGNORES_SET: LazyLock<HashSet<&str>> =
+    LazyLock::new(|| EXTERNAL_IGNORES_LIST.iter().copied().collect());
 
 pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     let parsed = parse_cfg_name_directive(config, line, "ignore-");
@@ -18,8 +33,7 @@ pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> Ignore
             },
         },
         MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
-        MatchOutcome::External => IgnoreDecision::Continue,
-        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+        MatchOutcome::NotHandledHere => IgnoreDecision::Continue,
     }
 }
 
@@ -38,8 +52,7 @@ pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDe
             },
         },
         MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
-        MatchOutcome::External => IgnoreDecision::Continue,
-        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+        MatchOutcome::NotHandledHere => IgnoreDecision::Continue,
     }
 }
 
@@ -51,8 +64,12 @@ fn parse_cfg_name_directive<'a>(
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
     let Some(name) = line.name.strip_prefix(prefix) else {
-        return ParsedNameDirective::not_a_directive();
+        return ParsedNameDirective::not_handled_here();
     };
+
+    if prefix == "ignore-" && EXTERNAL_IGNORES_SET.contains(line.name) {
+        return ParsedNameDirective::not_handled_here();
+    }
 
     // FIXME(Zalathar): This currently allows either a space or a colon, and
     // treats any "value" after a colon as though it were a remark.
@@ -62,7 +79,7 @@ fn parse_cfg_name_directive<'a>(
     // Some of the matchers might be "" depending on what the target information is. To avoid
     // problems we outright reject empty directives.
     if name.is_empty() {
-        return ParsedNameDirective::not_a_directive();
+        return ParsedNameDirective::not_handled_here();
     }
 
     let mut outcome = MatchOutcome::Invalid;
@@ -256,35 +273,6 @@ fn parse_cfg_name_directive<'a>(
         message: "when performing tests on dist toolchain"
     }
 
-    if prefix == "ignore-" && outcome == MatchOutcome::Invalid {
-        // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
-        if name.starts_with("tidy-") {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-pass, as that is handled elsewhere.
-        if name == "pass" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
-        // elsewhere.
-        if name == "llvm-version" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
-        // elsewhere.
-        if name == "gdb-version" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-backends,as it is handled elsewhere.
-        if name == "backends" {
-            outcome = MatchOutcome::External;
-        }
-    }
-
     ParsedNameDirective {
         name: Some(name),
         comment: comment.map(|c| c.trim().trim_start_matches('-').trim()),
@@ -303,12 +291,12 @@ pub(super) struct ParsedNameDirective<'a> {
 }
 
 impl ParsedNameDirective<'_> {
-    fn not_a_directive() -> Self {
+    fn not_handled_here() -> Self {
         Self {
             name: None,
             pretty_reason: None,
             comment: None,
-            outcome: MatchOutcome::NotADirective,
+            outcome: MatchOutcome::NotHandledHere,
         }
     }
 }
@@ -321,10 +309,8 @@ pub(super) enum MatchOutcome {
     Match,
     /// The directive was invalid.
     Invalid,
-    /// The directive is handled by other parts of our tooling.
-    External,
-    /// The line is not actually a directive.
-    NotADirective,
+    /// The directive should be ignored by this module, because it is handled elsewhere.
+    NotHandledHere,
 }
 
 trait CustomContains {
