@@ -9,8 +9,8 @@ use super::utils::Backoff;
 use super::waker::Waker;
 use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
-use crate::sync::Mutex;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
+use crate::sync::nonpoison::Mutex;
 use crate::time::Instant;
 use crate::{fmt, ptr};
 
@@ -141,7 +141,7 @@ impl<T> Channel<T> {
     /// Attempts to send a message into the channel.
     pub(crate) fn try_send(&self, msg: T) -> Result<(), TrySendError<T>> {
         let token = &mut Token::default();
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
 
         // If there's a waiting receiver, pair up with it.
         if let Some(operation) = inner.receivers.try_select() {
@@ -165,7 +165,7 @@ impl<T> Channel<T> {
         deadline: Option<Instant>,
     ) -> Result<(), SendTimeoutError<T>> {
         let token = &mut Token::default();
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
 
         // If there's a waiting receiver, pair up with it.
         if let Some(operation) = inner.receivers.try_select() {
@@ -196,12 +196,12 @@ impl<T> Channel<T> {
             match sel {
                 Selected::Waiting => unreachable!(),
                 Selected::Aborted => {
-                    self.inner.lock().unwrap().senders.unregister(oper).unwrap();
+                    self.inner.lock().senders.unregister(oper).unwrap();
                     let msg = unsafe { packet.msg.get().replace(None).unwrap() };
                     Err(SendTimeoutError::Timeout(msg))
                 }
                 Selected::Disconnected => {
-                    self.inner.lock().unwrap().senders.unregister(oper).unwrap();
+                    self.inner.lock().senders.unregister(oper).unwrap();
                     let msg = unsafe { packet.msg.get().replace(None).unwrap() };
                     Err(SendTimeoutError::Disconnected(msg))
                 }
@@ -217,7 +217,7 @@ impl<T> Channel<T> {
     /// Attempts to receive a message without blocking.
     pub(crate) fn try_recv(&self) -> Result<T, TryRecvError> {
         let token = &mut Token::default();
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
 
         // If there's a waiting sender, pair up with it.
         if let Some(operation) = inner.senders.try_select() {
@@ -234,7 +234,7 @@ impl<T> Channel<T> {
     /// Receives a message from the channel.
     pub(crate) fn recv(&self, deadline: Option<Instant>) -> Result<T, RecvTimeoutError> {
         let token = &mut Token::default();
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
 
         // If there's a waiting sender, pair up with it.
         if let Some(operation) = inner.senders.try_select() {
@@ -264,11 +264,11 @@ impl<T> Channel<T> {
             match sel {
                 Selected::Waiting => unreachable!(),
                 Selected::Aborted => {
-                    self.inner.lock().unwrap().receivers.unregister(oper).unwrap();
+                    self.inner.lock().receivers.unregister(oper).unwrap();
                     Err(RecvTimeoutError::Timeout)
                 }
                 Selected::Disconnected => {
-                    self.inner.lock().unwrap().receivers.unregister(oper).unwrap();
+                    self.inner.lock().receivers.unregister(oper).unwrap();
                     Err(RecvTimeoutError::Disconnected)
                 }
                 Selected::Operation(_) => {
@@ -284,7 +284,7 @@ impl<T> Channel<T> {
     ///
     /// Returns `true` if this call disconnected the channel.
     pub(crate) fn disconnect(&self) -> bool {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
 
         if !inner.is_disconnected {
             inner.is_disconnected = true;

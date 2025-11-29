@@ -3,8 +3,8 @@
 use super::context::Context;
 use super::select::{Operation, Selected};
 use crate::ptr;
-use crate::sync::Mutex;
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
+use crate::sync::nonpoison::Mutex;
 
 /// Represents a thread blocked on a specific channel operation.
 pub(crate) struct Entry {
@@ -150,7 +150,7 @@ impl SyncWaker {
     /// Registers the current thread with an operation.
     #[inline]
     pub(crate) fn register(&self, oper: Operation, cx: &Context) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
         inner.register(oper, cx);
         self.is_empty
             .store(inner.selectors.is_empty() && inner.observers.is_empty(), Ordering::SeqCst);
@@ -159,7 +159,7 @@ impl SyncWaker {
     /// Unregisters an operation previously registered by the current thread.
     #[inline]
     pub(crate) fn unregister(&self, oper: Operation) -> Option<Entry> {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
         let entry = inner.unregister(oper);
         self.is_empty
             .store(inner.selectors.is_empty() && inner.observers.is_empty(), Ordering::SeqCst);
@@ -170,7 +170,7 @@ impl SyncWaker {
     #[inline]
     pub(crate) fn notify(&self) {
         if !self.is_empty.load(Ordering::SeqCst) {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock();
             if !self.is_empty.load(Ordering::SeqCst) {
                 inner.try_select();
                 inner.notify();
@@ -185,7 +185,7 @@ impl SyncWaker {
     /// Notifies all threads that the channel is disconnected.
     #[inline]
     pub(crate) fn disconnect(&self) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.lock();
         inner.disconnect();
         self.is_empty
             .store(inner.selectors.is_empty() && inner.observers.is_empty(), Ordering::SeqCst);

@@ -122,21 +122,21 @@ where
     let th1 = {
         let (log, tx) = (Arc::clone(&log), tx1);
         thread::spawn(move || {
-            log.lock().unwrap().push(Start1);
+            log.lock().push(Start1);
             let handle = get_handle();
             {
                 let locked = handle.lock();
-                log.lock().unwrap().push(Acquire1);
+                log.lock().push(Acquire1);
                 tx.send(Acquire1).unwrap(); // notify of acquisition
                 tx.send(Release1).unwrap(); // wait for release command
-                log.lock().unwrap().push(Release1);
+                log.lock().push(Release1);
             }
             tx.send(Acquire1).unwrap(); // wait for th2 acquire
             {
                 let locked = handle.lock();
-                log.lock().unwrap().push(Acquire1);
+                log.lock().push(Acquire1);
             }
-            log.lock().unwrap().push(Release1);
+            log.lock().push(Release1);
         })
     };
     let th2 = {
@@ -144,14 +144,14 @@ where
         thread::spawn(move || {
             tx.send(Start2).unwrap(); // wait for start command
             let locked = get_locked();
-            log.lock().unwrap().push(Acquire2);
+            log.lock().push(Acquire2);
             tx.send(Acquire2).unwrap(); // notify of acquisition
             tx.send(Release2).unwrap(); // wait for release command
-            log.lock().unwrap().push(Release2);
+            log.lock().push(Release2);
         })
     };
     assert_eq!(rx1.recv().unwrap(), Acquire1); // wait for th1 acquire
-    log.lock().unwrap().push(Start2);
+    log.lock().push(Start2);
     assert_eq!(rx2.recv().unwrap(), Start2); // block th2
     assert_eq!(rx1.recv().unwrap(), Release1); // release th1
     assert_eq!(rx2.recv().unwrap(), Acquire2); // wait for th2 acquire
@@ -160,7 +160,7 @@ where
     th2.join().unwrap();
     th1.join().unwrap();
     assert_eq!(
-        *log.lock().unwrap(),
+        *log.lock(),
         [Start1, Acquire1, Start2, Release1, Acquire2, Release2, Acquire1, Release1]
     );
 }

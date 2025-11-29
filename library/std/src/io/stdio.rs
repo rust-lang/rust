@@ -12,11 +12,14 @@ use crate::io::{
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
-use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
+use crate::sync::nonpoison::{Mutex, MutexGuard};
+use crate::sync::{Arc, OnceLock, ReentrantLock, ReentrantLockGuard, poison};
 use crate::sys::stdio;
 use crate::thread::AccessError;
 
-type LocalStream = Arc<Mutex<Vec<u8>>>;
+// This is explicitly using poisoning, as that affects what gets captured.
+// FIXME: maybe change this to a non-poisoning mutex regardless?
+type LocalStream = Arc<poison::Mutex<Vec<u8>>>;
 
 thread_local! {
     /// Used by the test crate to capture the output of the print macros and panics.
@@ -372,7 +375,7 @@ impl Stdin {
     pub fn lock(&self) -> StdinLock<'static> {
         // Locks this handle with 'static lifetime. This depends on the
         // implementation detail that the underlying `Mutex` is static.
-        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdinLock { inner: self.inner.lock() }
     }
 
     /// Locks this handle and reads a line of input, appending it to the specified buffer.
@@ -433,6 +436,12 @@ impl Stdin {
         self.lock().lines()
     }
 }
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl UnwindSafe for Stdin {}
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl RefUnwindSafe for Stdin {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdin {
@@ -506,6 +515,12 @@ impl StdinLock<'_> {
         &mut self.inner
     }
 }
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl UnwindSafe for StdinLock<'_> {}
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl RefUnwindSafe for StdinLock<'_> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for StdinLock<'_> {
