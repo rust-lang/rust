@@ -343,7 +343,7 @@ impl Step for CodegenGcc {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("rustc_codegen_gcc")
+        run.alias("rustc_codegen_gcc").path("compiler/rustc_codegen_gcc")
     }
 
     fn make_run(run: RunConfig<'_>) {
