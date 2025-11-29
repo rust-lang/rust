@@ -498,7 +498,7 @@ pub struct InferenceResult<'db> {
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub(crate) type_of_pat: ArenaMap<PatId, Ty<'db>>,
     pub(crate) type_of_binding: ArenaMap<BindingId, Ty<'db>>,
-    pub(crate) type_of_type_placeholder: ArenaMap<TypeRefId, Ty<'db>>,
+    pub(crate) type_of_type_placeholder: FxHashMap<TypeRefId, Ty<'db>>,
     pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
 
     pub(crate) type_mismatches: Option<Box<FxHashMap<ExprOrPatId, TypeMismatch<'db>>>>,
@@ -623,10 +623,10 @@ impl<'db> InferenceResult<'db> {
         )
     }
     pub fn placeholder_types(&self) -> impl Iterator<Item = (TypeRefId, &Ty<'db>)> {
-        self.type_of_type_placeholder.iter()
+        self.type_of_type_placeholder.iter().map(|(&type_ref, ty)| (type_ref, ty))
     }
     pub fn type_of_type_placeholder(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
-        self.type_of_type_placeholder.get(type_ref).copied()
+        self.type_of_type_placeholder.get(&type_ref).copied()
     }
     pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem<'db>>, FnTrait) {
         self.closure_info.get(&closure).unwrap()
