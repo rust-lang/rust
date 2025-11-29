@@ -121,9 +121,9 @@ static HOOK: RwLock<Hook> = RwLock::new(Hook::Default);
 ///
 /// The panic hook is a global resource.
 ///
-/// # Panics
+/// # Aborts
 ///
-/// Panics if called from a panicking thread.
+/// Aborts if called from a panicking thread.
 ///
 /// # Examples
 ///
@@ -158,9 +158,9 @@ pub fn set_hook(hook: Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>) {
 ///
 /// If the default hook is registered it will be returned, but remain registered.
 ///
-/// # Panics
+/// # Aborts
 ///
-/// Panics if called from a panicking thread.
+/// Aborts if called from a panicking thread.
 ///
 /// # Examples
 ///
@@ -193,9 +193,9 @@ pub fn take_hook() -> Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send> {
 /// [`take_hook`]: ./fn.take_hook.html
 /// [`set_hook`]: ./fn.set_hook.html
 ///
-/// # Panics
+/// # Aborts
 ///
-/// Panics if called from a panicking thread.
+/// Aborts if called from a panicking thread.
 ///
 /// # Examples
 ///
