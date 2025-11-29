@@ -1051,17 +1051,25 @@ impl AttrFlags {
             collect_attrs::<Infallible>(db, owner.into(), |attr| {
                 if let Meta::TokenTree { path, tt } = attr
                     && path.is1("target_feature")
-                    && let mut tt = TokenTreeChildren::new(&tt)
-                    && let Some(NodeOrToken::Token(enable_ident)) = tt.next()
-                    && enable_ident.text() == "enable"
-                    && let Some(NodeOrToken::Token(eq_token)) = tt.next()
-                    && eq_token.kind() == T![=]
-                    && let Some(NodeOrToken::Token(features)) = tt.next()
-                    && let Some(features) = ast::String::cast(features)
-                    && let Ok(features) = features.value()
-                    && tt.next().is_none()
                 {
-                    result.extend(features.split(',').map(Symbol::intern));
+                    let mut tt = TokenTreeChildren::new(&tt);
+                    while let Some(NodeOrToken::Token(enable_ident)) = tt.next()
+                        && enable_ident.text() == "enable"
+                        && let Some(NodeOrToken::Token(eq_token)) = tt.next()
+                        && eq_token.kind() == T![=]
+                        && let Some(NodeOrToken::Token(features)) = tt.next()
+                        && let Some(features) = ast::String::cast(features)
+                        && let Ok(features) = features.value()
+                    {
+                        result.extend(features.split(',').map(Symbol::intern));
+                        if tt
+                            .next()
+                            .and_then(NodeOrToken::into_token)
+                            .is_none_or(|it| it.kind() != T![,])
+                        {
+                            break;
+                        }
+                    }
                 }
                 ControlFlow::Continue(())
             });
