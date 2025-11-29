@@ -186,8 +186,9 @@ fn load_libgccjit_if_needed(sysroot_path: &Path, target_triple: &str) {
         return;
     }
 
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    let libgccjit_target_lib_file = sysroot_lib_dir.join(target_triple).join("libgccjit.so");
+    let sysroot_lib_dir = sysroot_path.join("lib").join("rustlib");
+    let libgccjit_target_lib_file =
+        sysroot_lib_dir.join(target_triple).join("lib").join("libgccjit.so");
     let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
 
     let string = CString::new(path).expect("string to libgccjit path");
