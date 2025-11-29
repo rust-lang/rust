@@ -148,7 +148,7 @@ declare namespace rustdoc {
 
     /**
      * A single parsed "atom" in a search query. For example,
-     * 
+     *
      *     std::fmt::Formatter, Write -> Result<()>
      *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
      *     ┃                    │        ┗ QueryElement {          ┊
@@ -243,6 +243,7 @@ declare namespace rustdoc {
         parent: number?,
         traitParent: number?,
         deprecated: boolean,
+        unstable: boolean,
         associatedItemDisambiguator: string?,
     }
 
@@ -292,6 +293,7 @@ declare namespace rustdoc {
         path: PathData?,
         functionData: FunctionData?,
         deprecated: boolean,
+        unstable: boolean,
         parent: RowParent,
         traitParent: RowParent,
     }
