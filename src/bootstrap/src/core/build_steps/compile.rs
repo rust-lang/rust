@@ -2419,7 +2419,7 @@ pub fn add_to_sysroot(
     t!(fs::create_dir_all(sysroot_host_dst));
     t!(fs::create_dir_all(self_contained_dst));
 
-    let mut rustc_crates = HashSet::new();
+    let mut crates = HashSet::new();
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
@@ -2429,16 +2429,23 @@ pub fn add_to_sysroot(
         };
         builder.copy_link(&path, &dst.join(filename), FileType::Regular);
 
-        // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
-        // the sysroot would cause ambiguity errors. We do allow rustc_hash however as it is an
-        // external dependency that we build multiple copies of. It is re-exported by
-        // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
-        // issue.
-        if !filename.contains("rustc_") || filename.contains("rustc_hash") {
+        // Only insert the part before the . to deduplicate different files for the same crate.
+        // For example foo-1234.dll and foo-1234.dll.lib.
+        crates.insert(filename.split_once('.').unwrap().0.to_owned());
+    }
+
+    // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
+    // the sysroot would cause ambiguity errors. We do allow rustc_hash however as it is an
+    // external dependency that we build multiple copies of. It is re-exported by
+    // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
+    // issue.
+    let mut seen_crates = HashSet::new();
+    for filestem in crates {
+        if !filestem.contains("rustc_") || filestem.contains("rustc_hash") {
             continue;
         }
-        if !rustc_crates.insert(filename.split_once('-').unwrap().0.to_owned()) {
-            panic!("duplicate rustc crate at {}", path.display());
+        if !seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned()) {
+            panic!("duplicate rustc crate {filestem}");
         }
     }
 }
