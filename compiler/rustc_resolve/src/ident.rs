@@ -25,12 +25,6 @@ use crate::{
     Resolver, Scope, ScopeSet, Segment, Stage, Used, errors,
 };
 
-#[derive(Debug)]
-enum Weak {
-    Yes,
-    No,
-}
-
 #[derive(Copy, Clone)]
 pub enum UsePrelude {
     No,
@@ -628,11 +622,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         };
                         Ok((binding, Flags::MODULE | misc_flags))
                     }
-                    Err((Determinacy::Undetermined, Weak::No)) => {
+                    Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
+                    Err(ControlFlow::Break(Determinacy::Undetermined)) => {
                         return ControlFlow::Break(Err(Determinacy::determined(force)));
                     }
-                    Err((Determinacy::Undetermined, Weak::Yes)) => Err(Determinacy::Undetermined),
-                    Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
+                    Err(ControlFlow::Break(Determinacy::Determined)) => Err(Determined),
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
@@ -886,7 +880,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ignore_binding,
                     ignore_import,
                 )
-                .map_err(|(determinacy, _)| determinacy),
+                .map_err(|determinacy| determinacy.into_value()),
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self.resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::ModuleAndExternPrelude(ns, module),
@@ -949,7 +943,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // "self-confirming" import resolutions during import validation and checking.
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
+    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
@@ -957,7 +951,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution = &*self
             .resolution_or_default(module, key)
             .try_borrow_mut_unchecked()
-            .map_err(|_| (Determined, Weak::No))?;
+            .map_err(|_| ControlFlow::Break(Determined))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
         // binding if it exists. What we really want here is having two separate scopes in
@@ -981,7 +975,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let check_usable = |this: CmResolver<'r, 'ra, 'tcx>, binding: NameBinding<'ra>| {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
+            if usable { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
         };
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
@@ -1003,7 +997,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ignore_binding,
             parent_scope,
         ) {
-            return Err((Undetermined, Weak::No));
+            return Err(ControlFlow::Break(Undetermined));
         }
 
         // So we have a resolution that's from a glob import. This resolution is determined
@@ -1022,7 +1016,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
                 return check_usable(self, binding);
             } else {
-                return Err((Undetermined, Weak::No));
+                return Err(ControlFlow::Break(Undetermined));
             }
         }
 
@@ -1032,12 +1026,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // expansion. With restricted shadowing names from globs and macro expansions cannot
         // shadow names from outer scopes, so we can freely fallback from module search to search
         // in outer scopes. For `resolve_ident_in_scope_set` to continue search in outer
-        // scopes we return `Undetermined` with `Weak::Yes`.
+        // scopes we return `Undetermined` with `ControlFlow::Continue`.
 
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         if !module.unexpanded_invocations.borrow().is_empty() {
-            return Err((Undetermined, Weak::Yes));
+            return Err(ControlFlow::Continue(Undetermined));
         }
 
         // Check if one of glob imports can still define the name,
@@ -1052,7 +1046,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let module = match glob_import.imported_module.get() {
                 Some(ModuleOrUniformRoot::Module(module)) => module,
                 Some(_) => continue,
-                None => return Err((Undetermined, Weak::Yes)),
+                None => return Err(ControlFlow::Continue(Undetermined)),
             };
             let tmp_parent_scope;
             let (mut adjusted_parent_scope, mut ident) =
@@ -1078,18 +1072,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
 
             match result {
-                Err((Determined, _)) => continue,
+                Err(ControlFlow::Break(Determined) | ControlFlow::Continue(Determined)) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, glob_import.parent_scope.module) =>
                 {
                     continue;
                 }
-                Ok(_) | Err((Undetermined, _)) => return Err((Undetermined, Weak::Yes)),
+                Ok(_)
+                | Err(ControlFlow::Break(Undetermined) | ControlFlow::Continue(Undetermined)) => {
+                    return Err(ControlFlow::Continue(Undetermined));
+                }
             }
         }
 
         // No resolution and no one else can define the name - determinate error.
-        Err((Determined, Weak::No))
+        Err(ControlFlow::Break(Determined))
     }
 
     fn finalize_module_binding(
@@ -1101,11 +1098,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
-    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
+    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let Finalize { path_span, report_private, used, root_span, .. } = finalize;
 
         let Some(binding) = binding else {
-            return Err((Determined, Weak::No));
+            return Err(ControlFlow::Break(Determined));
         };
 
         if !self.is_accessible_from(binding.vis, parent_scope.module) {
@@ -1120,7 +1117,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     single_nested: path_span != root_span,
                 });
             } else {
-                return Err((Determined, Weak::No));
+                return Err(ControlFlow::Break(Determined));
             }
         }
 

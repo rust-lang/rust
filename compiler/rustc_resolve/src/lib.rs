@@ -13,6 +13,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(control_flow_into_value)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
