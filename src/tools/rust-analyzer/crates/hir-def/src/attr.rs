@@ -27,7 +27,6 @@ use crate::{
     VariantId,
     db::DefDatabase,
     item_tree::block_item_tree_query,
-    lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
 };
@@ -209,8 +208,8 @@ impl Attrs {
     }
 
     #[inline]
-    pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key(sym::lang).string_value().and_then(LangItem::from_symbol)
+    pub fn lang_item(&self) -> Option<&Symbol> {
+        self.by_key(sym::lang).string_value()
     }
 
     #[inline]

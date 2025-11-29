@@ -6,9 +6,7 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{
-    DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
-};
+use hir::{DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, Semantics};
 use ide_db::{
     FileRange, FxIndexSet, MiniCore, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -675,10 +673,10 @@ fn walk_and_push_ty(
         } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
             push_new_def(trait_.into());
         } else if let Some(tp) = t.as_type_param(db) {
-            let sized_trait = LangItem::Sized.resolve_trait(db, t.krate(db).into());
+            let sized_trait = hir::Trait::lang(db, t.krate(db), hir::LangItem::Sized);
             tp.trait_bounds(db)
                 .into_iter()
-                .filter(|&it| Some(it.into()) != sized_trait)
+                .filter(|&it| Some(it) != sized_trait)
                 .for_each(|it| push_new_def(it.into()));
         }
     });

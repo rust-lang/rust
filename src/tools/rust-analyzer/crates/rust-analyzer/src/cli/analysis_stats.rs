@@ -10,8 +10,8 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
-    Name, crate_lang_items,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasSource, HirDisplay, ModuleDef, Name,
+    crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -374,7 +374,7 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            let interner = DbInterner::new_with(db, Some(a.krate(db).base()), None);
+            let interner = DbInterner::new_no_crate(db);
             let generic_params = db.generic_params(a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()

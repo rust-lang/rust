@@ -17,7 +17,7 @@ use hir_def::{
     hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_scope::ItemInNs,
     item_tree::FieldsShape,
-    lang_item::LangItem,
+    lang_item::LangItems,
     nameres::DefMap,
     signatures::VariantFields,
     type_ref::{
@@ -61,7 +61,7 @@ use crate::{
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
     primitive,
-    utils::{self, detect_variant_from_bytes},
+    utils::{detect_variant_from_bytes, fn_traits},
 };
 
 pub trait HirWrite: fmt::Write {
@@ -309,8 +309,7 @@ pub trait HirDisplay<'db> {
         allow_opaque: bool,
     ) -> Result<String, DisplaySourceCodeError> {
         let mut result = String::new();
-        let interner =
-            DbInterner::new_with(db, Some(module_id.krate()), module_id.containing_block());
+        let interner = DbInterner::new_with(db, module_id.krate(), module_id.containing_block());
         match self.hir_fmt(&mut HirFormatter {
             db,
             interner,
@@ -390,6 +389,11 @@ impl<'db> HirFormatter<'_, 'db> {
 
     pub fn edition(&self) -> Edition {
         self.display_target.edition
+    }
+
+    #[inline]
+    pub fn lang_items(&self) -> &'db LangItems {
+        self.interner.lang_items()
     }
 
     pub fn write_joined<T: HirDisplay<'db>>(
@@ -544,7 +548,7 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
             DisplayKind::SourceCode { target_module_id, .. } => target_module_id.containing_block(),
             DisplayKind::Diagnostics | DisplayKind::Test => None,
         };
-        let interner = DbInterner::new_with(self.db, Some(krate), block);
+        let interner = DbInterner::new_with(self.db, krate, block);
         self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             interner,
@@ -1102,7 +1106,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             bounds.iter().any(|bound| match bound.skip_binder() {
                                 ExistentialPredicate::Trait(trait_ref) => {
                                     let trait_ = trait_ref.def_id.0;
-                                    fn_traits(db, trait_).any(|it| it == trait_)
+                                    fn_traits(f.lang_items()).any(|it| it == trait_)
                                 }
                                 _ => false,
                             });
@@ -1146,7 +1150,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                             let contains_impl_fn = bounds().any(|bound| {
                                 if let ClauseKind::Trait(trait_ref) = bound.kind().skip_binder() {
                                     let trait_ = trait_ref.def_id().0;
-                                    fn_traits(db, trait_).any(|it| it == trait_)
+                                    fn_traits(f.lang_items()).any(|it| it == trait_)
                                 } else {
                                     false
                                 }
@@ -1588,8 +1592,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                         ..
                     }
                     | hir_def::hir::Expr::Async { .. } => {
-                        let future_trait =
-                            LangItem::Future.resolve_trait(db, owner.module(db).krate());
+                        let future_trait = f.lang_items().Future;
                         let output = future_trait.and_then(|t| {
                             t.trait_items(db)
                                 .associated_type_by_name(&Name::new_symbol_root(sym::Output))
@@ -1799,11 +1802,6 @@ impl<'db> HirDisplay<'db> for Term<'db> {
     }
 }
 
-fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = TraitId> + '_ {
-    let krate = trait_.lookup(db).container.krate();
-    utils::fn_traits(db, krate)
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SizedByDefault {
     NotSized,
@@ -1815,7 +1813,7 @@ impl SizedByDefault {
         match self {
             Self::NotSized => false,
             Self::Sized { anchor } => {
-                let sized_trait = LangItem::Sized.resolve_trait(db, anchor);
+                let sized_trait = hir_def::lang_item::lang_items(db, anchor).Sized;
                 Some(trait_) == sized_trait
             }
         }
@@ -1868,7 +1866,7 @@ fn write_bounds_like_dyn_trait<'db>(
                     }
                 }
                 if !is_fn_trait {
-                    is_fn_trait = fn_traits(f.db, trait_).any(|it| it == trait_);
+                    is_fn_trait = fn_traits(f.lang_items()).any(|it| it == trait_);
                 }
                 if !is_fn_trait && angle_open {
                     write!(f, ">")?;
@@ -1966,7 +1964,7 @@ fn write_bounds_like_dyn_trait<'db>(
         write!(f, ">")?;
     }
     if let SizedByDefault::Sized { anchor } = default_sized {
-        let sized_trait = LangItem::Sized.resolve_trait(f.db, anchor);
+        let sized_trait = hir_def::lang_item::lang_items(f.db, anchor).Sized;
         if !is_sized {
             if !first {
                 write!(f, " + ")?;

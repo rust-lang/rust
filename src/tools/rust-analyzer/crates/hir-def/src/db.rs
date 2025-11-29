@@ -24,7 +24,6 @@ use crate::{
     hir::generics::GenericParams,
     import_map::ImportMap,
     item_tree::{ItemTree, file_item_tree_query},
-    lang_item::{self, LangItem},
     nameres::crate_def_map,
     signatures::{
         ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
@@ -253,10 +252,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     // FIXME: Make this a non-interned query.
     #[salsa::invoke_interned(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
-
-    #[salsa::transparent]
-    #[salsa::invoke(lang_item::lang_attr)]
-    fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
 
     // endregion:attrs
 

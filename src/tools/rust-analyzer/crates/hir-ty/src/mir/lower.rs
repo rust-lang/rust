@@ -12,7 +12,7 @@ use hir_def::{
         Pat, PatId, RecordFieldPat, RecordLitField,
     },
     item_tree::FieldsShape,
-    lang_item::{LangItem, LangItemTarget, lang_item},
+    lang_item::LangItems,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
 };
 use hir_expand::name::Name;
@@ -110,7 +110,7 @@ pub enum MirLowerError<'db> {
     Loop,
     /// Something that should never happen and is definitely a bug, but we don't want to panic if it happened
     ImplementationError(String),
-    LangItemNotFound(LangItem),
+    LangItemNotFound,
     MutatingRvalue,
     UnresolvedLabel,
     UnresolvedUpvar(Place<'db>),
@@ -232,7 +232,7 @@ impl MirLowerError<'_> {
             | MirLowerError::BreakWithoutLoop
             | MirLowerError::Loop
             | MirLowerError::ImplementationError(_)
-            | MirLowerError::LangItemNotFound(_)
+            | MirLowerError::LangItemNotFound
             | MirLowerError::MutatingRvalue
             | MirLowerError::UnresolvedLabel
             | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{self:?}")?,
@@ -302,7 +302,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         };
         let resolver = owner.resolver(db);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate, env.block);
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
@@ -325,6 +325,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     #[inline]
     fn interner(&self) -> DbInterner<'db> {
         self.infcx.interner
+    }
+
+    #[inline]
+    fn lang_items(&self) -> &'db LangItems {
+        self.infcx.interner.lang_items()
     }
 
     fn temp(
@@ -1814,11 +1819,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         self.drop_scopes.last_mut().unwrap().locals.push(l);
         self.push_statement(current, StatementKind::StorageLive(l).with_span(span));
         Ok(())
-    }
-
-    fn resolve_lang_item(&self, item: LangItem) -> Result<'db, LangItemTarget> {
-        let crate_id = self.owner.module(self.db).krate();
-        lang_item(self.db, crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
     }
 
     fn lower_block_to_place(

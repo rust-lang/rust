@@ -101,7 +101,7 @@ impl<'db> CapturedItem<'db> {
     }
 
     pub fn ty(&self, db: &'db dyn HirDatabase, subst: GenericArgs<'db>) -> Ty<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         self.ty.instantiate(interner, subst.split_closure_args_untupled().parent_args)
     }
 

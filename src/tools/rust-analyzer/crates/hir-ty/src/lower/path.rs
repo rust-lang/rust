@@ -1100,7 +1100,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
     explicit_self_ty: Option<Ty<'db>>,
     ctx: &mut impl GenericArgsLowerer<'db>,
 ) -> GenericArgs<'db> {
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
 
     tracing::debug!(?args_and_bindings);
 

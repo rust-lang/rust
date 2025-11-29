@@ -418,7 +418,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
 ) -> (FunctionId, GenericArgs<'db>) {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate, env.block);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
@@ -597,7 +597,7 @@ impl InherentImpls {
                         continue;
                     }
 
-                    let interner = DbInterner::new_with(db, None, None);
+                    let interner = DbInterner::new_no_crate(db);
                     let self_ty = db.impl_self_ty(impl_id);
                     let self_ty = self_ty.instantiate_identity();
                     if let Some(self_ty) =
@@ -723,7 +723,7 @@ impl TraitImpls {
                         None => continue,
                     };
                     let self_ty = trait_ref.self_ty();
-                    let interner = DbInterner::new_with(db, None, None);
+                    let interner = DbInterner::new_no_crate(db);
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
                         Some(self_ty) => {

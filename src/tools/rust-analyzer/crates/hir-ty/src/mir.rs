@@ -134,7 +134,7 @@ impl<'db> Operand<'db> {
         func_id: hir_def::FunctionId,
         generic_args: GenericArgs<'db>,
     ) -> Operand<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = Ty::new_fn_def(interner, CallableDefId::FunctionId(func_id).into(), generic_args);
         Operand::from_bytes(Box::default(), ty)
     }

@@ -8,7 +8,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
-    lang_item::LangItem,
+    lang_item::LangItems,
     resolver::{HasResolver, ValueNs},
 };
 use intern::sym;
@@ -79,7 +79,7 @@ impl BodyValidationDiagnostic {
         let infer = db.infer(owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate, env.block);
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));
         let mut validator = ExprValidator {
@@ -187,7 +187,7 @@ impl<'db> ExprValidator<'db> {
             };
 
             let checker = filter_map_next_checker.get_or_insert_with(|| {
-                FilterMapNextChecker::new(&self.owner.resolver(self.db()), self.db())
+                FilterMapNextChecker::new(self.infcx.interner.lang_items(), self.db())
             });
 
             if checker.check(call_id, receiver, &callee).is_some() {
@@ -497,11 +497,9 @@ struct FilterMapNextChecker<'db> {
 }
 
 impl<'db> FilterMapNextChecker<'db> {
-    fn new(resolver: &hir_def::resolver::Resolver<'db>, db: &'db dyn HirDatabase) -> Self {
+    fn new(lang_items: &'db LangItems, db: &'db dyn HirDatabase) -> Self {
         // Find and store the FunctionIds for Iterator::filter_map and Iterator::next
-        let (next_function_id, filter_map_function_id) = match LangItem::IteratorNext
-            .resolve_function(db, resolver.krate())
-        {
+        let (next_function_id, filter_map_function_id) = match lang_items.IteratorNext {
             Some(next_function_id) => (
                 Some(next_function_id),
                 match next_function_id.lookup(db).container {

@@ -38,7 +38,6 @@
 use hir_def::{
     CallableDefId,
     hir::{ExprId, ExprOrPatId},
-    lang_item::LangItem,
     signatures::FunctionSignature,
 };
 use intern::sym;
@@ -612,10 +611,8 @@ where
             return Err(TypeError::Mismatch);
         }
 
-        let traits = (
-            LangItem::Unsize.resolve_trait(self.db(), self.env().krate),
-            LangItem::CoerceUnsized.resolve_trait(self.db(), self.env().krate),
-        );
+        let lang_items = self.interner().lang_items();
+        let traits = (lang_items.Unsize, lang_items.CoerceUnsized);
         let (Some(unsize_did), Some(coerce_unsized_did)) = traits else {
             debug!("missing Unsize or CoerceUnsized traits");
             return Err(TypeError::Mismatch);
@@ -1578,7 +1575,7 @@ fn coerce<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate, env.block);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let ((ty1_with_vars, ty2_with_vars), vars) = infcx.instantiate_canonical(tys);
 

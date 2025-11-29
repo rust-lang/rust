@@ -59,6 +59,7 @@ use hir_def::{
         generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     },
     item_tree::ImportAlias,
+    lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{
         assoc::TraitItems,
@@ -91,7 +92,7 @@ use hir_ty::{
         PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
-    traits::{self, FnTrait, is_inherent_impl_coherent, structurally_normalize_ty},
+    traits::{self, is_inherent_impl_coherent, structurally_normalize_ty},
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -138,7 +139,7 @@ pub use {
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         find_path::PrefixKind,
         import_map,
-        lang_item::{LangItem, crate_lang_items},
+        lang_item::{LangItemEnum as LangItem, crate_lang_items},
         nameres::{DefMap, ModuleSource, crate_def_map},
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
@@ -765,7 +766,7 @@ impl Module {
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
 
-        let interner = DbInterner::new_with(db, Some(self.id.krate()), self.id.containing_block());
+        let interner = DbInterner::new_with(db, self.id.krate(), self.id.containing_block());
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
         let mut impl_assoc_items_scratch = vec![];
@@ -818,7 +819,7 @@ impl Module {
             let drop_maybe_dangle = (|| {
                 // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
                 let trait_ = trait_?;
-                let drop_trait = LangItem::Drop.resolve_trait(db, self.krate().into())?;
+                let drop_trait = interner.lang_items().Drop?;
                 if drop_trait != trait_.into() {
                     return None;
                 }
@@ -1282,8 +1283,7 @@ pub struct InstantiatedField<'db> {
 impl<'db> InstantiatedField<'db> {
     /// Returns the type as in the signature of the struct.
     pub fn ty(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
-        let krate = self.inner.krate(db);
-        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+        let interner = DbInterner::new_no_crate(db);
 
         let var_id = self.inner.parent.into();
         let field = db.field_types(var_id)[self.inner.id];
@@ -1305,7 +1305,7 @@ impl TupleField {
     }
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = db
             .infer(self.owner)
             .tuple_field_access_type(self.tuple)
@@ -1381,7 +1381,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent_enum(db).id.into(),
         };
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, def_id.into(), generics.map(|ty| ty.ty));
         let ty = db.field_types(var_id)[self.id].instantiate(interner, args);
         Type::new(db, var_id, ty)
@@ -1506,8 +1506,7 @@ impl<'db> InstantiatedStruct<'db> {
     }
 
     pub fn ty(self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
-        let krate = self.inner.krate(db);
-        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+        let interner = DbInterner::new_no_crate(db);
 
         let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
@@ -1605,7 +1604,7 @@ impl Enum {
 
     /// The type of the enum variant bodies.
     pub fn variant_body_ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         Type::new_for_crate(
             self.id.lookup(db).container.krate(),
             match db.enum_signature(self.id).variant_body_type() {
@@ -1669,8 +1668,7 @@ pub struct InstantiatedEnum<'db> {
 
 impl<'db> InstantiatedEnum<'db> {
     pub fn ty(self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
-        let krate = self.inner.krate(db);
-        let interner = DbInterner::new_with(db, Some(krate.base()), None);
+        let interner = DbInterner::new_no_crate(db);
 
         let ty = db.ty(self.inner.id.into());
         TypeNs::new(db, self.inner.id, ty.instantiate(interner, self.args))
@@ -1816,7 +1814,7 @@ impl Adt {
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         let env = db.trait_environment(self.into());
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_no_crate(db);
         let adt_id = AdtId::from(self);
         let args = GenericArgs::for_item_with_defaults(interner, adt_id.into(), |_, id, _| {
             GenericArg::error_from_id(interner, id)
@@ -1841,7 +1839,7 @@ impl Adt {
         args: impl IntoIterator<Item = Type<'db>>,
     ) -> Type<'db> {
         let id = AdtId::from(self);
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = Ty::new_adt(
             interner,
             id,
@@ -2277,7 +2275,7 @@ impl Function {
 
     pub fn fn_ptr_type(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.resolver(db);
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         // FIXME: This shouldn't be `instantiate_identity()`, we shouldn't leak `TyKind::Param`s.
         let callable_sig = db.callable_item_signature(self.id.into()).instantiate_identity();
         let ty = Ty::new_fn_ptr(interner, callable_sig);
@@ -2305,10 +2303,10 @@ impl Function {
         generics: impl Iterator<Item = Type<'db>>,
     ) -> Type<'db> {
         let resolver = self.id.resolver(db);
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, self.id.into(), generics.map(|ty| ty.ty));
 
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = db
             .callable_item_signature(self.id.into())
             .instantiate(interner, args)
@@ -2396,7 +2394,7 @@ impl Function {
         generics: impl Iterator<Item = Type<'db>>,
     ) -> Vec<Param<'db>> {
         let environment = db.trait_environment(self.id.into());
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, self.id.into(), generics.map(|ty| ty.ty));
         let callable_sig =
             db.callable_item_signature(self.id.into()).instantiate(interner, args).skip_binder();
@@ -2439,11 +2437,11 @@ impl Function {
 
         let ret_type = self.ret_type(db);
         let Some(impl_traits) = ret_type.as_impl_traits(db) else { return false };
-        let Some(future_trait_id) = LangItem::Future.resolve_trait(db, self.ty(db).env.krate)
-        else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.krate(db).id);
+        let Some(future_trait_id) = lang_items.Future else {
             return false;
         };
-        let Some(sized_trait_id) = LangItem::Sized.resolve_trait(db, self.ty(db).env.krate) else {
+        let Some(sized_trait_id) = lang_items.Sized else {
             return false;
         };
 
@@ -2547,7 +2545,7 @@ impl Function {
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
     ) -> Result<String, ConstEvalError<'_>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let body = db.monomorphized_mir_body(
             self.id.into(),
             GenericArgs::new_from_iter(interner, []),
@@ -2704,7 +2702,7 @@ impl SelfParam {
         db: &'db dyn HirDatabase,
         generics: impl Iterator<Item = Type<'db>>,
     ) -> Type<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(interner, self.func.into(), generics.map(|ty| ty.ty));
         let callable_sig =
             db.callable_item_signature(self.func.into()).instantiate(interner, args).skip_binder();
@@ -2804,7 +2802,7 @@ impl Const {
 
     /// Evaluate the constant.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
         db.const_eval(self.id, GenericArgs::new_from_iter(interner, []), None)
             .map(|it| EvaluatedConst { const_: it, def: self.id.into(), ty })
@@ -2908,8 +2906,12 @@ pub struct Trait {
 }
 
 impl Trait {
-    pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
-        LangItem::from_name(name)?.resolve_trait(db, krate.into()).map(Into::into)
+    pub fn lang(db: &dyn HirDatabase, krate: Crate, lang_item: LangItem) -> Option<Trait> {
+        let lang_items = hir_def::lang_item::lang_items(db, krate.id);
+        match lang_item.from_lang_items(lang_items)? {
+            LangItemTarget::TraitId(it) => Some(it.into()),
+            _ => None,
+        }
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -3076,7 +3078,7 @@ impl BuiltinType {
 
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
         let core = Crate::core(db).map(|core| core.id).unwrap_or_else(|| db.all_crates()[0]);
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         Type::new_for_crate(core, Ty::from_builtin_type(interner, self.inner))
     }
 
@@ -4208,7 +4210,7 @@ impl TypeParam {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.parent().resolver(db);
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let index = hir_ty::param_idx(db, self.id.into()).unwrap();
         let ty = Ty::new_param(interner, self.id, index as u32);
         Type::new_with_resolver_inner(db, &resolver, ty)
@@ -4412,9 +4414,12 @@ impl Impl {
     /// blanket impls, and only does a shallow type constructor check. In fact, this should've probably been on `Adt`
     /// etc., and not on `Type`. If you would want to create a precise list of all impls applying to a type,
     /// you would need to include blanket impls, and try to prove to predicates for each candidate.
-    pub fn all_for_type<'db>(db: &'db dyn HirDatabase, Type { ty, env }: Type<'db>) -> Vec<Impl> {
+    pub fn all_for_type<'db>(
+        db: &'db dyn HirDatabase,
+        Type { ty, env: _ }: Type<'db>,
+    ) -> Vec<Impl> {
         let mut result = Vec::new();
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_no_crate(db);
         let Some(simplified_ty) =
             fast_reject::simplify_type(interner, ty, fast_reject::TreatParams::AsRigid)
         else {
@@ -4591,7 +4596,7 @@ pub struct Closure<'db> {
 
 impl<'db> Closure<'db> {
     fn as_ty(&self, db: &'db dyn HirDatabase) -> Ty<'db> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         match self.id {
             AnyClosureId::ClosureId(id) => Ty::new_closure(interner, id.into(), self.subst),
             AnyClosureId::CoroutineClosureId(id) => {
@@ -4650,7 +4655,7 @@ impl<'db> Closure<'db> {
                 let owner = db.lookup_intern_closure(id).0;
                 let infer = db.infer(owner);
                 let info = infer.closure_info(id);
-                info.1
+                info.1.into()
             }
             AnyClosureId::CoroutineClosureId(_id) => {
                 // FIXME: Infer kind for coroutine closures.
@@ -4661,6 +4666,71 @@ impl<'db> Closure<'db> {
                 }
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FnTrait {
+    FnOnce,
+    FnMut,
+    Fn,
+
+    AsyncFnOnce,
+    AsyncFnMut,
+    AsyncFn,
+}
+
+impl From<traits::FnTrait> for FnTrait {
+    fn from(value: traits::FnTrait) -> Self {
+        match value {
+            traits::FnTrait::FnOnce => FnTrait::FnOnce,
+            traits::FnTrait::FnMut => FnTrait::FnMut,
+            traits::FnTrait::Fn => FnTrait::Fn,
+            traits::FnTrait::AsyncFnOnce => FnTrait::AsyncFnOnce,
+            traits::FnTrait::AsyncFnMut => FnTrait::AsyncFnMut,
+            traits::FnTrait::AsyncFn => FnTrait::AsyncFn,
+        }
+    }
+}
+
+impl fmt::Display for FnTrait {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FnTrait::FnOnce => write!(f, "FnOnce"),
+            FnTrait::FnMut => write!(f, "FnMut"),
+            FnTrait::Fn => write!(f, "Fn"),
+            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
+            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
+            FnTrait::AsyncFn => write!(f, "AsyncFn"),
+        }
+    }
+}
+
+impl FnTrait {
+    pub const fn function_name(&self) -> &'static str {
+        match self {
+            FnTrait::FnOnce => "call_once",
+            FnTrait::FnMut => "call_mut",
+            FnTrait::Fn => "call",
+            FnTrait::AsyncFnOnce => "async_call_once",
+            FnTrait::AsyncFnMut => "async_call_mut",
+            FnTrait::AsyncFn => "async_call",
+        }
+    }
+
+    pub fn lang_item(self) -> LangItem {
+        match self {
+            FnTrait::FnOnce => LangItem::FnOnce,
+            FnTrait::FnMut => LangItem::FnMut,
+            FnTrait::Fn => LangItem::Fn,
+            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
+            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
+            FnTrait::AsyncFn => LangItem::AsyncFn,
+        }
+    }
+
+    pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<Trait> {
+        Trait::lang(db, krate, self.lang_item())
     }
 }
 
@@ -4821,7 +4891,7 @@ impl<'db> Type<'db> {
     }
 
     fn from_def(db: &'db dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Self {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let ty = db.ty(def.into());
         let def = match def.into() {
             TyDefId::AdtId(it) => GenericDefId::AdtId(it),
@@ -4844,7 +4914,7 @@ impl<'db> Type<'db> {
         db: &'db dyn HirDatabase,
         def: impl Into<ValueTyDefId> + HasResolver,
     ) -> Self {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let Some(ty) = db.value_ty(def.into()) else {
             return Type::new(db, def, Ty::new_error(interner, ErrorGuaranteed));
         };
@@ -4900,7 +4970,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn contains_reference(&self, db: &'db dyn HirDatabase) -> bool {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         return self.ty.visit_with(&mut Visitor { interner }).is_break();
 
         fn is_phantom_data(db: &dyn HirDatabase, adt_id: AdtId) -> bool {
@@ -5052,14 +5122,15 @@ impl<'db> Type<'db> {
     /// `std::future::Future` and returns the `Output` associated type.
     /// This function is used in `.await` syntax completion.
     pub fn into_future_output(&self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let trait_ = LangItem::IntoFutureIntoFuture
-            .resolve_function(db, self.env.krate)
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let trait_ = lang_items
+            .IntoFutureIntoFuture
             .and_then(|into_future_fn| {
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
                 let into_future_trait = assoc_item.container_or_implemented_trait(db)?;
                 Some(into_future_trait.id)
             })
-            .or_else(|| LangItem::Future.resolve_trait(db, self.env.krate))?;
+            .or(lang_items.Future)?;
 
         if !traits::implements_trait_unique(self.ty, db, self.env.clone(), trait_) {
             return None;
@@ -5072,13 +5143,15 @@ impl<'db> Type<'db> {
 
     /// This does **not** resolve `IntoFuture`, only `Future`.
     pub fn future_output(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let future_output = LangItem::FutureOutput.resolve_type_alias(db, self.env.krate)?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let future_output = lang_items.FutureOutput?;
         self.normalize_trait_assoc_type(db, &[], future_output.into())
     }
 
     /// This does **not** resolve `IntoIterator`, only `Iterator`.
     pub fn iterator_item(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let iterator_trait = LangItem::Iterator.resolve_trait(db, self.env.krate)?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let iterator_trait = lang_items.Iterator?;
         let iterator_item = iterator_trait
             .trait_items(db)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
@@ -5086,7 +5159,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn impls_iterator(self, db: &'db dyn HirDatabase) -> bool {
-        let Some(iterator_trait) = LangItem::Iterator.resolve_trait(db, self.env.krate) else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let Some(iterator_trait) = lang_items.Iterator else {
             return false;
         };
         traits::implements_trait_unique(self.ty, db, self.env.clone(), iterator_trait)
@@ -5094,13 +5168,12 @@ impl<'db> Type<'db> {
 
     /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
     pub fn into_iterator_iter(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
-        let trait_ = LangItem::IntoIterIntoIter.resolve_function(db, self.env.krate).and_then(
-            |into_iter_fn| {
-                let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
-                let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
-                Some(into_iter_trait.id)
-            },
-        )?;
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let trait_ = lang_items.IntoIterIntoIter.and_then(|into_iter_fn| {
+            let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
+            let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
+            Some(into_iter_trait.id)
+        })?;
 
         if !traits::implements_trait_unique(self.ty, db, self.env.clone(), trait_) {
             return None;
@@ -5117,7 +5190,8 @@ impl<'db> Type<'db> {
     /// This function can be used to check if a particular type is callable, since FnOnce is a
     /// supertrait of Fn and FnMut, so all callable types implements at least FnOnce.
     pub fn impls_fnonce(&self, db: &'db dyn HirDatabase) -> bool {
-        let fnonce_trait = match FnTrait::FnOnce.get_id(db, self.env.krate) {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let fnonce_trait = match lang_items.FnOnce {
             Some(it) => it,
             None => return false,
         };
@@ -5127,7 +5201,7 @@ impl<'db> Type<'db> {
 
     // FIXME: Find better API that also handles const generics
     pub fn impls_trait(&self, db: &'db dyn HirDatabase, trait_: Trait, args: &[Type<'db>]) -> bool {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let args = generic_args_from_tys(
             interner,
             trait_.id.into(),
@@ -5142,7 +5216,7 @@ impl<'db> Type<'db> {
         args: &[Type<'db>],
         alias: TypeAlias,
     ) -> Option<Type<'db>> {
-        let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
+        let interner = DbInterner::new_with(db, self.env.krate, self.env.block);
         let args = generic_args_from_tys(
             interner,
             alias.id.into(),
@@ -5161,14 +5235,15 @@ impl<'db> Type<'db> {
     }
 
     pub fn is_copy(&self, db: &'db dyn HirDatabase) -> bool {
-        let Some(copy_trait) = LangItem::Copy.resolve_trait(db, self.env.krate) else {
+        let lang_items = hir_def::lang_item::lang_items(db, self.env.krate);
+        let Some(copy_trait) = lang_items.Copy else {
             return false;
         };
         self.impls_trait(db, copy_trait.into(), &[])
     }
 
     pub fn as_callable(&self, db: &'db dyn HirDatabase) -> Option<Callable<'db>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let callee = match self.ty.kind() {
             TyKind::Closure(id, subst) => Callee::Closure(id.0, subst),
             TyKind::CoroutineClosure(id, subst) => Callee::CoroutineClosure(id.0, subst),
@@ -5242,7 +5317,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn fields(&self, db: &'db dyn HirDatabase) -> Vec<(Field, Self)> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let (variant_id, substs) = match self.ty.kind() {
             TyKind::Adt(adt_def, substs) => {
                 let id = match adt_def.def_id().0 {
@@ -5299,7 +5374,7 @@ impl<'db> Type<'db> {
     }
 
     fn autoderef_(&self, db: &'db dyn HirDatabase) -> impl Iterator<Item = Ty<'db>> {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(interner, &self.ty);
         autoderef(db, self.env.clone(), canonical)
@@ -5335,7 +5410,7 @@ impl<'db> Type<'db> {
             }
         };
 
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let Some(simplified_type) =
             fast_reject::simplify_type(interner, self.ty, fast_reject::TreatParams::AsRigid)
         else {
@@ -5484,7 +5559,7 @@ impl<'db> Type<'db> {
         f: impl FnOnce(&MethodResolutionContext<'_, 'db>) -> R,
     ) -> R {
         let module = resolver.module();
-        let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+        let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         let unstable_features =
             MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
@@ -5781,7 +5856,7 @@ impl<'db> Type<'db> {
     /// Note that we consider placeholder types to unify with everything.
     /// For example `Option<T>` and `Option<U>` unify although there is unresolved goal `T = U`.
     pub fn could_unify_with(&self, db: &'db dyn HirDatabase, other: &Type<'db>) -> bool {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let tys = hir_ty::replace_errors_with_variables(interner, &(self.ty, other.ty));
         hir_ty::could_unify(db, self.env.clone(), &tys)
     }
@@ -5791,13 +5866,13 @@ impl<'db> Type<'db> {
     /// This means that placeholder types are not considered to unify if there are any bounds set on
     /// them. For example `Option<T>` and `Option<U>` do not unify as we cannot show that `T = U`
     pub fn could_unify_with_deeply(&self, db: &'db dyn HirDatabase, other: &Type<'db>) -> bool {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let tys = hir_ty::replace_errors_with_variables(interner, &(self.ty, other.ty));
         hir_ty::could_unify_deeply(db, self.env.clone(), &tys)
     }
 
     pub fn could_coerce_to(&self, db: &'db dyn HirDatabase, to: &Type<'db>) -> bool {
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         let tys = hir_ty::replace_errors_with_variables(interner, &(self.ty, to.ty));
         hir_ty::could_coerce(db, self.env.clone(), &tys)
     }
@@ -5823,7 +5898,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn drop_glue(&self, db: &'db dyn HirDatabase) -> DropGlue {
-        let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
+        let interner = DbInterner::new_with(db, self.env.krate, self.env.block);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         hir_ty::drop::has_drop_glue(&infcx, self.ty, self.env.clone())
     }
@@ -5913,7 +5988,7 @@ enum Callee<'db> {
     Closure(InternedClosureId, GenericArgs<'db>),
     CoroutineClosure(InternedCoroutineId, GenericArgs<'db>),
     FnPtr,
-    FnImpl(FnTrait),
+    FnImpl(traits::FnTrait),
 }
 
 pub enum CallableKind<'db> {
@@ -5940,7 +6015,7 @@ impl<'db> Callable<'db> {
                 CallableKind::Closure(Closure { id: AnyClosureId::CoroutineClosureId(id), subst })
             }
             Callee::FnPtr => CallableKind::FnPtr,
-            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_),
+            Callee::FnImpl(fn_) => CallableKind::FnImpl(fn_.into()),
         }
     }
     pub fn receiver_param(&self, db: &'db dyn HirDatabase) -> Option<(SelfParam, Type<'db>)> {

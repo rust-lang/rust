@@ -1,6 +1,6 @@
 //! Utilities for computing drop info about types.
 
-use hir_def::{AdtId, lang_item::LangItem, signatures::StructFlags};
+use hir_def::{AdtId, signatures::StructFlags};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use stdx::never;
@@ -8,22 +8,22 @@ use triomphe::Arc;
 
 use crate::{
     TraitEnvironment, consteval,
-    db::HirDatabase,
     method_resolution::TraitImpls,
     next_solver::{
-        SimplifiedType, Ty, TyKind,
+        DbInterner, SimplifiedType, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
 };
 
-fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
+fn has_destructor(interner: DbInterner<'_>, adt: AdtId) -> bool {
+    let db = interner.db;
     let module = match adt {
         AdtId::EnumId(id) => db.lookup_intern_enum(id).container,
         AdtId::StructId(id) => db.lookup_intern_struct(id).container,
         AdtId::UnionId(id) => db.lookup_intern_union(id).container,
     };
-    let Some(drop_trait) = LangItem::Drop.resolve_trait(db, module.krate()) else {
+    let Some(drop_trait) = interner.lang_items().Drop else {
         return false;
     };
     let impls = match module.containing_block() {
@@ -73,7 +73,7 @@ fn has_drop_glue_impl<'db>(
     match ty.kind() {
         TyKind::Adt(adt_def, subst) => {
             let adt_id = adt_def.def_id().0;
-            if has_destructor(db, adt_id) {
+            if has_destructor(infcx.interner, adt_id) {
                 return DropGlue::HasDropGlue;
             }
             match adt_id {

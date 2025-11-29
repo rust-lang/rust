@@ -37,7 +37,7 @@ use hir_def::{
     ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
-    lang_item::{LangItem, LangItemTarget, lang_item},
+    lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     signatures::{ConstSignature, StaticSignature},
@@ -168,7 +168,7 @@ pub(crate) fn infer_cycle_result(
 ) -> Arc<InferenceResult<'_>> {
     Arc::new(InferenceResult {
         has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_with(db, None, None), ErrorGuaranteed))
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
     })
 }
 
@@ -834,6 +834,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) edition: Edition,
     pub(crate) generic_def: GenericDefId,
     pub(crate) table: unify::InferenceTable<'db>,
+    pub(crate) lang_items: &'db LangItems,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult<'db>,
@@ -939,6 +940,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             unstable_features: MethodResolutionUnstableFeatures::from_def_map(
                 resolver.top_level_def_map(),
             ),
+            lang_items: table.interner().lang_items(),
             edition: resolver.krate().data(db).edition,
             table,
             tuple_field_accesses_rev: Default::default(),
@@ -1854,21 +1856,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         }
     }
 
-    fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
-        let krate = self.resolver.krate();
-        lang_item(self.db, krate, item)
-    }
-
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
         trait_.trait_items(self.db).associated_type_by_name(&Name::new_symbol_root(sym::Output))
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let ItemContainerId::TraitId(trait_) = self
-            .resolve_lang_item(LangItem::IntoFutureIntoFuture)?
-            .as_function()?
-            .lookup(self.db)
-            .container
+        let ItemContainerId::TraitId(trait_) =
+            self.lang_items.IntoFutureIntoFuture?.lookup(self.db).container
         else {
             return None;
         };
@@ -1876,42 +1870,42 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::OwnedBox)?.as_struct()?;
+        let struct_ = self.lang_items.OwnedBox?;
         Some(struct_.into())
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeFull)?.as_struct()?;
+        let struct_ = self.lang_items.RangeFull?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::Range)?.as_struct()?;
+        let struct_ = self.lang_items.Range?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeInclusiveStruct)?.as_struct()?;
+        let struct_ = self.lang_items.RangeInclusiveStruct?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeFrom)?.as_struct()?;
+        let struct_ = self.lang_items.RangeFrom?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeTo)?.as_struct()?;
+        let struct_ = self.lang_items.RangeTo?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeToInclusive)?.as_struct()?;
+        let struct_ = self.lang_items.RangeToInclusive?;
         Some(struct_.into())
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
+        let struct_ = self.lang_items.VaList?;
         Some(struct_.into())
     }
 

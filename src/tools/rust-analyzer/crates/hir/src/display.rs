@@ -6,7 +6,6 @@ use hir_def::{
     expr_store::ExpressionStore,
     hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_tree::FieldsShape,
-    lang_item::LangItem,
     signatures::{StaticFlags, TraitFlags},
     type_ref::{TypeBound, TypeRef, TypeRefId},
 };
@@ -520,7 +519,7 @@ impl<'db> HirDisplay<'db> for TypeParam {
             return Ok(());
         }
 
-        let sized_trait = LangItem::Sized.resolve_trait(f.db, krate);
+        let sized_trait = f.lang_items().Sized;
         let has_only_sized_bound =
             predicates.iter().all(move |pred| match pred.kind().skip_binder() {
                 ClauseKind::Trait(it) => Some(it.def_id().0) == sized_trait,

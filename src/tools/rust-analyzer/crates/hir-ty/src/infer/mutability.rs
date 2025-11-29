@@ -18,7 +18,6 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn infer_mut_expr(&mut self, tgt_expr: ExprId, mut mutability: Mutability) {
-        let krate = self.krate();
         if let Some(adjustments) = self.result.expr_adjustments.get_mut(&tgt_expr) {
             let mut adjustments = adjustments.iter_mut().rev().peekable();
             while let Some(adj) = adjustments.next() {
@@ -32,7 +31,6 @@ impl<'db> InferenceContext<'_, 'db> {
                             };
                             if let Some(infer_ok) = Self::try_mutable_overloaded_place_op(
                                 &self.table,
-                                krate,
                                 source_ty,
                                 None,
                                 PlaceOp::Deref,

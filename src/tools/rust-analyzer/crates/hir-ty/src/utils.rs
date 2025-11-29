@@ -3,15 +3,12 @@
 
 use std::cell::LazyCell;
 
-use base_db::{
-    Crate,
-    target::{self, TargetData},
-};
+use base_db::target::{self, TargetData};
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId,
     db::DefDatabase,
     hir::generics::WherePredicate,
-    lang_item::LangItem,
+    lang_item::LangItems,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
 };
@@ -27,10 +24,8 @@ use crate::{
     mir::pad16,
 };
 
-pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
-    [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
-        .into_iter()
-        .filter_map(move |lang| lang.resolve_trait(db, krate))
+pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
+    [lang_items.Fn, lang_items.FnMut, lang_items.FnOnce].into_iter().flatten()
 }
 
 /// Returns an iterator over the direct super traits (including the trait itself).

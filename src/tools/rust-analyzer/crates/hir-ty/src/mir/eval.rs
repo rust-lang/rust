@@ -9,7 +9,7 @@ use hir_def::{
     Lookup, StaticId, VariantId,
     expr_store::HygieneId,
     item_tree::FieldsShape,
-    lang_item::LangItem,
+    lang_item::LangItems,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
     signatures::{StaticFlags, StructFlags},
@@ -641,8 +641,9 @@ impl<'db> Evaluator<'db> {
             Err(e) => return Err(MirEvalError::TargetDataLayoutNotAvailable(e)),
         };
         let cached_ptr_size = target_data_layout.pointer_size().bytes_usize();
-        let interner = DbInterner::new_with(db, Some(crate_id), module.containing_block());
+        let interner = DbInterner::new_with(db, crate_id, module.containing_block());
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+        let lang_items = interner.lang_items();
         Ok(Evaluator {
             target_data_layout,
             stack: vec![0],
@@ -667,13 +668,13 @@ impl<'db> Evaluator<'db> {
             mir_or_dyn_index_cache: RefCell::new(Default::default()),
             unused_locals_store: RefCell::new(Default::default()),
             cached_ptr_size,
-            cached_fn_trait_func: LangItem::Fn
-                .resolve_trait(db, crate_id)
+            cached_fn_trait_func: lang_items
+                .Fn
                 .and_then(|x| x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call))),
-            cached_fn_mut_trait_func: LangItem::FnMut.resolve_trait(db, crate_id).and_then(|x| {
+            cached_fn_mut_trait_func: lang_items.FnMut.and_then(|x| {
                 x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_mut))
             }),
-            cached_fn_once_trait_func: LangItem::FnOnce.resolve_trait(db, crate_id).and_then(|x| {
+            cached_fn_once_trait_func: lang_items.FnOnce.and_then(|x| {
                 x.trait_items(db).method_by_name(&Name::new_symbol_root(sym::call_once))
             }),
             infcx,
@@ -683,6 +684,11 @@ impl<'db> Evaluator<'db> {
     #[inline]
     fn interner(&self) -> DbInterner<'db> {
         self.infcx.interner
+    }
+
+    #[inline]
+    fn lang_items(&self) -> &'db LangItems {
+        self.infcx.interner.lang_items()
     }
 
     fn place_addr(&self, p: &Place<'db>, locals: &Locals<'db>) -> Result<'db, Address> {
@@ -2864,7 +2870,7 @@ impl<'db> Evaluator<'db> {
         span: MirSpan,
     ) -> Result<'db, ()> {
         let Some(drop_fn) = (|| {
-            let drop_trait = LangItem::Drop.resolve_trait(self.db, self.crate_id)?;
+            let drop_trait = self.lang_items().Drop?;
             drop_trait.trait_items(self.db).method_by_name(&Name::new_symbol_root(sym::drop))
         })() else {
             // in some tests we don't have drop trait in minicore, and

@@ -3,7 +3,7 @@
 //!
 use std::cmp::{self, Ordering};
 
-use hir_def::{CrateRootModuleId, resolver::HasResolver, signatures::FunctionSignature};
+use hir_def::signatures::FunctionSignature;
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
@@ -14,8 +14,8 @@ use crate::{
     drop::{DropGlue, has_drop_glue},
     mir::eval::{
         Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay,
-        InternedClosure, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId, LangItem,
-        Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, pad16,
+        InternedClosure, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals,
+        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, pad16,
     },
     next_solver::Region,
 };
@@ -36,6 +36,13 @@ macro_rules! not_supported {
     ($it: expr) => {
         return Err(MirEvalError::NotSupported(format!($it)))
     };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum EvalLangItem {
+    BeginPanic,
+    SliceLen,
+    DropInPlace,
 }
 
 impl<'db> Evaluator<'db> {
@@ -105,7 +112,7 @@ impl<'db> Evaluator<'db> {
             return Ok(true);
         }
         if let ItemContainerId::TraitId(t) = def.lookup(self.db).container
-            && self.db.lang_attr(t.into()) == Some(LangItem::Clone)
+            && Some(t) == self.lang_items().Clone
         {
             let [self_ty] = generic_args.as_slice() else {
                 not_supported!("wrong generic arg count for clone");
@@ -131,12 +138,8 @@ impl<'db> Evaluator<'db> {
         def: FunctionId,
     ) -> Result<'db, Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
-        if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver = CrateRootModuleId::from(self.crate_id).resolver(self.db);
-
-            let Some(const_panic_fmt) =
-                LangItem::ConstPanicFmt.resolve_function(self.db, resolver.krate())
-            else {
+        if Some(def) == self.lang_items().PanicFmt {
+            let Some(const_panic_fmt) = self.lang_items().ConstPanicFmt else {
                 not_supported!("const_panic_fmt lang item not found or not a function");
             };
             return Ok(Some(const_panic_fmt));
@@ -286,19 +289,26 @@ impl<'db> Evaluator<'db> {
         Ok(())
     }
 
-    fn detect_lang_function(&self, def: FunctionId) -> Option<LangItem> {
-        use LangItem::*;
+    fn detect_lang_function(&self, def: FunctionId) -> Option<EvalLangItem> {
+        use EvalLangItem::*;
+        let lang_items = self.lang_items();
         let attrs = self.db.attrs(def.into());
 
         if attrs.by_key(sym::rustc_const_panic_str).exists() {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
-            return Some(LangItem::BeginPanic);
+            return Some(BeginPanic);
         }
 
-        let candidate = attrs.lang_item()?;
         // We want to execute these functions with special logic
         // `PanicFmt` is not detected here as it's redirected later.
-        if [BeginPanic, SliceLen, DropInPlace].contains(&candidate) {
+        if let Some((_, candidate)) = [
+            (lang_items.BeginPanic, BeginPanic),
+            (lang_items.SliceLen, SliceLen),
+            (lang_items.DropInPlace, DropInPlace),
+        ]
+        .iter()
+        .find(|&(candidate, _)| candidate == Some(def))
+        {
             return Some(candidate);
         }
 
@@ -307,13 +317,13 @@ impl<'db> Evaluator<'db> {
 
     fn exec_lang_item(
         &mut self,
-        it: LangItem,
+        it: EvalLangItem,
         generic_args: GenericArgs<'db>,
         args: &[IntervalAndTy<'db>],
         locals: &Locals<'db>,
         span: MirSpan,
     ) -> Result<'db, Vec<u8>> {
-        use LangItem::*;
+        use EvalLangItem::*;
         let mut args = args.iter();
         match it {
             BeginPanic => {
@@ -374,7 +384,6 @@ impl<'db> Evaluator<'db> {
                 )?;
                 Ok(vec![])
             }
-            it => not_supported!("Executing lang item {it:?}"),
         }
     }
 
@@ -1219,7 +1228,7 @@ impl<'db> Evaluator<'db> {
                     let addr = tuple.interval.addr.offset(offset);
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
-                if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id)
+                if let Some(target) = self.lang_items().FnOnce
                     && let Some(def) = target
                         .trait_items(self.db)
                         .method_by_name(&Name::new_symbol_root(sym::call_once))
@@ -1329,7 +1338,7 @@ impl<'db> Evaluator<'db> {
                 {
                     result = (l as i8).cmp(&(r as i8));
                 }
-                if let Some(e) = LangItem::Ordering.resolve_enum(self.db, self.crate_id) {
+                if let Some(e) = self.lang_items().Ordering {
                     let ty = self.db.ty(e.into()).skip_binder();
                     let r = self.compute_discriminant(ty, &[result as i8 as u8])?;
                     destination.write_from_bytes(self, &r.to_le_bytes()[0..destination.size])?;

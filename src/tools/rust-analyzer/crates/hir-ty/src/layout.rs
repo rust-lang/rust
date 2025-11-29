@@ -143,7 +143,7 @@ fn layout_of_simd_ty<'db>(
     let Some(TyKind::Array(e_ty, e_len)) = fields
         .next()
         .filter(|_| fields.next().is_none())
-        .map(|f| (*f.1).instantiate(DbInterner::new_with(db, None, None), args).kind())
+        .map(|f| (*f.1).instantiate(DbInterner::new_no_crate(db), args).kind())
     else {
         return Err(LayoutError::InvalidSimdType);
     };
@@ -161,7 +161,7 @@ pub fn layout_of_ty_query<'db>(
     trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
-    let interner = DbInterner::new_with(db, Some(krate), trait_env.block);
+    let interner = DbInterner::new_with(db, krate, trait_env.block);
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
@@ -401,7 +401,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: &GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
+    db.field_types(def)[fd].instantiate(DbInterner::new_no_crate(db), args)
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
