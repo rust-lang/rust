@@ -1,15 +1,24 @@
-error[E0432]: unresolved import `self`
+error: imports need to be explicitly named
   --> $DIR/use-mod-2.rs:2:16
    |
 LL |     use self::{self};
-   |                ^^^^ no `self` in the root
+   |                ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |     use self::{self as name};
+   |                     +++++++
 
-error[E0432]: unresolved import `super`
-  --> $DIR/use-mod-2.rs:6:17
+error: imports need to be explicitly named
+  --> $DIR/use-mod-2.rs:5:17
    |
 LL |     use super::{self};
-   |                 ^^^^ no `super` in the root
+   |                 ^^^^
+   |
+help: try renaming it with a name
+   |
+LL |     use super::{self as name};
+   |                      +++++++
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0432`.

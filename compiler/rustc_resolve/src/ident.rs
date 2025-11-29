@@ -812,6 +812,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ignore_import,
         )
     }
+
+    fn resolve_super_in_module(
+        &self,
+        ident: Ident,
+        module: Option<Module<'ra>>,
+        parent_scope: &ParentScope<'ra>,
+    ) -> Option<Module<'ra>> {
+        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+        module
+            .unwrap_or_else(|| self.resolve_self(&mut ctxt, parent_scope.module))
+            .parent
+            .map(|parent| self.resolve_self(&mut ctxt, parent))
+    }
+
+    pub(crate) fn path_root_is_crate_root(&self, ident: Ident) -> bool {
+        ident.name == kw::PathRoot && ident.span.is_rust_2015() && self.tcx.sess.is_rust_2015()
+    }
+
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
     #[instrument(level = "debug", skip(self))]
@@ -829,7 +847,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let module = match module {
-            ModuleOrUniformRoot::Module(module) => module,
+            ModuleOrUniformRoot::Module(module) => {
+                if ns == TypeNS
+                    && ident.name == kw::Super
+                    && let Some(module) =
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                {
+                    return Ok(module.self_binding.unwrap());
+                }
+
+                module
+            }
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 let binding = self.resolve_ident_in_scope_set(
@@ -863,13 +891,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ModuleOrUniformRoot::CurrentScope => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
                 if ns == TypeNS {
-                    if ident.name == kw::Crate || ident.name == kw::DollarCrate {
+                    if ident.name == kw::SelfLower {
+                        let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
+                        let module = self.resolve_self(&mut ctxt, parent_scope.module);
+                        return Ok(module.self_binding.unwrap());
+                    }
+                    if ident.name == kw::Super
+                        && let Some(module) =
+                            self.resolve_super_in_module(ident, None, parent_scope)
+                    {
+                        return Ok(module.self_binding.unwrap());
+                    }
+                    if ident.name == kw::Crate
+                        || ident.name == kw::DollarCrate
+                        || self.path_root_is_crate_root(ident)
+                    {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_binding.unwrap());
-                    } else if ident.name == kw::Super || ident.name == kw::SelfLower {
-                        // FIXME: Implement these with renaming requirements so that e.g.
-                        // `use super;` doesn't work, but `use super as name;` does.
-                        // Fall through here to get an error from `early_resolve_...`.
                     }
                 }
 
@@ -1610,19 +1648,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if ns == TypeNS {
                 if allow_super && name == kw::Super {
-                    let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
-                    let self_module = match segment_idx {
-                        0 => Some(self.resolve_self(&mut ctxt, parent_scope.module)),
-                        _ => match module {
-                            Some(ModuleOrUniformRoot::Module(module)) => Some(module),
-                            _ => None,
-                        },
+                    let parent = if segment_idx == 0 {
+                        self.resolve_super_in_module(ident, None, parent_scope)
+                    } else if let Some(ModuleOrUniformRoot::Module(module)) = module {
+                        self.resolve_super_in_module(ident, Some(module), parent_scope)
+                    } else {
+                        None
                     };
-                    if let Some(self_module) = self_module
-                        && let Some(parent) = self_module.parent
-                    {
-                        module =
-                            Some(ModuleOrUniformRoot::Module(self.resolve_self(&mut ctxt, parent)));
+                    if let Some(parent) = parent {
+                        module = Some(ModuleOrUniformRoot::Module(parent));
                         continue;
                     }
                     return PathResult::failed(
