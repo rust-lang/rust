@@ -38,11 +38,7 @@ std::ostream& operator<<(std::ostream& os, poly128_t value) {
 #endif
 
 std::ostream& operator<<(std::ostream& os, float16_t value) {
-    uint16_t temp = 0;
-    memcpy(&temp, &value, sizeof(float16_t));
-    std::stringstream ss;
-    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
-    os << ss.str();
+    os << static_cast<float>(value);
     return os;
 }
 
@@ -52,92 +48,7 @@ std::ostream& operator<<(std::ostream& os, uint8_t value) {
 }
 "#;
 
-// Format f16 values (and vectors containing them) in a way that is consistent with C.
-pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
-/// Used to continue `Debug`ging SIMD types as `MySimd(1, 2, 3, 4)`, as they
-/// were before moving to array-based simd.
-#[inline]
-fn debug_simd_finish<T: core::fmt::Debug, const N: usize>(
-    formatter: &mut core::fmt::Formatter<'_>,
-    type_name: &str,
-    array: &[T; N],
-) -> core::fmt::Result {
-    core::fmt::Formatter::debug_tuple_fields_finish(
-        formatter,
-        type_name,
-        &core::array::from_fn::<&dyn core::fmt::Debug, N, _>(|i| &array[i]),
-    )
-}
-
-#[repr(transparent)]
-struct Hex<T>(T);
-
-impl<T: DebugHexF16> core::fmt::Debug for Hex<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        <T as DebugHexF16>::fmt(&self.0, f)
-    }
-}
-
-fn debug_f16<T: DebugHexF16>(x: T) -> impl core::fmt::Debug {
-    Hex(x)
-}
-
-trait DebugHexF16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
-}
-
-impl DebugHexF16 for f16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:#06x?}", self.to_bits())
-    }
-}
-
-impl DebugHexF16 for float16x4_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 4]>(*self) };
-        debug_simd_finish(f, "float16x4_t", &array)
-    }
-}
-
-impl DebugHexF16 for float16x8_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
-        debug_simd_finish(f, "float16x8_t", &array)
-    }
-}
-
-impl DebugHexF16 for float16x4x2_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x4x2_t", &[Hex(self.0), Hex(self.1)])
-    }
-}
-impl DebugHexF16 for float16x4x3_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x4x3_t", &[Hex(self.0), Hex(self.1), Hex(self.2)])
-    }
-}
-impl DebugHexF16 for float16x4x4_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x4x4_t", &[Hex(self.0), Hex(self.1), Hex(self.2), Hex(self.3)])
-    }
-}
-
-impl DebugHexF16 for float16x8x2_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x8x2_t", &[Hex(self.0), Hex(self.1)])
-    }
-}
-impl DebugHexF16 for float16x8x3_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x8x3_t", &[Hex(self.0), Hex(self.1), Hex(self.2)])
-    }
-}
-impl DebugHexF16 for float16x8x4_t {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        debug_simd_finish(f, "float16x8x4_t", &[Hex(self.0), Hex(self.1), Hex(self.2), Hex(self.3)])
-    }
-}
- "#;
+pub const PLATFORM_RUST_DEFINITIONS: &str = "";
 
 pub const PLATFORM_RUST_CFGS: &str = r#"
 #![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]

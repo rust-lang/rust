@@ -142,71 +142,6 @@ fn debug_simd_finish<T: core::fmt::Debug, const N: usize>(
     )
 }
 
-#[repr(transparent)]
-struct Hex<T>(T);
-
-impl<T: DebugHexF16> core::fmt::Debug for Hex<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        <T as DebugHexF16>::fmt(&self.0, f)
-    }
-}
-
-fn debug_f16<T: DebugHexF16>(x: T) -> impl core::fmt::Debug {
-    Hex(x)
-}
-
-trait DebugHexF16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
-}
-
-impl DebugHexF16 for f16 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:#06x?}", self.to_bits())
-    }
-}
-
-impl DebugHexF16 for __m128h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
-        debug_simd_finish(f, "__m128h", &array)
-    }
-}
-
-impl DebugHexF16 for __m128i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 8]>(*self) };
-        debug_simd_finish(f, "__m128i", &array)
-    }
-}
-
-impl DebugHexF16 for __m256h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
-        debug_simd_finish(f, "__m256h", &array)
-    }
-}
-
-impl DebugHexF16 for __m256i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 16]>(*self) };
-        debug_simd_finish(f, "__m256i", &array)
-    }
-}
-
-impl DebugHexF16 for __m512h {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
-        debug_simd_finish(f, "__m512h", &array)
-    }
-}
-
-impl DebugHexF16 for __m512i {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let array = unsafe { core::mem::transmute::<_, [Hex<f16>; 32]>(*self) };
-        debug_simd_finish(f, "__m512i", &array)
-    }
-}
-
 trait DebugAs<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result;
 }
@@ -232,7 +167,7 @@ macro_rules! impl_debug_as {
     };
 }
 
-impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64]);
+impl_debug_as!(__m128i, "__m128i", 128, [u8, i8, u16, i16, u32, i32, u64, i64, f16]);
 impl_debug_as!(__m256i, "__m256i", 256, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m512i, "__m512i", 512, [u8, i8, u16, i16, u32, i32, u64, i64]);
 impl_debug_as!(__m128h, "__m128h", 128, [f32]);
@@ -336,11 +271,7 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
 pub const PLATFORM_C_DEFINITIONS: &str = r#"
 
 std::ostream& operator<<(std::ostream& os, _Float16 value) {
-    uint16_t temp = 0;
-    memcpy(&temp, &value, sizeof(_Float16));
-    std::stringstream ss;
-    ss << "0x" << std::setfill('0') << std::setw(4) << std::hex << temp;
-    os << ss.str();
+    os << static_cast<float>(value);
     return os;
 }
 
