@@ -12,7 +12,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
+    InferenceResult, TraitEnvironment,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::DisplayTarget,
     mir::OperandKind,
@@ -121,7 +121,7 @@ fn make_fetch_closure_field<'db>(
 ) -> impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db> + use<'db> {
     |c: InternedClosureId, subst: GenericArgs<'db>, f: usize| {
         let InternedClosure(def, _) = db.lookup_intern_closure(c);
-        let infer = db.infer(def);
+        let infer = InferenceResult::for_body(db, def);
         let (captures, _) = infer.closure_info(c);
         let parent_subst = subst.split_closure_args_untupled().parent_args;
         let interner = DbInterner::new_no_crate(db);

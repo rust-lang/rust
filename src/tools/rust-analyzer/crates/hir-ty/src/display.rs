@@ -47,7 +47,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, FnAbi, ImplTraitId, MemoryMap, TraitEnvironment, consteval,
+    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, TraitEnvironment, consteval,
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
@@ -1398,7 +1398,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 if let Some(sig) = sig {
                     let sig = sig.skip_binder();
                     let InternedClosure(def, _) = db.lookup_intern_closure(id);
-                    let infer = db.infer(def);
+                    let infer = InferenceResult::for_body(db, def);
                     let (_, kind) = infer.closure_info(id);
                     match f.closure_style {
                         ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,

@@ -81,7 +81,7 @@ pub struct MethodResolutionContext<'a, 'db> {
     pub unstable_features: &'a MethodResolutionUnstableFeatures,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum CandidateId {
     FunctionId(FunctionId),
     ConstId(ConstId),

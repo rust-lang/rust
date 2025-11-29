@@ -7,6 +7,7 @@ use syntax::{AstNode, AstPtr};
 use test_fixture::WithFixture;
 
 use crate::{
+    InferenceResult,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     mir::MirSpan,
@@ -34,7 +35,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                 hir_def::ModuleDefId::StaticId(it) => it.into(),
                 _ => continue,
             };
-            let infer = db.infer(def);
+            let infer = InferenceResult::for_body(&db, def);
             let db = &db;
             captures_info.extend(infer.closure_info.iter().flat_map(
                 |(closure_id, (captures, _))| {

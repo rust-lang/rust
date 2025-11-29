@@ -76,7 +76,7 @@ impl BodyValidationDiagnostic {
         validate_lints: bool,
     ) -> Vec<BodyValidationDiagnostic> {
         let _p = tracing::info_span!("BodyValidationDiagnostic::collect").entered();
-        let infer = db.infer(owner);
+        let infer = InferenceResult::for_body(db, owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
         let interner = DbInterner::new_with(db, env.krate, env.block);
@@ -99,7 +99,7 @@ impl BodyValidationDiagnostic {
 struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
-    infer: Arc<InferenceResult<'db>>,
+    infer: &'db InferenceResult<'db>,
     env: Arc<TraitEnvironment<'db>>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
@@ -124,7 +124,7 @@ impl<'db> ExprValidator<'db> {
 
         for (id, expr) in body.exprs() {
             if let Some((variant, missed_fields, true)) =
-                record_literal_missing_fields(db, &self.infer, id, expr)
+                record_literal_missing_fields(db, self.infer, id, expr)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
                     record: Either::Left(id),
@@ -155,7 +155,7 @@ impl<'db> ExprValidator<'db> {
 
         for (id, pat) in body.pats() {
             if let Some((variant, missed_fields, true)) =
-                record_pattern_missing_fields(db, &self.infer, id, pat)
+                record_pattern_missing_fields(db, self.infer, id, pat)
             {
                 self.diagnostics.push(BodyValidationDiagnostic::RecordMissingFields {
                     record: Either::Right(id),
@@ -240,7 +240,7 @@ impl<'db> ExprValidator<'db> {
                     .as_reference()
                     .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                     .unwrap_or(false))
-                && types_of_subpatterns_do_match(arm.pat, &self.body, &self.infer)
+                && types_of_subpatterns_do_match(arm.pat, &self.body, self.infer)
             {
                 // If we had a NotUsefulMatchArm diagnostic, we could
                 // check the usefulness of each pattern as we added it
@@ -388,7 +388,7 @@ impl<'db> ExprValidator<'db> {
         pat: PatId,
         have_errors: &mut bool,
     ) -> DeconstructedPat<'a, 'db> {
-        let mut patcx = match_check::PatCtxt::new(self.db(), &self.infer, &self.body);
+        let mut patcx = match_check::PatCtxt::new(self.db(), self.infer, &self.body);
         let pattern = patcx.lower_pattern(pat);
         let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {

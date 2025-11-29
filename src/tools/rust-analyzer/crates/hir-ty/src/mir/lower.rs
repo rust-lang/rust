@@ -2111,7 +2111,7 @@ pub fn mir_body_for_closure_query<'db>(
 ) -> Result<'db, Arc<MirBody<'db>>> {
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
     let body = db.body(owner);
-    let infer = db.infer(owner);
+    let infer = InferenceResult::for_body(db, owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
@@ -2119,7 +2119,7 @@ pub fn mir_body_for_closure_query<'db>(
         implementation_error!("closure expression is not closure");
     };
     let (captures, kind) = infer.closure_info(closure);
-    let mut ctx = MirLowerCtx::new(db, owner, &body, &infer);
+    let mut ctx = MirLowerCtx::new(db, owner, &body, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer[*root] });
     let closure_local = ctx.result.locals.alloc(Local {
@@ -2249,8 +2249,8 @@ pub fn mir_body_query<'db>(
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);
-    let infer = db.infer(def);
-    let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;
+    let infer = InferenceResult::for_body(db, def);
+    let mut result = lower_to_mir(db, def, &body, infer, body.body_expr)?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }

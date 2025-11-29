@@ -34,7 +34,7 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, ComplexMemoryMap, MemoryMap, TraitEnvironment,
+    CallableDefId, ComplexMemoryMap, InferenceResult, MemoryMap, TraitEnvironment,
     consteval::{self, ConstEvalError, try_const_usize},
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
@@ -722,7 +722,7 @@ impl<'db> Evaluator<'db> {
             ty,
             |c, subst, f| {
                 let InternedClosure(def, _) = self.db.lookup_intern_closure(c);
-                let infer = self.db.infer(def);
+                let infer = InferenceResult::for_body(self.db, def);
                 let (captures, _) = infer.closure_info(c);
                 let parent_subst = subst.split_closure_args_untupled().parent_args;
                 captures
@@ -883,7 +883,8 @@ impl<'db> Evaluator<'db> {
             OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
             OperandKind::Constant { konst: _, ty } => *ty,
             &OperandKind::Static(s) => {
-                let ty = self.db.infer(s.into())[self.db.body(s.into()).body_expr];
+                let ty =
+                    InferenceResult::for_body(self.db, s.into())[self.db.body(s.into()).body_expr];
                 Ty::new_ref(
                     self.interner(),
                     Region::new_static(self.interner()),
@@ -2809,7 +2810,8 @@ impl<'db> Evaluator<'db> {
             })?;
             self.allocate_const_in_heap(locals, konst)?
         } else {
-            let ty = self.db.infer(st.into())[self.db.body(st.into()).body_expr];
+            let ty =
+                InferenceResult::for_body(self.db, st.into())[self.db.body(st.into()).body_expr];
             let Some((size, align)) = self.size_align_of(ty, locals)? else {
                 not_supported!("unsized extern static");
             };

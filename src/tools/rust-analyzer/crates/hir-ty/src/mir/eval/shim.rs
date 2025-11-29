@@ -10,6 +10,7 @@ use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
+    InferenceResult,
     display::DisplayTarget,
     drop::{DropGlue, has_drop_glue},
     mir::eval::{
@@ -167,7 +168,7 @@ impl<'db> Evaluator<'db> {
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
                 let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure(id.0);
-                let infer = self.db.infer(closure_owner);
+                let infer = InferenceResult::for_body(self.db, closure_owner);
                 let (captures, _) = infer.closure_info(id.0);
                 let layout = self.layout(self_ty)?;
                 let db = self.db;

@@ -25,6 +25,26 @@ use crate::{
     mir::pad16,
 };
 
+/// SAFETY: `old_pointer` must be valid for unique writes
+pub(crate) unsafe fn unsafe_update_eq<T>(old_pointer: *mut T, new_value: T) -> bool
+where
+    T: PartialEq,
+{
+    // SAFETY: Caller obligation
+    let old_ref: &mut T = unsafe { &mut *old_pointer };
+
+    if *old_ref != new_value {
+        *old_ref = new_value;
+        true
+    } else {
+        // Subtle but important: Eq impls can be buggy or define equality
+        // in surprising ways. If it says that the value has not changed,
+        // we do not modify the existing value, and thus do not have to
+        // update the revision, as downstream code will not see the new value.
+        false
+    }
+}
+
 pub(crate) fn fn_traits(lang_items: &LangItems) -> impl Iterator<Item = TraitId> + '_ {
     [lang_items.Fn, lang_items.FnMut, lang_items.FnOnce].into_iter().flatten()
 }

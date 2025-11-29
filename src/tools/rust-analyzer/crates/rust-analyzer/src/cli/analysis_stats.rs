@@ -20,6 +20,7 @@ use hir_def::{
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
 };
+use hir_ty::InferenceResult;
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
@@ -745,7 +746,7 @@ impl flags::AnalysisStats {
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
                     snap.body(body.into());
-                    snap.infer(body.into());
+                    InferenceResult::for_body(snap, body.into());
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -802,7 +803,8 @@ impl flags::AnalysisStats {
             }
             bar.set_message(msg);
             let body = db.body(body_id.into());
-            let inference_result = catch_unwind(AssertUnwindSafe(|| db.infer(body_id.into())));
+            let inference_result =
+                catch_unwind(AssertUnwindSafe(|| InferenceResult::for_body(db, body_id.into())));
             let inference_result = match inference_result {
                 Ok(inference_result) => inference_result,
                 Err(p) => {

@@ -7,7 +7,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment, consteval,
+    InferenceResult, TraitEnvironment, consteval,
     method_resolution::TraitImpls,
     next_solver::{
         DbInterner, SimplifiedType, Ty, TyKind,
@@ -137,7 +137,7 @@ fn has_drop_glue_impl<'db>(
         TyKind::Slice(ty) => has_drop_glue_impl(infcx, ty, env, visited),
         TyKind::Closure(closure_id, subst) => {
             let owner = db.lookup_intern_closure(closure_id.0).0;
-            let infer = db.infer(owner);
+            let infer = InferenceResult::for_body(db, owner);
             let (captures, _) = infer.closure_info(closure_id.0);
             let env = db.trait_environment_for_body(owner);
             captures

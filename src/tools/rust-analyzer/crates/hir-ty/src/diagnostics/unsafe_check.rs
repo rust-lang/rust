@@ -42,7 +42,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
 
     let mut res = MissingUnsafeResult { fn_is_unsafe: is_unsafe, ..MissingUnsafeResult::default() };
     let body = db.body(def);
-    let infer = db.infer(def);
+    let infer = InferenceResult::for_body(db, def);
     let mut callback = |diag| match diag {
         UnsafeDiagnostic::UnsafeOperation { node, inside_unsafe_block, reason } => {
             if inside_unsafe_block == InsideUnsafeBlock::No {
@@ -55,7 +55,7 @@ pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> MissingUnsafe
             }
         }
     };
-    let mut visitor = UnsafeVisitor::new(db, &infer, &body, def, &mut callback);
+    let mut visitor = UnsafeVisitor::new(db, infer, &body, def, &mut callback);
     visitor.walk_expr(body.body_expr);
 
     if !is_unsafe {
