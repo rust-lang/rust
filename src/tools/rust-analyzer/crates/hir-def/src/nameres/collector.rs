@@ -3,14 +3,14 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
-use std::{cmp::Ordering, iter, mem, ops::Not};
+use std::{cmp::Ordering, iter, mem};
 
 use base_db::{BuiltDependency, Crate, CrateOrigin, LangCrateOrigin};
 use cfg::{CfgAtom, CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    EditionedFileId, ErasedAstId, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
-    MacroDefId, MacroDefKind,
+    AttrMacroAttrIds, EditionedFileId, ErasedAstId, ExpandTo, HirFileId, InFile, MacroCallId,
+    MacroCallKind, MacroDefId, MacroDefKind,
     attrs::{Attr, AttrId},
     builtin::{find_builtin_attr, find_builtin_derive, find_builtin_macro},
     mod_path::{ModPath, PathKind},
@@ -18,9 +18,10 @@ use hir_expand::{
     proc_macro::CustomProcMacroExpander,
 };
 use intern::{Interned, sym};
-use itertools::{Itertools, izip};
+use itertools::izip;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 use span::{Edition, FileAstId, SyntaxContext};
 use syntax::ast;
 use triomphe::Arc;
@@ -32,12 +33,11 @@ use crate::{
     MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
     ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId,
     UseLoc,
-    attr::Attrs,
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
     item_tree::{
-        self, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId, Macro2, MacroCall,
-        MacroRules, Mod, ModItemId, ModKind, TreeId,
+        self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
+        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, TreeId,
     },
     macro_call_as_call_id,
     nameres::{
@@ -102,6 +102,7 @@ pub(super) fn collect_defs(
         proc_macros,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
+        prev_active_attrs: Default::default(),
         unresolved_extern_crates: Default::default(),
         is_proc_macro: krate.is_proc_macro,
     };
@@ -206,6 +207,7 @@ enum MacroDirectiveKind<'db> {
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
+        attr_id: AttrId,
         attr: Attr,
         mod_item: ModItemId,
         /* is this needed? */ tree: TreeId,
@@ -246,28 +248,27 @@ struct DefCollector<'db> {
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
     // FIXME: There has to be a better way to do this
-    skip_attrs: FxHashMap<InFile<FileAstId<ast::Item>>, AttrId>,
+    skip_attrs: FxHashMap<AstId<ast::Item>, AttrId>,
+    /// When we expand attributes, we need to censor all previous active attributes
+    /// on the same item. Therefore, this holds all active attributes that we already
+    /// expanded.
+    prev_active_attrs: FxHashMap<AstId<ast::Item>, SmallVec<[AttrId; 1]>>,
 }
 
 impl<'db> DefCollector<'db> {
     fn seed_with_top_level(&mut self) {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
-        let file_id = self.def_map.krate.data(self.db).root_file_id(self.db);
+        let file_id = self.def_map.krate.root_file_id(self.db);
         let item_tree = self.db.file_item_tree(file_id.into());
-        let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
+        let attrs = match item_tree.top_level_attrs() {
+            AttrsOrCfg::Enabled { attrs } => attrs.as_ref(),
+            AttrsOrCfg::CfgDisabled(it) => it.1.as_ref(),
+        };
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
-
-        let mut process = true;
 
         // Process other crate-level attributes.
         for attr in &*attrs {
-            if let Some(cfg) = attr.cfg()
-                && self.cfg_options.check(&cfg) == Some(false)
-            {
-                process = false;
-                break;
-            }
             let Some(attr_name) = attr.path.as_ident() else { continue };
 
             match () {
@@ -291,7 +292,7 @@ impl<'db> DefCollector<'db> {
                 () if *attr_name == sym::feature => {
                     let features =
                         attr.parse_path_comma_token_tree(self.db).into_iter().flatten().filter_map(
-                            |(feat, _)| match feat.segments() {
+                            |(feat, _, _)| match feat.segments() {
                                 [name] => Some(name.symbol().clone()),
                                 _ => None,
                             },
@@ -344,7 +345,7 @@ impl<'db> DefCollector<'db> {
 
         self.inject_prelude();
 
-        if !process {
+        if matches!(item_tree.top_level_attrs(), AttrsOrCfg::CfgDisabled(_)) {
             return;
         }
 
@@ -362,10 +363,7 @@ impl<'db> DefCollector<'db> {
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
         let item_tree = tree_id.item_tree(self.db);
-        let is_cfg_enabled = item_tree
-            .top_level_attrs(self.db, self.def_map.krate)
-            .cfg()
-            .is_none_or(|cfg| self.cfg_options.check(&cfg) != Some(false));
+        let is_cfg_enabled = matches!(item_tree.top_level_attrs(), AttrsOrCfg::Enabled { .. });
         if is_cfg_enabled {
             self.inject_prelude();
 
@@ -456,18 +454,18 @@ impl<'db> DefCollector<'db> {
             self.unresolved_macros.iter().enumerate().find_map(|(idx, directive)| match &directive
                 .kind
             {
-                MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree, item_tree } => {
+                MacroDirectiveKind::Attr { ast_id, mod_item, attr_id, attr, tree, item_tree } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
                             attr_args: None,
-                            invoc_attr_index: attr.id,
+                            censored_attr_ids: AttrMacroAttrIds::from_one(*attr_id),
                         },
-                        attr.path().clone(),
+                        (*attr.path).clone(),
                     ));
 
-                    self.skip_attrs.insert(ast_id.ast_id.with_value(mod_item.ast_id()), attr.id);
+                    self.skip_attrs.insert(ast_id.ast_id.with_value(mod_item.ast_id()), *attr_id);
 
                     Some((idx, directive, *mod_item, *tree, *item_tree))
                 }
@@ -1240,7 +1238,17 @@ impl<'db> DefCollector<'db> {
         let mut macros = mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
         let mut push_resolved = |directive: &MacroDirective<'_>, call_id| {
-            resolved.push((directive.module_id, directive.depth, directive.container, call_id));
+            let attr_macro_item = match &directive.kind {
+                MacroDirectiveKind::Attr { ast_id, .. } => Some(ast_id.ast_id),
+                MacroDirectiveKind::FnLike { .. } | MacroDirectiveKind::Derive { .. } => None,
+            };
+            resolved.push((
+                directive.module_id,
+                directive.depth,
+                directive.container,
+                call_id,
+                attr_macro_item,
+            ));
         };
 
         #[derive(PartialEq, Eq)]
@@ -1350,6 +1358,7 @@ impl<'db> DefCollector<'db> {
                 MacroDirectiveKind::Attr {
                     ast_id: file_ast_id,
                     mod_item,
+                    attr_id,
                     attr,
                     tree,
                     item_tree,
@@ -1362,7 +1371,7 @@ impl<'db> DefCollector<'db> {
                         let mod_dir = collector.mod_dirs[&directive.module_id].clone();
                         collector
                             .skip_attrs
-                            .insert(InFile::new(file_id, mod_item.ast_id()), attr.id);
+                            .insert(InFile::new(file_id, mod_item.ast_id()), *attr_id);
 
                         ModCollector {
                             def_collector: collector,
@@ -1398,7 +1407,6 @@ impl<'db> DefCollector<'db> {
                     // being cfg'ed out).
                     // Ideally we will just expand them to nothing here. But we are only collecting macro calls,
                     // not expanding them, so we have no way to do that.
-                    // If you add an ignored attribute here, also add it to `Semantics::might_be_inside_macro_call()`.
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
@@ -1410,8 +1418,18 @@ impl<'db> DefCollector<'db> {
                         }
                     }
 
-                    let call_id = || {
-                        attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def)
+                    let mut call_id = || {
+                        let active_attrs = self.prev_active_attrs.entry(ast_id).or_default();
+                        active_attrs.push(*attr_id);
+
+                        attr_macro_as_call_id(
+                            self.db,
+                            file_ast_id,
+                            attr,
+                            AttrMacroAttrIds::from_many(active_attrs),
+                            self.def_map.krate,
+                            def,
+                        )
                     };
                     if matches!(def,
                         MacroDefId { kind: MacroDefKind::BuiltInAttr(_, exp), .. }
@@ -1429,7 +1447,7 @@ impl<'db> DefCollector<'db> {
                                 let diag = DefDiagnostic::invalid_derive_target(
                                     directive.module_id,
                                     ast_id,
-                                    attr.id,
+                                    *attr_id,
                                 );
                                 self.def_map.diagnostics.push(diag);
                                 return recollect_without(self);
@@ -1442,7 +1460,7 @@ impl<'db> DefCollector<'db> {
                             Some(derive_macros) => {
                                 let call_id = call_id();
                                 let mut len = 0;
-                                for (idx, (path, call_site)) in derive_macros.enumerate() {
+                                for (idx, (path, call_site, _)) in derive_macros.enumerate() {
                                     let ast_id = AstIdWithPath::new(
                                         file_id,
                                         ast_id.value,
@@ -1453,7 +1471,7 @@ impl<'db> DefCollector<'db> {
                                         depth: directive.depth + 1,
                                         kind: MacroDirectiveKind::Derive {
                                             ast_id,
-                                            derive_attr: attr.id,
+                                            derive_attr: *attr_id,
                                             derive_pos: idx,
                                             ctxt: call_site.ctx,
                                             derive_macro_id: call_id,
@@ -1469,13 +1487,13 @@ impl<'db> DefCollector<'db> {
                                 // Check the comment in [`builtin_attr_macro`].
                                 self.def_map.modules[directive.module_id]
                                     .scope
-                                    .init_derive_attribute(ast_id, attr.id, call_id, len + 1);
+                                    .init_derive_attribute(ast_id, *attr_id, call_id, len + 1);
                             }
                             None => {
                                 let diag = DefDiagnostic::malformed_derive(
                                     directive.module_id,
                                     ast_id,
-                                    attr.id,
+                                    *attr_id,
                                 );
                                 self.def_map.diagnostics.push(diag);
                             }
@@ -1522,8 +1540,14 @@ impl<'db> DefCollector<'db> {
             self.def_map.modules[module_id].scope.add_macro_invoc(ptr.map(|(_, it)| it), call_id);
         }
 
-        for (module_id, depth, container, macro_call_id) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id, depth, container);
+        for (module_id, depth, container, macro_call_id, attr_macro_item) in resolved {
+            self.collect_macro_expansion(
+                module_id,
+                macro_call_id,
+                depth,
+                container,
+                attr_macro_item,
+            );
         }
 
         res
@@ -1535,6 +1559,7 @@ impl<'db> DefCollector<'db> {
         macro_call_id: MacroCallId,
         depth: usize,
         container: ItemContainerId,
+        attr_macro_item: Option<AstId<ast::Item>>,
     ) {
         if depth > self.def_map.recursion_limit() as usize {
             cov_mark::hit!(macro_expansion_overflow);
@@ -1544,6 +1569,34 @@ impl<'db> DefCollector<'db> {
         let file_id = macro_call_id.into();
 
         let item_tree = self.db.file_item_tree(file_id);
+
+        // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
+        // of that item (but not derive or fn like macros).
+        // FIXME: This is a hack. The proper way to do this is by having a chain of derive helpers scope,
+        // where the next scope in the chain is the parent hygiene context of the span. Unfortunately
+        // it's difficult to implement with our current name resolution and hygiene system.
+        // This hack is also incorrect since it ignores item in blocks. But the main reason to bring derive
+        // helpers into scope in this case is to help with:
+        // ```
+        // #[derive(DeriveWithHelper)]
+        // #[helper]
+        // #[attr_macro]
+        // struct Foo;
+        // ```
+        // Where `attr_macro`'s input will include `#[helper]` but not the derive, and it will likely therefore
+        // also include it in its output. Therefore I hope not supporting blocks is fine at least for now.
+        if let Some(attr_macro_item) = attr_macro_item
+            && let Some(derive_helpers) = self.def_map.derive_helpers_in_scope.get(&attr_macro_item)
+        {
+            let derive_helpers = derive_helpers.clone();
+            for item in item_tree.top_level_items() {
+                self.def_map
+                    .derive_helpers_in_scope
+                    .entry(InFile::new(file_id, item.ast_id()))
+                    .or_default()
+                    .extend(derive_helpers.iter().cloned());
+            }
+        }
 
         let mod_dir = if macro_call_id.is_include_macro(self.db) {
             ModDir::root()
@@ -1712,16 +1765,17 @@ impl ModCollector<'_, '_> {
         };
 
         let mut process_mod_item = |item: ModItemId| {
-            let attrs = self.item_tree.attrs(db, krate, item.ast_id());
-            if let Some(cfg) = attrs.cfg()
-                && !self.is_cfg_enabled(&cfg)
-            {
-                let ast_id = item.ast_id().erase();
-                self.emit_unconfigured_diagnostic(InFile::new(self.file_id(), ast_id), &cfg);
-                return;
-            }
+            let attrs = match self.item_tree.attrs(item.ast_id()) {
+                Some(AttrsOrCfg::Enabled { attrs }) => attrs.as_ref(),
+                None => Attrs::EMPTY,
+                Some(AttrsOrCfg::CfgDisabled(cfg)) => {
+                    let ast_id = item.ast_id().erase();
+                    self.emit_unconfigured_diagnostic(InFile::new(self.file_id(), ast_id), &cfg.0);
+                    return;
+                }
+            };
 
-            if let Err(()) = self.resolve_attributes(&attrs, item, container) {
+            if let Err(()) = self.resolve_attributes(attrs, item, container) {
                 // Do not process the item. It has at least one non-builtin attribute, so the
                 // fixed-point algorithm is required to resolve the rest of them.
                 return;
@@ -1733,7 +1787,7 @@ impl ModCollector<'_, '_> {
                 self.def_collector.crate_local_def_map.unwrap_or(&self.def_collector.local_def_map);
 
             match item {
-                ModItemId::Mod(m) => self.collect_module(m, &attrs),
+                ModItemId::Mod(m) => self.collect_module(m, attrs),
                 ModItemId::Use(item_tree_id) => {
                     let id =
                         UseLoc { container: module, id: InFile::new(self.file_id(), item_tree_id) }
@@ -2006,7 +2060,7 @@ impl ModCollector<'_, '_> {
                 );
                 return;
             };
-            for (path, _) in paths {
+            for (path, _, _) in paths {
                 if let Some(name) = path.as_ident() {
                     single_imports.push(name.clone());
                 }
@@ -2020,7 +2074,7 @@ impl ModCollector<'_, '_> {
         );
     }
 
-    fn collect_module(&mut self, module_ast_id: ItemTreeAstId<Mod>, attrs: &Attrs) {
+    fn collect_module(&mut self, module_ast_id: ItemTreeAstId<Mod>, attrs: Attrs<'_>) {
         let path_attr = attrs.by_key(sym::path).string_value_unescape();
         let is_macro_use = attrs.by_key(sym::macro_use).exists();
         let module = &self.item_tree[module_ast_id];
@@ -2061,23 +2115,18 @@ impl ModCollector<'_, '_> {
                     self.file_id(),
                     &module.name,
                     path_attr.as_deref(),
+                    self.def_collector.def_map.krate,
                 ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree = db.file_item_tree(file_id.into());
-                        let krate = self.def_collector.def_map.krate;
-                        let is_enabled = item_tree
-                            .top_level_attrs(db, krate)
-                            .cfg()
-                            .and_then(|cfg| self.is_cfg_enabled(&cfg).not().then_some(cfg))
-                            .map_or(Ok(()), Err);
-                        match is_enabled {
-                            Err(cfg) => {
+                        match item_tree.top_level_attrs() {
+                            AttrsOrCfg::CfgDisabled(cfg) => {
                                 self.emit_unconfigured_diagnostic(
                                     InFile::new(self.file_id(), module_ast_id.erase()),
-                                    &cfg,
+                                    &cfg.0,
                                 );
                             }
-                            Ok(()) => {
+                            AttrsOrCfg::Enabled { attrs } => {
                                 let module_id = self.push_child_module(
                                     module.name.clone(),
                                     ast_id.value,
@@ -2093,11 +2142,8 @@ impl ModCollector<'_, '_> {
                                     mod_dir,
                                 }
                                 .collect_in_top_module(item_tree.top_level_items());
-                                let is_macro_use = is_macro_use
-                                    || item_tree
-                                        .top_level_attrs(db, krate)
-                                        .by_key(sym::macro_use)
-                                        .exists();
+                                let is_macro_use =
+                                    is_macro_use || attrs.as_ref().by_key(sym::macro_use).exists();
                                 if is_macro_use {
                                     self.import_all_legacy_macros(module_id);
                                 }
@@ -2185,36 +2231,16 @@ impl ModCollector<'_, '_> {
     /// assumed to be resolved already.
     fn resolve_attributes(
         &mut self,
-        attrs: &Attrs,
+        attrs: Attrs<'_>,
         mod_item: ModItemId,
         container: ItemContainerId,
     ) -> Result<(), ()> {
-        let mut ignore_up_to = self
+        let ignore_up_to = self
             .def_collector
             .skip_attrs
             .get(&InFile::new(self.file_id(), mod_item.ast_id()))
             .copied();
-        let iter = attrs
-            .iter()
-            .dedup_by(|a, b| {
-                // FIXME: this should not be required, all attributes on an item should have a
-                // unique ID!
-                // Still, this occurs because `#[cfg_attr]` can "expand" to multiple attributes:
-                //     #[cfg_attr(not(off), unresolved, unresolved)]
-                //     struct S;
-                // We should come up with a different way to ID attributes.
-                a.id == b.id
-            })
-            .skip_while(|attr| match ignore_up_to {
-                Some(id) if attr.id == id => {
-                    ignore_up_to = None;
-                    true
-                }
-                Some(_) => true,
-                None => false,
-            });
-
-        for attr in iter {
+        for (attr_id, attr) in attrs.iter_after(ignore_up_to) {
             if self.def_collector.def_map.is_builtin_or_registered_attr(&attr.path) {
                 continue;
             }
@@ -2229,6 +2255,7 @@ impl ModCollector<'_, '_> {
                 depth: self.macro_depth + 1,
                 kind: MacroDirectiveKind::Attr {
                     ast_id,
+                    attr_id,
                     attr: attr.clone(),
                     mod_item,
                     tree: self.tree_id,
@@ -2246,7 +2273,13 @@ impl ModCollector<'_, '_> {
     fn collect_macro_rules(&mut self, ast_id: ItemTreeAstId<MacroRules>, module: ModuleId) {
         let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[ast_id];
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, ast_id.upcast());
+        let attrs = match self.item_tree.attrs(ast_id.upcast()) {
+            Some(AttrsOrCfg::Enabled { attrs }) => attrs.as_ref(),
+            None => Attrs::EMPTY,
+            Some(AttrsOrCfg::CfgDisabled(_)) => {
+                unreachable!("we only get here if the macro is not cfg'ed out")
+            }
+        };
         let f_ast_id = InFile::new(self.file_id(), ast_id.upcast());
 
         let export_attr = || attrs.by_key(sym::macro_export);
@@ -2331,7 +2364,13 @@ impl ModCollector<'_, '_> {
     fn collect_macro_def(&mut self, ast_id: ItemTreeAstId<Macro2>, module: ModuleId) {
         let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[ast_id];
-        let attrs = self.item_tree.attrs(self.def_collector.db, krate, ast_id.upcast());
+        let attrs = match self.item_tree.attrs(ast_id.upcast()) {
+            Some(AttrsOrCfg::Enabled { attrs }) => attrs.as_ref(),
+            None => Attrs::EMPTY,
+            Some(AttrsOrCfg::CfgDisabled(_)) => {
+                unreachable!("we only get here if the macro is not cfg'ed out")
+            }
+        };
         let f_ast_id = InFile::new(self.file_id(), ast_id.upcast());
 
         // Case 1: builtin macros
@@ -2460,6 +2499,7 @@ impl ModCollector<'_, '_> {
                         call_id,
                         self.macro_depth + 1,
                         container,
+                        None,
                     );
                 }
 
@@ -2515,10 +2555,6 @@ impl ModCollector<'_, '_> {
         Some((a, b))
     }
 
-    fn is_cfg_enabled(&self, cfg: &CfgExpr) -> bool {
-        self.def_collector.cfg_options.check(cfg) != Some(false)
-    }
-
     fn emit_unconfigured_diagnostic(&mut self, ast_id: ErasedAstId, cfg: &CfgExpr) {
         self.def_collector.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
             self.module_id,
@@ -2558,6 +2594,7 @@ mod tests {
             proc_macros: Default::default(),
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
+            prev_active_attrs: Default::default(),
             is_proc_macro: false,
             unresolved_extern_crates: Default::default(),
         };

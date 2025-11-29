@@ -1,4 +1,4 @@
-use hir::{HasVisibility, sym};
+use hir::HasVisibility;
 use ide_db::{
     FxHashMap, FxHashSet,
     assists::AssistId,
@@ -93,7 +93,7 @@ fn collect_data(ident_pat: ast::IdentPat, ctx: &AssistContext<'_>) -> Option<Str
     let kind = struct_type.kind(ctx.db());
     let struct_def_path = module.find_path(ctx.db(), struct_def, cfg)?;
 
-    let is_non_exhaustive = struct_def.attrs(ctx.db())?.by_key(sym::non_exhaustive).exists();
+    let is_non_exhaustive = struct_def.attrs(ctx.db())?.is_non_exhaustive();
     let is_foreign_crate = struct_def.module(ctx.db()).is_some_and(|m| m.krate() != module.krate());
 
     let fields = struct_type.fields(ctx.db());

@@ -8,6 +8,7 @@ use stdx::impl_from;
 use crate::{
     AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
     StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    attrs::AttrFlags,
     db::DefDatabase,
     nameres::{assoc::TraitItems, crate_def_map, crate_local_def_map},
 };
@@ -127,7 +128,7 @@ impl LangItems {
         T: Into<AttrDefId> + Into<LangItemTarget> + Copy,
     {
         let _p = tracing::info_span!("collect_lang_item").entered();
-        if let Some(lang_item) = db.attrs(item.into()).lang_item() {
+        if let Some(lang_item) = AttrFlags::lang_item(db, item.into()) {
             self.assign_lang_item(lang_item, item.into());
         }
     }
@@ -142,7 +143,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
     for (_, module_data) in crate_def_map.modules() {
         for def in module_data.scope.declarations() {
             if let ModuleDefId::TraitId(trait_) = def
-                && db.attrs(trait_.into()).has_doc_notable_trait()
+                && AttrFlags::query(db, trait_.into()).contains(AttrFlags::IS_DOC_NOTABLE_TRAIT)
             {
                 traits.push(trait_);
             }
@@ -177,10 +178,10 @@ macro_rules! language_item_table {
                 $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
             }
 
-            fn assign_lang_item(&mut self, name: &Symbol, target: LangItemTarget) {
+            fn assign_lang_item(&mut self, name: Symbol, target: LangItemTarget) {
                 match name {
                     $(
-                        _ if *name == $module::$name => {
+                        _ if name == $module::$name => {
                             if let LangItemTarget::$target(target) = target {
                                 self.$lang_item = Some(target);
                             }
@@ -204,6 +205,14 @@ macro_rules! language_item_table {
             pub fn from_lang_items(self, lang_items: &LangItems) -> Option<LangItemTarget> {
                 match self {
                     $( LangItemEnum::$lang_item => lang_items.$lang_item.map(Into::into), )*
+                }
+            }
+
+            #[inline]
+            pub fn from_symbol(symbol: &Symbol) -> Option<Self> {
+                match symbol {
+                    $( _ if *symbol == $module::$name => Some(Self::$lang_item), )*
+                    _ => None,
                 }
             }
         }

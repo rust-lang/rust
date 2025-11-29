@@ -153,8 +153,7 @@ pub struct UnresolvedImport {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UnresolvedMacroCall {
-    pub macro_call: InFile<SyntaxNodePtr>,
-    pub precise_location: Option<TextRange>,
+    pub range: InFile<TextRange>,
     pub path: ModPath,
     pub is_bang: bool,
 }
@@ -185,8 +184,7 @@ pub struct InactiveCode {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroError {
-    pub node: InFile<SyntaxNodePtr>,
-    pub precise_location: Option<TextRange>,
+    pub range: InFile<TextRange>,
     pub message: String,
     pub error: bool,
     pub kind: &'static str,
@@ -194,8 +192,7 @@ pub struct MacroError {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MacroExpansionParseError {
-    pub node: InFile<SyntaxNodePtr>,
-    pub precise_location: Option<TextRange>,
+    pub range: InFile<TextRange>,
     pub errors: Arc<[SyntaxError]>,
 }
 
@@ -213,12 +210,12 @@ pub struct UnimplementedBuiltinMacro {
 
 #[derive(Debug)]
 pub struct InvalidDeriveTarget {
-    pub node: InFile<SyntaxNodePtr>,
+    pub range: InFile<TextRange>,
 }
 
 #[derive(Debug)]
 pub struct MalformedDerive {
-    pub node: InFile<SyntaxNodePtr>,
+    pub range: InFile<TextRange>,
 }
 
 #[derive(Debug)]
