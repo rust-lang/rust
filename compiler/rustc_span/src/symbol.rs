@@ -1691,6 +1691,7 @@ symbols! {
         pic,
         pie,
         pin,
+        pin_drop,
         pin_ergonomics,
         pin_macro,
         pin_v2,
