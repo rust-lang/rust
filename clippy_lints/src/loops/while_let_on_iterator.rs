@@ -12,7 +12,6 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Closure, Expr, ExprKind, HirId, LetStmt, Mutability, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Symbol;
 use rustc_span::symbol::sym;
@@ -52,9 +51,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             || !iter_expr_struct.fields.is_empty()
             || needs_mutable_borrow(cx, &iter_expr_struct, expr)
         {
-            make_iterator_snippet(cx, iter_expr, iterator)
+            make_iterator_snippet(cx, iter_expr, &iterator)
         } else {
-            iterator.to_string()
+            iterator.into_owned()
         };
 
         span_lint_and_sugg(
@@ -358,17 +357,20 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
 }
 
 /// Constructs the transformed iterator expression for the suggestion.
-/// Returns `iterator.by_ref()` unless the iterator type is a reference to an unsized type,
-/// in which case it returns `&mut *iterator`.
-fn make_iterator_snippet<'tcx>(cx: &LateContext<'tcx>, iter_expr: &Expr<'tcx>, iterator: impl Into<String>) -> String {
-    let iterator = iterator.into();
-    let ty = cx.typeck_results().expr_ty(iter_expr);
-
-    if let ty::Ref(_, inner_ty, _) = ty.kind()
-        && !inner_ty.is_sized(cx.tcx, cx.typing_env())
+/// Returns `iterator.by_ref()` unless the last deref adjustment targets an unsized type,
+/// in which case it applies all derefs (e.g., `&mut **iterator` or `&mut ***iterator`).
+fn make_iterator_snippet<'tcx>(cx: &LateContext<'tcx>, iter_expr: &Expr<'tcx>, iterator: &str) -> String {
+    if let Some((n, adjust)) = cx
+        .typeck_results()
+        .expr_adjustments(iter_expr)
+        .iter()
+        .take_while(|x| matches!(x.kind, Adjust::Deref(_)))
+        .enumerate()
+        .last()
+        && !adjust.target.is_sized(cx.tcx, cx.typing_env())
     {
-        return format!("&mut *{iterator}");
+        format!("&mut {:*<n$}{iterator}", '*', n = n + 1)
+    } else {
+        format!("{iterator}.by_ref()")
     }
-
-    format!("{iterator}.by_ref()")
 }
