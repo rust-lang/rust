@@ -809,7 +809,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     #[cfg(test)]
     #[cfg_attr(feature = "inline-more", inline)]
     fn raw_capacity(&self) -> usize {
-        self.table.buckets()
+        self.table.num_buckets()
     }
 
     /// Returns the number of elements in the map.
@@ -6565,10 +6565,10 @@ mod test_map {
                             Ok(map) => map,
                             Err(msg) => return msg,
                         };
-                    if map.table.buckets() != scope_map.table.buckets() {
+                    if map.table.num_buckets() != scope_map.table.num_buckets() {
                         return format!(
-                            "map.table.buckets() != scope_map.table.buckets(),\nleft: `{}`,\nright: `{}`",
-                            map.table.buckets(), scope_map.table.buckets()
+                            "map.table.num_buckets() != scope_map.table.num_buckets(),\nleft: `{}`,\nright: `{}`",
+                            map.table.num_buckets(), scope_map.table.num_buckets()
                         );
                     }
                     map.clone_from(&scope_map);
@@ -6590,7 +6590,7 @@ mod test_map {
             assert_eq!(unsafe { map.table.iter().count() }, 0);
             assert_eq!(unsafe { map.table.iter().iter.count() }, 0);
 
-            for idx in 0..map.table.buckets() {
+            for idx in 0..map.table.num_buckets() {
                 let idx = idx as u64;
                 assert!(
                     map.table.find(idx, |(k, _)| *k == idx).is_none(),
@@ -6633,10 +6633,10 @@ mod test_map {
                         Ok(map) => map,
                         Err(msg) => return msg,
                     };
-                    if map.table.buckets() == scope_map.table.buckets() {
+                    if map.table.num_buckets() == scope_map.table.num_buckets() {
                         return format!(
-                            "map.table.buckets() == scope_map.table.buckets(): `{}`",
-                            map.table.buckets()
+                            "map.table.num_buckets() == scope_map.table.num_buckets(): `{}`",
+                            map.table.num_buckets()
                         );
                     }
                     map.clone_from(&scope_map);
@@ -6658,7 +6658,7 @@ mod test_map {
             assert_eq!(unsafe { map.table.iter().count() }, 0);
             assert_eq!(unsafe { map.table.iter().iter.count() }, 0);
 
-            for idx in 0..map.table.buckets() {
+            for idx in 0..map.table.num_buckets() {
                 let idx = idx as u64;
                 assert!(
                     map.table.find(idx, |(k, _)| *k == idx).is_none(),
