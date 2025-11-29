@@ -530,6 +530,14 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
         match goal.result() {
             Err(_) => {}
             Ok(certainty) => {
+                // // FIXME: HACK
+                if let ty::solve::Certainty::Yes = certainty
+                    && let Some(clause) = predicate.as_clause()
+                    && let ty::ClauseKind::RegionOutlives(_) | ty::ClauseKind::TypeOutlives(_) = clause.kind().skip_binder()
+                {
+                    self.clauses.push(clause);
+                } else
+
                 if let ty::solve::Certainty::AMBIGUOUS = certainty
                     && let Some(clause) = predicate.as_clause()
                 {
@@ -607,7 +615,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
             return ControlFlow::Continue(());
         }
 
-        // FIXME(fmease): Shouldn't this all happen in a probe?
         let nested_goals = candidate.instantiate_nested_goals(self.span());
 
         // FIXME(fmease): Explainer
