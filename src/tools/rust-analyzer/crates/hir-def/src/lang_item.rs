@@ -31,8 +31,8 @@ impl_from!(
 );
 
 /// Salsa query. This will look for lang items in a specific crate.
-#[salsa_macros::tracked(returns(ref))]
-pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> LangItems {
+#[salsa_macros::tracked(returns(as_deref))]
+pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangItems>> {
     let _p = tracing::info_span!("crate_lang_items_query").entered();
 
     let mut lang_items = LangItems::default();
@@ -93,7 +93,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> LangItems {
         }
     }
 
-    lang_items
+    if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
 }
 
 /// Salsa query. Look for a lang items, starting from the specified crate and recursively
@@ -102,7 +102,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> LangItems {
 pub fn lang_items(db: &dyn DefDatabase, start_crate: Crate) -> LangItems {
     let _p = tracing::info_span!("lang_items_query").entered();
 
-    let mut result = crate_lang_items(db, start_crate).clone();
+    let mut result = crate_lang_items(db, start_crate).cloned().unwrap_or_default();
 
     // Our `CrateGraph` eagerly inserts sysroot dependencies like `core` or `std` into dependencies
     // even if the target crate has `#![no_std]`, `#![no_core]` or shadowed sysroot dependencies
@@ -173,6 +173,10 @@ macro_rules! language_item_table {
         }
 
         impl LangItems {
+            fn is_empty(&self) -> bool {
+                $( self.$lang_item.is_none() )&&*
+            }
+
             /// Merges `self` with `other`, with preference to `self` items.
             fn merge_prefer_self(&mut self, other: &Self) {
                 $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
