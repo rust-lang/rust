@@ -23,9 +23,8 @@ This file contains:
 * Object code, which is the result of code generation.
   This is used during regular linking.
   There is a separate `.o` file for each [codegen unit].
-  The codegen step can be skipped with the [`-C
-  linker-plugin-lto`][linker-plugin-lto] CLI option, which means each `.o`
-  file will only contain LLVM bitcode.
+  The codegen step can be skipped with the [`-C linker-plugin-lto`][linker-plugin-lto] CLI option,
+  which means each `.o` file will only contain LLVM bitcode.
 * [LLVM bitcode], which is a binary representation of LLVM's intermediate
   representation, which is embedded as a section in the `.o` files.
   This can be used for [Link Time Optimization] (LTO).
