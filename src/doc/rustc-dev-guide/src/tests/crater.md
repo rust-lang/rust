@@ -21,9 +21,8 @@ Please inform the team whether you
 require a "check-only" Crater run, a "build only" Crater run, or a "build-and-test" Crater run.
 The difference is primarily in time;
 if you're not sure, go for the build-and-test run.
-If
-making changes that will only have an effect at compile-time (e.g., implementing
-a new trait), then you only need a check run.
+If making changes that will only have an effect at compile-time
+(e.g., implementing a new trait), then you only need a check run.
 
 Your PR will be enqueued by the triage team and the results will be posted when they are ready.
 Check runs will take around ~3-4 days, and the other two taking 5-6 days on average.
