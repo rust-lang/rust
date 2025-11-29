@@ -626,7 +626,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Err(ControlFlow::Break(Determinacy::Undetermined)) => {
                         return ControlFlow::Break(Err(Determinacy::determined(force)));
                     }
-                    Err(ControlFlow::Break(Determinacy::Determined)) => Err(Determined),
+                    // Privacy errors, do not happen during in scope resolution.
+                    Err(ControlFlow::Break(Determinacy::Determined)) => unreachable!(),
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
@@ -951,7 +952,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution = &*self
             .resolution_or_default(module, key)
             .try_borrow_mut_unchecked()
-            .map_err(|_| ControlFlow::Break(Determined))?;
+            .map_err(|_| ControlFlow::Continue(Determined))?;
 
         // If the primary binding is unusable, search further and return the shadowed glob
         // binding if it exists. What we really want here is having two separate scopes in
@@ -1086,7 +1087,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // No resolution and no one else can define the name - determinate error.
-        Err(ControlFlow::Break(Determined))
+        Err(ControlFlow::Continue(Determined))
     }
 
     fn finalize_module_binding(
@@ -1102,7 +1103,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let Finalize { path_span, report_private, used, root_span, .. } = finalize;
 
         let Some(binding) = binding else {
-            return Err(ControlFlow::Break(Determined));
+            return Err(ControlFlow::Continue(Determined));
         };
 
         if !self.is_accessible_from(binding.vis, parent_scope.module) {
