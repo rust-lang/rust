@@ -5,7 +5,7 @@ pub const NOTICE: &str = "\
 
 // Format f16 values (and vectors containing them) in a way that is consistent with C.
 pub const PLATFORM_RUST_DEFINITIONS: &str = r#"
-use std::arch::x86_64::*;
+use core_arch::arch::x86_64::*;
 
 #[inline]
 unsafe fn _mm_loadu_ph_to___m128i(mem_addr: *const f16) -> __m128i {
