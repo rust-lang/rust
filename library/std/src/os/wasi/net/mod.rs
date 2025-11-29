@@ -2,7 +2,8 @@
 
 #![unstable(feature = "wasi_ext", issue = "71213")]
 
-use crate::sys_common::AsInner;
+use crate::os::fd::AsRawFd;
+use crate::sys::err2io;
 use crate::{io, net};
 
 /// WASI-specific extensions to [`std::net::TcpListener`].
@@ -17,6 +18,6 @@ pub trait TcpListenerExt {
 
 impl TcpListenerExt for net::TcpListener {
     fn sock_accept(&self, flags: u16) -> io::Result<u32> {
-        self.as_inner().as_inner().as_inner().sock_accept(flags)
+        unsafe { wasi::sock_accept(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 }

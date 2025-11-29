@@ -4,32 +4,32 @@ use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
-use crate::sys::fd::WasiFd;
+use crate::sys::fd::FileDesc;
 use crate::sys::{err2io, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
-pub struct Socket(WasiFd);
+pub struct Socket(FileDesc);
 
 pub struct TcpStream {
     inner: Socket,
 }
 
-impl AsInner<WasiFd> for Socket {
+impl AsInner<FileDesc> for Socket {
     #[inline]
-    fn as_inner(&self) -> &WasiFd {
+    fn as_inner(&self) -> &FileDesc {
         &self.0
     }
 }
 
-impl IntoInner<WasiFd> for Socket {
-    fn into_inner(self) -> WasiFd {
+impl IntoInner<FileDesc> for Socket {
+    fn into_inner(self) -> FileDesc {
         self.0
     }
 }
 
-impl FromInner<WasiFd> for Socket {
-    fn from_inner(inner: WasiFd) -> Socket {
+impl FromInner<FileDesc> for Socket {
+    fn from_inner(inner: FileDesc) -> Socket {
         Socket(inner)
     }
 }
@@ -97,7 +97,7 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.socket().as_inner().read(bufs)
+        self.socket().as_inner().read_vectored(bufs)
     }
 
     pub fn is_read_vectored(&self) -> bool {
@@ -109,7 +109,7 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.socket().as_inner().write(bufs)
+        self.socket().as_inner().write_vectored(bufs)
     }
 
     pub fn is_write_vectored(&self) -> bool {

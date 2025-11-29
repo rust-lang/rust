@@ -48,7 +48,7 @@ cfg_select! {
         mod unsupported;
         pub use unsupported::{Thread, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         pub use unix::{Thread, available_parallelism, current_os_id, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};
         #[cfg(not(any(
@@ -58,6 +58,7 @@ cfg_select! {
             target_os = "redox",
             target_os = "hurd",
             target_os = "aix",
+            target_os = "wasi",
         )))]
         pub use unix::set_name;
         #[cfg(any(
@@ -71,6 +72,7 @@ cfg_select! {
             target_os = "hurd",
             target_os = "fuchsia",
             target_os = "vxworks",
+            target_os = "wasi",
         ))]
         pub use unix::sleep_until;
         #[expect(dead_code)]
@@ -82,6 +84,7 @@ cfg_select! {
             target_os = "redox",
             target_os = "hurd",
             target_os = "aix",
+            target_os = "wasi",
         ))]
         pub use unsupported::set_name;
     }
@@ -91,27 +94,6 @@ cfg_select! {
         #[expect(dead_code)]
         mod unsupported;
         pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, DEFAULT_MIN_STACK_SIZE};
-    }
-    all(target_os = "wasi", target_env = "p1") => {
-        mod wasip1;
-        pub use wasip1::{DEFAULT_MIN_STACK_SIZE, sleep, yield_now};
-        #[cfg(target_feature = "atomics")]
-        pub use wasip1::{Thread, available_parallelism};
-        #[expect(dead_code)]
-        mod unsupported;
-        pub use unsupported::{current_os_id, set_name};
-        #[cfg(not(target_feature = "atomics"))]
-        pub use unsupported::{Thread, available_parallelism};
-    }
-    all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use wasip2::{sleep, sleep_until};
-        #[expect(dead_code)]
-        mod unsupported;
-        // Note that unlike WASIp1 even if the wasm `atomics` feature is enabled
-        // there is no support for threads, not even experimentally, not even in
-        // wasi-libc. Thus this is unconditionally unsupported.
-        pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, yield_now, DEFAULT_MIN_STACK_SIZE};
     }
     all(target_family = "wasm", target_feature = "atomics") => {
         mod wasm;
@@ -150,7 +132,7 @@ cfg_select! {
     target_os = "hurd",
     target_os = "fuchsia",
     target_os = "vxworks",
-    all(target_os = "wasi", not(target_env = "p1")),
+    target_os = "wasi",
 )))]
 pub fn sleep_until(deadline: crate::time::Instant) {
     use crate::time::Instant;

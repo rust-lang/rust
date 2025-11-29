@@ -6,12 +6,14 @@ use crate::path::{Path, PathBuf};
 pub mod common;
 
 cfg_select! {
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "wasi") => {
         mod unix;
         use unix as imp;
+        #[cfg(not(target_os = "wasi"))]
         pub use unix::{chown, fchown, lchown, mkfifo};
-        #[cfg(not(target_os = "fuchsia"))]
+        #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
         pub use unix::chroot;
+        #[cfg(not(target_os = "wasi"))]
         pub(crate) use unix::debug_assert_fd_is_open;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
@@ -43,10 +45,6 @@ cfg_select! {
         mod vexos;
         use vexos as imp;
     }
-    target_os = "wasi" => {
-        mod wasi;
-        use wasi as imp;
-    }
     _ => {
         mod unsupported;
         use unsupported as imp;
@@ -54,7 +52,7 @@ cfg_select! {
 }
 
 // FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows")))]
+#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
 #[inline]
 pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
     f(path)
