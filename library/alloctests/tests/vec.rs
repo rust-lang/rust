@@ -2717,3 +2717,17 @@ fn vec_null_ptr_roundtrip() {
     let new = roundtripped.with_addr(ptr.addr());
     unsafe { new.read() };
 }
+
+// Regression test for Undefined Behavior (UB) caused by IntoIter::nth_back (#148682)
+// when dealing with high-aligned Zero-Sized Types (ZSTs).
+#[test]
+fn zst_vec_iter_nth_back_regression() {
+    #[repr(align(8))]
+    struct Thing;
+    let v = vec![Thing, Thing];
+    let mut iter = v.into_iter();
+    let _ = iter.nth_back(1);
+    let v2 = vec![Thing, Thing];
+    let mut iter2 = v2.into_iter();
+    let _ = iter2.nth_back(0);
+}
