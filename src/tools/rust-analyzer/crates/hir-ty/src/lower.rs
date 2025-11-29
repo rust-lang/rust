@@ -194,7 +194,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     ) -> Self {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let in_binders = DebruijnIndex::ZERO;
-        let interner = DbInterner::new_with(db, resolver.krate(), None);
+        let interner = DbInterner::new_with(db, resolver.krate());
         Self {
             db,
             // Can provide no block since we don't use it for trait solving.
@@ -1756,7 +1756,7 @@ pub(crate) fn trait_environment_query<'db>(
     def: GenericDefId,
 ) -> Arc<TraitEnvironment<'db>> {
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     let predicates = GenericPredicates::query_all(db, def);
     let traits_in_scope = predicates
         .iter_identity_copied()
@@ -2289,7 +2289,7 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
     name: &Name,
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
     let module = trait_ref.def_id.0.module(db);
-    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
         let trait_id = t.as_ref().skip_binder().def_id.0;
         let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;

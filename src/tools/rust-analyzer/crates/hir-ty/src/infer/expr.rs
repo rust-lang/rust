@@ -1455,11 +1455,10 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let g = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
-        let prev_state = block_id.map(|block_id| {
+        let prev_env = block_id.map(|block_id| {
             let prev_env = self.table.trait_env.clone();
             TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
-            let prev_block = self.table.infer_ctxt.interner.block.replace(block_id);
-            (prev_env, prev_block)
+            prev_env
         });
 
         let (break_ty, ty) =
@@ -1567,9 +1566,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             });
         self.resolver.reset_to_guard(g);
-        if let Some((prev_env, prev_block)) = prev_state {
+        if let Some(prev_env) = prev_env {
             self.table.trait_env = prev_env;
-            self.table.infer_ctxt.interner.block = prev_block;
         }
 
         break_ty.unwrap_or(ty)

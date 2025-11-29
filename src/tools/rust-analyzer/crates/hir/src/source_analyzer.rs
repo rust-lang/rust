@@ -821,7 +821,7 @@ impl<'db> SourceAnalyzer<'db> {
 
         let trait_env = container.env;
 
-        let interner = DbInterner::new_with(db, trait_env.krate, trait_env.block);
+        let interner = DbInterner::new_with(db, trait_env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
         let mut container = Either::Right(container.ty);
@@ -1427,7 +1427,7 @@ impl<'db> SourceAnalyzer<'db> {
             None => return (const_id, subs),
         };
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, env.krate, env.block);
+        let interner = DbInterner::new_with(db, env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         method_resolution::lookup_impl_const(&infcx, env, const_id, subs)
     }

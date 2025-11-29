@@ -309,7 +309,7 @@ pub trait HirDisplay<'db> {
         allow_opaque: bool,
     ) -> Result<String, DisplaySourceCodeError> {
         let mut result = String::new();
-        let interner = DbInterner::new_with(db, module_id.krate(), module_id.containing_block());
+        let interner = DbInterner::new_with(db, module_id.krate());
         match self.hir_fmt(&mut HirFormatter {
             db,
             interner,
@@ -544,11 +544,7 @@ pub enum ClosureStyle {
 impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
     pub fn write_to<F: HirWrite>(&self, f: &mut F) -> Result<(), HirDisplayError> {
         let krate = self.display_target.krate;
-        let block = match self.display_kind {
-            DisplayKind::SourceCode { target_module_id, .. } => target_module_id.containing_block(),
-            DisplayKind::Diagnostics | DisplayKind::Test => None,
-        };
-        let interner = DbInterner::new_with(self.db, krate, block);
+        let interner = DbInterner::new_with(self.db, krate);
         self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             interner,
