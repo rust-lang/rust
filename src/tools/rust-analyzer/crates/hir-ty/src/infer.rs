@@ -56,6 +56,7 @@ use rustc_type_ir::{
 };
 use span::Edition;
 use stdx::never;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
@@ -489,8 +490,7 @@ pub struct InferenceResult<'db> {
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
     tuple_field_access_types: FxHashMap<TupleId, Tys<'db>>,
-    /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
-    diagnostics: Vec<InferenceDiagnostic<'db>>,
+
     pub(crate) type_of_expr: ArenaMap<ExprId, Ty<'db>>,
     /// For each pattern record the type it resolves to.
     ///
@@ -500,15 +500,21 @@ pub struct InferenceResult<'db> {
     pub(crate) type_of_binding: ArenaMap<BindingId, Ty<'db>>,
     pub(crate) type_of_type_placeholder: ArenaMap<TypeRefId, Ty<'db>>,
     pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
-    pub(crate) type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch<'db>>,
+
+    pub(crate) type_mismatches: Option<Box<FxHashMap<ExprOrPatId, TypeMismatch<'db>>>>,
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
     // `TyKind::Error`.
     // Which will then mark this field.
     pub(crate) has_errors: bool,
+    /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
+    diagnostics: ThinVec<InferenceDiagnostic<'db>>,
+
     /// Interned `Error` type to return references to.
     // FIXME: Remove this.
     error_ty: Ty<'db>,
+
+    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment<'db>]>>,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub(crate) pat_adjustments: FxHashMap<PatId, Vec<Ty<'db>>>,
     /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
@@ -525,10 +531,11 @@ pub struct InferenceResult<'db> {
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
     pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
-    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment<'db>]>>,
+
     pub(crate) closure_info: FxHashMap<InternedClosureId, (Vec<CapturedItem<'db>>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
+
     pub(crate) coercion_casts: FxHashSet<ExprId>,
 }
 
@@ -595,19 +602,25 @@ impl<'db> InferenceResult<'db> {
         }
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch<'db>> {
-        self.type_mismatches.get(&expr.into())
+        self.type_mismatches.as_deref()?.get(&expr.into())
     }
     pub fn type_mismatch_for_pat(&self, pat: PatId) -> Option<&TypeMismatch<'db>> {
-        self.type_mismatches.get(&pat.into())
+        self.type_mismatches.as_deref()?.get(&pat.into())
     }
     pub fn type_mismatches(&self) -> impl Iterator<Item = (ExprOrPatId, &TypeMismatch<'db>)> {
-        self.type_mismatches.iter().map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
+        self.type_mismatches
+            .as_deref()
+            .into_iter()
+            .flatten()
+            .map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
     }
     pub fn expr_type_mismatches(&self) -> impl Iterator<Item = (ExprId, &TypeMismatch<'db>)> {
-        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
-            ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
-            _ => None,
-        })
+        self.type_mismatches.as_deref().into_iter().flatten().filter_map(
+            |(expr_or_pat, mismatch)| match *expr_or_pat {
+                ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
+                _ => None,
+            },
+        )
     }
     pub fn placeholder_types(&self) -> impl Iterator<Item = (TypeRefId, &Ty<'db>)> {
         self.type_of_type_placeholder.iter()
@@ -1063,13 +1076,14 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         type_of_type_placeholder.shrink_to_fit();
         type_of_opaque.shrink_to_fit();
 
-        *has_errors |= !type_mismatches.is_empty();
-
-        for mismatch in (*type_mismatches).values_mut() {
-            mismatch.expected = table.resolve_completely(mismatch.expected);
-            mismatch.actual = table.resolve_completely(mismatch.actual);
+        if let Some(type_mismatches) = type_mismatches {
+            *has_errors = true;
+            for mismatch in type_mismatches.values_mut() {
+                mismatch.expected = table.resolve_completely(mismatch.expected);
+                mismatch.actual = table.resolve_completely(mismatch.actual);
+            }
+            type_mismatches.shrink_to_fit();
         }
-        type_mismatches.shrink_to_fit();
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
             match diagnostic {
@@ -1520,7 +1534,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     ) -> Result<(), ()> {
         let result = self.demand_eqtype_fixme_no_diag(expected, actual);
         if result.is_err() {
-            self.result.type_mismatches.insert(id, TypeMismatch { expected, actual });
+            self.result
+                .type_mismatches
+                .get_or_insert_default()
+                .insert(id, TypeMismatch { expected, actual });
         }
         result
     }

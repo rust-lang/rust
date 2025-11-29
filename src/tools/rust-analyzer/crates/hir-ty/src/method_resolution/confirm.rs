@@ -481,7 +481,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
             }
             Err(_) => {
                 if self.ctx.unstable_features.arbitrary_self_types {
-                    self.ctx.result.type_mismatches.insert(
+                    self.ctx.result.type_mismatches.get_or_insert_default().insert(
                         self.expr.into(),
                         TypeMismatch { expected: method_self_ty, actual: self_ty },
                     );
