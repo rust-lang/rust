@@ -3876,12 +3876,11 @@ macro_rules! int_impl {
         #[unstable(feature = "clamp_magnitude", issue = "148519")]
         #[inline]
         pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
-            // Use try_into to handle cases where `limit` is larger than `Self::MAX`.
-            let positive_limit = limit.try_into().unwrap_or(Self::MAX);
-            // By capping `positive_limit` at `Self::MAX`, we ensure the range is symmetric.
-            // `-positive_limit` is thus always representable.
-            let negative_limit = -positive_limit;
-            self.clamp(negative_limit, positive_limit)
+            if let Ok(limit) = limit.try_into() {
+                self.clamp(-limit, limit)
+            } else {
+                self
+            }
         }
     }
 }
