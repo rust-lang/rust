@@ -776,7 +776,11 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     unsafe fn sift_down_range(&mut self, pos: usize, end: usize) -> usize {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
+        // Guarded computation of left child: 2 * hole.pos() + 1. On overflow, no children exist.
+        let mut child = match hole.pos().checked_mul(2).and_then(|x| x.checked_add(1)) {
+            Some(idx) => idx,
+            None => return hole.pos(),
+        };
 
         // Loop invariant: child == 2 * hole.pos() + 1.
         while child <= end.saturating_sub(2) {
@@ -785,8 +789,6 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // if we are already in order, stop.
@@ -798,7 +800,11 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
             // SAFETY: same as above.
             unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
+            // Recompute guarded left child for new hole position.
+            child = match hole.pos().checked_mul(2).and_then(|x| x.checked_add(1)) {
+                Some(idx) => idx,
+                None => return hole.pos(),
+            };
         }
 
         // SAFETY: && short circuit, which means that in the
@@ -837,7 +843,16 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // SAFETY: The caller guarantees that pos < self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
+        let mut child = match hole.pos().checked_mul(2).and_then(|x| x.checked_add(1)) {
+            Some(idx) => idx,
+            None => {
+                let pos = hole.pos();
+                // Drop the hole to release the &mut borrow of self.data before reborrowing self.
+                drop(hole);
+                unsafe { self.sift_up(start, pos) };
+                return;
+            }
+        };
 
         // Loop invariant: child == 2 * hole.pos() + 1.
         while child <= end.saturating_sub(2) {
@@ -845,13 +860,15 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // SAFETY: Same as above
             unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
+
+            child = match hole.pos().checked_mul(2).and_then(|x| x.checked_add(1)) {
+                Some(idx) => idx,
+                None => break, // No further children; exit loop.
+            };
         }
 
         if child == end - 1 {
