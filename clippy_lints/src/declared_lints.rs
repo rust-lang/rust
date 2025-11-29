@@ -578,6 +578,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::operators::ASSIGN_OP_PATTERN_INFO,
     crate::operators::BAD_BIT_MASK_INFO,
     crate::operators::CMP_OWNED_INFO,
+    crate::operators::DECIMAL_BITWISE_OPERANDS_INFO,
     crate::operators::DOUBLE_COMPARISONS_INFO,
     crate::operators::DURATION_SUBSEC_INFO,
     crate::operators::EQ_OP_INFO,
