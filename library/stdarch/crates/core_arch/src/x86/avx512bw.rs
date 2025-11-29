@@ -10705,9 +10705,13 @@ pub fn _mm_cvtepi16_epi8(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpmovwb))]
 pub fn _mm_mask_cvtepi16_epi8(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
     unsafe {
-        let convert = _mm_cvtepi16_epi8(a).as_i8x16();
-        let k: __mmask16 = 0b11111111_11111111 & k as __mmask16;
-        transmute(simd_select_bitmask(k, convert, src.as_i8x16()))
+        let a = _mm_cvtepi16_epi8(a).as_i8x16();
+        let src = simd_shuffle!(
+            src.as_i8x16(),
+            i8x16::ZERO,
+            [0, 1, 2, 3, 4, 5, 6, 7, 16, 16, 16, 16, 16, 16, 16, 16]
+        );
+        simd_select_bitmask(k as u16, a, src).as_m128i()
     }
 }
 
@@ -10719,11 +10723,7 @@ pub fn _mm_mask_cvtepi16_epi8(src: __m128i, k: __mmask8, a: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpmovwb))]
 pub fn _mm_maskz_cvtepi16_epi8(k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        let convert = _mm_cvtepi16_epi8(a).as_i8x16();
-        let k: __mmask16 = 0b11111111_11111111 & k as __mmask16;
-        transmute(simd_select_bitmask(k, convert, i8x16::ZERO))
-    }
+    _mm_mask_cvtepi16_epi8(_mm_setzero_si128(), k, a)
 }
 
 /// Convert packed signed 16-bit integers in a to packed 8-bit integers with signed saturation, and store the results in dst.

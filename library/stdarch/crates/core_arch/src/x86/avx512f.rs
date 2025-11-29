@@ -11149,10 +11149,7 @@ pub fn _mm256_maskz_cvtpd_ps(k: __mmask8, a: __m256d) -> __m128 {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtpd2ps))]
 pub fn _mm_mask_cvtpd_ps(src: __m128, k: __mmask8, a: __m128d) -> __m128 {
-    unsafe {
-        let convert = _mm_cvtpd_ps(a);
-        transmute(simd_select_bitmask(k, convert.as_f32x4(), src.as_f32x4()))
-    }
+    unsafe { vcvtpd2ps128(a.as_f64x2(), src.as_f32x4(), k).as_m128() }
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed single-precision (32-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -11259,10 +11256,7 @@ pub fn _mm256_maskz_cvtpd_epi32(k: __mmask8, a: __m256d) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vcvtpd2dq))]
 pub fn _mm_mask_cvtpd_epi32(src: __m128i, k: __mmask8, a: __m128d) -> __m128i {
-    unsafe {
-        let convert = _mm_cvtpd_epi32(a);
-        transmute(simd_select_bitmask(k, convert.as_i32x4(), src.as_i32x4()))
-    }
+    unsafe { vcvtpd2dq128(a.as_f64x2(), src.as_i32x4(), k).as_m128i() }
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed 32-bit integers, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -42483,9 +42477,13 @@ unsafe extern "C" {
 
     #[link_name = "llvm.x86.avx512.mask.cvtps2pd.512"]
     fn vcvtps2pd(a: f32x8, src: f64x8, mask: u8, sae: i32) -> f64x8;
+    #[link_name = "llvm.x86.avx512.mask.cvtpd2ps"]
+    fn vcvtpd2ps128(a: f64x2, src: f32x4, mask: u8) -> f32x4;
     #[link_name = "llvm.x86.avx512.mask.cvtpd2ps.512"]
     fn vcvtpd2ps(a: f64x8, src: f32x8, mask: u8, rounding: i32) -> f32x8;
 
+    #[link_name = "llvm.x86.avx512.mask.cvtpd2dq.128"]
+    fn vcvtpd2dq128(a: f64x2, src: i32x4, k: u8) -> i32x4;
     #[link_name = "llvm.x86.avx512.mask.cvtpd2dq.512"]
     fn vcvtpd2dq(a: f64x8, src: i32x8, mask: u8, rounding: i32) -> i32x8;
 
