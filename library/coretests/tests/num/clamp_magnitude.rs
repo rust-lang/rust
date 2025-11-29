@@ -1,5 +1,3 @@
-#![feature(clamp_magnitude)]
-
 macro_rules! check_int_clamp {
     ($t:ty, $ut:ty) => {
         let min = <$t>::MIN;

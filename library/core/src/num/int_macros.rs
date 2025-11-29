@@ -3876,7 +3876,7 @@ macro_rules! int_impl {
         #[unstable(feature = "clamp_magnitude", issue = "148519")]
         #[inline]
         pub fn clamp_magnitude(self, limit: $UnsignedT) -> Self {
-            if let Ok(limit) = limit.try_into() {
+            if let Ok(limit) = limit.try_into::<$SelfT>() {
                 self.clamp(-limit, limit)
             } else {
                 self
