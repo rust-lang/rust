@@ -5319,8 +5319,6 @@ async function search(forced) {
     // recent search query is added to the browser history.
     updateSearchHistory(buildUrl(query.userQuery, filterCrates));
 
-    console.log(filterCrates);
-
     await showResults(
         docSearch,
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
@@ -5401,14 +5399,19 @@ function registerSearchEvents() {
         }
         // up and down arrow select next/previous search result, or the
         // search box if we're already at the top.
+        //
+        // the .focus() calls are safe because there's no kind of element
+        // that lacks .focus() that should be in the document.
         if (e.which === 38) { // up
-            // @ts-expect-error
-            const previous = document.activeElement.previousElementSibling;
-            if (previous) {
-                // @ts-expect-error
-                previous.focus();
-            } else {
-                searchState.focus();
+            const active = document.activeElement;
+            if (active) {
+                const previous = active.previousElementSibling;
+                if (previous) {
+                    // @ts-expect-error
+                    previous.focus();
+                } else {
+                    searchState.focus();
+                }
             }
             e.preventDefault();
         } else if (e.which === 40) { // down
