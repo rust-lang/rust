@@ -1,0 +1,41 @@
+error[E0277]: `?` couldn't convert the error to `i32`
+  --> $DIR/question-mark-span-144304.rs:3:30
+   |
+LL | fn f() -> Result<(), i32> {
+   |           --------------- expected `i32` because of this
+LL |     Err("str").map_err(|e| e)?;
+   |     ----------               ^ the trait `From<&str>` is not implemented for `i32`
+   |     |
+   |     this has type `Result<_, &str>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             `i32` implements `From<bool>`
+             `i32` implements `From<i16>`
+             `i32` implements `From<i8>`
+             `i32` implements `From<u16>`
+             `i32` implements `From<u8>`
+
+error[E0277]: `?` couldn't convert the error to `i32`
+  --> $DIR/question-mark-span-144304.rs:4:42
+   |
+LL | fn f() -> Result<(), i32> {
+   |           --------------- expected `i32` because of this
+LL |     Err("str").map_err(|e| e)?;
+LL |     Err("str").map_err(|e| e.to_string())?;
+   |     ---------- --------------------------^ the trait `From<String>` is not implemented for `i32`
+   |     |          |
+   |     |          this can't be annotated with `?` because it has type `Result<_, String>`
+   |     this has type `Result<_, &str>`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following other types implement trait `From<T>`:
+             `i32` implements `From<bool>`
+             `i32` implements `From<i16>`
+             `i32` implements `From<i8>`
+             `i32` implements `From<u16>`
+             `i32` implements `From<u8>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
