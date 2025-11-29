@@ -13,12 +13,12 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
-/// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
-/// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
+/// See docs in <https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs>
+/// and <https://github.com/rust-lang/rust/pull/146627> for why we need this.
 ///
 /// FIXME(madsmtm): This is loaded from the sysroot that was built with the other `rustc` crates
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
-/// https://github.com/rust-lang/cc-rs/issues/1613.
+/// <https://github.com/rust-lang/cc-rs/issues/1613>.
 #[cfg(feature = "jemalloc")]
 extern crate tikv_jemalloc_sys as _;
 
@@ -191,7 +191,6 @@ fn display_help() {
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/new?template=ice.yml";
 
-#[expect(clippy::too_many_lines)]
 pub fn main() {
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 

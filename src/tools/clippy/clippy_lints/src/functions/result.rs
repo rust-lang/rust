@@ -4,6 +4,7 @@ use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{self, Ty};
+use rustc_span::def_id::DefIdSet;
 use rustc_span::{Span, sym};
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
@@ -35,7 +36,13 @@ fn result_err_ty<'tcx>(
     }
 }
 
-pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64, msrv: Msrv) {
+pub(super) fn check_item<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &hir::Item<'tcx>,
+    large_err_threshold: u64,
+    large_err_ignored: &DefIdSet,
+    msrv: Msrv,
+) {
     if let hir::ItemKind::Fn { ref sig, .. } = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
     {
@@ -43,7 +50,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, l
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span, msrv);
         }
-        check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
+        check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold, large_err_ignored);
     }
 }
 
@@ -51,6 +58,7 @@ pub(super) fn check_impl_item<'tcx>(
     cx: &LateContext<'tcx>,
     item: &hir::ImplItem<'tcx>,
     large_err_threshold: u64,
+    large_err_ignored: &DefIdSet,
     msrv: Msrv,
 ) {
     // Don't lint if method is a trait's implementation, we can't do anything about those
@@ -62,7 +70,7 @@ pub(super) fn check_impl_item<'tcx>(
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
             check_result_unit_err(cx, err_ty, fn_header_span, msrv);
         }
-        check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
+        check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold, large_err_ignored);
     }
 }
 
@@ -70,6 +78,7 @@ pub(super) fn check_trait_item<'tcx>(
     cx: &LateContext<'tcx>,
     item: &hir::TraitItem<'tcx>,
     large_err_threshold: u64,
+    large_err_ignored: &DefIdSet,
     msrv: Msrv,
 ) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
@@ -78,7 +87,7 @@ pub(super) fn check_trait_item<'tcx>(
             if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
                 check_result_unit_err(cx, err_ty, fn_header_span, msrv);
             }
-            check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
+            check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold, large_err_ignored);
         }
     }
 }
@@ -96,7 +105,18 @@ fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: S
     }
 }
 
-fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty_span: Span, large_err_threshold: u64) {
+fn check_result_large_err<'tcx>(
+    cx: &LateContext<'tcx>,
+    err_ty: Ty<'tcx>,
+    hir_ty_span: Span,
+    large_err_threshold: u64,
+    large_err_ignored: &DefIdSet,
+) {
+    if let ty::Adt(adt, _) = err_ty.kind()
+        && large_err_ignored.contains(&adt.did())
+    {
+        return;
+    }
     if let ty::Adt(adt, subst) = err_ty.kind()
         && let Some(local_def_id) = adt.did().as_local()
         && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_def_id)
