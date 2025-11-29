@@ -198,7 +198,13 @@ impl ProcMacroSrvSpan for SpanId {
     type Server = server_impl::token_id::SpanIdServer;
 
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server {
-        Self::Server { call_site, def_site, mixed_site }
+        Self::Server {
+            call_site,
+            def_site,
+            mixed_site,
+            tracked_env_vars: Default::default(),
+            tracked_paths: Default::default(),
+        }
     }
 }
 impl ProcMacroSrvSpan for Span {

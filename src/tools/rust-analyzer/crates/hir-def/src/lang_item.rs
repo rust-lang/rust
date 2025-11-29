@@ -161,11 +161,12 @@ pub enum GenericRequirement {
 
 macro_rules! language_item_table {
     (
+        $LangItems:ident =>
         $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $method:ident, $target:ident, $generics:expr; )*
     ) => {
         #[allow(non_snake_case)] // FIXME: Should we remove this?
         #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-        pub struct LangItems {
+        pub struct $LangItems {
             $(
                 $(#[$attr])*
                 pub $lang_item: Option<$target>,
@@ -219,7 +220,7 @@ macro_rules! language_item_table {
     }
 }
 
-language_item_table! {
+language_item_table! { LangItems =>
 //  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
     Sized,                   sym::sized,               sized_trait,                TraitId,                GenericRequirement::Exact(0);
     MetaSized,               sym::meta_sized,          sized_trait,                TraitId,                GenericRequirement::Exact(0);
