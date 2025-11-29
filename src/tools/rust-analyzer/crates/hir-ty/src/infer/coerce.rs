@@ -1514,7 +1514,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
 
                 self.final_ty = Some(icx.types.error);
 
-                icx.result.type_mismatches.insert(
+                icx.result.type_mismatches.get_or_insert_default().insert(
                     expression.into(),
                     if label_expression_as_expected {
                         TypeMismatch { expected: found, actual: expected }

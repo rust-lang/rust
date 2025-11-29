@@ -71,6 +71,7 @@ impl<'db> InferenceContext<'_, 'db> {
             if !could_unify {
                 self.result
                     .type_mismatches
+                    .get_or_insert_default()
                     .insert(tgt_expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
             }
         }
@@ -100,6 +101,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 Err(_) => {
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert(expr.into(), TypeMismatch { expected: target, actual: ty });
                     target
                 }
@@ -293,6 +295,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 if !could_unify {
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert(expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
                 }
             }
@@ -1188,6 +1191,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Err(_) => {
                         this.result
                             .type_mismatches
+                            .get_or_insert_default()
                             .insert(tgt_expr.into(), TypeMismatch { expected: target, actual: ty });
                         target
                     }
@@ -1556,7 +1560,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             )
                             .is_err()
                         {
-                            this.result.type_mismatches.insert(
+                            this.result.type_mismatches.get_or_insert_default().insert(
                                 expr.into(),
                                 TypeMismatch { expected: t, actual: this.types.unit },
                             );
@@ -2130,6 +2134,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     // Don't report type mismatches if there is a mismatch in args count.
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert((*arg).into(), TypeMismatch { expected, actual: found });
                 }
             }
