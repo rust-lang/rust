@@ -115,9 +115,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             // if "type" starts with __m<num>{h/i/<null>},
             // then use either _mm_set1_epi64,
             // _mm256_set1_epi64 or _mm512_set1_epi64
-            if type_value.contains("__m64") {
-                return String::from("*(__m64*)");
-            }
 
             let type_val_filtered = type_value
                 .chars()
@@ -262,9 +259,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             (Some(16), Some(512)) => String::from("(uint16_t)_mm512_extract_intrinsic_test_epi16"),
             (Some(32), Some(512)) => String::from("(uint32_t)_mm512_extract_intrinsic_test_epi32"),
             (Some(64), Some(512)) => String::from("(uint64_t)_mm512_extract_intrinsic_test_epi64"),
-            (Some(8), Some(64)) => String::from("(uint8_t)_mm64_extract_intrinsic_test_epi8"),
-            (Some(16), Some(64)) => String::from("(uint16_t)_mm_extract_pi16"),
-            (Some(32), Some(64)) => String::from("(uint32_t)_mm64_extract_intrinsic_test_epi32"),
             _ => unreachable!(
                 "invalid length for vector argument: {:?}, {:?}",
                 self.bit_len, self.simd_len

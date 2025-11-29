@@ -280,12 +280,6 @@ pub const PLATFORM_C_FORWARD_DECLARATIONS: &str = r#"
     
     #define _mm512_extract_intrinsic_test_epi64(m, lane) \
         _mm_extract_epi64(_mm512_extracti64x2_epi64((m), (lane) / 2), (lane) % 2)
-    
-    #define _mm64_extract_intrinsic_test_epi8(m, lane) \
-        ((_mm_extract_pi16((m), (lane) / 2) >> (((lane) % 2) * 8)) & 0xFF)
-    
-    #define _mm64_extract_intrinsic_test_epi32(m, lane) \
-        _mm_cvtsi64_si32(_mm_srli_si64(m, (lane) * 32))
         
     // Load f16 (__m128h) and cast to integer (__m128i)
     #define _mm_loadu_ph_to___m128i(mem_addr) _mm_castph_si128(_mm_loadu_ph(mem_addr))

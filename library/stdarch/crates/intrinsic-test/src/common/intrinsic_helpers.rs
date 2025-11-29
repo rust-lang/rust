@@ -42,7 +42,7 @@ impl FromStr for TypeKind {
             "uint" | "unsigned" | "UI8" | "UI16" | "UI32" | "UI64" => Ok(Self::Int(Sign::Unsigned)),
             "void" => Ok(Self::Void),
             "MASK" => Ok(Self::Mask),
-            "M64" | "M128" | "M256" | "M512" => Ok(Self::Vector),
+            "M128" | "M256" | "M512" => Ok(Self::Vector),
             _ => Err(format!("Impossible to parse argument kind {s}")),
         }
     }
