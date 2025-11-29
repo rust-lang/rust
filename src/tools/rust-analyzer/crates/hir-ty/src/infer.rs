@@ -487,7 +487,8 @@ pub struct InferenceResult<'db> {
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
-    tuple_field_access_types: FxHashMap<TupleId, Tys<'db>>,
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* thinvec is technically update */)))]
+    tuple_field_access_types: ThinVec<Tys<'db>>,
 
     #[update(unsafe(with(crate::utils::unsafe_update_eq /* expr id is technically update */)))]
     pub(crate) type_of_expr: ArenaMap<ExprId, Ty<'db>>,
@@ -685,7 +686,7 @@ impl<'db> InferenceResult<'db> {
     }
 
     pub fn tuple_field_access_type(&self, id: TupleId) -> Tys<'db> {
-        self.tuple_field_access_types[&id]
+        self.tuple_field_access_types[id.0 as usize]
     }
 
     pub fn pat_adjustment(&self, id: PatId) -> Option<&[Ty<'db>]> {
@@ -1148,9 +1149,8 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         pat_adjustments.shrink_to_fit();
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
-            .enumerate()
-            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
-            .inspect(|(_, subst)| {
+            .map(|subst| table.resolve_completely(subst))
+            .inspect(|subst| {
                 *has_errors = *has_errors || subst.iter().any(|ty| ty.references_non_lt_error());
             })
             .collect();

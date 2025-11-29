@@ -1780,7 +1780,7 @@ impl<'db> SemanticsImpl<'db> {
         let (body, source_map) = self.db.body_with_source_map(def);
         let infer = InferenceResult::for_body(self.db, def);
         let mut res = FxHashSet::default();
-        unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
+        unsafe_operations_for_body(self.db, infer, def, &body, &mut |node| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.insert(node);
             }
@@ -1799,7 +1799,7 @@ impl<'db> SemanticsImpl<'db> {
             return Vec::new();
         };
         let mut res = Vec::default();
-        unsafe_operations(self.db, &infer, def, &body, block, &mut |node, _| {
+        unsafe_operations(self.db, infer, def, &body, block, &mut |node, _| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.push(node);
             }
