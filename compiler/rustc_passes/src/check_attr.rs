@@ -650,7 +650,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if `#[interrupt]` is applied to a function definition.
     fn check_interrupt(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
         match target {
-            Target::Fn => {},
+            Target::Fn => {}
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span(),

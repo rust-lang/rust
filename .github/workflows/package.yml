@@ -1,0 +1,150 @@
+name: Packaging
+on:
+  push:
+    branches:
+      - main
+
+defaults:
+  run:
+    # On Linux, macOS, and Windows, use the system-provided bash as the default
+    # shell. (This should only make a difference on Windows, where the default
+    # shell is PowerShell.)
+    shell: bash
+
+jobs:
+  package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-2022
+            host: x86_64-pc-windows-msvc
+            free_disk: false
+          - os: macos-14
+            host: aarch64-apple-darwin
+            free_disk: false
+          - os: ubuntu-22.04
+            host: x86_64-unknown-linux-gnu
+            free_disk: true
+    steps:
+      - name: disable git crlf conversion
+        run: git config --global core.autocrlf false
+
+      - name: checkout the source code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      # Free up disk space on Linux by removing preinstalled components that
+      # we do not need. We do this to enable some of the less resource
+      # intensive jobs to run on free runners, which however also have
+      # less disk space.
+      - name: free up disk space
+        run: src/ci/scripts/free-disk-space-linux.sh
+        if: matrix.free_disk
+
+      # If we don't need to free up disk space then just report how much space we have
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+        if: matrix.free_disk == false
+
+      - name: customize env
+        run: src/ci/scripts/setup-environment-v810.sh
+
+      - name: install sccache
+        run: src/ci/scripts/install-sccache.sh
+
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+
+      - name: install clang
+        run: src/ci/scripts/install-clang.sh
+
+      - name: install llvm v810
+        run: src/ci/scripts/install-llvm-v810.sh
+
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+
+      - name: install WIX
+        run: src/ci/scripts/install-wix.sh
+
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+
+      - name: install MinGW
+        run: src/ci/scripts/install-mingw.sh
+
+      - name: install ninja
+        run: src/ci/scripts/install-ninja.sh
+
+      # Disable automatic line ending conversion (again). On Windows, when we're
+      # installing dependencies, something switches the git configuration directory or
+      # re-enables autocrlf. We've not tracked down the exact cause -- and there may
+      # be multiple -- but this should ensure submodules are checked out with the
+      # appropriate line endings.
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+
+      - name: ensure line endings are correct
+        run: src/ci/scripts/verify-line-endings.sh
+
+      # Show the environment just before we run the build
+      # This makes it easier to diagnose problems with the above install scripts.
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
+
+      # where the magic happens
+      - name: create packages
+        run: src/ci/scripts/create-packages.sh
+
+      - name: Archive Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: |
+            rust-v810-*
+            rust-src-v810.tar.xz
+
+  release:
+    runs-on: ubuntu-22.04
+    needs: package
+    steps:
+      - id: getDate
+        name: Get Current Date
+        run: echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-2022
+      - name: Download Darwin artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: macos-14
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: ubuntu-22.04
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            # Rust toolchain
+            Download the right toolchain for your OS.
+             - Windows: rust-nightly-windows.tar.xz
+             - Mac: rust-nightly-darwin.tar.xz
+             - Linux: rust-nightly-linux.tar.xz
+          name: "${{ steps.getDate.outputs.TODAY }}"
+          tag_name: "rust-v810-${{ steps.getDate.outputs.TODAY }}"
+          files: |
+            rust-v810-windows.tar.xz
+            rust-v810-windows.msi
+            rust-v810-darwin.tar.xz
+            rust-v810-linux.tar.xz
+            rust-src-v810.tar.tz

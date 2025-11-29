@@ -132,6 +132,7 @@
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
     - [\*-unknown-windows-msvc](platform-support/windows-msvc.md)
     - [\*-uwp-windows-msvc](platform-support/uwp-windows-msvc.md)
+    - [v810-unknown-vb](platform-support/v810-unknown-vb.md)
     - [\*-wrs-vxworks](platform-support/vxworks.md)
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)

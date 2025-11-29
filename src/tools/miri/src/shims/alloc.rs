@@ -23,6 +23,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let max_fundamental_align = match &this.tcx.sess.target.arch {
             Arch::RiscV32 if matches!(os, Os::EspIdf | Os::Zkvm) => 4,
             Arch::Xtensa if matches!(os, Os::EspIdf) => 4,
+            Arch::V810 => 4,
             Arch::X86
             | Arch::Arm
             | Arch::M68k

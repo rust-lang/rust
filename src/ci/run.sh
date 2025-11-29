@@ -110,6 +110,8 @@ fi
 export RUST_RELEASE_CHANNEL=$(releaseChannel)
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
+export NO_LLVM_ASSERTIONS="1"
+
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   if [[ "$CI_JOB_NAME" == *ohos* ]]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
@@ -169,6 +171,7 @@ else
   fi
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=$CODEGEN_BACKENDS"
 
+  export NO_DOWNLOAD_CI_LLVM="1"
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh
   # copy of the compiler (including llvm tools, etc.) if we haven't actually
@@ -185,10 +188,11 @@ else
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=false"
   fi
 
-  # Download GCC from CI on test builders
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+  # Do not download GCC from CI on test builders, we don't have a copy
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=false"
 
   # download-rustc seems to be broken on CI after the stage0 redesign
   # Disable it until these issues are debugged and resolved
