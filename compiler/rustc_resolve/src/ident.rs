@@ -945,6 +945,46 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+        let res = self.reborrow().resolve_ident_in_module_non_globs_unadjusted(
+            module,
+            ident,
+            ns,
+            parent_scope,
+            shadowing,
+            finalize,
+            ignore_binding,
+            ignore_import,
+        );
+
+        match res {
+            Ok(_) | Err(ControlFlow::Break(_)) => return res,
+            Err(ControlFlow::Continue(_)) => {}
+        }
+
+        self.resolve_ident_in_module_globs_unadjusted(
+            module,
+            ident,
+            ns,
+            parent_scope,
+            shadowing,
+            finalize,
+            ignore_binding,
+            ignore_import,
+        )
+    }
+
+    /// Attempts to resolve `ident` in namespace `ns` of non-glob bindings in `module`.
+    fn resolve_ident_in_module_non_globs_unadjusted<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        module: Module<'ra>,
+        ident: Ident,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        shadowing: Shadowing,
+        finalize: Option<Finalize>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
@@ -954,13 +994,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .try_borrow_mut_unchecked()
             .map_err(|_| ControlFlow::Continue(Determined))?;
 
-        // If the primary binding is unusable, search further and return the shadowed glob
-        // binding if it exists. What we really want here is having two separate scopes in
-        // a module - one for non-globs and one for globs, but until that's done use this
-        // hack to avoid inconsistent resolution ICEs during import validation.
-        let binding = [resolution.non_glob_binding, resolution.glob_binding]
-            .into_iter()
-            .find_map(|binding| if binding == ignore_binding { None } else { binding });
+        let binding = resolution.non_glob_binding.filter(|b| Some(*b) != ignore_binding);
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(
@@ -974,19 +1008,67 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
         }
 
-        let check_usable = |this: CmResolver<'r, 'ra, 'tcx>, binding: NameBinding<'ra>| {
-            let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            if usable { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
-        };
-
         // Items and single imports are not shadowable, if we have one, then it's determined.
-        if let Some(binding) = binding
-            && !binding.is_glob_import()
-        {
-            return check_usable(self, binding);
+        if let Some(binding) = binding {
+            let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+            return if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) };
         }
 
-        // --- From now on we either have a glob resolution or no resolution. ---
+        // Check if one of single imports can still define the name, block if it can.
+        if self.reborrow().single_import_can_define_name(
+            &resolution,
+            None,
+            ns,
+            ignore_import,
+            ignore_binding,
+            parent_scope,
+        ) {
+            return Err(ControlFlow::Break(Undetermined));
+        }
+
+        // Check if one of unexpanded macros can still define the name.
+        if !module.unexpanded_invocations.borrow().is_empty() {
+            return Err(ControlFlow::Continue(Undetermined));
+        }
+
+        // No resolution and no one else can define the name - determinate error.
+        Err(ControlFlow::Continue(Determined))
+    }
+
+    /// Attempts to resolve `ident` in namespace `ns` of glob bindings in `module`.
+    fn resolve_ident_in_module_globs_unadjusted<'r>(
+        mut self: CmResolver<'r, 'ra, 'tcx>,
+        module: Module<'ra>,
+        ident: Ident,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        shadowing: Shadowing,
+        finalize: Option<Finalize>,
+        ignore_binding: Option<NameBinding<'ra>>,
+        ignore_import: Option<Import<'ra>>,
+    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
+        let key = BindingKey::new(ident, ns);
+        // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
+        // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
+        // the exclusive access infinite recursion will crash the compiler with stack overflow.
+        let resolution = &*self
+            .resolution_or_default(module, key)
+            .try_borrow_mut_unchecked()
+            .map_err(|_| ControlFlow::Continue(Determined))?;
+
+        let binding = resolution.glob_binding.filter(|b| Some(*b) != ignore_binding);
+
+        if let Some(finalize) = finalize {
+            return self.get_mut().finalize_module_binding(
+                ident,
+                binding,
+                if resolution.non_glob_binding.is_some() { resolution.glob_binding } else { None },
+                parent_scope,
+                module,
+                finalize,
+                shadowing,
+            );
+        }
 
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
@@ -1014,21 +1096,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
-            if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
-                return check_usable(self, binding);
+            return if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
+                let accessible = self.is_accessible_from(binding.vis, parent_scope.module);
+                if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
             } else {
-                return Err(ControlFlow::Break(Undetermined));
-            }
+                Err(ControlFlow::Break(Undetermined))
+            };
         }
-
-        // --- From now on we have no resolution. ---
 
         // Now we are in situation when new item/import can appear only from a glob or a macro
         // expansion. With restricted shadowing names from globs and macro expansions cannot
         // shadow names from outer scopes, so we can freely fallback from module search to search
         // in outer scopes. For `resolve_ident_in_scope_set` to continue search in outer
         // scopes we return `Undetermined` with `ControlFlow::Continue`.
-
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         if !module.unexpanded_invocations.borrow().is_empty() {
