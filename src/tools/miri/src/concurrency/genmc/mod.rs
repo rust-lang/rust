@@ -592,9 +592,11 @@ impl GenmcCtx {
             genmc_size,
             alignment.bytes(),
         );
+        if chosen_address == 0 {
+            throw_exhaust!(AddressSpaceFull);
+        }
 
-        // Non-global addresses should not be in the global address space or null.
-        assert_ne!(0, chosen_address, "GenMC malloc returned nullptr.");
+        // Non-global addresses should not be in the global address space.
         assert_eq!(0, chosen_address & GENMC_GLOBAL_ADDRESSES_MASK);
         // Sanity check the address alignment:
         assert!(
@@ -622,15 +624,14 @@ impl GenmcCtx {
             !self.get_alloc_data_races(),
             "memory deallocation with data race checking disabled."
         );
-        if self
+        let free_result = self
             .handle
             .borrow_mut()
             .pin_mut()
-            .handle_free(self.active_thread_genmc_tid(machine), address.bytes())
-        {
+            .handle_free(self.active_thread_genmc_tid(machine), address.bytes());
+        if let Some(error) = free_result.as_ref() {
             // FIXME(genmc): improve error handling.
-            // An error was detected, so we get the error string from GenMC.
-            throw_ub_format!("{}", self.try_get_error().unwrap());
+            throw_ub_format!("{}", error.to_string_lossy());
         }
 
         interp_ok(())

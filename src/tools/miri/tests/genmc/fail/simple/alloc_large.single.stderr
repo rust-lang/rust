@@ -1,0 +1,26 @@
+Running GenMC Verification...
+error: resource exhaustion: there are no more free addresses in the address space
+  --> RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+   |
+LL |             AllocInit::Uninitialized => alloc.allocate(layout),
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^ resource exhaustion occurred here
+   |
+   = help: in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused
+   = note: BACKTRACE:
+   = note: inside `alloc::raw_vec::RawVecInner::try_allocate_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+   = note: inside `alloc::raw_vec::RawVecInner::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+   = note: inside `alloc::raw_vec::RawVec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
+   = note: inside `std::vec::Vec::<u8>::with_capacity_in` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+   = note: inside `std::vec::Vec::<u8>::with_capacity` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+note: inside `miri_start`
+  --> tests/genmc/fail/simple/alloc_large.rs:LL:CC
+   |
+LL |         let _v = Vec::<u8>::with_capacity(8 * 1024 * 1024 * 1024);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+note: add `-Zmiri-genmc-print-genmc-output` to MIRIFLAGS to see the detailed GenMC error report
+
+error: aborting due to 1 previous error
+
