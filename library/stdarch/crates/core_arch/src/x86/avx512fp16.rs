@@ -1007,7 +1007,7 @@ pub fn _mm_comilt_sh(a: __m128h, b: __m128h) -> i32 {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_comineq_sh(a: __m128h, b: __m128h) -> i32 {
-    _mm_comi_sh::<_CMP_NEQ_OS>(a, b)
+    _mm_comi_sh::<_CMP_NEQ_US>(a, b)
 }
 
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b for equality, and
@@ -1073,7 +1073,7 @@ pub fn _mm_ucomilt_sh(a: __m128h, b: __m128h) -> i32 {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_ucomineq_sh(a: __m128h, b: __m128h) -> i32 {
-    _mm_comi_sh::<_CMP_NEQ_OQ>(a, b)
+    _mm_comi_sh::<_CMP_NEQ_UQ>(a, b)
 }
 
 /// Load 128-bits (composed of 8 packed half-precision (16-bit) floating-point elements) from memory into
