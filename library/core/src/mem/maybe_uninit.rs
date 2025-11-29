@@ -726,7 +726,8 @@ impl<T> MaybeUninit<T> {
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that data may indeed be duplicated.
     ///
-    /// Additionally, if you call this function from a different thread than the one
+    /// Since this function does not require `T: Send`, you also need to carefully consider
+    /// thread safety. If you call this function from a different thread than the one
     /// that holds the `MaybeUninit<T>`, it logically constitutes a cross-thread ownership
     /// transfer of the contained value `T`. You are responsible for guaranteeing
     /// the thread safety of the transfer. Note that `MaybeUninit<T>` is [`Sync`] if `T`
@@ -793,12 +794,14 @@ impl<T> MaybeUninit<T> {
     ///
     /// let mtx = Mutex::new(0u32);
     /// let x = MaybeUninit::new(mtx.lock().unwrap());
-    /// // Moving the `MutexGuard<'_, u32>: !Send + Sync` to another thread.
-    /// // ⚠️ Thread safety is not guaranteed here!
+    /// // Moving the `MutexGuard<'_, u32>: !Send + Sync` to another thread,
+    /// // thread safety not guaranteed here.
     /// thread::scope(|s| {
     ///    // This compiles because `MaybeUninit<MutexGuard<'_, u32>>` is `Sync`.
     ///    s.spawn(|| {
     ///       let _unused = unsafe { x.assume_init_read() };
+    ///       // `_unused: MutexGuard<'_, u32>` is dropped here, on a different thread
+    ///       // than the one that locked the mutex; this is library-level UB ⚠️!
     ///   });
     /// });
     /// ```
