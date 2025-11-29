@@ -157,6 +157,7 @@ fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &
         "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
         "tests/ui/include-macros/data.bin", // testing including data with the include macros
         "tests/ui/include-macros/file.txt", // testing including data with the include macros
+        "tests/ui/include-macros/invalid-utf8-binary-file.bin", // testing including data with the include macros
         "tests/ui/macros/macro-expanded-include/file.txt", // testing including data with the include macros
         "tests/ui/macros/not-utf8.bin", // testing including data with the include macros
         "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include
