@@ -13,6 +13,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(control_flow_into_value)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
@@ -26,6 +27,7 @@
 use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::fmt::{self};
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
@@ -97,12 +99,6 @@ pub use macros::registered_tools_ast;
 use crate::ref_mut::{CmCell, CmRefCell};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
-#[derive(Debug)]
-enum Weak {
-    Yes,
-    No,
-}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum Determinacy {
@@ -1917,7 +1913,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | Scope::BuiltinTypes => {}
                 _ => unreachable!(),
             }
-            None::<()>
+            ControlFlow::<()>::Continue(())
         });
 
         found_traits
@@ -2489,6 +2485,7 @@ enum Stage {
     Late,
 }
 
+/// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.
