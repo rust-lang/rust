@@ -51,17 +51,13 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
         .clone()
         .into_iter()
         .filter_map(|trait_def_id| {
-            synthesize_auto_trait_impl(
-                cx,
-                ty,
-                trait_def_id,
-                typing_env,
-                item_def_id,
-                DiscardPositiveImpls::No,
-            )
+            synthesize_auto_trait_impl(cx, ty, trait_def_id, typing_env, item_def_id, Mode::Auto)
         })
         .collect();
-    // We are only interested in case the type *doesn't* implement the `Sized` trait.
+
+    // While `Sized` is not an auto trait, our algorithm works just as well for it.
+    // Contrary to actual auto traits, we're only interested in the case where the
+    // type *doesn't* implemented the trait since most types are `Sized`.
     if !ty.is_sized(tcx, typing_env)
         && let Some(sized_trait_def_id) = tcx.lang_items().sized_trait()
         && let Some(impl_item) = synthesize_auto_trait_impl(
@@ -70,70 +66,107 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
             sized_trait_def_id,
             typing_env,
             item_def_id,
-            DiscardPositiveImpls::Yes,
+            Mode::Sized,
         )
     {
         auto_trait_impls.push(impl_item);
     }
+
     auto_trait_impls
 }
 
-#[instrument(level = "debug", skip(cx))]
+#[instrument(level = "debug", skip(cx, ty, typing_env, mode))]
 fn synthesize_auto_trait_impl<'tcx>(
     cx: &mut DocContext<'tcx>,
     ty: Ty<'tcx>,
     trait_def_id: DefId,
     typing_env: ty::TypingEnv<'tcx>,
     item_def_id: DefId,
-    discard_positive_impls: DiscardPositiveImpls,
+    mode: Mode,
 ) -> Option<clean::Item> {
-    let tcx = cx.tcx;
     if !cx.generated_synthetics.insert((ty, trait_def_id)) {
         debug!("already generated, aborting");
         return None;
     }
 
+    let tcx = cx.tcx;
+
+    // The mere existence of a user-written impl for that ADT suppresses any potential auto trait
+    // impls. This corresponds to auto trait candidate disqualification in the trait solver.
+    if let Mode::Auto = mode {
+        let mut seen_user_written_impl = false;
+        tcx.for_each_relevant_impl(trait_def_id, ty, |_| {
+            seen_user_written_impl = true;
+        });
+        if seen_user_written_impl {
+            return None;
+        }
+    }
+
+    let (infcx, param_env) =
+        tcx.infer_ctxt().with_next_trait_solver(true).build_with_typing_env(typing_env);
+
     let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [ty]);
+    let goal = Goal::new(tcx, param_env, trait_ref);
 
-    let verdict = evaluate(tcx, ty, trait_def_id, typing_env);
+    let mut collector =
+        PredicateCollector { clauses: Vec::new(), const_var_tys: UnordMap::default() };
 
-    let (generics, polarity) = match verdict {
-        Verdict::Implemented(info) => {
-            if let DiscardPositiveImpls::Yes = discard_positive_impls {
+    let (generics, polarity) = match infcx.visit_proof_tree(goal, &mut collector) {
+        // The type implements the auto trait.
+        ControlFlow::Continue(()) => {
+            if let Mode::Sized = mode {
                 return None;
             }
 
-            let generics = clean_param_env(cx, item_def_id, info);
+            collector.clauses.extend_from_slice(param_env.caller_bounds());
+            let param_env = ty::ParamEnv::new(tcx.mk_clauses(&collector.clauses));
+
+            let outlives_env =
+                OutlivesEnvironment::new(&infcx, hir::def_id::CRATE_DEF_ID, param_env, []);
+            let _ = infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty));
+            let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();
+            let vid_to_region = map_vid_to_region(&region_data);
+
+            let generics = clean_param_env(
+                cx,
+                item_def_id,
+                ImplInfo {
+                    param_env,
+                    const_var_tys: collector.const_var_tys,
+                    region_data,
+                    vid_to_region,
+                },
+            );
 
             (generics, ty::ImplPolarity::Positive)
         }
-        Verdict::Unimplemented => {
-            // For negative impls, we use the generic params, but *not* the predicates,
-            // from the original type. Otherwise, the displayed impl appears to be a
-            // conditional negative impl, when it's really unconditional.
-            //
-            // For example, consider the struct Foo<T: Copy>(*mut T). Using
-            // the original predicates in our impl would cause us to generate
-            // `impl !Send for Foo<T: Copy>`, which makes it appear that Foo
-            // implements Send where T is not copy.
-            //
-            // Instead, we generate `impl !Send for Foo<T>`, which better
-            // expresses the fact that `Foo<T>` never implements `Send`,
-            // regardless of the choice of `T`.
+        // The type doesn't implement the auto trait (unconditionally).
+        ControlFlow::Break(()) => {
+            // FIXME(#146571): We're using negative impls to represent the fact that a type
+            // doesn't implement an auto trait. This is technically speaking incorrect since
+            // negative impls provide stronger guarantees wrt. coherence and API evolution.
+            // Well, it's correct for `Sized` (not an auto trait) because it's fundamental.
+
+            // We neither forward the predicates we've collected, nor the ones from the ParamEnv
+            // of the ADT (*) since the "unimplemented-ness" is unconditional.
             let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(item_def_id),
                 ty::GenericPredicates::default(),
             );
+            // FIXME: (*) We remove `TyParam: ?Sized` bounds again because someone must've
+            //        thought it "looked nicer". However, strictly speaking that's incorrect for
+            //        items whose type params are *actually* `?Sized` because then the synthetic
+            //        negative impl would be *conditional* which is illegal for auto traits (E0367).
+            //
+            //        We should either stop clearing relaxed bounds (these impls needn't satisfy the
+            //        predicates of the ADT) or just copy over the predicates from the ADT
+            //        (see also this tangentially related issue: #111101).
             generics.where_predicates.clear();
 
-            // FIXME(#146571): Using negative impls to represent the fact that a type doesn't impl
-            // an auto trait is technically speaking incorrect since the former provide stronger
-            // guarantees wrt. coherence and API evolution.
-            // Well, it's correct for `Sized` (not an auto trait) because it's fundamental.
             (generics, ty::ImplPolarity::Negative)
         }
-        Verdict::UserWritten => return None,
     };
 
     Some(clean::Item {
@@ -161,10 +194,9 @@ fn synthesize_auto_trait_impl<'tcx>(
     })
 }
 
-#[derive(Debug)]
-enum DiscardPositiveImpls {
-    Yes,
-    No,
+enum Mode {
+    Auto,
+    Sized,
 }
 
 fn clean_param_env<'tcx>(
@@ -467,55 +499,6 @@ fn early_bound_region_name(region: Region<'_>) -> Option<Symbol> {
     }
 }
 
-fn evaluate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    self_ty: Ty<'tcx>,
-    trait_def_id: DefId,
-    typing_env: ty::TypingEnv<'tcx>,
-) -> Verdict<'tcx> {
-    // The mere existence of a user-written impl for that ADT suppresses any potential auto trait impls.
-    // Look for auto trait candidate disqualification in the trait solver for details.
-    let mut seen_user_written_impl = false;
-    tcx.for_each_relevant_impl(trait_def_id, self_ty, |_| {
-        seen_user_written_impl = true;
-    });
-    if seen_user_written_impl {
-        return Verdict::UserWritten;
-    }
-
-    let trait_ref = ty::TraitRef::new(tcx, trait_def_id, [self_ty]);
-
-    let (infcx, param_env) =
-        tcx.infer_ctxt().with_next_trait_solver(true).build_with_typing_env(typing_env);
-
-    let goal = Goal::new(tcx, param_env, trait_ref);
-
-    let mut collector = PredicateCollector {
-        clauses: typing_env.param_env.caller_bounds().to_vec(),
-        const_var_tys: UnordMap::default(),
-    };
-
-    match infcx.visit_proof_tree(goal, &mut collector) {
-        ControlFlow::Continue(()) => {
-            let param_env = ty::ParamEnv::new(tcx.mk_clauses(&collector.clauses));
-
-            let outlives_env =
-                OutlivesEnvironment::new(&infcx, hir::def_id::CRATE_DEF_ID, param_env, []);
-            let _ = infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty));
-            let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();
-            let vid_to_region = map_vid_to_region(&region_data);
-
-            Verdict::Implemented(ImplInfo {
-                param_env,
-                const_var_tys: collector.const_var_tys,
-                region_data,
-                vid_to_region,
-            })
-        }
-        ControlFlow::Break(()) => Verdict::Unimplemented,
-    }
-}
-
 struct PredicateCollector<'tcx> {
     clauses: Vec<ty::Clause<'tcx>>,
     const_var_tys: UnordMap<ty::ConstVid, ty::Binder<'tcx, Ty<'tcx>>>,
@@ -705,13 +688,6 @@ fn map_vid_to_region<'cx>(
     }
 
     finished_map
-}
-
-#[derive(Debug)]
-enum Verdict<'tcx> {
-    UserWritten,
-    Implemented(ImplInfo<'tcx>),
-    Unimplemented,
 }
 
 #[derive(Debug)]
