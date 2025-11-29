@@ -182,8 +182,9 @@ pub struct GccCodegenBackend {
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
 fn libgccjit_path(sysroot_path: &Path, target_triple: &str) -> PathBuf {
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    sysroot_lib_dir.join(target_triple).join("libgccjit.so")
+    let sysroot_lib_dir = sysroot_path.join("lib").join("rustlib");
+    let libgccjit_target_lib_file =
+        sysroot_lib_dir.join(target_triple).join("lib").join("libgccjit.so");
 }
 
 fn load_libgccjit_if_needed(sysroot_path: &Path, target_triple: &str) {

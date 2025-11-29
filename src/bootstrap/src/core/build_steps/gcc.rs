@@ -47,7 +47,7 @@ impl GccOutput {
             format!("Cannot find libgccjit at {}", self.libgccjit.display())
         );
 
-        let dest_dir = directory.join(self.target);
+        let dest_dir = directory.join("rustlib").join(self.target).join("lib");
         t!(fs::create_dir_all(&dest_dir));
         let dst = dest_dir.join(target_filename);
         builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
