@@ -592,9 +592,11 @@ impl GenmcCtx {
             genmc_size,
             alignment.bytes(),
         );
+        if chosen_address == 0 {
+            throw_exhaust!(AddressSpaceFull);
+        }
 
-        // Non-global addresses should not be in the global address space or null.
-        assert_ne!(0, chosen_address, "GenMC malloc returned nullptr.");
+        // Non-global addresses should not be in the global address space.
         assert_eq!(0, chosen_address & GENMC_GLOBAL_ADDRESSES_MASK);
         // Sanity check the address alignment:
         assert!(
