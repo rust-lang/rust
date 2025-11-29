@@ -140,21 +140,21 @@ impl<'db> Operand<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ProjectionElem<V, T> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub enum ProjectionElem<'db, V: PartialEq> {
     Deref,
     Field(Either<FieldId, TupleFieldId>),
     // FIXME: get rid of this, and use FieldId for tuples and closures
     ClosureField(usize),
-    Index(V),
+    Index(#[update(unsafe(with(crate::utils::unsafe_update_eq)))] V),
     ConstantIndex { offset: u64, from_end: bool },
     Subslice { from: u64, to: u64 },
     //Downcast(Option<Symbol>, VariantIdx),
-    OpaqueCast(T),
+    OpaqueCast(Ty<'db>),
 }
 
-impl<V, T> ProjectionElem<V, T> {
-    pub fn projected_ty<'db>(
+impl<'db, V: PartialEq> ProjectionElem<'db, V> {
+    pub fn projected_ty(
         &self,
         infcx: &InferCtxt<'db>,
         mut base: Ty<'db>,
@@ -254,7 +254,7 @@ impl<V, T> ProjectionElem<V, T> {
     }
 }
 
-type PlaceElem<'db> = ProjectionElem<LocalId<'db>, Ty<'db>>;
+type PlaceElem<'db> = ProjectionElem<'db, LocalId<'db>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProjectionId(u32);

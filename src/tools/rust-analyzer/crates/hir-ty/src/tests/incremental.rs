@@ -4,7 +4,7 @@ use hir_def::{DefWithBodyId, ModuleDefId};
 use salsa::EventKind;
 use test_fixture::WithFixture;
 
-use crate::{db::HirDatabase, method_resolution::TraitImpls, test_db::TestDB};
+use crate::{InferenceResult, method_resolution::TraitImpls, test_db::TestDB};
 
 use super::visit_module;
 
@@ -24,11 +24,11 @@ fn foo() -> i32 {
             let crate_def_map = module.def_map(&db);
             visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
-                    db.infer(it.into());
+                    InferenceResult::for_body(&db, it.into());
                 }
             });
         },
-        &[("infer_shim", 1)],
+        &[("InferenceResult < 'db >::for_body_", 1)],
         expect_test::expect![[r#"
             [
                 "crate_local_def_map",
@@ -36,7 +36,7 @@ fn foo() -> i32 {
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "AttrFlags::query_",
@@ -68,11 +68,11 @@ fn foo() -> i32 {
             let crate_def_map = module.def_map(&db);
             visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
-                    db.infer(it.into());
+                    InferenceResult::for_body(&db, it.into());
                 }
             });
         },
-        &[("infer_shim", 0)],
+        &[("InferenceResult < 'db >::for_body_", 0)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -111,11 +111,11 @@ fn baz() -> i32 {
             let crate_def_map = module.def_map(&db);
             visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
-                    db.infer(it.into());
+                    InferenceResult::for_body(&db, it.into());
                 }
             });
         },
-        &[("infer_shim", 3)],
+        &[("InferenceResult < 'db >::for_body_", 3)],
         expect_test::expect![[r#"
             [
                 "crate_local_def_map",
@@ -123,7 +123,7 @@ fn baz() -> i32 {
                 "ast_id_map_shim",
                 "parse_shim",
                 "real_span_map_shim",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "AttrFlags::query_",
@@ -137,7 +137,7 @@ fn baz() -> i32 {
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "body_shim",
@@ -146,7 +146,7 @@ fn baz() -> i32 {
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "ImplTraits < 'db >::return_type_impl_traits_",
                 "expr_scopes_shim",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "body_shim",
@@ -180,11 +180,11 @@ fn baz() -> i32 {
             let crate_def_map = module.def_map(&db);
             visit_module(&db, crate_def_map, module.local_id, &mut |def| {
                 if let ModuleDefId::FunctionId(it) = def {
-                    db.infer(it.into());
+                    InferenceResult::for_body(&db, it.into());
                 }
             });
         },
-        &[("infer_shim", 1)],
+        &[("InferenceResult < 'db >::for_body_", 1)],
         expect_test::expect![[r#"
             [
                 "parse_shim",
@@ -202,7 +202,7 @@ fn baz() -> i32 {
                 "function_signature_shim",
                 "body_with_source_map_shim",
                 "body_shim",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "expr_scopes_shim",
                 "function_signature_with_source_map_shim",
                 "function_signature_shim",
@@ -558,7 +558,7 @@ fn main() {
             });
 
             for def in defs {
-                let _inference_result = db.infer(def);
+                let _inference_result = InferenceResult::for_body(&db, def);
             }
         },
         &[("trait_solve_shim", 0)],
@@ -574,7 +574,7 @@ fn main() {
                 "body_with_source_map_shim",
                 "AttrFlags::query_",
                 "ImplItems::of_",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "trait_signature_shim",
                 "trait_signature_with_source_map_shim",
                 "AttrFlags::query_",
@@ -591,7 +591,7 @@ fn main() {
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "ImplTraits < 'db >::return_type_impl_traits_",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_shim",
                 "function_signature_with_source_map_shim",
                 "trait_environment_shim",
@@ -655,7 +655,7 @@ fn main() {
             });
 
             for def in defs {
-                let _inference_result = db.infer(def);
+                let _inference_result = InferenceResult::for_body(&db, def);
             }
         },
         &[("trait_solve_shim", 0)],
@@ -671,7 +671,7 @@ fn main() {
                 "AttrFlags::query_",
                 "body_shim",
                 "ImplItems::of_",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "AttrFlags::query_",
                 "trait_signature_with_source_map_shim",
                 "AttrFlags::query_",
@@ -686,7 +686,7 @@ fn main() {
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "ImplTraits < 'db >::return_type_impl_traits_",
-                "infer_shim",
+                "InferenceResult < 'db >::for_body_",
                 "function_signature_with_source_map_shim",
                 "GenericPredicates < 'db >::query_with_diagnostics_",
                 "ImplTraits < 'db >::return_type_impl_traits_",

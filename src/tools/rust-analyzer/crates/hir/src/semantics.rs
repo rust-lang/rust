@@ -28,6 +28,7 @@ use hir_expand::{
     name::AsName,
 };
 use hir_ty::{
+    InferenceResult,
     diagnostics::{unsafe_operations, unsafe_operations_for_body},
     next_solver::DbInterner,
 };
@@ -1777,7 +1778,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
         let def = DefWithBodyId::from(def);
         let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = self.db.infer(def);
+        let infer = InferenceResult::for_body(self.db, def);
         let mut res = FxHashSet::default();
         unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
@@ -1793,7 +1794,7 @@ impl<'db> SemanticsImpl<'db> {
         let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
         let def = def.into();
         let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = self.db.infer(def);
+        let infer = InferenceResult::for_body(self.db, def);
         let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
             return Vec::new();
         };

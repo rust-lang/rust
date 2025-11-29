@@ -78,7 +78,7 @@ pub(crate) enum BodyOrSig<'db> {
         def: DefWithBodyId,
         body: Arc<Body>,
         source_map: Arc<BodySourceMap>,
-        infer: Option<Arc<InferenceResult<'db>>>,
+        infer: Option<&'db InferenceResult<'db>>,
     },
     // To be folded into body once it is considered one
     VariantFields {
@@ -101,7 +101,7 @@ impl<'db> SourceAnalyzer<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
     ) -> SourceAnalyzer<'db> {
-        Self::new_for_body_(db, def, node, offset, Some(db.infer(def)))
+        Self::new_for_body_(db, def, node, offset, Some(InferenceResult::for_body(db, def)))
     }
 
     pub(crate) fn new_for_body_no_infer(
@@ -118,7 +118,7 @@ impl<'db> SourceAnalyzer<'db> {
         def: DefWithBodyId,
         node @ InFile { file_id, .. }: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
-        infer: Option<Arc<InferenceResult<'db>>>,
+        infer: Option<&'db InferenceResult<'db>>,
     ) -> SourceAnalyzer<'db> {
         let (body, source_map) = db.body_with_source_map(def);
         let scopes = db.expr_scopes(def);

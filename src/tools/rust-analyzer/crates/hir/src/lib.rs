@@ -76,8 +76,8 @@ use hir_expand::{
     AstId, MacroCallKind, RenderedExpandError, ValueResult, proc_macro::ProcMacroKind,
 };
 use hir_ty::{
-    GenericPredicates, TraitEnvironment, TyDefId, TyLoweringDiagnostic, ValueTyDefId,
-    all_super_traits, autoderef, check_orphan_rules,
+    GenericPredicates, InferenceResult, TraitEnvironment, TyDefId, TyLoweringDiagnostic,
+    ValueTyDefId, all_super_traits, autoderef, check_orphan_rules,
     consteval::try_const_usize,
     db::{InternedClosureId, InternedCoroutineId},
     diagnostics::BodyValidationDiagnostic,
@@ -1239,8 +1239,7 @@ impl TupleField {
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
         let interner = DbInterner::new_no_crate(db);
-        let ty = db
-            .infer(self.owner)
+        let ty = InferenceResult::for_body(db, self.owner)
             .tuple_field_access_type(self.tuple)
             .as_slice()
             .get(self.index as usize)
@@ -1956,7 +1955,7 @@ impl DefWithBody {
 
         expr_store_diagnostics(db, acc, &source_map);
 
-        let infer = db.infer(self.into());
+        let infer = InferenceResult::for_body(db, self.into());
         for d in infer.diagnostics() {
             acc.extend(AnyDiagnostic::inference_diagnostic(
                 db,
@@ -3844,7 +3843,7 @@ impl Local {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let def = self.parent;
-        let infer = db.infer(def);
+        let infer = InferenceResult::for_body(db, def);
         let ty = infer[self.binding_id];
         Type::new(db, def, ty)
     }
@@ -4540,7 +4539,7 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = db.infer(owner);
+        let infer = InferenceResult::for_body(db, owner);
         let info = infer.closure_info(id);
         info.0
             .iter()
@@ -4555,7 +4554,7 @@ impl<'db> Closure<'db> {
             return Vec::new();
         };
         let owner = db.lookup_intern_closure(id).0;
-        let infer = db.infer(owner);
+        let infer = InferenceResult::for_body(db, owner);
         let (captures, _) = infer.closure_info(id);
         let env = db.trait_environment_for_body(owner);
         captures
@@ -4568,7 +4567,7 @@ impl<'db> Closure<'db> {
         match self.id {
             AnyClosureId::ClosureId(id) => {
                 let owner = db.lookup_intern_closure(id).0;
-                let infer = db.infer(owner);
+                let infer = InferenceResult::for_body(db, owner);
                 let info = infer.closure_info(id);
                 info.1.into()
             }
