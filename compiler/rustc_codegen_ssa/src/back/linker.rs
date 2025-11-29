@@ -1836,11 +1836,6 @@ fn exported_symbols_for_non_proc_macro(
 }
 
 fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<(String, SymbolExportKind)> {
-    // `exported_symbols` will be empty when !should_codegen.
-    if !tcx.sess.opts.output_types.should_codegen() {
-        return Vec::new();
-    }
-
     let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
     let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
 

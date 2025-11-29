@@ -1111,11 +1111,7 @@ fn should_encode_mir(
 ) -> (bool, bool) {
     match tcx.def_kind(def_id) {
         // Constructors
-        DefKind::Ctor(_, _) => {
-            let mir_opt_base = tcx.sess.opts.output_types.should_codegen()
-                || tcx.sess.opts.unstable_opts.always_encode_mir;
-            (true, mir_opt_base)
-        }
+        DefKind::Ctor(_, _) => (true, true),
         // Constants
         DefKind::AnonConst | DefKind::InlineConst | DefKind::AssocConst | DefKind::Const => {
             (true, false)
@@ -1127,8 +1123,7 @@ fn should_encode_mir(
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
             let opt = tcx.sess.opts.unstable_opts.always_encode_mir
-                || (tcx.sess.opts.output_types.should_codegen()
-                    && reachable_set.contains(&def_id)
+                || (reachable_set.contains(&def_id)
                     && (generics.requires_monomorphization(tcx)
                         || tcx.cross_crate_inlinable(def_id)));
             // The function has a `const` modifier or is in a `const trait`.
@@ -1858,10 +1853,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // Encode all the deduced parameter attributes for everything that has MIR, even for items
         // that can't be inlined. But don't if we aren't optimizing in non-incremental mode, to
         // save the query traffic.
-        if tcx.sess.opts.output_types.should_codegen()
-            && tcx.sess.opts.optimize != OptLevel::No
-            && tcx.sess.opts.incremental.is_none()
-        {
+        if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
             for &local_def_id in tcx.mir_keys(()) {
                 if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
                     record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
@@ -2263,11 +2255,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 /// Used to prefetch queries which will be needed later by metadata encoding.
 /// Only a subset of the queries are actually prefetched to keep this code smaller.
 fn prefetch_mir(tcx: TyCtxt<'_>) {
-    if !tcx.sess.opts.output_types.should_codegen() {
-        // We won't emit MIR, so don't prefetch it.
-        return;
-    }
-
     let reachable_set = tcx.reachable_set(());
     par_for_each_in(tcx.mir_keys(()), |&&def_id| {
         if tcx.is_trivial_const(def_id) {

@@ -1114,9 +1114,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
             // them later during codegen.
-            if tcx.sess.opts.output_types.should_codegen()
-                || tcx.hir_body_const_context(def_id).is_some()
-            {
+            if tcx.hir_body_const_context(def_id).is_some() {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
             if tcx.is_coroutine(def_id.to_def_id()) {
