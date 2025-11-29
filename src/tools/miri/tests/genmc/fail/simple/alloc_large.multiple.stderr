@@ -5,6 +5,7 @@ error: resource exhaustion: there are no more free addresses in the address spac
 LL |             AllocInit::Uninitialized => alloc.allocate(layout),
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ resource exhaustion occurred here
    |
+   = help: in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused
    = note: BACKTRACE:
    = note: inside `alloc::raw_vec::RawVecInner::try_allocate_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
    = note: inside `alloc::raw_vec::RawVecInner::with_capacity_in` at RUSTLIB/alloc/src/raw_vec/mod.rs:LL:CC
