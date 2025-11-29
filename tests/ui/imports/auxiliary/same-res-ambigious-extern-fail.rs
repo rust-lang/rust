@@ -13,4 +13,4 @@ globbing! {} // this imports the same `RustEmbed` macro with `pub` visibility
 
 pub trait RustEmbed {}
 
-pub use RustEmbed as Embed;
+pub use self::RustEmbed as Embed;

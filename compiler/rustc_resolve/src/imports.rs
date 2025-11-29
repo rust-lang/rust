@@ -394,6 +394,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && non_glob_binding.expansion != LocalExpnId::ROOT
                             && glob_binding.res() != non_glob_binding.res()
                         {
+                            // FIXME: record vis mismatches as well, but breakage in practice.
                             resolution.non_glob_binding = Some(this.new_ambiguity_binding(
                                 AmbiguityKind::GlobVsExpanded,
                                 non_glob_binding,
@@ -413,7 +414,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     glob_binding,
                                     false,
                                 ));
-                            } else if !old_glob_binding.vis.is_at_least(binding.vis, this.tcx) {
+                            } else if !old_glob_binding.vis.is_at_least(glob_binding.vis, this.tcx)
+                            {
                                 resolution.glob_binding = Some(glob_binding);
                             }
                         } else {
@@ -957,7 +959,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             &import.module_path,
             None,
             &import.parent_scope,
-            Some(finalize),
+            Some(Finalize { significant_visibility: false, ..finalize }),
             ignore_binding,
             Some(import),
         );
@@ -1135,7 +1137,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ident,
                     ns,
                     &import.parent_scope,
-                    Some(Finalize { report_private: false, ..finalize }),
+                    Some(Finalize {
+                        report_private: false,
+                        import_vis: Some(import.vis),
+                        ..finalize
+                    }),
                     bindings[ns].get().binding(),
                     Some(import),
                 );

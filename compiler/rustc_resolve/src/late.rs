@@ -1498,7 +1498,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             opt_ns,
             &self.parent_scope,
             Some(source),
-            finalize,
+            finalize.map(|finalize| Finalize { significant_visibility: false, ..finalize }),
             Some(&self.ribs),
             None,
             None,
