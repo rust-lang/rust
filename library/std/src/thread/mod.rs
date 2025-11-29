@@ -158,6 +158,7 @@
 #[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
+use crate::alloc::System;
 use crate::any::Any;
 use crate::cell::UnsafeCell;
 use crate::ffi::CStr;
@@ -209,6 +210,36 @@ pub use self::local::{AccessError, LocalKey};
 pub mod local_impl {
     pub use super::local::thread_local_process_attrs;
     pub use crate::sys::thread_local::*;
+}
+
+/// The data passed to the spawned thread for thread initialization. Any thread
+/// implementation should start a new thread by calling .init() on this before
+/// doing anything else to ensure the current thread is properly initialized and
+/// the global allocator works.
+pub(crate) struct ThreadInit {
+    pub handle: Thread,
+    pub rust_start: Box<dyn FnOnce() + Send>,
+}
+
+impl ThreadInit {
+    /// Initialize the 'current thread' mechanism on this thread, returning the
+    /// Rust entry point.
+    pub fn init(self: Box<Self>) -> Box<dyn FnOnce() + Send> {
+        // Set the current thread before any (de)allocations on the global allocator occur,
+        // so that it may call std::thread::current() in its implementation. This is also
+        // why we take Box<Self>, to ensure the Box is not destroyed until after this point.
+        // Cloning the handle does not invoke the global allocator, it is an Arc.
+        if let Err(_thread) = set_current(self.handle.clone()) {
+            // The current thread should not have set yet. Use an abort to save binary size (see #123356).
+            rtabort!("current thread handle already set during thread spawn");
+        }
+
+        if let Some(name) = self.handle.cname() {
+            imp::set_name(name);
+        }
+
+        self.rust_start
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -502,15 +533,13 @@ impl Builder {
         });
 
         let id = ThreadId::new();
-        let my_thread = Thread::new(id, name);
+        let thread = Thread::new(id, name);
 
         let hooks = if no_hooks {
             spawnhook::ChildSpawnHooks::default()
         } else {
-            spawnhook::run_spawn_hooks(&my_thread)
+            spawnhook::run_spawn_hooks(&thread)
         };
-
-        let their_thread = my_thread.clone();
 
         let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
             scope: scope_data,
@@ -543,19 +572,10 @@ impl Builder {
         }
 
         let f = MaybeDangling::new(f);
-        let main = move || {
-            if let Err(_thread) = set_current(their_thread.clone()) {
-                // Both the current thread handle and the ID should not be
-                // initialized yet. Since only the C runtime and some of our
-                // platform code run before this, this point shouldn't be
-                // reachable. Use an abort to save binary size (see #123356).
-                rtabort!("something here is badly broken!");
-            }
 
-            if let Some(name) = their_thread.cname() {
-                imp::set_name(name);
-            }
-
+        // The entrypoint of the Rust thread, after platform-specific thread
+        // initialization is done.
+        let rust_start = move || {
             let f = f.into_inner();
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys::backtrace::__rust_begin_short_backtrace(|| hooks.run());
@@ -578,11 +598,15 @@ impl Builder {
             scope_data.increment_num_running_threads();
         }
 
-        let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        let main =
-            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
+        let rust_start = unsafe {
+            Box::from_raw(
+                Box::into_raw(Box::new(rust_start)) as *mut (dyn FnOnce() + Send + 'static)
+            )
+        };
+
+        let init = Box::new(ThreadInit { handle: thread.clone(), rust_start });
 
         Ok(JoinInner {
             // SAFETY:
@@ -598,8 +622,8 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
-            thread: my_thread,
+            native: unsafe { imp::Thread::new(stack_size, init)? },
+            thread,
             packet: my_packet,
         })
     }
@@ -1257,21 +1281,41 @@ impl ThreadId {
                 }
             }
             _ => {
-                use crate::sync::{Mutex, PoisonError};
+                use crate::cell::SyncUnsafeCell;
+                use crate::hint::spin_loop;
+                use crate::sync::atomic::{Atomic, AtomicBool};
+                use crate::thread::yield_now;
 
-                static COUNTER: Mutex<u64> = Mutex::new(0);
+                // If we don't have a 64-bit atomic we use a small spinlock. We don't use Mutex
+                // here as we might be trying to get the current thread id in the global allocator,
+                // and on some platforms Mutex requires allocation.
+                static COUNTER_LOCKED: Atomic<bool> = AtomicBool::new(false);
+                static COUNTER: SyncUnsafeCell<u64> = SyncUnsafeCell::new(0);
 
-                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
-                let Some(id) = counter.checked_add(1) else {
-                    // in case the panic handler ends up calling `ThreadId::new()`,
-                    // avoid reentrant lock acquire.
-                    drop(counter);
-                    exhausted();
-                };
+                // Acquire lock.
+                let mut spin = 0;
+                while COUNTER_LOCKED.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err() {
+                    if spin <= 3 {
+                        for _ in 0..(1 << spin) {
+                            spin_loop();
+                        }
+                    } else {
+                        yield_now();
+                    }
+                    spin += 1;
+                }
 
-                *counter = id;
-                drop(counter);
-                ThreadId(NonZero::new(id).unwrap())
+                // SAFETY: we have an exclusive lock on the counter.
+                unsafe {
+                    if let Some(id) = (*COUNTER.get()).checked_add(1) {
+                        *COUNTER.get() = id;
+                        COUNTER_LOCKED.store(false, Ordering::Release);
+                        ThreadId(NonZero::new(id).unwrap())
+                    } else {
+                        COUNTER_LOCKED.store(false, Ordering::Release);
+                        exhausted()
+                    }
+                }
             }
         }
     }
@@ -1465,7 +1509,10 @@ impl Inner {
 ///
 /// [`thread::current`]: current::current
 pub struct Thread {
-    inner: Pin<Arc<Inner>>,
+    // We use the System allocator such that creating or dropping this handle
+    // does not interfere with a potential Global allocator using thread-local
+    // storage.
+    inner: Pin<Arc<Inner, System>>,
 }
 
 impl Thread {
@@ -1478,7 +1525,7 @@ impl Thread {
         // SAFETY: We pin the Arc immediately after creation, so its address never
         // changes.
         let inner = unsafe {
-            let mut arc = Arc::<Inner>::new_uninit();
+            let mut arc = Arc::<Inner, _>::new_uninit_in(System);
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             (&raw mut (*ptr).name).write(name);
             (&raw mut (*ptr).id).write(id);
@@ -1649,7 +1696,7 @@ impl Thread {
     pub fn into_raw(self) -> *const () {
         // Safety: We only expose an opaque pointer, which maintains the `Pin` invariant.
         let inner = unsafe { Pin::into_inner_unchecked(self.inner) };
-        Arc::into_raw(inner) as *const ()
+        Arc::into_raw_with_allocator(inner).0 as *const ()
     }
 
     /// Constructs a `Thread` from a raw pointer.
@@ -1671,10 +1718,12 @@ impl Thread {
     #[unstable(feature = "thread_raw", issue = "97523")]
     pub unsafe fn from_raw(ptr: *const ()) -> Thread {
         // Safety: Upheld by caller.
-        unsafe { Thread { inner: Pin::new_unchecked(Arc::from_raw(ptr as *const Inner)) } }
+        unsafe {
+            Thread { inner: Pin::new_unchecked(Arc::from_raw_in(ptr as *const Inner, System)) }
+        }
     }
 
-    fn cname(&self) -> Option<&CStr> {
+    pub(crate) fn cname(&self) -> Option<&CStr> {
         if let Some(name) = &self.inner.name {
             Some(name.as_cstr())
         } else if main_thread::get() == Some(self.inner.id) {

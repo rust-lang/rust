@@ -14,6 +14,7 @@ use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
+use crate::thread::{ThreadInit, current};
 use crate::time::Duration;
 use crate::{cmp, io, ptr};
 #[cfg(not(any(
@@ -30,11 +31,6 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
-struct ThreadData {
-    name: Option<Box<str>>,
-    f: Box<dyn FnOnce()>,
-}
-
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -47,13 +43,8 @@ unsafe impl Sync for Thread {}
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(
-        stack: usize,
-        name: Option<&str>,
-        f: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
-        let data = Box::new(ThreadData { name: name.map(Box::from), f });
-
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        let data = init;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
         let mut attr = DropGuard::new(&mut attr, |attr| {
@@ -116,12 +107,16 @@ impl Thread {
 
         extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
-                let data = Box::from_raw(data as *mut ThreadData);
-                // Next, set up our stack overflow handler which may get triggered if we run
-                // out of stack.
-                let _handler = stack_overflow::Handler::new(data.name);
-                // Finally, let's run some code.
-                (data.f)();
+                // SAFETY: we are simply recreating the box that was leaked earlier.
+                let init = Box::from_raw(data as *mut ThreadInit);
+                let rust_start = init.init();
+
+                // Set up our thread name and stack overflow handler which may get triggered
+                // if we run out of stack.
+                let thread = current();
+                let _handler = stack_overflow::Handler::new(thread.name().map(Box::from));
+
+                rust_start();
             }
             ptr::null_mut()
         }
