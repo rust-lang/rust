@@ -56,8 +56,8 @@
       }
   
       bb1: {
--         _5 = MinusPlus;
-+         _5 = const MinusPlus;
+-         _5 = core::num::flt2dec::Sign::MinusPlus;
++         _5 = const core::num::flt2dec::Sign::MinusPlus;
           goto -> bb3;
       }
   
