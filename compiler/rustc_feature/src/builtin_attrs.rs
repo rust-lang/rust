@@ -1417,6 +1417,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_force_inline]` forces a free function to be inlined"
     ),
+    rustc_attr!(
+        rustc_comptime, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::No,
+        "the `#[rustc_comptime]` attribute is just used to avoid adding syntax for `comptime fn`"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

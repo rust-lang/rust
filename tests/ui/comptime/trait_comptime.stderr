@@ -1,0 +1,26 @@
+error: `#[rustc_comptime]` attribute cannot be used on required trait methods
+  --> $DIR/trait_comptime.rs:4:5
+   |
+LL |     #[rustc_comptime]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+
+error: `#[rustc_comptime]` attribute cannot be used on provided trait methods
+  --> $DIR/trait_comptime.rs:8:5
+   |
+LL |     #[rustc_comptime]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+
+error: `#[rustc_comptime]` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/trait_comptime.rs:21:5
+   |
+LL |     #[rustc_comptime]
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[rustc_comptime]` can be applied to functions and inherent methods
+
+error: aborting due to 3 previous errors
+

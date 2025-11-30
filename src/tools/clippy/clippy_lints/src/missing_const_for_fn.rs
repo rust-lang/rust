@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 // We don't have to lint on something that's already `const`
 #[must_use]
 fn already_const(header: hir::FnHeader) -> bool {
-    header.constness == Constness::Const
+    header.constness != Constness::Never
 }
 
 fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: Msrv, abi: ExternAbi) -> bool {

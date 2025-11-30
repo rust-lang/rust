@@ -11,12 +11,12 @@ fn parent_impl_or_trait_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::C
         DefKind::Impl { of_trait: false } => tcx.constness(parent_id),
         DefKind::Trait => {
             if tcx.is_const_trait(parent_id.into()) {
-                hir::Constness::Const
+                hir::Constness::Maybe
             } else {
-                hir::Constness::NotConst
+                hir::Constness::Never
             }
         }
-        _ => hir::Constness::NotConst,
+        _ => hir::Constness::Never,
     }
 }
 
@@ -25,17 +25,17 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(hir::VariantData::Tuple(..)) => hir::Constness::Const,
+        hir::Node::Ctor(hir::VariantData::Tuple(..)) => hir::Constness::Maybe,
         hir::Node::ForeignItem(item) if let hir::ForeignItemKind::Fn(..) = item.kind => {
             // Foreign functions cannot be evaluated at compile-time.
-            hir::Constness::NotConst
+            hir::Constness::Never
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
         hir::Node::Item(i) if let hir::ItemKind::Impl(impl_) = i.kind => impl_.constness,
         _ => {
             if let Some(fn_kind) = node.fn_kind() {
-                if fn_kind.constness() == hir::Constness::Const {
-                    return hir::Constness::Const;
+                if fn_kind.constness() != hir::Constness::Never {
+                    return fn_kind.constness();
                 }
 
                 // If the function itself is not annotated with `const`, it may still be a `const fn`
