@@ -46,10 +46,10 @@
               "python3",
               "x.py",
               "check",
-              "--json-output"
+              "--json-output",
               "--compile-time-deps",
               "--build-dir",
-              "build-rust-analyzer",
+              "build-rust-analyzer"
             ]
           }
         },

@@ -625,6 +625,7 @@ Select which editor you would like to set up [default: None]: ";
                 "a61df796c0c007cb6512127330564e49e57d558dec715703916a928b072a1054",
                 "02a49ac2d31f00ef6e4531c44e00dac51cea895112e480553f1ba060b3942a47",
                 "0aa4748848de0d1cb7ece92a0123c8897fef6de2f58aff8fda1426f098b7a798",
+                "e5e357862e5d6d0d9da335e9823c07b8a7dc42bbf18d72cc5206ad1049cd8fcc",
             ],
             EditorKind::Zed => &[
                 "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
@@ -634,6 +635,7 @@ Select which editor you would like to set up [default: None]: ";
                 "f0bb3d23ab1a49175ab0ef5c4071af95bb03d01d460776cdb716d91333443382",
                 "5ef83292111d9a8bb63b6afc3abf42d0bc78fe24985f0d2e039e73258b5dab8f",
                 "74420c13094b530a986b37c4f1d23cb58c0e8e2295f5858ded129fb1574e66f9",
+                "2d3b592c089b2ad2c528686a1e371af49922edad1c59accd5d5f31612a441568",
             ],
         }
     }
