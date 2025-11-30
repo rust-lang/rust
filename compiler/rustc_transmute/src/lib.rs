@@ -89,7 +89,7 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
+    use rustc_middle::ty::{Const, Region, Ty, TyCtxt, TypeVisitableExt};
 
     use super::*;
 
@@ -116,6 +116,10 @@ mod rustc {
             types: Types<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<Region<'tcx>, Ty<'tcx>> {
+            if types.src.has_non_region_infer() || types.dst.has_non_region_infer() {
+                return Answer::No(Reason::TypeError);
+            }
+
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
                 types.src, types.dst, assume, self.tcx,
             )
