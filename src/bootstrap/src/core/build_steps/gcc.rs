@@ -27,6 +27,7 @@ pub struct Gcc {
 #[derive(Clone)]
 pub struct GccOutput {
     pub libgccjit: PathBuf,
+    target: TargetSelection,
 }
 
 impl GccOutput {
@@ -46,7 +47,9 @@ impl GccOutput {
             format!("Cannot find libgccjit at {}", self.libgccjit.display())
         );
 
-        let dst = directory.join(target_filename);
+        let dest_dir = directory.join("rustlib").join(self.target).join("lib");
+        t!(fs::create_dir_all(&dest_dir));
+        let dst = dest_dir.join(target_filename);
         builder.copy_link(&actual_libgccjit_path, &dst, FileType::NativeLibrary);
     }
 }
@@ -70,7 +73,7 @@ impl Step for Gcc {
 
         // If GCC has already been built, we avoid building it again.
         let metadata = match get_gcc_build_status(builder, target) {
-            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path },
+            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path, target },
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
@@ -80,14 +83,14 @@ impl Step for Gcc {
 
         let libgccjit_path = libgccjit_built_path(&metadata.install_dir);
         if builder.config.dry_run() {
-            return GccOutput { libgccjit: libgccjit_path };
+            return GccOutput { libgccjit: libgccjit_path, target };
         }
 
         build_gcc(&metadata, builder, target);
 
         t!(metadata.stamp.write());
 
-        GccOutput { libgccjit: libgccjit_path }
+        GccOutput { libgccjit: libgccjit_path, target }
     }
 }
 

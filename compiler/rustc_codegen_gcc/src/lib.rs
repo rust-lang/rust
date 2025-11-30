@@ -97,6 +97,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
+use rustc_session::filesearch::make_target_lib_path;
 use rustc_span::Symbol;
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -180,14 +181,14 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
-fn load_libgccjit_if_needed(sysroot_path: &Path) {
+fn load_libgccjit_if_needed(sysroot_path: &Path, target_triple: &str) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
         return;
     }
 
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    let libgccjit_target_lib_file = sysroot_lib_dir.join("libgccjit.so");
+    let libgccjit_target_lib_file =
+        make_target_lib_path(sysroot_path, target_triple).join("libgccjit.so");
     let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
 
     let string = CString::new(path).expect("string to libgccjit path");
@@ -207,7 +208,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        load_libgccjit_if_needed(sess.opts.sysroot.path());
+        load_libgccjit_if_needed(sess.opts.sysroot.path(), &sess.target.llvm_target);
 
         #[cfg(feature = "master")]
         {
