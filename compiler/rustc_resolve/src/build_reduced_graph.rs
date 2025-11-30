@@ -1264,11 +1264,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
             let is_macro_export = ast::attr::contains_name(&item.attrs, sym::macro_export);
-            let vis = if is_macro_export {
-                Visibility::Public
-            } else {
-                Visibility::Restricted(CRATE_DEF_ID)
-            };
+            let vis = Visibility::Public;
             let binding = self.r.arenas.new_res_binding(res, vis.to_def_id(), span, expansion);
             self.r.set_binding_parent_module(binding, parent_scope.module);
             self.r.all_macro_rules.insert(ident.name);
