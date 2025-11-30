@@ -19,6 +19,7 @@ use rustc_target::spec::{
     TargetTuple, TlsModel,
 };
 
+use crate::config::enforced_mitigations::MitigationEnablement;
 use crate::config::*;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
@@ -82,6 +83,8 @@ pub struct TargetModifier {
     /// User-provided option value (before parsing)
     pub value_name: String,
 }
+
+pub mod enforced_mitigations;
 
 mod target_modifier_consistency_check {
     use super::*;
@@ -880,12 +883,15 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_allow_partial_mitigations: &str =
+        super::enforced_mitigations::EnforcedMitigationKind::KINDS;
 }
 
 pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
+    use crate::config::enforced_mitigations::MitigationEnablement;
     pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// This is for boolean options that don't take a value, and are true simply
@@ -2062,6 +2068,26 @@ pub mod parse {
 
         true
     }
+
+    pub(crate) fn parse_allow_partial_mitigations(
+        slot: &mut Vec<MitigationEnablement>,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                for sub in s.split(',') {
+                    let (sub, enabled) =
+                        if sub.starts_with('!') { (&sub[1..], false) } else { (sub, true) };
+                    match sub.parse() {
+                        Ok(kind) => slot.push(MitigationEnablement { kind, enabled }),
+                        Err(_) => return false,
+                    }
+                }
+                true
+            }
+            None => false,
+        }
+    }
 }
 
 options! {
@@ -2222,6 +2248,8 @@ options! {
     // tidy-alphabetical-start
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (comma separated)"),
+    allow_partial_mitigations: Vec<MitigationEnablement> = (Vec::new(), parse_allow_partial_mitigations, [UNTRACKED],
+        "Allow mitigations not enabled for all dependency crates (comma separated list)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
     annotate_moves: AnnotateMoves = (AnnotateMoves::Disabled, parse_annotate_moves, [TRACKED],
