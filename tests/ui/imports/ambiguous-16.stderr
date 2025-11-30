@@ -1,4 +1,4 @@
-error: `ConfirmedTranscriptHashInput` is ambiguous
+error[E0659]: `ConfirmedTranscriptHashInput` is ambiguous
   --> $DIR/ambiguous-16.rs:22:21
    |
 LL | use crate::framing::ConfirmedTranscriptHashInput;
@@ -23,8 +23,9 @@ LL |     pub use self::public_message_in::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0659`.
 Future incompatibility report: Future breakage diagnostic:
-error: `ConfirmedTranscriptHashInput` is ambiguous
+error[E0659]: `ConfirmedTranscriptHashInput` is ambiguous
   --> $DIR/ambiguous-16.rs:22:21
    |
 LL | use crate::framing::ConfirmedTranscriptHashInput;

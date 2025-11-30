@@ -1,4 +1,4 @@
-error: `Token` is ambiguous
+error[E0659]: `Token` is ambiguous
   --> $DIR/ambiguous-10.rs:15:9
    |
 LL | fn c(_: Token) {}
@@ -23,8 +23,9 @@ LL | use crate::b::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0659`.
 Future incompatibility report: Future breakage diagnostic:
-error: `Token` is ambiguous
+error[E0659]: `Token` is ambiguous
   --> $DIR/ambiguous-10.rs:15:9
    |
 LL | fn c(_: Token) {}

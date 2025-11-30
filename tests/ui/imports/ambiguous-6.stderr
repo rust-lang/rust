@@ -1,4 +1,4 @@
-error: `C` is ambiguous
+error[E0659]: `C` is ambiguous
   --> $DIR/ambiguous-6.rs:6:5
    |
 LL |     C
@@ -23,8 +23,9 @@ LL |     pub use mod2::*;
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0659`.
 Future incompatibility report: Future breakage diagnostic:
-error: `C` is ambiguous
+error[E0659]: `C` is ambiguous
   --> $DIR/ambiguous-6.rs:6:5
    |
 LL |     C
