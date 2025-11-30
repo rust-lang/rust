@@ -24,9 +24,7 @@ rustc_index::newtype_index!(
 
 rustc_index::newtype_index!(
     /// This index uniquely identifies a tracked place and therefore a slot in [`State`].
-    ///
-    /// It is an implementation detail of this module.
-    struct ValueIndex {}
+    pub struct ValueIndex {}
 );
 
 /// See [`State`].
@@ -211,22 +209,9 @@ impl<V: Clone + HasBottom> State<V> {
     /// The target place must have been flooded before calling this method.
     pub fn insert_place_idx(&mut self, target: PlaceIndex, source: PlaceIndex, map: &Map<'_>) {
         let State::Reachable(values) = self else { return };
-
-        // If both places are tracked, we copy the value to the target.
-        // If the target is tracked, but the source is not, we do nothing, as invalidation has
-        // already been performed.
-        if let Some(target_value) = map.places[target].value_index
-            && let Some(source_value) = map.places[source].value_index
-        {
-            values.insert(target_value, values.get(source_value).clone());
-        }
-        for target_child in map.children(target) {
-            // Try to find corresponding child and recurse. Reasoning is similar as above.
-            let projection = map.places[target_child].proj_elem.unwrap();
-            if let Some(source_child) = map.projections.get(&(source, projection)) {
-                self.insert_place_idx(target_child, *source_child, map);
-            }
-        }
+        map.for_each_value_pair(target, source, &mut |target, source| {
+            values.insert(target, values.get(source).clone());
+        });
     }
 
     /// Helper method to interpret `target = result`.
@@ -677,6 +662,26 @@ impl<'tcx> Map<'tcx> {
         self.find_extra(place, [TrackElem::DerefLen])
     }
 
+    /// Locates the value corresponding to the given place.
+    pub fn value(&self, place: PlaceIndex) -> Option<ValueIndex> {
+        self.places[place].value_index
+    }
+
+    /// Locates the value corresponding to the given place.
+    pub fn find_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
+        self.value(self.find(place)?)
+    }
+
+    /// Locates the value corresponding to the given discriminant.
+    pub fn find_discr_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
+        self.value(self.find_discr(place)?)
+    }
+
+    /// Locates the value corresponding to the given length.
+    pub fn find_len_value(&self, place: PlaceRef<'_>) -> Option<ValueIndex> {
+        self.value(self.find_len(place)?)
+    }
+
     /// Iterate over all direct children.
     fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> {
         Children::new(self, parent)
@@ -689,7 +694,7 @@ impl<'tcx> Map<'tcx> {
     ///
     /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
     /// as such.
-    fn for_each_aliasing_place(
+    pub fn for_each_aliasing_place(
         &self,
         place: PlaceRef<'_>,
         tail_elem: Option<TrackElem>,
@@ -745,11 +750,15 @@ impl<'tcx> Map<'tcx> {
         }
     }
 
+    /// Return the range of value indices inside this place.
+    pub fn values_inside(&self, root: PlaceIndex) -> &[ValueIndex] {
+        let range = self.inner_values[root].clone();
+        &self.inner_values_buffer[range]
+    }
+
     /// Invoke a function on each value in the given place and all descendants.
     fn for_each_value_inside(&self, root: PlaceIndex, f: &mut impl FnMut(ValueIndex)) {
-        let range = self.inner_values[root].clone();
-        let values = &self.inner_values_buffer[range];
-        for &v in values {
+        for &v in self.values_inside(root) {
             f(v)
         }
     }
@@ -775,6 +784,31 @@ impl<'tcx> Map<'tcx> {
             let elem = self.places[child].proj_elem.unwrap();
             if let Some(value) = project(elem, &value) {
                 self.for_each_projection_value(child, value, project, f);
+            }
+        }
+    }
+
+    /// Recursively iterates on each value contained in `target`, paired with matching projection
+    /// inside `source`.
+    pub fn for_each_value_pair(
+        &self,
+        target: PlaceIndex,
+        source: PlaceIndex,
+        f: &mut impl FnMut(ValueIndex, ValueIndex),
+    ) {
+        // If both places are tracked, we copy the value to the target.
+        // If the target is tracked, but the source is not, we do nothing, as invalidation has
+        // already been performed.
+        if let Some(target_value) = self.places[target].value_index
+            && let Some(source_value) = self.places[source].value_index
+        {
+            f(target_value, source_value)
+        }
+        for target_child in self.children(target) {
+            // Try to find corresponding child and recurse. Reasoning is similar as above.
+            let projection = self.places[target_child].proj_elem.unwrap();
+            if let Some(source_child) = self.projections.get(&(source, projection)) {
+                self.for_each_value_pair(target_child, *source_child, f);
             }
         }
     }

@@ -1,0 +1,238 @@
+- // MIR for `chained_conditions` before JumpThreading
++ // MIR for `chained_conditions` after JumpThreading
+  
+  fn chained_conditions() -> u8 {
+      let mut _0: u8;
+      let _1: chained_conditions::BacktraceStyle;
+      let mut _2: std::option::Option<std::string::String>;
+      let mut _3: &std::option::Option<std::string::String>;
+      let mut _4: isize;
+      let _5: std::string::String;
+      let _6: &std::string::String;
+      let mut _7: bool;
+      let mut _8: &&std::string::String;
+      let _9: &std::string::String;
+      let mut _10: &&str;
+      let _11: &str;
+      let _12: std::string::String;
+      let _13: &std::string::String;
+      let mut _14: bool;
+      let mut _15: &&std::string::String;
+      let _16: &std::string::String;
+      let mut _17: &&str;
+      let _18: &str;
+      let mut _19: isize;
+      let mut _20: &&str;
+      let mut _21: &&str;
+      let mut _22: bool;
+      let mut _23: bool;
+      let mut _24: isize;
+      let mut _25: isize;
+      let mut _26: isize;
+      scope 1 {
+          debug format => _1;
+      }
+      scope 2 {
+          debug x => _5;
+          debug x => _6;
+      }
+      scope 3 {
+          debug x => _12;
+          debug x => _13;
+      }
+      scope 4 (inlined std::cmp::impls::<impl PartialEq<&str> for &String>::eq) {
+          let mut _27: &std::string::String;
+          let mut _28: &str;
+      }
+      scope 5 (inlined std::cmp::impls::<impl PartialEq<&str> for &String>::eq) {
+          let mut _29: &std::string::String;
+          let mut _30: &str;
+      }
+  
+      bb0: {
+          _22 = const false;
+          _23 = const false;
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = env_var() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          _22 = const true;
+          _23 = const true;
+          _4 = discriminant(_2);
+          switchInt(move _4) -> [0: bb3, 1: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          _1 = chained_conditions::BacktraceStyle::Off;
+-         goto -> bb18;
++         goto -> bb23;
+      }
+  
+      bb4: {
+          StorageLive(_6);
+          _6 = &((_2 as Some).0: std::string::String);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+          _9 = &(*_6);
+          _8 = &_9;
+          StorageLive(_10);
+          _21 = const chained_conditions::promoted[1];
+          _10 = &(*_21);
+          StorageLive(_27);
+          StorageLive(_28);
+          _27 = copy (*_8);
+          _28 = copy (*_10);
+          _7 = <String as PartialEq<str>>::eq(move _27, move _28) -> [return: bb19, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_5);
+          _23 = const false;
+          _5 = move ((_2 as Some).0: std::string::String);
+          _1 = chained_conditions::BacktraceStyle::Full;
+          drop(_5) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_13);
+          _13 = &((_2 as Some).0: std::string::String);
+          StorageLive(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          _16 = &(*_13);
+          _15 = &_16;
+          StorageLive(_17);
+          _20 = const chained_conditions::promoted[0];
+          _17 = &(*_20);
+          StorageLive(_29);
+          StorageLive(_30);
+          _29 = copy (*_15);
+          _30 = copy (*_17);
+          _14 = <String as PartialEq<str>>::eq(move _29, move _30) -> [return: bb20, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_5);
+          StorageDead(_6);
+-         goto -> bb18;
++         goto -> bb21;
+      }
+  
+      bb8: {
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageDead(_14);
+          StorageLive(_12);
+          _23 = const false;
+          _12 = move ((_2 as Some).0: std::string::String);
+          _1 = chained_conditions::BacktraceStyle::Off;
+          drop(_12) -> [return: bb10, unwind unreachable];
+      }
+  
+      bb9: {
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageDead(_14);
+          StorageDead(_13);
+          _1 = chained_conditions::BacktraceStyle::Short;
+-         goto -> bb18;
++         goto -> bb23;
+      }
+  
+      bb10: {
+          StorageDead(_12);
+          StorageDead(_13);
+-         goto -> bb18;
++         goto -> bb21;
+      }
+  
+      bb11: {
+          _0 = const 3_u8;
+          goto -> bb14;
+      }
+  
+      bb12: {
+          _0 = const 2_u8;
+          goto -> bb14;
+      }
+  
+      bb13: {
+          _0 = const 1_u8;
+          goto -> bb14;
+      }
+  
+      bb14: {
+          StorageDead(_1);
+          return;
+      }
+  
+      bb15: {
+          _22 = const false;
+          _23 = const false;
+          StorageDead(_2);
+          _19 = discriminant(_1);
+          switchInt(move _19) -> [0: bb13, 1: bb12, 2: bb11, otherwise: bb2];
+      }
+  
+      bb16: {
+          switchInt(copy _23) -> [0: bb15, otherwise: bb17];
+      }
+  
+      bb17: {
+          drop(((_2 as Some).0: std::string::String)) -> [return: bb15, unwind unreachable];
+      }
+  
+      bb18: {
+          _24 = discriminant(_2);
+          switchInt(move _24) -> [1: bb16, otherwise: bb15];
+      }
+  
+      bb19: {
+          StorageDead(_28);
+          StorageDead(_27);
+          switchInt(move _7) -> [0: bb6, otherwise: bb5];
+      }
+  
+      bb20: {
+          StorageDead(_30);
+          StorageDead(_29);
+          switchInt(move _14) -> [0: bb9, otherwise: bb8];
++     }
++ 
++     bb21: {
++         _24 = discriminant(_2);
++         switchInt(move _24) -> [1: bb22, otherwise: bb15];
++     }
++ 
++     bb22: {
++         goto -> bb15;
++     }
++ 
++     bb23: {
++         _24 = discriminant(_2);
++         switchInt(move _24) -> [1: bb24, otherwise: bb15];
++     }
++ 
++     bb24: {
++         goto -> bb17;
+      }
+  }
+  
