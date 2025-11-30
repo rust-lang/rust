@@ -835,6 +835,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             | ItemKind::Static(box StaticItem { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
             }
+            ItemKind::ConstBlock(_) => self.r.define_local(
+                parent,
+                ast::ConstBlockItem::IDENT,
+                ValueNS,
+                res,
+                vis,
+                sp,
+                expansion,
+            ),
             ItemKind::Fn(box Fn { ident, .. }) => {
                 self.r.define_local(parent, ident, ValueNS, res, vis, sp, expansion);
 
