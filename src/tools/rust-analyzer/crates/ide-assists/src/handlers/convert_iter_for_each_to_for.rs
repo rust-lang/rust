@@ -3,7 +3,7 @@ use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
     AstNode,
-    ast::{self, HasArgList, HasLoopBody, edit_in_place::Indent, make},
+    ast::{self, HasArgList, HasLoopBody, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -57,18 +57,22 @@ pub(crate) fn convert_iter_for_each_to_for(
         "Replace this `Iterator::for_each` with a for loop",
         range,
         |builder| {
+            let make = SyntaxFactory::with_mappings();
             let indent =
                 stmt.as_ref().map_or_else(|| method.indent_level(), ast::ExprStmt::indent_level);
 
             let block = match body {
-                ast::Expr::BlockExpr(block) => block,
-                _ => make::block_expr(Vec::new(), Some(body)),
-            }
-            .clone_for_update();
+                ast::Expr::BlockExpr(block) => block.clone_for_update(),
+                _ => make.block_expr(Vec::new(), Some(body)),
+            };
             block.reindent_to(indent);
 
-            let expr_for_loop = make::expr_for_loop(param, receiver, block);
-            builder.replace(range, expr_for_loop.to_string())
+            let expr_for_loop = make.expr_for_loop(param, receiver, block);
+
+            let target_node = stmt.as_ref().map_or(method.syntax(), AstNode::syntax);
+            let mut editor = builder.make_editor(target_node);
+            editor.replace(target_node, expr_for_loop.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
