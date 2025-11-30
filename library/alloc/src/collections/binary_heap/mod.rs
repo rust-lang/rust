@@ -778,11 +778,12 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while hole.pos() <= end.saturating_sub(2) / 2 {
-            // Using the invariant, we can see
-            // hole <= (end - 2) / 2
-            // => (child - 1) / 2 <= (end - 2) / 2
-            // => child <= end - 1, which is guaranteed by caller
+        //
+        // The condition makes sure that hole will have atleat two children
+        // child + 1 <= end - 1
+        // => 2 * hole + 2 <= end - 1
+        // => hole <= (end - 3) / 2
+        while hole.pos() <= end.saturating_sub(3) / 2 {
             let mut child = 2 * hole.pos() + 1;
 
             // compare with the greater of the two children
@@ -803,6 +804,19 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             unsafe { hole.move_to(child) };
         }
 
+        // If hole has only one child
+        // child <= end - 1
+        // => 2 * hole + 1 <= end - 1
+        // => hole <= (end - 2) / 2
+        if hole.pos() <= end.saturating_sub(2) / 2 {
+            let child = 2 * hole.pos() + 1;
+            // Case where the only child is greater/less than hole
+            if hole.element() < unsafe { hole.get(child) } {
+                unsafe { hole.move_to(child) };
+            }
+        }
+
+        // Otherwise return the same position
         hole.pos()
     }
 
