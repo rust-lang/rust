@@ -2,7 +2,9 @@ macro_rules! uint_module {
     ($T:ident) => {
         use core::num::ParseIntError;
         use core::ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr};
-        use core::$T::*;
+
+        const MAX: $T = $T::MAX;
+        const MIN: $T = $T::MIN;
 
         use crate::num;
 

@@ -14,8 +14,6 @@
  * ====================================================
  */
 
-use core::f64;
-
 use super::rem_pio2_large;
 
 const TOINT: f64 = 1.5 / f64::EPSILON;
