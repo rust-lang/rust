@@ -1173,6 +1173,10 @@ pub trait ResolverExpand {
     /// Record the name of an opaque `Ty::ImplTrait` pre-expansion so that it can be used
     /// to generate an item name later that does not reference placeholder macros.
     fn insert_impl_trait_name(&mut self, id: NodeId, name: Symbol);
+
+    /// Mark the scope as having a compile error so that error for lookup in this scope
+    /// should be suppressed
+    fn mark_scope_with_compile_error(&mut self, parent_node: NodeId);
 }
 
 pub trait LintStoreExpand {

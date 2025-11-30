@@ -1711,7 +1711,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {
         let mut module = None;
-        let mut module_had_parse_errors = false;
+        let mut module_had_parse_errors = !self.mods_with_parse_errors.is_empty()
+            && self.mods_with_parse_errors.contains(&parent_scope.module.nearest_parent_mod());
         let mut allow_super = true;
         let mut second_binding = None;
 
