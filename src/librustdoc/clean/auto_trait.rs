@@ -571,7 +571,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
                 if let Some(clause) = predicate.as_clause() {
                     match clause.kind().skip_binder() {
                         ty::ClauseKind::Trait(pred) => {
-                            if let ty::Param(_) = pred.self_ty().kind() {
+                            if is_interesting(pred.self_ty()) {
                                 self.clauses.push(clause);
                                 return ControlFlow::Continue(());
                             }
@@ -594,9 +594,18 @@ impl<'tcx> ProofTreeVisitor<'tcx> for PredicateCollector<'tcx> {
             }
         };
 
+        // FIXME: Name
+        fn is_interesting(ty: Ty<'_>) -> bool {
+            match ty.kind() {
+                ty::Param(_) => true,
+                ty::Alias(ty::Projection, alias_ty) => is_interesting(alias_ty.self_ty()),
+                _ => false,
+            }
+        }
+
         if let Some(clause) = predicate.as_clause()
             && let ty::ClauseKind::Projection(pred) = clause.kind().skip_binder()
-            && let ty::Param(_) = pred.self_ty().kind()
+            && is_interesting(pred.self_ty())
         {
             self.clauses.push(clause);
             return ControlFlow::Continue(());
