@@ -779,7 +779,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // Loop invariant: child == 2 * hole.pos() + 1.
         //
-        // The condition makes sure that hole will have atleat two children
+        // The condition makes sure that hole will have atleast two children:
         // child + 1 <= end - 1
         // => 2 * hole + 2 <= end - 1
         // => hole <= (end - 3) / 2
@@ -804,13 +804,13 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             unsafe { hole.move_to(child) };
         }
 
-        // If hole has only one child
+        // If the parent has only one child:
         // child <= end - 1
         // => 2 * hole + 1 <= end - 1
         // => hole <= (end - 2) / 2
         if hole.pos() <= end.saturating_sub(2) / 2 {
             let child = 2 * hole.pos() + 1;
-            // Case where the only child is greater/less than hole
+            // If we are not in order, move parent
             if hole.element() < unsafe { hole.get(child) } {
                 unsafe { hole.move_to(child) };
             }
