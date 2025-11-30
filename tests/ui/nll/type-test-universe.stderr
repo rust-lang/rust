@@ -2,7 +2,7 @@ error: `S` does not live long enough
   --> $DIR/type-test-universe.rs:11:5
    |
 LL |     outlives_forall::<S>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime may not live long enough
   --> $DIR/type-test-universe.rs:17:5
