@@ -3060,15 +3060,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 Applicability::MachineApplicable,
                             );
                         } else {
-                            err.span_suggestion_verbose(
-                                expr.span.shrink_to_hi(),
-                                format!(
-                                    "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
-                                    panicking if the value is {article} `{kind}::{variant}`"
-                                ),
-                                ".expect(\"REASON\")",
-                                Applicability::HasPlaceholders,
-                            );
+                            // Do not suggest `.expect()` in const context where it's not available.
+                            if !tcx.hir_is_inside_const_context(expr.hir_id) {
+                                err.span_suggestion_verbose(
+                                    expr.span.shrink_to_hi(),
+                                    format!(
+                                        "consider using `{kind}::expect` to unwrap the `{self_ty}` value, \
+                                        panicking if the value is {article} `{kind}::{variant}`"
+                                    ),
+                                    ".expect(\"REASON\")",
+                                    Applicability::HasPlaceholders,
+                                );
+                            }
                         }
                     }
                     // FIXME(compiler-errors): Support suggestions for other matching enum variants

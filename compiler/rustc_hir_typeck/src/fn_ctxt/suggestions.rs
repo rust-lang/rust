@@ -2127,6 +2127,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "?",
             )
         } else {
+            // Do not suggest `.expect()` in const context where it's not available.
+            if self.tcx.hir_is_inside_const_context(expr.hir_id) {
+                return false;
+            }
+
             (
                 format!(
                     "consider using `{kind}::expect` to unwrap the `{found}` value, \
