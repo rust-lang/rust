@@ -24,7 +24,7 @@ impl<'a> Parser<'a> {
                 | MetaVarKind::Expr { .. }
                 | MetaVarKind::Ty { .. }
                 | MetaVarKind::Literal // `true`, `false`
-                | MetaVarKind::Meta { .. }
+                | MetaVarKind::Meta
                 | MetaVarKind::Path => true,
 
                 MetaVarKind::Item
@@ -82,7 +82,7 @@ impl<'a> Parser<'a> {
                     MetaVarKind::Item
                     | MetaVarKind::Pat(_)
                     | MetaVarKind::Ty { .. }
-                    | MetaVarKind::Meta { .. }
+                    | MetaVarKind::Meta
                     | MetaVarKind::Path
                     | MetaVarKind::Vis => false,
                     MetaVarKind::Lifetime | MetaVarKind::Ident | MetaVarKind::TT => {

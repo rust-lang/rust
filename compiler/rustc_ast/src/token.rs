@@ -64,10 +64,7 @@ pub enum MetaVarKind {
     Ident,
     Lifetime,
     Literal,
-    Meta {
-        /// Will `AttrItem::meta` succeed on this, if reparsed?
-        has_meta_form: bool,
-    },
+    Meta,
     Path,
     Vis,
     TT,
@@ -87,7 +84,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Ident => sym::ident,
             MetaVarKind::Lifetime => sym::lifetime,
             MetaVarKind::Literal => sym::literal,
-            MetaVarKind::Meta { .. } => sym::meta,
+            MetaVarKind::Meta => sym::meta,
             MetaVarKind::Path => sym::path,
             MetaVarKind::Vis => sym::vis,
             MetaVarKind::TT => sym::tt,
@@ -693,7 +690,7 @@ impl Token {
             OpenInvisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
                 MetaVarKind::Literal |
-                MetaVarKind::Meta { .. } |
+                MetaVarKind::Meta |
                 MetaVarKind::Pat(_) |
                 MetaVarKind::Path |
                 MetaVarKind::Ty { .. }
