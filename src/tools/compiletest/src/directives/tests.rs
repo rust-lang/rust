@@ -26,6 +26,19 @@ fn handler_names() {
     );
 }
 
+#[test]
+fn external_ignores() {
+    let unknown_names = directives::cfg::EXTERNAL_IGNORES_SET
+        .difference(&KNOWN_DIRECTIVE_NAMES_SET)
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
+
 fn make_test_description(
     config: &Config,
     name: String,

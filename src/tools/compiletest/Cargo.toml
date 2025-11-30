@@ -9,6 +9,9 @@ doctest = false
 [[bin]]
 name = "compiletest"
 path = "src/bin/main.rs"
+# The compiletest binary crate is a tiny stub that shouldn't contain any unit
+# tests of its own; all of the logic is in the library crate.
+test = false
 
 [dependencies]
 # tidy-alphabetical-start
