@@ -34,13 +34,13 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const PHI: f128 = 1.61803398874989484820458683436563811772030917980576286213545_f128;
+    pub const GOLDEN_RATIO: f128 =
+        1.61803398874989484820458683436563811772030917980576286213545_f128;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
-    pub const EGAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
+    pub const EULER_GAMMA: f128 =
+        0.577215664901532860606512090082402431042159335939923598805767_f128;
 
     /// π/2
     #[unstable(feature = "f128", issue = "116909")]
@@ -107,6 +107,17 @@ pub mod consts {
     // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
     pub const FRAC_1_SQRT_3: f128 =
         0.577350269189625764509148780501957455647601751270126876018602_f128;
+
+    /// sqrt(5)
+    #[unstable(feature = "f128", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    pub const SQRT_5: f128 = 2.23606797749978969640917366873127623544061835961152572427089_f128;
+
+    /// 1/sqrt(5)
+    #[unstable(feature = "f128", issue = "116909")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    pub const FRAC_1_SQRT_5: f128 =
+        0.447213595499957939281834733746255247088123671922305144854179_f128;
 
     /// Euler's number (e)
     #[unstable(feature = "f128", issue = "116909")]
