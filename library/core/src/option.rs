@@ -807,7 +807,7 @@ impl<T> Option<T> {
     }
 
     #[inline]
-    const fn len(&self) -> usize {
+    pub(crate) const fn len(&self) -> usize {
         // Using the intrinsic avoids emitting a branch to get the 0 or 1.
         let discriminant: isize = crate::intrinsics::discriminant_value(self);
         discriminant as usize
@@ -2461,6 +2461,7 @@ impl<'a, A> Iterator for Iter<'a, A> {
     fn next(&mut self) -> Option<&'a A> {
         self.inner.next()
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
@@ -2476,7 +2477,11 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for Iter<'_, A> {}
+impl<A> ExactSizeIterator for Iter<'_, A> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for Iter<'_, A> {}
@@ -2511,6 +2516,7 @@ impl<'a, A> Iterator for IterMut<'a, A> {
     fn next(&mut self) -> Option<&'a mut A> {
         self.inner.next()
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
@@ -2526,7 +2532,11 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for IterMut<'_, A> {}
+impl<A> ExactSizeIterator for IterMut<'_, A> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IterMut<'_, A> {}
@@ -2552,6 +2562,7 @@ impl<A> Iterator for IntoIter<A> {
     fn next(&mut self) -> Option<A> {
         self.inner.next()
     }
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
@@ -2567,7 +2578,11 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> ExactSizeIterator for IntoIter<A> {}
+impl<A> ExactSizeIterator for IntoIter<A> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}

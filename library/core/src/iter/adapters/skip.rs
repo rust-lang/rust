@@ -185,7 +185,14 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {}
+impl<I> ExactSizeIterator for Skip<I>
+where
+    I: ExactSizeIterator,
+{
+    fn len(&self) -> usize {
+        self.iter.len().saturating_sub(self.n)
+    }
+}
 
 #[stable(feature = "double_ended_skip_iterator", since = "1.9.0")]
 impl<I> DoubleEndedIterator for Skip<I>

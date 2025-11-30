@@ -1365,12 +1365,8 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.size.get() > self.v.len() {
-            (0, Some(0))
-        } else {
-            let size = self.v.len() - self.size.get() + 1;
-            (size, Some(size))
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -1440,7 +1436,17 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Windows<'_, T> {}
+impl<T> ExactSizeIterator for Windows<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.size.get() > self.v.len() { 0 } else { self.v.len() - self.size.get() + 1 }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.size.get() > self.v.len()
+    }
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Windows<'_, T> {}
@@ -1520,14 +1526,8 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.is_empty() {
-            (0, Some(0))
-        } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
-            (n, Some(n))
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -1625,7 +1625,17 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for Chunks<'_, T> {}
+impl<T> ExactSizeIterator for Chunks<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.v.is_empty() { 0 } else { self.v.len().div_ceil(self.chunk_size) }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for Chunks<'_, T> {}
@@ -1702,14 +1712,8 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.is_empty() {
-            (0, Some(0))
-        } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
-            (n, Some(n))
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -1806,7 +1810,17 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ExactSizeIterator for ChunksMut<'_, T> {}
+impl<T> ExactSizeIterator for ChunksMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.v.is_empty() { 0 } else { self.v.len().div_ceil(self.chunk_size) }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for ChunksMut<'_, T> {}
@@ -1920,7 +1934,7 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
+        let n = self.len();
         (n, Some(n))
     }
 
@@ -1985,6 +1999,12 @@ impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 impl<T> ExactSizeIterator for ChunksExact<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.v.len() / self.chunk_size
+    }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
@@ -2080,7 +2100,7 @@ impl<'a, T> Iterator for ChunksExactMut<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
+        let n = self.len();
         (n, Some(n))
     }
 
@@ -2152,6 +2172,12 @@ impl<'a, T> DoubleEndedIterator for ChunksExactMut<'a, T> {
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
 impl<T> ExactSizeIterator for ChunksExactMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.v.len() / self.chunk_size
+    }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
@@ -2228,8 +2254,8 @@ impl<'a, T, const N: usize> Iterator for ArrayWindows<'a, T, N> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.v.len().saturating_sub(N - 1);
-        (size, Some(size))
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -2271,6 +2297,12 @@ impl<'a, T, const N: usize> DoubleEndedIterator for ArrayWindows<'a, T, N> {
 
 #[unstable(feature = "array_windows", issue = "75027")]
 impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.v.len().saturating_sub(N - 1)
+    }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.v.len() < N
     }
@@ -2344,14 +2376,8 @@ impl<'a, T> Iterator for RChunks<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.is_empty() {
-            (0, Some(0))
-        } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
-            (n, Some(n))
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -2435,7 +2461,17 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<T> ExactSizeIterator for RChunks<'_, T> {}
+impl<T> ExactSizeIterator for RChunks<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.v.is_empty() { 0 } else { self.v.len().div_ceil(self.chunk_size) }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for RChunks<'_, T> {}
@@ -2517,14 +2553,8 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.is_empty() {
-            (0, Some(0))
-        } else {
-            let n = self.v.len() / self.chunk_size;
-            let rem = self.v.len() % self.chunk_size;
-            let n = if rem > 0 { n + 1 } else { n };
-            (n, Some(n))
-        }
+        let n = self.len();
+        (n, Some(n))
     }
 
     #[inline]
@@ -2621,7 +2651,17 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<T> ExactSizeIterator for RChunksMut<'_, T> {}
+impl<T> ExactSizeIterator for RChunksMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        if self.v.is_empty() { 0 } else { self.v.len().div_ceil(self.chunk_size) }
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.v.is_empty()
+    }
+}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for RChunksMut<'_, T> {}
@@ -2735,7 +2775,7 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
+        let n = self.len();
         (n, Some(n))
     }
 
@@ -2804,6 +2844,12 @@ impl<'a, T> DoubleEndedIterator for RChunksExact<'a, T> {
 
 #[stable(feature = "rchunks", since = "1.31.0")]
 impl<'a, T> ExactSizeIterator for RChunksExact<'a, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.v.len() / self.chunk_size
+    }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
@@ -2899,7 +2945,7 @@ impl<'a, T> Iterator for RChunksExactMut<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = self.v.len() / self.chunk_size;
+        let n = self.len();
         (n, Some(n))
     }
 
@@ -2976,6 +3022,12 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
 
 #[stable(feature = "rchunks", since = "1.31.0")]
 impl<T> ExactSizeIterator for RChunksExactMut<'_, T> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.v.len() / self.chunk_size
+    }
+
+    #[inline]
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }

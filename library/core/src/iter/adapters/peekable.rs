@@ -168,7 +168,13 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
+impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {
+    #[inline]
+    fn len(&self) -> usize {
+        let peek_len = usize::from(matches!(self.peeked, Some(Some(_))));
+        self.iter.len().saturating_add(peek_len)
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator> FusedIterator for Peekable<I> {}
