@@ -47,10 +47,6 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
 }
 
 fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<SymbolExportInfo> {
-    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
-        return Default::default();
-    }
-
     let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
@@ -166,10 +162,6 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
-        return &[];
-    }
-
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
     let sorted = tcx.with_stable_hashing_context(|hcx| {
@@ -221,10 +213,6 @@ fn exported_generic_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
-        return &[];
-    }
-
     let mut symbols: Vec<_> = vec![];
 
     if tcx.local_crate_exports_generics() {
