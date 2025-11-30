@@ -1,5 +1,8 @@
 //! impl bool {}
 
+use crate::intrinsics;
+use crate::ub_checks::assert_unsafe_precondition;
+
 impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
     /// or `None` otherwise.
@@ -127,5 +130,47 @@ impl bool {
     #[inline]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, f: F) -> Result<(), E> {
         if self { Ok(()) } else { Err(f()) }
+    }
+
+    /// Same value as `self | other`, but UB if any bit position is set in both inputs.
+    ///
+    /// This is a situational micro-optimization for places where you'd rather
+    /// use addition on some platforms and bitwise or on other platforms, based
+    /// on exactly which instructions combine better with whatever else you're
+    /// doing.  Note that there's no reason to bother using this for places
+    /// where it's clear from the operations involved that they can't overlap.
+    /// For example, if you're combining `u16`s into a `u32` with
+    /// `((a as u32) << 16) | (b as u32)`, that's fine, as the backend will
+    /// know those sides of the `|` are disjoint without needing help.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(disjoint_bitor)]
+    ///
+    /// // SAFETY: `false` and `true` have no ones in common.
+    /// unsafe { false.unchecked_disjoint_bitor(true) };
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// Requires that `self` and `rhs` are disjoint to each other, i.e. do not
+    /// have overlapping ones (thus `self & rhs == false`). By extension, requires
+    /// that `self | rhs`, `self + rhs`, and `self ^ rhs` are equivalent.
+    #[unstable(feature = "disjoint_bitor", issue = "135758")]
+    #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+    #[inline]
+    pub const unsafe fn unchecked_disjoint_bitor(self, rhs: Self) -> Self {
+        assert_unsafe_precondition!(
+            check_language_ub,
+            "attempt to disjoint or conjoint values",
+            (
+                lhs: bool = self,
+                rhs: bool = rhs,
+            ) => (lhs & rhs) == false,
+        );
+
+        // SAFETY: Same precondition.
+        unsafe { intrinsics::disjoint_bitor(self, rhs) }
     }
 }
