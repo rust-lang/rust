@@ -153,6 +153,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "hurd",
             target_os = "linux",
             target_os = "aix",
+            target_os = "freebsd",
             target_vendor = "apple",
             target_os = "cygwin",
         ) => {
@@ -163,9 +164,17 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             #[cfg(any(target_os = "android", target_os = "linux"))]
             {
                 quota = cgroups::quota().max(1);
-                let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
+            }
+
+            #[cfg(any(target_os = "android", target_os = "linux", target_os = "freebsd"))]
+            {
+                #[cfg(not(target_os = "freebsd"))]
+                type Cpuset = libc::cpu_set_t;
+                #[cfg(target_os = "freebsd")]
+                type Cpuset = libc::cpuset_t;
+                let mut set: Cpuset = unsafe { mem::zeroed() };
                 unsafe {
-                    if libc::sched_getaffinity(0, size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                    if libc::sched_getaffinity(0, mem::size_of::<Cpuset>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
 
