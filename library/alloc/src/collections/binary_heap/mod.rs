@@ -777,14 +777,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        //
         // While hole's position is below parent of the first empty slot
-        // child + 1 <= end - 1 (The second child is max at the first empty slot)
-        // => 2 * hole + 2 <= end - 1 ( From the invariant)
-        // => hole <= (end - 3) / 2
-        // => hole < 1 + (end - 3) / 2
-        // => hole < (end - 1) / 2
         while hole.pos() < (end - 1) / 2 {
             let mut child = 2 * hole.pos() + 1;
 
@@ -808,15 +801,21 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // If hole has only one child.
         //
-        // child <= end - 1
-        // => 2 * hole + 1 <= end  - 1
-        // => hole <= (end - 2) / 2
-        // => hole < 1 + (end - 2) / 2
+        // We want: child < end
+        // => 2 * hole + 1 < end
+        // => hole < (end - 1) / 2
+        //
+        // For integers this is same as:
         // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
-            // If we are not in order, move parent
+            // If elements are not in order, move parent
+            //
+            // SAFETY: The previous statements imply
+            // child is a valid index (child < end <= self.len()),
+            // and child != hole.pos().
             if hole.element() < unsafe { hole.get(child) } {
+                // SAFETY: same as above
                 unsafe { hole.move_to(child) };
             }
         }
@@ -851,14 +850,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         // SAFETY: The caller guarantees that pos < self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
 
-        // Loop invariant: child == 2 * hole.pos() + 1.
-        //
         // While hole's position is below parent of the first empty slot
-        // child + 1 <= end - 1 (The second child is max at the first empty slot)
-        // => 2 * hole + 2 <= end - 1 ( From the invariant)
-        // => hole <= (end - 3) / 2
-        // => hole < 1 + (end - 3) / 2
-        // => hole < (end - 1) / 2
         while hole.pos() < (end - 1) / 2 {
             let mut child = 2 * hole.pos() + 1;
 
@@ -874,15 +866,21 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // If hole has only one child.
         //
-        // child <= end - 1
-        // => 2 * hole + 1 <= end  - 1
-        // => hole <= (end - 2) / 2
-        // => hole < 1 + (end - 2) / 2
+        // We want: child < end
+        // => 2 * hole + 1 < end
+        // => hole < (end - 1) / 2
+        //
+        // For integers this is same as:
         // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
-            // If we are not in order, move parent
+            // If elements are not in order, move parent
+            //
+            // SAFETY: The previous statements imply
+            // child is a valid index (child < end <= self.len()),
+            // and child != hole.pos().
             if hole.element() < unsafe { hole.get(child) } {
+                // SAFETY: same as above
                 unsafe { hole.move_to(child) };
             }
         }
