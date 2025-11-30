@@ -129,6 +129,7 @@ pub enum TokenType {
     // Keyword-like symbols.
     // tidy-alphabetical-start
     SymAttSyntax,
+    SymBikeshed,
     SymClobberAbi,
     SymInlateout,
     SymInout,
@@ -556,6 +557,7 @@ macro_rules! exp {
     (Yield)          => { exp!(@kw, Yield,      KwYield) };
 
     (AttSyntax)      => { exp!(@sym, att_syntax,      SymAttSyntax) };
+    (Bikeshed)       => { exp!(@sym, bikeshed,        SymBikeshed) };
     (ClobberAbi)     => { exp!(@sym, clobber_abi,     SymClobberAbi) };
     (Inlateout)      => { exp!(@sym, inlateout,       SymInlateout) };
     (Inout)          => { exp!(@sym, inout,           SymInout) };

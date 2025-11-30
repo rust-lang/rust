@@ -1806,8 +1806,9 @@ pub enum ExprKind {
     /// A use expression (`x.use`). Span is of use keyword.
     Use(Box<Expr>, Span),
 
-    /// A try block (`try { ... }`).
-    TryBlock(Box<Block>),
+    /// A try block (`try { ... }`), if the type is `None`, or
+    /// A try block (`try bikeshed Ty { ... }`) if the type is `Some`.
+    TryBlock(Box<Block>, Option<Box<Ty>>),
 
     /// An assignment (`a = foo()`).
     /// The `Span` argument is the span of the `=` token.
