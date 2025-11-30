@@ -1,5 +1,6 @@
 //! See docs in build/expr/mod.rs
 
+use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -9,8 +10,8 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
+use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
@@ -364,6 +365,91 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Loops are only exited by `break` expressions.
                     None
                 })
+            }
+            // Some intrinsics are handled here because they desperately want to avoid introducing
+            // unnecessary copies.
+            ExprKind::Call { ty, fun, ref args, .. }
+                if let ty::FnDef(def_id, generic_args) = ty.kind()
+                    && let Some(intrinsic) = this.tcx.intrinsic(def_id)
+                    && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
+            {
+                // We still have to evaluate the callee expression as normal (but we don't care
+                // about its result).
+                let _fun = unpack!(block = this.as_local_operand(block, fun));
+
+                match intrinsic.name {
+                    sym::write_via_move => {
+                        // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
+
+                        // The destination must have unit type (so we don't actually have to store anything
+                        // into it).
+                        assert!(destination.ty(&this.local_decls, this.tcx).ty.is_unit());
+
+                        // Compile this to an assignment of the argument into the destination.
+                        let [ptr, val] = **args else {
+                            span_bug!(expr_span, "invalid write_via_move call")
+                        };
+                        let Some(ptr) = unpack!(block = this.as_local_operand(block, ptr)).place()
+                        else {
+                            span_bug!(expr_span, "invalid write_via_move call")
+                        };
+                        let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
+                        this.expr_into_dest(ptr_deref, block, val)
+                    }
+                    sym::write_box_via_move => {
+                        // The signature is:
+                        // `fn write_box_via_move<T>(b: Box<MaybeUninit<T>>, val: T) -> Box<MaybeUninit<T>>`.
+                        // `write_box_via_move(b, val)` becomes
+                        // ```
+                        // (*b).value.value = val;
+                        // b
+                        // ```
+                        // One crucial aspect of this lowering is that the generated code must
+                        // cause the borrow checker to enforce that `val` lives sufficiently
+                        // long to be stored in `b`. The above lowering does this; anything that
+                        // involves a `*const T` or a `NonNull<T>` does not as those are covariant.
+                        let tcx = this.tcx;
+
+                        // Extract the operands, compile `b`.
+                        let [b, val] = **args else {
+                            span_bug!(expr_span, "invalid init_box_via_move call")
+                        };
+                        let Some(b) = unpack!(block = this.as_local_operand(block, b)).place()
+                        else {
+                            span_bug!(expr_span, "invalid init_box_via_move call")
+                        };
+
+                        // Projecting to a field requires the type of that field.
+                        // Concretely, we need `T` and `ManuallyDrop<T>`.
+                        let ty = generic_args.type_at(0);
+                        let manually_drop_adt =
+                            tcx.adt_def(tcx.require_lang_item(LangItem::ManuallyDrop, DUMMY_SP));
+                        let manually_drop_ty =
+                            Ty::new_adt(tcx, manually_drop_adt, tcx.mk_args(&[ty.into()]));
+
+                        // Generate `(*b).value.value = val;`
+                        let ptr_deref = Place::from(b).project_deeper(
+                            &[
+                                ProjectionElem::Deref,
+                                ProjectionElem::Field(FieldIdx::from_u32(1), manually_drop_ty),
+                                ProjectionElem::Field(FieldIdx::ZERO, ty),
+                            ],
+                            tcx,
+                        );
+                        unpack!(block = this.expr_into_dest(ptr_deref, block, val));
+
+                        // Return `b`
+                        this.cfg.push_assign(
+                            block,
+                            source_info,
+                            destination,
+                            // Move from `b` so that does not get dropped any more.
+                            Rvalue::Use(Operand::Move(b)),
+                        );
+                        block.unit()
+                    }
+                    _ => rustc_middle::bug!(),
+                }
             }
             ExprKind::Call { ty: _, fun, ref args, from_hir_call, fn_span } => {
                 let fun = unpack!(block = this.as_local_operand(block, fun));
@@ -769,7 +855,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // these are the cases that are more naturally handled by some other mode
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
-            | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
