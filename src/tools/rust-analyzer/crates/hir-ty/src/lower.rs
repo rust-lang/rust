@@ -39,14 +39,17 @@ use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::Captures;
 use rustc_type_ir::{
     AliasTyKind, BoundVarIndexKind, ConstKind, DebruijnIndex, ExistentialPredicate,
-    ExistentialProjection, ExistentialTraitRef, FnSig, OutlivesPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, Interner, OutlivesPredicate, TermKind,
     TyKind::{self},
-    TypeVisitableExt, Upcast,
-    inherent::{GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike, Ty as _},
+    TypeFoldable, TypeVisitableExt, Upcast, UpcastFrom, elaborate,
+    inherent::{
+        Clause as _, GenericArg as _, GenericArgs as _, IntoKind as _, Region as _, SliceLike,
+        Ty as _,
+    },
 };
-use salsa::plumbing::AsId;
 use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
+use tracing::debug;
 use triomphe::{Arc, ThinArc};
 
 use crate::{
@@ -56,9 +59,9 @@ use crate::{
     generics::{Generics, generics, trait_self_param_idx},
     next_solver::{
         AliasTy, Binder, BoundExistentialPredicates, Clause, ClauseKind, Clauses, Const,
-        DbInterner, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, GenericArg, GenericArgs,
-        ParamConst, ParamEnv, PolyFnSig, Predicate, Region, SolverDefId, TraitPredicate, TraitRef,
-        Ty, Tys, UnevaluatedConst, abi::Safety,
+        DbInterner, EarlyBinder, EarlyParamRegion, ErrorGuaranteed, FxIndexMap, GenericArg,
+        GenericArgs, ParamConst, ParamEnv, PolyFnSig, Predicate, Region, SolverDefId,
+        TraitPredicate, TraitRef, Ty, Tys, UnevaluatedConst, abi::Safety, util::BottomUpFolder,
     },
 };
 
@@ -191,10 +194,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     ) -> Self {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let in_binders = DebruijnIndex::ZERO;
+        let interner = DbInterner::new_with(db, resolver.krate(), None);
         Self {
             db,
-            interner: DbInterner::new_no_crate(db),
-            lang_items: hir_def::lang_item::lang_items(db, resolver.krate()),
+            // Can provide no block since we don't use it for trait solving.
+            interner,
+            lang_items: interner.lang_items(),
             resolver,
             def,
             generics: Default::default(),
@@ -720,138 +725,250 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
     fn lower_dyn_trait(&mut self, bounds: &[TypeBound]) -> Ty<'db> {
         let interner = self.interner;
-        // FIXME: we should never create non-existential predicates in the first place
-        // For now, use an error type so we don't run into dummy binder issues
-        let self_ty = Ty::new_error(interner, ErrorGuaranteed);
+        let dummy_self_ty = dyn_trait_dummy_self(interner);
+        let mut region = None;
         // INVARIANT: The principal trait bound, if present, must come first. Others may be in any
         // order but should be in the same order for the same set but possibly different order of
         // bounds in the input.
         // INVARIANT: If this function returns `DynTy`, there should be at least one trait bound.
         // These invariants are utilized by `TyExt::dyn_trait()` and chalk.
-        let mut lifetime = None;
         let bounds = self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {
-            let mut lowered_bounds: Vec<
-                rustc_type_ir::Binder<DbInterner<'db>, ExistentialPredicate<DbInterner<'db>>>,
-            > = Vec::new();
+            let mut principal = None;
+            let mut auto_traits = SmallVec::<[_; 3]>::new();
+            let mut projections = Vec::new();
+            let mut had_error = false;
+
             for b in bounds {
                 let db = ctx.db;
-                ctx.lower_type_bound(b, self_ty, false).for_each(|b| {
-                    if let Some(bound) = b
-                        .kind()
-                        .map_bound(|c| match c {
-                            rustc_type_ir::ClauseKind::Trait(t) => {
-                                let id = t.def_id();
-                                let is_auto =
-                                    db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
-                                if is_auto {
-                                    Some(ExistentialPredicate::AutoTrait(t.def_id()))
-                                } else {
-                                    Some(ExistentialPredicate::Trait(
-                                        ExistentialTraitRef::new_from_args(
-                                            interner,
-                                            t.def_id(),
-                                            GenericArgs::new_from_iter(
-                                                interner,
-                                                t.trait_ref.args.iter().skip(1),
-                                            ),
-                                        ),
-                                    ))
+                ctx.lower_type_bound(b, dummy_self_ty, false).for_each(|b| {
+                    match b.kind().skip_binder() {
+                        rustc_type_ir::ClauseKind::Trait(t) => {
+                            let id = t.def_id();
+                            let is_auto = db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
+                            if is_auto {
+                                auto_traits.push(t.def_id().0);
+                            } else {
+                                if principal.is_some() {
+                                    // FIXME: Report an error.
+                                    had_error = true;
                                 }
+                                principal = Some(b.kind().rebind(t.trait_ref));
                             }
-                            rustc_type_ir::ClauseKind::Projection(p) => {
-                                Some(ExistentialPredicate::Projection(
-                                    ExistentialProjection::new_from_args(
-                                        interner,
-                                        p.def_id(),
-                                        GenericArgs::new_from_iter(
-                                            interner,
-                                            p.projection_term.args.iter().skip(1),
-                                        ),
-                                        p.term,
-                                    ),
-                                ))
+                        }
+                        rustc_type_ir::ClauseKind::Projection(p) => {
+                            projections.push(b.kind().rebind(p));
+                        }
+                        rustc_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => {
+                            if region.is_some() {
+                                // FIXME: Report an error.
+                                had_error = true;
                             }
-                            rustc_type_ir::ClauseKind::TypeOutlives(outlives_predicate) => {
-                                lifetime = Some(outlives_predicate.1);
-                                None
-                            }
-                            rustc_type_ir::ClauseKind::RegionOutlives(_)
-                            | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
-                            | rustc_type_ir::ClauseKind::WellFormed(_)
-                            | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
-                            | rustc_type_ir::ClauseKind::HostEffect(_)
-                            | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
-                        })
-                        .transpose()
-                    {
-                        lowered_bounds.push(bound);
+                            region = Some(outlives_predicate.1);
+                        }
+                        rustc_type_ir::ClauseKind::RegionOutlives(_)
+                        | rustc_type_ir::ClauseKind::ConstArgHasType(_, _)
+                        | rustc_type_ir::ClauseKind::WellFormed(_)
+                        | rustc_type_ir::ClauseKind::ConstEvaluatable(_)
+                        | rustc_type_ir::ClauseKind::HostEffect(_)
+                        | rustc_type_ir::ClauseKind::UnstableFeature(_) => unreachable!(),
                     }
                 })
             }
 
-            let mut multiple_regular_traits = false;
-            let mut multiple_same_projection = false;
-            lowered_bounds.sort_unstable_by(|lhs, rhs| {
-                use std::cmp::Ordering;
-                match ((*lhs).skip_binder(), (*rhs).skip_binder()) {
-                    (ExistentialPredicate::Trait(_), ExistentialPredicate::Trait(_)) => {
-                        multiple_regular_traits = true;
-                        // Order doesn't matter - we error
-                        Ordering::Equal
-                    }
-                    (
-                        ExistentialPredicate::AutoTrait(lhs_id),
-                        ExistentialPredicate::AutoTrait(rhs_id),
-                    ) => lhs_id.0.cmp(&rhs_id.0),
-                    (ExistentialPredicate::Trait(_), _) => Ordering::Less,
-                    (_, ExistentialPredicate::Trait(_)) => Ordering::Greater,
-                    (ExistentialPredicate::AutoTrait(_), _) => Ordering::Less,
-                    (_, ExistentialPredicate::AutoTrait(_)) => Ordering::Greater,
-                    (
-                        ExistentialPredicate::Projection(lhs),
-                        ExistentialPredicate::Projection(rhs),
-                    ) => {
-                        let lhs_id = match lhs.def_id {
-                            SolverDefId::TypeAliasId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        let rhs_id = match rhs.def_id {
-                            SolverDefId::TypeAliasId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        // We only compare the `associated_ty_id`s. We shouldn't have
-                        // multiple bounds for an associated type in the correct Rust code,
-                        // and if we do, we error out.
-                        if lhs_id == rhs_id {
-                            multiple_same_projection = true;
+            if had_error {
+                return None;
+            }
+
+            if principal.is_none() && auto_traits.is_empty() {
+                // No traits is not allowed.
+                return None;
+            }
+
+            // `Send + Sync` is the same as `Sync + Send`.
+            auto_traits.sort_unstable();
+            // Duplicate auto traits are permitted.
+            auto_traits.dedup();
+
+            // Map the projection bounds onto a key that makes it easy to remove redundant
+            // bounds that are constrained by supertraits of the principal def id.
+            //
+            // Also make sure we detect conflicting bounds from expanding a trait alias and
+            // also specifying it manually, like:
+            // ```
+            // type Alias = Trait<Assoc = i32>;
+            // let _: &dyn Alias<Assoc = u32> = /* ... */;
+            // ```
+            let mut projection_bounds = FxIndexMap::default();
+            for proj in projections {
+                let key = (
+                    proj.skip_binder().def_id().expect_type_alias(),
+                    interner.anonymize_bound_vars(
+                        proj.map_bound(|proj| proj.projection_term.trait_ref(interner)),
+                    ),
+                );
+                if let Some(old_proj) = projection_bounds.insert(key, proj)
+                    && interner.anonymize_bound_vars(proj)
+                        != interner.anonymize_bound_vars(old_proj)
+                {
+                    // FIXME: Report "conflicting associated type" error.
+                }
+            }
+
+            // A stable ordering of associated types from the principal trait and all its
+            // supertraits. We use this to ensure that different substitutions of a trait
+            // don't result in `dyn Trait` types with different projections lists, which
+            // can be unsound: <https://github.com/rust-lang/rust/pull/136458>.
+            // We achieve a stable ordering by walking over the unsubstituted principal
+            // trait ref.
+            let mut ordered_associated_types = vec![];
+
+            if let Some(principal_trait) = principal {
+                for clause in elaborate::elaborate(
+                    interner,
+                    [Clause::upcast_from(
+                        TraitRef::identity(interner, principal_trait.def_id()),
+                        interner,
+                    )],
+                )
+                .filter_only_self()
+                {
+                    let clause = clause.instantiate_supertrait(interner, principal_trait);
+                    debug!("observing object predicate `{clause:?}`");
+
+                    let bound_predicate = clause.kind();
+                    match bound_predicate.skip_binder() {
+                        ClauseKind::Trait(pred) => {
+                            // FIXME(negative_bounds): Handle this correctly...
+                            let trait_ref = interner
+                                .anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
+                            ordered_associated_types.extend(
+                                pred.trait_ref
+                                    .def_id
+                                    .0
+                                    .trait_items(self.db)
+                                    .associated_types()
+                                    .map(|item| (item, trait_ref)),
+                            );
                         }
-                        lhs_id.as_id().index().cmp(&rhs_id.as_id().index())
+                        ClauseKind::Projection(pred) => {
+                            let pred = bound_predicate.rebind(pred);
+                            // A `Self` within the original bound will be instantiated with a
+                            // `trait_object_dummy_self`, so check for that.
+                            let references_self = match pred.skip_binder().term.kind() {
+                                TermKind::Ty(ty) => {
+                                    ty.walk().any(|arg| arg == dummy_self_ty.into())
+                                }
+                                // FIXME(associated_const_equality): We should walk the const instead of not doing anything
+                                TermKind::Const(_) => false,
+                            };
+
+                            // If the projection output contains `Self`, force the user to
+                            // elaborate it explicitly to avoid a lot of complexity.
+                            //
+                            // The "classically useful" case is the following:
+                            // ```
+                            //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
+                            //         type MyOutput;
+                            //     }
+                            // ```
+                            //
+                            // Here, the user could theoretically write `dyn MyTrait<MyOutput = X>`,
+                            // but actually supporting that would "expand" to an infinitely-long type
+                            // `fix $ τ → dyn MyTrait<MyOutput = X, Output = <τ as MyTrait>::MyOutput`.
+                            //
+                            // Instead, we force the user to write
+                            // `dyn MyTrait<MyOutput = X, Output = X>`, which is uglier but works. See
+                            // the discussion in #56288 for alternatives.
+                            if !references_self {
+                                let key = (
+                                    pred.skip_binder().projection_term.def_id.expect_type_alias(),
+                                    interner.anonymize_bound_vars(pred.map_bound(|proj| {
+                                        proj.projection_term.trait_ref(interner)
+                                    })),
+                                );
+                                if !projection_bounds.contains_key(&key) {
+                                    projection_bounds.insert(key, pred);
+                                }
+                            }
+                        }
+                        _ => (),
                     }
                 }
+            }
+
+            // We compute the list of projection bounds taking the ordered associated types,
+            // and check if there was an entry in the collected `projection_bounds`. Those
+            // are computed by first taking the user-written associated types, then elaborating
+            // the principal trait ref, and only using those if there was no user-written.
+            // See note below about how we handle missing associated types with `Self: Sized`,
+            // which are not required to be provided, but are still used if they are provided.
+            let mut projection_bounds: Vec<_> = ordered_associated_types
+                .into_iter()
+                .filter_map(|key| projection_bounds.get(&key).copied())
+                .collect();
+
+            projection_bounds.sort_unstable_by_key(|proj| proj.skip_binder().def_id());
+
+            let principal = principal.map(|principal| {
+                principal.map_bound(|principal| {
+                    // Verify that `dummy_self` did not leak inside default type parameters.
+                    let args: Vec<_> = principal
+                        .args
+                        .iter()
+                        // Skip `Self`
+                        .skip(1)
+                        .map(|arg| {
+                            if arg.walk().any(|arg| arg == dummy_self_ty.into()) {
+                                // FIXME: Report an error.
+                                Ty::new_error(interner, ErrorGuaranteed).into()
+                            } else {
+                                arg
+                            }
+                        })
+                        .collect();
+
+                    ExistentialPredicate::Trait(ExistentialTraitRef::new(
+                        interner,
+                        principal.def_id,
+                        args,
+                    ))
+                })
             });
 
-            if multiple_regular_traits || multiple_same_projection {
-                return None;
-            }
+            let projections = projection_bounds.into_iter().map(|proj| {
+                proj.map_bound(|mut proj| {
+                    // Like for trait refs, verify that `dummy_self` did not leak inside default type
+                    // parameters.
+                    let references_self = proj.projection_term.args.iter().skip(1).any(|arg| {
+                        if arg.walk().any(|arg| arg == dummy_self_ty.into()) {
+                            return true;
+                        }
+                        false
+                    });
+                    if references_self {
+                        proj.projection_term =
+                            replace_dummy_self_with_error(interner, proj.projection_term);
+                    }
 
-            if !lowered_bounds.first().map_or(false, |b| {
-                matches!(
-                    b.as_ref().skip_binder(),
-                    ExistentialPredicate::Trait(_) | ExistentialPredicate::AutoTrait(_)
-                )
-            }) {
-                return None;
-            }
+                    ExistentialPredicate::Projection(ExistentialProjection::erase_self_ty(
+                        interner, proj,
+                    ))
+                })
+            });
 
-            // As multiple occurrences of the same auto traits *are* permitted, we deduplicate the
-            // bounds. We shouldn't have repeated elements besides auto traits at this point.
-            lowered_bounds.dedup();
+            let auto_traits = auto_traits.into_iter().map(|auto_trait| {
+                Binder::dummy(ExistentialPredicate::AutoTrait(auto_trait.into()))
+            });
 
-            Some(BoundExistentialPredicates::new_from_iter(interner, lowered_bounds))
+            // N.b. principal, projections, auto traits
+            Some(BoundExistentialPredicates::new_from_iter(
+                interner,
+                principal.into_iter().chain(projections).chain(auto_traits),
+            ))
         });
 
         if let Some(bounds) = bounds {
-            let region = match lifetime {
+            let region = match region {
                 Some(it) => match it.kind() {
                     rustc_type_ir::RegionKind::ReBound(BoundVarIndexKind::Bound(db), var) => {
                         Region::new_bound(
@@ -927,6 +1044,26 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
             None => Region::error(self.interner),
         }
     }
+}
+
+fn dyn_trait_dummy_self(interner: DbInterner<'_>) -> Ty<'_> {
+    // This type must not appear anywhere except here.
+    Ty::new_fresh(interner, 0)
+}
+
+fn replace_dummy_self_with_error<'db, T: TypeFoldable<DbInterner<'db>>>(
+    interner: DbInterner<'db>,
+    t: T,
+) -> T {
+    let dyn_trait_dummy_self = dyn_trait_dummy_self(interner);
+    t.fold_with(&mut BottomUpFolder {
+        interner,
+        ty_op: |ty| {
+            if ty == dyn_trait_dummy_self { Ty::new_error(interner, ErrorGuaranteed) } else { ty }
+        },
+        lt_op: |lt| lt,
+        ct_op: |ct| ct,
+    })
 }
 
 pub(crate) fn lower_mutability(m: hir_def::type_ref::Mutability) -> Mutability {
