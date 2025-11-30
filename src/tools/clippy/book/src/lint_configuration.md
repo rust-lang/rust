@@ -681,6 +681,17 @@ Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl`
 * [`multiple_inherent_impl`](https://rust-lang.github.io/rust-clippy/master/index.html#multiple_inherent_impl)
 
 
+## `large-error-ignored`
+A list of paths to types that should be ignored as overly large `Err`-variants in a
+`Result` returned from a function
+
+**Default Value:** `[]`
+
+---
+**Affected lints:**
+* [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
+
+
 ## `large-error-threshold`
 The maximum size of the `Err`-variant in a `Result` returned from a function
 

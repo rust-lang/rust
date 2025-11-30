@@ -12,8 +12,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
-    Pat, PatKind, Path, QPath, TyKind, UnOp,
+    self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
+    Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
@@ -26,6 +26,8 @@ use std::borrow::Cow;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for explicit `deref()` or `deref_mut()` method calls.
+    ///
+    /// Doesn't lint inside the implementation of the `Deref` or `DerefMut` traits.
     ///
     /// ### Why is this bad?
     /// Dereferencing by `&*x` or `&mut *x` is clearer and more concise,
@@ -169,6 +171,10 @@ pub struct Dereferencing<'tcx> {
     ///
     /// e.g. `m!(x) | Foo::Bar(ref x)`
     ref_locals: FxIndexMap<HirId, Option<RefPat>>,
+
+    /// The outermost `impl Deref` we're currently in. While we're in one,
+    /// `explicit_deref_methods` is deactivated
+    outermost_deref_impl: Option<OwnerId>,
 }
 
 #[derive(Debug)]
@@ -246,7 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         // Stop processing sub expressions when a macro call is seen
         if expr.span.from_expansion() {
             if let Some((state, data)) = self.state.take() {
-                report(cx, expr, state, data, cx.typeck_results());
+                self.report(cx, expr, state, data, cx.typeck_results());
             }
             return;
         }
@@ -255,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
         let Some((kind, sub_expr, skip_expr)) = try_parse_ref_op(cx.tcx, typeck, expr) else {
             // The whole chain of reference operations has been seen
             if let Some((state, data)) = self.state.take() {
-                report(cx, expr, state, data, typeck);
+                self.report(cx, expr, state, data, typeck);
             }
             return;
         };
@@ -263,7 +269,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
 
         if is_from_proc_macro(cx, expr) {
             if let Some((state, data)) = self.state.take() {
-                report(cx, expr, state, data, cx.typeck_results());
+                self.report(cx, expr, state, data, cx.typeck_results());
             }
             return;
         }
@@ -515,7 +521,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
             (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf(mutability)) => {
                 let adjusted_ty = data.adjusted_ty;
                 let stability = state.stability;
-                report(cx, expr, State::DerefedBorrow(state), data, typeck);
+                self.report(cx, expr, State::DerefedBorrow(state), data, typeck);
                 if stability.is_deref_stable() {
                     self.state = Some((
                         State::Borrow { mutability },
@@ -530,7 +536,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 let adjusted_ty = data.adjusted_ty;
                 let stability = state.stability;
                 let for_field_access = state.for_field_access;
-                report(cx, expr, State::DerefedBorrow(state), data, typeck);
+                self.report(cx, expr, State::DerefedBorrow(state), data, typeck);
                 if let Some(name) = for_field_access
                     && let sub_expr_ty = typeck.expr_ty(sub_expr)
                     && !ty_contains_field(sub_expr_ty, name)
@@ -602,7 +608,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 ));
             },
 
-            (Some((state, data)), _) => report(cx, expr, state, data, typeck),
+            (Some((state, data)), _) => self.report(cx, expr, state, data, typeck),
         }
     }
 
@@ -672,6 +678,31 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
             }
             self.current_body = None;
         }
+    }
+
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+        // Only check for `impl Deref(Mut)`s if we're not already in one
+        if !self.in_deref_impl() && is_deref_or_derefmut_impl(cx, item) {
+            self.outermost_deref_impl = Some(item.owner_id);
+        }
+    }
+
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+        // Only clear `self.outermost_deref_impl` if we're escaping the _outermost_ `impl Deref(Mut)`
+        if self.outermost_deref_impl == Some(item.owner_id) {
+            self.outermost_deref_impl = None;
+        }
+    }
+}
+
+fn is_deref_or_derefmut_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
+    if let hir::ItemKind::Impl(impl_) = item.kind
+        && let Some(of_trait) = impl_.of_trait
+        && let Some(trait_id) = of_trait.trait_ref.trait_def_id()
+    {
+        cx.tcx.lang_items().deref_trait() == Some(trait_id) || cx.tcx.lang_items().deref_mut_trait() == Some(trait_id)
+    } else {
+        false
     }
 }
 
@@ -930,209 +961,11 @@ fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
     }
 }
 
-#[expect(clippy::needless_pass_by_value, clippy::too_many_lines)]
-fn report<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    state: State,
-    data: StateData<'tcx>,
-    typeck: &'tcx TypeckResults<'tcx>,
-) {
-    match state {
-        State::DerefMethod {
-            ty_changed_count,
-            is_ufcs,
-            mutbl,
-        } => {
-            let mut app = Applicability::MachineApplicable;
-            let (expr_str, expr_is_macro_call) =
-                snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
-            let ty = typeck.expr_ty(expr);
-            let (_, ref_count, _) = peel_and_count_ty_refs(ty);
-            let deref_str = if ty_changed_count >= ref_count && ref_count != 0 {
-                // a deref call changing &T -> &U requires two deref operators the first time
-                // this occurs. One to remove the reference, a second to call the deref impl.
-                "*".repeat(ty_changed_count + 1)
-            } else {
-                "*".repeat(ty_changed_count)
-            };
-            let addr_of_str = if ty_changed_count < ref_count {
-                // Check if a reborrow from &mut T -> &T is required.
-                if mutbl == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
-                    "&*"
-                } else {
-                    ""
-                }
-            } else if mutbl == Mutability::Mut {
-                "&mut "
-            } else {
-                "&"
-            };
-
-            let expr_str = if !expr_is_macro_call && is_ufcs && cx.precedence(expr) < ExprPrecedence::Prefix {
-                Cow::Owned(format!("({expr_str})"))
-            } else {
-                expr_str
-            };
-
-            span_lint_and_sugg(
-                cx,
-                EXPLICIT_DEREF_METHODS,
-                data.first_expr.span,
-                match mutbl {
-                    Mutability::Not => "explicit `deref` method call",
-                    Mutability::Mut => "explicit `deref_mut` method call",
-                },
-                "try",
-                format!("{addr_of_str}{deref_str}{expr_str}"),
-                app,
-            );
-        },
-        State::DerefedBorrow(state) => {
-            // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
-            // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
-            if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
-                && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
-                && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
-            {
-                return;
-            }
-
-            let mut app = Applicability::MachineApplicable;
-            let (snip, snip_is_macro) =
-                snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
-            span_lint_hir_and_then(
-                cx,
-                NEEDLESS_BORROW,
-                data.first_expr.hir_id,
-                data.first_expr.span,
-                state.msg,
-                |diag| {
-                    let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
-                        Node::Expr(e) => match e.kind {
-                            ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
-                            ExprKind::Call(..) => {
-                                cx.precedence(expr) < ExprPrecedence::Unambiguous
-                                    || matches!(expr.kind, ExprKind::Field(..))
-                            },
-                            _ => cx.precedence(expr) < cx.precedence(e),
-                        },
-                        _ => false,
-                    };
-                    let is_in_tuple = matches!(
-                        get_parent_expr(cx, data.first_expr),
-                        Some(Expr {
-                            kind: ExprKind::Tup(..),
-                            ..
-                        })
-                    );
-
-                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) && !is_in_tuple {
-                        format!("({snip})")
-                    } else {
-                        snip.into()
-                    };
-                    diag.span_suggestion(data.first_expr.span, "change this to", sugg, app);
-                },
-            );
-        },
-        State::ExplicitDeref { mutability } => {
-            if is_block_like(expr)
-                && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
-                && ty.is_sized(cx.tcx, cx.typing_env())
-            {
-                // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
-                return;
-            }
-
-            let ty = typeck.expr_ty(expr);
-
-            // `&&[T; N]`, or `&&..&[T; N]` (src) cannot coerce to `&[T]` (dst).
-            if let ty::Ref(_, dst, _) = data.adjusted_ty.kind()
-                && dst.is_slice()
-            {
-                let (src, n_src_refs, _) = peel_and_count_ty_refs(ty);
-                if n_src_refs >= 2 && src.is_array() {
-                    return;
-                }
-            }
-
-            let (prefix, needs_paren) = match mutability {
-                Some(mutability) if !ty.is_ref() => {
-                    let prefix = match mutability {
-                        Mutability::Not => "&",
-                        Mutability::Mut => "&mut ",
-                    };
-                    (prefix, cx.precedence(expr) < ExprPrecedence::Prefix)
-                },
-                None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
-                _ => ("", false),
-            };
-            span_lint_hir_and_then(
-                cx,
-                EXPLICIT_AUTO_DEREF,
-                data.first_expr.hir_id,
-                data.first_expr.span,
-                "deref which would be done by auto-deref",
-                |diag| {
-                    let mut app = Applicability::MachineApplicable;
-                    let (snip, snip_is_macro) =
-                        snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
-                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) {
-                        format!("{prefix}({snip})")
-                    } else {
-                        format!("{prefix}{snip}")
-                    };
-                    diag.span_suggestion(data.first_expr.span, "try", sugg, app);
-                },
-            );
-        },
-        State::ExplicitDerefField {
-            derefs_manually_drop, ..
-        } => {
-            let (snip_span, needs_parens) = if matches!(expr.kind, ExprKind::Field(..))
-                && (derefs_manually_drop
-                    || adjust_derefs_manually_drop(
-                        typeck.expr_adjustments(data.first_expr),
-                        typeck.expr_ty(data.first_expr),
-                    )) {
-                // `DerefMut` will not be automatically applied to `ManuallyDrop<_>`
-                // field expressions when the base type is a union and the parent
-                // expression is also a field access.
-                //
-                // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
-                // deref through `ManuallyDrop<_>` will not compile.
-                let parent_id = cx.tcx.parent_hir_id(expr.hir_id);
-                if parent_id == data.first_expr.hir_id {
-                    return;
-                }
-                (cx.tcx.hir_node(parent_id).expect_expr().span, true)
-            } else {
-                (expr.span, false)
-            };
-            span_lint_hir_and_then(
-                cx,
-                EXPLICIT_AUTO_DEREF,
-                data.first_expr.hir_id,
-                data.first_expr.span,
-                "deref which would be done by auto-deref",
-                |diag| {
-                    let mut app = Applicability::MachineApplicable;
-                    let snip = snippet_with_context(cx, snip_span, data.first_expr.span.ctxt(), "..", &mut app).0;
-                    let sugg = if needs_parens {
-                        format!("({snip})")
-                    } else {
-                        snip.into_owned()
-                    };
-                    diag.span_suggestion(data.first_expr.span, "try", sugg, app);
-                },
-            );
-        },
-        State::Borrow { .. } | State::Reborrow { .. } => (),
-    }
-}
-
 impl<'tcx> Dereferencing<'tcx> {
+    fn in_deref_impl(&self) -> bool {
+        self.outermost_deref_impl.is_some()
+    }
+
     fn check_local_usage(&mut self, cx: &LateContext<'tcx>, e: &Expr<'tcx>, local: HirId) {
         if let Some(outer_pat) = self.ref_locals.get_mut(&local)
             && let Some(pat) = outer_pat
@@ -1189,6 +1022,213 @@ impl<'tcx> Dereferencing<'tcx> {
                 // macros
                 _ => *outer_pat = None,
             }
+        }
+    }
+
+    #[expect(clippy::needless_pass_by_value, clippy::too_many_lines)]
+    fn report(
+        &self,
+        cx: &LateContext<'tcx>,
+        expr: &'tcx Expr<'_>,
+        state: State,
+        data: StateData<'tcx>,
+        typeck: &'tcx TypeckResults<'tcx>,
+    ) {
+        match state {
+            State::DerefMethod {
+                ty_changed_count,
+                is_ufcs,
+                mutbl,
+            } => {
+                if self.in_deref_impl() {
+                    // `deref(_mut)` is fine in an `impl Deref(Mut)`
+                    return;
+                }
+                let mut app = Applicability::MachineApplicable;
+                let (expr_str, expr_is_macro_call) =
+                    snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
+                let ty = typeck.expr_ty(expr);
+                let (_, ref_count, _) = peel_and_count_ty_refs(ty);
+                let deref_str = if ty_changed_count >= ref_count && ref_count != 0 {
+                    // a deref call changing &T -> &U requires two deref operators the first time
+                    // this occurs. One to remove the reference, a second to call the deref impl.
+                    "*".repeat(ty_changed_count + 1)
+                } else {
+                    "*".repeat(ty_changed_count)
+                };
+                let addr_of_str = if ty_changed_count < ref_count {
+                    // Check if a reborrow from &mut T -> &T is required.
+                    if mutbl == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
+                        "&*"
+                    } else {
+                        ""
+                    }
+                } else if mutbl == Mutability::Mut {
+                    "&mut "
+                } else {
+                    "&"
+                };
+
+                let expr_str = if !expr_is_macro_call && is_ufcs && cx.precedence(expr) < ExprPrecedence::Prefix {
+                    Cow::Owned(format!("({expr_str})"))
+                } else {
+                    expr_str
+                };
+
+                span_lint_and_sugg(
+                    cx,
+                    EXPLICIT_DEREF_METHODS,
+                    data.first_expr.span,
+                    match mutbl {
+                        Mutability::Not => "explicit `deref` method call",
+                        Mutability::Mut => "explicit `deref_mut` method call",
+                    },
+                    "try",
+                    format!("{addr_of_str}{deref_str}{expr_str}"),
+                    app,
+                );
+            },
+            State::DerefedBorrow(state) => {
+                // Do not suggest removing a non-mandatory `&` in `&*rawptr` in an `unsafe` context,
+                // as this may make rustc trigger its `dangerous_implicit_autorefs` lint.
+                if let ExprKind::AddrOf(BorrowKind::Ref, _, subexpr) = data.first_expr.kind
+                    && let ExprKind::Unary(UnOp::Deref, subsubexpr) = subexpr.kind
+                    && cx.typeck_results().expr_ty_adjusted(subsubexpr).is_raw_ptr()
+                {
+                    return;
+                }
+
+                let mut app = Applicability::MachineApplicable;
+                let (snip, snip_is_macro) =
+                    snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
+                span_lint_hir_and_then(
+                    cx,
+                    NEEDLESS_BORROW,
+                    data.first_expr.hir_id,
+                    data.first_expr.span,
+                    state.msg,
+                    |diag| {
+                        let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
+                            Node::Expr(e) => match e.kind {
+                                ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
+                                ExprKind::Call(..) => {
+                                    cx.precedence(expr) < ExprPrecedence::Unambiguous
+                                        || matches!(expr.kind, ExprKind::Field(..))
+                                },
+                                _ => cx.precedence(expr) < cx.precedence(e),
+                            },
+                            _ => false,
+                        };
+                        let is_in_tuple = matches!(
+                            get_parent_expr(cx, data.first_expr),
+                            Some(Expr {
+                                kind: ExprKind::Tup(..),
+                                ..
+                            })
+                        );
+
+                        let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) && !is_in_tuple {
+                            format!("({snip})")
+                        } else {
+                            snip.into()
+                        };
+                        diag.span_suggestion(data.first_expr.span, "change this to", sugg, app);
+                    },
+                );
+            },
+            State::ExplicitDeref { mutability } => {
+                if is_block_like(expr)
+                    && let ty::Ref(_, ty, _) = data.adjusted_ty.kind()
+                    && ty.is_sized(cx.tcx, cx.typing_env())
+                {
+                    // Rustc bug: auto deref doesn't work on block expression when targeting sized types.
+                    return;
+                }
+
+                let ty = typeck.expr_ty(expr);
+
+                // `&&[T; N]`, or `&&..&[T; N]` (src) cannot coerce to `&[T]` (dst).
+                if let ty::Ref(_, dst, _) = data.adjusted_ty.kind()
+                    && dst.is_slice()
+                {
+                    let (src, n_src_refs, _) = peel_and_count_ty_refs(ty);
+                    if n_src_refs >= 2 && src.is_array() {
+                        return;
+                    }
+                }
+
+                let (prefix, needs_paren) = match mutability {
+                    Some(mutability) if !ty.is_ref() => {
+                        let prefix = match mutability {
+                            Mutability::Not => "&",
+                            Mutability::Mut => "&mut ",
+                        };
+                        (prefix, cx.precedence(expr) < ExprPrecedence::Prefix)
+                    },
+                    None if !ty.is_ref() && data.adjusted_ty.is_ref() => ("&", false),
+                    _ => ("", false),
+                };
+                span_lint_hir_and_then(
+                    cx,
+                    EXPLICIT_AUTO_DEREF,
+                    data.first_expr.hir_id,
+                    data.first_expr.span,
+                    "deref which would be done by auto-deref",
+                    |diag| {
+                        let mut app = Applicability::MachineApplicable;
+                        let (snip, snip_is_macro) =
+                            snippet_with_context(cx, expr.span, data.first_expr.span.ctxt(), "..", &mut app);
+                        let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) {
+                            format!("{prefix}({snip})")
+                        } else {
+                            format!("{prefix}{snip}")
+                        };
+                        diag.span_suggestion(data.first_expr.span, "try", sugg, app);
+                    },
+                );
+            },
+            State::ExplicitDerefField {
+                derefs_manually_drop, ..
+            } => {
+                let (snip_span, needs_parens) = if matches!(expr.kind, ExprKind::Field(..))
+                    && (derefs_manually_drop
+                        || adjust_derefs_manually_drop(
+                            typeck.expr_adjustments(data.first_expr),
+                            typeck.expr_ty(data.first_expr),
+                        )) {
+                    // `DerefMut` will not be automatically applied to `ManuallyDrop<_>`
+                    // field expressions when the base type is a union and the parent
+                    // expression is also a field access.
+                    //
+                    // e.g. `&mut x.y.z` where `x` is a union, and accessing `z` requires a
+                    // deref through `ManuallyDrop<_>` will not compile.
+                    let parent_id = cx.tcx.parent_hir_id(expr.hir_id);
+                    if parent_id == data.first_expr.hir_id {
+                        return;
+                    }
+                    (cx.tcx.hir_node(parent_id).expect_expr().span, true)
+                } else {
+                    (expr.span, false)
+                };
+                span_lint_hir_and_then(
+                    cx,
+                    EXPLICIT_AUTO_DEREF,
+                    data.first_expr.hir_id,
+                    data.first_expr.span,
+                    "deref which would be done by auto-deref",
+                    |diag| {
+                        let mut app = Applicability::MachineApplicable;
+                        let snip = snippet_with_context(cx, snip_span, data.first_expr.span.ctxt(), "..", &mut app).0;
+                        let sugg = if needs_parens {
+                            format!("({snip})")
+                        } else {
+                            snip.into_owned()
+                        };
+                        diag.span_suggestion(data.first_expr.span, "try", sugg, app);
+                    },
+                );
+            },
+            State::Borrow { .. } | State::Reborrow { .. } => (),
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use itertools::Itertools as _;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -1261,7 +1263,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
 
-            None::<()>
+            ControlFlow::<()>::Continue(())
         });
     }
 

@@ -1,15 +1,15 @@
 //@no-rustfix: has placeholders
-#![deny(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
-#![allow(
+#![warn(clippy::panicking_unwrap, clippy::unnecessary_unwrap)]
+#![expect(
     clippy::if_same_then_else,
     clippy::branches_sharing_code,
-    clippy::unnecessary_literal_unwrap
+    clippy::unnecessary_literal_unwrap,
+    clippy::self_assignment
 )]
 
 macro_rules! m {
     ($a:expr) => {
         if $a.is_some() {
-            // unnecessary
             $a.unwrap();
             //~^ unnecessary_unwrap
         }
@@ -43,90 +43,71 @@ macro_rules! checks_some {
 fn main() {
     let x = Some(());
     if x.is_some() {
-        // unnecessary
         x.unwrap();
         //~^ unnecessary_unwrap
 
-        // unnecessary
         x.expect("an error message");
         //~^ unnecessary_unwrap
     } else {
-        // will panic
         x.unwrap();
         //~^ panicking_unwrap
 
-        // will panic
         x.expect("an error message");
         //~^ panicking_unwrap
     }
     if x.is_none() {
-        // will panic
         x.unwrap();
         //~^ panicking_unwrap
     } else {
-        // unnecessary
         x.unwrap();
         //~^ unnecessary_unwrap
     }
     m!(x);
-    // ok
     checks_in_param!(x.is_some(), x.unwrap());
-    // ok
     checks_unwrap!(x, x.unwrap());
-    // ok
     checks_some!(x.is_some(), x);
     let mut x: Result<(), ()> = Ok(());
     if x.is_ok() {
-        // unnecessary
         x.unwrap();
         //~^ unnecessary_unwrap
 
-        // unnecessary
         x.expect("an error message");
         //~^ unnecessary_unwrap
 
-        // will panic
         x.unwrap_err();
         //~^ panicking_unwrap
     } else {
-        // will panic
         x.unwrap();
         //~^ panicking_unwrap
 
-        // will panic
         x.expect("an error message");
         //~^ panicking_unwrap
 
-        // unnecessary
         x.unwrap_err();
         //~^ unnecessary_unwrap
     }
     if x.is_err() {
-        // will panic
         x.unwrap();
         //~^ panicking_unwrap
 
-        // unnecessary
         x.unwrap_err();
         //~^ unnecessary_unwrap
     } else {
-        // unnecessary
         x.unwrap();
         //~^ unnecessary_unwrap
 
-        // will panic
         x.unwrap_err();
         //~^ panicking_unwrap
     }
     if x.is_ok() {
         x = Err(());
-        // not unnecessary because of mutation of x
+        // not unnecessary because of mutation of `x`
         // it will always panic but the lint is not smart enough to see this (it only
         // checks if conditions).
         x.unwrap();
     } else {
         x = Ok(());
-        // not unnecessary because of mutation of x
+        // not unnecessary because of mutation of `x`
         // it will always panic but the lint is not smart enough to see this (it
         // only checks if conditions).
         x.unwrap_err();
@@ -175,13 +156,11 @@ fn issue11371() {
         //~^ panicking_unwrap
     }
 
-    // This should not lint. Statics are, at the time of writing, not linted on anyway,
-    // but if at some point they are supported by this lint, it should correctly see that
-    // `X` is being mutated and not suggest `if let Some(..) = X {}`
+    // This should not lint and suggest `if let Some(..) = X {}`, as `X` is being mutated
     static mut X: Option<i32> = Some(123);
     unsafe {
+        #[expect(static_mut_refs)]
         if X.is_some() {
-            //~^ ERROR: creating a shared reference
             X = None;
             X.unwrap();
         }
@@ -299,17 +278,197 @@ fn check_expect() {
     let x = Some(());
     if x.is_some() {
         #[expect(clippy::unnecessary_unwrap)]
-        // unnecessary
         x.unwrap();
         #[expect(clippy::unnecessary_unwrap)]
-        // unnecessary
         x.expect("an error message");
     } else {
         #[expect(clippy::panicking_unwrap)]
-        // will panic
         x.unwrap();
         #[expect(clippy::panicking_unwrap)]
-        // will panic
         x.expect("an error message");
+    }
+}
+
+fn partial_moves() {
+    fn borrow_option(_: &Option<()>) {}
+
+    let x = Some(());
+    // Using `if let Some(o) = x` won't work here, as `borrow_option` will try to borrow a moved value
+    if x.is_some() {
+        borrow_option(&x);
+        x.unwrap();
+        //~^ unnecessary_unwrap
+    }
+    // This is fine though, as `if let Some(o) = &x` won't move `x`
+    if x.is_some() {
+        borrow_option(&x);
+        x.as_ref().unwrap();
+        //~^ unnecessary_unwrap
+    }
+}
+
+fn issue15321() {
+    struct Soption {
+        option: Option<bool>,
+        other: bool,
+    }
+    let mut sopt = Soption {
+        option: Some(true),
+        other: true,
+    };
+    // Lint: nothing was mutated
+    let _res = if sopt.option.is_some() {
+        sopt.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated field was mutated
+    let _res = if sopt.option.is_some() {
+        sopt.other = false;
+        sopt.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt.other = false;
+        sopt.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // No lint: the whole local was mutated
+    let _res = if sopt.option.is_some() {
+        sopt = sopt;
+        sopt.option.unwrap()
+    } else {
+        sopt.option = None;
+        sopt.option.unwrap()
+    };
+    // No lint: the field we're looking at was mutated
+    let _res = if sopt.option.is_some() {
+        sopt = sopt;
+        sopt.option.unwrap()
+    } else {
+        sopt.option = None;
+        sopt.option.unwrap()
+    };
+
+    struct Toption(Option<bool>, bool);
+    let mut topt = Toption(Some(true), true);
+    // Lint: nothing was mutated
+    let _res = if topt.0.is_some() {
+        topt.0.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        topt.0.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated field was mutated
+    let _res = if topt.0.is_some() {
+        topt.1 = false;
+        topt.0.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        topt.1 = false;
+        topt.0.unwrap()
+        //~^ panicking_unwrap
+    };
+    // No lint: the whole local was mutated
+    let _res = if topt.0.is_some() {
+        topt = topt;
+        topt.0.unwrap()
+    } else {
+        topt = topt;
+        topt.0.unwrap()
+    };
+    // No lint: the field we're looking at was mutated
+    let _res = if topt.0.is_some() {
+        topt.0 = None;
+        topt.0.unwrap()
+    } else {
+        topt.0 = None;
+        topt.0.unwrap()
+    };
+
+    // Nested field accesses get linted as well
+    struct Soption2 {
+        other: bool,
+        option: Soption,
+    }
+    let mut sopt2 = Soption2 {
+        other: true,
+        option: Soption {
+            option: Some(true),
+            other: true,
+        },
+    };
+    // Lint: no fields were mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated outer field was mutated -- don't get confused by `Soption2.other` having the
+    // same `FieldIdx` of 1 as `Soption.option`
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.other = false;
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.other = false;
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Lint: an unrelated inner field was mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.other = false;
+        sopt2.option.option.unwrap()
+        //~^ unnecessary_unwrap
+    } else {
+        sopt2.option.other = false;
+        sopt2.option.option.unwrap()
+        //~^ panicking_unwrap
+    };
+    // Don't lint: the whole local was mutated
+    let _res = if sopt2.option.option.is_some() {
+        sopt2 = sopt2;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2 = sopt2;
+        sopt2.option.option.unwrap()
+    };
+    // Don't lint: a parent field of the field we're looking at was mutated, and with that the
+    // field we're looking at
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option = sopt;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2.option = sopt;
+        sopt2.option.option.unwrap()
+    };
+    // Don't lint: the field we're looking at was mutated directly
+    let _res = if sopt2.option.option.is_some() {
+        sopt2.option.option = None;
+        sopt2.option.option.unwrap()
+    } else {
+        sopt2.option.option = None;
+        sopt2.option.option.unwrap()
+    };
+
+    // Partial moves
+    fn borrow_toption(_: &Toption) {}
+
+    // Using `if let Some(o) = topt.0` won't work here, as `borrow_toption` will try to borrow a
+    // partially moved value
+    if topt.0.is_some() {
+        borrow_toption(&topt);
+        topt.0.unwrap();
+        //~^ unnecessary_unwrap
+    }
+    // This is fine though, as `if let Some(o) = &topt.0` won't (partially) move `topt`
+    if topt.0.is_some() {
+        borrow_toption(&topt);
+        topt.0.as_ref().unwrap();
+        //~^ unnecessary_unwrap
     }
 }
