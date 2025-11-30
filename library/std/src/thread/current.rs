@@ -108,7 +108,7 @@ pub(super) mod id {
         get().unwrap_or_else(
             #[cold]
             || {
-                let id = ThreadId::new();
+                let id = ThreadId::desperate_new();
                 id::set(id);
                 id
             },

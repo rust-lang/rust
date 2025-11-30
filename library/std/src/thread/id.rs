@@ -31,11 +31,15 @@ use crate::sync::atomic::{Atomic, Ordering};
 pub struct ThreadId(NonZero<u64>);
 
 impl ThreadId {
-    // Generate a new unique thread ID.
-    pub(crate) fn new() -> ThreadId {
+    /// Generates a new unique thread ID, and does not rely on the global
+    /// allocator.
+    ///
+    /// This should only be used in contexts where a new `ThreadId` is
+    /// desperately required, but the global allocator might not be available.
+    pub(super) fn desperate_new() -> ThreadId {
         #[cold]
         fn exhausted() -> ! {
-            panic!("failed to generate unique thread ID: bitspace exhausted")
+            rtabort!("failed to generate unique thread ID: bitspace exhausted")
         }
 
         cfg_select! {
@@ -95,6 +99,25 @@ impl ThreadId {
                         exhausted()
                     }
                 }
+            }
+        }
+    }
+
+    /// Generates a new unique thread ID.
+    pub(crate) fn new() -> ThreadId {
+        cfg_select! {
+            target_has_atomic = "64" => {
+                // The generation is implemented lock-free anyway.
+                ThreadId::desperate_new()
+            }
+            _ => {
+                // Synchronize the id generation – `Mutex` has better
+                // synchronization behaviour than the spinlock used in
+                // `desperate_new`, but might need allocation.
+                use crate::sync::nonpoison::Mutex;
+                static LOCK: Mutex<()> = Mutex::new(());
+                let _guard = LOCK.lock();
+                ThreadId::desperate_new()
             }
         }
     }
