@@ -1799,6 +1799,20 @@ class DocSearch {
                 if (pb[i] === 0) {
                     invertedFunctionInputsIndex.push(RoaringBitmap.empty());
                     i += 1;
+                } else if (pb[i] < 0x3a) {
+                    let bitmap = new RoaringBitmap(null);
+                    const l = pb[i];
+                    i += 1;
+                    for (let j = 0; j < l; ++j) {
+                        bitmap = bitmap.union(RoaringBitmap.makeSingleton(
+                            pb[i] +
+                            (pb[i + 1] << 8) +
+                            (pb[i + 2] << 16) +
+                            (pb[i + 3] << 24),
+                        ));
+                        i += 4;
+                    }
+                    invertedFunctionInputsIndex.push(bitmap);
                 } else {
                     const bitmap = new RoaringBitmap(pb, i);
                     i += bitmap.consumed_len_bytes;
@@ -1812,6 +1826,20 @@ class DocSearch {
                 if (pb[i] === 0) {
                     invertedFunctionOutputIndex.push(RoaringBitmap.empty());
                     i += 1;
+                } else if (pb[i] < 0x3a) {
+                    let bitmap = new RoaringBitmap(null);
+                    const l = pb[i];
+                    i += 1;
+                    for (let j = 0; j < l; ++j) {
+                        bitmap = bitmap.union(RoaringBitmap.makeSingleton(
+                            pb[i] +
+                            (pb[i + 1] << 8) +
+                            (pb[i + 2] << 16) +
+                            (pb[i + 3] << 24),
+                        ));
+                        i += 4;
+                    }
+                    invertedFunctionOutputIndex.push(bitmap);
                 } else {
                     const bitmap = new RoaringBitmap(pb, i);
                     i += bitmap.consumed_len_bytes;
@@ -1865,6 +1893,20 @@ class DocSearch {
             if (pb[i] === 0) {
                 invertedFunctionSignatureIndex.push(RoaringBitmap.empty());
                 i += 1;
+            } else if (pb[i] < 0x3a) {
+                let bitmap = new RoaringBitmap(null);
+                const l = pb[i];
+                i += 1;
+                for (let j = 0; j < l; ++j) {
+                    bitmap = bitmap.union(RoaringBitmap.makeSingleton(
+                        pb[i] +
+                        (pb[i + 1] << 8) +
+                        (pb[i + 2] << 16) +
+                        (pb[i + 3] << 24),
+                    ));
+                    i += 4;
+                }
+                invertedFunctionSignatureIndex.push(bitmap);
             } else {
                 const bitmap = new RoaringBitmap(pb, i);
                 i += bitmap.consumed_len_bytes;

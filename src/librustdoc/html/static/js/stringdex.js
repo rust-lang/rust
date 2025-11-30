@@ -25,52 +25,6 @@ class RoaringBitmap {
         this.consumed_len_bytes = 0;
         if (u8array === null || u8array.length === i || u8array[i] === 0) {
             return this;
-        } else if (u8array[i] > 0xf0) {
-            // Special representation of tiny sets that are close together
-            const lspecial = u8array[i] & 0x0f;
-            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
-            let pspecial = i + 1;
-            let key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
-            let value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
-            let entry = (key << 16) | value;
-            let container;
-            container = new RoaringBitmapArray(1, new Uint8Array(4));
-            container.array[0] = value & 0xFF;
-            container.array[1] = (value >> 8) & 0xFF;
-            this.containers.push(container);
-            this.keysAndCardinalities[0] = key;
-            this.keysAndCardinalities[1] = key >> 8;
-            pspecial += 4;
-            for (let ispecial = 1; ispecial < lspecial; ispecial += 1) {
-                entry += u8array[pspecial] | (u8array[pspecial + 1] << 8);
-                value = entry & 0xffff;
-                key = entry >> 16;
-                container = this.addToArrayAt(key);
-                const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
-                container.cardinality = cardinalityOld + 1;
-                pspecial += 2;
-            }
-            this.consumed_len_bytes = pspecial - i;
-            return this;
-        } else if (u8array[i] < 0x3a) {
-            // Special representation of tiny sets with arbitrary 32-bit integers
-            const lspecial = u8array[i];
-            this.keysAndCardinalities = new Uint8Array(lspecial * 4);
-            let pspecial = i + 1;
-            for (let ispecial = 0; ispecial < lspecial; ispecial += 1) {
-                const key = u8array[pspecial + 2] | (u8array[pspecial + 3] << 8);
-                const value = u8array[pspecial] | (u8array[pspecial + 1] << 8);
-                const container = this.addToArrayAt(key);
-                const cardinalityOld = container.cardinality;
-                container.array[cardinalityOld * 2] = value & 0xFF;
-                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
-                container.cardinality = cardinalityOld + 1;
-                pspecial += 4;
-            }
-            this.consumed_len_bytes = pspecial - i;
-            return this;
         }
         // https://github.com/RoaringBitmap/RoaringFormatSpec
         //
@@ -1131,6 +1085,7 @@ function loadDatabase(hooks) {
                         data,
                         leaves,
                         EMPTY_BITMAP,
+                        null,
                     ));
                 } else {
                     const data = (nodeid[0] & 0xf0) === 0x80 ? 0 : (
@@ -1139,6 +1094,7 @@ function loadDatabase(hooks) {
                         EMPTY_SEARCH_TREE_BRANCHES,
                         data,
                         leaves,
+                        null,
                     ));
                 }
             } else {
@@ -1447,6 +1403,116 @@ function loadDatabase(hooks) {
         makeSearchTreeBranchesAlphaBitmapClass(LONG_ALPHABITMAP_CHARS, 4);
 
     /**
+     * Get a slice, or roaring bitmap, for leaves (essentially, get decodeLeaves' input)
+     * @param {Uint8Array} input
+     * @param {number} startingOffset
+     * @return {RoaringBitmap|(Uint8Array & {consumed_len_bytes: number})}
+     */
+    function countLeaves(input, startingOffset) {
+        if (input[startingOffset] >= 0xf0) {
+            const lspecial = (input[startingOffset] & 0x0f) + 1;
+            return Object.assign(
+                new Uint8Array(input.buffer, startingOffset + input.byteOffset, (lspecial * 2) + 1),
+                {consumed_len_bytes: (lspecial * 2) + 1},
+            );
+        } else if (input[startingOffset] >= 0xe0) {
+            return Object.assign(
+                new Uint8Array(input.buffer, startingOffset + input.byteOffset, 3),
+                {consumed_len_bytes: 3},
+            );
+        } else if (input[startingOffset] >= 0xd0) {
+            return Object.assign(
+                new Uint8Array(input.buffer, startingOffset + input.byteOffset, 5),
+                {consumed_len_bytes: 5},
+            );
+        } else if (input[startingOffset] === 0) {
+            return EMPTY_BITMAP1;
+        } else if (input[startingOffset] < 0x3a) {
+            const lspecial = input[startingOffset];
+            return Object.assign(
+                new Uint8Array(input.buffer, startingOffset + input.byteOffset, (lspecial * 4) + 1),
+                {consumed_len_bytes: (lspecial * 4) + 1},
+            );
+        } else {
+            return new RoaringBitmap(input, startingOffset);
+        }
+    }
+
+    /**
+     * Convert leaves into a roaring bitmap
+     * @param {RoaringBitmap|Uint8Array} leaves
+     * @param {number} neighbors
+     * @returns {RoaringBitmap}
+     */
+    function decodeLeaves(leaves, neighbors) {
+        if (leaves instanceof RoaringBitmap) {
+            return leaves;
+        }
+        let i = 0;
+        const result = new RoaringBitmap(null);
+        if (leaves[i] >= 0xf0) {
+            // Special representation of tiny sets that are close together
+            const lspecial = (leaves[i] & 0x0f) + 1;
+            result.keysAndCardinalities = new Uint8Array(4);
+            result.keysAndCardinalities[0] = neighbors;
+            result.keysAndCardinalities[1] = neighbors >> 8;
+            i += 1;
+            const container = new RoaringBitmapArray(lspecial, leaves.subarray(i));
+            result.containers.push(container);
+        } else if (leaves[i] >= 0xe0) {
+            // Special representation of tiny sets that are runs
+            const lspecial = (leaves[i] & 0x0f) + 1;
+            result.keysAndCardinalities = new Uint8Array(4);
+            result.keysAndCardinalities[0] = neighbors;
+            result.keysAndCardinalities[1] = neighbors >> 8;
+            result.keysAndCardinalities[2] = lspecial - 1;
+            i += 1;
+            const run = new Uint8Array(4);
+            run[0] = leaves[i];
+            run[1] = leaves[i + 1];
+            run[2] = lspecial - 1;
+            run[3] = 0;
+            const container = new RoaringBitmapRun(1, run);
+            result.containers.push(container);
+        } else if (leaves[i] >= 0xd0) {
+            // Special representation of tiny sets that are runs
+            const lspecial = (leaves[i] & 0x0f) + 1;
+            i += 1;
+            const run = new Uint8Array(4);
+            run[0] = leaves[i];
+            run[1] = leaves[i + 1];
+            run[2] = lspecial - 1;
+            run[3] = 0;
+            i += 2;
+            result.keysAndCardinalities = new Uint8Array(4);
+            result.keysAndCardinalities[0] = leaves[i];
+            result.keysAndCardinalities[1] = leaves[i + 1];
+            result.keysAndCardinalities[2] = lspecial - 1;
+            const container = new RoaringBitmapRun(1, run);
+            result.containers.push(container);
+        } else if (leaves[i] < 0x3a) {
+            // Special representation of tiny sets with arbitrary 32-bit integers
+            const lspecial = leaves[i];
+            result.keysAndCardinalities = new Uint8Array(lspecial * 4);
+            i += 1;
+            for (let ispecial = 0; ispecial < lspecial; ispecial += 1) {
+                const key = leaves[i + 2] | (leaves[i + 3] << 8);
+                const value = leaves[i] | (leaves[i + 1] << 8);
+                const container = result.addToArrayAt(key);
+                const cardinalityOld = container.cardinality;
+                container.array[cardinalityOld * 2] = value & 0xFF;
+                container.array[(cardinalityOld * 2) + 1] = (value >> 8) & 0xFF;
+                container.cardinality = cardinalityOld + 1;
+                i += 4;
+            }
+        } else {
+            throw Error("invalid leaves node: " + leaves[0] + " / " + leaves.byteOffset +
+                "-" + leaves.byteLength);
+        }
+        return result;
+    }
+
+    /**
      * @typedef {PrefixSearchTree|SuffixSearchTree|InlineNeighborsTree} SearchTree
      * @typedef {PrefixTrie|SuffixTrie} Trie
      */
@@ -1482,8 +1548,8 @@ function loadDatabase(hooks) {
      *     might_have_prefix_branches: SearchTreeBranches<SearchTree>,
      *     branches: SearchTreeBranches<SearchTree>,
      *     data: Uint8Array,
-     *     leaves_suffix: RoaringBitmap,
-     *     leaves_whole: RoaringBitmap,
+     *     leaves_suffix: RoaringBitmap|Uint8Array,
+     *     leaves_whole: RoaringBitmap|Uint8Array,
      * }}
      */
     class PrefixSearchTree {
@@ -1491,8 +1557,9 @@ function loadDatabase(hooks) {
          * @param {SearchTreeBranches<SearchTree>} branches
          * @param {SearchTreeBranches<SearchTree>} might_have_prefix_branches
          * @param {Uint8Array} data
-         * @param {RoaringBitmap} leaves_whole
-         * @param {RoaringBitmap} leaves_suffix
+         * @param {RoaringBitmap|Uint8Array} leaves_whole
+         * @param {RoaringBitmap|Uint8Array} leaves_suffix
+         * @param {number|null} neighbors
          */
         constructor(
             branches,
@@ -1500,12 +1567,14 @@ function loadDatabase(hooks) {
             data,
             leaves_whole,
             leaves_suffix,
+            neighbors,
         ) {
             this.might_have_prefix_branches = might_have_prefix_branches;
             this.branches = branches;
             this.data = data;
             this.leaves_suffix = leaves_suffix;
             this.leaves_whole = leaves_whole;
+            this.neighbors = neighbors;
         }
         /**
          * Returns the Trie for the root node.
@@ -1515,26 +1584,29 @@ function loadDatabase(hooks) {
          *
          * @param {DataColumn} dataColumn
          * @param {Uint8ArraySearchPattern} searchPattern
+         * @param {number} parentNeighbors
          * @return {PrefixTrie}
          */
-        trie(dataColumn, searchPattern) {
-            return new PrefixTrie(this, 0, dataColumn, searchPattern);
+        trie(dataColumn, searchPattern, parentNeighbors) {
+            const neighbors = this.neighbors === null ? parentNeighbors : this.neighbors;
+            return new PrefixTrie(this, 0, dataColumn, searchPattern, neighbors);
         }
 
         /**
          * Return the trie representing `name`
          * @param {Uint8Array|string} name
          * @param {DataColumn} dataColumn
+         * @param {number} parentNeighbors
          * @returns {Promise<Trie?>}
          */
-        async search(name, dataColumn) {
+        async search(name, dataColumn, parentNeighbors) {
             if (typeof name === "string") {
                 const utf8encoder = new TextEncoder();
                 name = utf8encoder.encode(name);
             }
             const searchPattern = new Uint8ArraySearchPattern(name);
             /** @type {Trie} */
-            let trie = this.trie(dataColumn, searchPattern);
+            let trie = this.trie(dataColumn, searchPattern, parentNeighbors);
             for (const datum of name) {
                 // code point definitely exists
                 /** @type {Promise<Trie>?} */
@@ -1551,16 +1623,17 @@ function loadDatabase(hooks) {
         /**
          * @param {Uint8Array|string} name
          * @param {DataColumn} dataColumn
+         * @param {number} parentNeighbors
          * @returns {AsyncGenerator<Trie>}
          */
-        async* searchLev(name, dataColumn) {
+        async* searchLev(name, dataColumn, parentNeighbors) {
             if (typeof name === "string") {
                 const utf8encoder = new TextEncoder();
                 name = utf8encoder.encode(name);
             }
             const w = name.length;
             if (w < 3) {
-                const trie = await this.search(name, dataColumn);
+                const trie = await this.search(name, dataColumn, parentNeighbors);
                 if (trie !== null) {
                     yield trie;
                 }
@@ -1571,7 +1644,10 @@ function loadDatabase(hooks) {
                 new Lev2TParametricDescription(w) :
                 new Lev1TParametricDescription(w);
             /** @type {Array<[Promise<Trie>, number]>} */
-            const stack = [[Promise.resolve(this.trie(dataColumn, searchPattern)), 0]];
+            const stack = [[
+                Promise.resolve(this.trie(dataColumn, searchPattern, parentNeighbors)),
+                0,
+            ]];
             const n = levParams.n;
             while (stack.length !== 0) {
                 // It's not empty
@@ -1605,9 +1681,15 @@ function loadDatabase(hooks) {
             }
         }
 
-        /** @returns {RoaringBitmap} */
-        getCurrentLeaves() {
-            return this.leaves_whole.union(this.leaves_suffix);
+        /**
+         * @param {number} parentNeighbors
+         * @returns {RoaringBitmap}
+         */
+        getCurrentLeaves(parentNeighbors) {
+            const neighbors = this.neighbors === null ? parentNeighbors : this.neighbors;
+            const leaves_whole = decodeLeaves(this.leaves_whole, neighbors);
+            const leaves_suffix = decodeLeaves(this.leaves_suffix, neighbors);
+            return leaves_whole.union(leaves_suffix);
         }
     }
 
@@ -1621,12 +1703,14 @@ function loadDatabase(hooks) {
          * @param {number} offset
          * @param {DataColumn} dataColumn
          * @param {Uint8ArraySearchPattern} searchPattern
+         * @param {number} neighbors
          */
-        constructor(tree, offset, dataColumn, searchPattern) {
+        constructor(tree, offset, dataColumn, searchPattern, neighbors) {
             this.tree = tree;
             this.offset = offset;
             this.dataColumn = dataColumn;
             this.searchPattern = searchPattern;
+            this.neighbors = neighbors;
         }
 
         /**
@@ -1635,7 +1719,7 @@ function loadDatabase(hooks) {
          */
         matches() {
             if (this.offset === this.tree.data.length) {
-                return this.tree.leaves_whole;
+                return decodeLeaves(this.tree.leaves_whole, this.neighbors);
             } else {
                 return EMPTY_BITMAP;
             }
@@ -1646,15 +1730,16 @@ function loadDatabase(hooks) {
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
         async* substringMatches() {
-            /** @type {Promise<SearchTree>[]} */
-            let layer = [Promise.resolve(this.tree)];
+            /** @type {{tree: Promise<SearchTree>, parentNeighbors: number}[]} */
+            let layer = [{tree: Promise.resolve(this.tree), parentNeighbors: this.neighbors}];
             while (layer.length) {
                 const current_layer = layer;
                 layer = [];
-                for await (const tree of current_layer) {
+                for (const {tree: treePromise, parentNeighbors} of current_layer) {
+                    const tree = await treePromise;
                     /** @type {number[]?} */
                     let rejected = null;
-                    let leaves = tree.getCurrentLeaves();
+                    let leaves = tree.getCurrentLeaves(parentNeighbors);
                     for (const leaf of leaves.entries()) {
                         const haystack = await this.dataColumn.at(leaf);
                         if (haystack === undefined || !this.searchPattern.matches(haystack)) {
@@ -1675,18 +1760,26 @@ function loadDatabase(hooks) {
                         yield leaves;
                     }
                 }
-                /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
+                /**
+                 * @type {HashTable<{
+                 *     byte: number,
+                 *     tree: PrefixSearchTree|SuffixSearchTree,
+                 *     parentNeighbors: number,
+                 * }[]>}
+                 */
                 const subnodes = new HashTable();
-                for await (const nodeEncoded of current_layer) {
-                    const node = nodeEncoded instanceof InlineNeighborsTree ?
-                        nodeEncoded.decode() :
-                        nodeEncoded;
-                    const branches = node.branches;
+                for (const {tree: treeEncodedPromise, parentNeighbors} of current_layer) {
+                    const treeEncoded = await treeEncodedPromise;
+                    const tree = treeEncoded instanceof InlineNeighborsTree ?
+                        treeEncoded.decode() :
+                        treeEncoded;
+                    const branches = tree.branches;
                     const l = branches.subtrees.length;
+                    const neighbors = tree.neighbors === null ? parentNeighbors : tree.neighbors;
                     for (let i = 0; i < l; ++i) {
                         const subtree = branches.subtrees[i];
                         if (subtree) {
-                            layer.push(subtree);
+                            layer.push({tree: subtree, parentNeighbors: neighbors});
                         } else if (subtree === null) {
                             const byte = branches.getKey(i);
                             const newnode = branches.getNodeID(i);
@@ -1695,10 +1788,10 @@ function loadDatabase(hooks) {
                             } else {
                                 let subnode_list = subnodes.get(newnode);
                                 if (!subnode_list) {
-                                    subnode_list = [[byte, node]];
+                                    subnode_list = [{byte, tree, parentNeighbors: neighbors}];
                                     subnodes.set(newnode, subnode_list);
                                 } else {
-                                    subnode_list.push([byte, node]);
+                                    subnode_list.push({byte, tree, parentNeighbors: neighbors});
                                 }
                             }
                         } else {
@@ -1708,19 +1801,23 @@ function loadDatabase(hooks) {
                 }
                 for (const [newnode, subnode_list] of subnodes.entries()) {
                     const res = registry.searchTreeLoadByNodeID(newnode);
-                    for (const [byte, node] of subnode_list) {
-                        const branches = node.branches;
+                    const neighborSet = new Set();
+                    for (const {byte, tree, parentNeighbors} of subnode_list) {
+                        const branches = tree.branches;
                         const i = branches.getIndex(byte);
                         branches.subtrees[i] = res;
-                        if (node instanceof PrefixSearchTree) {
-                            const might_have_prefix_branches = node.might_have_prefix_branches;
+                        if (tree instanceof PrefixSearchTree) {
+                            const might_have_prefix_branches = tree.might_have_prefix_branches;
                             const mhpI = might_have_prefix_branches.getIndex(byte);
                             if (mhpI !== -1) {
                                 might_have_prefix_branches.subtrees[mhpI] = res;
                             }
                         }
+                        neighborSet.add(parentNeighbors);
                     }
-                    layer.push(res);
+                    for (const parentNeighbors of neighborSet) {
+                        layer.push({tree: res, parentNeighbors});
+                    }
                 }
             }
         }
@@ -1730,8 +1827,12 @@ function loadDatabase(hooks) {
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
         async* prefixMatches() {
-            /** @type {{node: Promise<SearchTree>, len: number}[]} */
-            let layer = [{node: Promise.resolve(this.tree), len: 0}];
+            /** @type {{tree: Promise<SearchTree>, len: number, parentNeighbors: number}[]} */
+            let layer = [{
+                tree: Promise.resolve(this.tree),
+                len: 0,
+                parentNeighbors: this.neighbors,
+            }];
             // https://en.wikipedia.org/wiki/Heap_(data_structure)#Implementation_using_arrays
             /** @type {{bitmap: RoaringBitmap, length: number}[]} */
             const backlog = [];
@@ -1743,20 +1844,21 @@ function loadDatabase(hooks) {
                 // a min-heap of result entries
                 // we then yield the smallest ones (can't yield bigger ones
                 // if we want to do them in order)
-                for (const {node, len} of current_layer) {
-                    const treeEncoded = await node;
+                for (const {tree: treeEncodedPromise, len, parentNeighbors} of current_layer) {
+                    const treeEncoded = await treeEncodedPromise;
                     const tree = treeEncoded instanceof InlineNeighborsTree ?
                         treeEncoded.decode() :
                         treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
+                    const neighbors = tree.neighbors === null ? parentNeighbors : tree.neighbors;
                     const length = len + tree.data.length;
                     if (minLength === null || length < minLength) {
                         minLength = length;
                     }
                     let backlogSlot = backlog.length;
-                    backlog.push({bitmap: tree.leaves_whole, length});
+                    backlog.push({bitmap: decodeLeaves(tree.leaves_whole, neighbors), length});
                     while (backlogSlot > 0 &&
                         backlog[backlogSlot].length < backlog[(backlogSlot - 1) >> 1].length
                     ) {
@@ -1807,16 +1909,24 @@ function loadDatabase(hooks) {
                     }
                 }
                 // if we still have more subtrees to walk, then keep going
-                /** @type {HashTable<{byte: number, tree: PrefixSearchTree, len: number}[]>} */
+                /**
+                 * @type {HashTable<{
+                 *     byte: number,
+                 *     tree: PrefixSearchTree,
+                 *     len: number,
+                 *     parentNeighbors: number
+                 * }[]>}
+                 */
                 const subnodes = new HashTable();
-                for await (const {node, len} of current_layer) {
-                    const treeEncoded = await node;
+                for (const {tree: treeEncodedPromise, len, parentNeighbors} of current_layer) {
+                    const treeEncoded = await treeEncodedPromise;
                     const tree = treeEncoded instanceof InlineNeighborsTree ?
                         treeEncoded.decode() :
                         treeEncoded;
                     if (!(tree instanceof PrefixSearchTree)) {
                         continue;
                     }
+                    const neighbors = tree.neighbors === null ? parentNeighbors : tree.neighbors;
                     const length = len + tree.data.length;
                     const mhp_branches = tree.might_have_prefix_branches;
                     const l = mhp_branches.subtrees.length;
@@ -1824,7 +1934,7 @@ function loadDatabase(hooks) {
                         const len = length + 1;
                         const subtree = mhp_branches.subtrees[i];
                         if (subtree) {
-                            layer.push({node: subtree, len});
+                            layer.push({tree: subtree, len, parentNeighbors: neighbors});
                         } else if (subtree === null) {
                             const byte = mhp_branches.getKey(i);
                             const newnode = mhp_branches.getNodeID(i);
@@ -1833,10 +1943,15 @@ function loadDatabase(hooks) {
                             } else {
                                 let subnode_list = subnodes.get(newnode);
                                 if (!subnode_list) {
-                                    subnode_list = [{byte, tree, len}];
+                                    subnode_list = [{byte, tree, len, parentNeighbors: neighbors}];
                                     subnodes.set(newnode, subnode_list);
                                 } else {
-                                    subnode_list.push({byte, tree, len});
+                                    subnode_list.push({
+                                        byte,
+                                        tree,
+                                        len,
+                                        parentNeighbors: neighbors,
+                                    });
                                 }
                             }
                         }
@@ -1845,7 +1960,8 @@ function loadDatabase(hooks) {
                 for (const [newnode, subnode_list] of subnodes.entries()) {
                     const res = registry.searchTreeLoadByNodeID(newnode);
                     let len = Number.MAX_SAFE_INTEGER;
-                    for (const {byte, tree, len: subtreelen} of subnode_list) {
+                    const neighborSet = new Set();
+                    for (const {byte, tree, len: subtreelen, parentNeighbors} of subnode_list) {
                         if (subtreelen < len) {
                             len = subtreelen;
                         }
@@ -1855,8 +1971,11 @@ function loadDatabase(hooks) {
                         const branches = tree.branches;
                         const bi = branches.getIndex(byte);
                         branches.subtrees[bi] = res;
+                        neighborSet.add(parentNeighbors);
                     }
-                    layer.push({node: res, len});
+                    for (const parentNeighbors of neighborSet) {
+                        layer.push({tree: res, len, parentNeighbors});
+                    }
                 }
             }
         }
@@ -1903,7 +2022,7 @@ function loadDatabase(hooks) {
                         }
                     }
                     nodes.push([k, node.then(node => {
-                        return node.trie(this.dataColumn, this.searchPattern);
+                        return node.trie(this.dataColumn, this.searchPattern, this.neighbors);
                     })]);
                     i += 1;
                 }
@@ -1916,6 +2035,7 @@ function loadDatabase(hooks) {
                     this.offset + 1,
                     this.dataColumn,
                     this.searchPattern,
+                    this.neighbors,
                 );
                 return [[codePoint, Promise.resolve(trie)]];
             }
@@ -1959,7 +2079,7 @@ function loadDatabase(hooks) {
                         this.tree.branches.subtrees[this.tree.branches.getIndex(k)] = node;
                     }
                     nodes.push([k, node.then(node => {
-                        return node.trie(this.dataColumn, this.searchPattern);
+                        return node.trie(this.dataColumn, this.searchPattern, this.neighbors);
                     })]);
                     i += 1;
                 }
@@ -1972,6 +2092,7 @@ function loadDatabase(hooks) {
                     this.offset + 1,
                     this.dataColumn,
                     this.searchPattern,
+                    this.neighbors,
                 );
                 return [[codePoint, Promise.resolve(trie)]];
             }
@@ -1999,7 +2120,9 @@ function loadDatabase(hooks) {
                             this.tree.might_have_prefix_branches.subtrees[mhpI] = branch;
                         }
                     }
-                    return branch.then(branch => branch.trie(this.dataColumn, this.searchPattern));
+                    return branch.then(branch => {
+                        return branch.trie(this.dataColumn, this.searchPattern, this.neighbors);
+                    });
                 }
             } else if (this.tree.data[this.offset] === byte) {
                 return Promise.resolve(new PrefixTrie(
@@ -2007,6 +2130,7 @@ function loadDatabase(hooks) {
                     this.offset + 1,
                     this.dataColumn,
                     this.searchPattern,
+                    this.neighbors,
                 ));
             }
             return null;
@@ -2039,23 +2163,27 @@ function loadDatabase(hooks) {
      * @type {{
      *     branches: SearchTreeBranches<SearchTree>,
      *     dataLen: number,
-     *     leaves_suffix: RoaringBitmap,
+     *     leaves_suffix: RoaringBitmap|Uint8Array,
+     *     neighbors: number|null,
      * }}
      */
     class SuffixSearchTree {
         /**
          * @param {SearchTreeBranches<SearchTree>} branches
          * @param {number} dataLen
-         * @param {RoaringBitmap} leaves_suffix
+         * @param {RoaringBitmap|Uint8Array} leaves_suffix
+         * @param {number|null} neighbors
          */
         constructor(
             branches,
             dataLen,
             leaves_suffix,
+            neighbors,
         ) {
             this.branches = branches;
             this.dataLen = dataLen;
             this.leaves_suffix = leaves_suffix;
+            this.neighbors = neighbors;
         }
         /**
          * Returns the Trie for the root node.
@@ -2065,25 +2193,28 @@ function loadDatabase(hooks) {
          *
          * @param {DataColumn} dataColumn
          * @param {Uint8ArraySearchPattern} searchPattern
+         * @param {number} parentNeighbors
          * @return {Trie}
          */
-        trie(dataColumn, searchPattern) {
-            return new SuffixTrie(this, 0, dataColumn, searchPattern);
+        trie(dataColumn, searchPattern, parentNeighbors) {
+            const neighbors = this.neighbors === null ? parentNeighbors : this.neighbors;
+            return new SuffixTrie(this, 0, dataColumn, searchPattern, neighbors);
         }
 
         /**
          * Return the trie representing `name`
          * @param {Uint8Array|string} name
          * @param {DataColumn} dataColumn
+         * @param {number} parentNeighbors
          * @returns {Promise<Trie?>}
          */
-        async search(name, dataColumn) {
+        async search(name, dataColumn, parentNeighbors) {
             if (typeof name === "string") {
                 const utf8encoder = new TextEncoder();
                 name = utf8encoder.encode(name);
             }
             const searchPattern = new Uint8ArraySearchPattern(name);
-            let trie = this.trie(dataColumn, searchPattern);
+            let trie = this.trie(dataColumn, searchPattern, parentNeighbors);
             for (const datum of name) {
                 // code point definitely exists
                 const newTrie = trie.child(datum);
@@ -2099,17 +2230,22 @@ function loadDatabase(hooks) {
         /**
          * @param {Uint8Array|string} _name
          * @param {DataColumn} _dataColumn
+         * @param {number} _parentNeighbors
          * @returns {AsyncGenerator<Trie>}
          */
-        async* searchLev(_name, _dataColumn) {
+        async* searchLev(_name, _dataColumn, _parentNeighbors) {
             // this function only returns whole-string matches,
             // which pure-suffix nodes don't have, so is
             // intentionally blank
         }
 
-        /** @returns {RoaringBitmap} */
-        getCurrentLeaves() {
-            return this.leaves_suffix;
+        /**
+         * @param {number} parentNeighbors
+         * @returns {RoaringBitmap}
+         */
+        getCurrentLeaves(parentNeighbors) {
+            const neighbors = this.neighbors === null ? parentNeighbors : this.neighbors;
+            return decodeLeaves(this.leaves_suffix, neighbors);
         }
     }
 
@@ -2123,12 +2259,14 @@ function loadDatabase(hooks) {
          * @param {number} offset
          * @param {DataColumn} dataColumn
          * @param {Uint8ArraySearchPattern} searchPattern
+         * @param {number} neighbors
          */
-        constructor(tree, offset, dataColumn, searchPattern) {
+        constructor(tree, offset, dataColumn, searchPattern, neighbors) {
             this.tree = tree;
             this.offset = offset;
             this.dataColumn = dataColumn;
             this.searchPattern = searchPattern;
+            this.neighbors = neighbors;
         }
 
         /**
@@ -2146,15 +2284,16 @@ function loadDatabase(hooks) {
          * @returns {AsyncGenerator<RoaringBitmap>}
          */
         async* substringMatches() {
-            /** @type {Promise<SearchTree>[]} */
-            let layer = [Promise.resolve(this.tree)];
+            /** @type {{tree: Promise<SearchTree>, parentNeighbors: number}[]} */
+            let layer = [{tree: Promise.resolve(this.tree), parentNeighbors: this.neighbors}];
             while (layer.length) {
                 const current_layer = layer;
                 layer = [];
-                for await (const tree of current_layer) {
+                for (const {tree: treePromise, parentNeighbors} of current_layer) {
+                    const tree = await treePromise;
                     /** @type {number[]?} */
                     let rejected = null;
-                    let leaves = tree.getCurrentLeaves();
+                    let leaves = tree.getCurrentLeaves(parentNeighbors);
                     for (const leaf of leaves.entries()) {
                         const haystack = await this.dataColumn.at(leaf);
                         if (haystack === undefined || !this.searchPattern.matches(haystack)) {
@@ -2175,18 +2314,26 @@ function loadDatabase(hooks) {
                         yield leaves;
                     }
                 }
-                /** @type {HashTable<[number, PrefixSearchTree|SuffixSearchTree][]>} */
+                /**
+                 * @type {HashTable<{
+                 *     i: number,
+                 *     tree: PrefixSearchTree|SuffixSearchTree,
+                 *     parentNeighbors: number
+                 * }[]>}
+                 */
                 const subnodes = new HashTable();
-                for await (const nodeEncoded of current_layer) {
-                    const node = nodeEncoded instanceof InlineNeighborsTree ?
-                        nodeEncoded.decode() :
-                        nodeEncoded;
-                    const branches = node.branches;
+                for (const {tree: treeEncodedPromise, parentNeighbors} of current_layer) {
+                    const treeEncoded = await treeEncodedPromise;
+                    const tree = treeEncoded instanceof InlineNeighborsTree ?
+                        treeEncoded.decode() :
+                        treeEncoded;
+                    const neighbors = tree.neighbors === null ? parentNeighbors : tree.neighbors;
+                    const branches = tree.branches;
                     const l = branches.subtrees.length;
                     for (let i = 0; i < l; ++i) {
                         const subtree = branches.subtrees[i];
                         if (subtree) {
-                            layer.push(subtree);
+                            layer.push({tree: subtree, parentNeighbors: neighbors});
                         } else if (subtree === null) {
                             const newnode = branches.getNodeID(i);
                             if (!newnode) {
@@ -2194,10 +2341,10 @@ function loadDatabase(hooks) {
                             } else {
                                 let subnode_list = subnodes.get(newnode);
                                 if (!subnode_list) {
-                                    subnode_list = [[i, node]];
+                                    subnode_list = [{i, tree, parentNeighbors: neighbors}];
                                     subnodes.set(newnode, subnode_list);
                                 } else {
-                                    subnode_list.push([i, node]);
+                                    subnode_list.push({i, tree, parentNeighbors: neighbors});
                                 }
                             }
                         } else {
@@ -2207,11 +2354,15 @@ function loadDatabase(hooks) {
                 }
                 for (const [newnode, subnode_list] of subnodes.entries()) {
                     const res = registry.searchTreeLoadByNodeID(newnode);
-                    for (const [i, node] of subnode_list) {
-                        const branches = node.branches;
+                    const neighborSet = new Set();
+                    for (const {i, tree, parentNeighbors} of subnode_list) {
+                        const branches = tree.branches;
                         branches.subtrees[i] = res;
+                        neighborSet.add(parentNeighbors);
                     }
-                    layer.push(res);
+                    for (const parentNeighbors of neighborSet) {
+                        layer.push({tree: res, parentNeighbors});
+                    }
                 }
             }
         }
@@ -2262,7 +2413,9 @@ function loadDatabase(hooks) {
                         branch = registry.searchTreeLoadByNodeID(newnode);
                         this.tree.branches.subtrees[i] = branch;
                     }
-                    return branch.then(branch => branch.trie(this.dataColumn, this.searchPattern));
+                    return branch.then(branch => {
+                        return branch.trie(this.dataColumn, this.searchPattern, this.neighbors);
+                    });
                 }
             } else {
                 return Promise.resolve(new SuffixTrie(
@@ -2270,6 +2423,7 @@ function loadDatabase(hooks) {
                     this.offset + 1,
                     this.dataColumn,
                     this.searchPattern,
+                    this.neighbors,
                 ));
             }
             return null;
@@ -2282,13 +2436,10 @@ function loadDatabase(hooks) {
      */
     class InlineNeighborsTree {
         /**
-         * @param {Uint8Array<ArrayBuffer>} encoded
+         * @param {Uint8Array} encoded
          * @param {number} start
          */
-        constructor(
-            encoded,
-            start,
-        ) {
+        constructor(encoded, start) {
             this.encoded = encoded;
             this.start = start;
         }
@@ -2308,49 +2459,45 @@ function loadDatabase(hooks) {
                 branch_count = encoded[i] + 1;
                 i += 1;
             }
-            const dlen = encoded[i] & 0x3f;
+            const dlen = encoded[i] & 0x1f;
             if ((encoded[i] & 0x80) !== 0) {
                 leaves_count = 0;
             }
+            const leaf_neighbors = (encoded[i] & 0x20) !== 0;
             i += 1;
+            /** @type {Uint8Array} */
             let data = EMPTY_UINT8;
             if (!is_suffixes_only && dlen !== 0) {
-                data = encoded.subarray(i, i + dlen);
+                data = new Uint8Array(encoded.buffer, encoded.byteOffset + i, dlen);
                 i += dlen;
             }
-            const leaf_value_upper = encoded[i] | (encoded[i + 1] << 8);
-            i += 2;
+            let neighbors = null;
+            if (leaf_neighbors) {
+                neighbors = encoded[i] | (encoded[i + 1] << 8);
+                i += 2;
+            }
             /** @type {Promise<SearchTree>[]} */
             const branch_nodes = [];
             for (let j = 0; j < branch_count; j += 1) {
                 const branch_dlen = encoded[i] & 0x0f;
                 const branch_leaves_count = ((encoded[i] >> 4) & 0x0f) + 1;
                 i += 1;
+                /** @type {Uint8Array} */
                 let branch_data = EMPTY_UINT8;
                 if (!is_suffixes_only && branch_dlen !== 0) {
                     branch_data = encoded.subarray(i, i + branch_dlen);
                     i += branch_dlen;
                 }
-                const branch_leaves = new RoaringBitmap(null);
-                branch_leaves.keysAndCardinalities = Uint8Array.of(
-                    leaf_value_upper & 0xff,
-                    (leaf_value_upper >> 8) & 0xff,
-                    (branch_leaves_count - 1) & 0xff,
-                    ((branch_leaves_count - 1) >> 8) & 0xff,
-                );
-                branch_leaves.containers = [
-                    new RoaringBitmapArray(
-                        branch_leaves_count,
-                        encoded.subarray(i, i + (branch_leaves_count * 2)),
-                    ),
-                ];
+                const branch_leaves = encoded.slice(i - 1, (branch_leaves_count * 2) + i);
                 i += branch_leaves_count * 2;
+                branch_leaves[0] = 0xf0 | (branch_leaves_count - 1);
                 branch_nodes.push(Promise.resolve(
                     is_suffixes_only ?
                         new SuffixSearchTree(
                             EMPTY_SEARCH_TREE_BRANCHES,
                             branch_dlen,
                             branch_leaves,
+                            neighbors,
                         ) :
                         new PrefixSearchTree(
                             EMPTY_SEARCH_TREE_BRANCHES,
@@ -2358,6 +2505,7 @@ function loadDatabase(hooks) {
                             branch_data,
                             branch_leaves,
                             EMPTY_BITMAP,
+                            neighbors,
                         ),
                 ));
             }
@@ -2370,21 +2518,11 @@ function loadDatabase(hooks) {
                 );
             i += branch_count;
             branches.subtrees = branch_nodes;
+            /** @type {RoaringBitmap|Uint8Array} */
             let leaves = EMPTY_BITMAP;
             if (leaves_count !== 0) {
-                leaves = new RoaringBitmap(null);
-                leaves.keysAndCardinalities = Uint8Array.of(
-                    leaf_value_upper & 0xff,
-                    (leaf_value_upper >> 8) & 0xff,
-                    (leaves_count - 1) & 0xff,
-                    ((leaves_count - 1) >> 8) & 0xff,
-                );
-                leaves.containers = [
-                    new RoaringBitmapArray(
-                        leaves_count,
-                        encoded.subarray(i, i + (leaves_count * 2)),
-                    ),
-                ];
+                leaves = encoded.slice(i - 1, (leaves_count * 2) + i);
+                leaves[0] = 0xf0 | (leaves_count - 1);
                 i += leaves_count * 2;
             }
             return is_suffixes_only ?
@@ -2392,6 +2530,7 @@ function loadDatabase(hooks) {
                     branches,
                     dlen,
                     leaves,
+                    neighbors,
                 ) :
                 new PrefixSearchTree(
                     branches,
@@ -2399,6 +2538,7 @@ function loadDatabase(hooks) {
                     data,
                     leaves,
                     EMPTY_BITMAP,
+                    neighbors,
                 );
         }
 
@@ -2410,37 +2550,43 @@ function loadDatabase(hooks) {
          *
          * @param {DataColumn} dataColumn
          * @param {Uint8ArraySearchPattern} searchPattern
+         * @param {number} parentNeighbors
          * @return {Trie}
          */
-        trie(dataColumn, searchPattern) {
+        trie(dataColumn, searchPattern, parentNeighbors) {
             const tree = this.decode();
             return tree instanceof SuffixSearchTree ?
-                new SuffixTrie(tree, 0, dataColumn, searchPattern) :
-                new PrefixTrie(tree, 0, dataColumn, searchPattern);
+                new SuffixTrie(tree, 0, dataColumn, searchPattern, parentNeighbors) :
+                new PrefixTrie(tree, 0, dataColumn, searchPattern, parentNeighbors);
         }
 
         /**
          * Return the trie representing `name`
          * @param {Uint8Array|string} name
          * @param {DataColumn} dataColumn
+         * @param {number} parentNeighbors
          * @returns {Promise<Trie?>}
          */
-        search(name, dataColumn) {
-            return this.decode().search(name, dataColumn);
+        search(name, dataColumn, parentNeighbors) {
+            return this.decode().search(name, dataColumn, parentNeighbors);
         }
 
         /**
          * @param {Uint8Array|string} name
          * @param {DataColumn} dataColumn
+         * @param {number} parentNeighbors
          * @returns {AsyncGenerator<Trie>}
          */
-        searchLev(name, dataColumn) {
-            return this.decode().searchLev(name, dataColumn);
+        searchLev(name, dataColumn, parentNeighbors) {
+            return this.decode().searchLev(name, dataColumn, parentNeighbors);
         }
 
-        /** @returns {RoaringBitmap} */
-        getCurrentLeaves() {
-            return this.decode().getCurrentLeaves();
+        /**
+         * @param {number} parentNeighbors
+         * @returns {RoaringBitmap}
+         */
+        getCurrentLeaves(parentNeighbors) {
+            return this.decode().getCurrentLeaves(parentNeighbors);
         }
     }
 
@@ -2568,7 +2714,7 @@ function loadDatabase(hooks) {
          * @returns {Promise<Trie?>}
          */
         async search(name) {
-            return await (this.searchTree ? this.searchTree.search(name, this) : null);
+            return await (this.searchTree ? this.searchTree.search(name, this, 0) : null);
         }
         /**
          * Search by whole, inexact match
@@ -2577,7 +2723,7 @@ function loadDatabase(hooks) {
          */
         async *searchLev(name) {
             if (this.searchTree) {
-                yield* this.searchTree.searchLev(name, this);
+                yield* this.searchTree.searchLev(name, this, 0);
             }
         }
     }
@@ -2654,7 +2800,7 @@ function loadDatabase(hooks) {
 
     /**
      * @param {string} inputBase64
-     * @returns {[Uint8Array<ArrayBuffer>, SearchTree]}
+     * @returns {[Uint8Array, SearchTree]}
      */
     function makeSearchTreeFromBase64(inputBase64) {
         const input = makeUint8ArrayFromBase64(inputBase64);
@@ -2677,6 +2823,7 @@ function loadDatabase(hooks) {
             EMPTY_UINT8,
             EMPTY_BITMAP,
             EMPTY_BITMAP,
+            0,
         );
         /**
          * @param {Uint8Array} input
@@ -2958,14 +3105,18 @@ function loadDatabase(hooks) {
             let no_leaves_flag;
             /** @type {number} */
             let inline_neighbors_flag;
+            /** @type {number} */
+            let leaf_neighbors_flag;
             if (is_data_compressed && is_pure_suffixes_only_node) {
                 dlen = 0;
                 no_leaves_flag = 0x80;
                 inline_neighbors_flag = 0;
+                leaf_neighbors_flag = 0;
             } else {
-                dlen = input[i] & 0x3F;
+                dlen = input[i] & 0x1F;
                 no_leaves_flag = input[i] & 0x80;
                 inline_neighbors_flag = input[i] & 0x40;
+                leaf_neighbors_flag = input[i] & 0x20;
                 i += 1;
             }
             if (inline_neighbors_flag !== 0) {
@@ -2987,9 +3138,14 @@ function loadDatabase(hooks) {
                         new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
+                // leaf_neighbors
+                /** @type {number|null} */
+                let leaf_neighbors = null;
+                if (leaf_neighbors_flag !== 0) {
+                    leaf_neighbors = input[i] | (input[i + 1] << 8);
+                    i += 2;
+                }
                 const branches_start = i;
-                // leaf_value_upper
-                i += 2;
                 // branch_nodes
                 for (let j = 0; j < branch_count; j += 1) {
                     const branch_dlen = input[i] & 0x0f;
@@ -3010,6 +3166,7 @@ function loadDatabase(hooks) {
                         (is_long_compressed ? 1 : 0) + // branch count
                         1 + // data length and other flags
                         dlen + // data
+                        (leaf_neighbors !== null ? 2 : 0) +
                         (i - branches_start) // branches and leaves
                     );
                     const canonical = new Uint8Array(clen);
@@ -3020,10 +3177,16 @@ function loadDatabase(hooks) {
                         canonical[ci] = input[start + ci];
                         ci += 1;
                     }
-                    canonical[ci] = dlen | no_leaves_flag | 0x40;
+                    canonical[ci] = dlen | no_leaves_flag | 0x40 | leaf_neighbors_flag;
                     ci += 1;
                     for (let j = 0; j < dlen; j += 1) {
                         canonical[ci] = data[j];
+                        ci += 1;
+                    }
+                    if (leaf_neighbors !== null) {
+                        canonical[ci] = leaf_neighbors & 0xff;
+                        ci += 1;
+                        canonical[ci] = (leaf_neighbors >> 8) & 0xff;
                         ci += 1;
                     }
                     for (let j = branches_start; j < i; j += 1) {
@@ -3053,6 +3216,12 @@ function loadDatabase(hooks) {
                         new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
+                /** @type {number|null} */
+                let leaf_neighbors = null;
+                if (leaf_neighbors_flag !== 0) {
+                    leaf_neighbors = input[i] | (input[i + 1] << 8);
+                    i += 2;
+                }
                 const coffset = i;
                 const {
                     cpbranches,
@@ -3071,19 +3240,20 @@ function loadDatabase(hooks) {
                         whole = EMPTY_BITMAP;
                         suffix = EMPTY_BITMAP;
                     } else {
-                        suffix = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        suffix = countLeaves(input, i);
                         i += suffix.consumed_len_bytes;
                     }
                     tree = new SuffixSearchTree(
                         branches,
                         dlen,
                         suffix,
+                        leaf_neighbors,
                     );
                     const clen = (
                         // lengths of children and data
                         (is_data_compressed ? 2 : 3) +
+                        // leaf neighbors
+                        (leaf_neighbors !== null ? 2 : 0) +
                         // branches
                         csnodes.length +
                         csbranches.length +
@@ -3100,7 +3270,13 @@ function loadDatabase(hooks) {
                     } else {
                         canonical[ci] = 1;
                         ci += 1;
-                        canonical[ci] = dlen | no_leaves_flag;
+                        canonical[ci] = dlen | no_leaves_flag | leaf_neighbors_flag;
+                        ci += 1;
+                    }
+                    if (leaf_neighbors !== null) {
+                        canonical[ci] = leaf_neighbors & 0xff;
+                        ci += 1;
+                        canonical[ci] = (leaf_neighbors >> 8) & 0xff;
                         ci += 1;
                     }
                     canonical[ci] = input[coffset]; // suffix child count
@@ -3119,13 +3295,9 @@ function loadDatabase(hooks) {
                         whole = EMPTY_BITMAP;
                         suffix = EMPTY_BITMAP;
                     } else {
-                        whole = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        whole = countLeaves(input, i);
                         i += whole.consumed_len_bytes;
-                        suffix = input[i] === 0 ?
-                            EMPTY_BITMAP1 :
-                            new RoaringBitmap(input, i);
+                        suffix = countLeaves(input, i);
                         i += suffix.consumed_len_bytes;
                     }
                     tree = new PrefixSearchTree(
@@ -3134,10 +3306,12 @@ function loadDatabase(hooks) {
                         data,
                         whole,
                         suffix,
+                        leaf_neighbors,
                     );
                     const clen = (
                         4 + // lengths of children and data
                         dlen +
+                        (leaf_neighbors !== null ? 2 : 0) +
                         cpnodes.length + csnodes.length +
                         cpbranches.length + csbranches.length +
                         whole.consumed_len_bytes +
@@ -3149,10 +3323,16 @@ function loadDatabase(hooks) {
                     let ci = 0;
                     canonical[ci] = 0;
                     ci += 1;
-                    canonical[ci] = dlen | no_leaves_flag;
+                    canonical[ci] = dlen | no_leaves_flag | leaf_neighbors_flag;
                     ci += 1;
                     canonical.set(data, ci);
                     ci += data.length;
+                    if (leaf_neighbors !== null) {
+                        canonical[ci] = leaf_neighbors & 0xff;
+                        ci += 1;
+                        canonical[ci] = (leaf_neighbors >> 8) & 0xff;
+                        ci += 1;
+                    }
                     canonical[ci] = input[coffset]; // prefix child count
                     ci += 1;
                     canonical[ci] = input[coffset + 1]; // suffix child count
@@ -3179,6 +3359,12 @@ function loadDatabase(hooks) {
                     data = new Uint8Array(input.buffer, i + input.byteOffset, dlen);
                     i += dlen;
                 }
+                /** @type {number|null} */
+                let leaf_neighbors = null;
+                if (leaf_neighbors_flag !== 0) {
+                    leaf_neighbors = input[i] | (input[i + 1] << 8);
+                    i += 2;
+                }
                 const {
                     consumed_len_bytes: branches_consumed_len_bytes,
                     branches,
@@ -3192,18 +3378,12 @@ function loadDatabase(hooks) {
                     suffix = EMPTY_BITMAP;
                 } else if (is_pure_suffixes_only_node) {
                     whole = EMPTY_BITMAP;
-                    suffix = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    suffix = countLeaves(input, i);
                     i += suffix.consumed_len_bytes;
                 } else {
-                    whole = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    whole = countLeaves(input, i);
                     i += whole.consumed_len_bytes;
-                    suffix = input[i] === 0 ?
-                        EMPTY_BITMAP1 :
-                        new RoaringBitmap(input, i);
+                    suffix = countLeaves(input, i);
                     i += suffix.consumed_len_bytes;
                 }
                 siphashOfBytes(new Uint8Array(
@@ -3216,6 +3396,7 @@ function loadDatabase(hooks) {
                         branches,
                         dlen,
                         suffix,
+                        leaf_neighbors,
                     ) :
                     new PrefixSearchTree(
                         branches,
@@ -3223,6 +3404,7 @@ function loadDatabase(hooks) {
                         data,
                         whole,
                         suffix,
+                        leaf_neighbors,
                     );
             }
             hash[2] &= 0x7f;
@@ -3305,7 +3487,7 @@ if (typeof window !== "undefined") {
 // eslint-disable-next-line max-len
 // polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
 /**
- * @type {function(string): Uint8Array<ArrayBuffer>} base64
+ * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 : (string => {
@@ -3318,7 +3500,7 @@ const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 :
     return bytes;
 });
 /**
- * @type {function(string): Uint8Array<ArrayBuffer>} base64
+ * @type {function(string): Uint8Array} base64
  */
 //@ts-expect-error
 const makeUint8ArrayFromHex = Uint8Array.fromHex ? Uint8Array.fromHex : (string => {
