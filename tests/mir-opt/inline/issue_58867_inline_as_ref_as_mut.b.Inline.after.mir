@@ -9,7 +9,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
     scope 1 (inlined <Box<T> as AsMut<T>>::as_mut) {
         debug self => _4;
         let mut _5: *const T;
-        let mut _6: std::ptr::NonNull<T>;
+        let mut _6: (*const T) is !null;
     }
 
     bb0: {
@@ -19,7 +19,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         _4 = copy _1;
         StorageLive(_5);
         StorageLive(_6);
-        _6 = copy (((*_4).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
+        _6 = copy ((((*_4).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>).0: (*const T) is !null);
         _5 = copy _6 as *const T (Transmute);
         _3 = &mut (*_5);
         StorageDead(_6);

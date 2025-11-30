@@ -10,7 +10,7 @@ use rustc_index::{IndexVec, indexvec};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, PatternKind, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -20,21 +20,27 @@ fn build_ptr_tys<'tcx>(
     pointee: Ty<'tcx>,
     unique_def: ty::AdtDef<'tcx>,
     nonnull_def: ty::AdtDef<'tcx>,
-) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
+) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     let args = tcx.mk_args(&[pointee.into()]);
     let unique_ty = Ty::new_adt(tcx, unique_def, args);
     let nonnull_ty = Ty::new_adt(tcx, nonnull_def, args);
     let ptr_ty = Ty::new_imm_ptr(tcx, pointee);
+    let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
 
-    (unique_ty, nonnull_ty, ptr_ty)
+    (unique_ty, nonnull_ty, pat_ty, ptr_ty)
 }
 
 /// Constructs the projection needed to access a Box's pointer
 pub(super) fn build_projection<'tcx>(
     unique_ty: Ty<'tcx>,
     nonnull_ty: Ty<'tcx>,
-) -> [PlaceElem<'tcx>; 2] {
-    [PlaceElem::Field(FieldIdx::ZERO, unique_ty), PlaceElem::Field(FieldIdx::ZERO, nonnull_ty)]
+    pat_ty: Ty<'tcx>,
+) -> [PlaceElem<'tcx>; 3] {
+    [
+        PlaceElem::Field(FieldIdx::ZERO, unique_ty),
+        PlaceElem::Field(FieldIdx::ZERO, nonnull_ty),
+        PlaceElem::Field(FieldIdx::ZERO, pat_ty),
+    ]
 }
 
 struct ElaborateBoxDerefVisitor<'a, 'tcx> {
@@ -66,7 +72,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
         {
             let source_info = self.local_decls[place.local].source_info;
 
-            let (unique_ty, nonnull_ty, ptr_ty) =
+            let (unique_ty, nonnull_ty, pat_ty, ptr_ty) =
                 build_ptr_tys(tcx, boxed_ty, self.unique_def, self.nonnull_def);
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
@@ -78,7 +84,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                     CastKind::Transmute,
                     Operand::Copy(
                         Place::from(place.local)
-                            .project_deeper(&build_projection(unique_ty, nonnull_ty), tcx),
+                            .project_deeper(&build_projection(unique_ty, nonnull_ty, pat_ty), tcx),
                     ),
                     ptr_ty,
                 ),
@@ -101,7 +107,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
             && let ty::Adt(box_adt, box_args) = Ty::new_box(tcx, pointee).kind()
         {
             let args = tcx.mk_args(&[pointee.into()]);
-            let (unique_ty, nonnull_ty, ptr_ty) =
+            // We skip the pointer type by directly transmuting from the `*const u8` of
+            // `ShallowInitBox` to the pattern type that will get placed inside `NonNull`
+            let (unique_ty, nonnull_ty, pat_ty, _ptr_ty) =
                 build_ptr_tys(tcx, pointee, self.unique_def, self.nonnull_def);
             let adt_kind = |def: ty::AdtDef<'tcx>, args| {
                 Box::new(AggregateKind::Adt(def.did(), VariantIdx::ZERO, args, None, None))
@@ -114,11 +122,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                 }))
             };
 
-            let constptr = self.patch.new_temp(ptr_ty, source_info.span);
+            let constptr = self.patch.new_temp(pat_ty, source_info.span);
             self.patch.add_assign(
                 location,
                 constptr.into(),
-                Rvalue::Cast(CastKind::Transmute, mutptr_to_u8.clone(), ptr_ty),
+                Rvalue::Cast(CastKind::Transmute, mutptr_to_u8.clone(), pat_ty),
             );
 
             let nonnull = self.patch.new_temp(nonnull_ty, source_info.span);
@@ -199,10 +207,11 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         let new_projections =
                             new_projections.get_or_insert_with(|| base.projection.to_vec());
 
-                        let (unique_ty, nonnull_ty, ptr_ty) =
+                        let (unique_ty, nonnull_ty, pat_ty, ptr_ty) =
                             build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
-                        new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+                        new_projections
+                            .extend_from_slice(&build_projection(unique_ty, nonnull_ty, pat_ty));
                         // While we can't project into `NonNull<_>` in a basic block
                         // due to MCP#807, this is debug info where it's fine.
                         new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));

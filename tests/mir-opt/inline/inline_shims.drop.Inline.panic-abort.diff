@@ -19,9 +19,10 @@
 +                 scope 4 (inlined alloc::raw_vec::RawVec::<A>::ptr) {
 +                     scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<A>) {
 +                         scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<A>) {
-+                             let mut _11: std::ptr::NonNull<u8>;
++                             let mut _12: std::ptr::NonNull<u8>;
 +                             scope 7 (inlined Unique::<u8>::cast::<A>) {
 +                                 scope 8 (inlined NonNull::<u8>::cast::<A>) {
++                                     let mut _11: (*const A) is !null;
 +                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
 +                                     }
 +                                 }
@@ -39,15 +40,15 @@
 +                 }
 +             }
 +             scope 14 (inlined drop_in_place::<[A]> - shim(Some([A]))) {
-+                 let mut _12: usize;
-+                 let mut _13: *mut A;
-+                 let mut _14: bool;
++                 let mut _13: usize;
++                 let mut _14: *mut A;
++                 let mut _15: bool;
 +             }
 +         }
 +     }
 +     scope 15 (inlined drop_in_place::<Option<B>> - shim(Some(Option<B>))) {
-+         let mut _15: isize;
 +         let mut _16: isize;
++         let mut _17: isize;
 +     }
   
       bb0: {
@@ -62,16 +63,19 @@
 +         StorageLive(_8);
 +         StorageLive(_9);
 +         StorageLive(_11);
-+         _11 = copy (((((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
++         StorageLive(_12);
++         _12 = copy (((((*_6).0: alloc::raw_vec::RawVec<A>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
++         _11 = copy _12 as (*const A) is !null (Transmute);
++         StorageDead(_12);
 +         _9 = copy _11 as *mut A (Transmute);
 +         StorageDead(_11);
 +         _10 = copy ((*_6).1: usize);
 +         _8 = *mut [A] from (copy _9, copy _10);
 +         StorageDead(_9);
-+         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);
-+         _12 = const 0_usize;
++         StorageLive(_15);
++         _13 = const 0_usize;
 +         goto -> bb4;
       }
   
@@ -83,33 +87,33 @@
           StorageLive(_5);
           _5 = copy _2;
 -         _0 = drop_in_place::<Option<B>>(move _5) -> [return: bb2, unwind unreachable];
-+         StorageLive(_15);
-+         _15 = discriminant((*_5));
-+         switchInt(move _15) -> [0: bb5, otherwise: bb6];
++         StorageLive(_16);
++         _16 = discriminant((*_5));
++         switchInt(move _16) -> [0: bb5, otherwise: bb6];
       }
   
       bb2: {
++         StorageDead(_15);
 +         StorageDead(_14);
 +         StorageDead(_13);
-+         StorageDead(_12);
 +         StorageDead(_8);
 +         StorageDead(_10);
 +         drop(((*_4).0: alloc::raw_vec::RawVec<A>)) -> [return: bb1, unwind unreachable];
 +     }
 + 
 +     bb3: {
-+         _13 = &raw mut (*_8)[_12];
-+         _12 = Add(move _12, const 1_usize);
-+         drop((*_13)) -> [return: bb4, unwind unreachable];
++         _14 = &raw mut (*_8)[_13];
++         _13 = Add(move _13, const 1_usize);
++         drop((*_14)) -> [return: bb4, unwind unreachable];
 +     }
 + 
 +     bb4: {
-+         _14 = Eq(copy _12, copy _10);
-+         switchInt(move _14) -> [0: bb3, otherwise: bb2];
++         _15 = Eq(copy _13, copy _10);
++         switchInt(move _15) -> [0: bb3, otherwise: bb2];
 +     }
 + 
 +     bb5: {
-+         StorageDead(_15);
++         StorageDead(_16);
           StorageDead(_5);
           return;
 +     }
