@@ -420,13 +420,31 @@ pub struct ProcMacroLoc {
 impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_macro);
 impl_loc!(ProcMacroLoc, id: Fn, container: ModuleId);
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-pub struct BlockLoc {
+#[salsa_macros::tracked(debug)]
+#[derive(PartialOrd, Ord)]
+pub struct BlockIdLt<'db> {
     pub ast_id: AstId<ast::BlockExpr>,
     /// The containing module.
-    pub module: ModuleId,
+    pub module: ModuleIdLt<'db>,
 }
-impl_intern!(BlockId, BlockLoc, intern_block, lookup_intern_block);
+pub type BlockId = BlockIdLt<'static>;
+
+impl BlockIdLt<'_> {
+    /// # Safety
+    ///
+    /// The caller must ensure that the `ModuleId` is not leaked outside of query computations.
+    pub unsafe fn to_static(self) -> BlockId {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+impl BlockId {
+    /// # Safety
+    ///
+    /// The caller must ensure that the `BlockId` comes from the given database.
+    pub unsafe fn to_db<'db>(self, _db: &'db dyn DefDatabase) -> BlockIdLt<'db> {
+        unsafe { std::mem::transmute(self) }
+    }
+}
 
 #[salsa_macros::tracked(debug)]
 #[derive(PartialOrd, Ord)]
@@ -436,34 +454,26 @@ pub struct ModuleIdLt<'db> {
     /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
     /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
     /// `DefMap` of `krate`.
-    pub block: Option<BlockId>,
+    pub block: Option<BlockIdLt<'db>>,
 }
 pub type ModuleId = ModuleIdLt<'static>;
 
-impl ModuleIdLt<'_> {
+impl<'db> ModuleIdLt<'db> {
     /// # Safety
     ///
     /// The caller must ensure that the `ModuleId` is not leaked outside of query computations.
     pub unsafe fn to_static(self) -> ModuleId {
         unsafe { std::mem::transmute(self) }
     }
-}
-impl ModuleId {
-    /// # Safety
-    ///
-    /// The caller must ensure that the `ModuleId` comes from the given database.
-    pub unsafe fn to_db<'db>(self, _db: &'db dyn DefDatabase) -> ModuleIdLt<'db> {
-        unsafe { std::mem::transmute(self) }
-    }
 
-    pub fn def_map(self, db: &dyn DefDatabase) -> &DefMap {
+    pub fn def_map(self, db: &'db dyn DefDatabase) -> &'db DefMap {
         match self.block(db) {
             Some(block) => block_def_map(db, block),
             None => crate_def_map(db, self.krate(db)),
         }
     }
 
-    pub(crate) fn local_def_map(self, db: &dyn DefDatabase) -> (&DefMap, &LocalDefMap) {
+    pub(crate) fn local_def_map(self, db: &'db dyn DefDatabase) -> (&'db DefMap, &'db LocalDefMap) {
         match self.block(db) {
             Some(block) => (block_def_map(db, block), self.only_local_def_map(db)),
             None => {
@@ -473,15 +483,15 @@ impl ModuleId {
         }
     }
 
-    pub(crate) fn only_local_def_map(self, db: &dyn DefDatabase) -> &LocalDefMap {
+    pub(crate) fn only_local_def_map(self, db: &'db dyn DefDatabase) -> &'db LocalDefMap {
         crate_local_def_map(db, self.krate(db)).local(db)
     }
 
-    pub fn crate_def_map(self, db: &dyn DefDatabase) -> &DefMap {
+    pub fn crate_def_map(self, db: &'db dyn DefDatabase) -> &'db DefMap {
         crate_def_map(db, self.krate(db))
     }
 
-    pub fn name(self, db: &dyn DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &'db dyn DefDatabase) -> Option<Name> {
         let def_map = self.def_map(db);
         let parent = def_map[self].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
@@ -491,12 +501,21 @@ impl ModuleId {
 
     /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
-    pub fn containing_module(self, db: &dyn DefDatabase) -> Option<ModuleId> {
+    pub fn containing_module(self, db: &'db dyn DefDatabase) -> Option<ModuleIdLt<'db>> {
         self.def_map(db).containing_module(self)
     }
 
-    pub fn is_block_module(self, db: &dyn DefDatabase) -> bool {
+    pub fn is_block_module(self, db: &'db dyn DefDatabase) -> bool {
         self.block(db).is_some() && self.def_map(db).root_module_id() == self
+    }
+}
+
+impl ModuleId {
+    /// # Safety
+    ///
+    /// The caller must ensure that the `ModuleId` comes from the given database.
+    pub unsafe fn to_db<'db>(self, _db: &'db dyn DefDatabase) -> ModuleIdLt<'db> {
+        unsafe { std::mem::transmute(self) }
     }
 }
 

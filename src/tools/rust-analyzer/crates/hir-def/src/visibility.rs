@@ -9,8 +9,8 @@ use syntax::ast::{self, HasVisibility};
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, HasModule, ItemContainerId, LocalFieldId, ModuleId, TraitId, VariantId,
-    db::DefDatabase, nameres::DefMap, resolver::HasResolver, src::HasSource,
+    AssocItemId, HasModule, ItemContainerId, LocalFieldId, ModuleId, ModuleIdLt, TraitId,
+    VariantId, db::DefDatabase, nameres::DefMap, resolver::HasResolver, src::HasSource,
 };
 
 pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
@@ -41,9 +41,13 @@ impl Visibility {
     }
 
     #[tracing::instrument(skip_all)]
-    pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
+    pub fn is_visible_from<'db>(
+        self,
+        db: &'db dyn DefDatabase,
+        from_module: ModuleIdLt<'db>,
+    ) -> bool {
         let to_module = match self {
-            Visibility::Module(m, _) => m,
+            Visibility::Module(m, _) => unsafe { m.to_db(db) },
             Visibility::PubCrate(krate) => return from_module.krate(db) == krate,
             Visibility::Public => return true,
         };
@@ -59,11 +63,11 @@ impl Visibility {
         Self::is_visible_from_def_map_(db, def_map, to_module, from_module)
     }
 
-    pub(crate) fn is_visible_from_def_map(
+    pub(crate) fn is_visible_from_def_map<'db>(
         self,
-        db: &dyn DefDatabase,
-        def_map: &DefMap,
-        from_module: ModuleId,
+        db: &'db dyn DefDatabase,
+        def_map: &'db DefMap,
+        from_module: ModuleIdLt<'db>,
     ) -> bool {
         if cfg!(debug_assertions) {
             _ = def_map.modules[from_module];
@@ -89,11 +93,11 @@ impl Visibility {
         Self::is_visible_from_def_map_(db, def_map, to_module, from_module)
     }
 
-    fn is_visible_from_def_map_(
-        db: &dyn DefDatabase,
-        def_map: &DefMap,
-        mut to_module: ModuleId,
-        mut from_module: ModuleId,
+    fn is_visible_from_def_map_<'db>(
+        db: &'db dyn DefDatabase,
+        def_map: &'db DefMap,
+        mut to_module: ModuleIdLt<'db>,
+        mut from_module: ModuleIdLt<'db>,
     ) -> bool {
         debug_assert_eq!(to_module.krate(db), def_map.krate());
         // `to_module` might be the root module of a block expression. Those have the same

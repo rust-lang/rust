@@ -559,7 +559,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &dyn HirDatabase) -> Module {
         let def_map = crate_def_map(db, self.id.krate(db));
-        Module { id: def_map.crate_root(db).into() }
+        Module { id: def_map.crate_root(db) }
     }
 
     pub fn is_crate_root(self, db: &dyn HirDatabase) -> bool {
@@ -590,7 +590,7 @@ impl Module {
         while id.is_block_module(db) {
             id = id.containing_module(db).expect("block without parent module");
         }
-        Module { id }
+        Module { id: unsafe { id.to_static() } }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -2475,7 +2475,7 @@ impl Function {
             GenericArgs::new_from_iter(interner, []),
             ParamEnvAndCrate {
                 param_env: db.trait_environment(self.id.into()),
-                krate: self.id.module(db).krate(),
+                krate: self.id.module(db).krate(db),
             },
         )?;
         let (result, output) = interpret_mir(db, body, false, None)?;
@@ -4352,7 +4352,7 @@ impl Impl {
                 module.block(db),
                 &mut |impls| extend_with_impls(impls.for_self_ty(&simplified_ty)),
             );
-            std::iter::successors(module.block(db), |block| block.loc(db).module.block(db))
+            std::iter::successors(module.block(db), |block| block.module(db).block(db))
                 .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &**db.all_crates() {
