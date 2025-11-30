@@ -3242,6 +3242,216 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| f(a).lt(&f(b)));
     }
 
+    /// Partially sorts the slice in ascending order **without** preserving the initial order of equal elements.
+    ///
+    /// Upon completion, the elements in the specified `range` will be the elements of the slice
+    /// as if the whole slice were sorted in ascending order.
+    ///
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* + *k* \* log(*k*)) worst-case.
+    ///
+    /// If the implementation of [`Ord`] for `T` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
+    ///
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if the implementation of [`Ord`] for `T` panics.
+    ///
+    /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
+    /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
+    /// reflexivity requirement of [`Ord`]. By using an alternative comparison function with
+    /// `slice::partial_sort_unstable_by` such as [`f32::total_cmp`] or [`f64::total_cmp`] that defines a
+    /// [total order] users can sort slices containing floating-point values. Alternatively, if all
+    /// values in the slice are guaranteed to be in a subset for which [`PartialOrd::partial_cmp`]
+    /// forms a [total order], it's possible to sort the slice with `partial_sort_unstable_by(|a, b|
+    /// a.partial_cmp(b).unwrap())`.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order], or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range, nothing changed
+    /// v.partial_sort_unstable(0..0);
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable(2..3);
+    /// assert_eq!(v[2], 1);
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable(1..4);
+    /// assert_eq!(&v[1..4], [-3, 1, 2]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable(..);
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable<R>(&mut self, range: R)
+    where
+        T: Ord,
+        R: RangeBounds<usize>,
+    {
+        self.partial_sort_unstable_by(range, T::cmp);
+    }
+
+    /// Partially sorts the slice in ascending order with a comparison function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, the elements in the specified `range` will be the elements of the slice
+    /// as if the whole slice were sorted in ascending order.
+    ///
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* + *k* \* log(*k*)) worst-case.
+    ///
+    /// If the comparison function `compare` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
+    ///
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if `compare` panics.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the `compare` does not implement a [total order], or if
+    /// the `compare` itself panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4, -5, 1, -3, 2];
+    ///
+    /// // empty range, nothing changed
+    /// v.partial_sort_unstable_by(0..0, |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by(2..3, |a, b| b.cmp(a));
+    /// assert_eq!(v[2], 1);
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by(1..4, |a, b| b.cmp(a));
+    /// assert_eq!(&v[1..4], [2, 1, -3]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by(.., |a, b| b.cmp(a));
+    /// assert_eq!(v, [4, 2, 1, -3, -5]);
+    /// ```
+    ///
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by<F, R>(&mut self, range: R, mut compare: F)
+    where
+        F: FnMut(&T, &T) -> Ordering,
+        R: RangeBounds<usize>,
+    {
+        let len = self.len();
+        let Range { start, end } = slice::range(range, ..len);
+
+        if start + 1 > end {
+            // target range is empty, nothing to do
+            return;
+        }
+
+        let index = start;
+        let (_, _, rest) =
+            sort::select::partition_at_index(self, index, |a, b| compare(a, b) == Less);
+
+        if start + 2 > end {
+            // target range is a single element, nothing more to do
+            return;
+        }
+
+        let index = end - start - 2;
+        let (rest, _, _) =
+            sort::select::partition_at_index(rest, index, |a, b| compare(a, b) == Less);
+
+        sort::unstable::sort(rest, &mut |a, b| compare(a, b) == Less);
+    }
+
+    /// Partially sorts the slice in ascending order with a key extraction function, **without**
+    /// preserving the initial order of equal elements.
+    ///
+    /// Upon completion, the elements in the specified `range` will be the elements of the slice
+    /// as if the whole slice were sorted in ascending order.
+    ///
+    /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
+    /// allocate), and *O*(*n* + *k* \* log(*k*)) worst-case.
+    ///
+    /// If the implementation of [`Ord`] for `K` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
+    ///
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if the implementation of [`Ord`] for `K` panics.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order], or if
+    /// the [`Ord`] implementation panics, or if the specified range is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partial_sort_unstable)]
+    ///
+    /// let mut v = [4i32, -5, 1, -3, 2];
+    ///
+    /// // empty range, nothing changed
+    /// v.partial_sort_unstable_by_key(0..0, |k| k.abs());
+    /// assert_eq!(v, [4, -5, 1, -3, 2]);
+    ///
+    /// // single element range, same as select_nth_unstable
+    /// v.partial_sort_unstable_by_key(2..3, |k| k.abs());
+    /// assert_eq!(v[2], -3);
+    ///
+    /// // partial sort a subrange
+    /// v.partial_sort_unstable_by_key(1..4, |k| k.abs());
+    /// assert_eq!(&v[1..4], [2, -3, 4]);
+    ///
+    /// // partial sort the whole range, same as sort_unstable
+    /// v.partial_sort_unstable_by_key(.., |k| k.abs());
+    /// assert_eq!(v, [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [total order]: https://en.wikipedia.org/wiki/Total_order
+    #[unstable(feature = "slice_partial_sort_unstable", issue = "149046")]
+    #[inline]
+    pub fn partial_sort_unstable_by_key<K, F, R>(&mut self, range: R, mut f: F)
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
+        R: RangeBounds<usize>,
+    {
+        self.partial_sort_unstable_by(range, |a, b| f(a).cmp(&f(b)));
+    }
+
     /// Reorders the slice such that the element at `index` is at a sort-order position. All
     /// elements before `index` will be `<=` to this value, and all elements after will be `>=` to
     /// it.
