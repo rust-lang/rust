@@ -6,6 +6,8 @@ LL |     let _tis_an_instants_play: String = "'Tis a fond Ambush—";
    |                                |
    |                                expected due to this
    |
+   = note: expected struct `String`
+           found reference `&'static str`
 help: try using a conversion method
    |
 LL |     let _tis_an_instants_play: String = "'Tis a fond Ambush—".to_string();
@@ -32,6 +34,8 @@ LL |     let _but_should_the_play: String = 2; // Perhaps surprisingly, we sugge
    |                               |
    |                               expected due to this
    |
+   = note: expected struct `String`
+                found type `{integer}`
 help: try using a conversion method
    |
 LL |     let _but_should_the_play: String = 2.to_string(); // Perhaps surprisingly, we suggest .to_string() here

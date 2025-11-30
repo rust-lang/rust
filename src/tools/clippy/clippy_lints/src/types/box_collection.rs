@@ -13,8 +13,12 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         && let Some(item_type) = get_std_collection(cx, qpath)
     {
         let generic = match item_type {
-            sym::String => "",
+            sym::string_in_global => "",
             _ => "<..>",
+        };
+        let item_type = match item_type {
+            sym::string_in_global => sym::String,
+            _ => item_type,
         };
 
         let box_content = format!("{item_type}{generic}");
@@ -48,6 +52,7 @@ fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Symbol>
                     | sym::BTreeMap
                     | sym::BTreeSet
                     | sym::BinaryHeap
+                    | sym::string_in_global,
             )
         })
         .or_else(|| {
