@@ -105,18 +105,23 @@ indented and appears on its own line.
 ```rust
 struct Foo {
     a: A,
-    b: B,
+    b: B = expr,
 }
 ```
 
 If and only if the type of a field does not fit within the right margin, it is
-pulled down to its own line and indented again.
+pulled down to its own line and indented again. If and only if the default value
+does not not fit within the right margin, split the line after the =. Also apply
+a block indent if this was not already done by pulling down the type.
 
 ```rust
 struct Foo {
     a: A,
+    b: B =
+        long_expr,
     long_name:
-        LongType,
+        LongType =
+        long_expr,
 }
 ```
 
