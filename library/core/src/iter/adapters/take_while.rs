@@ -129,3 +129,6 @@ unsafe impl<I: InPlaceIterable, F> InPlaceIterable for TakeWhile<I, F> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<I, P> !ExactSizeIterator for TakeWhile<I, P> {}

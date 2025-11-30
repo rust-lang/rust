@@ -1,4 +1,5 @@
 use crate::fmt;
+use crate::iter::traits::InfiniteIterator;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -120,3 +121,9 @@ impl<A, F: FnMut() -> A> FusedIterator for RepeatWith<F> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<F> !ExactSizeIterator for RepeatWith<F> {}
+
+#[stable(feature = "infinite_iterator_trait", since = "CURRENT_RUSTC_VERSION")]
+impl<A, F: FnMut() -> A> InfiniteIterator for RepeatWith<F> {}
