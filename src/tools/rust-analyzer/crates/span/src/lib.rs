@@ -1,4 +1,10 @@
 //! File and span related types.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::fmt::{self, Write};
 
 mod ast_id;
