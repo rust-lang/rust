@@ -3,10 +3,10 @@ error[E0382]: use of moved value: `first`
    |
 LL |         let first = Foo([0; FOO_SIZE]);
    |             ----- move occurs because `first` has type `Foo`, which does not implement the `Copy` trait
-LL |         yield;
+LL |         ().yield;
 LL |         let second = first;
    |                      ----- value moved here
-LL |         yield;
+LL |         ().yield;
 LL |         let second = first;
    |                      ^^^^^ value used here after move
    |

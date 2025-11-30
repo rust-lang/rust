@@ -3,8 +3,8 @@ warning: unused coroutine that must be used
    |
 LL |       #[coroutine] || {
    |  __________________^
-LL | |         yield a;
-LL | |         yield b;
+LL | |         a.yield;
+LL | |         b.yield;
 LL | |     };
    | |_____^
    |

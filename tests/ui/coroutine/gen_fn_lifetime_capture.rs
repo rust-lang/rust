@@ -5,8 +5,8 @@
 // make sure gen fn captures lifetimes in its signature
 
 gen fn foo<'a, 'b>(x: &'a i32, y: &'b i32, z: &'b i32) -> &'b i32 {
-    yield y;
-    yield z;
+    y.yield;
+    z.yield;
 }
 
 fn main() {

@@ -12,7 +12,7 @@ use std::pin::Pin;
 
 fn main() {
     let mut coroutine = #[coroutine] || {
-        yield 1;
+        1.yield;
         return "foo"
     };
 

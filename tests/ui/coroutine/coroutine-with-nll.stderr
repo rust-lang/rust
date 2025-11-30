@@ -7,7 +7,7 @@ LL |     || {
 LL |         let b = &mut true;
    |                 ^^^^^^^^^
 LL |
-LL |         yield ();
+LL |         ().yield;
    |         -------- possible yield occurs here
    |
 help: add `static` to mark this coroutine as unmovable

@@ -338,7 +338,7 @@ mod expressions {
     /// ExprKind::Try
     fn expr_try() { let expr; expr?; }
     /// ExprKind::Yield
-    fn expr_yield() { yield; yield true; }
+    fn expr_yield() { ().yield; true.yield; }
     /// ExprKind::Yeet
     fn expr_yeet() { do yeet; do yeet 0; }
     /// ExprKind::Become

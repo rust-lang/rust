@@ -9,7 +9,7 @@ fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_static
     let mut generator = Box::pin({
         #[coroutine]
         move |ctx: &'not_static str| {
-            yield;
+            ().yield;
             dbg!(ctx);
         }
     });

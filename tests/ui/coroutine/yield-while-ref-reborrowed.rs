@@ -11,7 +11,7 @@ fn reborrow_shared_ref(x: &i32) {
     let mut b = #[coroutine]
     move || {
         let a = &*x;
-        yield ();
+        ().yield;
         println!("{}", a);
     };
     Pin::new(&mut b).resume(());
@@ -23,7 +23,7 @@ fn reborrow_mutable_ref(x: &mut i32) {
     let mut b = #[coroutine]
     move || {
         let a = &mut *x;
-        yield ();
+        ().yield;
         println!("{}", a);
     };
     Pin::new(&mut b).resume(());
@@ -34,7 +34,7 @@ fn reborrow_mutable_ref_2(x: &mut i32) {
     let mut b = #[coroutine]
     || {
         let a = &mut *x;
-        yield ();
+        ().yield;
         println!("{}", a);
     };
     println!("{}", x); //~ ERROR

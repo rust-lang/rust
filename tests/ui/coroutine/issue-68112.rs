@@ -33,7 +33,7 @@ fn test1() {
     let send_gen = #[coroutine] || {
         let _non_send_gen = make_non_send_coroutine();
         //~^ NOTE not `Send`
-        yield;
+        ().yield;
         //~^ NOTE yield occurs here
         //~| NOTE value is used across a yield
     };
@@ -47,7 +47,7 @@ pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
 //~^ NOTE appears within the type
 //~| NOTE expansion of desugaring
     #[coroutine] || { //~ NOTE used within this coroutine
-        yield;
+        ().yield;
         t
     }
 }
@@ -59,7 +59,7 @@ fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> { //
 fn test2() {
     let send_gen = #[coroutine] || { //~ NOTE used within this coroutine
         let _non_send_gen = make_non_send_coroutine2();
-        yield;
+        ().yield;
     };
     require_send(send_gen);
     //~^ ERROR `RefCell<i32>` cannot be shared between threads safely

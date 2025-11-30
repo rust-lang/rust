@@ -9,7 +9,7 @@ fn test(a: impl for<'a> Coroutine<&'a mut bool>) {}
 
 fn main() {
     let gen = #[coroutine] |arg: &mut bool| {
-        yield ();
+        ().yield;
         *arg = true;
     };
     test(gen);

@@ -14,7 +14,7 @@ fn main() {
                 false
             } => {}
             _ => {
-                yield;
+                ().yield;
             }
         }
     };

@@ -22,7 +22,7 @@ fn coroutine_mutable_upvar() {
     #[coroutine]
     move || {
         x = 1;
-        yield;
+        ().yield;
     };
 }
 

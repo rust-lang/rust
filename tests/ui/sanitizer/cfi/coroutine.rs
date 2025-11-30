@@ -29,7 +29,7 @@ use std::async_iter::AsyncIterator;
 #[test]
 fn general_coroutine() {
     let coro = #[coroutine] |x: i32| {
-        yield x;
+        x.yield;
         "done"
     };
     let mut abstract_coro: Pin<&mut dyn Coroutine<i32,Yield=i32,Return=&'static str>> = pin!(coro);
@@ -47,7 +47,7 @@ fn async_coroutine() {
 }
 
 async gen fn async_gen_fn() -> u8 {
-    yield 5;
+    5.yield;
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn async_gen_coroutine() {
 }
 
 gen fn gen_fn() -> u8 {
-    yield 6;
+    6.yield;
 }
 
 #[test]

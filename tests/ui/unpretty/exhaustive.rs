@@ -388,8 +388,8 @@ mod expressions {
 
     /// ExprKind::Yield
     fn expr_yield() {
-        yield;          //[hir]~ ERROR `yield` can only be used
-        yield true;
+        ().yield;          //[hir]~ ERROR `yield` can only be used
+        true.yield;
     }
 
     /// ExprKind::Yeet

@@ -3,8 +3,8 @@
 fn main() {
     let _coroutine = #[coroutine]
     || {
-        yield ((), ((), ()));
-        yield ((), ());
+        ((), ((), ())).yield;
+        ((), ()).yield;
         //~^ ERROR mismatched types
     };
 }
