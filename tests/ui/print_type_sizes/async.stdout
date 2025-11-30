@@ -36,6 +36,8 @@ print-type-size type: `std::panic::AssertUnwindSafe<core::task::wake::ExtData<'_
 print-type-size     field `.0`: 16 bytes
 print-type-size type: `std::ptr::NonNull<str>`: 16 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 16 bytes
+print-type-size type: `std::future::ResumeTy`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.0`: 8 bytes
 print-type-size type: `std::pin::Pin<&mut {async fn body of test()}>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::pin::Pin<&mut {async fn body of wait()}>`: 8 bytes, alignment: 8 bytes
@@ -44,6 +46,8 @@ print-type-size type: `std::ptr::DynMetadata<dyn std::any::Any>`: 8 bytes, align
 print-type-size     field `._vtable_ptr`: 8 bytes
 print-type-size     field `._phantom`: 0 bytes
 print-type-size type: `std::ptr::NonNull<std::ptr::metadata::VTable>`: 8 bytes, alignment: 8 bytes
+print-type-size     field `.pointer`: 8 bytes
+print-type-size type: `std::ptr::NonNull<std::task::Context<'_>>`: 8 bytes, alignment: 8 bytes
 print-type-size     field `.pointer`: 8 bytes
 print-type-size type: `std::mem::ManuallyDrop<{async fn body of wait()}>`: 1 bytes, alignment: 1 bytes
 print-type-size     field `.value`: 1 bytes
