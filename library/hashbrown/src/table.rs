@@ -1608,6 +1608,10 @@ where
             raw: self.raw.clone(),
         }
     }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.raw.clone_from(&source.raw);
+    }
 }
 
 impl<T, A> fmt::Debug for HashTable<T, A>
