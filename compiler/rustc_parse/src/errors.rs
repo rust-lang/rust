@@ -823,6 +823,12 @@ pub(crate) struct FrontmatterLengthMismatch {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_frontmatter_too_many_dashes)]
+pub(crate) struct FrontmatterTooManyDashes {
+    pub len_opening: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_leading_plus_not_supported)]
 pub(crate) struct LeadingPlusNotSupported {
     #[primary_span]

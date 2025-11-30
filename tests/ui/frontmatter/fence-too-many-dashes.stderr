@@ -1,0 +1,4 @@
+error: too many `-` symbols: frontmatter openings may be delimited by up to 255 `-` symbols, but found 256
+
+error: aborting due to 1 previous error
+
