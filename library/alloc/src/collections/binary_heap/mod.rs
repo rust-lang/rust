@@ -800,19 +800,14 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         }
 
         // If hole has only one child.
-        //
-        // We want: child <= end - 1
-        // => 2 * hole + 1 <= end  - 1
-        // => hole <= (end - 2) / 2
-        // => hole < 1 + (end - 2) / 2
-        // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
+            debug_assert!(child == end - 1);
+
             // If elements are not in order, move parent
-            //
             // SAFETY: The previous statements imply
-            // child is a valid index (child < end <= self.len()),
-            // and child != hole.pos().
+            //  child is a valid index (child < end <= self.len()),
+            //  and child != hole.pos().
             if hole.element() < unsafe { hole.get(child) } {
                 // SAFETY: same as above
                 unsafe { hole.move_to(child) };
@@ -864,19 +859,14 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         }
 
         // If hole has only one child.
-        //
-        // We want: child <= end - 1
-        // => 2 * hole + 1 <= end  - 1
-        // => hole <= (end - 2) / 2
-        // => hole < 1 + (end - 2) / 2
-        // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
+            debug_assert!(child == end - 1);
+
             // If elements are not in order, move parent
-            //
             // SAFETY: The previous statements imply
-            // child is a valid index (child < end <= self.len()),
-            // and child != hole.pos().
+            //  child is a valid index (child < end <= self.len()),
+            //  and child != hole.pos().
             if hole.element() < unsafe { hole.get(child) } {
                 // SAFETY: same as above
                 unsafe { hole.move_to(child) };
