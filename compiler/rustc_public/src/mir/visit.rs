@@ -282,7 +282,6 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location)
                     }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::NullaryOp(_) => {}
                     Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
                         self.visit_operand(op, location);
                     }
@@ -297,6 +296,7 @@ macro_rules! make_mir_visitor {
                     Operand::Constant(constant) => {
                         self.visit_const_operand(constant, location);
                     }
+                    Operand::RuntimeChecks(_) => {}
                 }
             }
 

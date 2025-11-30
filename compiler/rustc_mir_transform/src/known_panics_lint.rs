@@ -282,6 +282,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// or `eval_place`, depending on the variant of `Operand` used.
     fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<ImmTy<'tcx>> {
         match *op {
+            Operand::RuntimeChecks(_) => None,
             Operand::Constant(ref c) => self.eval_constant(c),
             Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
         }
@@ -444,7 +445,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(..)
             | Rvalue::WrapUnsafeBinder(..) => {}
         }
 
@@ -604,8 +604,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Ref(..) | RawPtr(..) => return None,
-
-            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
 
             ShallowInitBox(..) => return None,
 

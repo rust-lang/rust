@@ -230,9 +230,7 @@ where
     F: FnMut(Local) -> bool,
 {
     match rvalue {
-        Rvalue::ThreadLocalRef(_) | Rvalue::NullaryOp(..) => {
-            Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx))
-        }
+        Rvalue::ThreadLocalRef(_) => Q::in_any_value_of_ty(cx, rvalue.ty(cx.body, cx.tcx)),
 
         Rvalue::Discriminant(place) => in_place::<Q, _>(cx, in_local, place.as_ref()),
 
@@ -340,6 +338,7 @@ where
         Operand::Copy(place) | Operand::Move(place) => {
             return in_place::<Q, _>(cx, in_local, place.as_ref());
         }
+        Operand::RuntimeChecks(_) => return Q::in_any_value_of_ty(cx, cx.tcx.types.bool),
 
         Operand::Constant(c) => c,
     };

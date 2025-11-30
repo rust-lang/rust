@@ -439,6 +439,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 let Some(rhs) = self.map.find(rhs.as_ref()) else { return };
                 state.insert_place_idx(rhs, lhs, &self.map);
             }
+            Operand::RuntimeChecks(_) => {}
         }
     }
 
