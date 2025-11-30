@@ -1,6 +1,6 @@
 //! Impl specialization related things
 
-use hir_def::{ImplId, nameres::crate_def_map};
+use hir_def::{HasModule, ImplId, nameres::crate_def_map};
 use intern::sym;
 use rustc_type_ir::inherent::SliceLike;
 use tracing::debug;
@@ -46,7 +46,7 @@ fn specializes_query(
     parent_impl_def_id: ImplId,
 ) -> bool {
     let trait_env = db.trait_environment(specializing_impl_def_id.into());
-    let interner = DbInterner::new_with(db, trait_env.krate);
+    let interner = DbInterner::new_with(db, specializing_impl_def_id.krate(db));
 
     let specializing_impl_signature = db.impl_signature(specializing_impl_def_id);
     let parent_impl_signature = db.impl_signature(parent_impl_def_id);
@@ -70,7 +70,7 @@ fn specializes_query(
 
     // create a parameter environment corresponding to an identity instantiation of the specializing impl,
     // i.e. the most generic instantiation of the specializing impl.
-    let param_env = trait_env.env;
+    let param_env = trait_env;
 
     // Create an infcx, taking the predicates of the specializing impl as assumptions:
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());

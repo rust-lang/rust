@@ -21,7 +21,7 @@ use rustc_type_ir::{
 use triomphe::Arc;
 
 use crate::{
-    InferenceResult, TraitEnvironment,
+    InferenceResult, ParamEnvAndCrate,
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
@@ -131,7 +131,7 @@ fn layout_of_simd_ty<'db>(
     id: StructId,
     repr_packed: bool,
     args: &GenericArgs<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     dl: &TargetDataLayout,
 ) -> Result<Arc<Layout>, LayoutError> {
     // Supported SIMD vectors are homogeneous ADTs with exactly one array field:
@@ -159,7 +159,7 @@ fn layout_of_simd_ty<'db>(
 pub fn layout_of_ty_query<'db>(
     db: &'db dyn HirDatabase,
     ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    trait_env: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
     let interner = DbInterner::new_with(db, krate);
@@ -248,10 +248,8 @@ pub fn layout_of_ty_query<'db>(
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            let fields = tys
-                .iter()
-                .map(|k| db.layout_of_ty(k, trait_env.clone()))
-                .collect::<Result<Vec<_>, _>>()?;
+            let fields =
+                tys.iter().map(|k| db.layout_of_ty(k, trait_env)).collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<IndexVec<_, _>>();
             cx.calc.univariant(&fields, &ReprOptions::default(), kind)?
@@ -329,7 +327,7 @@ pub fn layout_of_ty_query<'db>(
                 .map(|it| {
                     let ty =
                         it.ty.instantiate(interner, args.split_closure_args_untupled().parent_args);
-                    db.layout_of_ty(ty, trait_env.clone())
+                    db.layout_of_ty(ty, trait_env)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
@@ -362,7 +360,7 @@ pub fn layout_of_ty_query<'db>(
 pub(crate) fn layout_of_ty_cycle_result<'db>(
     _: &dyn HirDatabase,
     _: Ty<'db>,
-    _: Arc<TraitEnvironment<'db>>,
+    _: ParamEnvAndCrate<'db>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }

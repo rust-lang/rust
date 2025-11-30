@@ -29,7 +29,7 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use hir_ty::{
-    Adjustment, InferenceResult, LifetimeElisionKind, TraitEnvironment, TyLoweringContext,
+    Adjustment, InferenceResult, LifetimeElisionKind, ParamEnvAndCrate, TyLoweringContext,
     diagnostics::{
         InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
         unsafe_operations,
@@ -37,7 +37,8 @@ use hir_ty::{
     lang_items::lang_items_for_bin_op,
     method_resolution::{self, CandidateId},
     next_solver::{
-        DbInterner, ErrorGuaranteed, GenericArgs, Ty, TyKind, TypingMode, infer::DbInternerInferExt,
+        DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
+        infer::DbInternerInferExt,
     },
     traits::structurally_normalize_ty,
 };
@@ -227,10 +228,15 @@ impl<'db> SourceAnalyzer<'db> {
         })
     }
 
-    fn trait_environment(&self, db: &'db dyn HirDatabase) -> Arc<TraitEnvironment<'db>> {
-        self.body_().map(|(def, ..)| def).map_or_else(
-            || TraitEnvironment::empty(self.resolver.krate()),
-            |def| db.trait_environment_for_body(def),
+    fn param_and<'a>(&self, param_env: ParamEnv<'a>) -> ParamEnvAndCrate<'a> {
+        ParamEnvAndCrate { param_env, krate: self.resolver.krate() }
+    }
+
+    fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
+        self.param_and(
+            self.body_()
+                .map(|(def, ..)| def)
+                .map_or_else(ParamEnv::empty, |def| db.trait_environment_for_body(def)),
         )
     }
 
@@ -827,7 +833,7 @@ impl<'db> SourceAnalyzer<'db> {
         let mut container = Either::Right(container.ty);
         for field_name in offset_of_expr.fields() {
             if let Either::Right(container) = &mut container {
-                *container = structurally_normalize_ty(&infcx, *container, trait_env.clone());
+                *container = structurally_normalize_ty(&infcx, *container, trait_env.param_env);
             }
             let handle_variants =
                 |variant: VariantId, subst: GenericArgs<'db>, container: &mut _| {
@@ -1412,7 +1418,7 @@ impl<'db> SourceAnalyzer<'db> {
             Some(it) => it,
             None => return (func, substs),
         };
-        let env = db.trait_environment_for_body(owner);
+        let env = self.param_and(db.trait_environment_for_body(owner));
         db.lookup_impl_method(env, func, substs)
     }
 
@@ -1426,10 +1432,10 @@ impl<'db> SourceAnalyzer<'db> {
             Some(it) => it,
             None => return (const_id, subs),
         };
-        let env = db.trait_environment_for_body(owner);
+        let env = self.param_and(db.trait_environment_for_body(owner));
         let interner = DbInterner::new_with(db, env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
-        method_resolution::lookup_impl_const(&infcx, env, const_id, subs)
+        method_resolution::lookup_impl_const(&infcx, env.param_env, const_id, subs)
     }
 
     fn lang_items<'a>(&self, db: &'a dyn HirDatabase) -> &'a LangItems {

@@ -34,7 +34,7 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    CallableDefId, ComplexMemoryMap, InferenceResult, MemoryMap, TraitEnvironment,
+    CallableDefId, ComplexMemoryMap, InferenceResult, MemoryMap, ParamEnvAndCrate,
     consteval::{self, ConstEvalError, try_const_usize},
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
@@ -165,7 +165,7 @@ enum MirOrDynIndex<'db> {
 
 pub struct Evaluator<'db> {
     db: &'db dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    param_env: ParamEnvAndCrate<'db>,
     target_data_layout: Arc<TargetDataLayout>,
     stack: Vec<u8>,
     heap: Vec<u8>,
@@ -594,7 +594,7 @@ pub fn interpret_mir<'db>(
     // a zero size, hoping that they are all outside of our current body. Even without a fix for #7434, we can
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
-    trait_env: Option<Arc<TraitEnvironment<'db>>>,
+    trait_env: Option<ParamEnvAndCrate<'db>>,
 ) -> Result<'db, (Result<'db, Const<'db>>, MirOutput)> {
     let ty = body.locals[return_slot()].ty;
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
@@ -632,7 +632,7 @@ impl<'db> Evaluator<'db> {
         db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
         assert_placeholder_ty_is_unused: bool,
-        trait_env: Option<Arc<TraitEnvironment<'db>>>,
+        trait_env: Option<ParamEnvAndCrate<'db>>,
     ) -> Result<'db, Evaluator<'db>> {
         let module = owner.module(db);
         let crate_id = module.krate();
@@ -654,7 +654,10 @@ impl<'db> Evaluator<'db> {
             static_locations: Default::default(),
             db,
             random_state: oorandom::Rand64::new(0),
-            trait_env: trait_env.unwrap_or_else(|| db.trait_environment_for_body(owner)),
+            param_env: trait_env.unwrap_or_else(|| ParamEnvAndCrate {
+                param_env: db.trait_environment_for_body(owner),
+                krate: crate_id,
+            }),
             crate_id,
             stdout: vec![],
             stderr: vec![],
@@ -864,7 +867,7 @@ impl<'db> Evaluator<'db> {
         }
         let r = self
             .db
-            .layout_of_ty(ty, self.trait_env.clone())
+            .layout_of_ty(ty, self.param_env)
             .map_err(|e| MirEvalError::LayoutError(e, ty))?;
         self.layout_cache.borrow_mut().insert(ty, r.clone());
         Ok(r)
@@ -1927,18 +1930,17 @@ impl<'db> Evaluator<'db> {
                 let mut id = const_id.0;
                 let mut subst = subst;
                 if let hir_def::GeneralConstId::ConstId(c) = id {
-                    let (c, s) = lookup_impl_const(&self.infcx, self.trait_env.clone(), c, subst);
+                    let (c, s) = lookup_impl_const(&self.infcx, self.param_env.param_env, c, subst);
                     id = hir_def::GeneralConstId::ConstId(c);
                     subst = s;
                 }
                 result_owner = match id {
-                    GeneralConstId::ConstId(const_id) => self
-                        .db
-                        .const_eval(const_id, subst, Some(self.trait_env.clone()))
-                        .map_err(|e| {
+                    GeneralConstId::ConstId(const_id) => {
+                        self.db.const_eval(const_id, subst, Some(self.param_env)).map_err(|e| {
                             let name = id.name(self.db);
                             MirEvalError::ConstEvalError(name, Box::new(e))
-                        })?,
+                        })?
+                    }
                     GeneralConstId::StaticId(static_id) => {
                         self.db.const_eval_static(static_id).map_err(|e| {
                             let name = id.name(self.db);
@@ -2331,7 +2333,7 @@ impl<'db> Evaluator<'db> {
                     let ty = ocx
                         .structurally_normalize_ty(
                             &ObligationCause::dummy(),
-                            this.trait_env.env,
+                            this.param_env.param_env,
                             ty,
                         )
                         .map_err(|_| MirEvalError::NotSupported("couldn't normalize".to_owned()))?;
@@ -2510,7 +2512,7 @@ impl<'db> Evaluator<'db> {
     ) -> Result<'db, Option<StackFrame<'db>>> {
         let mir_body = self
             .db
-            .monomorphized_mir_body_for_closure(closure, generic_args, self.trait_env.clone())
+            .monomorphized_mir_body_for_closure(closure, generic_args, self.param_env)
             .map_err(|it| MirEvalError::MirLowerErrorForClosure(closure, it))?;
         let closure_data = if mir_body.locals[mir_body.param_locals[0]].ty.as_reference().is_some()
         {
@@ -2606,16 +2608,19 @@ impl<'db> Evaluator<'db> {
         }
         let (def, generic_args) = pair;
         let r = if let Some(self_ty_idx) =
-            is_dyn_method(self.interner(), self.trait_env.clone(), def, generic_args)
+            is_dyn_method(self.interner(), self.param_env.param_env, def, generic_args)
         {
             MirOrDynIndex::Dyn(self_ty_idx)
         } else {
-            let (imp, generic_args) =
-                self.db.lookup_impl_method(self.trait_env.clone(), def, generic_args);
+            let (imp, generic_args) = self.db.lookup_impl_method(
+                ParamEnvAndCrate { param_env: self.param_env.param_env, krate: self.crate_id },
+                def,
+                generic_args,
+            );
 
             let mir_body = self
                 .db
-                .monomorphized_mir_body(imp.into(), generic_args, self.trait_env.clone())
+                .monomorphized_mir_body(imp.into(), generic_args, self.param_env)
                 .map_err(|e| {
                     MirEvalError::InFunction(
                         Box::new(MirEvalError::MirLowerError(imp, e)),

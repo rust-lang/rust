@@ -4,13 +4,12 @@ use hir_def::{AdtId, signatures::StructFlags};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use stdx::never;
-use triomphe::Arc;
 
 use crate::{
-    InferenceResult, TraitEnvironment, consteval,
+    InferenceResult, consteval,
     method_resolution::TraitImpls,
     next_solver::{
-        DbInterner, SimplifiedType, Ty, TyKind,
+        DbInterner, ParamEnv, SimplifiedType, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -47,22 +46,18 @@ pub enum DropGlue {
     HasDropGlue,
 }
 
-pub fn has_drop_glue<'db>(
-    infcx: &InferCtxt<'db>,
-    ty: Ty<'db>,
-    env: Arc<TraitEnvironment<'db>>,
-) -> DropGlue {
+pub fn has_drop_glue<'db>(infcx: &InferCtxt<'db>, ty: Ty<'db>, env: ParamEnv<'db>) -> DropGlue {
     has_drop_glue_impl(infcx, ty, env, &mut FxHashSet::default())
 }
 
 fn has_drop_glue_impl<'db>(
     infcx: &InferCtxt<'db>,
     ty: Ty<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     visited: &mut FxHashSet<Ty<'db>>,
 ) -> DropGlue {
     let mut ocx = ObligationCtxt::new(infcx);
-    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env.env, ty).unwrap_or(ty);
+    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, ty).unwrap_or(ty);
 
     if !visited.insert(ty) {
         // Recursive type.
@@ -91,7 +86,7 @@ fn has_drop_glue_impl<'db>(
                             has_drop_glue_impl(
                                 infcx,
                                 field_ty.instantiate(infcx.interner, subst),
-                                env.clone(),
+                                env,
                                 visited,
                             )
                         })
@@ -111,7 +106,7 @@ fn has_drop_glue_impl<'db>(
                                 has_drop_glue_impl(
                                     infcx,
                                     field_ty.instantiate(infcx.interner, subst),
-                                    env.clone(),
+                                    env,
                                     visited,
                                 )
                             })
@@ -124,7 +119,7 @@ fn has_drop_glue_impl<'db>(
         }
         TyKind::Tuple(tys) => tys
             .iter()
-            .map(|ty| has_drop_glue_impl(infcx, ty, env.clone(), visited))
+            .map(|ty| has_drop_glue_impl(infcx, ty, env, visited))
             .max()
             .unwrap_or(DropGlue::None),
         TyKind::Array(ty, len) => {
@@ -142,9 +137,7 @@ fn has_drop_glue_impl<'db>(
             let env = db.trait_environment_for_body(owner);
             captures
                 .iter()
-                .map(|capture| {
-                    has_drop_glue_impl(infcx, capture.ty(db, subst), env.clone(), visited)
-                })
+                .map(|capture| has_drop_glue_impl(infcx, capture.ty(db, subst), env, visited))
                 .max()
                 .unwrap_or(DropGlue::None)
         }
@@ -169,14 +162,14 @@ fn has_drop_glue_impl<'db>(
         | TyKind::Placeholder(..) => DropGlue::None,
         TyKind::Dynamic(..) => DropGlue::HasDropGlue,
         TyKind::Alias(..) => {
-            if infcx.type_is_copy_modulo_regions(env.env, ty) {
+            if infcx.type_is_copy_modulo_regions(env, ty) {
                 DropGlue::None
             } else {
                 DropGlue::HasDropGlue
             }
         }
         TyKind::Param(_) => {
-            if infcx.type_is_copy_modulo_regions(env.env, ty) {
+            if infcx.type_is_copy_modulo_regions(env, ty) {
                 DropGlue::None
             } else {
                 DropGlue::DependOnParams

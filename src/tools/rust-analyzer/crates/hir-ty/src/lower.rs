@@ -53,7 +53,7 @@ use tracing::debug;
 use triomphe::{Arc, ThinArc};
 
 use crate::{
-    FnAbi, ImplTraitId, TraitEnvironment, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    FnAbi, ImplTraitId, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
     consteval::intern_const_ref,
     db::{HirDatabase, InternedOpaqueTyId},
     generics::{Generics, generics, trait_self_param_idx},
@@ -1743,10 +1743,9 @@ impl<'db> GenericPredicates<'db> {
 pub(crate) fn trait_environment_for_body_query(
     db: &dyn HirDatabase,
     def: DefWithBodyId,
-) -> Arc<TraitEnvironment<'_>> {
+) -> ParamEnv<'_> {
     let Some(def) = def.as_generic_def_id(db) else {
-        let krate = def.module(db).krate();
-        return TraitEnvironment::empty(krate);
+        return ParamEnv::empty();
     };
     db.trait_environment(def)
 }
@@ -1754,24 +1753,16 @@ pub(crate) fn trait_environment_for_body_query(
 pub(crate) fn trait_environment_query<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> Arc<TraitEnvironment<'db>> {
+) -> ParamEnv<'db> {
     let module = def.module(db);
     let interner = DbInterner::new_with(db, module.krate());
     let predicates = GenericPredicates::query_all(db, def);
-    let traits_in_scope = predicates
-        .iter_identity_copied()
-        .filter_map(|pred| match pred.kind().skip_binder() {
-            ClauseKind::Trait(tr) => Some((tr.self_ty(), tr.def_id().0)),
-            _ => None,
-        })
-        .collect();
     let clauses = rustc_type_ir::elaborate::elaborate(interner, predicates.iter_identity_copied());
     let clauses = Clauses::new_from_iter(interner, clauses);
-    let env = ParamEnv { clauses };
 
     // FIXME: We should normalize projections here, like rustc does.
 
-    TraitEnvironment::new(module.krate(), module.containing_block(), traits_in_scope, env)
+    ParamEnv { clauses }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

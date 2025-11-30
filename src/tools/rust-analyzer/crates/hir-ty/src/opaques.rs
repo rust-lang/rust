@@ -122,7 +122,7 @@ pub(crate) fn tait_hidden_types<'db>(
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     let mut ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
-    let param_env = db.trait_environment(type_alias.into()).env;
+    let param_env = db.trait_environment(type_alias.into());
 
     let defining_bodies = tait_defining_bodies(db, &loc);
 

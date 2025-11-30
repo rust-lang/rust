@@ -12,12 +12,12 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    InferenceResult, TraitEnvironment,
+    InferenceResult,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::DisplayTarget,
     mir::OperandKind,
     next_solver::{
-        DbInterner, GenericArgs, Ty, TypingMode,
+        DbInterner, GenericArgs, ParamEnv, Ty, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -107,8 +107,8 @@ pub fn borrowck_query<'db>(
         let infcx = interner.infer_ctxt().build(typing_mode);
         res.push(BorrowckResult {
             mutability_of_locals: mutability_of_locals(&infcx, &body),
-            moved_out_of_ref: moved_out_of_ref(&infcx, &env, &body),
-            partially_moved: partially_moved(&infcx, &env, &body),
+            moved_out_of_ref: moved_out_of_ref(&infcx, env, &body),
+            partially_moved: partially_moved(&infcx, env, &body),
             borrow_regions: borrow_regions(db, &body),
             mir_body: body,
         });
@@ -131,7 +131,7 @@ fn make_fetch_closure_field<'db>(
 
 fn moved_out_of_ref<'db>(
     infcx: &InferCtxt<'db>,
-    env: &TraitEnvironment<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> Vec<MovedOutOfRef<'db>> {
     let db = infcx.interner.db;
@@ -152,7 +152,7 @@ fn moved_out_of_ref<'db>(
                 );
             }
             if is_dereference_of_ref
-                && !infcx.type_is_copy_modulo_regions(env.env, ty)
+                && !infcx.type_is_copy_modulo_regions(env, ty)
                 && !ty.references_non_lt_error()
             {
                 result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty });
@@ -231,7 +231,7 @@ fn moved_out_of_ref<'db>(
 
 fn partially_moved<'db>(
     infcx: &InferCtxt<'db>,
-    env: &TraitEnvironment<'db>,
+    env: ParamEnv<'db>,
     body: &MirBody<'db>,
 ) -> Vec<PartiallyMoved<'db>> {
     let db = infcx.interner.db;
@@ -247,7 +247,7 @@ fn partially_moved<'db>(
                     body.owner.module(db).krate(),
                 );
             }
-            if !infcx.type_is_copy_modulo_regions(env.env, ty) && !ty.references_non_lt_error() {
+            if !infcx.type_is_copy_modulo_regions(env, ty) && !ty.references_non_lt_error() {
                 result.push(PartiallyMoved { span, ty, local: p.local });
             }
         }

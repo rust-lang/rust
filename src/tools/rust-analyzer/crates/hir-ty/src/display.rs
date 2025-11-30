@@ -44,10 +44,9 @@ use rustc_type_ir::{
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
-use triomphe::Arc;
 
 use crate::{
-    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, TraitEnvironment, consteval,
+    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, ParamEnvAndCrate, consteval,
     db::{HirDatabase, InternedClosure, InternedCoroutine},
     generics::generics,
     layout::Layout,
@@ -55,8 +54,8 @@ use crate::{
     mir::pad16,
     next_solver::{
         AliasTy, Clause, ClauseKind, Const, ConstKind, DbInterner, EarlyBinder,
-        ExistentialPredicate, FnSig, GenericArg, GenericArgs, PolyFnSig, Region, SolverDefId, Term,
-        TraitRef, Ty, TyKind, TypingMode,
+        ExistentialPredicate, FnSig, GenericArg, GenericArgs, ParamEnv, PolyFnSig, Region,
+        SolverDefId, Term, TraitRef, Ty, TyKind, TypingMode,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
@@ -716,10 +715,10 @@ fn render_const_scalar<'db>(
     memory_map: &MemoryMap<'db>,
     ty: Ty<'db>,
 ) -> Result<(), HirDisplayError> {
-    let trait_env = TraitEnvironment::empty(f.krate());
+    let param_env = ParamEnv::empty();
     let infcx = f.interner.infer_ctxt().build(TypingMode::PostAnalysis);
-    let ty = infcx.at(&ObligationCause::new(), trait_env.env).deeply_normalize(ty).unwrap_or(ty);
-    render_const_scalar_inner(f, b, memory_map, ty, trait_env)
+    let ty = infcx.at(&ObligationCause::new(), param_env).deeply_normalize(ty).unwrap_or(ty);
+    render_const_scalar_inner(f, b, memory_map, ty, param_env)
 }
 
 fn render_const_scalar_inner<'db>(
@@ -727,9 +726,10 @@ fn render_const_scalar_inner<'db>(
     b: &[u8],
     memory_map: &MemoryMap<'db>,
     ty: Ty<'db>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    param_env: ParamEnv<'db>,
 ) -> Result<(), HirDisplayError> {
     use TyKind;
+    let param_env = ParamEnvAndCrate { param_env, krate: f.krate() };
     match ty.kind() {
         TyKind::Bool => write!(f, "{}", b[0] != 0),
         TyKind::Char => {
@@ -792,7 +792,7 @@ fn render_const_scalar_inner<'db>(
             TyKind::Slice(ty) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let count = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size_one = layout.size.bytes_usize();
@@ -826,7 +826,7 @@ fn render_const_scalar_inner<'db>(
                 let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
-                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -856,7 +856,7 @@ fn render_const_scalar_inner<'db>(
                         return f.write_str("<layout-error>");
                     }
                 });
-                let Ok(layout) = f.db.layout_of_ty(t, trait_env) else {
+                let Ok(layout) = f.db.layout_of_ty(t, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
@@ -868,7 +868,7 @@ fn render_const_scalar_inner<'db>(
             }
         },
         TyKind::Tuple(tys) => {
-            let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                 return f.write_str("<layout-error>");
             };
             f.write_str("(")?;
@@ -880,7 +880,7 @@ fn render_const_scalar_inner<'db>(
                     f.write_str(", ")?;
                 }
                 let offset = layout.fields.offset(id).bytes_usize();
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     f.write_str("<layout-error>")?;
                     continue;
                 };
@@ -891,7 +891,7 @@ fn render_const_scalar_inner<'db>(
         }
         TyKind::Adt(def, args) => {
             let def = def.def_id().0;
-            let Ok(layout) = f.db.layout_of_adt(def, args, trait_env.clone()) else {
+            let Ok(layout) = f.db.layout_of_adt(def, args, param_env) else {
                 return f.write_str("<layout-error>");
             };
             match def {
@@ -914,7 +914,7 @@ fn render_const_scalar_inner<'db>(
                     write!(f, "{}", f.db.union_signature(u).name.display(f.db, f.edition()))
                 }
                 hir_def::AdtId::EnumId(e) => {
-                    let Ok(target_data_layout) = f.db.target_data_layout(trait_env.krate) else {
+                    let Ok(target_data_layout) = f.db.target_data_layout(f.krate()) else {
                         return f.write_str("<target-layout-not-available>");
                     };
                     let Some((var_id, var_layout)) =
@@ -954,7 +954,7 @@ fn render_const_scalar_inner<'db>(
             let Some(len) = consteval::try_const_usize(f.db, len) else {
                 return f.write_str("<unknown-array-len>");
             };
-            let Ok(layout) = f.db.layout_of_ty(ty, trait_env) else {
+            let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                 return f.write_str("<layout-error>");
             };
             let size_one = layout.size.bytes_usize();
@@ -995,18 +995,19 @@ fn render_variant_after_name<'db>(
     data: &VariantFields,
     f: &mut HirFormatter<'_, 'db>,
     field_types: &ArenaMap<LocalFieldId, EarlyBinder<'db, Ty<'db>>>,
-    trait_env: Arc<TraitEnvironment<'db>>,
+    param_env: ParamEnv<'db>,
     layout: &Layout,
     args: GenericArgs<'db>,
     b: &[u8],
     memory_map: &MemoryMap<'db>,
 ) -> Result<(), HirDisplayError> {
+    let param_env = ParamEnvAndCrate { param_env, krate: f.krate() };
     match data.shape {
         FieldsShape::Record | FieldsShape::Tuple => {
             let render_field = |f: &mut HirFormatter<'_, 'db>, id: LocalFieldId| {
                 let offset = layout.fields.offset(u32::from(id.into_raw()) as usize).bytes_usize();
                 let ty = field_types[id].instantiate(f.interner, args);
-                let Ok(layout) = f.db.layout_of_ty(ty, trait_env.clone()) else {
+                let Ok(layout) = f.db.layout_of_ty(ty, param_env) else {
                     return f.write_str("<layout-error>");
                 };
                 let size = layout.size.bytes_usize();
