@@ -1,6 +1,3 @@
-//@ build-fail
-//~^ ERROR overflow evaluating the requirement `i32: Check`
-
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
@@ -17,7 +14,11 @@ where
 }
 
 trait Check {}
-impl<'a, T> Check for T where <T as Iterate<'a>>::Ty: Valid {}
+impl<'a, T> Check for T
+//~^ ERROR: overflow evaluating the requirement `T: Check`
+where
+    T: Iterate<'a>,
+    <T as Iterate<'a>>::Ty: Valid {}
 
 trait Valid {}
 
