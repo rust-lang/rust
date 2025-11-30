@@ -29,6 +29,11 @@ extern crate rustc_target;
 /// above, instead of via Cargo as you'd normally do. This is currently needed for LTO due to
 /// https://github.com/rust-lang/cc-rs/issues/1613.
 #[cfg(feature = "jemalloc")]
+// Make sure `--all-features` works: only Linux and macOS actually use jemalloc, and not on arm32.
+#[cfg(all(
+    any(target_os = "linux", target_os = "macos"),
+    any(target_arch = "x86_64", target_arch = "x86", target_arch = "aarch64"),
+))]
 extern crate tikv_jemalloc_sys as _;
 
 mod log;
@@ -176,7 +181,7 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
     let target_config_backend =
-        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, &target);
+        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
     let target_config_backend_init = Once::new();
 
     Box::new(DummyCodegenBackend {

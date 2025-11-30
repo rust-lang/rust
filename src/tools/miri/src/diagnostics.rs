@@ -362,6 +362,10 @@ pub fn report_result<'tcx>(
                 vec![
                     note!("this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support"),
                 ],
+            ResourceExhaustion(ResourceExhaustionInfo::AddressSpaceFull) if ecx.machine.data_race.as_genmc_ref().is_some() =>
+                vec![
+                    note!("in GenMC mode, the address space is limited to 4GB per thread, and addresses cannot be reused")
+                ],
             UndefinedBehavior(AlignmentCheckFailed { .. })
                 if ecx.machine.check_alignment == AlignmentCheck::Symbolic
             =>
