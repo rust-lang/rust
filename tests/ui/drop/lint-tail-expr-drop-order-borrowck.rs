@@ -28,7 +28,7 @@ fn should_lint_with_unsafe_block() {
 fn should_lint_with_big_block() {
     fn f<T>(_: T) {}
     f({
-        &mut || 0
+        std::convert::identity(&mut || 0)
         //~^ ERROR: relative drop order changing
         //~| WARN: this changes meaning in Rust 2024
         //~| NOTE: this temporary value will be dropped at the end of the block
@@ -40,11 +40,26 @@ fn should_lint_with_big_block() {
 fn another_temp_that_is_copy_in_arg() {
     fn f() {}
     fn g(_: &()) {}
-    g({ &f() });
+    g({ std::convert::identity(&f()) });
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
     //~| NOTE: borrow later used by call
+    //~| NOTE: for more information, see
+}
+
+fn do_not_lint_borrow_extended_past_all_blocks() {
+    fn f<T>(_: T) {}
+    f({ &mut || 0 });
+}
+
+fn should_lint_borrow_extended_past_only_some_blocks() {
+    fn f<T>(_: T) {}
+    f({ std::convert::identity({ &mut || 0 }) });
+    //~^ ERROR: relative drop order changing
+    //~| WARN: this changes meaning in Rust 2024
+    //~| NOTE: this temporary value will be dropped at the end of the block
+    //~| NOTE: borrow later used here
     //~| NOTE: for more information, see
 }
 
