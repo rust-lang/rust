@@ -51,6 +51,7 @@ mod impl_trait_overcaptures;
 mod interior_mutable_consts;
 mod internal;
 mod invalid_from_utf8;
+mod issue_145739;
 mod late;
 mod let_underscore;
 mod levels;
@@ -97,6 +98,7 @@ use impl_trait_overcaptures::ImplTraitOvercaptures;
 use interior_mutable_consts::*;
 use internal::*;
 use invalid_from_utf8::*;
+use issue_145739::Issue145739;
 use let_underscore::*;
 use lifetime_syntax::*;
 use macro_expr_fragment_specifier_2024_migration::*;
@@ -249,6 +251,7 @@ late_lint_methods!(
             FunctionCastsAsInteger: FunctionCastsAsInteger,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
+            Issue145739: Issue145739,
         ]
     ]
 );

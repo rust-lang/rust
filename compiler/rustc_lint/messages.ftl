@@ -461,6 +461,19 @@ lint_invalid_reference_casting_note_book = for more information, visit <https://
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
 
+lint_issue_145739 = `format_args!` is called with multiple parameters that capturing the same {$kind} violating issue 145739
+    .note1 = the type of this {$kind} is `{$ty}` and it has {$is_not_freeze ->
+            [true] {$needs_drop ->
+                    [true] interior mutability and drop implementation
+                    *[false] interior mutability
+                }
+            *[false] {$needs_drop ->
+                    [true] drop implementation
+                    *[false] (none)
+                }
+        }
+    .note2 = these are the duplicated parameters
+
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
