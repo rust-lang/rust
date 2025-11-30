@@ -1257,29 +1257,18 @@ pub(crate) fn build_index(
         &cache.orphan_impl_items
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-            search_index.push(IndexItem {
-                ty: item.type_(),
-                defid: item.item_id.as_def_id(),
-                name: item.name.unwrap(),
-                module_path: fqp[..fqp.len() - 1].to_vec(),
-                desc,
-                parent: Some(parent),
-                parent_idx: None,
-                trait_parent,
-                trait_parent_idx: None,
-                exact_module_path: None,
+            search_index.push(IndexItem::new(
+                tcx,
+                cache,
+                item,
+                None,
+                None,
+                fqp[..fqp.len() - 1].to_vec(),
+                None,
                 impl_id,
-                search_type: get_function_type_for_search(
-                    item,
-                    tcx,
-                    impl_generics.as_ref(),
-                    Some(parent),
-                    cache,
-                ),
-                aliases: item.attrs.get_doc_aliases(),
-                deprecation: item.deprecation(tcx),
-            });
+                trait_parent,
+                impl_generics.as_ref(),
+            ));
         }
     }
 
