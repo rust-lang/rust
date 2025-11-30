@@ -26,6 +26,7 @@
 #![doc(cfg(windows))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+#[path = "../../sys/ffi/windows.rs"]
 pub mod ffi;
 pub mod fs;
 pub mod io;
