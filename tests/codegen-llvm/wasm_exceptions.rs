@@ -3,7 +3,7 @@
 //@ [WASMEXN] compile-flags: -C panic=unwind -Z emscripten-wasm-eh
 
 #![crate_type = "lib"]
-#![feature(core_intrinsics, link_llvm_intrinsics)]
+#![feature(asm_experimental_arch, asm_unwind, core_intrinsics)]
 
 extern "C-unwind" {
     fn may_panic();
@@ -82,15 +82,15 @@ pub fn test_rtry() {
 pub fn test_intrinsic() {
     let _log_on_drop = LogOnDrop;
 
-    unsafe extern "C-unwind" {
-        #[link_name = "llvm.wasm.throw"]
-        fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
-    }
     unsafe {
-        wasm_throw(0, core::ptr::null_mut());
+        std::arch::asm!("
+            .tagtype __cpp_exception i32
+            local.get {exc}
+            throw __cpp_exception
+        ", exc = in(local) core::ptr::null_mut::<()>(), options(may_unwind, noreturn, nostack));
     }
 
     // WASMEXN-NOT: call
-    // WASMEXN: invoke void @llvm.wasm.throw(i32 noundef 0, ptr noundef null)
+    // WASMEXN: invoke void asm sideeffect unwind
     // WASMEXN: %cleanuppad = cleanuppad within none []
 }
