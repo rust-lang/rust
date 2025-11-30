@@ -95,10 +95,11 @@ This target can be cross-compiled from any host.
 ## Emscripten ABI Compatibility
 
 The Emscripten compiler toolchain does not follow a semantic versioning scheme
-that clearly indicates when breaking changes to the ABI can be made. Additionally,
-Emscripten offers many different ABIs even for a single version of Emscripten
-depending on the linker flags used, e.g. `-fexceptions` and `-sWASM_BIGINT`. If
-the ABIs mismatch, your code may exhibit undefined behaviour.
+that clearly indicates when breaking changes to the ABI can be made.
+Additionally, Emscripten offers many different ABIs even for a single version of
+Emscripten depending on the linker flags used, e.g. `-fwasm-exceptions` and
+`-sWASM_BIGINT`. If the ABIs do not match, your code may exhibit undefined
+behaviour.
 
 To ensure that the ABIs of your Rust code, of the Rust standard library, and of
 other code compiled for Emscripten all match, you should rebuild the Rust standard
@@ -158,9 +159,9 @@ features can be disabled, and how Rust code can be conditionally compiled based 
 which features are enabled.
 
 Note that Rust code compiled for `wasm32-unknown-emscripten` currently enables
-`-fexceptions` (JS exceptions) by default unless the Rust code is compiled with
-`-Cpanic=abort`. `-fwasm-exceptions` (WASM exceptions) is not yet currently supported,
-see <https://github.com/rust-lang/rust/issues/112195>.
+`-fwasm-exceptions` (legacy WASM exceptions) by default unless the Rust code is
+compiled with `-Cpanic=abort`. It is possible to use JS exceptions by passing
+the flag ``-Z emscripten-wasm-eh=false`` but this will be removed in the future.
 
 Please refer to the [Emscripten ABI compatibility](#emscripten-abi-compatibility)
 section to ensure that the features that are enabled do not cause an ABI mismatch
