@@ -31,7 +31,7 @@ pub(crate) fn target() -> Target {
             // and NEON SIMD instructions
             features: "+vfp3,+neon".into(),
             max_atomic_width: Some(64),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

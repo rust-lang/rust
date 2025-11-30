@@ -38,7 +38,7 @@ pub(crate) fn target() -> Target {
             // ARMv7-M Architecture Reference Manual - A2.5 The optional floating-point extension
             features: "+vfp4d16sp".into(),
             max_atomic_width: Some(32),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }

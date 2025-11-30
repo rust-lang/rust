@@ -1,6 +1,7 @@
 pub(crate) mod aix;
 pub(crate) mod android;
 pub mod apple;
+pub(crate) mod arm_none;
 pub(crate) mod avr;
 pub(crate) mod bpf;
 pub(crate) mod cygwin;
@@ -31,7 +32,6 @@ pub(crate) mod redox;
 pub(crate) mod solaris;
 pub(crate) mod solid;
 pub(crate) mod teeos;
-pub(crate) mod thumb;
 pub(crate) mod uefi_msvc;
 pub(crate) mod unikraft_linux_musl;
 pub(crate) mod vxworks;

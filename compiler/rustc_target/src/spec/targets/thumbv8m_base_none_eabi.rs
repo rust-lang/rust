@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
             // with +strict-align.
             features: "+strict-align".into(),
             max_atomic_width: Some(32),
-            ..base::thumb::opts()
+            ..base::arm_none::opts()
         },
     }
 }
