@@ -898,8 +898,6 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This does so by calling the argument's implementation of [`Drop`][drop].
-///
 /// This effectively does nothing for types which implement `Copy`, e.g.
 /// integers. Such values are copied and _then_ moved into the function, so the
 /// value persists after this function call.
