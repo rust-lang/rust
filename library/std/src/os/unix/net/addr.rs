@@ -6,6 +6,7 @@ use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sealed::Sealed;
 use crate::sys::cvt;
+use crate::sys::net::SockaddrLike;
 use crate::{fmt, io, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
@@ -249,6 +250,27 @@ impl SocketAddr {
             AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
         } else {
             AddressKind::Pathname(OsStr::from_bytes(&path[..len - 1]).as_ref())
+        }
+    }
+}
+
+impl SockaddrLike for SocketAddr {
+    unsafe fn from_storage(
+        storage: &libc::sockaddr_storage,
+        len: libc::socklen_t,
+    ) -> io::Result<Self> {
+        let p = (storage as *const libc::sockaddr_storage).cast();
+        SocketAddr::from_parts(*p, len)
+    }
+
+    fn to_storage(&self, storage_ret: &mut libc::sockaddr_storage) -> libc::socklen_t {
+        unsafe {
+            crate::ptr::copy_nonoverlapping(
+                &raw const self.addr,
+                (storage_ret as *mut libc::sockaddr_storage).cast(),
+                self.len as _,
+            );
+            self.len
         }
     }
 }
