@@ -375,7 +375,13 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     );
 
     if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
-        crate::typetree::add_tt(cx.llmod, cx.llcx, fn_to_diff, fnc_tree);
+        crate::typetree::add_tt(
+            cx.llmod,
+            cx.llcx,
+            fn_to_diff,
+            fnc_tree,
+            &builder.cx().tcx.sess.opts.sysroot,
+        );
     }
 
     let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
