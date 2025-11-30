@@ -783,7 +783,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         // child + 1 <= end - 1
         // => 2 * hole + 2 <= end - 1
         // => hole <= (end - 3) / 2
-        while hole.pos() <= end.saturating_sub(3) / 2 {
+        while end >= 3 && hole.pos() <= (end - 3) / 2 {
             let mut child = 2 * hole.pos() + 1;
 
             // compare with the greater of the two children
@@ -808,7 +808,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
         // child <= end - 1
         // => 2 * hole + 1 <= end - 1
         // => hole <= (end - 2) / 2
-        if hole.pos() <= end.saturating_sub(2) / 2 {
+        if end >= 2 && hole.pos() <= (end - 2) / 2 {
             let child = 2 * hole.pos() + 1;
             // If we are not in order, move parent
             if hole.element() < unsafe { hole.get(child) } {
