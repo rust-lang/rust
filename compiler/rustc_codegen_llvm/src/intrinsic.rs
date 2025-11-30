@@ -1,7 +1,9 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
+use rustc_abi::{
+    AddressSpace, Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size,
+};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -551,6 +553,31 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::gpu_dynamic_groupshared_mem => {
+                // The name of the global variable is not relevant, the important properties are.
+                // 1. The global is in the shared address space
+                // 2. It is an extern global
+                // All instances of extern addrspace(shared) globals are merged in the LLVM backend.
+                // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared
+                let global = self.declare_global_in_addrspace(
+                    "gpu_dynamic_groupshared_mem",
+                    self.type_array(self.type_i8(), 0),
+                    AddressSpace::GPU_SHARED,
+                );
+                let ty::RawPtr(inner_ty, _) = result.layout.ty.kind() else { unreachable!() };
+                // The alignment of the global is used to specify the *minimum* alignment that the
+                // must be obeyed by the GPU runtime.
+                // When multiple of these global variables are merged, the maximum alignment is taken.
+                // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
+                let alignment = self.align_of(*inner_ty).bytes() as u32;
+                unsafe {
+                    if alignment > llvm::LLVMGetAlignment(global) {
+                        llvm::LLVMSetAlignment(global, alignment);
+                    }
+                }
+                self.cx().const_pointercast(global, self.type_ptr())
             }
 
             _ if name.as_str().starts_with("simd_") => {

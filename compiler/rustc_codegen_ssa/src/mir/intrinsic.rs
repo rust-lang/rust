@@ -111,6 +111,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 sym::abort
                 | sym::unreachable
                 | sym::cold_path
+                | sym::gpu_dynamic_groupshared_mem
                 | sym::breakpoint
                 | sym::assert_zero_valid
                 | sym::assert_mem_uninitialized_valid
