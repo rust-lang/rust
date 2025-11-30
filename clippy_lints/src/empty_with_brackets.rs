@@ -2,13 +2,13 @@ use clippy_utils::attrs::span_contains_cfg;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
-use rustc_hir::def::CtorOf;
 use rustc_hir::def::DefKind::Ctor;
 use rustc_hir::def::Res::Def;
+use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Path, QPath, Variant, VariantData};
+use rustc_hir::{Expr, ExprKind, Item, ItemKind, Node, Pat, PatKind, Path, QPath, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -177,32 +177,21 @@ impl LateLintPass<'_> for EmptyWithBrackets {
                 if expr.span.from_expansion() {
                     return;
                 }
-                match self.empty_tuple_enum_variants.get_mut(&def_id) {
-                    Some(
-                        &mut (Usage::Unused {
-                            ref mut redundant_use_sites,
-                        }
-                        | Usage::NoDefinition {
-                            ref mut redundant_use_sites,
-                        }),
-                    ) => {
-                        redundant_use_sites.push(parentheses_span);
-                    },
-                    None => {
-                        // The variant isn't in the IndexMap which means its definition wasn't encountered yet.
-                        self.empty_tuple_enum_variants.insert(
-                            def_id,
-                            Usage::NoDefinition {
-                                redundant_use_sites: vec![parentheses_span],
-                            },
-                        );
-                    },
-                    _ => {},
-                }
+                self.update_enum_variant_usage(def_id, parentheses_span);
             } else {
                 // The parentheses are not redundant.
                 self.empty_tuple_enum_variants.insert(def_id, Usage::Used);
             }
+        }
+    }
+
+    fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
+        if let Some((def_id, parentheses_span)) = check_pat_for_enum_as_function(cx, pat) {
+            if pat.span.from_expansion() {
+                return;
+            }
+
+            self.update_enum_variant_usage(def_id, parentheses_span);
         }
     }
 
@@ -252,6 +241,33 @@ impl LateLintPass<'_> for EmptyWithBrackets {
     }
 }
 
+impl EmptyWithBrackets {
+    fn update_enum_variant_usage(&mut self, def_id: LocalDefId, parentheses_span: Span) {
+        match self.empty_tuple_enum_variants.get_mut(&def_id) {
+            Some(
+                &mut (Usage::Unused {
+                    ref mut redundant_use_sites,
+                }
+                | Usage::NoDefinition {
+                    ref mut redundant_use_sites,
+                }),
+            ) => {
+                redundant_use_sites.push(parentheses_span);
+            },
+            None => {
+                // The variant isn't in the IndexMap which means its definition wasn't encountered yet.
+                self.empty_tuple_enum_variants.insert(
+                    def_id,
+                    Usage::NoDefinition {
+                        redundant_use_sites: vec![parentheses_span],
+                    },
+                );
+            },
+            _ => {},
+        }
+    }
+}
+
 fn has_brackets(var_data: &VariantData<'_>) -> bool {
     !matches!(var_data, VariantData::Unit(..))
 }
@@ -289,5 +305,23 @@ fn check_expr_for_enum_as_function(expr: &Expr<'_>) -> Option<LocalDefId> {
         def_id.as_local()
     } else {
         None
+    }
+}
+
+fn check_pat_for_enum_as_function(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(LocalDefId, Span)> {
+    match pat.kind {
+        PatKind::TupleStruct(qpath, ..)
+            if let Def(Ctor(CtorOf::Variant, _), def_id) = cx.typeck_results().qpath_res(&qpath, pat.hir_id) =>
+        {
+            def_id.as_local().map(|id| (id, qpath.span().with_lo(pat.span.hi())))
+        },
+        PatKind::Struct(qpath, ..)
+            if let Def(DefKind::Variant, def_id) = cx.typeck_results().qpath_res(&qpath, pat.hir_id)
+                && let ty = cx.tcx.type_of(def_id).instantiate_identity()
+                && let ty::FnDef(def_id, _) = ty.kind() =>
+        {
+            def_id.as_local().map(|id| (id, qpath.span().with_lo(pat.span.hi())))
+        },
+        _ => None,
     }
 }
