@@ -12,4 +12,5 @@ impl Foo for () {
 fn main() {
     (const || { (()).foo() })();
     //~^ ERROR: }: [const] Fn()` is not satisfied
+    //~| ERROR: }: [const] FnMut()` is not satisfied
 }
