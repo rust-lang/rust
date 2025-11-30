@@ -159,6 +159,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             TraitItemKind::Type(_, None) => {
                 span_bug!(item.span, "associated type missing default");
             }
+            TraitItemKind::AutoImpl(_poly_trait_ref, _impl_items) => todo!(),
         },
 
         Node::ImplItem(item) => match item.kind {
@@ -188,6 +189,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
                 icx.lower_ty(ty)
             }
+            ImplItemKind::AutoImpl(_poly_trait_ref, _impl_items) => todo!(),
+            ImplItemKind::ExternImpl(_poly_trait_ref) => todo!(),
         },
 
         Node::Item(item) => match item.kind {

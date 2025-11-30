@@ -50,6 +50,7 @@ fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         | DefKind::Macro(_)
         | DefKind::GlobalAsm
         | DefKind::Impl { .. }
+        | DefKind::AutoImpl
         | DefKind::OpaqueTy
         | DefKind::AnonConst
         | DefKind::InlineConst

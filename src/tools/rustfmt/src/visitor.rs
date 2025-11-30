@@ -11,8 +11,9 @@ use crate::comment::{CodeCharKind, CommentCodeSlices, contains_comment, rewrite_
 use crate::config::{BraceStyle, Config, MacroSelector, StyleEdition};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
-    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_impl, format_trait,
-    format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate, rewrite_type_alias,
+    FnBraceStyle, FnSig, ItemVisitorKind, StaticParts, StructParts, format_auto_impl, format_impl,
+    format_trait, format_trait_alias, is_mod_decl, is_use_item, rewrite_extern_crate,
+    rewrite_type_alias,
 };
 use crate::macros::{MacroPosition, macro_style, rewrite_macro, rewrite_macro_def};
 use crate::modules::Module;
@@ -490,6 +491,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 ast::ItemKind::Impl(ref iimpl) => {
                     let block_indent = self.block_indent;
                     let rw = self.with_context(|ctx| format_impl(ctx, item, iimpl, block_indent));
+                    self.push_rewrite(item.span, rw);
+                }
+                ast::ItemKind::AutoImpl(ref aimpl) => {
+                    let block_indent = self.block_indent;
+                    let rw =
+                        self.with_context(|ctx| format_auto_impl(ctx, item, aimpl, block_indent));
                     self.push_rewrite(item.span, rw);
                 }
                 ast::ItemKind::Trait(..) => {

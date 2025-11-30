@@ -33,6 +33,7 @@ pub enum MethodKind {
     Inherent,
 }
 
+/// A descriptor of supported kinds of target for attributes
 #[derive(Copy, Clone, PartialEq, Debug, Eq, HashStable_Generic)]
 pub enum Target {
     ExternCrate,
@@ -53,6 +54,8 @@ pub enum Target {
     Trait,
     TraitAlias,
     Impl { of_trait: bool },
+    AutoImpl,
+    ExternImpl,
     Expression,
     Statement,
     Arm,
@@ -84,7 +87,11 @@ rustc_error_messages::into_diag_arg_using_display!(Target);
 impl Target {
     pub fn is_associated_item(self) -> bool {
         match self {
-            Target::AssocConst | Target::AssocTy | Target::Method(_) => true,
+            Target::AssocConst
+            | Target::AssocTy
+            | Target::Method(_)
+            | Target::AutoImpl
+            | Target::ExternImpl => true,
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -182,6 +189,7 @@ impl Target {
             ast::ItemKind::Trait(..) => Target::Trait,
             ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
             ast::ItemKind::Impl(ref i) => Target::Impl { of_trait: i.of_trait.is_some() },
+            ast::ItemKind::AutoImpl(..) => Target::Impl { of_trait: true },
             ast::ItemKind::MacCall(..) => Target::MacroCall,
             ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::Delegation(..) => Target::Delegation { mac: false },
@@ -208,6 +216,7 @@ impl Target {
                 Target::Method(MethodKind::Trait { body: true })
             }
             TraitItemKind::Type(..) => Target::AssocTy,
+            TraitItemKind::AutoImpl(..) => Target::AutoImpl,
         }
     }
 
@@ -252,6 +261,7 @@ impl Target {
             AssocItemKind::Delegation(_) => Target::Delegation { mac: false },
             AssocItemKind::DelegationMac(_) => Target::Delegation { mac: true },
             AssocItemKind::MacCall(_) => Target::MacroCall,
+            AssocItemKind::AutoImpl(_) => Target::Impl { of_trait: true },
         }
     }
 
@@ -283,6 +293,8 @@ impl Target {
             Target::Trait => "trait",
             Target::TraitAlias => "trait alias",
             Target::Impl { .. } => "implementation block",
+            Target::AutoImpl => "automatic trait implementation block",
+            Target::ExternImpl => "external trait implementation block",
             Target::Expression => "expression",
             Target::Statement => "statement",
             Target::Arm => "match arm",
@@ -334,6 +346,8 @@ impl Target {
             Target::TraitAlias => "trait aliases",
             Target::Impl { of_trait: false } => "inherent impl blocks",
             Target::Impl { of_trait: true } => "trait impl blocks",
+            Target::AutoImpl => "automatic trait implementation blocks",
+            Target::ExternImpl => "external trait implementation blocks",
             Target::Expression => "expressions",
             Target::Statement => "statements",
             Target::Arm => "match arms",

@@ -2085,7 +2085,7 @@ fn resolution_failure(
                             | TraitAlias
                             | TyParam
                             | Static { .. } => "associated item",
-                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody => {
+                            Impl { .. } | GlobalAsm | SyntheticCoroutineBody | AutoImpl => {
                                 unreachable!("not a path")
                             }
                         }

@@ -1,7 +1,7 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast::{self as ast, ModKind, TraitAlias};
-use rustc_span::Ident;
+use rustc_span::{Ident, Span};
 
 use crate::pp::BoxMarker;
 use crate::pp::Breaks::Inconsistent;
@@ -350,6 +350,32 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty, cb);
             }
+            ast::ItemKind::AutoImpl(box ast::AutoImpl { generics, of_trait, items, constness }) => {
+                let (cb, ib) = self.head("");
+                self.print_visibility(&item.vis);
+
+                let &ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
+                    &**of_trait;
+                self.print_defaultness(defaultness);
+                self.print_safety(safety);
+                self.word("auto");
+                self.word("impl");
+                self.print_generic_params(&generics.params);
+                self.print_constness(*constness);
+                if let ast::ImplPolarity::Negative(_) = polarity {
+                    self.word("!");
+                }
+                self.print_trait_ref(trait_ref);
+
+                self.space();
+                self.bopen(ib);
+                self.print_inner_attributes(&item.attrs);
+                for impl_item in items {
+                    self.print_assoc_item(impl_item);
+                }
+                let empty = item.attrs.is_empty() && items.is_empty();
+                self.bclose(item.span, empty, cb);
+            }
             ast::ItemKind::Trait(box ast::Trait {
                 constness,
                 safety,
@@ -601,6 +627,9 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
+            ast::AssocItemKind::AutoImpl(ai) => {
+                self.print_assoc_auto_impl(&item.attrs, ai, item.span)
+            }
             ast::AssocItemKind::Delegation(deleg) => self.print_delegation(
                 &item.attrs,
                 vis,
@@ -619,6 +648,29 @@ impl<'a> State<'a> {
             ),
         }
         self.ann.post(self, AnnNode::SubItem(id))
+    }
+
+    fn print_assoc_auto_impl(&mut self, attrs: &[ast::Attribute], ai: &ast::AutoImpl, span: Span) {
+        let (cb, ib) = self.head("");
+        let &ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } = &*ai.of_trait;
+        self.print_defaultness(defaultness);
+        self.print_safety(safety);
+        self.word("auto");
+        self.word("impl");
+        self.print_constness(ai.constness);
+        if let ast::ImplPolarity::Negative(_) = polarity {
+            self.word("!");
+        }
+        self.print_trait_ref(trait_ref);
+
+        self.space();
+        self.bopen(ib);
+        self.print_inner_attributes(&attrs);
+        for impl_item in &ai.items {
+            self.print_assoc_item(impl_item);
+        }
+        let empty = attrs.is_empty() && ai.items.is_empty();
+        self.bclose(span, empty, cb);
     }
 
     fn print_delegation(
