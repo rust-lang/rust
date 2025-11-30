@@ -1,4 +1,4 @@
-//@ edition: 2021
+//@ edition: 2018..
 
 macro_rules! macro_dollar_crate {
     () => {
