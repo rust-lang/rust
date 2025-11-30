@@ -71,6 +71,7 @@ mod type_of;
 use std::any::Any;
 use std::ffi::CString;
 use std::fmt::Debug;
+use std::fs;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -180,14 +181,18 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
+fn libgccjit_path(sysroot_path: &Path) -> PathBuf {
+    let sysroot_lib_dir = sysroot_path.join("lib");
+    sysroot_lib_dir.join("libgccjit.so")
+}
+
 fn load_libgccjit_if_needed(sysroot_path: &Path) {
     if gccjit::is_loaded() {
         // Do not load a libgccjit second time.
         return;
     }
 
-    let sysroot_lib_dir = sysroot_path.join("lib");
-    let libgccjit_target_lib_file = sysroot_lib_dir.join("libgccjit.so");
+    let libgccjit_target_lib_file = libgccjit_path(sysroot_path);
     let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
 
     let string = CString::new(path).expect("string to libgccjit path");
@@ -207,7 +212,16 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn init(&self, sess: &Session) {
-        load_libgccjit_if_needed(sess.opts.sysroot.path());
+        // We use all_paths() instead of only path() in case the path specified by --sysroot is
+        // invalid.
+        // This is the case for instance in Rust for Linux where they specify --sysroot=/dev/null.
+        for path in sess.opts.sysroot.all_paths() {
+            let libgccjit_target_lib_file = libgccjit_path(path);
+            if let Ok(true) = fs::exists(libgccjit_target_lib_file) {
+                load_libgccjit_if_needed(path);
+                break;
+            }
+        }
 
         #[cfg(feature = "master")]
         {
