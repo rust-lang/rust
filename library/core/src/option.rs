@@ -1332,6 +1332,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn ok_or<E: [const] Destruct>(self, err: E) -> Result<T, E> {
@@ -1358,6 +1359,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
     #[inline]
+    #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ops", issue = "143956")]
     pub const fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
