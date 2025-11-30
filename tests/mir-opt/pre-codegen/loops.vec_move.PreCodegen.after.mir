@@ -61,9 +61,9 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                                 scope 42 (inlined alloc::raw_vec::RawVecInner::capacity) {
                                     debug self => _38;
                                     debug elem_size => const <impl Sized as std::mem::SizedTypeProperties>::SIZE;
-                                    let mut _20: core::num::niche_types::UsizeNoHighBit;
+                                    let mut _20: (usize) is 0..=2147483647;
                                     scope 43 (inlined core::num::niche_types::UsizeNoHighBit::as_inner) {
-                                        debug self => _20;
+                                        debug ((self: core::num::niche_types::UsizeNoHighBit).0: (usize) is 0..=2147483647) => _20;
                                     }
                                 }
                             }
@@ -241,6 +241,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         // DBG: _37 = &_2;
         // DBG: _36 = &((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
         // DBG: _38 = &(((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner);
+        StorageLive(_20);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::SIZE) -> [0: bb5, otherwise: bb6];
     }
 
@@ -250,14 +251,13 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb6: {
-        StorageLive(_20);
-        _20 = copy ((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).1: core::num::niche_types::UsizeNoHighBit);
+        _20 = copy (((((_2.0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).1: core::num::niche_types::UsizeNoHighBit).0: (usize) is 0..=2147483647);
         _19 = copy _20 as usize (Transmute);
-        StorageDead(_20);
         goto -> bb7;
     }
 
     bb7: {
+        StorageDead(_20);
         _21 = std::vec::IntoIter::<impl Sized> { buf: copy _6, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _19, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: std::alloc::Global }}, ptr: copy _6, end: copy _11 };
         StorageDead(_2);
         StorageDead(_17);
