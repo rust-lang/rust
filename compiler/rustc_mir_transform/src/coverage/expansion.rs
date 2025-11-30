@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_middle::mir;
-use rustc_middle::mir::coverage::BasicCoverageBlock;
+use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
 use rustc_span::{ExpnId, ExpnKind, Span};
 
 use crate::coverage::from_mir;
@@ -83,6 +83,9 @@ pub(crate) struct ExpnNode {
     /// Expansions whose call-site is in this expansion.
     pub(crate) child_expn_ids: FxIndexSet<ExpnId>,
 
+    /// Branch spans (recorded during MIR building) belonging to this expansion.
+    pub(crate) branch_spans: Vec<BranchSpan>,
+
     /// Hole spans belonging to this expansion, to be carved out from the
     /// code spans during span refinement.
     pub(crate) hole_spans: Vec<Span>,
@@ -107,6 +110,8 @@ impl ExpnNode {
 
             spans: vec![],
             child_expn_ids: FxIndexSet::default(),
+
+            branch_spans: vec![],
 
             hole_spans: vec![],
         }
@@ -172,6 +177,16 @@ pub(crate) fn build_expn_tree(
         let expn_id = hole_span.ctxt().outer_expn();
         let Some(node) = nodes.get_mut(&expn_id) else { continue };
         node.hole_spans.push(hole_span);
+    }
+
+    // Associate each branch span (recorded during MIR building) with its
+    // corresponding expansion tree node.
+    if let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() {
+        for branch_span in &coverage_info_hi.branch_spans {
+            if let Some(node) = nodes.get_mut(&branch_span.span.ctxt().outer_expn()) {
+                node.branch_spans.push(BranchSpan::clone(branch_span));
+            }
+        }
     }
 
     ExpnTree { nodes }
