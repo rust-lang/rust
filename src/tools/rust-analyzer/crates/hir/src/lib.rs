@@ -765,7 +765,7 @@ impl Module {
         }
         self.legacy_macros(db).into_iter().for_each(|m| emit_macro_def_diagnostics(db, acc, m));
 
-        let interner = DbInterner::new_with(db, self.id.krate(), self.id.containing_block());
+        let interner = DbInterner::new_with(db, self.id.krate());
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
         let mut impl_assoc_items_scratch = vec![];
@@ -5130,7 +5130,7 @@ impl<'db> Type<'db> {
         args: &[Type<'db>],
         alias: TypeAlias,
     ) -> Option<Type<'db>> {
-        let interner = DbInterner::new_with(db, self.env.krate, self.env.block);
+        let interner = DbInterner::new_with(db, self.env.krate);
         let args = generic_args_from_tys(
             interner,
             alias.id.into(),
@@ -5473,7 +5473,7 @@ impl<'db> Type<'db> {
         f: impl FnOnce(&MethodResolutionContext<'_, 'db>) -> R,
     ) -> R {
         let module = resolver.module();
-        let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
+        let interner = DbInterner::new_with(db, module.krate());
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         let unstable_features =
             MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());
@@ -5812,7 +5812,7 @@ impl<'db> Type<'db> {
     }
 
     pub fn drop_glue(&self, db: &'db dyn HirDatabase) -> DropGlue {
-        let interner = DbInterner::new_with(db, self.env.krate, self.env.block);
+        let interner = DbInterner::new_with(db, self.env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         hir_ty::drop::has_drop_glue(&infcx, self.ty, self.env.clone())
     }

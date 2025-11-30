@@ -419,7 +419,7 @@ pub(crate) fn lookup_impl_method_query<'db>(
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
 ) -> (FunctionId, GenericArgs<'db>) {
-    let interner = DbInterner::new_with(db, env.krate, env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {

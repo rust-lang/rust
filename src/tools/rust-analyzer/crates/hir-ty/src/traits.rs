@@ -216,7 +216,7 @@ fn implements_trait_unique_impl<'db>(
     trait_: TraitId,
     create_args: &mut dyn FnMut(&InferCtxt<'db>) -> GenericArgs<'db>,
 ) -> bool {
-    let interner = DbInterner::new_with(db, env.krate, env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     // FIXME(next-solver): I believe this should be `PostAnalysis`.
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 

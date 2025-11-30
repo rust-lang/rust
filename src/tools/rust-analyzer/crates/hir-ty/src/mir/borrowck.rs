@@ -97,7 +97,7 @@ pub fn borrowck_query<'db>(
 ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     let env = db.trait_environment_for_body(def);
     let mut res = vec![];
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.

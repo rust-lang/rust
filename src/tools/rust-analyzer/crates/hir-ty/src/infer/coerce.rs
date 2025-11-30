@@ -1576,7 +1576,7 @@ fn coerce<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
-    let interner = DbInterner::new_with(db, env.krate, env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let ((ty1_with_vars, ty2_with_vars), vars) = infcx.instantiate_canonical(tys);
 

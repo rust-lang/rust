@@ -113,7 +113,7 @@ fn could_unify_impl<'db>(
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
     select: for<'a> fn(&mut ObligationCtxt<'a, 'db>) -> Vec<NextSolverError<'db>>,
 ) -> bool {
-    let interner = DbInterner::new_with(db, env.krate, env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let cause = ObligationCause::dummy();
     let at = infcx.at(&cause, env.env);
@@ -148,7 +148,7 @@ impl<'db> InferenceTable<'db> {
         trait_env: Arc<TraitEnvironment<'db>>,
         owner: Option<DefWithBodyId>,
     ) -> Self {
-        let interner = DbInterner::new_with(db, trait_env.krate, trait_env.block);
+        let interner = DbInterner::new_with(db, trait_env.krate);
         let typing_mode = match owner {
             Some(owner) => TypingMode::typeck_for_body(interner, owner.into()),
             // IDE things wants to reveal opaque types.

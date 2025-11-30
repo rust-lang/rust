@@ -162,7 +162,7 @@ pub fn layout_of_ty_query<'db>(
     trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
-    let interner = DbInterner::new_with(db, krate, trait_env.block);
+    let interner = DbInterner::new_with(db, krate);
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };

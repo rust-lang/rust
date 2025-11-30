@@ -421,7 +421,7 @@ fn resolve_impl_trait_item<'db>(
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    let interner = DbInterner::new_with(db, environment.krate, environment.block);
+    let interner = DbInterner::new_with(db, environment.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let unstable_features =
         MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());

@@ -38,7 +38,7 @@ pub fn autoderef<'db>(
     env: Arc<TraitEnvironment<'db>>,
     ty: Canonical<'db, Ty<'db>>,
 ) -> impl Iterator<Item = Ty<'db>> + use<'db> {
-    let interner = DbInterner::new_with(db, env.krate, env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let (ty, _) = infcx.instantiate_canonical(&ty);
     let autoderef = Autoderef::new(&infcx, &env, ty);

@@ -8,8 +8,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, BlockId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId,
-    StructId, UnionId, VariantId,
+    AdtId, CallableDefId, DefWithBodyId, EnumVariantId, HasModule, ItemContainerId, StructId,
+    UnionId, VariantId,
     attrs::AttrFlags,
     lang_item::LangItems,
     signatures::{FieldData, FnFlags, ImplFlags, StructFlags, TraitFlags},
@@ -271,8 +271,7 @@ pub use crate::_interned_vec_db as interned_vec_db;
 #[derive(Debug, Copy, Clone)]
 pub struct DbInterner<'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) krate: Option<Crate>,
-    pub(crate) block: Option<BlockId>,
+    krate: Option<Crate>,
     lang_items: Option<&'db LangItems>,
 }
 
@@ -286,7 +285,6 @@ impl<'db> DbInterner<'db> {
         crate::with_attached_db(|db| DbInterner {
             db: unsafe { std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db) },
             krate: None,
-            block: None,
             lang_items: None,
         })
     }
@@ -294,21 +292,15 @@ impl<'db> DbInterner<'db> {
     /// Creates a new interner without an active crate. Good only for interning things, not for trait solving etc..
     /// As a rule of thumb, when you create an `InferCtxt`, you need to provide the crate (and the block).
     ///
-    /// Elaboration is a special kind: it needs lang items (for `Sized`), therefore it needs `new_with()`, but you
-    /// can not specify the block.
+    /// Elaboration is a special kind: it needs lang items (for `Sized`), therefore it needs `new_with()`.
     pub fn new_no_crate(db: &'db dyn HirDatabase) -> Self {
-        DbInterner { db, krate: None, block: None, lang_items: None }
+        DbInterner { db, krate: None, lang_items: None }
     }
 
-    pub fn new_with(
-        db: &'db dyn HirDatabase,
-        krate: Crate,
-        block: Option<BlockId>,
-    ) -> DbInterner<'db> {
+    pub fn new_with(db: &'db dyn HirDatabase, krate: Crate) -> DbInterner<'db> {
         DbInterner {
             db,
             krate: Some(krate),
-            block,
             // As an approximation, when we call `new_with` we're trait solving, therefore we need the lang items.
             // This is also convenient since here we have a starting crate but not in `new_no_crate`.
             lang_items: Some(hir_def::lang_item::lang_items(db, krate)),

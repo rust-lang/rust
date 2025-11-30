@@ -131,7 +131,7 @@ pub fn dyn_compatibility_of_trait_query(
 
 pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
-    let interner = DbInterner::new_with(db, krate, None);
+    let interner = DbInterner::new_with(db, krate);
     let Some(sized) = interner.lang_items().Sized else {
         return false;
     };
@@ -402,7 +402,7 @@ fn receiver_is_dispatchable<'db>(
     let sig = sig.instantiate_identity();
 
     let module = trait_.module(db);
-    let interner = DbInterner::new_with(db, module.krate(), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     let self_param_id = TypeParamId::from_unchecked(TypeOrConstParamId {
         parent: trait_.into(),
         local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
