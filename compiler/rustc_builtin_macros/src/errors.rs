@@ -1010,3 +1010,51 @@ pub(crate) struct CfgSelectUnreachable {
     #[label]
     pub wildcard_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_extern_target_expected_macro)]
+pub(crate) struct EiiExternTargetExpectedMacro {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_extern_target_expected_list)]
+pub(crate) struct EiiExternTargetExpectedList {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_extern_target_expected_unsafe)]
+pub(crate) struct EiiExternTargetExpectedUnsafe {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_expected_function)]
+pub(crate) struct EiiSharedMacroExpectedFunction {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_only_once)]
+pub(crate) struct EiiOnlyOnce {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub first_span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_shared_macro_expected_max_one_argument)]
+pub(crate) struct EiiMacroExpectedMaxOneArgument {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
