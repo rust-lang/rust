@@ -1291,6 +1291,38 @@ impl f128 {
         self
     }
 
+    /// Clamps this number to a symmetric range centered around zero.
+    ///
+    /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+    ///
+    /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+    /// explicit about the intent.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is negative or NaN, as this indicates a logic error.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(clamp_magnitude)]
+    /// # #[cfg(all(target_arch = "x86_64", target_os = "linux"))] {
+    /// assert_eq!(5.0f128.clamp_magnitude(3.0), 3.0);
+    /// assert_eq!((-5.0f128).clamp_magnitude(3.0), -3.0);
+    /// assert_eq!(2.0f128.clamp_magnitude(3.0), 2.0);
+    /// assert_eq!((-2.0f128).clamp_magnitude(3.0), -2.0);
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[must_use = "this returns the clamped value and does not modify the original"]
+    pub fn clamp_magnitude(self, limit: f128) -> f128 {
+        assert!(limit >= 0.0, "limit must be non-negative");
+        let limit = limit.abs(); // Canonicalises -0.0 to 0.0
+        self.clamp(-limit, limit)
+    }
+
     /// Computes the absolute value of `self`.
     ///
     /// This function always returns the precise result.
