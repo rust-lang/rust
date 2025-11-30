@@ -897,11 +897,14 @@ impl f32 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmax`.
     ///
     /// ```
     /// let x = 1.0f32;
@@ -920,11 +923,14 @@ impl f32 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
     /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
-    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// This also matches the behavior of libm’s `fmin`.
     ///
     /// ```
     /// let x = 1.0f32;
