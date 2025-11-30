@@ -1,6 +1,6 @@
 use std::num::NonZero;
 
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::{ErrorGuaranteed, Symbol, sym};
 
 use crate::RustcVersion;
@@ -21,7 +21,7 @@ pub const VERSION_PLACEHOLDER: &str = concat!("CURRENT_RUSTC_VERSIO", "N");
 ///
 /// - `#[stable]`
 /// - `#[unstable]`
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, BlobDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub struct Stability {
     pub level: StabilityLevel,
@@ -103,7 +103,7 @@ impl PartialConstStability {
 }
 
 /// The available stability levels.
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, BlobDecodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum StabilityLevel {
     /// `#[unstable]`
@@ -146,7 +146,7 @@ pub enum StabilityLevel {
 }
 
 /// Rust release in which a feature is stabilized.
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, BlobDecodable, PartialEq, Copy, Clone, Debug, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum StableSince {
     /// also stores the original symbol for printing
@@ -172,7 +172,7 @@ impl StabilityLevel {
     }
 }
 
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, BlobDecodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum UnstableReason {
     None,

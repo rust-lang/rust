@@ -20,8 +20,8 @@ use rustc_span::hygiene::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
-    BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos,
-    SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
+    BlobDecoder, BytePos, ByteSymbol, CachingSourceMapView, ExpnData, ExpnHash, Pos,
+    RelativeBytePos, SourceFile, Span, SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
 
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
@@ -672,34 +672,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         Span::new(lo, hi, ctxt, parent)
     }
 
-    fn decode_symbol(&mut self) -> Symbol {
-        self.decode_symbol_or_byte_symbol(
-            Symbol::new,
-            |this| Symbol::intern(this.read_str()),
-            |opaque| Symbol::intern(opaque.read_str()),
-        )
-    }
-
-    fn decode_byte_symbol(&mut self) -> ByteSymbol {
-        self.decode_symbol_or_byte_symbol(
-            ByteSymbol::new,
-            |this| ByteSymbol::intern(this.read_byte_str()),
-            |opaque| ByteSymbol::intern(opaque.read_byte_str()),
-        )
-    }
-
     fn decode_crate_num(&mut self) -> CrateNum {
         let stable_id = StableCrateId::decode(self);
         let cnum = self.tcx.stable_crate_id_to_crate_num(stable_id);
         cnum
-    }
-
-    // This impl makes sure that we get a runtime error when we try decode a
-    // `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
-    // because we would not know how to transform the `DefIndex` to the current
-    // context.
-    fn decode_def_index(&mut self) -> DefIndex {
-        panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
 
     // Both the `CrateNum` and the `DefIndex` of a `DefId` can change in between two
@@ -722,6 +698,32 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
 
     fn decode_attr_id(&mut self) -> rustc_span::AttrId {
         panic!("cannot decode `AttrId` with `CacheDecoder`");
+    }
+}
+
+impl<'a, 'tcx> BlobDecoder for CacheDecoder<'a, 'tcx> {
+    fn decode_symbol(&mut self) -> Symbol {
+        self.decode_symbol_or_byte_symbol(
+            Symbol::new,
+            |this| Symbol::intern(this.read_str()),
+            |opaque| Symbol::intern(opaque.read_str()),
+        )
+    }
+
+    fn decode_byte_symbol(&mut self) -> ByteSymbol {
+        self.decode_symbol_or_byte_symbol(
+            ByteSymbol::new,
+            |this| ByteSymbol::intern(this.read_byte_str()),
+            |opaque| ByteSymbol::intern(opaque.read_byte_str()),
+        )
+    }
+
+    // This impl makes sure that we get a runtime error when we try decode a
+    // `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
+    // because we would not know how to transform the `DefIndex` to the current
+    // context.
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
 }
 

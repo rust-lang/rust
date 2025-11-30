@@ -4,12 +4,12 @@ use std::sync::OnceLock;
 
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{
-    Decodable, Encodable, HashStable_Generic, PrintAttribute, current_rustc_version,
+    BlobDecodable, Encodable, HashStable_Generic, PrintAttribute, current_rustc_version,
 };
 
 use crate::attrs::PrintAttribute;
 
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, BlobDecodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub struct RustcVersion {
     pub major: u16,

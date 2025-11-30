@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{BlobDecodable, Decodable, Encodable};
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -127,7 +127,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
 pub struct DefKey {
     /// The parent path.
     pub parent: Option<DefIndex>,
@@ -176,7 +176,7 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have, e.g., two impls for the same type in
 /// the same module, they do get distinct `DefId`s.
-#[derive(Copy, Clone, PartialEq, Debug, Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Debug, Encodable, BlobDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32,
@@ -270,7 +270,7 @@ impl DefPath {
 }
 
 /// New variants should only be added in synchronization with `enum DefKind`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, BlobDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
