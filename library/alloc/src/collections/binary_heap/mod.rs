@@ -850,27 +850,41 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // SAFETY: The caller guarantees that pos < self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = 2 * hole.pos() + 1;
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while child <= end.saturating_sub(2) {
+        //
+        // While hole's position is below parent of the first empty slot
+        // child + 1 <= end - 1 (The second child is max at the first empty slot)
+        // => 2 * hole + 2 <= end - 1 ( From the invariant)
+        // => hole <= (end - 3) / 2
+        // => hole < 1 + (end - 3) / 2
+        // => hole < (end - 1) / 2
+        while hole.pos() < (end - 1) / 2 {
+            let mut child = 2 * hole.pos() + 1;
+
             // SAFETY: child < end - 1 < self.len() and
             //  child + 1 < end <= self.len(), so they're valid indexes.
             //  child == 2 * hole.pos() + 1 != hole.pos() and
             //  child + 1 == 2 * hole.pos() + 2 != hole.pos().
-            // FIXME: 2 * hole.pos() + 1 or 2 * hole.pos() + 2 could overflow
-            //  if T is a ZST
             child += unsafe { hole.get(child) <= hole.get(child + 1) } as usize;
 
             // SAFETY: Same as above
             unsafe { hole.move_to(child) };
-            child = 2 * hole.pos() + 1;
         }
 
-        if child == end - 1 {
-            // SAFETY: child == end - 1 < self.len(), so it's a valid index
-            //  and child == 2 * hole.pos() + 1 != hole.pos().
-            unsafe { hole.move_to(child) };
+        // If hole has only one child.
+        //
+        // child <= end - 1
+        // => 2 * hole + 1 <= end  - 1
+        // => hole <= (end - 2) / 2
+        // => hole < 1 + (end - 2) / 2
+        // => hole < end / 2
+        if hole.pos() < end / 2 {
+            let child = 2 * hole.pos() + 1;
+            // If we are not in order, move parent
+            if hole.element() < unsafe { hole.get(child) } {
+                unsafe { hole.move_to(child) };
+            }
         }
         pos = hole.pos();
         drop(hole);
