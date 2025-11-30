@@ -3333,26 +3333,39 @@ impl DirBuilder {
             return Ok(());
         }
 
-        match self.inner.mkdir(path) {
-            Ok(()) => return Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
-            Err(_) if path.is_dir() => return Ok(()),
-            Err(e) => return Err(e),
-        }
-        match path.parent() {
-            Some(p) => self.create_dir_all(p)?,
-            None => {
-                return Err(io::const_error!(
-                    io::ErrorKind::Uncategorized,
-                    "failed to create whole tree",
-                ));
+        let ancestors = path.ancestors();
+        let mut uncreated_dir_ctr = 0;
+
+        for ancestor in ancestors {
+            if ancestor == Path::new("") {
+                break;
+            }
+
+            match self.inner.mkdir(ancestor) {
+                Ok(()) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => uncreated_dir_ctr += 1,
+                // we check if the err is AlreadyExists for two reasons
+                //    - in case the path exists as a *file*
+                //    - and to avoid calls to .is_dir() in case of other errs
+                //      (i.e. PermissionDenied)
+                Err(e) if e.kind() == io::ErrorKind::AlreadyExists && ancestor.is_dir() => break,
+                Err(e) => return Err(e),
             }
         }
-        match self.inner.mkdir(path) {
-            Ok(()) => Ok(()),
-            Err(_) if path.is_dir() => Ok(()),
-            Err(e) => Err(e),
+
+        // collect only the uncreated directories w/o letting the vec resize
+        let mut uncreated_dirs = Vec::with_capacity(uncreated_dir_ctr);
+        uncreated_dirs.extend(ancestors.take(uncreated_dir_ctr));
+
+        for uncreated_dir in uncreated_dirs.iter().rev() {
+            if let Err(e) = self.inner.mkdir(uncreated_dir) {
+                if e.kind() != io::ErrorKind::AlreadyExists || !uncreated_dir.is_dir() {
+                    return Err(e);
+                }
+            }
         }
+
+        Ok(())
     }
 }
 
