@@ -17,7 +17,6 @@ pub(super) mod query;
 mod spans;
 #[cfg(test)]
 mod tests;
-mod unexpand;
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
