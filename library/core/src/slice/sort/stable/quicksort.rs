@@ -97,7 +97,7 @@ fn stable_partition<T, F: FnMut(&T, &T) -> bool>(
     }
 
     let v_base = v.as_ptr();
-    let scratch_base = MaybeUninit::slice_as_mut_ptr(scratch);
+    let scratch_base = scratch.as_mut_ptr().cast_init();
 
     // The core idea is to write the values that compare as less-than to the left
     // side of `scratch`, while the values that compared as greater or equal than

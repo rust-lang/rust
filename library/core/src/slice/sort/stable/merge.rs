@@ -35,7 +35,7 @@ pub fn merge<T, F: FnMut(&T, &T) -> bool>(
         //  1. Protects integrity of `v` from panics in `is_less`.
         //  2. Fills the remaining gap in `v` if the longer run gets consumed first.
 
-        let buf = MaybeUninit::slice_as_mut_ptr(scratch);
+        let buf = scratch.as_mut_ptr().cast_init();
 
         let v_base = v.as_mut_ptr();
         let v_mid = v_base.add(mid);
