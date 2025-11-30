@@ -1,6 +1,6 @@
 #![feature(arbitrary_self_types)]
 
-use std::ops::{Receiver, Deref};
+use std::ops::{Deref, Receiver};
 
 struct SmartPtr<'a, T: ?Sized>(&'a T);
 
@@ -11,31 +11,34 @@ impl<'a, T: ?Sized> Deref for SmartPtr<'a, T> {
     }
 }
 
+impl<'a, T: ?Sized> Receiver for SmartPtr<'a, T> {
+    type Target = T;
+}
+
 impl<'a, T: ?Sized> Clone for SmartPtr<'a, T> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
 
-impl<'a, T: ?Sized> Copy for SmartPtr<'a, T> {
-}
+impl<'a, T: ?Sized> Copy for SmartPtr<'a, T> {}
 
 struct Foo(u32);
 impl Foo {
-    fn a<R: Receiver<Target=Self>>(self: R) -> u32 {
+    fn a<R: Receiver<Target = Self>>(self: R) -> u32 {
         //~^ ERROR invalid generic `self` parameter type: `R`
         2
     }
-    fn b<R: Deref<Target=Self>>(self: R) -> u32 {
+    fn b<R: Deref<Target = Self> + Receiver<Target = Self>>(self: R) -> u32 {
         //~^ ERROR invalid generic `self` parameter type: `R`
         self.0
     }
-    fn c(self: impl Receiver<Target=Self>) -> u32 {
+    fn c(self: impl Receiver<Target = Self>) -> u32 {
         //~^ ERROR invalid generic `self` parameter type: `impl Receiver<Target = Self>`
         3
     }
-    fn d(self: impl Deref<Target=Self>) -> u32 {
-        //~^ ERROR invalid generic `self` parameter type: `impl Deref<Target = Self>`
+    fn d(self: impl Deref<Target = Self> + Receiver<Target = Self>) -> u32 {
+        //~^ ERROR invalid generic `self` parameter type: `impl Deref<Target = Self> + Receiver<Target = Self>`
         self.0
     }
 }

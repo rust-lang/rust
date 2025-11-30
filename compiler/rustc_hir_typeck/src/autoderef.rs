@@ -15,7 +15,7 @@ use super::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
-        Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
+        Autoderef::new(self, None, self.param_env, self.body_id, span, base_ty)
     }
 
     pub(crate) fn try_overloaded_deref(
