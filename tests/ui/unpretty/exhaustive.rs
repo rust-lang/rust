@@ -27,6 +27,7 @@
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
+#![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 
@@ -244,6 +245,8 @@ mod expressions {
     fn expr_try_block() {
         try {}
         try { return; }
+        try bikeshed Option<_> { }
+        try bikeshed Option<String> { None? }
     }
 
     /// ExprKind::Assign
