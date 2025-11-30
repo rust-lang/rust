@@ -330,7 +330,7 @@ pub(crate) mod rustc {
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, _args_ref) if !ty.is_box() => {
+                ty::Adt(adt_def, args_ref) if !ty.is_box() => {
                     let (lo, hi) = cx.tcx().layout_scalar_valid_range(adt_def.did());
 
                     use core::ops::Bound::*;
@@ -339,14 +339,43 @@ pub(crate) mod rustc {
                         (AdtKind::Struct, Unbounded, Unbounded) => {
                             Self::from_struct((ty, layout), *adt_def, cx)
                         }
-                        (AdtKind::Struct, Included(1), Included(_hi)) if is_transparent => {
-                            // FIXME(@joshlf): Support `NonZero` types:
-                            // - Check to make sure that the first field is
-                            //   numerical
-                            // - Check to make sure that the upper bound is the
-                            //   maximum value for the field's type
-                            // - Construct `Self::nonzero`
-                            Err(Err::NotYetSupported)
+                        (AdtKind::Struct, Included(1), hi_val) if is_transparent => {
+                            let variant = adt_def.non_enum_variant();
+                            // For now, only support `repr(transparent)` types
+                            // with a single field. Technically
+                            // `repr(transparent)` also works with types with
+                            // any number of zero-sized fields (in addition to
+                            // their single non-zero-sized field), but no such
+                            // types exist in the standard library which also
+                            // use
+                            // `#[rustc_layout_scalar_valid_range_(start|end)]`.
+                            let [field] = &variant.fields.as_slice().raw else {
+                                return Err(Err::NotYetSupported);
+                            };
+
+                            let field_ty = field.ty(cx.tcx(), args_ref);
+
+                            let field_layout = layout_of(cx, field_ty)?;
+                            let field_size = field_layout.size;
+
+                            let max_value = (1u128 << field_size.bits()) - 1;
+                            let hi_val = match hi_val {
+                                Included(hi_val) => hi_val,
+                                Unbounded => max_value,
+                                Excluded(_) => return Err(Err::NotYetSupported),
+                            };
+
+                            if hi_val == max_value
+                                && let ty::Uint(_) = *field_ty.kind()
+                            {
+                                Ok(Self::seq([
+                                    Self::def(Def::Adt(adt_def.clone())),
+                                    Self::def(Def::Field(field)),
+                                    Self::nonzero(field_size.bytes()),
+                                ]))
+                            } else {
+                                Err(Err::NotYetSupported)
+                            }
                         }
                         (AdtKind::Enum, Unbounded, Unbounded) => {
                             Self::from_enum((ty, layout), *adt_def, cx)
