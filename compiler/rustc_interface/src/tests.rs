@@ -14,10 +14,10 @@ use rustc_session::config::{
     CoverageOptions, DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation,
     Externs, FmtDebug, FunctionReturn, InliningThreshold, Input, InstrumentCoverage,
     InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirIncludeSpans,
-    NextSolverConfig, Offload, OomStrategy, Options, OutFileName, OutputType, OutputTypes,
-    PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip,
-    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
-    build_session_options, rustc_optgroups,
+    NextSolverConfig, Offload, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
+    Passes, PatchableFunctionEntry, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath,
+    SymbolManglingVersion, WasiExecModel, build_configuration, build_session_options,
+    rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -839,7 +839,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(no_unique_section_names, true);
     tracked!(offload, vec![Offload::Enable]);
     tracked!(on_broken_pipe, OnBrokenPipe::Kill);
-    tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(packed_bundled_libs, true);
     tracked!(panic_abort_tests, true);
