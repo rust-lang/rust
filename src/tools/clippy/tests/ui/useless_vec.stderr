@@ -1,21 +1,125 @@
 error: useless use of `vec!`
-  --> tests/ui/useless_vec.rs:8:26
+  --> tests/ui/useless_vec.rs:29:14
    |
-LL |       let _some_variable = vec![
-   |  __________________________^
-LL | |
-LL | |         1, 2, // i'm here to stay
-LL | |         3, 4, // but this one going away ;-;
-LL | |     ]; // that is life anyways
-   | |_____^
+LL |     on_slice(&vec![]);
+   |              ^^^^^^^ help: you can use a slice directly: `&[]`
    |
    = note: `-D clippy::useless-vec` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
-help: you can use an array directly
-   |
-LL ~     let _some_variable = [1, 2, // i'm here to stay
-LL ~         3, 4]; // that is life anyways
-   |
 
-error: aborting due to 1 previous error
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:32:18
+   |
+LL |     on_mut_slice(&mut vec![]);
+   |                  ^^^^^^^^^^^ help: you can use a slice directly: `&mut []`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:35:14
+   |
+LL |     on_slice(&vec![1, 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:38:18
+   |
+LL |     on_mut_slice(&mut vec![1, 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:44:18
+   |
+LL |         on_slice(&vec!(1, 2));
+   |                  ^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:46:22
+   |
+LL |         on_mut_slice(&mut vec!(1, 2));
+   |                      ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:50:14
+   |
+LL |     on_slice(&vec![1; 2]);
+   |              ^^^^^^^^^^^ help: you can use a slice directly: `&[1; 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:53:18
+   |
+LL |     on_mut_slice(&mut vec![1; 2]);
+   |                  ^^^^^^^^^^^^^^^ help: you can use a slice directly: `&mut [1; 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:80:19
+   |
+LL |     let _x: i32 = vec![1, 2, 3].iter().sum();
+   |                   ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:85:21
+   |
+LL |         let mut x = vec![1, 2, 3];
+   |                     ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:93:22
+   |
+LL |     let _x: &[i32] = &vec![1, 2, 3];
+   |                      ^^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:96:14
+   |
+LL |     for _ in vec![1, 2, 3] {}
+   |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:136:20
+   |
+LL |     for _string in vec![repro!(true), repro!(null)] {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[repro!(true), repro!(null)]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:154:18
+   |
+LL |     in_macro!(1, vec![1, 2], vec![1; 2]);
+   |                  ^^^^^^^^^^ help: you can use an array directly: `[1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:154:30
+   |
+LL |     in_macro!(1, vec![1, 2], vec![1; 2]);
+   |                              ^^^^^^^^^^ help: you can use an array directly: `[1; 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:175:14
+   |
+LL |     for a in vec![1, 2, 3] {
+   |              ^^^^^^^^^^^^^ help: you can use an array directly: `[1, 2, 3]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:180:14
+   |
+LL |     for a in vec![String::new(), String::new()] {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[String::new(), String::new()]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:213:33
+   |
+LL |     this_macro_doesnt_need_vec!(vec![1]);
+   |                                 ^^^^^^^ help: you can use an array directly: `[1]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:240:14
+   |
+LL |     for a in &(vec![1, 2]) {}
+   |              ^^^^^^^^^^^^^ help: you can use a slice directly: `&[1, 2]`
+
+error: useless use of `vec!`
+  --> tests/ui/useless_vec.rs:248:13
+   |
+LL |     let v = &vec![];
+   |             ^^^^^^^ help: you can use a slice directly: `&[]`
+
+error: aborting due to 20 previous errors
 

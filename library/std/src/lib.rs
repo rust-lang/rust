@@ -265,8 +265,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-
-// stabilization was reverted after it hit beta
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -421,7 +419,7 @@
 #![default_lib_allocator]
 
 // The Rust prelude
-// The compiler expects the prelude definition to be defined before it's use statement.
+// The compiler expects the prelude definition to be defined before its use statement.
 pub mod prelude;
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute

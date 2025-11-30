@@ -1572,26 +1572,31 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 [ast::PathSegment { args: None, .. }],
                 [ast::GenericBound::Trait(poly_trait_ref)],
             ) = (&type_param_path.segments[..], &bounds[..])
+                && let [ast::PathSegment { ident, args: None, id }] =
+                    &poly_trait_ref.trait_ref.path.segments[..]
                 && poly_trait_ref.modifiers == ast::TraitBoundModifiers::NONE
             {
-                if let [ast::PathSegment { ident, args: None, .. }] =
-                    &poly_trait_ref.trait_ref.path.segments[..]
-                {
-                    if ident.span == span {
-                        let Some(new_where_bound_predicate) =
-                            mk_where_bound_predicate(path, poly_trait_ref, ty)
-                        else {
-                            return false;
-                        };
-                        err.span_suggestion_verbose(
-                            *where_span,
-                            format!("constrain the associated type to `{ident}`"),
-                            where_bound_predicate_to_string(&new_where_bound_predicate),
-                            Applicability::MaybeIncorrect,
-                        );
+                if ident.span == span {
+                    let Some(partial_res) = self.r.partial_res_map.get(&id) else {
+                        return false;
+                    };
+                    if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
+                        return false;
                     }
-                    return true;
+
+                    let Some(new_where_bound_predicate) =
+                        mk_where_bound_predicate(path, poly_trait_ref, ty)
+                    else {
+                        return false;
+                    };
+                    err.span_suggestion_verbose(
+                        *where_span,
+                        format!("constrain the associated type to `{ident}`"),
+                        where_bound_predicate_to_string(&new_where_bound_predicate),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
+                return true;
             }
         }
         false

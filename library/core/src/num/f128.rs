@@ -695,8 +695,8 @@ impl f128 {
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
     /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
     /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
@@ -723,8 +723,8 @@ impl f128 {
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
     /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
     /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
@@ -769,7 +769,7 @@ impl f128 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// Note that this follows the IEEE 754-2019 semantics for `maximum`.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
@@ -802,7 +802,7 @@ impl f128 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// Note that this follows the IEEE 754-2019 semantics for `minimum`.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.

@@ -503,9 +503,9 @@ fn set_rvalue_location<'a, 'gcc, 'tcx>(
     bx: &mut Builder<'a, 'gcc, 'tcx>,
     rvalue: RValue<'gcc>,
 ) -> RValue<'gcc> {
-    if bx.location.is_some() {
+    if let Some(location) = bx.location {
         #[cfg(feature = "master")]
-        rvalue.set_location(bx.location.unwrap());
+        rvalue.set_location(location);
     }
     rvalue
 }

@@ -7,6 +7,7 @@ use crate::os::xous::ffi::{
     map_memory, update_memory_flags,
 };
 use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 
 pub struct Thread {
@@ -19,12 +20,8 @@ pub const GUARD_PAGE_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(
-        stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
+        let data = Box::into_raw(init);
         let mut stack_size = crate::cmp::max(stack, MIN_STACK_SIZE);
 
         if (stack_size & 4095) != 0 {
@@ -65,22 +62,32 @@ impl Thread {
         let tid = create_thread(
             thread_start as *mut usize,
             &mut stack_plus_guard_pages[GUARD_PAGE_SIZE..(stack_size + GUARD_PAGE_SIZE)],
-            p as usize,
+            data as usize,
             guard_page_pre,
             stack_size,
             0,
         )
         .map_err(|code| io::Error::from_raw_os_error(code as i32))?;
 
+        #[inline(never)]
+        fn rust_main_thread_not_inlined(init: Box<ThreadInit>) {
+            let rust_start = init.init();
+            rust_start();
+        }
+
         extern "C" fn thread_start(
-            main: *mut usize,
+            data: *mut usize,
             guard_page_pre: usize,
             stack_size: usize,
         ) -> ! {
-            unsafe {
-                // Run the contents of the new thread.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
-            }
+            // SAFETY: we are simply recreating the box that was leaked earlier.
+            let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
+
+            // Run the main thread with an inline(never) barrier to prevent
+            // dealloc calls from being reordered to after the TLS has been destroyed.
+            // See https://github.com/rust-lang/rust/pull/144465#pullrequestreview-3289729950
+            // for more context.
+            run_main_thread_not_inlined(init);
 
             // Destroy TLS, which will free the TLS page and call the destructor for
             // any thread local storage (if any).
