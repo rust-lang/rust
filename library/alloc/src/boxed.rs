@@ -1596,6 +1596,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
+    #[rustc_no_ubchecks]
     pub fn into_raw_with_allocator(b: Self) -> (*mut T, A) {
         let mut b = mem::ManuallyDrop::new(b);
         // We carefully get the raw pointer out in a way that Miri's aliasing model understands what
