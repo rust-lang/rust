@@ -439,19 +439,29 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .expect("if expression only expected inside FnCtxt")
                     .expr_ty(then_expr);
                 let else_span = self.find_block_span_from_hir_id(else_expr.hir_id);
-                let else_ty = self
+                let mut else_ty = self
                     .typeck_results
                     .as_ref()
                     .expect("if expression only expected inside FnCtxt")
-                    .expr_ty(else_expr);
-                if let hir::ExprKind::If(_cond, _then, None) = else_expr.kind
+                    .expr_ty_opt(else_expr);
+
+                if else_ty.is_none()
+                    && let Some(exp_found) = exp_found
+                {
+                    let exp_found = ty::error::ExpectedFound {
+                        expected: self.resolve_vars_if_possible(exp_found.expected),
+                        found: self.resolve_vars_if_possible(exp_found.found),
+                    };
+                    else_ty.get_or_insert(exp_found.found);
+                }
+
+                if let (Some(else_ty), hir::ExprKind::If(.., None)) = (else_ty, &else_expr.kind)
                     && else_ty.is_unit()
                 {
                     // Account for `let x = if a { 1 } else if b { 2 };`
                     err.note("`if` expressions without `else` evaluate to `()`");
                     err.note("consider adding an `else` block that evaluates to the expected type");
                 }
-                err.span_label(then_span, "expected because of this");
 
                 let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
                     if then_span.hi() == expr_span.hi() || else_span.hi() == expr_span.hi() {
@@ -478,15 +488,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     else_expr.hir_id
                 };
-                if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
-                    Some(then_id),
-                    then_ty,
-                    then_span,
-                    Some(else_id),
-                    else_ty,
-                    else_span,
-                ) {
-                    err.subdiagnostic(subdiag);
+                if let Some(else_ty) = else_ty {
+                    if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
+                        Some(then_id),
+                        then_ty,
+                        then_span,
+                        Some(else_id),
+                        else_ty,
+                        else_span,
+                    ) {
+                        err.subdiagnostic(subdiag);
+                    }
                 }
             }
             ObligationCauseCode::LetElse => {
