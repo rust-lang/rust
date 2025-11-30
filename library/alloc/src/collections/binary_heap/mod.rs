@@ -801,11 +801,9 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // If hole has only one child.
         //
-        // We want: child < end
-        // => 2 * hole + 1 < end
-        // => hole < (end - 1) / 2
-        //
-        // For integers this is same as:
+        // We want: child <= end
+        // => 2 * hole + 1 <= end
+        // => 2 * hole + 1 < end + 1
         // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
@@ -866,11 +864,9 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
         // If hole has only one child.
         //
-        // We want: child < end
-        // => 2 * hole + 1 < end
-        // => hole < (end - 1) / 2
-        //
-        // For integers this is same as:
+        // We want: child <= end
+        // => 2 * hole + 1 <= end
+        // => 2 * hole + 1 < end + 1
         // => hole < end / 2
         if hole.pos() < end / 2 {
             let child = 2 * hole.pos() + 1;
