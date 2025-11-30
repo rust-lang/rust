@@ -280,10 +280,9 @@ impl Read for Repeat {
 
     #[inline]
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
-        // SAFETY: No uninit bytes are being written.
-        unsafe { buf.as_mut() }.write_filled(self.byte);
+        buf.as_mut().write_filled(self.byte);
         // SAFETY: the entire unfilled portion of buf has been initialized.
-        unsafe { buf.advance_unchecked(buf.capacity()) };
+        unsafe { buf.advance(buf.capacity()) };
         Ok(())
     }
 
