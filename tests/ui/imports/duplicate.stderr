@@ -68,7 +68,7 @@ LL |     use self::m2::*;
    |         ^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();
@@ -96,7 +96,7 @@ error: aborting due to 5 previous errors
 Some errors have detailed explanations: E0252, E0659.
 For more information about an error, try `rustc --explain E0252`.
 Future incompatibility report: Future breakage diagnostic:
-error: `foo` is ambiguous
+error[E0659]: `foo` is ambiguous
   --> $DIR/duplicate.rs:36:8
    |
 LL |     g::foo();

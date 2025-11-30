@@ -257,9 +257,6 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
-lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `use`
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -467,9 +464,6 @@ lint_lintpass_by_hand = implementing `LintPass` by hand
 lint_macro_expr_fragment_specifier_2024_migration =
     the `expr` fragment specifier will accept more expressions in the 2024 edition
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
-lint_macro_is_private = macro `{$ident}` is private
-
-lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 lint_malformed_attribute = malformed lint attribute input
 
@@ -648,10 +642,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
-    .label = not found from {$location}
-    .help = import `macro_rules` with `use` to make it callable above its definition
-
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
     .negative_becomes_note = and the value `-{$lit}` will become `{$actually}{$ty}`
@@ -687,9 +677,6 @@ lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
 lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
 
-lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
-    .suggestion = consider making the `extern crate` item publicly accessible
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -714,10 +701,6 @@ lint_redundant_import = the item `{$ident}` is imported redundantly
     .label_defined_here = the item `{$ident}` is already defined here
     .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
     .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
-
-lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
-    .note = the most public imported item is `{$max_vis}`
-    .help = reduce the glob import's visibility or increase visibility of imported items
 
 lint_redundant_semicolons =
     unnecessary trailing {$multiple ->
@@ -878,9 +861,6 @@ lint_unicode_text_flow = unicode codepoint changing visible direction of text pr
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`
 
-lint_unknown_diagnostic_attribute = unknown diagnostic attribute
-lint_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
-
 lint_unknown_gated_lint =
     unknown lint: `{$name}`
     .note = the `{$name}` lint is unstable
@@ -961,8 +941,6 @@ lint_unused_imports = {$num_snippets ->
 
 lint_unused_lifetime = lifetime parameter `{$ident}` never used
     .suggestion = elide the unused lifetime
-
-lint_unused_macro_definition = unused macro definition: `{$name}`
 
 lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value

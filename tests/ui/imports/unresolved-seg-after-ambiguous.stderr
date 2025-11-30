@@ -4,7 +4,7 @@ error[E0432]: unresolved import `self::a::E`
 LL | use self::a::E::in_exist;
    |              ^ `E` is a struct, not a module
 
-error: `E` is ambiguous
+error[E0759]: `E` is ambiguous
   --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
    |
 LL | use self::a::E::in_exist;
@@ -29,9 +29,10 @@ LL |         pub use self::d::*;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0432`.
+Some errors have detailed explanations: E0432, E0759.
+For more information about an error, try `rustc --explain E0432`.
 Future incompatibility report: Future breakage diagnostic:
-error: `E` is ambiguous
+error[E0759]: `E` is ambiguous
   --> $DIR/unresolved-seg-after-ambiguous.rs:19:14
    |
 LL | use self::a::E::in_exist;
