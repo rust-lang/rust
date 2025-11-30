@@ -1897,6 +1897,9 @@ impl<'test> TestCx<'test> {
         }
 
         rustc.args(&self.props.compile_flags);
+        if !is_aux {
+            rustc.args(&self.props.non_aux_compile_flags);
+        }
 
         rustc
     }

@@ -1246,7 +1246,6 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_forbidden_ctarget_feature)]
-#[note]
 #[note(codegen_ssa_forbidden_ctarget_feature_issue)]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
