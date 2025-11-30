@@ -115,10 +115,10 @@ features! {
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] asimd: "neon";
     /// FEAT_AdvSIMD (Advanced SIMD/NEON)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] pmull: "pmull";
-    implied by target_features: ["aes"];
+    implied by cfg(target_feature = "aes");
     /// FEAT_PMULL (Polynomial Multiply) - Implied by `aes` target_feature
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] fp: "fp";
-    implied by target_features: ["neon"];
+    implied by cfg(target_feature = "neon");
     /// FEAT_FP (Floating point support) - Implied by `neon` target_feature
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] aes: "aes";
     /// FEAT_AES (AES SIMD instructions) & FEAT_PMULL (PMULL{2}, 64-bit operand variants)
