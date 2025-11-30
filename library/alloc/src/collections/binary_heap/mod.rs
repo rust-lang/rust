@@ -867,10 +867,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
             // SAFETY: The previous statements imply
             //  child is a valid index (child < end <= self.len()),
             //  and child != hole.pos().
-            if hole.element() < unsafe { hole.get(child) } {
-                // SAFETY: same as above
-                unsafe { hole.move_to(child) };
-            }
+            unsafe { hole.move_to(child) };
         }
         pos = hole.pos();
         drop(hole);
