@@ -1,5 +1,5 @@
 //@ignore-target: windows # No pthreads on Windows
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::*;
