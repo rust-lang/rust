@@ -4,7 +4,7 @@
 #![allow(dropping_references)]
 
 struct Foo {
-    x: isize
+    x: isize,
 }
 
 #[allow(drop_bounds)]
@@ -20,7 +20,7 @@ impl Drop for Foo {
 
 impl Bar for Foo {
     fn blah(&self) {
-        self.drop();    //~ ERROR explicit use of destructor method
+        self.drop(); //~ ERROR explicit use of destructor method
     }
 }
 
