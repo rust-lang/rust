@@ -89,7 +89,7 @@ where
             match self.iter.next_chunk() {
                 Ok(chunk) => acc = f(acc, chunk)?,
                 Err(remainder) => {
-                    // Make sure to not override `self.remainder` with an empty array
+                    // Make sure to not overwrite `self.remainder` with an empty array
                     // when `next` is called after `ArrayChunks` exhaustion.
                     self.remainder.get_or_insert(remainder);
 

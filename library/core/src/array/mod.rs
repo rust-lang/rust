@@ -924,7 +924,7 @@ const fn try_from_fn_erased<R: [const] Try<Output: [const] Destruct>>(
 /// All write accesses to this structure are unsafe and must maintain a correct
 /// count of `initialized` elements.
 ///
-/// To minimize indirection fields are still pub but callers should at least use
+/// To minimize indirection, fields are still pub but callers should at least use
 /// `push_unchecked` to signal that something unsafe is going on.
 struct Guard<'a, T> {
     /// The array to be initialized.
@@ -943,7 +943,7 @@ impl<T> Guard<'_, T> {
     #[rustc_const_unstable(feature = "array_try_from_fn", issue = "89379")]
     pub(crate) const unsafe fn push_unchecked(&mut self, item: T) {
         // SAFETY: If `initialized` was correct before and the caller does not
-        // invoke this method more than N times then writes will be in-bounds
+        // invoke this method more than N times, then writes will be in-bounds
         // and slots will not be initialized more than once.
         unsafe {
             self.array_mut.get_unchecked_mut(self.initialized).write(item);
@@ -972,7 +972,7 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 /// `next` at most `N` times, the iterator can still be used afterwards to
 /// retrieve the remaining items.
 ///
-/// If `iter.next()` panicks, all items already yielded by the iterator are
+/// If `iter.next()` panics, all items already yielded by the iterator are
 /// dropped.
 ///
 /// Used for [`Iterator::next_chunk`].
@@ -1004,6 +1004,7 @@ fn iter_next_chunk_erased<T>(
     buffer: &mut [MaybeUninit<T>],
     iter: &mut impl Iterator<Item = T>,
 ) -> Result<(), usize> {
+    // if `Iterator::next` panics, this guard will drop already initialized items
     let mut guard = Guard { array_mut: buffer, initialized: 0 };
     while guard.initialized < guard.array_mut.len() {
         let Some(item) = iter.next() else {
