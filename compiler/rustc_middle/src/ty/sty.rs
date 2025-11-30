@@ -1987,6 +1987,14 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    pub fn is_pod(self, tcx: TyCtxt<'tcx>) -> bool {
+        match self.kind() {
+            ty::Int(..) | ty::Uint(..) | ty::Bool | ty::Char => true,
+            ty::Array(element_ty, _len) => element_ty.is_pod(tcx),
+            _ => false,
+        }
+    }
+
     pub fn is_trivially_wf(self, tcx: TyCtxt<'tcx>) -> bool {
         match *self.kind() {
             ty::Bool
