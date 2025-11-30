@@ -8,8 +8,8 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub unsafe fn new(thread_name: Option<Box<str>>) -> Handler {
-        make_handler(false, thread_name)
+    pub unsafe fn new() -> Handler {
+        make_handler(false)
     }
 
     fn null() -> Handler {
@@ -117,8 +117,15 @@ mod imp {
                 if let Some(thread_info) = thread_info
                     && thread_info.guard_page_range.contains(&fault_addr)
                 {
-                    let name = thread_info.thread_name.as_deref().unwrap_or("<unknown>");
-                    let tid = crate::thread::current_os_id();
+                    // Hey you! Yes, you modifying the stack overflow message!
+                    // Please make sure that all functions called here are
+                    // actually async-signal-safe. If they're not, try retrieving
+                    // the information beforehand and storing it in `ThreadInfo`.
+                    // Thank you!
+                    // - says Jonas after having had to watch his carefully
+                    //   written code get made unsound again.
+                    let tid = thread_info.tid;
+                    let name = thread_info.name.as_deref().unwrap_or("<unknown>");
                     rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
                     rtabort!("stack overflow");
                 }
@@ -164,12 +171,12 @@ mod imp {
                 if !NEED_ALTSTACK.load(Ordering::Relaxed) {
                     // haven't set up our sigaltstack yet
                     NEED_ALTSTACK.store(true, Ordering::Release);
-                    let handler = unsafe { make_handler(true, None) };
+                    let handler = unsafe { make_handler(true) };
                     MAIN_ALTSTACK.store(handler.data, Ordering::Relaxed);
                     mem::forget(handler);
 
                     if let Some(guard_page_range) = guard_page_range.take() {
-                        set_current_info(guard_page_range, Some(Box::from("main")));
+                        set_current_info(guard_page_range);
                     }
                 }
 
@@ -240,14 +247,14 @@ mod imp {
     /// # Safety
     /// Mutates the alternate signal stack
     #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn make_handler(main_thread: bool, thread_name: Option<Box<str>>) -> Handler {
+    pub unsafe fn make_handler(main_thread: bool) -> Handler {
         if cfg!(panic = "immediate-abort") || !NEED_ALTSTACK.load(Ordering::Acquire) {
             return Handler::null();
         }
 
         if !main_thread {
             if let Some(guard_page_range) = unsafe { current_guard() } {
-                set_current_info(guard_page_range, thread_name);
+                set_current_info(guard_page_range);
             }
         }
 
@@ -633,10 +640,7 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(
-        _main_thread: bool,
-        _thread_name: Option<Box<str>>,
-    ) -> super::Handler {
+    pub unsafe fn make_handler(_main_thread: bool) -> super::Handler {
         super::Handler::null()
     }
 
@@ -720,10 +724,7 @@ mod imp {
 
     pub unsafe fn cleanup() {}
 
-    pub unsafe fn make_handler(
-        main_thread: bool,
-        _thread_name: Option<Box<str>>,
-    ) -> super::Handler {
+    pub unsafe fn make_handler(main_thread: bool) -> super::Handler {
         if !main_thread {
             reserve_stack();
         }
