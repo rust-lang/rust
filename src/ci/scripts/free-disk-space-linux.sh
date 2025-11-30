@@ -247,12 +247,75 @@ cleanSwap() {
     free -h
 }
 
+# Try to find a different drive to put our data on so we don't need to run cleanup.
+# The availability of the disks we're probing isn't guaranteed,
+# so this is opportunistic.
+checkAlternative() {
+    local gha_alt_disk="/mnt"
+
+    # we need ~50GB of space
+    local space_target_kb=$((50 * 1024 * 1024))
+    local available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
+
+    # mount options that trade durability for performance
+    # ignore-tidy-linelength
+    local mntopts="defaults,discard,journal_async_commit,barrier=0,noauto_da_alloc,lazytime,data=writeback"
+
+    # GHA has a 2nd disk mounted at /mnt that is almost empty.
+    # Check if it's a valid mountpoint and it has enough available space.
+    if mountpoint "$gha_alt_disk" && [ "$available_space_kb" -ge "$space_target_kb" ]; then
+        local blkdev=$(df -k "$gha_alt_disk" --output=source | tail -n 1)
+        echo "Sufficient space available on $blkdev mounted at $gha_alt_disk"
+        # see cleanSwap(), swapfile may be mounted under /mnt
+        sudo swapoff -a || true
+
+        # unmount from original location
+        sudo umount "$gha_alt_disk"
+
+        # remount under the obj dir which is used by docker scripts to write most
+        # of our build output. And apply optimized mount options while we're at it.
+        mkdir ./obj
+        if ! sudo mount $blkdev ./obj -o $mntopts; then
+            sudo dmesg | tail -n 20 # kernel log should have more details for mount failures
+            echo "::warning::Failed to remount $blkdev to ./obj with options: $mntopts"
+            return
+        fi
+
+        # ensure current user can access everything.
+        # later scripts assume they have recursive access to obj
+        sudo chown -R "$USER":"$USER" ./obj
+
+        # Exit from this script to avoid wasting time removing disk space,
+        # as we already have enough disk space in the alternative drive.
+        exit 0
+    fi
+
+    # ephemeral NVMe drives on AWS
+    for dev in /dev/nvme*n1; do
+        # check that it's a blockdev and not mounted.
+        if [ -b "$dev" ] && [ "$(mount | grep "$dev" | wc -l)" -eq 0 ]; then
+            echo "Found unused block device $dev, creating filesystem"
+            sudo mkfs.ext4 -E lazy_itable_init=1,lazy_journal_init=1 "$dev"
+            mkdir ./obj
+            sudo mount "$dev" ./obj -o $mntopts
+            sudo chown -R "$USER":"$USER" ./obj
+
+            exit 0
+        fi
+    done
+}
+
+
+
 # Display initial disk space stats
 
 AVAILABLE_INITIAL=$(getAvailableSpace)
 
 printDF "BEFORE CLEAN-UP:"
 echo ""
+
+checkAlternative
+
 execAndMeasureSpaceChange cleanPackages "Unused packages"
 execAndMeasureSpaceChange cleanDocker "Docker images"
 execAndMeasureSpaceChange cleanSwap "Swap storage"
