@@ -26,11 +26,9 @@ pub(super) fn extract_refined_covspans<'tcx>(
         return;
     }
 
-    let &ExtractedHirInfo { body_span, .. } = hir_info;
-
     // If there somehow isn't an expansion tree node corresponding to the
     // body span, return now and don't create any mappings.
-    let Some(node) = expn_tree.get(body_span.ctxt().outer_expn()) else { return };
+    let Some(node) = expn_tree.get(hir_info.body_span.ctxt().outer_expn()) else { return };
 
     let mut covspans = vec![];
 
@@ -47,27 +45,29 @@ pub(super) fn extract_refined_covspans<'tcx>(
         }
     }
 
-    covspans.retain(|covspan: &Covspan| {
-        let covspan_span = covspan.span;
-        // Discard any spans not contained within the function body span.
-        // Also discard any spans that fill the entire body, because they tend
-        // to represent compiler-inserted code, e.g. implicitly returning `()`.
-        if !body_span.contains(covspan_span) || body_span.source_equal(covspan_span) {
-            return false;
-        }
+    if let Some(body_span) = node.body_span {
+        covspans.retain(|covspan: &Covspan| {
+            let covspan_span = covspan.span;
+            // Discard any spans not contained within the function body span.
+            // Also discard any spans that fill the entire body, because they tend
+            // to represent compiler-inserted code, e.g. implicitly returning `()`.
+            if !body_span.contains(covspan_span) || body_span.source_equal(covspan_span) {
+                return false;
+            }
 
-        // Each pushed covspan should have the same context as the body span.
-        // If it somehow doesn't, discard the covspan, or panic in debug builds.
-        if !body_span.eq_ctxt(covspan_span) {
-            debug_assert!(
-                false,
-                "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
-            );
-            return false;
-        }
+            // Each pushed covspan should have the same context as the body span.
+            // If it somehow doesn't, discard the covspan, or panic in debug builds.
+            if !body_span.eq_ctxt(covspan_span) {
+                debug_assert!(
+                    false,
+                    "span context mismatch: body_span={body_span:?}, covspan.span={covspan_span:?}"
+                );
+                return false;
+            }
 
-        true
-    });
+            true
+        });
+    }
 
     // Only proceed if we found at least one usable span.
     if covspans.is_empty() {
@@ -78,10 +78,9 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // Otherwise, add a fake span at the start of the body, to avoid an ugly
     // gap between the start of the body and the first real span.
     // FIXME: Find a more principled way to solve this problem.
-    covspans.push(Covspan {
-        span: hir_info.fn_sig_span.unwrap_or_else(|| body_span.shrink_to_lo()),
-        bcb: START_BCB,
-    });
+    if let Some(span) = node.fn_sig_span.or_else(|| try { node.body_span?.shrink_to_lo() }) {
+        covspans.push(Covspan { span, bcb: START_BCB });
+    }
 
     let compare_covspans = |a: &Covspan, b: &Covspan| {
         compare_spans(a.span, b.span)

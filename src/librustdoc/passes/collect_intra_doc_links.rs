@@ -901,14 +901,18 @@ pub(crate) struct PreprocessedMarkdownLink(
 
 /// Returns:
 /// - `None` if the link should be ignored.
-/// - `Some(Err)` if the link should emit an error
-/// - `Some(Ok)` if the link is valid
+/// - `Some(Err(_))` if the link should emit an error
+/// - `Some(Ok(_))` if the link is valid
 ///
 /// `link_buffer` is needed for lifetime reasons; it will always be overwritten and the contents ignored.
 fn preprocess_link(
     ori_link: &MarkdownLink,
     dox: &str,
 ) -> Option<Result<PreprocessingInfo, PreprocessingError>> {
+    // IMPORTANT: To be kept in sync with the corresponding function in `rustc_resolve::rustdoc`.
+    // Namely, whenever this function returns a successful result for a given input,
+    // the rustc counterpart *MUST* return a link that's equal to `PreprocessingInfo.path_str`!
+
     // certain link kinds cannot have their path be urls,
     // so they should not be ignored, no matter how much they look like urls.
     // e.g. [https://example.com/] is not a link to example.com.
