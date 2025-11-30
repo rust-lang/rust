@@ -776,15 +776,14 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     unsafe fn sift_down_range(&mut self, pos: usize, end: usize) -> usize {
         // SAFETY: The caller guarantees that pos < end <= self.len().
         let mut hole = unsafe { Hole::new(&mut self.data, pos) };
-        let mut child = hole.pos();
 
         // Loop invariant: child == 2 * hole.pos() + 1.
-        while hole.pos <= end.saturating_sub(2) / 2 {
+        while hole.pos() <= end.saturating_sub(2) / 2 {
             // Using the invariant, we can see
             // hole <= (end - 2) / 2
             // => (child - 1) / 2 <= (end - 2) / 2
             // => child <= end - 1, which is guaranteed by caller
-            child = 2 * hole.pos() + 1;
+            let mut child = 2 * hole.pos() + 1;
 
             // compare with the greater of the two children
             // SAFETY: child < end - 1 < self.len() and
