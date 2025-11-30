@@ -19,6 +19,7 @@ declare_lint_pass! {
         AARCH64_SOFTFLOAT_NEON,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
+        AMBIGUOUS_GLOB_IMPORTED_TRAIT,
         AMBIGUOUS_GLOB_IMPORTS,
         AMBIGUOUS_GLOB_REEXPORTS,
         ARITHMETIC_OVERFLOW,
@@ -4485,6 +4486,61 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #114095 <https://github.com/rust-lang/rust/issues/114095>",
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `ambiguous_trait_glob_imports` lint reports uses of traits that are
+    /// imported ambiguously via glob imports. Previously, this was not enforced
+    /// due to a bug in rustc.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(ambiguous_trait_glob_imports)]
+    /// mod m1 {
+    ///    pub trait Trait {
+    ///            fn method1(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///    mod m2 {
+    ///        pub trait Trait {
+    ///            fn method2(&self) {}
+    ///        }
+    ///        impl Trait for u8 {}
+    ///    }
+    ///
+    ///  fn main() {
+    ///      use m1::*;
+    ///      use m2::*;
+    ///      0u8.method1();
+    ///      0u8.method2();
+    ///  }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// When multiple traits with the same name are brought into scope through glob imports,
+    /// one trait becomes the "primary" one while the others are shadowed. Methods from the
+    /// shadowed traits (e.g. `method2`) become inaccessible, while methods from the "primary"
+    /// trait (e.g. `method1`) still resolve. Ideally, none of the ambiguous traits would be in scope,
+    /// but we have to allow this for now because of backwards compatibility.
+    /// This lint reports uses of these "primary" traits that are ambiguous.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a
+    /// hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub AMBIGUOUS_GLOB_IMPORTED_TRAIT,
+    Warn,
+    "detects usages of ambiguously glob imported traits",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #147992 <https://github.com/rust-lang/rust/issues/147992>",
+        report_in_deps: false,
     };
 }
 
