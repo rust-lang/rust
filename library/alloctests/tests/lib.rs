@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
+#![feature(const_heap)]
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
 #![feature(wtf8_internals)]
