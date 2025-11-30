@@ -6,6 +6,12 @@ LL |     fn calm_down_please() -> impl Sized;
 ...
 LL |     fn calm_down_please(_: (), _: (), _: ()) {}
    |                            ^^^^^^^^^^^^^^^^ expected 0 parameters, found 3
+   |
+help: modify the signature to match the trait definition
+   |
+LL -     fn calm_down_please(_: (), _: (), _: ()) {}
+LL +     fn calm_down_please() {}
+   |
 
 error: aborting due to 1 previous error
 

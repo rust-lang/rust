@@ -12,6 +12,12 @@ LL |     fn bar();
 ...
 LL |     fn bar(s: _) {}
    |               ^ expected 0 parameters, found 1
+   |
+help: modify the signature to match the trait definition
+   |
+LL -     fn bar(s: _) {}
+LL +     fn bar() {}
+   |
 
 error: aborting due to 2 previous errors
 

@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -1760,6 +1760,64 @@ fn compare_number_of_method_arguments<'tcx>(
                 impl_number_args
             ),
         );
+
+        let sm = tcx.sess.source_map();
+        let find_param_bounds = |snippet: &str| -> Option<(usize, usize)> {
+            let start = snippet.find('(')?;
+            let mut depth = 1usize;
+            let bytes = snippet.as_bytes();
+            let mut i = start + 1;
+            while i < bytes.len() {
+                match bytes[i] as char {
+                    '(' => depth += 1,
+                    ')' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            return Some((start + 1, i));
+                        }
+                    }
+                    _ => {}
+                }
+                i += 1;
+            }
+            None
+        };
+
+        let impl_inputs_span = (!impl_m_sig.span.is_dummy())
+            .then(|| {
+                sm.span_to_snippet(impl_m_sig.span).ok().and_then(|snippet| {
+                    find_param_bounds(&snippet).map(|(lo_rel, hi_rel)| {
+                        let lo = impl_m_sig.span.lo() + BytePos(lo_rel as u32);
+                        let hi = impl_m_sig.span.lo() + BytePos(hi_rel as u32);
+                        impl_m_sig.span.with_lo(lo).with_hi(hi)
+                    })
+                })
+            })
+            .flatten();
+
+        let suggestion = trait_m
+            .def_id
+            .as_local()
+            .and_then(|def_id| {
+                let (trait_sig, _) = tcx.hir_expect_trait_item(def_id).expect_fn();
+                sm.span_to_snippet(trait_sig.span).ok().and_then(|snippet| {
+                    find_param_bounds(&snippet)
+                        .map(|(lo_rel, hi_rel)| snippet[lo_rel..hi_rel].to_string())
+                })
+            })
+            .or_else(|| {
+                let signature = trait_m.signature(tcx);
+                find_param_bounds(&signature).map(|(lo, hi)| signature[lo..hi].trim().to_string())
+            });
+
+        if let (Some(span), Some(suggestion)) = (impl_inputs_span, suggestion) {
+            err.span_suggestion_verbose(
+                span,
+                "modify the signature to match the trait definition",
+                suggestion,
+                Applicability::MaybeIncorrect,
+            );
+        }
 
         return Err(err.emit_unless_delay(delay));
     }
