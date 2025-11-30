@@ -3,12 +3,28 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T> MyType {
    |      ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `T`, or make use of it
+   |
+LL - impl<T> MyType {
+LL + impl MyType {
+   |
+LL | impl<T> MyType<T> {
+   |               +++
 
 error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
   --> $DIR/unconstrained-type-params-inherent-impl.rs:20:9
    |
 LL | impl<T, U> MyType1<T> {
    |         ^ unconstrained type parameter
+   |
+help: either remove the unused type parameter `U`, or make use of it
+   |
+LL - impl<T, U> MyType1<T> {
+LL + impl<T> MyType1<T> {
+   |
+LL | impl<T, U> MyType1<T, U> {
+   |                     +++
 
 error: aborting due to 2 previous errors
 

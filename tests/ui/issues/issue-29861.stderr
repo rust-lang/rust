@@ -3,6 +3,11 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, T: 'a> MakeRef2 for T {
    |      ^^ unconstrained lifetime parameter
+   |
+help: make use of the lifetime parameter `'a` in the `self` type
+   |
+LL | impl<'a, T: 'a> MakeRef2 for T<'a> {
+   |                               ++++
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-29861.rs:16:43
