@@ -14,7 +14,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
 #![feature(assert_matches)]
