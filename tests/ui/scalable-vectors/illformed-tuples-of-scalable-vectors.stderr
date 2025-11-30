@@ -1,0 +1,26 @@
+error: scalable vectors must be tuple structs
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:12:1
+   |
+LL | struct Struct { x: ValidI64, y: ValidI64 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all fields in a scalable vector struct must be the same type
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:16:39
+   |
+LL | struct DifferentVectorTypes(ValidI64, ValidI32);
+   |                                       ^^^^^^^^
+
+error: all fields in a scalable vector struct must be the same type
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:20:28
+   |
+LL | struct NonVectorTypes(u32, u64);
+   |                            ^^^
+
+error: all fields in a scalable vector struct must be the same type
+  --> $DIR/illformed-tuples-of-scalable-vectors.rs:24:34
+   |
+LL | struct SomeVectorTypes(ValidI64, u64);
+   |                                  ^^^
+
+error: aborting due to 4 previous errors
+

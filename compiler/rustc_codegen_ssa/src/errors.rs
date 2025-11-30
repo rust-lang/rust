@@ -1094,6 +1094,14 @@ pub enum InvalidMonomorphization<'tcx> {
         expected_element: Ty<'tcx>,
         vector_type: Ty<'tcx>,
     },
+
+    #[diag(codegen_ssa_invalid_monomorphization_non_scalable_type, code = E0511)]
+    NonScalableType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        ty: Ty<'tcx>,
+    },
 }
 
 pub enum ExpectedPointerMutability {

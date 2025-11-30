@@ -1,0 +1,32 @@
+error: scalable vectors cannot be fields of a struct
+  --> $DIR/illformed-within-types.rs:9:8
+   |
+LL |     x: ValidI64,
+   |        ^^^^^^^^
+
+error: scalable vectors cannot be tuple fields
+  --> $DIR/illformed-within-types.rs:11:15
+   |
+LL |     in_tuple: (ValidI64,),
+   |               ^^^^^^^^^^^
+
+error: scalable vectors cannot be fields of a struct
+  --> $DIR/illformed-within-types.rs:15:20
+   |
+LL | struct TupleStruct(ValidI64);
+   |                    ^^^^^^^^
+
+error: scalable vectors cannot be fields of a variant
+  --> $DIR/illformed-within-types.rs:19:26
+   |
+LL |     StructVariant { _ty: ValidI64 },
+   |                          ^^^^^^^^
+
+error: scalable vectors cannot be fields of a variant
+  --> $DIR/illformed-within-types.rs:21:18
+   |
+LL |     TupleVariant(ValidI64),
+   |                  ^^^^^^^^
+
+error: aborting due to 5 previous errors
+

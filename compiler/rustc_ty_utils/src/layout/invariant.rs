@@ -250,7 +250,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 // And the size has to be element * count plus alignment padding, of course
                 assert!(size == (element_size * count).align_to(align));
             }
-            BackendRepr::Memory { .. } => {} // Nothing to check.
+            BackendRepr::Memory { .. } | BackendRepr::ScalableVector { .. } => {} // Nothing to check.
         }
     }
 
