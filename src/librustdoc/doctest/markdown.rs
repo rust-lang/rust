@@ -124,6 +124,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         standalone_tests,
         mergeable_tests,
         None,
+        None,
     );
     Ok(())
 }
