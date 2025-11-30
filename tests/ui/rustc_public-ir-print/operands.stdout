@@ -206,7 +206,7 @@ fn operands(_1: u8) -> () {
         StorageDead(_19);
         StorageDead(_18);
         StorageLive(_21);
-        _21 = core::panicking::AssertKind::Eq;
+        _21 = AssertKind::Eq;
         StorageLive(_22);
         StorageLive(_23);
         _23 = move _21;
@@ -219,7 +219,7 @@ fn operands(_1: u8) -> () {
         _27 = &(*_16);
         _26 = &(*_27);
         StorageLive(_28);
-        _28 = std::option::Option::None;
+        _28 = Option::None;
         _22 = core::panicking::assert_failed::<u8, u8>(move _23, move _24, move _26, move _28) -> unwind unreachable;
     }
     bb6: {
@@ -268,7 +268,7 @@ fn operands(_1: u8) -> () {
         StorageDead(_39);
         StorageDead(_38);
         StorageLive(_41);
-        _41 = core::panicking::AssertKind::Eq;
+        _41 = AssertKind::Eq;
         StorageLive(_42);
         StorageLive(_43);
         _43 = move _41;
@@ -281,7 +281,7 @@ fn operands(_1: u8) -> () {
         _47 = &(*_36);
         _46 = &(*_47);
         StorageLive(_48);
-        _48 = std::option::Option::None;
+        _48 = Option::None;
         _42 = core::panicking::assert_failed::<u8, u8>(move _43, move _44, move _46, move _48) -> unwind unreachable;
     }
     bb8: {
@@ -305,7 +305,7 @@ fn operands(_1: u8) -> () {
         StorageDead(_62);
         StorageDead(_61);
         StorageLive(_64);
-        _64 = core::panicking::AssertKind::Eq;
+        _64 = AssertKind::Eq;
         StorageLive(_65);
         StorageLive(_66);
         _66 = move _64;
@@ -318,7 +318,7 @@ fn operands(_1: u8) -> () {
         _70 = &(*_59);
         _69 = &(*_70);
         StorageLive(_71);
-        _71 = std::option::Option::None;
+        _71 = Option::None;
         _65 = core::panicking::assert_failed::<u8, u8>(move _66, move _67, move _69, move _71) -> unwind unreachable;
     }
     bb10: {
@@ -380,7 +380,7 @@ fn operands(_1: u8) -> () {
         StorageDead(_86);
         StorageDead(_85);
         StorageLive(_88);
-        _88 = core::panicking::AssertKind::Eq;
+        _88 = AssertKind::Eq;
         StorageLive(_89);
         StorageLive(_90);
         _90 = move _88;
@@ -393,7 +393,7 @@ fn operands(_1: u8) -> () {
         _94 = &(*_83);
         _93 = &(*_94);
         StorageLive(_95);
-        _95 = std::option::Option::None;
+        _95 = Option::None;
         _89 = core::panicking::assert_failed::<usize, usize>(move _90, move _91, move _93, move _95) -> unwind unreachable;
     }
 }

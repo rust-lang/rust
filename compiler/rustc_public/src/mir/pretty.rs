@@ -412,7 +412,7 @@ fn pretty_aggregate<W: Write>(
         }
         AggregateKind::Adt(def, var, _, _, _) => {
             if def.kind() == AdtKind::Enum {
-                write!(writer, "{}::{}", def.name(), def.variant(*var).unwrap().name())?;
+                write!(writer, "{}::{}", def.trimmed_name(), def.variant(*var).unwrap().name())?;
             } else {
                 write!(writer, "{}", def.variant(*var).unwrap().name())?;
             }

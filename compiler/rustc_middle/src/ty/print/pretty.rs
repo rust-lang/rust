@@ -105,7 +105,7 @@ define_helper!(
     ///
     /// Overrides `with_crate_prefix`.
 
-    // This function is not currently used in-tree, but it's used by a downstream rustc-driver in
+    // This function is used by `rustc_public` and downstream rustc-driver in
     // Ferrocene. Please check with them before removing it.
     fn with_resolve_crate_name(CrateNamePrefixGuard, SHOULD_PREFIX_WITH_CRATE_NAME);
     /// Adds the `crate::` prefix to paths where appropriate.

@@ -9,10 +9,10 @@
 #![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
-extern crate rustc_hir;
-extern crate rustc_middle;
 extern crate rustc_driver;
+extern crate rustc_hir;
 extern crate rustc_interface;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_public;
 
@@ -39,7 +39,7 @@ fn test_stable_mir() -> ControlFlow<()> {
     let items = rustc_public::all_local_items();
 
     // Test fn_abi
-    let target_fn = *get_item(&items, (ItemKind::Fn, "fn_abi")).unwrap();
+    let target_fn = *get_item(&items, (ItemKind::Fn, "input::fn_abi")).unwrap();
     let instance = Instance::try_from(target_fn).unwrap();
     let fn_abi = instance.fn_abi().unwrap();
     assert_eq!(fn_abi.conv, CallConvention::Rust);
@@ -51,11 +51,11 @@ fn test_stable_mir() -> ControlFlow<()> {
     check_result(&fn_abi.ret);
 
     // Test variadic function.
-    let variadic_fn = *get_item(&items, (ItemKind::Fn, "variadic_fn")).unwrap();
+    let variadic_fn = *get_item(&items, (ItemKind::Fn, "input::variadic_fn")).unwrap();
     check_variadic(variadic_fn);
 
     // Extract function pointers.
-    let fn_ptr_holder = *get_item(&items, (ItemKind::Fn, "fn_ptr_holder")).unwrap();
+    let fn_ptr_holder = *get_item(&items, (ItemKind::Fn, "input::fn_ptr_holder")).unwrap();
     let fn_ptr_holder_instance = Instance::try_from(fn_ptr_holder).unwrap();
     let body = fn_ptr_holder_instance.body().unwrap();
     let args = body.arg_locals();

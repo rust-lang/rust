@@ -15,11 +15,11 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate rustc_public;
 
-use std::assert_matches::assert_matches;
-use mir::{mono::Instance, TerminatorKind::*};
+use mir::{TerminatorKind::*, mono::Instance};
 use rustc_public::mir::mono::InstanceKind;
-use rustc_public::ty::{RigidTy, TyKind, Ty, UintTy};
+use rustc_public::ty::{RigidTy, Ty, TyKind, UintTy};
 use rustc_public::*;
+use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -29,7 +29,7 @@ const CRATE_NAME: &str = "input";
 fn test_stable_mir() -> ControlFlow<()> {
     let entry = rustc_public::entry_fn().unwrap();
     let main_fn = Instance::try_from(entry).unwrap();
-    assert_eq!(main_fn.name(), "main");
+    assert_eq!(main_fn.name(), "input::main");
     assert_eq!(main_fn.trimmed_name(), "main");
 
     let instances = get_instances(main_fn.body().unwrap());
@@ -65,10 +65,8 @@ fn test_fn(instance: Instance, expected_trimmed: &str, expected_qualified: &str,
 
 fn extract_elem_ty(ty: Ty) -> Ty {
     match ty.kind() {
-        TyKind::RigidTy(RigidTy::Adt(_, args)) => {
-            *args.0[0].expect_ty()
-        }
-        _ => unreachable!("Expected Vec ADT, but found: {ty:?}")
+        TyKind::RigidTy(RigidTy::Adt(_, args)) => *args.0[0].expect_ty(),
+        _ => unreachable!("Expected Vec ADT, but found: {ty:?}"),
     }
 }
 
@@ -89,19 +87,19 @@ fn test_vec_new(instance: mir::mono::Instance) {
 
 /// Inspect the instance body
 fn get_instances(body: mir::Body) -> Vec<Instance> {
-    body.blocks.iter().filter_map(|bb| {
-        match &bb.terminator.kind {
+    body.blocks
+        .iter()
+        .filter_map(|bb| match &bb.terminator.kind {
             Call { func, .. } => {
-                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else { unreachable!
-                () };
+                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else {
+                    unreachable!()
+                };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 Instance::resolve(def, &args).ok()
             }
-            _ => {
-                None
-            }
-        }
-    }).collect::<Vec<_>>()
+            _ => None,
+        })
+        .collect::<Vec<_>>()
 }
 
 /// This test will generate and analyze a dummy crate using the stable mir.

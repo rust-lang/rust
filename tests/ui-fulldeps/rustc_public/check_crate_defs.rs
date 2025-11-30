@@ -27,17 +27,20 @@ const CRATE_NAME: &str = "crate_defs";
 fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
     let local = rustc_public::local_crate();
-    check_items(&local.statics(), &["PRIVATE_STATIC", "dummy::PUBLIC_STATIC"]);
+    check_items(
+        &local.statics(),
+        &["crate_defs::PRIVATE_STATIC", "crate_defs::dummy::PUBLIC_STATIC"],
+    );
     check_items(
         &local.fn_defs(),
         &[
-            "top_level",
-            "dummy::public_fn",
-            "dummy::private_fn",
-            "dummy::PrivateStruct::new",
-            "<dummy::PrivateStruct as std::ops::Drop>::drop",
-            "DummyTrait::method",
-            "<T as DummyTrait>::method",
+            "crate_defs::top_level",
+            "crate_defs::dummy::public_fn",
+            "crate_defs::dummy::private_fn",
+            "crate_defs::dummy::PrivateStruct::new",
+            "<crate_defs::dummy::PrivateStruct as std::ops::Drop>::drop",
+            "crate_defs::DummyTrait::method",
+            "<T as crate_defs::DummyTrait>::method",
         ],
     );
 
