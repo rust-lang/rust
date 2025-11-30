@@ -1,3 +1,4 @@
+#![warn(clippy::search_is_some)]
 pub struct Thing;
 //@no-rustfix
 pub fn has_thing(things: &[Thing]) -> bool {
