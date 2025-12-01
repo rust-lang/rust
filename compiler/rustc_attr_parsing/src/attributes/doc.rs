@@ -224,7 +224,21 @@ impl DocParser {
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &ArgParser<'_>,
     ) {
-        if let Some(cfg_entry) = super::cfg::parse_cfg(cx, args) {
+        // This function replaces cases like `cfg(all())` with `true`.
+        fn simplify_cfg(cfg_entry: &mut CfgEntry) {
+            match cfg_entry {
+                CfgEntry::All(cfgs, span) if cfgs.is_empty() => {
+                    *cfg_entry = CfgEntry::Bool(true, *span)
+                }
+                CfgEntry::Any(cfgs, span) if cfgs.is_empty() => {
+                    *cfg_entry = CfgEntry::Bool(false, *span)
+                }
+                CfgEntry::Not(cfg, _) => simplify_cfg(cfg),
+                _ => {}
+            }
+        }
+        if let Some(mut cfg_entry) = super::cfg::parse_cfg(cx, args) {
+            simplify_cfg(&mut cfg_entry);
             self.attribute.cfg.push(cfg_entry);
         }
     }
@@ -237,7 +251,7 @@ impl DocParser {
     ) {
         match args {
             ArgParser::NoArgs => {
-                cx.expected_list(args.span().unwrap_or(path.span()));
+                self.attribute.auto_cfg_change.push((true, path.span()));
             }
             ArgParser::List(list) => {
                 for meta in list.mixed() {
@@ -303,6 +317,7 @@ impl DocParser {
                             }
                         }
                     }
+                    self.attribute.auto_cfg.push((cfg_hide_show, path.span()));
                 }
             }
             ArgParser::NameValue(nv) => {
@@ -311,7 +326,7 @@ impl DocParser {
                     cx.emit_lint(AttributeLintKind::DocAutoCfgWrongLiteral, nv.value_span);
                     return;
                 };
-                self.attribute.auto_cfg_change = Some((*bool_value, *span));
+                self.attribute.auto_cfg_change.push((*bool_value, *span));
             }
         }
     }
@@ -524,9 +539,6 @@ impl<S: Stage> AttributeParser<S> for DocParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {
-            if std::env::var("LOL").is_ok() {
-                eprintln!("+++++> {:#?}", self.attribute);
-            }
             Some(AttributeKind::Doc(Box::new(self.attribute)))
         } else {
             None
