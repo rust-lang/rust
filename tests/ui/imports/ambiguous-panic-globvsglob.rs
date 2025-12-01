@@ -1,0 +1,23 @@
+//@ edition: 2024
+#![crate_type = "lib"]
+mod m1 {
+    pub use core::prelude::v1::*;
+}
+
+mod m2 {
+    pub use std::prelude::v1::*;
+}
+
+#[allow(unused)]
+fn foo() {
+    use m1::*;
+    use m2::*;
+
+    // I had hoped that this would not produce the globvsglob error because it would never be
+    // resolving `panic` via one of the ambiguous glob imports above but it appears to do so, not
+    // sure why
+    panic!();
+    //~^ ERROR: `panic` is ambiguous [E0659]
+    //~| WARN: `panic` is ambiguous [ambiguous_panic_imports]
+    //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+}
