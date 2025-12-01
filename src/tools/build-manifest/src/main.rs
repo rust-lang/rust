@@ -30,16 +30,23 @@ static DOCS_FALLBACK: &[(&str, &str)] = &[
 ];
 
 static MSI_INSTALLERS: &[&str] = &[
+    "aarch64-pc-windows-gnullvm",
     "aarch64-pc-windows-msvc",
     "i686-pc-windows-gnu",
     "i686-pc-windows-msvc",
     "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-gnullvm",
     "x86_64-pc-windows-msvc",
 ];
 
 static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"];
 
-static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
+static MINGW: &[&str] = &[
+    "aarch64-pc-windows-gnullvm",
+    "i686-pc-windows-gnu",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-gnullvm",
+];
 
 static NIGHTLY_ONLY_COMPONENTS: &[PkgType] =
     &[PkgType::Miri, PkgType::JsonDocs, PkgType::RustcCodegenCranelift];
