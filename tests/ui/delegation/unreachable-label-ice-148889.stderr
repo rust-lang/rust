@@ -1,5 +1,5 @@
 error[E0767]: use of unreachable label `'foo`
-  --> $DIR/ice-issue-148889.rs:15:59
+  --> $DIR/unreachable-label-ice-148889.rs:15:59
    |
 LL |     'foo: loop {
    |     ---- unreachable label defined here
