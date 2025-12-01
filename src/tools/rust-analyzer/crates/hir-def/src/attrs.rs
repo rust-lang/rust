@@ -85,7 +85,7 @@ fn extract_doc_tt_attr(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
 
 fn extract_ra_completions(attr_flags: &mut AttrFlags, tt: ast::TokenTree) {
     let tt = TokenTreeChildren::new(&tt);
-    if let Ok(NodeOrToken::Token(option)) = tt.exactly_one()
+    if let Ok(NodeOrToken::Token(option)) = Itertools::exactly_one(tt)
         && option.kind().is_any_identifier()
     {
         match option.text() {
@@ -1101,7 +1101,7 @@ impl AttrFlags {
                     && (path.is1("rustc_layout_scalar_valid_range_start")
                         || path.is1("rustc_layout_scalar_valid_range_end"))
                     && let tt = TokenTreeChildren::new(&tt)
-                    && let Ok(NodeOrToken::Token(value)) = tt.exactly_one()
+                    && let Ok(NodeOrToken::Token(value)) = Itertools::exactly_one(tt)
                     && let Some(value) = ast::IntNumber::cast(value)
                     && let Ok(value) = value.value()
                 {
