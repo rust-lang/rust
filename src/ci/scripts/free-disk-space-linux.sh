@@ -4,6 +4,11 @@ set -euo pipefail
 # Free disk space on Linux GitHub action runners
 # Script inspired by https://github.com/jlumbroso/free-disk-space
 
+
+# we need ~50GB of space
+space_target_kb=$((50 * 1024 * 1024))
+
+
 isX86() {
     local arch
     arch=$(uname -m)
@@ -247,14 +252,21 @@ cleanSwap() {
     free -h
 }
 
+sufficientSpaceEarlyExit() {
+    local available_space_kb=$(df -k . --output=avail | tail -n 1)
+
+    if [ "$available_space_kb" -ge "$space_target_kb" ]; then
+        echo "Sufficient disk space available (${available_space_kb}KB >= ${space_target_kb}KB). Skipping cleanup."
+        exit 0
+    fi
+}
+
 # Try to find a different drive to put our data on so we don't need to run cleanup.
 # The availability of the disks we're probing isn't guaranteed,
 # so this is opportunistic.
 checkAlternative() {
     local gha_alt_disk="/mnt"
 
-    # we need ~50GB of space
-    local space_target_kb=$((50 * 1024 * 1024))
     local available_space_kb=$(df -k "$gha_alt_disk" --output=avail | tail -n 1)
 
     # mount options that trade durability for performance
@@ -289,20 +301,6 @@ checkAlternative() {
         # as we already have enough disk space in the alternative drive.
         exit 0
     fi
-
-    # ephemeral NVMe drives on AWS
-    for dev in /dev/nvme*n1; do
-        # check that it's a blockdev and not mounted.
-        if [ -b "$dev" ] && [ "$(mount | grep "$dev" | wc -l)" -eq 0 ]; then
-            echo "Found unused block device $dev, creating filesystem"
-            sudo mkfs.ext4 -E lazy_itable_init=1,lazy_journal_init=1 "$dev"
-            mkdir ./obj
-            sudo mount "$dev" ./obj -o $mntopts
-            sudo chown -R "$USER":"$USER" ./obj
-
-            exit 0
-        fi
-    done
 }
 
 
@@ -314,6 +312,7 @@ AVAILABLE_INITIAL=$(getAvailableSpace)
 printDF "BEFORE CLEAN-UP:"
 echo ""
 
+sufficientSpaceEarlyExit
 checkAlternative
 
 execAndMeasureSpaceChange cleanPackages "Unused packages"
