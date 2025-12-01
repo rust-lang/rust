@@ -1,6 +1,9 @@
+//! regression test for <https://github.com/rust-lang/rust/issues/3680>
+
 fn main() {
-    match None { //~ NOTE this expression has type `Option<_>`
-        Err(_) => ()
+    match None {
+        //~^ NOTE this expression has type `Option<_>`
+        Err(_) => (),
         //~^ ERROR mismatched types
         //~| NOTE expected enum `Option<_>`
         //~| NOTE found enum `Result<_, _>`
