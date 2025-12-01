@@ -7,12 +7,6 @@ pub enum Language {
     C,
 }
 
-pub enum FailureReason {
-    RunC(String),
-    RunRust(String),
-    Difference(String, String, String),
-}
-
 /// Intrinsic test tool
 #[derive(clap::Parser)]
 #[command(

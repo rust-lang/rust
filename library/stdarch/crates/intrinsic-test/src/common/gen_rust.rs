@@ -1,11 +1,11 @@
 use itertools::Itertools;
 use std::process::Command;
 
-use crate::common::argument::ArgumentList;
-use crate::common::intrinsic::Intrinsic;
-
+use super::compare::INTRINSIC_DELIMITER;
 use super::indentation::Indentation;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
+use crate::common::argument::ArgumentList;
+use crate::common::intrinsic::Intrinsic;
 
 // The number of times each intrinsic will be called.
 pub(crate) const PASSES: u32 = 20;
@@ -86,18 +86,12 @@ pub fn write_main_rs<'a>(
 
     writeln!(w, "fn main() {{")?;
 
-    writeln!(w, "    match std::env::args().nth(1).unwrap().as_str() {{")?;
-
     for binary in intrinsics {
-        writeln!(w, "        \"{binary}\" => run_{binary}(),")?;
+        writeln!(w, "    println!(\"{INTRINSIC_DELIMITER}\");")?;
+        writeln!(w, "    println!(\"{binary}\");")?;
+        writeln!(w, "    run_{binary}();\n")?;
     }
 
-    writeln!(
-        w,
-        "        other => panic!(\"unknown intrinsic `{{}}`\", other),"
-    )?;
-
-    writeln!(w, "    }}")?;
     writeln!(w, "}}")?;
 
     Ok(())
