@@ -67,7 +67,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             let mut parent = Some(tcx.parent(impl_def_id));
             while let Some(did) = parent {
                 attr_buf.extend(tcx.get_all_attrs(did).iter().filter_map(|attr| match attr {
-                    Attribute::Parsed(AttributeKind::Doc(d)) if d.cfg.is_some() => {
+                    Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => {
                         let mut new_attr = DocAttribute::default();
                         new_attr.cfg = d.cfg.clone();
                         Some(Attribute::Parsed(AttributeKind::Doc(Box::new(new_attr))))

@@ -225,7 +225,7 @@ impl DocParser {
         args: &ArgParser<'_>,
     ) {
         if let Some(cfg_entry) = super::cfg::parse_cfg(cx, args) {
-            self.attribute.cfg = Some(cfg_entry);
+            self.attribute.cfg.push(cfg_entry);
         }
     }
 
@@ -524,6 +524,9 @@ impl<S: Stage> AttributeParser<S> for DocParser {
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.nb_doc_attrs != 0 {
+            if std::env::var("LOL").is_ok() {
+                eprintln!("+++++> {:#?}", self.attribute);
+            }
             Some(AttributeKind::Doc(Box::new(self.attribute)))
         } else {
             None

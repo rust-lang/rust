@@ -34,7 +34,7 @@ struct CfgPropagator<'a, 'tcx> {
 fn add_only_cfg_attributes(attrs: &mut Vec<Attribute>, new_attrs: &[Attribute]) {
     for attr in new_attrs {
         if let Attribute::Parsed(AttributeKind::Doc(d)) = attr
-            && d.cfg.is_some()
+            && !d.cfg.is_empty()
         {
             let mut new_attr = DocAttribute::default();
             new_attr.cfg = d.cfg.clone();

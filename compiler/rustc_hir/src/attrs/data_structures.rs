@@ -479,7 +479,7 @@ pub struct DocAttribute {
     pub inline: Option<(DocInline, Span)>,
 
     // unstable
-    pub cfg: Option<CfgEntry>,
+    pub cfg: ThinVec<CfgEntry>,
     pub auto_cfg: ThinVec<CfgHideShow>,
     /// This is for `#[doc(auto_cfg = false|true)]`.
     pub auto_cfg_change: Option<(bool, Span)>,
@@ -512,7 +512,7 @@ impl Default for DocAttribute {
             aliases: FxIndexMap::default(),
             hidden: None,
             inline: None,
-            cfg: None,
+            cfg: ThinVec::new(),
             auto_cfg: ThinVec::new(),
             auto_cfg_change: None,
             fake_variadic: None,
