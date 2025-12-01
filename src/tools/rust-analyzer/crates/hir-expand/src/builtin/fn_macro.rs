@@ -785,8 +785,8 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
         while let TtElement::Subtree(sub, tt_iter) = &mut tt
             && let DelimiterKind::Parenthesis | DelimiterKind::Invisible = sub.delimiter.kind
         {
-            tt =
-                tt_iter.exactly_one().map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
+            tt = Itertools::exactly_one(tt_iter)
+                .map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
         }
 
         match tt {
