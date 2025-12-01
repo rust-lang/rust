@@ -284,8 +284,7 @@ impl Step for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() && !target.ends_with("windows-gnullvm")
-        {
+        if builder.llvm_link_shared() && target.is_windows() && !target.is_windows_gnullvm() {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 

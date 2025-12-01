@@ -347,14 +347,14 @@ fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder
 
     let mut rustc_dlls = vec![];
     // windows-gnu and windows-gnullvm require different runtime libs
-    if target.ends_with("windows-gnu") {
+    if target.is_windows_gnu() {
         rustc_dlls.push("libwinpthread-1.dll");
         if target.starts_with("i686-") {
             rustc_dlls.push("libgcc_s_dw2-1.dll");
         } else {
             rustc_dlls.push("libgcc_s_seh-1.dll");
         }
-    } else if target.ends_with("windows-gnullvm") {
+    } else if target.is_windows_gnullvm() {
         rustc_dlls.push("libunwind.dll");
     } else {
         panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
