@@ -337,3 +337,62 @@ fn test_numeric_bad() {
     ";
     bad(lines, "bad:3: line not in alphabetical order");
 }
+
+#[test]
+fn multiline() {
+    let lines = "\
+        tidy-alphabetical-start
+        (b,
+         a);
+        (
+          b,
+          a
+        )
+        tidy-alphabetical-end
+    ";
+    good(lines);
+
+    let lines = "\
+        tidy-alphabetical-start
+        (
+          b,
+          a
+        )
+        (b,
+         a);
+        tidy-alphabetical-end
+    ";
+    good(lines);
+
+    let lines = "\
+        tidy-alphabetical-start
+        (c,
+         a);
+        (
+          b,
+          a
+        )
+        tidy-alphabetical-end
+    ";
+    bad(lines, "bad:5: line not in alphabetical order");
+
+    let lines = "\
+        tidy-alphabetical-start
+        (
+          c,
+          a
+        )
+        (b,
+         a);
+        tidy-alphabetical-end
+    ";
+    bad(lines, "bad:6: line not in alphabetical order");
+
+    let lines = "\
+        force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
+             'force use of unwind tables'),
+        incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
+            'enable incremental compilation'),
+    ";
+    good(lines);
+}
