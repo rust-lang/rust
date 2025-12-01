@@ -16,6 +16,7 @@
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
+#![feature(clamp_magnitude)]
 #![feature(clone_to_uninit)]
 #![feature(const_array)]
 #![feature(const_cell_traits)]

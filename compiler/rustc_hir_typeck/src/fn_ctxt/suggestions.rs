@@ -2106,14 +2106,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )),
         );
 
-        let (article, kind, variant, sugg_operator) =
-            if self.tcx.is_diagnostic_item(sym::Result, adt.did()) {
-                ("a", "Result", "Err", ret_ty_matches(sym::Result))
-            } else if self.tcx.is_diagnostic_item(sym::Option, adt.did()) {
-                ("an", "Option", "None", ret_ty_matches(sym::Option))
-            } else {
-                return false;
-            };
+        let (article, kind, variant, sugg_operator) = if self.tcx.is_diagnostic_item(sym::Result, adt.did())
+            // Do not suggest `.expect()` in const context where it's not available. rust-lang/rust#149316
+            && !self.tcx.hir_is_inside_const_context(expr.hir_id)
+        {
+            ("a", "Result", "Err", ret_ty_matches(sym::Result))
+        } else if self.tcx.is_diagnostic_item(sym::Option, adt.did()) {
+            ("an", "Option", "None", ret_ty_matches(sym::Option))
+        } else {
+            return false;
+        };
         if is_ctor || !self.may_coerce(args.type_at(0), expected) {
             return false;
         }
