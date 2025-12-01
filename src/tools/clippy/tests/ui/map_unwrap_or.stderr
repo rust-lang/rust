@@ -12,6 +12,9 @@ LL | |         .unwrap_or(0);
 help: use `map_or(<a>, <f>)` instead
    |
 LL -     let _ = opt.map(|x| x + 1)
+LL -
+LL -         // Should lint even though this call is on a separate line.
+LL -         .unwrap_or(0);
 LL +     let _ = opt.map_or(0, |x| x + 1);
    |
 
@@ -98,6 +101,7 @@ LL | |         .unwrap_or(None);
 help: use `and_then(<f>)` instead
    |
 LL -         .map(|x| Some(x + 1))
+LL -         .unwrap_or(None);
 LL +         .and_then(|x| Some(x + 1));
    |
 
