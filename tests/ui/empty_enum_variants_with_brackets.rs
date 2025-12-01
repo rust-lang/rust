@@ -115,4 +115,50 @@ fn issue16157() {
     <E>::V {} = E::V();
 }
 
+fn variant_with_braces() {
+    enum E {
+        V(),
+        //~^ empty_enum_variants_with_brackets
+    }
+    E::V() = E::V();
+    E::V() = E::V {};
+    <E>::V {} = <E>::V {};
+
+    enum F {
+        U {},
+        //~^ empty_enum_variants_with_brackets
+    }
+    F::U {} = F::U {};
+    <F>::U {} = F::U {};
+}
+
+fn variant_with_comments_and_cfg() {
+    enum E {
+        V(
+            // This is a comment
+        ),
+    }
+    E::V() = E::V();
+
+    enum F {
+        U {
+            // This is a comment
+        },
+    }
+    F::U {} = F::U {};
+
+    enum G {
+        V(#[cfg(target_os = "cuda")] String),
+    }
+    G::V() = G::V();
+
+    enum H {
+        U {
+            #[cfg(target_os = "cuda")]
+            value: String,
+        },
+    }
+    H::U {} = H::U {};
+}
+
 fn main() {}
