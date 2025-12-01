@@ -1722,6 +1722,7 @@ impl Step for Extended {
     /// Creates a combined installer for the specified target in the provided stage.
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
+        let v810 = TargetSelection::from_user("v810-unknown-vb");
         builder.info(&format!("Dist extended stage{} ({target})", builder.top_stage));
 
         let mut tarballs = Vec::new();
@@ -1746,6 +1747,8 @@ impl Step for Extended {
         // before rust-std in the list below.
         tarballs.push(builder.ensure(Rustc { target_compiler }));
         tarballs.push(builder.ensure(Std { build_compiler, target }).expect("missing std"));
+        tarballs.push(builder.ensure(Std { build_compiler, target: v810 }).expect("missing std"));
+        tarballs.push(builder.ensure(Src));
 
         if target.is_windows_gnu() || target.is_windows_gnullvm() {
             tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));

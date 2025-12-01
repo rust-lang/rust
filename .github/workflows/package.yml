@@ -136,10 +136,21 @@ jobs:
         with:
           body: |
             # Rust toolchain
+
             Download the right toolchain for your OS.
-             - Windows: rust-nightly-windows.tar.xz
-             - Mac: rust-nightly-darwin.tar.xz
-             - Linux: rust-nightly-linux.tar.xz
+             - Windows: rust-v810-windows.msi (or rust-v810-windows.tar.tx)
+             - Mac: rust-v810-darwin.tar.xz
+             - Linux: rust-v810-linux.tar.xz
+
+            ## Installation on Mac/Linux
+            1. Install (rustup)[https://rustup.rs/]
+            2. Download the toolchain, and extract the contents with `tar -xvf <thing-you-downloaded>.tar.xz` 
+            3. Navigate to the new directory, and run `./install.sh --prefix=~/.rustup/toolchains/v810`
+
+            ## Installation on Windows
+            1. Install (rustup)[https://rustup.rs/]
+            2. Download the installer, and install files to $HOME/.rustup/toolchains/v810`
+
           name: "${{ steps.getDate.outputs.TODAY }}"
           tag_name: "rust-v810-${{ steps.getDate.outputs.TODAY }}"
           files: |
@@ -147,4 +158,4 @@ jobs:
             rust-v810-windows.msi
             rust-v810-darwin.tar.xz
             rust-v810-linux.tar.xz
-            rust-src-v810.tar.tz
+            rust-src-v810.tar.xz

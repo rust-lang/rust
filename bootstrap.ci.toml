@@ -19,9 +19,14 @@ tools = [
     "rust-analyzer",
     "rust-analyzer-proc-macro-srv",
     "analysis",
-    "src"
+    "rust-src",
+    "rust-std",
+    "llvm-components"
 ]
 compiletest-use-stage0-libtest = false
+
+[dist]
+compression-formats = ["xz"]
 
 [rust]
 channel = "nightly"
