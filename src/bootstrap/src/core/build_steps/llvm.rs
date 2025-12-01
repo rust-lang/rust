@@ -210,7 +210,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("i686-unknown-linux-gnu", false),
         ("x86_64-unknown-linux-gnu", true),
         ("x86_64-apple-darwin", true),
-        ("x86_64-pc-windows-gnu", true),
+        ("x86_64-pc-windows-gnu", false),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
         ("aarch64-unknown-linux-musl", false),
@@ -227,7 +227,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
         ("s390x-unknown-linux-gnu", false),
-        ("x86_64-pc-windows-gnullvm", true),
+        ("x86_64-pc-windows-gnullvm", false),
         ("x86_64-unknown-freebsd", false),
         ("x86_64-unknown-illumos", false),
         ("x86_64-unknown-linux-musl", false),
