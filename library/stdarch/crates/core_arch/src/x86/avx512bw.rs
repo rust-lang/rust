@@ -10254,7 +10254,7 @@ pub fn _cvtu32_mask32(a: u32) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Add 64-bit masks in a and b, and store the result in k.
@@ -10264,7 +10264,7 @@ pub fn _kadd_mask32(a: __mmask32, b: __mmask32) -> __mmask32 {
 #[target_feature(enable = "avx512bw")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kadd_mask64(a: __mmask64, b: __mmask64) -> __mmask64 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Compute the bitwise AND of 32-bit masks a and b, and store the result in k.

@@ -4486,7 +4486,7 @@ pub fn _cvtu32_mask8(a: u32) -> __mmask8 {
 #[target_feature(enable = "avx512dq")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kadd_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Add 8-bit masks a and b, and store the result in dst.
@@ -4496,7 +4496,7 @@ pub fn _kadd_mask16(a: __mmask16, b: __mmask16) -> __mmask16 {
 #[target_feature(enable = "avx512dq")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kadd_mask8(a: __mmask8, b: __mmask8) -> __mmask8 {
-    a + b
+    a.wrapping_add(b)
 }
 
 /// Bitwise AND of 8-bit masks a and b, and store the result in dst.
