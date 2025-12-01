@@ -4,14 +4,12 @@ error: `env!()` takes 1 or 2 arguments
 LL |     panic!();
    |     ^^^^^^^^
 
-warning: `panic` is ambiguous
+error[E0659]: `panic` is ambiguous
   --> $DIR/ambiguous-panic-rename-builtin.rs:12:5
    |
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `panic` could refer to the macro imported here
   --> $DIR/ambiguous-panic-rename-builtin.rs:9:5
@@ -22,7 +20,7 @@ LL | use m1::*;
    = help: or use `crate::panic` to refer to this macro unambiguously
 note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/core/src/prelude/mod.rs:LL:COL
-   = note: `#[warn(ambiguous_panic_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0659`.

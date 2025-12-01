@@ -645,11 +645,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return None;
                         }
 
+                        // preemptively look for ambiguities for panic macros to ensure we don't
+                        // speculatively resolve to a non-prelude item when an ambiguity that we'd
+                        // downgrade is present
+                        let is_issue_147319_hack = || ctxt.edition()
+                            <= Edition::Edition2024
+                            && matches!(orig_ident.name, sym::panic)
+                            && (this.is_specific_builtin_macro(binding.res(), sym::std_panic) || this.is_specific_builtin_macro(binding.res(), sym::core_panic));
+                        let finalizing = !matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. }));
+
                         // Below we report various ambiguity errors.
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
+                        if !finalizing && !is_issue_147319_hack() {
                             return Some(Ok(binding));
                         }
 
@@ -720,8 +729,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     let is_issue_147319_hack = ctxt.edition()
                                         <= Edition::Edition2024
                                         && matches!(orig_ident.name, sym::panic)
-                                        && this.is_builtin_macro(binding.res())
-                                        && this.is_builtin_macro(innermost_binding.res());
+                                        && matches!(scope, Scope::StdLibPrelude)
+                                        && ((this.is_specific_builtin_macro(
+                                            binding.res(),
+                                            sym::std_panic,
+                                        ) && this.is_specific_builtin_macro(
+                                            innermost_binding.res(),
+                                            sym::core_panic,
+                                        )) || (this.is_specific_builtin_macro(
+                                            binding.res(),
+                                            sym::core_panic,
+                                        ) && this.is_specific_builtin_macro(
+                                            innermost_binding.res(),
+                                            sym::std_panic,
+                                        )));
 
                                     let warning = if is_issue_147319_hack {
                                         Some(AmbiguityWarning::PanicImport)
@@ -740,16 +761,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                             AmbiguityErrorMisc::None
                                         }
                                     };
-                                    this.get_mut().ambiguity_errors.push(AmbiguityError {
-                                        kind,
-                                        ident: orig_ident,
-                                        b1: innermost_binding,
-                                        b2: binding,
-                                        warning,
-                                        misc1: misc(innermost_flags),
-                                        misc2: misc(flags),
-                                    });
-                                    return Some(Ok(innermost_binding));
+                                    if finalizing {
+                                        this.get_mut().ambiguity_errors.push(AmbiguityError {
+                                            kind,
+                                            ident: orig_ident,
+                                            b1: innermost_binding,
+                                            b2: binding,
+                                            warning,
+                                            misc1: misc(innermost_flags),
+                                            misc2: misc(flags),
+                                        });
+                                    }
+                                    if is_issue_147319_hack {
+                                        return Some(Ok(binding));
+                                    } else {
+                                        return Some(Ok(innermost_binding));
+                                    }
                                 }
                             }
                         } else {

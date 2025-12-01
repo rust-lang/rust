@@ -11,6 +11,5 @@ use m1::*;
 fn xx() {
     panic!();
     //~^ ERROR: `env!()` takes 1 or 2 arguments
-    //~| WARN: `panic` is ambiguous [ambiguous_panic_imports]
-    //~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    //~| ERROR: `panic` is ambiguous [E0659]
 }

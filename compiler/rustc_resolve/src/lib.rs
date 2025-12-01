@@ -1857,6 +1857,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }
 
+    fn is_specific_builtin_macro(&self, res: Res, symbol: Symbol) -> bool {
+        self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name == Some(symbol))
+    }
+
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {
         loop {
             match ctxt.outer_expn_data().macro_def_id {
