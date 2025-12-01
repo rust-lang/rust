@@ -14,7 +14,7 @@ use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
-use crate::thread::{ThreadInit, current};
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 use crate::{cmp, io, ptr};
 #[cfg(not(any(
@@ -111,10 +111,9 @@ impl Thread {
                 let init = Box::from_raw(data as *mut ThreadInit);
                 let rust_start = init.init();
 
-                // Set up our thread name and stack overflow handler which may get triggered
-                // if we run out of stack.
-                let thread = current();
-                let _handler = stack_overflow::Handler::new(thread.name().map(Box::from));
+                // Now that the thread information is set, set up our stack
+                // overflow handler.
+                let _handler = stack_overflow::Handler::new();
 
                 rust_start();
             }
