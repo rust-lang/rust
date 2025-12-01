@@ -19,8 +19,7 @@ use rustc_hir::{PreciseCapturingArgKind, attrs};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
-    BlobDecodable, Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable,
-    TyEncodable,
+    BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -188,7 +187,7 @@ type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextKey>>>;
 type ExpnDataTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnData>>>;
 type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
     stability: Option<hir::Stability>,
@@ -237,7 +236,7 @@ pub(crate) struct CrateHeader {
 /// compilation session. If we were to serialize a proc-macro crate like
 /// a normal crate, much of what we serialized would be unusable in addition
 /// to being unused.
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct CrateRoot {
     /// A header used to detect if this is the right crate to load.
     header: CrateHeader,
@@ -334,13 +333,13 @@ pub(crate) struct CrateDep {
     pub is_private: bool,
 }
 
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: LazyArray<(DefIndex, Option<SimplifiedType>)>,
 }
 
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct IncoherentImpls {
     self_ty: LazyValue<SimplifiedType>,
     impls: LazyArray<DefIndex>,
@@ -352,7 +351,7 @@ macro_rules! define_tables {
         - defaulted: $($name1:ident: Table<$IDX1:ty, $T1:ty>,)+
         - optional: $($name2:ident: Table<$IDX2:ty, $T2:ty>,)+
     ) => {
-        #[derive(MetadataEncodable, MetadataDecodable)]
+        #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
             $($name1: LazyTable<$IDX1, $T1>,)+
             $($name2: LazyTable<$IDX2, Option<$T2>>,)+

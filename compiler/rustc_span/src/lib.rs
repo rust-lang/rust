@@ -1304,6 +1304,20 @@ pub trait BlobDecoder: Decoder {
 
 /// This trait is used to allow decoder specific encodings of certain types.
 /// It is similar to rustc_type_ir's TyDecoder.
+///
+/// Specifically for metadata, an important note is that spans can only be decoded once
+/// some other metadata is already read.
+/// Spans have to be properly mapped into the decoding crate's sourcemap,
+/// and crate numbers have to be converted sometimes.
+/// This can only be done once the `CrateRoot` is available.
+///
+/// As such, some methods that used to be in the `SpanDecoder` trait
+/// are now in the `BlobDecoder` trait. This hierarchy is not mirrored for `Encoder`s.
+/// `BlobDecoder` has methods for deserializing types that are more complex than just those
+/// that can be decoded with `Decoder`, but which can be decoded on their own, *before* any other metadata is.
+/// Importantly, that means that types that can be decoded with `BlobDecoder` can show up in the crate root.
+/// The place where this distinction is relevant is in `rustc_metadata` where metadata is decoded using either the
+/// `MetadataDecodeContext` or the `BlobDecodeContext`.
 pub trait SpanDecoder: BlobDecoder {
     fn decode_span(&mut self) -> Span;
     fn decode_expn_id(&mut self) -> ExpnId;
