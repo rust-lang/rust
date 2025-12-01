@@ -386,7 +386,7 @@ mod upper_case_acronyms;
 mod use_self;
 mod useless_concat;
 mod useless_conversion;
-mod vec;
+mod useless_vec;
 mod vec_init_then_push;
 mod visibility;
 mod volatile_composites;
@@ -592,7 +592,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(transmute::Transmute::new(conf))),
         Box::new(move |_| Box::new(cognitive_complexity::CognitiveComplexity::new(conf))),
         Box::new(move |_| Box::new(escape::BoxedLocal::new(conf))),
-        Box::new(move |_| Box::new(vec::UselessVec::new(conf))),
+        Box::new(move |_| Box::new(useless_vec::UselessVec::new(conf))),
         Box::new(move |_| Box::new(panic_unimplemented::PanicUnimplemented::new(conf))),
         Box::new(|_| Box::new(strings::StringLitAsBytes)),
         Box::new(|_| Box::new(derive::Derive)),

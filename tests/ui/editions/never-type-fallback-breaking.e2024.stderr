@@ -4,7 +4,7 @@ error[E0277]: the trait bound `!: Default` is not satisfied
 LL |         true => Default::default(),
    |                 ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
    = help: you might have intended to use the type `()` here instead
 
 error[E0277]: the trait bound `!: Default` is not satisfied
@@ -13,7 +13,7 @@ error[E0277]: the trait bound `!: Default` is not satisfied
 LL |     deserialize()?;
    |     ^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
    = help: you might have intended to use the type `()` here instead
 note: required by a bound in `deserialize`
   --> $DIR/never-type-fallback-breaking.rs:31:23
@@ -50,7 +50,7 @@ error[E0277]: the trait bound `!: Default` is not satisfied
 LL |     takes_apit(|| Default::default())?;
    |                   ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `!`
    |
-   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
    = help: you might have intended to use the type `()` here instead
 
 error[E0277]: the trait bound `!: Default` is not satisfied
@@ -61,7 +61,7 @@ LL |     takes_apit2(mk()?);
    |     |
    |     required by a bound introduced by this call
    |
-   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #148922 <https://github.com/rust-lang/rust/issues/148922> for more information)
    = help: you might have intended to use the type `()` here instead
 note: required by a bound in `takes_apit2`
   --> $DIR/never-type-fallback-breaking.rs:69:25

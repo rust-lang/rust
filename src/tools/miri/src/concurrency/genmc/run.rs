@@ -30,7 +30,7 @@ pub fn run_genmc_mode<'tcx>(
     config: &MiriConfig,
     eval_entry: impl Fn(Rc<GenmcCtx>) -> Result<(), NonZeroI32>,
 ) -> Result<(), NonZeroI32> {
-    // Check for supported target.
+    // Check for supported target: endianess and pointer size must match the host.
     if tcx.data_layout.endian != Endian::Little || tcx.data_layout.pointer_size().bits() != 64 {
         tcx.dcx().fatal("GenMC only supports 64bit little-endian targets");
     }

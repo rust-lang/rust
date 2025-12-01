@@ -2558,7 +2558,7 @@ fn add_order_independent_options(
         && sess.target.is_like_windows
         && let Some(s) = &codegen_results.crate_info.windows_subsystem
     {
-        cmd.subsystem(s);
+        cmd.windows_subsystem(*s);
     }
 
     // Try to strip as much out of the generated object by removing unused

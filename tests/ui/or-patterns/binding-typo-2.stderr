@@ -1,5 +1,5 @@
 error[E0408]: variable `Ban` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:14:9
+  --> $DIR/binding-typo-2.rs:15:9
    |
 LL |         (Foo, Bar) | (Ban, Foo) => {}
    |         ^^^^^^^^^^    --- variable not in all patterns
@@ -13,7 +13,7 @@ LL +         (Foo, Bar) | (Bar, Foo) => {}
    |
 
 error[E0408]: variable `Ban` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:25:9
+  --> $DIR/binding-typo-2.rs:26:9
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |         ^^^^^^^^    --- variable not in all patterns
@@ -27,7 +27,7 @@ LL +         (Foo, _) | (Bar, Foo) => {}
    |
 
 error[E0408]: variable `Non` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:44:15
+  --> $DIR/binding-typo-2.rs:45:15
    |
 LL |         Non | None => {}
    |         ---   ^^^^ pattern doesn't bind `Non`
@@ -41,7 +41,7 @@ LL +         core::option::Option::None | None => {}
    |
 
 error[E0408]: variable `Non` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:54:15
+  --> $DIR/binding-typo-2.rs:55:15
    |
 LL |         Non | Some(_) => {}
    |         ---   ^^^^^^^ pattern doesn't bind `Non`
@@ -55,7 +55,7 @@ LL +         core::option::Option::None | Some(_) => {}
    |
 
 error[E0408]: variable `Ban` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:69:9
+  --> $DIR/binding-typo-2.rs:70:9
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |         ^^^^^^^^    --- variable not in all patterns
@@ -79,7 +79,7 @@ LL +         (Foo, _) | (Bat, Foo) => {}
    |
 
 error[E0408]: variable `Ban` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:86:9
+  --> $DIR/binding-typo-2.rs:87:9
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |         ^^^^^^^^    --- variable not in all patterns
@@ -98,13 +98,13 @@ LL +         (Foo, _) | (Bat, Foo) => {}
    |
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:14:23
+  --> $DIR/binding-typo-2.rs:15:23
    |
 LL |         (Foo, Bar) | (Ban, Foo) => {}
    |                       ^^^
    |
 note: the lint level is defined here
-  --> $DIR/binding-typo-2.rs:2:9
+  --> $DIR/binding-typo-2.rs:3:9
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL |         (Foo, Bar) | (_Ban, Foo) => {}
    |                       +
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:25:21
+  --> $DIR/binding-typo-2.rs:26:21
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |                     ^^^
@@ -135,7 +135,7 @@ LL |         (Foo, _) | (_Ban, Foo) => {}
    |                     +
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:37:9
+  --> $DIR/binding-typo-2.rs:38:9
    |
 LL |         Non => {}
    |         ^^^
@@ -151,7 +151,7 @@ LL |         _Non => {}
    |         +
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:44:9
+  --> $DIR/binding-typo-2.rs:45:9
    |
 LL |         Non | None => {}
    |         ^^^
@@ -167,7 +167,7 @@ LL |         _Non | None => {}
    |         +
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:54:9
+  --> $DIR/binding-typo-2.rs:55:9
    |
 LL |         Non | Some(_) => {}
    |         ^^^
@@ -183,7 +183,7 @@ LL |         _Non | Some(_) => {}
    |         +
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:69:21
+  --> $DIR/binding-typo-2.rs:70:21
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |                     ^^^
@@ -199,7 +199,7 @@ LL |         (Foo, _) | (_Ban, Foo) => {}
    |                     +
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:86:21
+  --> $DIR/binding-typo-2.rs:87:21
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |                     ^^^
@@ -215,7 +215,7 @@ LL |         (Foo, _) | (_Ban, Foo) => {}
    |                     +
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:98:10
+  --> $DIR/binding-typo-2.rs:99:10
    |
 LL |         (Ban, _) => {}
    |          ^^^
@@ -231,7 +231,7 @@ LL |         (_Ban, _) => {}
    |          +
 
 error: unused variable: `Ban`
-  --> $DIR/binding-typo-2.rs:104:9
+  --> $DIR/binding-typo-2.rs:105:9
    |
 LL |         Ban => {}
    |         ^^^
@@ -247,7 +247,7 @@ LL |         _Ban => {}
    |         +
 
 error: unused variable: `Batery`
-  --> $DIR/binding-typo-2.rs:110:9
+  --> $DIR/binding-typo-2.rs:111:9
    |
 LL |         Batery => {}
    |         ^^^^^^

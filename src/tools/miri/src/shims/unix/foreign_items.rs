@@ -487,6 +487,48 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // fadvise is only informational, we can ignore it.
                 this.write_null(dest)?;
             }
+
+            "posix_fallocate" => {
+                // posix_fallocate is not supported by macos.
+                this.check_target_os(
+                    &[Os::Linux, Os::FreeBsd, Os::Solaris, Os::Illumos, Os::Android],
+                    link_name,
+                )?;
+                let [fd, offset, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off_t, libc::off_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                // We don't support platforms which have libc::off_t bigger than 64 bits.
+                let offset =
+                    i64::try_from(this.read_scalar(offset)?.to_int(offset.layout.size)?).unwrap();
+                let len = i64::try_from(this.read_scalar(len)?.to_int(len.layout.size)?).unwrap();
+
+                let result = this.posix_fallocate(fd, offset, len)?;
+                this.write_scalar(result, dest)?;
+            }
+
+            "posix_fallocate64" => {
+                // posix_fallocate64 is only supported on Linux and Android
+                this.check_target_os(&[Os::Linux, Os::Android], link_name)?;
+                let [fd, offset, len] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let offset = this.read_scalar(offset)?.to_i64()?;
+                let len = this.read_scalar(len)?.to_i64()?;
+
+                let result = this.posix_fallocate(fd, offset, len)?;
+                this.write_scalar(result, dest)?;
+            }
+
             "realpath" => {
                 let [path, resolved_path] = this.check_shim_sig(
                     shim_sig!(extern "C" fn(*const _, *mut _) -> *mut _),

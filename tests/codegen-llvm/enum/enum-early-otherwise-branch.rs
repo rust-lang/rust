@@ -12,7 +12,7 @@ pub enum Enum {
 pub fn foo(lhs: &Enum, rhs: &Enum) -> bool {
     // CHECK-LABEL: define{{.*}}i1 @foo(
     // CHECK-NOT: switch
-    // CHECK-NOT: br
+    // CHECK-NOT: br {{.*}}
     // CHECK: [[SELECT:%.*]] = select
     // CHECK-NEXT: ret i1 [[SELECT]]
     // CHECK-NEXT: }

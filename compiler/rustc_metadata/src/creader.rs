@@ -683,7 +683,6 @@ impl CStore {
         };
 
         let crate_metadata = CrateMetadata::new(
-            tcx.sess,
             self,
             metadata,
             crate_root,

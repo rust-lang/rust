@@ -1202,6 +1202,65 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    /// NOTE: According to the man page of `possix_fallocate`, it returns the error code instead
+    /// of setting `errno`.
+    fn posix_fallocate(
+        &mut self,
+        fd_num: i32,
+        offset: i64,
+        len: i64,
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`posix_fallocate`", reject_with)?;
+            // Return error code "EBADF" (bad fd).
+            return interp_ok(this.eval_libc("EBADF"));
+        }
+
+        // EINVAL is returned when: "offset was less than 0, or len was less than or equal to 0".
+        if offset < 0 || len <= 0 {
+            return interp_ok(this.eval_libc("EINVAL"));
+        }
+
+        // Get the file handle.
+        let Some(fd) = this.machine.fds.get(fd_num) else {
+            return interp_ok(this.eval_libc("EBADF"));
+        };
+        let file = match fd.downcast::<FileHandle>() {
+            Some(file_handle) => file_handle,
+            // Man page specifies to return ENODEV if `fd` is not a regular file.
+            None => return interp_ok(this.eval_libc("ENODEV")),
+        };
+
+        if !file.writable {
+            // The file is not writable.
+            return interp_ok(this.eval_libc("EBADF"));
+        }
+
+        let current_size = match file.file.metadata() {
+            Ok(metadata) => metadata.len(),
+            Err(err) => return this.io_error_to_errnum(err),
+        };
+        // Checked i64 addition, to ensure the result does not exceed the max file size.
+        let new_size = match offset.checked_add(len) {
+            // `new_size` is definitely non-negative, so we can cast to `u64`.
+            Some(new_size) => u64::try_from(new_size).unwrap(),
+            None => return interp_ok(this.eval_libc("EFBIG")), // new size too big
+        };
+        // If the size of the file is less than offset+size, then the file is increased to this size;
+        // otherwise the file size is left unchanged.
+        if current_size < new_size {
+            interp_ok(match file.file.set_len(new_size) {
+                Ok(()) => Scalar::from_i32(0),
+                Err(e) => this.io_error_to_errnum(e)?,
+            })
+        } else {
+            interp_ok(Scalar::from_i32(0))
+        }
+    }
+
     fn fsync(&mut self, fd_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         // On macOS, `fsync` (unlike `fcntl(F_FULLFSYNC)`) does not wait for the
         // underlying disk to finish writing. In the interest of host compatibility,

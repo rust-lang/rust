@@ -694,11 +694,14 @@ impl f128 {
 
     /// Returns the maximum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
+    /// This follows the IEEE 754-2008 semantics for `maxNum`, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids `maxNum`'s problems with associativity.
+    /// This also matches the behavior of libm’s `fmax`.
     ///
     /// ```
     /// #![feature(f128)]
@@ -709,6 +712,7 @@ impl f128 {
     /// let y = 2.0f128;
     ///
     /// assert_eq!(x.max(y), y);
+    /// assert_eq!(x.max(f128::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -721,11 +725,14 @@ impl f128 {
 
     /// Returns the minimum of the two numbers, ignoring NaN.
     ///
-    /// If one of the arguments is NaN, then the other argument is returned.
-    /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
-    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
-    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    /// If exactly one of the arguments is NaN, then the other argument is returned. If both
+    /// arguments are NaN, the return value is NaN, with the bit pattern picked using the usual
+    /// [rules for arithmetic operations](f32#nan-bit-patterns). If the inputs compare equal (such
+    /// as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
+    ///
+    /// This follows the IEEE 754-2008 semantics for `minNum`, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids `minNum`'s problems with associativity.
+    /// This also matches the behavior of libm’s `fmin`.
     ///
     /// ```
     /// #![feature(f128)]
@@ -736,6 +743,7 @@ impl f128 {
     /// let y = 2.0f128;
     ///
     /// assert_eq!(x.min(y), x);
+    /// assert_eq!(x.min(f128::NAN), x);
     /// # }
     /// ```
     #[inline]
@@ -767,7 +775,7 @@ impl f128 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// Note that this follows the IEEE 754-2019 semantics for `maximum`.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
@@ -800,7 +808,7 @@ impl f128 {
     ///
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
-    /// Note that this follows the semantics specified in IEEE 754-2019.
+    /// Note that this follows the IEEE 754-2019 semantics for `minimum`.
     ///
     /// Also note that "propagation" of NaNs here doesn't necessarily mean that the bitpattern of a NaN
     /// operand is conserved; see the [specification of NaN bit patterns](f32#nan-bit-patterns) for more info.
@@ -1236,7 +1244,8 @@ impl f128 {
     /// less than `min`. Otherwise this returns `self`.
     ///
     /// Note that this function returns NaN if the initial value was NaN as
-    /// well.
+    /// well. If the result is zero and among the three inputs `self`, `min`, and `max` there are
+    /// zeros with different sign, either `0.0` or `-0.0` is returned non-deterministically.
     ///
     /// # Panics
     ///
@@ -1253,6 +1262,12 @@ impl f128 {
     /// assert!((0.0f128).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f128).clamp(-2.0, 1.0) == 1.0);
     /// assert!((f128::NAN).clamp(-2.0, 1.0).is_nan());
+    ///
+    /// // These always returns zero, but the sign (which is ignored by `==`) is non-deterministic.
+    /// assert!((0.0f128).clamp(-0.0, -0.0) == 0.0);
+    /// assert!((1.0f128).clamp(-0.0, 0.0) == 0.0);
+    /// // This is definitely a negative zero.
+    /// assert!((-1.0f128).clamp(-0.0, 1.0).is_sign_negative());
     /// # }
     /// ```
     #[inline]

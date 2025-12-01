@@ -49,7 +49,6 @@ pub struct CrateBootstrap {
 impl Step for CrateBootstrap {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // This step is responsible for several different tool paths.
@@ -62,6 +61,10 @@ impl Step for CrateBootstrap {
             // We want `./x test tidy` to _run_ the tidy tool, not its tests.
             // So we need a separate alias to test the tidy tool itself.
             .alias("tidyselftest")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -114,7 +117,18 @@ pub struct Linkcheck {
 impl Step for Linkcheck {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/linkchecker")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.docs
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Linkcheck { host: run.target });
+    }
 
     /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
     ///
@@ -170,23 +184,19 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.path("src/tools/linkchecker");
-        run.default_condition(builder.config.docs)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Linkcheck { host: run.target });
-    }
-
     fn metadata(&self) -> Option<StepMetadata> {
         Some(StepMetadata::test("link-check", self.host))
     }
 }
 
 fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
-    command("tidy").allow_failure().arg("--version").run_capture_stdout(builder).is_success()
+    command("tidy")
+        .allow_failure()
+        .arg("--version")
+        // Cache the output to avoid running this command more than once (per builder).
+        .cached()
+        .run_capture_stdout(builder)
+        .is_success()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -196,13 +206,14 @@ pub struct HtmlCheck {
 
 impl Step for HtmlCheck {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.path("src/tools/html-checker");
-        run.lazy_default_condition(Box::new(|| check_if_tidy_is_installed(builder)))
+        run.path("src/tools/html-checker")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        check_if_tidy_is_installed(builder)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -427,10 +438,13 @@ pub struct RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rust-analyzer")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -829,10 +843,13 @@ pub struct Clippy {
 impl Step for Clippy {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.suite_path("src/tools/clippy/tests").path("src/tools/clippy")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -936,11 +953,14 @@ pub struct RustdocTheme {
 
 impl Step for RustdocTheme {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc-themes")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -986,12 +1006,14 @@ pub struct RustdocJSStd {
 
 impl Step for RustdocJSStd {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.nodejs.is_some();
-        run.suite_path("tests/rustdoc-js-std").default_condition(default)
+        run.suite_path("tests/rustdoc-js-std")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1047,12 +1069,14 @@ pub struct RustdocJSNotStd {
 
 impl Step for RustdocJSNotStd {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.nodejs.is_some();
-        run.suite_path("tests/rustdoc-js").default_condition(default)
+        run.suite_path("tests/rustdoc-js")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1088,14 +1112,17 @@ fn get_browser_ui_test_version_inner(
     if global {
         command.arg("--global");
     }
-    let lines = command.allow_failure().run_capture(builder).stdout();
+    // Cache the command output so that `test::RustdocGUI` only performs these
+    // command-line probes once.
+    let lines = command.allow_failure().cached().run_capture(builder).stdout();
     lines
         .lines()
         .find_map(|l| l.split(':').nth(1)?.strip_prefix("browser-ui-test@"))
         .map(|v| v.to_owned())
 }
 
-fn get_browser_ui_test_version(builder: &Builder<'_>, yarn: &Path) -> Option<String> {
+fn get_browser_ui_test_version(builder: &Builder<'_>) -> Option<String> {
+    let yarn = builder.config.yarn.as_deref()?;
     get_browser_ui_test_version_inner(builder, yarn, false)
         .or_else(|| get_browser_ui_test_version_inner(builder, yarn, true))
 }
@@ -1110,22 +1137,16 @@ pub struct RustdocGUI {
 
 impl Step for RustdocGUI {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        let run = run.suite_path("tests/rustdoc-gui");
-        run.lazy_default_condition(Box::new(move || {
-            builder.config.nodejs.is_some()
-                && builder.doc_tests != DocTests::Only
-                && builder
-                    .config
-                    .yarn
-                    .as_ref()
-                    .map(|p| get_browser_ui_test_version(builder, p).is_some())
-                    .unwrap_or(false)
-        }))
+        run.suite_path("tests/rustdoc-gui")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.nodejs.is_some()
+            && builder.doc_tests != DocTests::Only
+            && get_browser_ui_test_version(builder).is_some()
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1207,8 +1228,19 @@ pub struct Tidy;
 
 impl Step for Tidy {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/tidy")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.doc_tests != DocTests::Only
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Tidy);
+    }
 
     /// Runs the `tidy` tool.
     ///
@@ -1314,15 +1346,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
                 crate::exit!(1);
             }
         }
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.doc_tests != DocTests::Only;
-        run.path("src/tools/tidy").default_condition(default)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Tidy);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -1433,7 +1456,6 @@ macro_rules! test {
 
         impl Step for $name {
             type Output = ();
-            const DEFAULT: bool = $default;
             const IS_HOST: bool = (const {
                 #[allow(unused_assignments, unused_mut)]
                 let mut value = false;
@@ -1443,6 +1465,10 @@ macro_rules! test {
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.suite_path($path)
+            }
+
+            fn is_default_step(_builder: &Builder<'_>) -> bool {
+                const { $default }
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -1574,7 +1600,6 @@ impl Coverage {
 
 impl Step for Coverage {
     type Output = ();
-    const DEFAULT: bool = true;
     /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const IS_HOST: bool = false;
 
@@ -1589,6 +1614,10 @@ impl Step for Coverage {
             run = run.alias(mode);
         }
         run
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1667,10 +1696,13 @@ pub struct MirOpt {
 
 impl Step for MirOpt {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.suite_path("tests/mir-opt")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2584,11 +2616,14 @@ macro_rules! test_book {
 
             impl Step for $name {
                 type Output = ();
-                const DEFAULT: bool = $default;
                 const IS_HOST: bool = true;
 
                 fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                     run.path($path)
+                }
+
+                fn is_default_step(_builder: &Builder<'_>) -> bool {
+                    const { $default }
                 }
 
                 fn make_run(run: RunConfig<'_>) {
@@ -2644,13 +2679,16 @@ pub struct ErrorIndex {
 
 impl Step for ErrorIndex {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // Also add `error-index` here since that is what appears in the error message
         // when this fails.
         run.path("src/tools/error_index_generator").alias("error-index")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2735,11 +2773,14 @@ pub struct CrateLibrustc {
 
 impl Step for CrateLibrustc {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("rustc-main").path("compiler")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2890,10 +2931,13 @@ pub struct Crate {
 
 impl Step for Crate {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("sysroot").crate_or_deps("coretests").crate_or_deps("alloctests")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3023,11 +3067,14 @@ pub struct CrateRustdoc {
 
 impl Step for CrateRustdoc {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["src/librustdoc", "src/tools/rustdoc"])
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3116,11 +3163,14 @@ pub struct CrateRustdocJsonTypes {
 
 impl Step for CrateRustdocJsonTypes {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/rustdoc-json-types")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3351,15 +3401,17 @@ pub(crate) struct BootstrapPy;
 
 impl Step for BootstrapPy {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("bootstrap-py")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
         // Bootstrap tests might not be perfectly self-contained and can depend
         // on the environment, so only run them by default in CI, not locally.
         // See `test::Bootstrap::should_run`.
-        let is_ci = run.builder.config.is_running_on_ci;
-        run.alias("bootstrap-py").default_condition(is_ci)
+        builder.config.is_running_on_ci
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3388,8 +3440,18 @@ pub struct Bootstrap;
 
 impl Step for Bootstrap {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/bootstrap")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        // Bootstrap tests might not be perfectly self-contained and can depend on the external
+        // environment, submodules that are checked out, etc.
+        // Therefore we only run them by default on CI.
+        builder.config.is_running_on_ci
+    }
 
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
@@ -3429,14 +3491,6 @@ impl Step for Bootstrap {
         run_cargo_test(cargo, &[], &[], None, host, builder);
     }
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Bootstrap tests might not be perfectly self-contained and can depend on the external
-        // environment, submodules that are checked out, etc.
-        // Therefore we only run them by default on CI.
-        let runs_on_ci = run.builder.config.is_running_on_ci;
-        run.path("src/bootstrap").default_condition(runs_on_ci)
-    }
-
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Bootstrap);
     }
@@ -3455,11 +3509,14 @@ pub struct TierCheck {
 
 impl Step for TierCheck {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/tier-check")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3504,14 +3561,16 @@ pub struct LintDocs {
 
 impl Step for LintDocs {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let stage = run.builder.top_stage;
+        run.path("src/tools/lint-docs")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
         // Lint docs tests might not work with stage 1, so do not run this test by default in
         // `x test` below stage 2.
-        run.path("src/tools/lint-docs").default_condition(stage > 1)
+        builder.top_stage >= 2
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3549,7 +3608,18 @@ pub struct RustInstaller;
 impl Step for RustInstaller {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-installer")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self);
+    }
 
     /// Ensure the version placeholder replacement tool builds
     fn run(self, builder: &Builder<'_>) {
@@ -3586,14 +3656,6 @@ impl Step for RustInstaller {
         cmd.env("RUSTC", &builder.initial_rustc);
         cmd.env("TMP_DIR", &tmpdir);
         cmd.delay_failure().run(builder);
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rust-installer")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self);
     }
 }
 
@@ -3666,11 +3728,14 @@ pub struct CodegenCranelift {
 
 impl Step for CodegenCranelift {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["compiler/rustc_codegen_cranelift"])
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3784,11 +3849,14 @@ pub struct CodegenGCC {
 
 impl Step for CodegenGCC {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.paths(&["compiler/rustc_codegen_gcc"])
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -3912,10 +3980,13 @@ pub struct TestFloatParse {
 impl Step for TestFloatParse {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/test-float-parse")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -4012,10 +4083,13 @@ pub struct RemoteTestClientTests {
 impl Step for RemoteTestClientTests {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/remote-test-client")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {

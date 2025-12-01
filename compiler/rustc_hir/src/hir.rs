@@ -3680,8 +3680,6 @@ pub enum TyKind<'hir, Unambig = ()> {
     /// We use pointer tagging to represent a `&'hir Lifetime` and `TraitObjectSyntax` pair
     /// as otherwise this type being `repr(C)` would result in `TyKind` increasing in size.
     TraitObject(&'hir [PolyTraitRef<'hir>], TaggedRef<'hir, Lifetime, TraitObjectSyntax>),
-    /// Unused for now.
-    Typeof(&'hir AnonConst),
     /// Placeholder for a type that has failed to be defined.
     Err(rustc_span::ErrorGuaranteed),
     /// Pattern types (`pattern_type!(u32 is 1..)`)

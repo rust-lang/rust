@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Foo` in this scope
-  --> $DIR/issue-83510.rs:6:1
+  --> $DIR/issue-83510.rs:7:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
@@ -7,7 +7,7 @@ LL | issue_83510::dance_like_you_want_to_ice!();
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0404]: expected trait, found struct `Box`
-  --> $DIR/issue-83510.rs:6:1
+  --> $DIR/issue-83510.rs:7:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
@@ -15,7 +15,7 @@ LL | issue_83510::dance_like_you_want_to_ice!();
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0405]: cannot find trait `Baz` in this scope
-  --> $DIR/issue-83510.rs:6:1
+  --> $DIR/issue-83510.rs:7:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
@@ -23,7 +23,7 @@ LL | issue_83510::dance_like_you_want_to_ice!();
    = note: this error originates in the macro `issue_83510::dance_like_you_want_to_ice` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0658]: inherent associated types are unstable
-  --> $DIR/issue-83510.rs:6:1
+  --> $DIR/issue-83510.rs:7:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

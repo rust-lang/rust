@@ -11846,34 +11846,6 @@ fn main() {}
         deny_since: None,
     },
     Lint {
-        label: "unchecked_neg",
-        description: r##"# `unchecked_neg`
-
-The tracking issue for this feature is: [#85122]
-
-[#85122]: https://github.com/rust-lang/rust/issues/85122
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "unchecked_shifts",
-        description: r##"# `unchecked_shifts`
-
-The tracking issue for this feature is: [#85122]
-
-[#85122]: https://github.com/rust-lang/rust/issues/85122
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "unicode_internals",
         description: r##"# `unicode_internals`
 

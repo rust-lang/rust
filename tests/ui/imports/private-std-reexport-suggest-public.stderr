@@ -1,11 +1,11 @@
 error[E0603]: module import `mem` is private
-  --> $DIR/private-std-reexport-suggest-public.rs:4:14
+  --> $DIR/private-std-reexport-suggest-public.rs:5:14
    |
 LL |     use foo::mem;
    |              ^^^ private module import
    |
 note: the module import `mem` is defined here...
-  --> $DIR/private-std-reexport-suggest-public.rs:8:9
+  --> $DIR/private-std-reexport-suggest-public.rs:9:9
    |
 LL |     use std::mem;
    |         ^^^^^^^^

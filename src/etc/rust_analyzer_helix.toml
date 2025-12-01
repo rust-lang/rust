@@ -2,10 +2,13 @@
 # so that r-a's checks don't block user `x` commands and vice-verse.
 # R-a's build directory is located in `build-rust-analyzer`.
 #
-# To build rustfmt and proc macro server for r-a run the following command:
+# To download rustfmt and proc macro server for r-a run the following command
+# (proc macro server is downloaded automatically with pretty much any command,
+# this specific one also downloads rustfmt):
 # ```
-# x b proc-macro-srv-cli rustfmt --stage 0 --build-dir build-rust-analyzer
+# x fmt --check
 # ```
+# (if that doesn't work -- do `x clean` first)
 
 [language-server.rust-analyzer.config]
 linkedProjects = [
@@ -18,7 +21,6 @@ linkedProjects = [
 ]
 
 [language-server.rust-analyzer.config.check]
-invocationLocation = "root"
 invocationStrategy = "once"
 overrideCommand = [
     "python3",
@@ -31,12 +33,12 @@ overrideCommand = [
 
 [language-server.rust-analyzer.config.rustfmt]
 overrideCommand = [
-    "build-rust-analyzer/host/rustfmt/bin/rustfmt",
+    "build/host/rustfmt/bin/rustfmt",
     "--edition=2024"
 ]
 
 [language-server.rust-analyzer.config.procMacro]
-server = "build-rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+server = "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
 enable = true
 
 [language-server.rust-analyzer.config.rustc]
@@ -50,14 +52,20 @@ RUSTC_BOOTSTRAP = "1"
 
 [language-server.rust-analyzer.config.cargo.buildScripts]
 enable = true
-invocationLocation = "root"
 invocationStrategy = "once"
 overrideCommand = [
     "python3",
     "x.py",
     "check",
     "--json-output",
+    "--compile-time-deps",
     "--build-dir",
     "build-rust-analyzer",
-    "--compile-time-deps",
 ]
+
+[language-server.rust-analyzer.environment]
+RUSTUP_TOOLCHAIN = "nightly"
+
+[[language]]
+name = "rust"
+file-types = ["rs", "fixed", "pp", "mir"]

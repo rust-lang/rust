@@ -483,6 +483,8 @@ declare_features! (
     (incomplete, deref_patterns, "1.79.0", Some(87121)),
     /// Allows deriving the From trait on single-field structs.
     (unstable, derive_from, "1.91.0", Some(144889)),
+    /// Allows giving non-const impls custom diagnostic messages if attempted to be used as const
+    (unstable, diagnostic_on_const, "CURRENT_RUSTC_VERSION", Some(143874)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
@@ -592,8 +594,6 @@ declare_features! (
     (incomplete, never_patterns, "1.76.0", Some(118155)),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
     (unstable, never_type, "1.13.0", Some(35121)),
-    /// Allows diverging expressions to fall back to `!` rather than `()`.
-    (unstable, never_type_fallback, "1.41.0", Some(65992)),
     /// Switch `..` syntax to use the new (`Copy + IntoIterator`) range types.
     (unstable, new_range, "1.86.0", Some(123741)),
     /// Allows `#![no_core]`.

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ dont-require-annotations: NOTE
 
 use zed::bar;

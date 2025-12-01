@@ -1,5 +1,5 @@
 error[E0405]: cannot find trait `MyTrait` in the crate root
-  --> $DIR/issue-100199.rs:1:1
+  --> $DIR/issue-100199.rs:2:1
    |
 LL | #[issue_100199::struct_with_bound]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in the crate root

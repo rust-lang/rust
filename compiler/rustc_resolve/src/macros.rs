@@ -690,10 +690,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && ![sym::on_unimplemented, sym::do_not_recommend].contains(&attribute.ident.name)
+            && ![sym::on_unimplemented, sym::do_not_recommend, sym::on_const]
+                .contains(&attribute.ident.name)
         {
             let typo_name = find_best_match_for_name(
-                &[sym::on_unimplemented, sym::do_not_recommend],
+                &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const],
                 attribute.ident.name,
                 Some(5),
             );

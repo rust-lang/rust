@@ -31,13 +31,13 @@ jobs:
             os: ubuntu-24.04-arm
             multiarch: armhf
             gcc_cross: arm-linux-gnueabihf
+          - host_target: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: riscv64
+            gcc_cross: riscv64-linux-gnu
+            qemu: true
           # Ubuntu mirrors are not reliable enough for these architectures
           # (see <https://bugs.launchpad.net/ubuntu/+bug/2130309>).
-          # - host_target: riscv64gc-unknown-linux-gnu
-          #   os: ubuntu-latest
-          #   multiarch: riscv64
-          #   gcc_cross: riscv64-linux-gnu
-          #   qemu: true
           # - host_target: s390x-unknown-linux-gnu
           #   os: ubuntu-latest
           #   multiarch: s390x
@@ -59,13 +59,6 @@ jobs:
       HOST_TARGET: ${{ matrix.host_target }}
     steps:
       - uses: actions/checkout@v4
-      - name: apt update
-        if: ${{ startsWith(matrix.os, 'ubuntu') }}
-        # The runners seem to have outdated apt repos sometimes
-        run: sudo apt update
-      - name: install qemu
-        if: ${{ matrix.qemu }}
-        run: sudo apt install qemu-user qemu-user-binfmt
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
@@ -75,10 +68,13 @@ jobs:
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
           for TRY in $(seq 3); do
-            { sudo apt update && break; } || sleep 30
+            { sudo apt update && break; } || sleep 60
           done
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
+      - name: install qemu
+        if: ${{ matrix.qemu }}
+        run: sudo apt install qemu-user qemu-user-binfmt
       - uses: ./.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"

@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:7:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:8:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -13,7 +13,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:16:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:17:13
    |
 LL |     let mut f = || {
    |                 -- mutable borrow occurs here
@@ -27,7 +27,7 @@ LL |     f();
    |     - mutable borrow later used here
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-closures-slice-patterns.rs:25:5
+  --> $DIR/borrowck-closures-slice-patterns.rs:26:5
    |
 LL | fn arr_by_move(x: [String; 3]) {
    |                - move occurs because `x` has type `[String; 3]`, which does not implement the `Copy` trait
@@ -45,7 +45,7 @@ LL |         let [y, z @ ..] = x.clone();
    |                            ++++++++
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:33:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:34:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -59,7 +59,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/borrowck-closures-slice-patterns.rs:42:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:43:13
    |
 LL |     let mut f = || {
    |                 -- closure construction occurs here
@@ -73,7 +73,7 @@ LL |     f();
    |     - first borrow later used here
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/borrowck-closures-slice-patterns.rs:51:5
+  --> $DIR/borrowck-closures-slice-patterns.rs:52:5
    |
 LL | fn arr_box_by_move(x: Box<[String; 3]>) {
    |                    - move occurs because `x` has type `Box<[String; 3]>`, which does not implement the `Copy` trait
@@ -92,7 +92,7 @@ LL +         let [y, z @ ..] = x.clone();
    |
 
 error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-closures-slice-patterns.rs:59:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:60:13
    |
 LL |     let f = || {
    |             -- immutable borrow occurs here
@@ -106,7 +106,7 @@ LL |     f();
    |     - immutable borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/borrowck-closures-slice-patterns.rs:68:13
+  --> $DIR/borrowck-closures-slice-patterns.rs:69:13
    |
 LL |     let mut f = || {
    |                 -- closure construction occurs here

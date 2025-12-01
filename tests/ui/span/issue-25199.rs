@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Regression test for Issue 25199: Check that one cannot hide a
 // destructor's access to borrowed data behind a boxed trait object.
 //

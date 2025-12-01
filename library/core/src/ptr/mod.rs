@@ -2520,6 +2520,10 @@ pub fn hash<T: PointeeSized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> PartialEq for F {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -2527,9 +2531,17 @@ impl<F: FnPtr> PartialEq for F {
     }
 }
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> Eq for F {}
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> PartialOrd for F {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -2537,6 +2549,10 @@ impl<F: FnPtr> PartialOrd for F {
     }
 }
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> Ord for F {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {

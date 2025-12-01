@@ -1,5 +1,5 @@
 error: expected identifier, found keyword `break`
-  --> $DIR/raw-name-use-suggestion.rs:3:12
+  --> $DIR/raw-name-use-suggestion.rs:4:12
    |
 LL |     pub fn break() {}
    |            ^^^^^ expected identifier, found keyword
@@ -10,7 +10,7 @@ LL |     pub fn r#break() {}
    |            ++
 
 error: expected identifier, found keyword `let`
-  --> $DIR/raw-name-use-suggestion.rs:7:10
+  --> $DIR/raw-name-use-suggestion.rs:8:10
    |
 LL |     foo::let();
    |          ^^^ expected identifier, found keyword
@@ -21,7 +21,7 @@ LL |     foo::r#let();
    |          ++
 
 error[E0425]: cannot find function `r#break` in this scope
-  --> $DIR/raw-name-use-suggestion.rs:8:5
+  --> $DIR/raw-name-use-suggestion.rs:9:5
    |
 LL |     r#break();
    |     ^^^^^^^ not found in this scope

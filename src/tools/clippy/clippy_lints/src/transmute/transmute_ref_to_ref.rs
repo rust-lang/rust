@@ -1,6 +1,5 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet;
 use clippy_utils::{std_or_core, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
@@ -17,8 +16,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     const_context: bool,
 ) -> bool {
-    let mut triggered = false;
-
+    let arg_sugg = || sugg::Sugg::hir_with_context(cx, arg, e.span.ctxt(), "..", &mut Applicability::Unspecified);
     if let (ty::Ref(_, ty_from, from_mutbl), ty::Ref(_, ty_to, to_mutbl)) = (*from_ty.kind(), *to_ty.kind()) {
         if let ty::Slice(slice_ty) = *ty_from.kind()
             && ty_to.is_str()
@@ -29,8 +27,6 @@ pub(super) fn check<'tcx>(
 
             let postfix = if from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
-            let snippet = snippet(cx, arg.span, "..");
-
             span_lint_and_sugg(
                 cx,
                 TRANSMUTE_BYTES_TO_STR,
@@ -38,15 +34,17 @@ pub(super) fn check<'tcx>(
                 format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 "consider using",
                 if const_context {
-                    format!("{top_crate}::str::from_utf8_unchecked{postfix}({snippet})")
+                    format!("{top_crate}::str::from_utf8_unchecked{postfix}({})", arg_sugg())
                 } else {
-                    format!("{top_crate}::str::from_utf8{postfix}({snippet}).unwrap()")
+                    format!("{top_crate}::str::from_utf8{postfix}({}).unwrap()", arg_sugg())
                 },
                 Applicability::MaybeIncorrect,
             );
-            triggered = true;
-        } else if (cx.tcx.erase_and_anonymize_regions(from_ty) != cx.tcx.erase_and_anonymize_regions(to_ty))
-            && !const_context
+
+            return true;
+        }
+
+        if (cx.tcx.erase_and_anonymize_regions(from_ty) != cx.tcx.erase_and_anonymize_regions(to_ty)) && !const_context
         {
             span_lint_and_then(
                 cx,
@@ -54,23 +52,21 @@ pub(super) fn check<'tcx>(
                 e.span,
                 "transmute from a reference to a reference",
                 |diag| {
-                    if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
-                        let sugg_paren = arg
-                            .as_ty(Ty::new_ptr(cx.tcx, ty_from, from_mutbl))
-                            .as_ty(Ty::new_ptr(cx.tcx, ty_to, to_mutbl));
-                        let sugg = if to_mutbl == Mutability::Mut {
-                            sugg_paren.mut_addr_deref()
-                        } else {
-                            sugg_paren.addr_deref()
-                        };
-                        diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
-                    }
+                    let sugg_paren = arg_sugg()
+                        .as_ty(Ty::new_ptr(cx.tcx, ty_from, from_mutbl))
+                        .as_ty(Ty::new_ptr(cx.tcx, ty_to, to_mutbl));
+                    let sugg = if to_mutbl == Mutability::Mut {
+                        sugg_paren.mut_addr_deref()
+                    } else {
+                        sugg_paren.addr_deref()
+                    };
+                    diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
                 },
             );
 
-            triggered = true;
+            return true;
         }
     }
 
-    triggered
+    false
 }

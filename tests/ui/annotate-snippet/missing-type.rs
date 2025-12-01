@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ compile-flags: --error-format human-annotate-rs -Z unstable-options
 
 pub fn main() {
