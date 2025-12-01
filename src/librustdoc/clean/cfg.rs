@@ -24,7 +24,7 @@ use crate::html::escape::Escape;
 #[cfg(test)]
 mod tests;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub(crate) struct Cfg(CfgEntry);
 
 #[derive(PartialEq, Debug)]
@@ -299,13 +299,13 @@ impl Cfg {
     ///
     /// See `tests::test_simplify_with` for examples.
     pub(crate) fn simplify_with(&self, assume: &Self) -> Option<Self> {
-        if self == assume {
+        if self.0.is_equivalent_to(&assume.0) {
             None
         } else if let CfgEntry::All(a, _) = &self.0 {
             let mut sub_cfgs: ThinVec<CfgEntry> = if let CfgEntry::All(b, _) = &assume.0 {
-                a.iter().filter(|a| !b.contains(a)).cloned().collect()
+                a.iter().filter(|a| !b.iter().any(|b| a.is_equivalent_to(b))).cloned().collect()
             } else {
-                a.iter().filter(|&a| *a != assume.0).cloned().collect()
+                a.iter().filter(|&a| !a.is_equivalent_to(&assume.0)).cloned().collect()
             };
             let len = sub_cfgs.len();
             match len {
@@ -314,7 +314,7 @@ impl Cfg {
                 _ => Some(Cfg(CfgEntry::All(sub_cfgs, DUMMY_SP))),
             }
         } else if let CfgEntry::All(b, _) = &assume.0
-            && b.contains(&self.0)
+            && b.iter().any(|b| b.is_equivalent_to(&self.0))
         {
             None
         } else {
@@ -838,7 +838,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             cfg_info.parent_is_doc_cfg = true;
         }
         for attr in doc_cfg {
-            if let Some(new_cfg) = attr.cfg.clone() {
+            for new_cfg in attr.cfg.clone() {
                 cfg_info.current_cfg &= Cfg(new_cfg);
             }
         }
