@@ -26,7 +26,7 @@ pub(super) fn blob_decodable_derive(
     decodable_body(s, decoder_ty)
 }
 
-pub(super) fn meta_decodable_derive(
+pub(super) fn lazy_decodable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };

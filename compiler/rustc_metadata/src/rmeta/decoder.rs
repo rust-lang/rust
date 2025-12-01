@@ -155,15 +155,20 @@ struct ImportedSourceFile {
     translated_source_file: Arc<rustc_span::SourceFile>,
 }
 
-/// Decode context used when we just have a blob,
-/// and we still have to read the header etc.
+/// Decode context used when we just have a blob of metadata from which we have to decode a header
+/// and [`CrateRoot`]. After that, [`MetadataDecodeContext`] can be used.
+/// Most notably, [`BlobDecodeContext]` doesn't implement [`SpanDecoder`]
 pub(super) struct BlobDecodeContext<'a> {
     opaque: MemDecoder<'a>,
     blob: &'a MetadataBlob,
     lazy_state: LazyState,
 }
 
-/// trait for anything containing `LazyState` and is a decoder.
+/// This trait abstracts over decoders that can decode lazy values using [`LazyState`]:
+///
+/// - [`LazyValue`]
+/// - [`LazyArray`]
+/// - [`LazyTable`]
 pub(super) trait LazyDecoder: BlobDecoder {
     fn set_lazy_state(&mut self, state: LazyState);
     fn get_lazy_state(&self) -> LazyState;
@@ -210,6 +215,7 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 
 /// This is the decode context used when crate metadata was already read.
 /// Decoding of some types, like `Span` require some information to already been read.
+/// Can be constructed from a [`TyCtxt`] and [`CrateMetadataRef`] (see the [`Metadata`] trait)
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
     cdata: CrateMetadataRef<'a>,
