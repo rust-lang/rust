@@ -70,7 +70,9 @@ impl ThreadId {
 
                 // Acquire lock.
                 let mut spin = 0;
-                while COUNTER_LOCKED.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed).is_err() {
+                // Miri doesn't like it when we yield here as it interferes with deterministically
+                // scheduling threads, so avoid `compare_exchange_weak` to avoid spurious yields.
+                while COUNTER_LOCKED.swap(true, Ordering::Acquire) {
                     if spin <= 3 {
                         for _ in 0..(1 << spin) {
                             spin_loop();
@@ -80,6 +82,7 @@ impl ThreadId {
                     }
                     spin += 1;
                 }
+                // This was `false` before the swap, so we got the lock.
 
                 // SAFETY: we have an exclusive lock on the counter.
                 unsafe {
