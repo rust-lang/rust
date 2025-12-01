@@ -1902,7 +1902,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             if span.overlaps(def_span) {
                 // Don't suggest typo suggestion for itself like in the following:
                 // error[E0423]: expected function, tuple struct or tuple variant, found struct `X`
-                //   --> $DIR/issue-64792-bad-unicode-ctor.rs:3:14
+                //   --> $DIR/unicode-string-literal-syntax-error-64792.rs:4:14
                 //    |
                 // LL | struct X {}
                 //    | ----------- `X` defined here

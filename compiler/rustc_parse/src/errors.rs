@@ -1,14 +1,15 @@
 // ignore-tidy-filelength
 
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 use rustc_ast::token::Token;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
-    SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg,
+    Level, Subdiagnostic, SuggestionStyle,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -3341,6 +3342,24 @@ pub(crate) struct KwBadCase<'a> {
     #[suggestion(code = "{kw}", style = "verbose", applicability = "machine-applicable")]
     pub span: Span,
     pub kw: &'a str,
+    pub case: Case,
+}
+
+pub(crate) enum Case {
+    Upper,
+    Lower,
+    Mixed,
+}
+
+impl IntoDiagArg for Case {
+    fn into_diag_arg(self, path: &mut Option<PathBuf>) -> DiagArgValue {
+        match self {
+            Case::Upper => "uppercase",
+            Case::Lower => "lowercase",
+            Case::Mixed => "the correct case",
+        }
+        .into_diag_arg(path)
+    }
 }
 
 #[derive(Diagnostic)]

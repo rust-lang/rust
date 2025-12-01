@@ -1,3 +1,4 @@
+//! related issue: <https://github.com/rust-lang/rust/issues/40313>
 //@ compile-flags: -Zwrite-long-types-to-disk=yes
 use std::cell::Cell;
 use std::panic::catch_unwind;
