@@ -480,9 +480,9 @@ pub struct DocAttribute {
 
     // unstable
     pub cfg: ThinVec<CfgEntry>,
-    pub auto_cfg: ThinVec<CfgHideShow>,
-    /// This is for `#[doc(auto_cfg = false|true)]`.
-    pub auto_cfg_change: Option<(bool, Span)>,
+    pub auto_cfg: ThinVec<(CfgHideShow, Span)>,
+    /// This is for `#[doc(auto_cfg = false|true)]`/`#[doc(auto_cfg)]`.
+    pub auto_cfg_change: ThinVec<(bool, Span)>,
 
     // builtin
     pub fake_variadic: Option<Span>,
@@ -514,7 +514,7 @@ impl Default for DocAttribute {
             inline: None,
             cfg: ThinVec::new(),
             auto_cfg: ThinVec::new(),
-            auto_cfg_change: None,
+            auto_cfg_change: ThinVec::new(),
             fake_variadic: None,
             keyword: None,
             attribute: None,

@@ -10,13 +10,13 @@ use itertools::Either;
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
+use rustc_hir as hir;
 use rustc_hir::Attribute;
-use rustc_hir::attrs::{AttributeKind, CfgEntry};
+use rustc_hir::attrs::{self, AttributeKind, CfgEntry, CfgHideShow, HideOrShow};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{DUMMY_SP, Span};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::display::{Joined as _, MaybeDisplay, Wrapped};
 use crate::html::escape::Escape;
@@ -689,6 +689,12 @@ impl<'a> From<&'a CfgEntry> for SimpleCfg {
     }
 }
 
+impl<'a> From<&'a attrs::CfgInfo> for SimpleCfg {
+    fn from(cfg: &'a attrs::CfgInfo) -> Self {
+        Self { name: cfg.name, value: cfg.value.map(|(value, _)| value) }
+    }
+}
+
 /// This type keeps track of (doc) cfg information as we go down the item tree.
 #[derive(Clone, Debug)]
 pub(crate) struct CfgInfo {
@@ -746,37 +752,27 @@ fn show_hide_show_conflict_error(
 fn handle_auto_cfg_hide_show(
     tcx: TyCtxt<'_>,
     cfg_info: &mut CfgInfo,
-    sub_attr: &MetaItemInner,
-    is_show: bool,
+    attr: &CfgHideShow,
+    attr_span: Span,
     new_show_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
     new_hide_attrs: &mut FxHashMap<(Symbol, Option<Symbol>), rustc_span::Span>,
 ) {
-    if let MetaItemInner::MetaItem(item) = sub_attr
-        && let MetaItemKind::List(items) = &item.kind
-    {
-        for item in items {
-            // FIXME: Report in case `Cfg::parse` reports an error?
-
-            let Ok(cfg) = Cfg::parse(item) else { continue };
-            if let CfgEntry::NameValue { name, value, .. } = cfg.0 {
-                let value = value.map(|(v, _)| v);
-                let simple = SimpleCfg::from(&cfg.0);
-                if is_show {
-                    if let Some(span) = new_hide_attrs.get(&(name, value)) {
-                        show_hide_show_conflict_error(tcx, item.span(), *span);
-                    } else {
-                        new_show_attrs.insert((name, value), item.span());
-                    }
-                    cfg_info.hidden_cfg.remove(&simple);
-                } else {
-                    if let Some(span) = new_show_attrs.get(&(name, value)) {
-                        show_hide_show_conflict_error(tcx, item.span(), *span);
-                    } else {
-                        new_hide_attrs.insert((name, value), item.span());
-                    }
-                    cfg_info.hidden_cfg.insert(simple);
-                }
+    for value in &attr.values {
+        let simple = SimpleCfg::from(value);
+        if attr.kind == HideOrShow::Show {
+            if let Some(span) = new_hide_attrs.get(&(simple.name, simple.value)) {
+                show_hide_show_conflict_error(tcx, attr_span, *span);
+            } else {
+                new_show_attrs.insert((simple.name, simple.value), attr_span);
             }
+            cfg_info.hidden_cfg.remove(&simple);
+        } else {
+            if let Some(span) = new_show_attrs.get(&(simple.name, simple.value)) {
+                show_hide_show_conflict_error(tcx, attr_span, *span);
+            } else {
+                new_hide_attrs.insert((simple.name, simple.value), attr_span);
+            }
+            cfg_info.hidden_cfg.insert(simple);
         }
     }
 }
@@ -797,7 +793,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     fn check_changed_auto_active_status(
         changed_auto_active_status: &mut Option<rustc_span::Span>,
-        attr: &ast::MetaItem,
+        attr_span: Span,
         cfg_info: &mut CfgInfo,
         tcx: TyCtxt<'_>,
         new_value: bool,
@@ -807,14 +803,14 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                 tcx.sess
                     .dcx()
                     .struct_span_err(
-                        vec![*first_change, attr.span],
+                        vec![*first_change, attr_span],
                         "`auto_cfg` was disabled and enabled more than once on the same item",
                     )
                     .emit();
                 return true;
             }
         } else {
-            *changed_auto_active_status = Some(attr.span);
+            *changed_auto_active_status = Some(attr_span);
         }
         cfg_info.auto_cfg_active = new_value;
         false
@@ -826,7 +822,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     let mut doc_cfg = attrs
         .clone()
         .filter_map(|attr| match attr {
-            Attribute::Parsed(AttributeKind::Doc(d)) => Some(d),
+            Attribute::Parsed(AttributeKind::Doc(d)) if !d.cfg.is_empty() => Some(d),
             _ => None,
         })
         .peekable();
@@ -850,64 +846,37 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // We get all `doc(auto_cfg)`, `cfg` and `target_feature` attributes.
     for attr in attrs {
-        if let Some(ident) = attr.ident()
-            && ident.name == sym::doc
-            && let Some(attrs) = attr.meta_item_list()
-        {
-            for attr in attrs.iter().filter(|attr| attr.has_name(sym::auto_cfg)) {
-                let MetaItemInner::MetaItem(attr) = attr else {
-                    continue;
-                };
-                match &attr.kind {
-                    MetaItemKind::Word => {
-                        if check_changed_auto_active_status(
-                            &mut changed_auto_active_status,
-                            attr,
-                            cfg_info,
-                            tcx,
-                            true,
-                        ) {
-                            return None;
-                        }
-                    }
-                    MetaItemKind::NameValue(lit) => {
-                        if let LitKind::Bool(value) = lit.kind {
-                            if check_changed_auto_active_status(
-                                &mut changed_auto_active_status,
-                                attr,
-                                cfg_info,
-                                tcx,
-                                value,
-                            ) {
-                                return None;
-                            }
-                        }
-                    }
-                    MetaItemKind::List(sub_attrs) => {
-                        if check_changed_auto_active_status(
-                            &mut changed_auto_active_status,
-                            attr,
-                            cfg_info,
-                            tcx,
-                            true,
-                        ) {
-                            return None;
-                        }
-                        for sub_attr in sub_attrs.iter() {
-                            if let Some(ident) = sub_attr.ident()
-                                && (ident.name == sym::show || ident.name == sym::hide)
-                            {
-                                handle_auto_cfg_hide_show(
-                                    tcx,
-                                    cfg_info,
-                                    &sub_attr,
-                                    ident.name == sym::show,
-                                    &mut new_show_attrs,
-                                    &mut new_hide_attrs,
-                                );
-                            }
-                        }
-                    }
+        if let Attribute::Parsed(AttributeKind::Doc(d)) = attr {
+            for (new_value, span) in &d.auto_cfg_change {
+                if check_changed_auto_active_status(
+                    &mut changed_auto_active_status,
+                    *span,
+                    cfg_info,
+                    tcx,
+                    *new_value,
+                ) {
+                    return None;
+                }
+            }
+            if let Some((_, span)) = d.auto_cfg.first() {
+                if check_changed_auto_active_status(
+                    &mut changed_auto_active_status,
+                    *span,
+                    cfg_info,
+                    tcx,
+                    true,
+                ) {
+                    return None;
+                }
+                for (value, span) in &d.auto_cfg {
+                    handle_auto_cfg_hide_show(
+                        tcx,
+                        cfg_info,
+                        value,
+                        *span,
+                        &mut new_show_attrs,
+                        &mut new_hide_attrs,
+                    );
                 }
             }
         } else if let hir::Attribute::Parsed(AttributeKind::TargetFeature { features, .. }) = attr {
