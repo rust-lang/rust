@@ -110,7 +110,7 @@ pub use core::prelude::v1::deref;
 )]
 pub use core::prelude::v1::define_opaque;
 
-#[unstable(feature = "eii", issue = "125418")]
+#[unstable(feature = "extern_item_impls", issue = "125418")]
 pub use core::prelude::v1::{eii, unsafe_eii};
 
 #[unstable(feature = "eii_internals", issue = "none")]

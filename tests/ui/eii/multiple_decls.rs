@@ -1,5 +1,5 @@
 // Tests whether only one EII attribute cane be applied to a signature.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 #[eii(a)]
 #[eii(b)]

@@ -1,6 +1,6 @@
 //@ compile-flags: --crate-type rlib
 // Tests whether it's an error to implement an unsafe EII safely.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

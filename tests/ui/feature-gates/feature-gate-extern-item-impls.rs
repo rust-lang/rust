@@ -1,6 +1,6 @@
 #![crate_type = "rlib"]
 
-#[eii] //~ ERROR use of unstable library feature `eii`
+#[eii] //~ ERROR use of unstable library feature `extern_item_impls`
 fn hello(x: u64);
 
 #[hello]

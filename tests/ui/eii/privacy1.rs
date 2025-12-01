@@ -3,7 +3,7 @@
 //@ aux-build: codegen1.rs
 //@ ignore-backends: gcc
 // Tests whether re-exports work.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 extern crate codegen1 as codegen;
 

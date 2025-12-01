@@ -125,7 +125,7 @@ pub use crate::macros::builtin::define_opaque;
 )]
 pub use crate::macros::builtin::From;
 
-#[unstable(feature = "eii", issue = "125418")]
+#[unstable(feature = "extern_item_impls", issue = "125418")]
 pub use crate::macros::builtin::{eii, unsafe_eii};
 
 #[unstable(feature = "eii_internals", issue = "none")]

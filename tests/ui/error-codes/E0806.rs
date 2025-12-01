@@ -1,4 +1,4 @@
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 #[eii(foo)]
 fn x();

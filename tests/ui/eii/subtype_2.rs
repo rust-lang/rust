@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type rlib
 // Uses manual desugaring of EII internals:
 // Tests whether it's not ok when the implementation is less general.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

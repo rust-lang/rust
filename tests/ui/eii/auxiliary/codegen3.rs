@@ -1,6 +1,6 @@
 //@ no-prefer-dynamic
 #![crate_type = "rlib"]
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 // does have an impl but can't be called
 #[eii(eii1)]

@@ -3,7 +3,7 @@
 //@ aux-build: impl2.rs
 //@ ignore-backends: gcc
 // tests that EIIs error properly, even if the conflicting implementations live in another crate.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 // has a span but in the other crate
 //~? ERROR multiple implementations of `#[eii1]`

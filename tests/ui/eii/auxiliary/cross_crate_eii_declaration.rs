@@ -1,6 +1,6 @@
 //@ no-prefer-dynamic
 #![crate_type = "rlib"]
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

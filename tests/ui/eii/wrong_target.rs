@@ -1,4 +1,4 @@
-#![feature(eii)]
+#![feature(extern_item_impls)]
 // Check whether the EII attributes do target checking properly.
 
 #[eii]

@@ -2,7 +2,7 @@
 //@ check-run-results
 //@ ignore-backends: gcc
 // Tests whether one function could implement two EIIs.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 #[eii]
 fn a(x: u64);
