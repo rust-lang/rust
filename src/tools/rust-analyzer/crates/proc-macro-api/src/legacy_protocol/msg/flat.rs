@@ -962,8 +962,6 @@ impl<T: SpanTransformer> Reader<'_, T> {
             };
             res[i] = Some(g);
         }
-        proc_macro_srv::TokenStream::new(vec![proc_macro_srv::TokenTree::Group(
-            res[0].take().unwrap(),
-        )])
+        res[0].take().unwrap().stream.unwrap_or_default()
     }
 }
