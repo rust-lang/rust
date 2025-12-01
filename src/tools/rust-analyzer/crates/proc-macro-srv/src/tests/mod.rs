@@ -297,26 +297,38 @@ fn test_fn_like_macro_noop() {
 fn test_fn_like_macro_clone_ident_subtree() {
     assert_expand(
         "fn_like_clone_tokens",
-        r#"ident, []"#,
+        r#"ident, [ident2, ident3]"#,
         expect![[r#"
             IDENT 1 ident
             PUNCT 1 , [alone]
             GROUP [] 1 1 1
+              IDENT 1 ident2
+              PUNCT 1 , [alone]
+              IDENT 1 ident3
 
 
             IDENT 1 ident
             PUNCT 1 , [alone]
             GROUP [] 1 1 1
+              IDENT 1 ident2
+              PUNCT 1 , [alone]
+              IDENT 1 ident3
         "#]],
         expect![[r#"
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@8..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024
+            GROUP [] 42:Root[0000, 0]@7..8#ROOT2024 42:Root[0000, 0]@22..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024
+              IDENT 42:Root[0000, 0]@8..14#ROOT2024 ident2
+              PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
+              IDENT 42:Root[0000, 0]@16..22#ROOT2024 ident3
 
 
             IDENT 42:Root[0000, 0]@0..5#ROOT2024 ident
             PUNCT 42:Root[0000, 0]@5..6#ROOT2024 , [alone]
-            GROUP [] 42:Root[0000, 0]@7..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024 42:Root[0000, 0]@7..9#ROOT2024
+            GROUP [] 42:Root[0000, 0]@7..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024 42:Root[0000, 0]@7..23#ROOT2024
+              IDENT 42:Root[0000, 0]@8..14#ROOT2024 ident2
+              PUNCT 42:Root[0000, 0]@14..15#ROOT2024 , [alone]
+              IDENT 42:Root[0000, 0]@16..22#ROOT2024 ident3
         "#]],
     );
 }
