@@ -552,11 +552,6 @@ hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type 
 
 hir_analysis_type_of = {$ty}
 
-hir_analysis_typeof_reserved_keyword_used =
-    `typeof` is a reserved keyword but unimplemented
-    .suggestion = consider replacing `typeof(...)` with an actual type
-    .label = reserved keyword
-
 hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_name}` is not constrained by the impl trait, self type, or predicates
     .label = unconstrained {$param_def_kind}
     .const_param_note = expressions using a const parameter must map each value to a distinct output value

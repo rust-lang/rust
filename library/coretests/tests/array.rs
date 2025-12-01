@@ -724,3 +724,20 @@ fn array_eq() {
     let not_true = [0u8] == [].as_slice();
     assert!(!not_true);
 }
+
+#[test]
+fn const_array_ops() {
+    const fn doubler(x: usize) -> usize {
+        x * 2
+    }
+    const fn maybe_doubler(x: usize) -> Option<usize> {
+        x.checked_mul(2)
+    }
+    assert_eq!(const { std::array::from_fn::<_, 5, _>(doubler) }, [0, 2, 4, 6, 8]);
+    assert_eq!(const { [5, 6, 1, 2].map(doubler) }, [10, 12, 2, 4]);
+    assert_eq!(const { [1, usize::MAX, 2, 8].try_map(maybe_doubler) }, None);
+    assert_eq!(const { std::array::try_from_fn::<_, 5, _>(maybe_doubler) }, Some([0, 2, 4, 6, 8]));
+    #[derive(Debug, PartialEq)]
+    struct Zst;
+    assert_eq!([(); 10].try_map(|()| Some(Zst)), Some([const { Zst }; 10]));
+}

@@ -1,3 +1,4 @@
+//@ edition:2015
 mod A {
     pub type B = ();
     pub type B2 = ();

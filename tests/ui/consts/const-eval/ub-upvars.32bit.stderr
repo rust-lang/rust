@@ -1,5 +1,5 @@
 error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>: encountered a null reference
-  --> $DIR/ub-upvars.rs:6:1
+  --> $DIR/ub-upvars.rs:7:1
    |
 LL | const BAD_UPVAR: &dyn FnOnce() = &{
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value

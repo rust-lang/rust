@@ -1,3 +1,4 @@
+//@ edition:2015
 mod inner {
     pub trait Bar {
         fn method(&self);

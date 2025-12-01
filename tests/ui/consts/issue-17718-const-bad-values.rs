@@ -9,6 +9,5 @@ const C1: &'static mut [usize] = &mut [];
 
 static mut S: i32 = 3;
 const C2: &'static mut i32 = unsafe { &mut S };
-//~^ ERROR: encountered mutable reference
 
 fn main() {}

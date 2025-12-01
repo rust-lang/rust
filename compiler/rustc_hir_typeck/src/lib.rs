@@ -296,11 +296,6 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     } else if let Node::AnonConst(_) = node {
         let id = tcx.local_def_id_to_hir_id(def_id);
         match tcx.parent_hir_node(id) {
-            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(anon_const), span, .. })
-                if anon_const.hir_id == id =>
-            {
-                Some(fcx.next_ty_var(span))
-            }
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
             | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm { asm, .. }, span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {

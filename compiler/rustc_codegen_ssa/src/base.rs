@@ -5,7 +5,6 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
-use rustc_ast as ast;
 use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
 };
@@ -13,10 +12,10 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::{DebuggerVisualizerType, OptimizeAttr};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{AttributeKind, DebuggerVisualizerType, OptimizeAttr};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ItemId, Target};
+use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
@@ -31,7 +30,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
-use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_span::{DUMMY_SP, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{Arch, Os};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
@@ -896,15 +895,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem =
-            ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
-        let windows_subsystem = subsystem.map(|subsystem| {
-            if subsystem != sym::windows && subsystem != sym::console {
-                tcx.dcx().emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
-            }
-            subsystem.to_string()
-        });
+        let windows_subsystem = find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::WindowsSubsystem(kind, _) => *kind);
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the

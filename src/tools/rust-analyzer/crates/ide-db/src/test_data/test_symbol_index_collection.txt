@@ -356,7 +356,7 @@
                 loc: DeclarationLocation {
                     hir_file_id: MacroFile(
                         MacroCallId(
-                            Id(3800),
+                            Id(3c00),
                         ),
                     ),
                     ptr: SyntaxNodePtr {
@@ -694,7 +694,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3401,
+                                3801,
                             ),
                         ),
                     },
@@ -796,7 +796,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3400,
+                                3800,
                             ),
                         ),
                     },
@@ -862,7 +862,7 @@
                     Macro {
                         id: MacroRulesId(
                             MacroRulesId(
-                                3401,
+                                3801,
                             ),
                         ),
                     },

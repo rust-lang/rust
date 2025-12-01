@@ -106,6 +106,7 @@ impl AttributeKind {
             UnsafeSpecializationMarker(..) => No,
             UnstableFeatureBound(..) => No,
             Used { .. } => No,
+            WindowsSubsystem(..) => No,
             // tidy-alphabetical-end
         }
     }

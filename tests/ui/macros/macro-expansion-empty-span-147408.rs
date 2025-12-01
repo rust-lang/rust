@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Afor_loops_over_fallibles -Warray_into_iter
+//@ edition: 2015..2021
 
 fn main() {
     macro_rules! mac {

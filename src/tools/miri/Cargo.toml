@@ -41,7 +41,6 @@ nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = 
 ipc-channel = { version = "0.20.0", optional = true }
 capstone = { version = "0.13", optional = true }
 
-# FIXME(genmc,macos): Add `target_os = "macos"` once https://github.com/dtolnay/cxx/issues/1535 is fixed.
 [target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
 genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 

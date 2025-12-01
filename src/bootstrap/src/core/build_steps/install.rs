@@ -180,13 +180,16 @@ macro_rules! install {
 
         impl Step for $name {
             type Output = ();
-            const DEFAULT: bool = true;
             const IS_HOST: bool = $IS_HOST;
             $(const $c: bool = true;)*
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let $_config = &run.builder.config;
-                run.$condition_name($path_or_alias).default_condition($default_cond)
+                run.$condition_name($path_or_alias)
+            }
+
+            fn is_default_step(builder: &Builder<'_>) -> bool {
+                let $_config = &builder.config;
+                $default_cond
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -307,13 +310,15 @@ pub struct Src {
 
 impl Step for Src {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let config = &run.builder.config;
-        let cond = config.extended && config.tools.as_ref().is_none_or(|t| t.contains("src"));
-        run.path("src").default_condition(cond)
+        run.path("src")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        let config = &builder.config;
+        config.extended && config.tools.as_ref().is_none_or(|t| t.contains("src"))
     }
 
     fn make_run(run: RunConfig<'_>) {

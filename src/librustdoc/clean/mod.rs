@@ -561,12 +561,7 @@ fn clean_generic_param_def(
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(
-                        cx.tcx
-                            .type_of(def.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic"),
-                    ),
+                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
                     cx,
                     Some(def.def_id),
                     None,
@@ -1841,7 +1836,6 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer(())
         | TyKind::Err(_)
-        | TyKind::Typeof(..)
         | TyKind::InferDelegation(..)
         | TyKind::TraitAscription(_) => Infer,
     }

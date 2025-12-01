@@ -1,8 +1,7 @@
 ((rustic-mode
   .((eglot-workspace-configuration
      . (:rust-analyzer
-        ( :check ( :invocationLocation "root"
-                                       :invocationStrategy "once"
+        ( :check ( :invocationStrategy "once"
                                        :overrideCommand ["python3"
                                                          "x.py"
                                                          "check"

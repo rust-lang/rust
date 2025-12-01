@@ -3,7 +3,7 @@ use core::cmp::Ordering::{self, Equal, Greater, Less};
 use core::cmp::{max, min};
 use core::fmt::{self, Debug};
 use core::hash::{Hash, Hasher};
-use core::iter::{FusedIterator, Peekable};
+use core::iter::{FusedIterator, Peekable, TrustedLen};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub};
 
@@ -1753,6 +1753,7 @@ impl<T> Clone for Iter<'_, T> {
         Iter { iter: self.iter.clone() }
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
@@ -1783,18 +1784,23 @@ impl<'a, T> Iterator for Iter<'a, T> {
         self.next_back()
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> {
         self.iter.next_back()
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
@@ -1832,12 +1838,16 @@ impl<T, A: Allocator + Clone> DoubleEndedIterator for IntoIter<T, A> {
         self.iter.next_back().map(|(k, _)| k)
     }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator + Clone> ExactSizeIterator for IntoIter<T, A> {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T, A: Allocator + Clone> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator + Clone> FusedIterator for IntoIter<T, A> {}

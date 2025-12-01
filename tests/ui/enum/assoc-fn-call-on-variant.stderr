@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: `A` is a variant, not a module
-  --> $DIR/assoc-fn-call-on-variant.rs:14:8
+  --> $DIR/assoc-fn-call-on-variant.rs:15:8
    |
 LL |     E::A::f();
    |        ^ `A` is a variant, not a module

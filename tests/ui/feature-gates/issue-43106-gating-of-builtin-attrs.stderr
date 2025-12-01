@@ -219,17 +219,6 @@ LL | | }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:815:1
-   |
-LL | #[windows_subsystem = "windows"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL | #![windows_subsystem = "windows"]
-   |  +
-
-warning: crate-level attribute should be an inner attribute
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:865:1
    |
 LL | #[crate_type = "0800"]
@@ -386,56 +375,6 @@ LL |     #[link(name = "x")] extern "Rust" {}
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:819:17
-   |
-LL |     mod inner { #![windows_subsystem="windows"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:5
-   |
-LL |     #[windows_subsystem = "windows"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![windows_subsystem = "windows"] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:826:5
-   |
-LL |     #[windows_subsystem = "windows"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![windows_subsystem = "windows"] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:830:5
-   |
-LL |     #[windows_subsystem = "windows"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![windows_subsystem = "windows"] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:834:5
-   |
-LL |     #[windows_subsystem = "windows"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![windows_subsystem = "windows"] impl S { }
-   |      +
 
 warning: crate-level attribute should be in the root module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:869:17
@@ -1318,6 +1257,76 @@ LL |     #[must_use] impl S { }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[must_use]` can be applied to data types, functions, traits, and unions
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:815:1
+   |
+LL | #[windows_subsystem = "windows"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:817:1
+   |
+LL | / mod windows_subsystem {
+LL | |
+LL | |     mod inner { #![windows_subsystem="windows"] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![windows_subsystem]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:819:17
+   |
+LL |     mod inner { #![windows_subsystem="windows"] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:5
+   |
+LL |     #[windows_subsystem = "windows"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:38
+   |
+LL |     #[windows_subsystem = "windows"] fn f() { }
+   |                                      ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:826:5
+   |
+LL |     #[windows_subsystem = "windows"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:826:38
+   |
+LL |     #[windows_subsystem = "windows"] struct S;
+   |                                      ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:830:5
+   |
+LL |     #[windows_subsystem = "windows"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:830:38
+   |
+LL |     #[windows_subsystem = "windows"] type T = S;
+   |                                      ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![windows_subsystem]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:834:5
+   |
+LL |     #[windows_subsystem = "windows"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:834:38
+   |
+LL |     #[windows_subsystem = "windows"] impl S { }
+   |                                      ^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:841:1

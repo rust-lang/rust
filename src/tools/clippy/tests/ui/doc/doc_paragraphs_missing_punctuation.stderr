@@ -1,0 +1,113 @@
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:5:86
+   |
+LL | /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything
+   |                                                                                      ^ help: end the paragraph with some punctuation: `.`
+   |
+   = note: `-D clippy::doc-paragraphs-missing-punctuation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_paragraphs_missing_punctuation)]`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:11:22
+   |
+LL | /// The `Option` type
+   |                      ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:16:17
+   |
+LL |     /// No value
+   |                 ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:27:41
+   |
+LL | /// only the last line triggers the lint
+   |                                         ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:40:56
+   |
+LL |     /// <https://spec.commonmark.org/0.31.2/#autolinks>
+   |                                                        ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:49:26
+   |
+LL |     /// Here is a snippet
+   |                          ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:72:15
+   |
+LL |     /// U+0001
+   |               ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:79:29
+   |
+LL |     //! inner attributes too
+   |                             ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:90:47
+   |
+LL |     /// **But sometimes it is missing a period**
+   |                                               ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:95:46
+   |
+LL |     /// _But sometimes it is missing a period_
+   |                                              ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:104:56
+   |
+LL | /// Doc comments can end with an [inline link](#anchor)
+   |                                                        ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:108:65
+   |
+LL | /// Some doc comments contain [link reference definitions][spec]
+   |                                                                 ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:133:57
+   |
+LL | /// Doc comments with trailing blank lines are supported
+   |                                                         ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:139:48
+   |
+LL | /// This first paragraph is missing punctuation
+   |                                                ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:143:34
+   |
+LL | /// And it has multiple sentences
+   |                                  ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:146:37
+   |
+LL | /// Same for this third and last one
+   |                                     ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:153:33
+   |
+LL | /// This ends with a code `span`
+   |                                 ^ help: end the paragraph with some punctuation: `.`
+
+error: doc paragraphs should end with a terminal punctuation mark
+  --> tests/ui/doc/doc_paragraphs_missing_punctuation.rs:162:27
+   |
+LL |  * Block doc comments work
+   |                           ^ help: end the paragraph with some punctuation: `.`
+
+error: aborting due to 18 previous errors
+

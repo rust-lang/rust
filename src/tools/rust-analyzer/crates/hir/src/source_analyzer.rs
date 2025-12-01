@@ -21,7 +21,7 @@ use hir_def::{
     lang_item::LangItem,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
-    type_ref::{Mutability, TypeRefId},
+    type_ref::{Mutability, TypeRef, TypeRefId},
 };
 use hir_expand::{
     HirFileId, InFile,
@@ -267,8 +267,11 @@ impl<'db> SourceAnalyzer<'db> {
         db: &'db dyn HirDatabase,
         ty: &ast::Type,
     ) -> Option<Type<'db>> {
+        let interner = DbInterner::new_with(db, None, None);
+
         let type_ref = self.type_id(ty)?;
-        let ty = TyLoweringContext::new(
+
+        let mut ty = TyLoweringContext::new(
             db,
             &self.resolver,
             self.store()?,
@@ -279,6 +282,31 @@ impl<'db> SourceAnalyzer<'db> {
             LifetimeElisionKind::Infer,
         )
         .lower_ty(type_ref);
+
+        // Try and substitute unknown types using InferenceResult
+        if let Some(infer) = self.infer()
+            && let Some(store) = self.store()
+        {
+            let mut inferred_types = vec![];
+            TypeRef::walk(type_ref, store, &mut |type_ref_id, type_ref| {
+                if matches!(type_ref, TypeRef::Placeholder) {
+                    inferred_types.push(infer.type_of_type_placeholder(type_ref_id));
+                }
+            });
+            let mut inferred_types = inferred_types.into_iter();
+
+            let substituted_ty = hir_ty::next_solver::fold::fold_tys(interner, ty, |ty| {
+                if ty.is_ty_error() { inferred_types.next().flatten().unwrap_or(ty) } else { ty }
+            });
+
+            // Only used the result if the placeholder and unknown type counts matched
+            let success =
+                inferred_types.next().is_none() && !substituted_ty.references_non_lt_error();
+            if success {
+                ty = substituted_ty;
+            }
+        }
+
         Some(Type::new_with_resolver(db, &self.resolver, ty))
     }
 

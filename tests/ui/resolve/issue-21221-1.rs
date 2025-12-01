@@ -1,3 +1,4 @@
+//@ edition:2015
 mod mul1 {
     pub trait Mul {}
 }
