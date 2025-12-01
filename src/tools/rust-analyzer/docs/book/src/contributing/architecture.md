@@ -20,8 +20,6 @@ For older, by now mostly outdated stuff, see the [guide](./guide.md) and [anothe
 
 ![](https://user-images.githubusercontent.com/4789492/107129398-0ab70f00-687a-11eb-9bfc-d4eb023aec06.png)
 
-<!-- toc -->
-
 On the highest level, rust-analyzer is a thing which accepts input source code from the client and produces a structured semantic model of the code.
 
 More specifically, input data consists of a set of test files (`(PathBuf, String)` pairs) and information about project structure, captured in the so called `CrateGraph`.
