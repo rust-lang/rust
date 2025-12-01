@@ -13,6 +13,13 @@ use crate::{ProcMacroKind, codec::Codec};
 /// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
+    // IMPORTANT: Keep his first, otherwise postcard will break as its not a self describing format
+    // As such, this is the only request that needs to be supported across all protocol versions
+    // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
+    /// Performs an API version check between the client and the server.
+    /// Since [`VERSION_CHECK_VERSION`]
+    ApiVersionCheck {},
+
     /// Retrieves a list of macros from a given dynamic library.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: Utf8PathBuf },
@@ -20,10 +27,6 @@ pub enum Request {
     /// Expands a procedural macro.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Box<ExpandMacro>),
-
-    /// Performs an API version check between the client and the server.
-    /// Since [`VERSION_CHECK_VERSION`]
-    ApiVersionCheck {},
 
     /// Sets server-specific configurations.
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
@@ -44,6 +47,13 @@ pub enum SpanMode {
 /// Represents responses sent from the proc-macro-srv to the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
+    // IMPORTANT: Keep his first, otherwise postcard will break as its not a self describing format
+    // As such, this is the only request that needs to be supported across all protocol versions
+    // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
+    /// Returns the API version supported by the server.
+    /// Since [`NO_VERSION_CHECK_VERSION`]
+    ApiVersionCheck(u32),
+
     /// Returns a list of available macros in a dynamic library.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
@@ -51,10 +61,6 @@ pub enum Response {
     /// Returns result of a macro expansion.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
-
-    /// Returns the API version supported by the server.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
-    ApiVersionCheck(u32),
 
     /// Confirms the application of a configuration update.
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]

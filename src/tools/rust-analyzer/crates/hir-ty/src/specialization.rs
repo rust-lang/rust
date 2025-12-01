@@ -46,7 +46,7 @@ fn specializes_query(
     parent_impl_def_id: ImplId,
 ) -> bool {
     let trait_env = db.trait_environment(specializing_impl_def_id.into());
-    let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
+    let interner = DbInterner::new_with(db, trait_env.krate);
 
     let specializing_impl_signature = db.impl_signature(specializing_impl_def_id);
     let parent_impl_signature = db.impl_signature(parent_impl_def_id);

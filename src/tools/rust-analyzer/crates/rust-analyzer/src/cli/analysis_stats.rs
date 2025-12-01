@@ -10,8 +10,8 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasCrate, HasSource, HirDisplay, ModuleDef,
-    Name, crate_lang_items,
+    Adt, AssocItem, Crate, DefWithBody, FindPathConfig, HasSource, HirDisplay, ModuleDef, Name,
+    crate_lang_items,
     db::{DefDatabase, ExpandDatabase, HirDatabase},
     next_solver::{DbInterner, GenericArgs},
 };
@@ -20,6 +20,7 @@ use hir_def::{
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
 };
+use hir_ty::InferenceResult;
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
@@ -145,7 +146,9 @@ impl flags::AnalysisStats {
                     if !source_root.is_library || self.with_deps {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
-                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .file_item_tree(
+                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
+                            )
                             .item_tree_stats()
                             .into();
 
@@ -155,7 +158,9 @@ impl flags::AnalysisStats {
                     } else {
                         let length = db.file_text(file_id).text(db).lines().count();
                         let item_stats = db
-                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .file_item_tree(
+                                EditionedFileId::current_edition_guess_origin(db, file_id).into(),
+                            )
                             .item_tree_stats()
                             .into();
 
@@ -374,7 +379,7 @@ impl flags::AnalysisStats {
         let mut all = 0;
         let mut fail = 0;
         for &a in adts {
-            let interner = DbInterner::new_with(db, Some(a.krate(db).base()), None);
+            let interner = DbInterner::new_no_crate(db);
             let generic_params = db.generic_params(a.into());
             if generic_params.iter_type_or_consts().next().is_some()
                 || generic_params.iter_lt().next().is_some()
@@ -741,7 +746,7 @@ impl flags::AnalysisStats {
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
                     snap.body(body.into());
-                    snap.infer(body.into());
+                    InferenceResult::for_body(snap, body.into());
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -798,7 +803,8 @@ impl flags::AnalysisStats {
             }
             bar.set_message(msg);
             let body = db.body(body_id.into());
-            let inference_result = catch_unwind(AssertUnwindSafe(|| db.infer(body_id.into())));
+            let inference_result =
+                catch_unwind(AssertUnwindSafe(|| InferenceResult::for_body(db, body_id.into())));
             let inference_result = match inference_result {
                 Ok(inference_result) => inference_result,
                 Err(p) => {

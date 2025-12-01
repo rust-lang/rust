@@ -1628,6 +1628,7 @@ fn classify_name_ref<'db>(
                     }
                 }
                 qualifier_ctx.vis_node = error_node.children().find_map(ast::Visibility::cast);
+                qualifier_ctx.abi_node = error_node.children().find_map(ast::Abi::cast);
             }
 
             if let PathKind::Item { .. } = path_ctx.kind

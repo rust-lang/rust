@@ -37,10 +37,10 @@ use hir_def::{
     ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
-    lang_item::{LangItem, LangItemTarget, lang_item},
+    lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    signatures::{ConstSignature, StaticSignature},
+    signatures::{ConstSignature, EnumSignature, StaticSignature},
     type_ref::{ConstRef, LifetimeRefId, TypeRef, TypeRefId},
 };
 use hir_expand::{mod_path::ModPath, name::Name};
@@ -54,9 +54,10 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable,
     inherent::{AdtDef, IntoKind, Region as _, SliceLike, Ty as _},
 };
+use salsa::Update;
 use span::Edition;
 use stdx::never;
-use triomphe::Arc;
+use thin_vec::ThinVec;
 
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
@@ -94,7 +95,7 @@ use cast::{CastCheck, CastError};
 pub(crate) use closure::analysis::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
-pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult<'_>> {
+fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'_> {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
     let body = db.body(def);
@@ -107,7 +108,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
         DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = match db.enum_signature(v.lookup(db).parent).variant_body_type() {
+            ctx.return_ty = match EnumSignature::variant_body_type(db, v.lookup(db).parent) {
                 hir_def::layout::IntegerType::Pointer(signed) => match signed {
                     true => ctx.types.isize,
                     false => ctx.types.usize,
@@ -158,17 +159,14 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
 
     ctx.handle_opaque_type_uses();
 
-    Arc::new(ctx.resolve_all())
+    ctx.resolve_all()
 }
 
-pub(crate) fn infer_cycle_result(
-    db: &dyn HirDatabase,
-    _: DefWithBodyId,
-) -> Arc<InferenceResult<'_>> {
-    Arc::new(InferenceResult {
+fn infer_cycle_result(db: &dyn HirDatabase, _: DefWithBodyId) -> InferenceResult<'_> {
+    InferenceResult {
         has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_with(db, None, None), ErrorGuaranteed))
-    })
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
 }
 
 /// Binding modes inferred for patterns.
@@ -198,7 +196,7 @@ pub enum InferenceTyDiagnosticSource {
     Signature,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Update)]
 pub enum InferenceDiagnostic<'db> {
     NoSuchField {
         field: ExprOrPatId,
@@ -292,7 +290,7 @@ pub enum InferenceDiagnostic<'db> {
 }
 
 /// A mismatch between an expected and an inferred type.
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash, Update)]
 pub struct TypeMismatch<'db> {
     pub expected: Ty<'db>,
     pub actual: Ty<'db>,
@@ -338,7 +336,7 @@ pub struct TypeMismatch<'db> {
 ///    At some point, of course, `Box` should move out of the compiler, in which
 ///    case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
 ///    Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeVisitable, TypeFoldable, Update)]
 pub struct Adjustment<'db> {
     #[type_visitable(ignore)]
     #[type_foldable(identity)]
@@ -475,9 +473,10 @@ pub enum PointerCast {
 /// When you add a field that stores types (including `Substitution` and the like), don't forget
 /// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
 /// not appear in the final inference result.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Update)]
 pub struct InferenceResult<'db> {
     /// For each method call expr, records the function it resolves to.
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* expr id is technically update */)))]
     method_resolutions: FxHashMap<ExprId, (FunctionId, GenericArgs<'db>)>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, Either<FieldId, TupleFieldId>>,
@@ -488,28 +487,41 @@ pub struct InferenceResult<'db> {
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
-    tuple_field_access_types: FxHashMap<TupleId, Tys<'db>>,
-    /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
-    diagnostics: Vec<InferenceDiagnostic<'db>>,
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* thinvec is technically update */)))]
+    tuple_field_access_types: ThinVec<Tys<'db>>,
+
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* expr id is technically update */)))]
     pub(crate) type_of_expr: ArenaMap<ExprId, Ty<'db>>,
     /// For each pattern record the type it resolves to.
     ///
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* pat id is technically update */)))]
     pub(crate) type_of_pat: ArenaMap<PatId, Ty<'db>>,
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* binding id is technically update */)))]
     pub(crate) type_of_binding: ArenaMap<BindingId, Ty<'db>>,
-    pub(crate) type_of_type_placeholder: ArenaMap<TypeRefId, Ty<'db>>,
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* type ref id is technically update */)))]
+    pub(crate) type_of_type_placeholder: FxHashMap<TypeRefId, Ty<'db>>,
     pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, Ty<'db>>,
-    pub(crate) type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch<'db>>,
+
+    pub(crate) type_mismatches: Option<Box<FxHashMap<ExprOrPatId, TypeMismatch<'db>>>>,
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
     // `TyKind::Error`.
     // Which will then mark this field.
     pub(crate) has_errors: bool,
+    /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* thinvec is technically update */)))]
+    diagnostics: ThinVec<InferenceDiagnostic<'db>>,
+
     /// Interned `Error` type to return references to.
     // FIXME: Remove this.
     error_ty: Ty<'db>,
+
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* expr id is technically update */)))]
+    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment<'db>]>>,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
+    #[update(unsafe(with(crate::utils::unsafe_update_eq /* pat id is technically update */)))]
     pub(crate) pat_adjustments: FxHashMap<PatId, Vec<Ty<'db>>>,
     /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
     ///
@@ -525,11 +537,20 @@ pub struct InferenceResult<'db> {
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
     pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
-    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment<'db>]>>,
+
     pub(crate) closure_info: FxHashMap<InternedClosureId, (Vec<CapturedItem<'db>>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
+
     pub(crate) coercion_casts: FxHashSet<ExprId>,
+}
+
+#[salsa::tracked]
+impl<'db> InferenceResult<'db> {
+    #[salsa::tracked(returns(ref), cycle_result = infer_cycle_result)]
+    pub fn for_body(db: &'db dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'db> {
+        infer_query(db, def)
+    }
 }
 
 impl<'db> InferenceResult<'db> {
@@ -595,25 +616,31 @@ impl<'db> InferenceResult<'db> {
         }
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch<'db>> {
-        self.type_mismatches.get(&expr.into())
+        self.type_mismatches.as_deref()?.get(&expr.into())
     }
     pub fn type_mismatch_for_pat(&self, pat: PatId) -> Option<&TypeMismatch<'db>> {
-        self.type_mismatches.get(&pat.into())
+        self.type_mismatches.as_deref()?.get(&pat.into())
     }
     pub fn type_mismatches(&self) -> impl Iterator<Item = (ExprOrPatId, &TypeMismatch<'db>)> {
-        self.type_mismatches.iter().map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
+        self.type_mismatches
+            .as_deref()
+            .into_iter()
+            .flatten()
+            .map(|(expr_or_pat, mismatch)| (*expr_or_pat, mismatch))
     }
     pub fn expr_type_mismatches(&self) -> impl Iterator<Item = (ExprId, &TypeMismatch<'db>)> {
-        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
-            ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
-            _ => None,
-        })
+        self.type_mismatches.as_deref().into_iter().flatten().filter_map(
+            |(expr_or_pat, mismatch)| match *expr_or_pat {
+                ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
+                _ => None,
+            },
+        )
     }
     pub fn placeholder_types(&self) -> impl Iterator<Item = (TypeRefId, &Ty<'db>)> {
-        self.type_of_type_placeholder.iter()
+        self.type_of_type_placeholder.iter().map(|(&type_ref, ty)| (type_ref, ty))
     }
     pub fn type_of_type_placeholder(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
-        self.type_of_type_placeholder.get(type_ref).copied()
+        self.type_of_type_placeholder.get(&type_ref).copied()
     }
     pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem<'db>>, FnTrait) {
         self.closure_info.get(&closure).unwrap()
@@ -659,7 +686,7 @@ impl<'db> InferenceResult<'db> {
     }
 
     pub fn tuple_field_access_type(&self, id: TupleId) -> Tys<'db> {
-        self.tuple_field_access_types[&id]
+        self.tuple_field_access_types[id.0 as usize]
     }
 
     pub fn pat_adjustment(&self, id: PatId) -> Option<&[Ty<'db>]> {
@@ -816,11 +843,12 @@ pub(crate) struct InferenceContext<'body, 'db> {
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
-    target_features: OnceCell<(TargetFeatures, TargetFeatureIsSafeInTarget)>,
+    target_features: OnceCell<(TargetFeatures<'db>, TargetFeatureIsSafeInTarget)>,
     pub(crate) unstable_features: MethodResolutionUnstableFeatures,
     pub(crate) edition: Edition,
     pub(crate) generic_def: GenericDefId,
     pub(crate) table: unify::InferenceTable<'db>,
+    pub(crate) lang_items: &'db LangItems,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult<'db>,
@@ -926,6 +954,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             unstable_features: MethodResolutionUnstableFeatures::from_def_map(
                 resolver.top_level_def_map(),
             ),
+            lang_items: table.interner().lang_items(),
             edition: resolver.krate().data(db).edition,
             table,
             tuple_field_accesses_rev: Default::default(),
@@ -960,12 +989,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.resolver.krate()
     }
 
-    fn target_features(&self) -> (&TargetFeatures, TargetFeatureIsSafeInTarget) {
+    fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
         let (target_features, target_feature_is_safe) = self.target_features.get_or_init(|| {
             let target_features = match self.owner {
-                DefWithBodyId::FunctionId(id) => {
-                    TargetFeatures::from_attrs(&self.db.attrs(id.into()))
-                }
+                DefWithBodyId::FunctionId(id) => TargetFeatures::from_fn(self.db, id),
                 _ => TargetFeatures::default(),
             };
             let target_feature_is_safe = match &self.krate().workspace_data(self.db).target {
@@ -1063,13 +1090,14 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         type_of_type_placeholder.shrink_to_fit();
         type_of_opaque.shrink_to_fit();
 
-        *has_errors |= !type_mismatches.is_empty();
-
-        for mismatch in (*type_mismatches).values_mut() {
-            mismatch.expected = table.resolve_completely(mismatch.expected);
-            mismatch.actual = table.resolve_completely(mismatch.actual);
+        if let Some(type_mismatches) = type_mismatches {
+            *has_errors = true;
+            for mismatch in type_mismatches.values_mut() {
+                mismatch.expected = table.resolve_completely(mismatch.expected);
+                mismatch.actual = table.resolve_completely(mismatch.actual);
+            }
+            type_mismatches.shrink_to_fit();
         }
-        type_mismatches.shrink_to_fit();
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
             match diagnostic {
@@ -1121,9 +1149,8 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         pat_adjustments.shrink_to_fit();
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
-            .enumerate()
-            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
-            .inspect(|(_, subst)| {
+            .map(|subst| table.resolve_completely(subst))
+            .inspect(|subst| {
                 *has_errors = *has_errors || subst.iter().any(|ty| ty.references_non_lt_error());
             })
             .collect();
@@ -1520,7 +1547,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     ) -> Result<(), ()> {
         let result = self.demand_eqtype_fixme_no_diag(expected, actual);
         if result.is_err() {
-            self.result.type_mismatches.insert(id, TypeMismatch { expected, actual });
+            self.result
+                .type_mismatches
+                .get_or_insert_default()
+                .insert(id, TypeMismatch { expected, actual });
         }
         result
     }
@@ -1837,21 +1867,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         }
     }
 
-    fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
-        let krate = self.resolver.krate();
-        lang_item(self.db, krate, item)
-    }
-
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
         trait_.trait_items(self.db).associated_type_by_name(&Name::new_symbol_root(sym::Output))
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
-        let ItemContainerId::TraitId(trait_) = self
-            .resolve_lang_item(LangItem::IntoFutureIntoFuture)?
-            .as_function()?
-            .lookup(self.db)
-            .container
+        let ItemContainerId::TraitId(trait_) =
+            self.lang_items.IntoFutureIntoFuture?.lookup(self.db).container
         else {
             return None;
         };
@@ -1859,42 +1881,42 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::OwnedBox)?.as_struct()?;
+        let struct_ = self.lang_items.OwnedBox?;
         Some(struct_.into())
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeFull)?.as_struct()?;
+        let struct_ = self.lang_items.RangeFull?;
         Some(struct_.into())
     }
 
     fn resolve_range(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::Range)?.as_struct()?;
+        let struct_ = self.lang_items.Range?;
         Some(struct_.into())
     }
 
     fn resolve_range_inclusive(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeInclusiveStruct)?.as_struct()?;
+        let struct_ = self.lang_items.RangeInclusiveStruct?;
         Some(struct_.into())
     }
 
     fn resolve_range_from(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeFrom)?.as_struct()?;
+        let struct_ = self.lang_items.RangeFrom?;
         Some(struct_.into())
     }
 
     fn resolve_range_to(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeTo)?.as_struct()?;
+        let struct_ = self.lang_items.RangeTo?;
         Some(struct_.into())
     }
 
     fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::RangeToInclusive)?.as_struct()?;
+        let struct_ = self.lang_items.RangeToInclusive?;
         Some(struct_.into())
     }
 
     fn resolve_va_list(&self) -> Option<AdtId> {
-        let struct_ = self.resolve_lang_item(LangItem::VaList)?.as_struct()?;
+        let struct_ = self.lang_items.VaList?;
         Some(struct_.into())
     }
 

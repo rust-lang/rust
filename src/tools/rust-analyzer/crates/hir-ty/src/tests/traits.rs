@@ -4134,7 +4134,7 @@ trait Trait {
 }
 
 fn f(t: &dyn Trait<T = (), T = ()>) {}
-   //^&'? {unknown}
+   //^&'? (dyn Trait<T = ()> + 'static)
         "#,
     );
 }
@@ -5052,6 +5052,29 @@ trait MoveMessage {
         b.token_with();
      // ^^^^^^^^^^^^^^ type: ()
     }
+}
+    "#,
+    );
+}
+
+#[test]
+fn dyn_trait_supertrait_projections_are_elaborated() {
+    check_types(
+        r#"
+//- minicore: deref, sized, unsize, coerce_unsized, dispatch_from_dyn
+use core::ops::Deref;
+
+struct Base;
+
+impl Base {
+    fn func(&self) -> i32 { 111 }
+}
+
+trait BaseLayerOne: Deref<Target = Base>{}
+
+fn foo(base_layer_two: &dyn BaseLayerOne) {
+    let _r = base_layer_two.func();
+     // ^^ i32
 }
     "#,
     );

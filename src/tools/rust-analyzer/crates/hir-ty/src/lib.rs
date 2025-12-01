@@ -477,13 +477,13 @@ pub fn callable_sig_from_fn_trait<'db>(
     trait_env: Arc<TraitEnvironment<'db>>,
     db: &'db dyn HirDatabase,
 ) -> Option<(FnTrait, PolyFnSig<'db>)> {
-    let krate = trait_env.krate;
-    let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
+    let mut table = InferenceTable::new(db, trait_env.clone(), None);
+    let lang_items = table.interner().lang_items();
+
+    let fn_once_trait = FnTrait::FnOnce.get_id(lang_items)?;
     let output_assoc_type = fn_once_trait
         .trait_items(db)
         .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
-
-    let mut table = InferenceTable::new(db, trait_env.clone(), None);
 
     // Register two obligations:
     // - Self: FnOnce<?args_ty>
@@ -502,7 +502,7 @@ pub fn callable_sig_from_fn_trait<'db>(
         table.register_obligation(pred);
         let return_ty = table.normalize_alias_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
-            let fn_x_trait = fn_x.get_id(db, krate)?;
+            let fn_x_trait = fn_x.get_id(lang_items)?;
             let trait_ref = TraitRef::new(table.interner(), fn_x_trait.into(), args);
             if !table
                 .try_obligation(Predicate::upcast_from(trait_ref, table.interner()))

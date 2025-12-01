@@ -16,6 +16,8 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
 
     let mut current = buffer.cursor();
     let mut syntax_context_to_edition_cache = FxHashMap::default();
+    let mut ctx_edition =
+        |ctx| *syntax_context_to_edition_cache.entry(ctx).or_insert_with(|| span_to_edition(ctx));
 
     while !current.eof() {
         let tt = current.token_tree();
@@ -26,8 +28,8 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
         {
             current.bump();
             match current.token_tree() {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(_ident))) => {
-                    res.push(LIFETIME_IDENT);
+                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(ident))) => {
+                    res.push(LIFETIME_IDENT, ctx_edition(ident.span.ctx));
                     current.bump();
                     continue;
                 }
@@ -51,7 +53,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                             tt::LitKind::CStr | tt::LitKind::CStrRaw(_) => SyntaxKind::C_STRING,
                             tt::LitKind::Err(_) => SyntaxKind::ERROR,
                         };
-                        res.push(kind);
+                        res.push(kind, ctx_edition(lit.span.ctx));
 
                         if kind == FLOAT_NUMBER && !lit.symbol.as_str().ends_with('.') {
                             // Tag the token as joint if it is float with a fractional part
@@ -61,20 +63,18 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                         }
                     }
                     tt::Leaf::Ident(ident) => {
-                        let edition = *syntax_context_to_edition_cache
-                            .entry(ident.span.ctx)
-                            .or_insert_with(|| span_to_edition(ident.span.ctx));
+                        let edition = ctx_edition(ident.span.ctx);
                         match ident.sym.as_str() {
-                            "_" => res.push(T![_]),
-                            i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
-                            _ if ident.is_raw.yes() => res.push(IDENT),
+                            "_" => res.push(T![_], edition),
+                            i if i.starts_with('\'') => res.push(LIFETIME_IDENT, edition),
+                            _ if ident.is_raw.yes() => res.push(IDENT, edition),
                             text => match SyntaxKind::from_keyword(text, edition) {
-                                Some(kind) => res.push(kind),
+                                Some(kind) => res.push(kind, edition),
                                 None => {
                                     let contextual_keyword =
                                         SyntaxKind::from_contextual_keyword(text, edition)
                                             .unwrap_or(SyntaxKind::IDENT);
-                                    res.push_ident(contextual_keyword);
+                                    res.push_ident(contextual_keyword, edition);
                                 }
                             },
                         }
@@ -82,7 +82,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                     tt::Leaf::Punct(punct) => {
                         let kind = SyntaxKind::from_char(punct.char)
                             .unwrap_or_else(|| panic!("{punct:#?} is not a valid punct"));
-                        res.push(kind);
+                        res.push(kind, ctx_edition(punct.span.ctx));
                         if punct.spacing == tt::Spacing::Joint {
                             res.was_joint();
                         }
@@ -97,7 +97,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                     tt::DelimiterKind::Bracket => Some(T!['[']),
                     tt::DelimiterKind::Invisible => None,
                 } {
-                    res.push(kind);
+                    res.push(kind, ctx_edition(subtree.delimiter.open.ctx));
                 }
                 current.bump();
             }
@@ -109,7 +109,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
                     tt::DelimiterKind::Bracket => Some(T![']']),
                     tt::DelimiterKind::Invisible => None,
                 } {
-                    res.push(kind);
+                    res.push(kind, ctx_edition(subtree.delimiter.close.ctx));
                 }
             }
         };

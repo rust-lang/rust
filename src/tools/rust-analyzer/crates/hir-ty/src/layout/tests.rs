@@ -9,6 +9,7 @@ use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
+    InferenceResult,
     db::HirDatabase,
     layout::{Layout, LayoutError},
     next_solver::{DbInterner, GenericArgs},
@@ -80,7 +81,7 @@ fn eval_goal(
         })
         .unwrap();
     crate::attach_db(&db, || {
-        let interner = DbInterner::new_with(&db, None, None);
+        let interner = DbInterner::new_no_crate(&db);
         let goal_ty = match adt_or_type_alias_id {
             Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
                 interner,
@@ -136,7 +137,7 @@ fn eval_expr(
             .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
             .unwrap()
             .0;
-        let infer = db.infer(function_id.into());
+        let infer = InferenceResult::for_body(&db, function_id.into());
         let goal_ty = infer.type_of_binding[b];
         db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
     })

@@ -19,7 +19,7 @@ extern crate ra_ap_rustc_abi as rustc_abi;
 
 pub mod db;
 
-pub mod attr;
+pub mod attrs;
 pub mod builtin_type;
 pub mod item_scope;
 pub mod per_ns;
@@ -45,7 +45,7 @@ pub mod find_path;
 pub mod import_map;
 pub mod visibility;
 
-use intern::{Interned, Symbol, sym};
+use intern::{Interned, Symbol};
 pub use rustc_abi as layout;
 use thin_vec::ThinVec;
 use triomphe::Arc;
@@ -80,7 +80,7 @@ use syntax::{AstNode, ast};
 pub use hir_expand::{Intern, Lookup, tt};
 
 use crate::{
-    attr::Attrs,
+    attrs::AttrFlags,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
@@ -600,17 +600,17 @@ impl HasModule for ModuleId {
 /// An ID of a module, **local** to a `DefMap`.
 pub type LocalModuleId = Idx<nameres::ModuleData>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct FieldId {
     // FIXME: Store this as an erased `salsa::Id` to save space
     pub parent: VariantId,
     pub local_id: LocalFieldId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct TupleId(pub u32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct TupleFieldId {
     pub tuple: TupleId,
     pub index: u32,
@@ -956,10 +956,16 @@ impl CallableDefId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+// FIXME: We probably should use this in more places.
+/// This is used to avoid interning the whole `AttrDefId`, so we intern just modules and not everything.
+#[salsa_macros::interned(debug, no_lifetime)]
+pub struct InternedModuleId {
+    pub loc: ModuleId,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum AttrDefId {
-    ModuleId(ModuleId),
-    FieldId(FieldId),
+    ModuleId(InternedModuleId),
     AdtId(AdtId),
     FunctionId(FunctionId),
     EnumVariantId(EnumVariantId),
@@ -969,15 +975,12 @@ pub enum AttrDefId {
     TypeAliasId(TypeAliasId),
     MacroId(MacroId),
     ImplId(ImplId),
-    GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
     ExternCrateId(ExternCrateId),
     UseId(UseId),
 }
 
 impl_from!(
-    ModuleId,
-    FieldId,
     AdtId(StructId, EnumId, UnionId),
     EnumVariantId,
     StaticId,
@@ -987,41 +990,11 @@ impl_from!(
     TypeAliasId,
     MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
-    GenericParamId,
     ExternCrateId,
     UseId
     for AttrDefId
 );
 
-impl TryFrom<ModuleDefId> for AttrDefId {
-    type Error = ();
-
-    fn try_from(value: ModuleDefId) -> Result<Self, Self::Error> {
-        match value {
-            ModuleDefId::ModuleId(it) => Ok(it.into()),
-            ModuleDefId::FunctionId(it) => Ok(it.into()),
-            ModuleDefId::AdtId(it) => Ok(it.into()),
-            ModuleDefId::EnumVariantId(it) => Ok(it.into()),
-            ModuleDefId::ConstId(it) => Ok(it.into()),
-            ModuleDefId::StaticId(it) => Ok(it.into()),
-            ModuleDefId::TraitId(it) => Ok(it.into()),
-            ModuleDefId::TypeAliasId(it) => Ok(it.into()),
-            ModuleDefId::MacroId(id) => Ok(id.into()),
-            ModuleDefId::BuiltinType(_) => Err(()),
-        }
-    }
-}
-
-impl From<ItemContainerId> for AttrDefId {
-    fn from(acid: ItemContainerId) -> Self {
-        match acid {
-            ItemContainerId::ModuleId(mid) => AttrDefId::ModuleId(mid),
-            ItemContainerId::ImplId(iid) => AttrDefId::ImplId(iid),
-            ItemContainerId::TraitId(tid) => AttrDefId::TraitId(tid),
-            ItemContainerId::ExternBlockId(id) => AttrDefId::ExternBlockId(id),
-        }
-    }
-}
 impl From<AssocItemId> for AttrDefId {
     fn from(assoc: AssocItemId) -> Self {
         match assoc {
@@ -1041,7 +1014,7 @@ impl From<VariantId> for AttrDefId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype, salsa::Update)]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
     StructId(StructId),
@@ -1262,8 +1235,7 @@ impl HasModule for GenericDefId {
 impl HasModule for AttrDefId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
-            AttrDefId::ModuleId(it) => *it,
-            AttrDefId::FieldId(it) => it.parent.module(db),
+            AttrDefId::ModuleId(it) => it.loc(db),
             AttrDefId::AdtId(it) => it.module(db),
             AttrDefId::FunctionId(it) => it.module(db),
             AttrDefId::EnumVariantId(it) => it.module(db),
@@ -1273,12 +1245,6 @@ impl HasModule for AttrDefId {
             AttrDefId::TypeAliasId(it) => it.module(db),
             AttrDefId::ImplId(it) => it.module(db),
             AttrDefId::ExternBlockId(it) => it.module(db),
-            AttrDefId::GenericParamId(it) => match it {
-                GenericParamId::TypeParamId(it) => it.parent(),
-                GenericParamId::ConstParamId(it) => it.parent(),
-                GenericParamId::LifetimeParamId(it) => it.parent,
-            }
-            .module(db),
             AttrDefId::MacroId(it) => it.module(db),
             AttrDefId::ExternCrateId(it) => it.module(db),
             AttrDefId::UseId(it) => it.module(db),
@@ -1402,32 +1368,18 @@ pub enum Complete {
 }
 
 impl Complete {
-    pub fn extract(is_trait: bool, attrs: &Attrs) -> Complete {
-        let mut do_not_complete = Complete::Yes;
-        for ra_attr in attrs.rust_analyzer_tool() {
-            let segments = ra_attr.path.segments();
-            if segments.len() != 2 {
-                continue;
-            }
-            let action = segments[1].symbol();
-            if *action == sym::completions {
-                match ra_attr.token_tree_value().map(|tt| tt.token_trees().flat_tokens()) {
-                    Some([tt::TokenTree::Leaf(tt::Leaf::Ident(ident))]) => {
-                        if ident.sym == sym::ignore_flyimport {
-                            do_not_complete = Complete::IgnoreFlyimport;
-                        } else if is_trait {
-                            if ident.sym == sym::ignore_methods {
-                                do_not_complete = Complete::IgnoreMethods;
-                            } else if ident.sym == sym::ignore_flyimport_methods {
-                                do_not_complete = Complete::IgnoreFlyimportMethods;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
+    #[inline]
+    pub fn extract(is_trait: bool, attrs: AttrFlags) -> Complete {
+        if attrs.contains(AttrFlags::COMPLETE_IGNORE_FLYIMPORT) {
+            return Complete::IgnoreFlyimport;
+        } else if is_trait {
+            if attrs.contains(AttrFlags::COMPLETE_IGNORE_METHODS) {
+                return Complete::IgnoreMethods;
+            } else if attrs.contains(AttrFlags::COMPLETE_IGNORE_FLYIMPORT_METHODS) {
+                return Complete::IgnoreFlyimportMethods;
             }
         }
-        do_not_complete
+        Complete::Yes
     }
 
     #[inline]

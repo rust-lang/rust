@@ -391,19 +391,14 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
     )
     .entered();
 
-    let module_data = ModuleData::new(
-        ModuleOrigin::CrateRoot { definition: krate.root_file_id(db) },
-        Visibility::Public,
-    );
+    let root_file_id = crate_id.root_file_id(db);
+    let module_data =
+        ModuleData::new(ModuleOrigin::CrateRoot { definition: root_file_id }, Visibility::Public);
 
     let def_map =
         DefMap::empty(crate_id, Arc::new(DefMapCrateData::new(krate.edition)), module_data, None);
-    let (def_map, local_def_map) = collector::collect_defs(
-        db,
-        def_map,
-        TreeId::new(krate.root_file_id(db).into(), None),
-        None,
-    );
+    let (def_map, local_def_map) =
+        collector::collect_defs(db, def_map, TreeId::new(root_file_id.into(), None), None);
 
     DefMapPair::new(db, def_map, local_def_map)
 }

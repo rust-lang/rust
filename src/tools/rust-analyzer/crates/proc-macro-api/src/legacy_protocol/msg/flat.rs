@@ -216,16 +216,7 @@ impl FlatTree {
             text: Vec::new(),
             version,
         };
-        let group = proc_macro_srv::Group {
-            delimiter: proc_macro_srv::Delimiter::None,
-            stream: Some(tokenstream),
-            span: proc_macro_srv::DelimSpan {
-                open: call_site,
-                close: call_site,
-                entire: call_site,
-            },
-        };
-        w.write_tokenstream(&group);
+        w.write_tokenstream(call_site, &tokenstream);
 
         FlatTree {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -267,16 +258,7 @@ impl FlatTree {
             text: Vec::new(),
             version,
         };
-        let group = proc_macro_srv::Group {
-            delimiter: proc_macro_srv::Delimiter::None,
-            stream: Some(tokenstream),
-            span: proc_macro_srv::DelimSpan {
-                open: call_site,
-                close: call_site,
-                entire: call_site,
-            },
-        };
-        w.write_tokenstream(&group);
+        w.write_tokenstream(call_site, &tokenstream);
 
         FlatTree {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
@@ -491,7 +473,7 @@ impl SpanTransformer for Span {
 }
 
 struct Writer<'a, 'span, S: SpanTransformer, W> {
-    work: VecDeque<(usize, W)>,
+    work: VecDeque<(usize, usize, W)>,
     string_table: FxHashMap<std::borrow::Cow<'a, str>, u32>,
     span_data_table: &'span mut S::Table,
     version: u32,
@@ -508,14 +490,13 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
     fn write_subtree(&mut self, root: tt::SubtreeView<'a, T::Span>) {
         let subtree = root.top_subtree();
         self.enqueue(subtree, root.iter());
-        while let Some((idx, subtree)) = self.work.pop_front() {
-            self.subtree(idx, subtree);
+        while let Some((idx, len, subtree)) = self.work.pop_front() {
+            self.subtree(idx, len, subtree);
         }
     }
 
-    fn subtree(&mut self, idx: usize, subtree: tt::iter::TtIter<'a, T::Span>) {
+    fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a, T::Span>) {
         let mut first_tt = self.token_tree.len();
-        let n_tt = subtree.clone().count(); // FIXME: `count()` walks over the entire iterator.
         self.token_tree.resize(first_tt + n_tt, !0);
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
@@ -594,7 +575,8 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, tt::iter::TtIter<'a, T::Span>> {
         let close = self.token_id_of(subtree.delimiter.close);
         let delimiter_kind = subtree.delimiter.kind;
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
-        self.work.push_back((idx, contents));
+        // FIXME: `count()` walks over the entire iterator.
+        self.work.push_back((idx, contents.clone().count(), contents));
         idx as u32
     }
 }
@@ -624,26 +606,43 @@ impl<'a, T: SpanTransformer, U> Writer<'a, '_, T, U> {
 }
 
 #[cfg(feature = "sysroot-abi")]
-impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span>> {
-    fn write_tokenstream(&mut self, root: &'a proc_macro_srv::Group<T::Span>) {
-        self.enqueue_group(root);
+impl<'a, T: SpanTransformer>
+    Writer<'a, '_, T, Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>>
+{
+    fn write_tokenstream(
+        &mut self,
+        call_site: T::Span,
+        root: &'a proc_macro_srv::TokenStream<T::Span>,
+    ) {
+        let call_site = self.token_id_of(call_site);
+        self.subtree.push(SubtreeRepr {
+            open: call_site,
+            close: call_site,
+            kind: tt::DelimiterKind::Invisible,
+            tt: [!0, !0],
+        });
+        self.work.push_back((0, root.len(), Some(root.iter())));
 
-        while let Some((idx, group)) = self.work.pop_front() {
-            self.group(idx, group);
+        while let Some((idx, len, group)) = self.work.pop_front() {
+            self.group(idx, len, group);
         }
     }
 
-    fn group(&mut self, idx: usize, group: &'a proc_macro_srv::Group<T::Span>) {
+    fn group(
+        &mut self,
+        idx: usize,
+        n_tt: usize,
+        group: Option<proc_macro_srv::TokenStreamIter<'a, T::Span>>,
+    ) {
         let mut first_tt = self.token_tree.len();
-        let n_tt = group.stream.as_ref().map_or(0, |it| it.len());
         self.token_tree.resize(first_tt + n_tt, !0);
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for tt in group.stream.iter().flat_map(|it| it.iter()) {
+        for tt in group.into_iter().flatten() {
             let idx_tag = match tt {
                 proc_macro_srv::TokenTree::Group(group) => {
-                    let idx = self.enqueue_group(group);
+                    let idx = self.enqueue(group);
                     idx << 2
                 }
                 proc_macro_srv::TokenTree::Literal(lit) => {
@@ -706,7 +705,7 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span
         }
     }
 
-    fn enqueue_group(&mut self, group: &'a proc_macro_srv::Group<T::Span>) -> u32 {
+    fn enqueue(&mut self, group: &'a proc_macro_srv::Group<T::Span>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(group.span.open);
         let close = self.token_id_of(group.span.close);
@@ -717,7 +716,11 @@ impl<'a, T: SpanTransformer> Writer<'a, '_, T, &'a proc_macro_srv::Group<T::Span
             proc_macro_srv::Delimiter::None => tt::DelimiterKind::Invisible,
         };
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
-        self.work.push_back((idx, group));
+        self.work.push_back((
+            idx,
+            group.stream.as_ref().map_or(0, |stream| stream.len()),
+            group.stream.as_ref().map(|ts| ts.iter()),
+        ));
         idx as u32
     }
 }
@@ -959,7 +962,6 @@ impl<T: SpanTransformer> Reader<'_, T> {
             };
             res[i] = Some(g);
         }
-        // FIXME: double check this
         proc_macro_srv::TokenStream::new(vec![proc_macro_srv::TokenTree::Group(
             res[0].take().unwrap(),
         )])

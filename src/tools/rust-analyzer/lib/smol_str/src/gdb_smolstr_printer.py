@@ -73,16 +73,14 @@ class SmolStrProvider:
 
         if variant_name == "Static":
             try:
-                data_ptr = variant_val["data_ptr"]
-                length = int(variant_val["length"])
-                mem = gdb.selected_inferior().read_memory(int(data_ptr), length)
-                return _read_utf8(mem)
+                # variant_val["__0"] is &'static str
+                return variant_val["__0"]
             except Exception as e:
                 return f"<SmolStr Static error: {e}>"
 
         if variant_name == "Heap":
             try:
-                # variant_val is an Arc<str>
+                # variant_val["__0"] is an Arc<str>
                 inner = variant_val["__0"]["ptr"]["pointer"]
                 # inner is a fat pointer to ArcInner<str>
                 data_ptr = inner["data_ptr"]

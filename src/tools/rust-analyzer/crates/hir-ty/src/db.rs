@@ -12,7 +12,7 @@ use salsa::plumbing::AsId;
 use triomphe::Arc;
 
 use crate::{
-    ImplTraitId, InferenceResult, TraitEnvironment, TyDefId, ValueTyDefId,
+    ImplTraitId, TraitEnvironment, TyDefId, ValueTyDefId,
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
@@ -23,10 +23,6 @@ use crate::{
 
 #[query_group::query_group]
 pub trait HirDatabase: DefDatabase + std::fmt::Debug {
-    #[salsa::invoke(crate::infer::infer_query)]
-    #[salsa::cycle(cycle_result = crate::infer::infer_cycle_result)]
-    fn infer<'db>(&'db self, def: DefWithBodyId) -> Arc<InferenceResult<'db>>;
-
     // region:mir
 
     // FXME: Collapse `mir_body_for_closure` into `mir_body`

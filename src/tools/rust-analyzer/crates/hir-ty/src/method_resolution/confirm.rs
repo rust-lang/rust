@@ -5,7 +5,6 @@ use hir_def::{
     FunctionId, GenericDefId, GenericParamId, ItemContainerId, TraitId,
     expr_store::path::{GenericArg as HirGenericArg, GenericArgs as HirGenericArgs},
     hir::{ExprId, generics::GenericParamDataRef},
-    lang_item::LangItem,
 };
 use rustc_type_ir::{
     TypeFoldable,
@@ -481,7 +480,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
             }
             Err(_) => {
                 if self.ctx.unstable_features.arbitrary_self_types {
-                    self.ctx.result.type_mismatches.insert(
+                    self.ctx.result.type_mismatches.get_or_insert_default().insert(
                         self.expr.into(),
                         TypeMismatch { expected: method_self_ty, actual: self_ty },
                     );
@@ -550,9 +549,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         &self,
         predicates: impl Iterator<Item = Clause<'db>>,
     ) -> bool {
-        let Some(sized_def_id) =
-            LangItem::Sized.resolve_trait(self.db(), self.ctx.resolver.krate())
-        else {
+        let Some(sized_def_id) = self.ctx.lang_items.Sized else {
             return false;
         };
 
@@ -570,9 +567,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
     fn check_for_illegal_method_calls(&self) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         if let ItemContainerId::TraitId(trait_def_id) = self.candidate.loc(self.db()).container
-            && LangItem::Drop
-                .resolve_trait(self.db(), self.ctx.resolver.krate())
-                .is_some_and(|drop_trait| drop_trait == trait_def_id)
+            && self.ctx.lang_items.Drop.is_some_and(|drop_trait| drop_trait == trait_def_id)
         {
             // FIXME: Report an error.
         }

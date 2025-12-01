@@ -5,7 +5,7 @@
 
 use std::fmt;
 
-use hir_def::{TraitId, TypeAliasId, lang_item::LangItem};
+use hir_def::{TraitId, TypeAliasId};
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
 use tracing::debug;
 use triomphe::Arc;
@@ -38,7 +38,7 @@ pub fn autoderef<'db>(
     env: Arc<TraitEnvironment<'db>>,
     ty: Canonical<'db, Ty<'db>>,
 ) -> impl Iterator<Item = Ty<'db>> + use<'db> {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let (ty, _) = infcx.instantiate_canonical(&ty);
     let autoderef = Autoderef::new(&infcx, &env, ty);
@@ -301,36 +301,28 @@ where
         self.infcx().interner
     }
 
-    #[inline]
-    fn db(&self) -> &'db dyn HirDatabase {
-        self.interner().db
-    }
-
     fn autoderef_traits(&mut self) -> Option<AutoderefTraits> {
+        let lang_items = self.interner().lang_items();
         match &mut self.traits {
             Some(it) => Some(*it),
             None => {
                 let traits = if self.use_receiver_trait {
                     (|| {
                         Some(AutoderefTraits {
-                            trait_: LangItem::Receiver
-                                .resolve_trait(self.db(), self.env().krate)?,
-                            trait_target: LangItem::ReceiverTarget
-                                .resolve_type_alias(self.db(), self.env().krate)?,
+                            trait_: lang_items.Receiver?,
+                            trait_target: lang_items.ReceiverTarget?,
                         })
                     })()
                     .or_else(|| {
                         Some(AutoderefTraits {
-                            trait_: LangItem::Deref.resolve_trait(self.db(), self.env().krate)?,
-                            trait_target: LangItem::DerefTarget
-                                .resolve_type_alias(self.db(), self.env().krate)?,
+                            trait_: lang_items.Deref?,
+                            trait_target: lang_items.DerefTarget?,
                         })
                     })?
                 } else {
                     AutoderefTraits {
-                        trait_: LangItem::Deref.resolve_trait(self.db(), self.env().krate)?,
-                        trait_target: LangItem::DerefTarget
-                            .resolve_type_alias(self.db(), self.env().krate)?,
+                        trait_: lang_items.Deref?,
+                        trait_target: lang_items.DerefTarget?,
                     }
                 };
                 Some(*self.traits.insert(traits))

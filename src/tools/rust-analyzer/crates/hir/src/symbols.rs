@@ -416,12 +416,12 @@ impl<'a> SymbolCollector<'a> {
         let mut do_not_complete = Complete::Yes;
 
         if let Some(attrs) = def.attrs(self.db) {
-            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), &attrs);
+            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), attrs.attrs);
             if let Some(trait_do_not_complete) = trait_do_not_complete {
                 do_not_complete = Complete::for_trait_item(trait_do_not_complete, do_not_complete);
             }
 
-            for alias in attrs.doc_aliases() {
+            for alias in attrs.doc_aliases(self.db) {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,
@@ -465,9 +465,9 @@ impl<'a> SymbolCollector<'a> {
 
         let mut do_not_complete = Complete::Yes;
         if let Some(attrs) = def.attrs(self.db) {
-            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), &attrs);
+            do_not_complete = Complete::extract(matches!(def, ModuleDef::Trait(_)), attrs.attrs);
 
-            for alias in attrs.doc_aliases() {
+            for alias in attrs.doc_aliases(self.db) {
                 self.symbols.insert(FileSymbol {
                     name: alias.clone(),
                     def,

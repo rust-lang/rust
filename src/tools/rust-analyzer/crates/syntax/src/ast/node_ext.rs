@@ -10,7 +10,7 @@ use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, T, TokenText,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
     ast::{
         self, AstNode, AstToken, HasAttrs, HasGenericArgs, HasGenericParams, HasName,
         HasTypeBounds, SyntaxNode, support,
@@ -1112,5 +1112,41 @@ impl ast::OrPat {
             .find(|it| !it.kind().is_trivia())
             .and_then(NodeOrToken::into_token)
             .filter(|it| it.kind() == T![|])
+    }
+}
+
+/// An iterator over the elements in an [`ast::TokenTree`].
+///
+/// Does not yield trivia or the delimiters.
+#[derive(Clone)]
+pub struct TokenTreeChildren {
+    iter: SyntaxElementChildren,
+}
+
+impl TokenTreeChildren {
+    #[inline]
+    pub fn new(tt: &ast::TokenTree) -> Self {
+        let mut iter = tt.syntax.children_with_tokens();
+        iter.next(); // Bump the opening delimiter.
+        Self { iter }
+    }
+}
+
+impl Iterator for TokenTreeChildren {
+    type Item = NodeOrToken<ast::TokenTree, SyntaxToken>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.find_map(|item| match item {
+            NodeOrToken::Node(node) => ast::TokenTree::cast(node).map(NodeOrToken::Node),
+            NodeOrToken::Token(token) => {
+                let kind = token.kind();
+                (!matches!(
+                    kind,
+                    SyntaxKind::WHITESPACE | SyntaxKind::COMMENT | T![')'] | T![']'] | T!['}']
+                ))
+                .then_some(NodeOrToken::Token(token))
+            }
+        })
     }
 }

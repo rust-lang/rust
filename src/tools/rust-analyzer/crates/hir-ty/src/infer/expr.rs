@@ -10,7 +10,6 @@ use hir_def::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
         LabelId, Literal, Pat, PatId, Statement, UnaryOp,
     },
-    lang_item::{LangItem, LangItemTarget},
     resolver::ValueNs,
 };
 use hir_def::{FunctionId, hir::ClosureKind};
@@ -71,6 +70,7 @@ impl<'db> InferenceContext<'_, 'db> {
             if !could_unify {
                 self.result
                     .type_mismatches
+                    .get_or_insert_default()
                     .insert(tgt_expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
             }
         }
@@ -100,6 +100,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 Err(_) => {
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert(expr.into(), TypeMismatch { expected: target, actual: ty });
                     target
                 }
@@ -293,6 +294,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 if !could_unify {
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert(expr.into(), TypeMismatch { expected: expected_ty, actual: ty });
                 }
             }
@@ -874,14 +876,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 Literal::CString(..) => Ty::new_ref(
                     self.interner(),
                     self.types.re_static,
-                    self.resolve_lang_item(LangItem::CStr)
-                        .and_then(LangItemTarget::as_struct)
-                        .map_or_else(
-                            || self.err_ty(),
-                            |strukt| {
-                                Ty::new_adt(self.interner(), strukt.into(), self.types.empty_args)
-                            },
-                        ),
+                    self.lang_items.CStr.map_or_else(
+                        || self.err_ty(),
+                        |strukt| Ty::new_adt(self.interner(), strukt.into(), self.types.empty_args),
+                    ),
                     Mutability::Not,
                 ),
                 Literal::Char(..) => self.types.char,
@@ -1188,6 +1186,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Err(_) => {
                         this.result
                             .type_mismatches
+                            .get_or_insert_default()
                             .insert(tgt_expr.into(), TypeMismatch { expected: target, actual: ty });
                         target
                     }
@@ -1279,7 +1278,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
         }
-        let Some(trait_) = fn_x.get_id(self.db, self.table.trait_env.krate) else {
+        let Some(trait_) = fn_x.get_id(self.lang_items) else {
             return;
         };
         let trait_data = trait_.trait_items(self.db);
@@ -1456,11 +1455,10 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let g = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
-        let prev_state = block_id.map(|block_id| {
+        let prev_env = block_id.map(|block_id| {
             let prev_env = self.table.trait_env.clone();
             TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
-            let prev_block = self.table.infer_ctxt.interner.block.replace(block_id);
-            (prev_env, prev_block)
+            prev_env
         });
 
         let (break_ty, ty) =
@@ -1556,7 +1554,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             )
                             .is_err()
                         {
-                            this.result.type_mismatches.insert(
+                            this.result.type_mismatches.get_or_insert_default().insert(
                                 expr.into(),
                                 TypeMismatch { expected: t, actual: this.types.unit },
                             );
@@ -1568,9 +1566,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             });
         self.resolver.reset_to_guard(g);
-        if let Some((prev_env, prev_block)) = prev_state {
+        if let Some(prev_env) = prev_env {
             self.table.trait_env = prev_env;
-            self.table.infer_ctxt.interner.block = prev_block;
         }
 
         break_ty.unwrap_or(ty)
@@ -2130,6 +2127,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     // Don't report type mismatches if there is a mismatch in args count.
                     self.result
                         .type_mismatches
+                        .get_or_insert_default()
                         .insert((*arg).into(), TypeMismatch { expected, actual: found });
                 }
             }
@@ -2188,9 +2186,11 @@ impl<'db> InferenceContext<'_, 'db> {
         };
 
         let data = self.db.function_signature(func);
-        let Some(legacy_const_generics_indices) = &data.legacy_const_generics_indices else {
+        let Some(legacy_const_generics_indices) = data.legacy_const_generics_indices(self.db, func)
+        else {
             return Default::default();
         };
+        let mut legacy_const_generics_indices = Box::<[u32]>::from(legacy_const_generics_indices);
 
         // only use legacy const generics if the param count matches with them
         if data.params.len() + legacy_const_generics_indices.len() != args.len() {
@@ -2199,9 +2199,8 @@ impl<'db> InferenceContext<'_, 'db> {
             } else {
                 // there are more parameters than there should be without legacy
                 // const params; use them
-                let mut indices = legacy_const_generics_indices.as_ref().clone();
-                indices.sort();
-                return indices;
+                legacy_const_generics_indices.sort_unstable();
+                return legacy_const_generics_indices;
             }
         }
 
@@ -2214,9 +2213,8 @@ impl<'db> InferenceContext<'_, 'db> {
             self.infer_expr(args[arg_idx as usize], &expected, ExprIsRead::Yes);
             // FIXME: evaluate and unify with the const
         }
-        let mut indices = legacy_const_generics_indices.as_ref().clone();
-        indices.sort();
-        indices
+        legacy_const_generics_indices.sort_unstable();
+        legacy_const_generics_indices
     }
 
     pub(super) fn with_breakable_ctx<T>(

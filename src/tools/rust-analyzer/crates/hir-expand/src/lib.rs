@@ -25,18 +25,17 @@ mod cfg_process;
 mod fixup;
 mod prettify_macro_expansion_;
 
-use attrs::collect_attrs;
-use rustc_hash::FxHashMap;
 use salsa::plumbing::{AsId, FromId};
 use stdx::TupleExt;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use core::fmt;
-use std::hash::Hash;
+use std::{hash::Hash, ops};
 
 use base_db::Crate;
 use either::Either;
-use span::{Edition, ErasedFileAstId, FileAstId, Span, SpanAnchor, SyntaxContext};
+use span::{Edition, ErasedFileAstId, FileAstId, Span, SyntaxContext};
 use syntax::{
     SyntaxNode, SyntaxToken, TextRange, TextSize,
     ast::{self, AstNode},
@@ -317,9 +316,6 @@ pub enum MacroCallKind {
     Derive {
         ast_id: AstId<ast::Adt>,
         /// Syntactical index of the invoking `#[derive]` attribute.
-        ///
-        /// Outer attributes are counted first, then inner attributes. This does not support
-        /// out-of-line modules, which may have attributes spread across 2 files!
         derive_attr_index: AttrId,
         /// Index of the derive macro in the derive attribute
         derive_index: u32,
@@ -329,15 +325,66 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`
-        // but we need to fix the `cfg_attr` handling first.
+        // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`.
         attr_args: Option<Arc<tt::TopSubtree>>,
-        /// Syntactical index of the invoking `#[attribute]`.
+        /// This contains the list of all *active* attributes (derives and attr macros) preceding this
+        /// attribute, including this attribute. You can retrieve the [`AttrId`] of the current attribute
+        /// by calling [`invoc_attr()`] on this.
         ///
-        /// Outer attributes are counted first, then inner attributes. This does not support
-        /// out-of-line modules, which may have attributes spread across 2 files!
-        invoc_attr_index: AttrId,
+        /// The macro should not see the attributes here.
+        ///
+        /// [`invoc_attr()`]: AttrMacroAttrIds::invoc_attr
+        censored_attr_ids: AttrMacroAttrIds,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AttrMacroAttrIds(AttrMacroAttrIdsRepr);
+
+impl AttrMacroAttrIds {
+    #[inline]
+    pub fn from_one(id: AttrId) -> Self {
+        Self(AttrMacroAttrIdsRepr::One(id))
+    }
+
+    #[inline]
+    pub fn from_many(ids: &[AttrId]) -> Self {
+        if let &[id] = ids {
+            Self(AttrMacroAttrIdsRepr::One(id))
+        } else {
+            Self(AttrMacroAttrIdsRepr::ManyDerives(ids.iter().copied().collect()))
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum AttrMacroAttrIdsRepr {
+    One(AttrId),
+    ManyDerives(ThinVec<AttrId>),
+}
+
+impl ops::Deref for AttrMacroAttrIds {
+    type Target = [AttrId];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match &self.0 {
+            AttrMacroAttrIdsRepr::One(one) => std::slice::from_ref(one),
+            AttrMacroAttrIdsRepr::ManyDerives(many) => many,
+        }
+    }
+}
+
+impl AttrMacroAttrIds {
+    #[inline]
+    pub fn invoc_attr(&self) -> AttrId {
+        match &self.0 {
+            AttrMacroAttrIdsRepr::One(it) => *it,
+            AttrMacroAttrIdsRepr::ManyDerives(it) => {
+                *it.last().expect("should always have at least one `AttrId`")
+            }
+        }
+    }
 }
 
 impl MacroCallKind {
@@ -597,34 +644,20 @@ impl MacroDefId {
 
 impl MacroCallLoc {
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> InFile<SyntaxNode> {
-        match self.kind {
+        match &self.kind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: handle `cfg_attr`
-                ast_id.with_value(ast_id.to_node(db)).map(|it| {
-                    collect_attrs(&it)
-                        .nth(derive_attr_index.ast_index())
-                        .and_then(|it| match it.1 {
-                            Either::Left(attr) => Some(attr.syntax().clone()),
-                            Either::Right(_) => None,
-                        })
-                        .unwrap_or_else(|| it.syntax().clone())
-                })
+                let (attr, _, _, _) = derive_attr_index.find_attr_range(db, self.krate, *ast_id);
+                ast_id.with_value(attr.syntax().clone())
             }
-            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
+            MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
                 if self.def.is_attribute_derive() {
-                    // FIXME: handle `cfg_attr`
-                    ast_id.with_value(ast_id.to_node(db)).map(|it| {
-                        collect_attrs(&it)
-                            .nth(invoc_attr_index.ast_index())
-                            .and_then(|it| match it.1 {
-                                Either::Left(attr) => Some(attr.syntax().clone()),
-                                Either::Right(_) => None,
-                            })
-                            .unwrap_or_else(|| it.syntax().clone())
-                    })
+                    let (attr, _, _, _) =
+                        attr_ids.invoc_attr().find_attr_range(db, self.krate, *ast_id);
+                    ast_id.with_value(attr.syntax().clone())
                 } else {
                     ast_id.with_value(ast_id.to_node(db).syntax().clone())
                 }
@@ -729,7 +762,7 @@ impl MacroCallKind {
     /// Here we try to roughly match what rustc does to improve diagnostics: fn-like macros
     /// get the macro path (rustc shows the whole `ast::MacroCall`), attribute macros get the
     /// attribute's range, and derives get only the specific derive that is being referred to.
-    pub fn original_call_range(self, db: &dyn ExpandDatabase) -> FileRange {
+    pub fn original_call_range(self, db: &dyn ExpandDatabase, krate: Crate) -> FileRange {
         let mut kind = self;
         let file_id = loop {
             match kind.file_id() {
@@ -751,24 +784,11 @@ impl MacroCallKind {
             }
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
                 // FIXME: should be the range of the macro name, not the whole derive
-                // FIXME: handle `cfg_attr`
-                collect_attrs(&ast_id.to_node(db))
-                    .nth(derive_attr_index.ast_index())
-                    .expect("missing derive")
-                    .1
-                    .expect_left("derive is a doc comment?")
-                    .syntax()
-                    .text_range()
+                derive_attr_index.find_attr_range(db, krate, ast_id).2
             }
             // FIXME: handle `cfg_attr`
-            MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
-                collect_attrs(&ast_id.to_node(db))
-                    .nth(invoc_attr_index.ast_index())
-                    .expect("missing attribute")
-                    .1
-                    .expect_left("attribute macro is a doc comment?")
-                    .syntax()
-                    .text_range()
+            MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
+                attr_ids.invoc_attr().find_attr_range(db, krate, ast_id).2
             }
         };
 
@@ -887,7 +907,8 @@ impl ExpansionInfo {
         let span = self.exp_map.span_at(token.start());
         match &self.arg_map {
             SpanMap::RealSpanMap(_) => {
-                let file_id = EditionedFileId::from_span(db, span.anchor.file_id).into();
+                let file_id =
+                    EditionedFileId::from_span_guess_origin(db, span.anchor.file_id).into();
                 let anchor_offset =
                     db.ast_id_map(file_id).get_erased(span.anchor.ast_id).text_range().start();
                 InFile { file_id, value: smallvec::smallvec![span.range + anchor_offset] }
@@ -943,7 +964,7 @@ pub fn map_node_range_up_rooted(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    let file_id = EditionedFileId::from_span(db, anchor.file_id);
+    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
     let anchor_offset =
         db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
     Some(FileRange { file_id, range: TextRange::new(start, end) + anchor_offset })
@@ -969,34 +990,10 @@ pub fn map_node_range_up(
         start = start.min(span.range.start());
         end = end.max(span.range.end());
     }
-    let file_id = EditionedFileId::from_span(db, anchor.file_id);
+    let file_id = EditionedFileId::from_span_guess_origin(db, anchor.file_id);
     let anchor_offset =
         db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
     Some((FileRange { file_id, range: TextRange::new(start, end) + anchor_offset }, ctx))
-}
-
-/// Maps up the text range out of the expansion hierarchy back into the original file its from.
-/// This version will aggregate the ranges of all spans with the same anchor and syntax context.
-pub fn map_node_range_up_aggregated(
-    db: &dyn ExpandDatabase,
-    exp_map: &ExpansionSpanMap,
-    range: TextRange,
-) -> FxHashMap<(SpanAnchor, SyntaxContext), TextRange> {
-    let mut map = FxHashMap::default();
-    for span in exp_map.spans_for_range(range) {
-        let range = map.entry((span.anchor, span.ctx)).or_insert_with(|| span.range);
-        *range = TextRange::new(
-            range.start().min(span.range.start()),
-            range.end().max(span.range.end()),
-        );
-    }
-    for ((anchor, _), range) in &mut map {
-        let file_id = EditionedFileId::from_span(db, anchor.file_id);
-        let anchor_offset =
-            db.ast_id_map(file_id.into()).get_erased(anchor.ast_id).text_range().start();
-        *range += anchor_offset;
-    }
-    map
 }
 
 /// Looks up the span at the given offset.
@@ -1006,7 +1003,7 @@ pub fn span_for_offset(
     offset: TextSize,
 ) -> (FileRange, SyntaxContext) {
     let span = exp_map.span_at(offset);
-    let file_id = EditionedFileId::from_span(db, span.anchor.file_id);
+    let file_id = EditionedFileId::from_span_guess_origin(db, span.anchor.file_id);
     let anchor_offset =
         db.ast_id_map(file_id.into()).get_erased(span.anchor.ast_id).text_range().start();
     (FileRange { file_id, range: span.range + anchor_offset }, span.ctx)
@@ -1076,7 +1073,7 @@ impl ExpandTo {
     }
 }
 
-intern::impl_internable!(ModPath, attrs::AttrInput);
+intern::impl_internable!(ModPath);
 
 #[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
 #[doc(alias = "MacroFileId")]
@@ -1137,6 +1134,14 @@ impl HirFileId {
         match self {
             HirFileId::FileId(it) => Some(it),
             HirFileId::MacroFile(_) => None,
+        }
+    }
+
+    #[inline]
+    pub fn krate(self, db: &dyn ExpandDatabase) -> Crate {
+        match self {
+            HirFileId::FileId(it) => it.krate(db),
+            HirFileId::MacroFile(it) => it.loc(db).krate,
         }
     }
 }

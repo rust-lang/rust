@@ -12,7 +12,7 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
+    InferenceResult, TraitEnvironment,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::DisplayTarget,
     mir::OperandKind,
@@ -97,7 +97,7 @@ pub fn borrowck_query<'db>(
 ) -> Result<Arc<[BorrowckResult<'db>]>, MirLowerError<'db>> {
     let _p = tracing::info_span!("borrowck_query").entered();
     let module = def.module(db);
-    let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     let env = db.trait_environment_for_body(def);
     let mut res = vec![];
     // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
@@ -121,10 +121,10 @@ fn make_fetch_closure_field<'db>(
 ) -> impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db> + use<'db> {
     |c: InternedClosureId, subst: GenericArgs<'db>, f: usize| {
         let InternedClosure(def, _) = db.lookup_intern_closure(c);
-        let infer = db.infer(def);
+        let infer = InferenceResult::for_body(db, def);
         let (captures, _) = infer.closure_info(c);
         let parent_subst = subst.split_closure_args_untupled().parent_args;
-        let interner = DbInterner::new_with(db, None, None);
+        let interner = DbInterner::new_no_crate(db);
         captures.get(f).expect("broken closure field").ty.instantiate(interner, parent_subst)
     }
 }

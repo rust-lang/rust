@@ -2,7 +2,7 @@
 
 use std::collections::hash_map;
 
-use hir_def::{GenericParamId, TraitId, hir::ExprId, lang_item::LangItem};
+use hir_def::{GenericParamId, TraitId, hir::ExprId};
 use intern::{Symbol, sym};
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
@@ -355,17 +355,18 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 
     fn lang_item_for_bin_op(&self, op: BinaryOp) -> (Symbol, Option<TraitId>) {
         let (method_name, trait_lang_item) =
-            crate::lang_items::lang_items_for_bin_op(op).expect("invalid operator provided");
-        (method_name, trait_lang_item.resolve_trait(self.db, self.krate()))
+            crate::lang_items::lang_items_for_bin_op(self.lang_items, op)
+                .expect("invalid operator provided");
+        (method_name, trait_lang_item)
     }
 
     fn lang_item_for_unop(&self, op: UnaryOp) -> (Symbol, Option<TraitId>) {
         let (method_name, trait_lang_item) = match op {
-            UnaryOp::Not => (sym::not, LangItem::Not),
-            UnaryOp::Neg => (sym::neg, LangItem::Neg),
+            UnaryOp::Not => (sym::not, self.lang_items.Not),
+            UnaryOp::Neg => (sym::neg, self.lang_items.Neg),
             UnaryOp::Deref => panic!("Deref is not overloadable"),
         };
-        (method_name, trait_lang_item.resolve_trait(self.db, self.krate()))
+        (method_name, trait_lang_item)
     }
 }
 

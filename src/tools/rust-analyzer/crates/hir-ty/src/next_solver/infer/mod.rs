@@ -8,7 +8,6 @@ use std::sync::Arc;
 pub use BoundRegionConversionTime::*;
 use ena::unify as ut;
 use hir_def::GenericParamId;
-use hir_def::lang_item::LangItem;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
@@ -542,9 +541,7 @@ impl<'db> InferCtxt<'db> {
     pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        let Some(copy_def_id) =
-            LangItem::Copy.resolve_trait(self.interner.db, self.interner.krate.unwrap())
-        else {
+        let Some(copy_def_id) = self.interner.lang_items().Copy else {
             return false;
         };
 

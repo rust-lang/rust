@@ -1,8 +1,11 @@
 //! Attributes & documentation for hir types.
 
+use cfg::CfgExpr;
+use either::Either;
 use hir_def::{
-    AssocItemId, AttrDefId, ModuleDefId,
-    attr::AttrsWithOwner,
+    AssocItemId, AttrDefId, FieldId, InternedModuleId, LifetimeParamId, ModuleDefId,
+    TypeOrConstParamId,
+    attrs::{AttrFlags, Docs, IsInnerDoc},
     expr_store::path::Path,
     item_scope::ItemInNs,
     per_ns::Namespace,
@@ -19,35 +22,169 @@ use hir_ty::{
     },
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
 };
+use intern::Symbol;
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, Impl, LifetimeParam, Macro, Module, ModuleDef, Static,
-    Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Field, Function, GenericParam, HasCrate, Impl, LangItem, LifetimeParam, Macro, Module,
+    ModuleDef, Static, Struct, Trait, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
-pub trait HasAttrs {
-    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner;
+#[derive(Debug, Clone, Copy)]
+pub enum AttrsOwner {
+    AttrDef(AttrDefId),
+    Field(FieldId),
+    LifetimeParam(LifetimeParamId),
+    TypeOrConstParam(TypeOrConstParamId),
+}
+
+impl AttrsOwner {
+    #[inline]
+    fn attr_def(&self) -> Option<AttrDefId> {
+        match self {
+            AttrsOwner::AttrDef(it) => Some(*it),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct AttrsWithOwner {
+    pub(crate) attrs: AttrFlags,
+    owner: AttrsOwner,
+}
+
+impl AttrsWithOwner {
+    fn new(db: &dyn HirDatabase, owner: AttrDefId) -> Self {
+        Self { attrs: AttrFlags::query(db, owner), owner: AttrsOwner::AttrDef(owner) }
+    }
+
+    fn new_field(db: &dyn HirDatabase, owner: FieldId) -> Self {
+        Self { attrs: AttrFlags::query_field(db, owner), owner: AttrsOwner::Field(owner) }
+    }
+
+    fn new_lifetime_param(db: &dyn HirDatabase, owner: LifetimeParamId) -> Self {
+        Self {
+            attrs: AttrFlags::query_lifetime_param(db, owner),
+            owner: AttrsOwner::LifetimeParam(owner),
+        }
+    }
+    fn new_type_or_const_param(db: &dyn HirDatabase, owner: TypeOrConstParamId) -> Self {
+        Self {
+            attrs: AttrFlags::query_type_or_const_param(db, owner),
+            owner: AttrsOwner::TypeOrConstParam(owner),
+        }
+    }
+
+    #[inline]
+    pub fn is_unstable(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_UNSTABLE)
+    }
+
+    #[inline]
+    pub fn is_macro_export(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_MACRO_EXPORT)
+    }
+
+    #[inline]
+    pub fn is_doc_notable_trait(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_DOC_NOTABLE_TRAIT)
+    }
+
+    #[inline]
+    pub fn is_doc_hidden(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_DOC_HIDDEN)
+    }
+
+    #[inline]
+    pub fn is_deprecated(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_DEPRECATED)
+    }
+
+    #[inline]
+    pub fn is_non_exhaustive(&self) -> bool {
+        self.attrs.contains(AttrFlags::NON_EXHAUSTIVE)
+    }
+
+    #[inline]
+    pub fn is_test(&self) -> bool {
+        self.attrs.contains(AttrFlags::IS_TEST)
+    }
+
+    #[inline]
+    pub fn lang(&self, db: &dyn HirDatabase) -> Option<LangItem> {
+        self.owner
+            .attr_def()
+            .and_then(|owner| self.attrs.lang_item_with_attrs(db, owner))
+            .and_then(|lang| LangItem::from_symbol(&lang))
+    }
+
+    #[inline]
+    pub fn doc_aliases<'db>(&self, db: &'db dyn HirDatabase) -> &'db [Symbol] {
+        let owner = match self.owner {
+            AttrsOwner::AttrDef(it) => Either::Left(it),
+            AttrsOwner::Field(it) => Either::Right(it),
+            AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) => return &[],
+        };
+        self.attrs.doc_aliases(db, owner)
+    }
+
+    #[inline]
+    pub fn cfgs<'db>(&self, db: &'db dyn HirDatabase) -> Option<&'db CfgExpr> {
+        let owner = match self.owner {
+            AttrsOwner::AttrDef(it) => Either::Left(it),
+            AttrsOwner::Field(it) => Either::Right(it),
+            AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) => return None,
+        };
+        self.attrs.cfgs(db, owner)
+    }
+
+    #[inline]
+    pub fn hir_docs<'db>(&self, db: &'db dyn HirDatabase) -> Option<&'db Docs> {
+        match self.owner {
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
+            AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) => None,
+        }
+    }
+}
+
+pub trait HasAttrs: Sized {
+    #[inline]
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+        match self.attr_id(db) {
+            AttrsOwner::AttrDef(it) => AttrsWithOwner::new(db, it),
+            AttrsOwner::Field(it) => AttrsWithOwner::new_field(db, it),
+            AttrsOwner::LifetimeParam(it) => AttrsWithOwner::new_lifetime_param(db, it),
+            AttrsOwner::TypeOrConstParam(it) => AttrsWithOwner::new_type_or_const_param(db, it),
+        }
+    }
+
     #[doc(hidden)]
-    fn attr_id(self) -> AttrDefId;
+    fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner;
+
+    #[inline]
+    fn hir_docs(self, db: &dyn HirDatabase) -> Option<&Docs> {
+        match self.attr_id(db) {
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
+            AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) => None,
+        }
+    }
 }
 
 macro_rules! impl_has_attrs {
     ($(($def:ident, $def_id:ident),)*) => {$(
         impl HasAttrs for $def {
-            fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
-                let def = AttrDefId::$def_id(self.into());
-                AttrsWithOwner::new(db, def)
-            }
-            fn attr_id(self) -> AttrDefId {
-                AttrDefId::$def_id(self.into())
+            #[inline]
+            fn attr_id(self, _db: &dyn HirDatabase) -> AttrsOwner {
+                AttrsOwner::AttrDef(AttrDefId::$def_id(self.into()))
             }
         }
     )*};
 }
 
 impl_has_attrs![
-    (Field, FieldId),
     (Variant, EnumVariantId),
     (Static, StaticId),
     (Const, ConstId),
@@ -56,8 +193,6 @@ impl_has_attrs![
     (Macro, MacroId),
     (Function, FunctionId),
     (Adt, AdtId),
-    (Module, ModuleId),
-    (GenericParam, GenericParamId),
     (Impl, ImplId),
     (ExternCrateDecl, ExternCrateId),
 ];
@@ -65,11 +200,9 @@ impl_has_attrs![
 macro_rules! impl_has_attrs_enum {
     ($($variant:ident),* for $enum:ident) => {$(
         impl HasAttrs for $variant {
-            fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
-                $enum::$variant(self).attrs(db)
-            }
-            fn attr_id(self) -> AttrDefId {
-                $enum::$variant(self).attr_id()
+            #[inline]
+            fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
+                $enum::$variant(self).attr_id(db)
             }
         }
     )*};
@@ -78,30 +211,46 @@ macro_rules! impl_has_attrs_enum {
 impl_has_attrs_enum![Struct, Union, Enum for Adt];
 impl_has_attrs_enum![TypeParam, ConstParam, LifetimeParam for GenericParam];
 
-impl HasAttrs for AssocItem {
-    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+impl HasAttrs for Module {
+    #[inline]
+    fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
+        AttrsOwner::AttrDef(AttrDefId::ModuleId(InternedModuleId::new(db, self.id)))
+    }
+}
+
+impl HasAttrs for GenericParam {
+    #[inline]
+    fn attr_id(self, _db: &dyn HirDatabase) -> AttrsOwner {
         match self {
-            AssocItem::Function(it) => it.attrs(db),
-            AssocItem::Const(it) => it.attrs(db),
-            AssocItem::TypeAlias(it) => it.attrs(db),
+            GenericParam::TypeParam(it) => AttrsOwner::TypeOrConstParam(it.merge().into()),
+            GenericParam::ConstParam(it) => AttrsOwner::TypeOrConstParam(it.merge().into()),
+            GenericParam::LifetimeParam(it) => AttrsOwner::LifetimeParam(it.into()),
         }
     }
-    fn attr_id(self) -> AttrDefId {
+}
+
+impl HasAttrs for AssocItem {
+    #[inline]
+    fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
         match self {
-            AssocItem::Function(it) => it.attr_id(),
-            AssocItem::Const(it) => it.attr_id(),
-            AssocItem::TypeAlias(it) => it.attr_id(),
+            AssocItem::Function(it) => it.attr_id(db),
+            AssocItem::Const(it) => it.attr_id(db),
+            AssocItem::TypeAlias(it) => it.attr_id(db),
         }
     }
 }
 
 impl HasAttrs for crate::Crate {
-    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
-        let def = AttrDefId::ModuleId(self.root_module().id);
-        AttrsWithOwner::new(db, def)
+    #[inline]
+    fn attr_id(self, db: &dyn HirDatabase) -> AttrsOwner {
+        self.root_module().attr_id(db)
     }
-    fn attr_id(self) -> AttrDefId {
-        AttrDefId::ModuleId(self.root_module().id)
+}
+
+impl HasAttrs for Field {
+    #[inline]
+    fn attr_id(self, _db: &dyn HirDatabase) -> AttrsOwner {
+        AttrsOwner::Field(self.into())
     }
 }
 
@@ -111,21 +260,22 @@ pub fn resolve_doc_path_on(
     def: impl HasAttrs + Copy,
     link: &str,
     ns: Option<Namespace>,
-    is_inner_doc: bool,
+    is_inner_doc: IsInnerDoc,
 ) -> Option<DocLinkDef> {
-    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner_doc)
+    resolve_doc_path_on_(db, link, def.attr_id(db), ns, is_inner_doc)
 }
 
 fn resolve_doc_path_on_(
     db: &dyn HirDatabase,
     link: &str,
-    attr_id: AttrDefId,
+    attr_id: AttrsOwner,
     ns: Option<Namespace>,
-    is_inner_doc: bool,
+    is_inner_doc: IsInnerDoc,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
-        AttrDefId::ModuleId(it) => {
-            if is_inner_doc {
+        AttrsOwner::AttrDef(AttrDefId::ModuleId(it)) => {
+            let it = it.loc(db);
+            if is_inner_doc.yes() {
                 it.resolver(db)
             } else if let Some(parent) = Module::from(it).parent(db) {
                 parent.id.resolver(db)
@@ -133,20 +283,20 @@ fn resolve_doc_path_on_(
                 it.resolver(db)
             }
         }
-        AttrDefId::FieldId(it) => it.parent.resolver(db),
-        AttrDefId::AdtId(it) => it.resolver(db),
-        AttrDefId::FunctionId(it) => it.resolver(db),
-        AttrDefId::EnumVariantId(it) => it.resolver(db),
-        AttrDefId::StaticId(it) => it.resolver(db),
-        AttrDefId::ConstId(it) => it.resolver(db),
-        AttrDefId::TraitId(it) => it.resolver(db),
-        AttrDefId::TypeAliasId(it) => it.resolver(db),
-        AttrDefId::ImplId(it) => it.resolver(db),
-        AttrDefId::ExternBlockId(it) => it.resolver(db),
-        AttrDefId::UseId(it) => it.resolver(db),
-        AttrDefId::MacroId(it) => it.resolver(db),
-        AttrDefId::ExternCrateId(it) => it.resolver(db),
-        AttrDefId::GenericParamId(_) => return None,
+        AttrsOwner::AttrDef(AttrDefId::AdtId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::FunctionId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::EnumVariantId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::StaticId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::ConstId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::TraitId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::TypeAliasId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::ImplId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::ExternBlockId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::UseId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::MacroId(it)) => it.resolver(db),
+        AttrsOwner::AttrDef(AttrDefId::ExternCrateId(it)) => it.resolver(db),
+        AttrsOwner::Field(it) => it.parent.resolver(db),
+        AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) => return None,
     };
 
     let mut modpath = doc_modpath_from_str(link)?;
@@ -271,7 +421,7 @@ fn resolve_impl_trait_item<'db>(
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    let interner = DbInterner::new_with(db, Some(environment.krate), environment.block);
+    let interner = DbInterner::new_with(db, environment.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let unstable_features =
         MethodResolutionUnstableFeatures::from_def_map(resolver.top_level_def_map());

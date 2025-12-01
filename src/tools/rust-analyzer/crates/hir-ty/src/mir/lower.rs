@@ -12,7 +12,7 @@ use hir_def::{
         Pat, PatId, RecordFieldPat, RecordLitField,
     },
     item_tree::FieldsShape,
-    lang_item::{LangItem, LangItemTarget, lang_item},
+    lang_item::LangItems,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
 };
 use hir_expand::name::Name;
@@ -110,7 +110,7 @@ pub enum MirLowerError<'db> {
     Loop,
     /// Something that should never happen and is definitely a bug, but we don't want to panic if it happened
     ImplementationError(String),
-    LangItemNotFound(LangItem),
+    LangItemNotFound,
     MutatingRvalue,
     UnresolvedLabel,
     UnresolvedUpvar(Place<'db>),
@@ -232,7 +232,7 @@ impl MirLowerError<'_> {
             | MirLowerError::BreakWithoutLoop
             | MirLowerError::Loop
             | MirLowerError::ImplementationError(_)
-            | MirLowerError::LangItemNotFound(_)
+            | MirLowerError::LangItemNotFound
             | MirLowerError::MutatingRvalue
             | MirLowerError::UnresolvedLabel
             | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{self:?}")?,
@@ -302,7 +302,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         };
         let resolver = owner.resolver(db);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate);
         // FIXME(next-solver): Is `non_body_analysis()` correct here? Don't we want to reveal opaque types defined by this body?
         let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
@@ -325,6 +325,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     #[inline]
     fn interner(&self) -> DbInterner<'db> {
         self.infcx.interner
+    }
+
+    #[inline]
+    fn lang_items(&self) -> &'db LangItems {
+        self.infcx.interner.lang_items()
     }
 
     fn temp(
@@ -1816,11 +1821,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(())
     }
 
-    fn resolve_lang_item(&self, item: LangItem) -> Result<'db, LangItemTarget> {
-        let crate_id = self.owner.module(self.db).krate();
-        lang_item(self.db, crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
-    }
-
     fn lower_block_to_place(
         &mut self,
         statements: &[hir_def::hir::Statement],
@@ -2111,7 +2111,7 @@ pub fn mir_body_for_closure_query<'db>(
 ) -> Result<'db, Arc<MirBody<'db>>> {
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
     let body = db.body(owner);
-    let infer = db.infer(owner);
+    let infer = InferenceResult::for_body(db, owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
@@ -2119,7 +2119,7 @@ pub fn mir_body_for_closure_query<'db>(
         implementation_error!("closure expression is not closure");
     };
     let (captures, kind) = infer.closure_info(closure);
-    let mut ctx = MirLowerCtx::new(db, owner, &body, &infer);
+    let mut ctx = MirLowerCtx::new(db, owner, &body, infer);
     // 0 is return local
     ctx.result.locals.alloc(Local { ty: infer[*root] });
     let closure_local = ctx.result.locals.alloc(Local {
@@ -2249,8 +2249,8 @@ pub fn mir_body_query<'db>(
     };
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);
-    let infer = db.infer(def);
-    let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;
+    let infer = InferenceResult::for_body(db, def);
+    let mut result = lower_to_mir(db, def, &body, infer, body.body_expr)?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }

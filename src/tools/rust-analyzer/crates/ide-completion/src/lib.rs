@@ -274,7 +274,7 @@ pub fn resolve_completion_edits(
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let editioned_file_id = sema.attach_first_edition(file_id)?;
+    let editioned_file_id = sema.attach_first_edition(file_id);
 
     let original_file = sema.parse(editioned_file_id);
     let original_token =

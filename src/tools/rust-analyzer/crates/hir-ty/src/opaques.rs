@@ -9,7 +9,7 @@ use rustc_type_ir::inherent::Ty as _;
 use syntax::ast;
 
 use crate::{
-    ImplTraitId,
+    ImplTraitId, InferenceResult,
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{ImplTraitIdx, ImplTraits},
     next_solver::{
@@ -94,7 +94,7 @@ pub(crate) fn rpit_hidden_types<'db>(
     db: &'db dyn HirDatabase,
     function: FunctionId,
 ) -> ArenaMap<ImplTraitIdx<'db>, EarlyBinder<'db, Ty<'db>>> {
-    let infer = db.infer(function.into());
+    let infer = InferenceResult::for_body(db, function.into());
     let mut result = ArenaMap::new();
     for (opaque, hidden_type) in infer.return_position_impl_trait_types(db) {
         result.insert(opaque, EarlyBinder::bind(hidden_type));
@@ -118,7 +118,7 @@ pub(crate) fn tait_hidden_types<'db>(
 
     let loc = type_alias.loc(db);
     let module = loc.module(db);
-    let interner = DbInterner::new_with(db, Some(module.krate()), module.containing_block());
+    let interner = DbInterner::new_with(db, module.krate());
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
     let mut ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
@@ -128,7 +128,7 @@ pub(crate) fn tait_hidden_types<'db>(
 
     let mut result = ArenaMap::with_capacity(taits_count);
     for defining_body in defining_bodies {
-        let infer = db.infer(defining_body);
+        let infer = InferenceResult::for_body(db, defining_body);
         for (&opaque, &hidden_type) in &infer.type_of_opaque {
             let ImplTraitId::TypeAliasImplTrait(opaque_owner, opaque_idx) = opaque.loc(db) else {
                 continue;

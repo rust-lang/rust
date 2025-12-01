@@ -485,8 +485,8 @@ impl GlobalState {
                 }
                 // delay initial cache priming until proc macros are loaded, or we will load up a bunch of garbage into salsa
                 let proc_macros_loaded = self.config.prefill_caches()
-                    && !self.config.expand_proc_macros()
-                    || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false);
+                    && (!self.config.expand_proc_macros()
+                        || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false));
                 if proc_macros_loaded {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
                 }

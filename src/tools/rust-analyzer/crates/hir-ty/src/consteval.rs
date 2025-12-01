@@ -6,6 +6,7 @@ mod tests;
 use base_db::Crate;
 use hir_def::{
     ConstId, EnumVariantId, GeneralConstId, StaticId,
+    attrs::AttrFlags,
     expr_store::Body,
     hir::{Expr, ExprId},
     type_ref::LiteralConstRef,
@@ -83,7 +84,7 @@ pub fn intern_const_ref<'a>(
     ty: Ty<'a>,
     krate: Crate,
 ) -> Const<'a> {
-    let interner = DbInterner::new_with(db, Some(krate), None);
+    let interner = DbInterner::new_no_crate(db);
     let layout = db.layout_of_ty(ty, TraitEnvironment::empty(krate));
     let kind = match value {
         LiteralConstRef::Int(i) => {
@@ -128,7 +129,7 @@ pub fn usize_const<'db>(db: &'db dyn HirDatabase, value: Option<u128>, krate: Cr
     intern_const_ref(
         db,
         &value.map_or(LiteralConstRef::Unknown, LiteralConstRef::UInt),
-        Ty::new_uint(DbInterner::new_with(db, Some(krate), None), rustc_type_ir::UintTy::Usize),
+        Ty::new_uint(DbInterner::new_no_crate(db), rustc_type_ir::UintTy::Usize),
         krate,
     )
 }
@@ -183,7 +184,7 @@ pub(crate) fn const_eval_discriminant_variant<'db>(
     db: &'db dyn HirDatabase,
     variant_id: EnumVariantId,
 ) -> Result<i128, ConstEvalError<'db>> {
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let def = variant_id.into();
     let body = db.body(def);
     let loc = variant_id.lookup(db);
@@ -200,7 +201,7 @@ pub(crate) fn const_eval_discriminant_variant<'db>(
         return Ok(value);
     }
 
-    let repr = db.enum_signature(loc.parent).repr;
+    let repr = AttrFlags::repr(db, loc.parent.into());
     let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(
@@ -292,7 +293,7 @@ pub(crate) fn const_eval_static_query<'db>(
     db: &'db dyn HirDatabase,
     def: StaticId,
 ) -> Result<Const<'db>, ConstEvalError<'db>> {
-    let interner = DbInterner::new_with(db, None, None);
+    let interner = DbInterner::new_no_crate(db);
     let body = db.monomorphized_mir_body(
         def.into(),
         GenericArgs::new_from_iter(interner, []),

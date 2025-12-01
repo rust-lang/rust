@@ -23,6 +23,8 @@ triomphe.workspace = true
 query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
+arrayvec.workspace = true
+thin-vec.workspace = true
 
 # local deps
 stdx.workspace = true

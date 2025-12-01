@@ -98,7 +98,7 @@ impl<'db> Filler<'db> {
         env: Arc<TraitEnvironment<'db>>,
         subst: GenericArgs<'db>,
     ) -> Self {
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+        let interner = DbInterner::new_with(db, env.krate);
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
         Self { infcx, trait_env: env, subst }
     }

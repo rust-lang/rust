@@ -7,7 +7,6 @@ use std::{iter, mem, ops::ControlFlow};
 use hir_def::{
     TraitId,
     hir::{ClosureKind, ExprId, PatId},
-    lang_item::LangItem,
     type_ref::TypeRefId,
 };
 use rustc_type_ir::{
@@ -220,11 +219,12 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn fn_trait_kind_from_def_id(&self, trait_id: TraitId) -> Option<rustc_type_ir::ClosureKind> {
-        let lang_item = self.db.lang_attr(trait_id.into())?;
-        match lang_item {
-            LangItem::Fn => Some(rustc_type_ir::ClosureKind::Fn),
-            LangItem::FnMut => Some(rustc_type_ir::ClosureKind::FnMut),
-            LangItem::FnOnce => Some(rustc_type_ir::ClosureKind::FnOnce),
+        match trait_id {
+            _ if self.lang_items.Fn == Some(trait_id) => Some(rustc_type_ir::ClosureKind::Fn),
+            _ if self.lang_items.FnMut == Some(trait_id) => Some(rustc_type_ir::ClosureKind::FnMut),
+            _ if self.lang_items.FnOnce == Some(trait_id) => {
+                Some(rustc_type_ir::ClosureKind::FnOnce)
+            }
             _ => None,
         }
     }
@@ -233,11 +233,14 @@ impl<'db> InferenceContext<'_, 'db> {
         &self,
         trait_id: TraitId,
     ) -> Option<rustc_type_ir::ClosureKind> {
-        let lang_item = self.db.lang_attr(trait_id.into())?;
-        match lang_item {
-            LangItem::AsyncFn => Some(rustc_type_ir::ClosureKind::Fn),
-            LangItem::AsyncFnMut => Some(rustc_type_ir::ClosureKind::FnMut),
-            LangItem::AsyncFnOnce => Some(rustc_type_ir::ClosureKind::FnOnce),
+        match trait_id {
+            _ if self.lang_items.AsyncFn == Some(trait_id) => Some(rustc_type_ir::ClosureKind::Fn),
+            _ if self.lang_items.AsyncFnMut == Some(trait_id) => {
+                Some(rustc_type_ir::ClosureKind::FnMut)
+            }
+            _ if self.lang_items.AsyncFnOnce == Some(trait_id) => {
+                Some(rustc_type_ir::ClosureKind::FnOnce)
+            }
             _ => None,
         }
     }
@@ -433,21 +436,20 @@ impl<'db> InferenceContext<'_, 'db> {
         projection: PolyProjectionPredicate<'db>,
     ) -> Option<PolyFnSig<'db>> {
         let SolverDefId::TypeAliasId(def_id) = projection.item_def_id() else { unreachable!() };
-        let lang_item = self.db.lang_attr(def_id.into());
 
         // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
         // for closures and async closures, respectively.
         match closure_kind {
-            ClosureKind::Closure if lang_item == Some(LangItem::FnOnceOutput) => {
+            ClosureKind::Closure if Some(def_id) == self.lang_items.FnOnceOutput => {
                 self.extract_sig_from_projection(projection)
             }
-            ClosureKind::Async if lang_item == Some(LangItem::AsyncFnOnceOutput) => {
+            ClosureKind::Async if Some(def_id) == self.lang_items.AsyncFnOnceOutput => {
                 self.extract_sig_from_projection(projection)
             }
             // It's possible we've passed the closure to a (somewhat out-of-fashion)
             // `F: FnOnce() -> Fut, Fut: Future<Output = T>` style bound. Let's still
             // guide inference here, since it's beneficial for the user.
-            ClosureKind::Async if lang_item == Some(LangItem::FnOnceOutput) => {
+            ClosureKind::Async if Some(def_id) == self.lang_items.FnOnceOutput => {
                 self.extract_sig_from_projection_and_future_bound(projection)
             }
             _ => None,
@@ -538,7 +540,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 && let ret_projection = bound.predicate.kind().rebind(ret_projection)
                 && let Some(ret_projection) = ret_projection.no_bound_vars()
                 && let SolverDefId::TypeAliasId(assoc_type) = ret_projection.def_id()
-                && self.db.lang_attr(assoc_type.into()) == Some(LangItem::FutureOutput)
+                && Some(assoc_type) == self.lang_items.FutureOutput
             {
                 return_ty = Some(ret_projection.term.expect_type());
                 break;

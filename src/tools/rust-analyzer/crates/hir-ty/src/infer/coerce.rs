@@ -37,11 +37,10 @@
 
 use hir_def::{
     CallableDefId,
+    attrs::AttrFlags,
     hir::{ExprId, ExprOrPatId},
-    lang_item::LangItem,
     signatures::FunctionSignature,
 };
-use intern::sym;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
     BoundVar, DebruijnIndex, TyVid, TypeAndMut, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -79,7 +78,7 @@ use crate::{
 trait CoerceDelegate<'db> {
     fn infcx(&self) -> &InferCtxt<'db>;
     fn env(&self) -> &TraitEnvironment<'db>;
-    fn target_features(&self) -> (&TargetFeatures, TargetFeatureIsSafeInTarget);
+    fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget);
 
     fn set_diverging(&mut self, diverging_ty: Ty<'db>);
 
@@ -612,10 +611,8 @@ where
             return Err(TypeError::Mismatch);
         }
 
-        let traits = (
-            LangItem::Unsize.resolve_trait(self.db(), self.env().krate),
-            LangItem::CoerceUnsized.resolve_trait(self.db(), self.env().krate),
-        );
+        let lang_items = self.interner().lang_items();
+        let traits = (lang_items.Unsize, lang_items.CoerceUnsized);
         let (Some(unsize_did), Some(coerce_unsized_did)) = traits else {
             debug!("missing Unsize or CoerceUnsized traits");
             return Err(TypeError::Mismatch);
@@ -855,14 +852,14 @@ where
                             return Err(TypeError::IntrinsicCast);
                         }
 
-                        let attrs = self.db().attrs(def_id.into());
-                        if attrs.by_key(sym::rustc_force_inline).exists() {
+                        let attrs = AttrFlags::query(self.db(), def_id.into());
+                        if attrs.contains(AttrFlags::RUSTC_FORCE_INLINE) {
                             return Err(TypeError::ForceInlineCast);
                         }
 
-                        if b_hdr.safety.is_safe() && attrs.by_key(sym::target_feature).exists() {
+                        if b_hdr.safety.is_safe() && attrs.contains(AttrFlags::HAS_TARGET_FEATURE) {
                             let fn_target_features =
-                                TargetFeatures::from_attrs_no_implications(&attrs);
+                                TargetFeatures::from_fn_no_implications(self.db(), def_id);
                             // Allow the coercion if the current function has all the features that would be
                             // needed to call the coercee safely.
                             let (target_features, target_feature_is_safe) =
@@ -981,8 +978,9 @@ impl<'db> CoerceDelegate<'db> for InferenceCoercionDelegate<'_, '_, 'db> {
     fn env(&self) -> &TraitEnvironment<'db> {
         &self.0.table.trait_env
     }
+
     #[inline]
-    fn target_features(&self) -> (&TargetFeatures, TargetFeatureIsSafeInTarget) {
+    fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
         self.0.target_features()
     }
 
@@ -1075,7 +1073,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let is_force_inline = |ty: Ty<'db>| {
             if let TyKind::FnDef(CallableIdWrapper(CallableDefId::FunctionId(did)), _) = ty.kind() {
-                self.db.attrs(did.into()).by_key(sym::rustc_force_inline).exists()
+                AttrFlags::query(self.db, did.into()).contains(AttrFlags::RUSTC_FORCE_INLINE)
             } else {
                 false
             }
@@ -1514,7 +1512,7 @@ impl<'db, 'exprs> CoerceMany<'db, 'exprs> {
 
                 self.final_ty = Some(icx.types.error);
 
-                icx.result.type_mismatches.insert(
+                icx.result.type_mismatches.get_or_insert_default().insert(
                     expression.into(),
                     if label_expression_as_expected {
                         TypeMismatch { expected: found, actual: expected }
@@ -1551,7 +1549,7 @@ pub fn could_coerce<'db>(
 struct HirCoercionDelegate<'a, 'db> {
     infcx: &'a InferCtxt<'db>,
     env: &'a TraitEnvironment<'db>,
-    target_features: &'a TargetFeatures,
+    target_features: &'a TargetFeatures<'db>,
 }
 
 impl<'db> CoerceDelegate<'db> for HirCoercionDelegate<'_, 'db> {
@@ -1563,7 +1561,7 @@ impl<'db> CoerceDelegate<'db> for HirCoercionDelegate<'_, 'db> {
     fn env(&self) -> &TraitEnvironment<'db> {
         self.env
     }
-    fn target_features(&self) -> (&TargetFeatures, TargetFeatureIsSafeInTarget) {
+    fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
         (self.target_features, TargetFeatureIsSafeInTarget::No)
     }
     fn set_diverging(&mut self, _diverging_ty: Ty<'db>) {}
@@ -1578,7 +1576,7 @@ fn coerce<'db>(
     env: Arc<TraitEnvironment<'db>>,
     tys: &Canonical<'db, (Ty<'db>, Ty<'db>)>,
 ) -> Result<(Vec<Adjustment<'db>>, Ty<'db>), TypeError<DbInterner<'db>>> {
-    let interner = DbInterner::new_with(db, Some(env.krate), env.block);
+    let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
     let ((ty1_with_vars, ty2_with_vars), vars) = infcx.instantiate_canonical(tys);
 

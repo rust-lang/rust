@@ -4,6 +4,7 @@ use std::fmt;
 
 use hir_def::{
     AdtId, LocalFieldId, StructId,
+    attrs::AttrFlags,
     layout::{LayoutCalculatorError, LayoutData},
 };
 use la_arena::{Idx, RawIdx};
@@ -20,7 +21,7 @@ use rustc_type_ir::{
 use triomphe::Arc;
 
 use crate::{
-    TraitEnvironment,
+    InferenceResult, TraitEnvironment,
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
@@ -143,7 +144,7 @@ fn layout_of_simd_ty<'db>(
     let Some(TyKind::Array(e_ty, e_len)) = fields
         .next()
         .filter(|_| fields.next().is_none())
-        .map(|f| (*f.1).instantiate(DbInterner::new_with(db, None, None), args).kind())
+        .map(|f| (*f.1).instantiate(DbInterner::new_no_crate(db), args).kind())
     else {
         return Err(LayoutError::InvalidSimdType);
     };
@@ -161,7 +162,7 @@ pub fn layout_of_ty_query<'db>(
     trait_env: Arc<TraitEnvironment<'db>>,
 ) -> Result<Arc<Layout>, LayoutError> {
     let krate = trait_env.krate;
-    let interner = DbInterner::new_with(db, Some(krate), trait_env.block);
+    let interner = DbInterner::new_with(db, krate);
     let Ok(target) = db.target_data_layout(krate) else {
         return Err(LayoutError::TargetLayoutNotAvailable);
     };
@@ -174,8 +175,7 @@ pub fn layout_of_ty_query<'db>(
         TyKind::Adt(def, args) => {
             match def.inner().id {
                 hir_def::AdtId::StructId(s) => {
-                    let data = db.struct_signature(s);
-                    let repr = data.repr.unwrap_or_default();
+                    let repr = AttrFlags::repr(db, s.into()).unwrap_or_default();
                     if repr.simd() {
                         return layout_of_simd_ty(db, s, repr.packed(), &args, trait_env, &target);
                     }
@@ -322,7 +322,7 @@ pub fn layout_of_ty_query<'db>(
         }
         TyKind::Closure(id, args) => {
             let def = db.lookup_intern_closure(id.0);
-            let infer = db.infer(def.0);
+            let infer = InferenceResult::for_body(db, def.0);
             let (captures, _) = infer.closure_info(id.0);
             let fields = captures
                 .iter()
@@ -401,7 +401,7 @@ fn field_ty<'a>(
     fd: LocalFieldId,
     args: &GenericArgs<'a>,
 ) -> Ty<'a> {
-    db.field_types(def)[fd].instantiate(DbInterner::new_with(db, None, None), args)
+    db.field_types(def)[fd].instantiate(DbInterner::new_no_crate(db), args)
 }
 
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
