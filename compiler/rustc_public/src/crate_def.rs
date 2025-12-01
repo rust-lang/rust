@@ -28,6 +28,12 @@ impl DefId {
     pub fn trimmed_name(&self) -> Symbol {
         with(|cx| cx.def_name(*self, true))
     }
+
+    /// Return the parent of this definition, or `None` if this is the root of a
+    /// crate.
+    pub fn parent(&self) -> Option<DefId> {
+        with(|cx| cx.def_parent(*self))
+    }
 }
 
 /// A trait for retrieving information about a particular definition.

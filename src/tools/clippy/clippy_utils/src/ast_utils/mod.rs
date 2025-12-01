@@ -43,7 +43,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
         (Range(lf, lt, le), Range(rf, rt, re)) => {
             eq_expr_opt(lf.as_deref(), rf.as_deref())
                 && eq_expr_opt(lt.as_deref(), rt.as_deref())
-                && eq_range_end(&le.node, &re.node)
+                && eq_range_end(le.node, re.node)
         },
         (Box(l), Box(r)) => eq_pat(l, r),
         (Ref(l, l_pin, l_mut), Ref(r, r_pin, r_mut)) => l_pin == r_pin && l_mut == r_mut && eq_pat(l, r),
@@ -64,7 +64,7 @@ pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
     }
 }
 
-pub fn eq_range_end(l: &RangeEnd, r: &RangeEnd) -> bool {
+pub fn eq_range_end(l: RangeEnd, r: RangeEnd) -> bool {
     match (l, r) {
         (RangeEnd::Excluded, RangeEnd::Excluded) => true,
         (RangeEnd::Included(l), RangeEnd::Included(r)) => {
@@ -875,7 +875,6 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Path(lq, lp), Path(rq, rp)) => both(lq.as_deref(), rq.as_deref(), eq_qself) && eq_path(lp, rp),
         (TraitObject(lg, ls), TraitObject(rg, rs)) => ls == rs && over(lg, rg, eq_generic_bound),
         (ImplTrait(_, lg), ImplTrait(_, rg)) => over(lg, rg, eq_generic_bound),
-        (Typeof(l), Typeof(r)) => eq_expr(&l.value, &r.value),
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
         _ => false,
     }

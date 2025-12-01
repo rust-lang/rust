@@ -599,6 +599,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 148795,
         severity: ChangeSeverity::Info,
-        summary: "New options `rust.rustflags` for all targets and `rustflags` par target that will pass specified flags to rustc for all stages. Target specific flags override global `rust.rustflags` ones.",
+        summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
     },
 ];

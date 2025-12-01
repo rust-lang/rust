@@ -1,3 +1,4 @@
+//@ edition:2015
 // Test for #120601, which causes an ice bug cause of unexpected type
 //
 //@ compile-flags: -Z threads=40

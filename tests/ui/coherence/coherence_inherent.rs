@@ -1,3 +1,4 @@
+//@ edition:2015
 // Tests that methods that implement a trait cannot be invoked
 // unless the trait is imported.
 

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ proc-macro: attributes-included.rs
 //@ check-pass
 

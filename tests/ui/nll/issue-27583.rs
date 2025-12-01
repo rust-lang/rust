@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ check-pass
 // Regression test for issue #27583. Unclear how useful this will be
 // going forward, since the issue in question was EXTREMELY sensitive

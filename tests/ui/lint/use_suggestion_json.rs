@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ ignore-windows
 //@ ignore-sgx std::os::fortanix_sgx::usercalls::alloc::Iter changes compiler suggestions
 //@ compile-flags: --error-format pretty-json --json=diagnostic-rendered-ansi -Z unstable-options

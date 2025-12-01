@@ -1,11 +1,11 @@
 error: expected one of `move`, `static`, `use`, `|`, or `||`, found `::`
-  --> $DIR/recover-quantified-closure.rs:9:14
+  --> $DIR/recover-quantified-closure.rs:10:14
    |
 LL |     for <Foo>::Bar in x {}
    |              ^^ expected one of `move`, `static`, `use`, `|`, or `||`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/recover-quantified-closure.rs:2:5
+  --> $DIR/recover-quantified-closure.rs:3:5
    |
 LL |     for<'a> |x: &'a u8| *x + 1;
    |     ^^^^^^^
@@ -16,7 +16,7 @@ LL |     for<'a> |x: &'a u8| *x + 1;
    = help: consider removing `for<...>`
 
 error[E0658]: `for<...>` binders for closures are experimental
-  --> $DIR/recover-quantified-closure.rs:9:5
+  --> $DIR/recover-quantified-closure.rs:10:5
    |
 LL |     for <Foo>::Bar in x {}
    |     ^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     for <Foo>::Bar in x {}
    = help: consider removing `for<...>`
 
 error: implicit types in closure signatures are forbidden when `for<...>` is present
-  --> $DIR/recover-quantified-closure.rs:2:24
+  --> $DIR/recover-quantified-closure.rs:3:24
    |
 LL |     for<'a> |x: &'a u8| *x + 1;
    |     -------            ^

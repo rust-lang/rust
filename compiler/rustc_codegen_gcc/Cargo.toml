@@ -24,11 +24,11 @@ default = ["master"]
 [dependencies]
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
 tempfile = "3.20"
-gccjit = "2.10"
-#gccjit = { git = "https://github.com/rust-lang/gccjit.rs" }
+gccjit = { version = "3.1.1", features = ["dlopen"] }
+#gccjit = { git = "https://github.com/rust-lang/gccjit.rs", branch = "error-dlopen", features = ["dlopen"] }
 
 # Local copy.
-#gccjit = { path = "../gccjit.rs" }
+#gccjit = { path = "../gccjit.rs", features = ["dlopen"] }
 
 [dev-dependencies]
 boml = "0.3.1"

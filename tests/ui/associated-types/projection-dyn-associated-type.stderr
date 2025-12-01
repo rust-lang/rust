@@ -1,11 +1,11 @@
 error: expected identifier, found `}`
-  --> $DIR/projection-dyn-associated-type.rs:26:1
+  --> $DIR/projection-dyn-associated-type.rs:27:1
    |
 LL | }
    | ^ expected identifier
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/projection-dyn-associated-type.rs:13:28
+  --> $DIR/projection-dyn-associated-type.rs:14:28
    |
 LL | impl<T: ?Sized> Mirror for A {
    |                            ^
@@ -24,31 +24,31 @@ LL + impl<T: ?Sized, U: A> Mirror for U {
    |
 
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/projection-dyn-associated-type.rs:13:6
+  --> $DIR/projection-dyn-associated-type.rs:14:6
    |
 LL | impl<T: ?Sized> Mirror for A {
    |      ^ unconstrained type parameter
 
 error[E0277]: the trait bound `(dyn B + 'static): Mirror` is not satisfied
-  --> $DIR/projection-dyn-associated-type.rs:22:6
+  --> $DIR/projection-dyn-associated-type.rs:23:6
    |
 LL | ) -> &'a <dyn B + 'static as Mirror>::Assoc {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Mirror` is not implemented for `(dyn B + 'static)`
    |
 help: the trait `Mirror` is implemented for `dyn A`
-  --> $DIR/projection-dyn-associated-type.rs:13:1
+  --> $DIR/projection-dyn-associated-type.rs:14:1
    |
 LL | impl<T: ?Sized> Mirror for A {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(dyn B + 'static): Mirror` is not satisfied
-  --> $DIR/projection-dyn-associated-type.rs:22:6
+  --> $DIR/projection-dyn-associated-type.rs:23:6
    |
 LL | ) -> &'a <dyn B + 'static as Mirror>::Assoc {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Mirror` is not implemented for `(dyn B + 'static)`
    |
 help: the trait `Mirror` is implemented for `dyn A`
-  --> $DIR/projection-dyn-associated-type.rs:13:1
+  --> $DIR/projection-dyn-associated-type.rs:14:1
    |
 LL | impl<T: ?Sized> Mirror for A {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

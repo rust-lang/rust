@@ -1,3 +1,5 @@
+use rustc_hir::attrs::WindowsSubsystemKind;
+
 use super::prelude::*;
 
 pub(crate) struct CrateNameParser;
@@ -141,4 +143,35 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
+}
+
+pub(crate) struct WindowsSubsystemParser;
+
+impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
+    const PATH: &[Symbol] = &[sym::windows_subsystem];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::CrateLevel;
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(
+                args.span().unwrap_or(cx.inner_span),
+                Some(sym::windows_subsystem),
+            );
+            return None;
+        };
+
+        let kind = match nv.value_as_str() {
+            Some(sym::console) => WindowsSubsystemKind::Console,
+            Some(sym::windows) => WindowsSubsystemKind::Windows,
+            Some(_) | None => {
+                cx.expected_specific_argument_strings(nv.value_span, &[sym::console, sym::windows]);
+                return None;
+            }
+        };
+
+        Some(AttributeKind::WindowsSubsystem(kind, cx.attr_span))
+    }
 }

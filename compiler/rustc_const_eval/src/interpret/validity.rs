@@ -639,12 +639,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             // This can actually occur with transmutes.
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
-                        // In a const, any kind of mutable reference is not good.
-                        if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
-                            if ptr_expected_mutbl == Mutability::Mut {
-                                throw_validation_failure!(self.path, MutableRefInConst);
-                            }
-                        }
                     }
                 }
                 // Potentially skip recursive check.

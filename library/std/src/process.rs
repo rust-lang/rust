@@ -1206,6 +1206,30 @@ impl Command {
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.inner.get_current_dir()
     }
+
+    /// Returns whether the environment will be cleared for the child process.
+    ///
+    /// This returns `true` if [`Command::env_clear`] was called, and `false` otherwise.
+    /// When `true`, the child process will not inherit any environment variables from
+    /// its parent process.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(command_resolved_envs)]
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("ls");
+    /// assert_eq!(cmd.get_env_clear(), false);
+    ///
+    /// cmd.env_clear();
+    /// assert_eq!(cmd.get_env_clear(), true);
+    /// ```
+    #[must_use]
+    #[unstable(feature = "command_resolved_envs", issue = "149070")]
+    pub fn get_env_clear(&self) -> bool {
+        self.inner.get_env_clear()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `MyStruct: Trait` is not satisfied
+  --> $DIR/wrong-multiple-different-versions-of-a-crate.rs:11:17
+   |
+LL |     crate1::foo(MyStruct);
+   |     ----------- ^^^^^^^^ unsatisfied trait bound
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Trait` is not implemented for `MyStruct`
+  --> $DIR/wrong-multiple-different-versions-of-a-crate.rs:8:1
+   |
+LL | struct MyStruct;
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `foo`
+  --> $DIR/auxiliary/crate1.rs:5:23
+   |
+LL | pub fn foo(_arg: impl Trait) {}
+   |                       ^^^^^ required by this bound in `foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -8,11 +8,8 @@ LL |         println!("the value of a is {}", a.unwrap());
    |                                          ^^^^^^^^^^
    |
    = help: try using `match`
-note: the lint level is defined here
-  --> tests/ui/checked_unwrap/if_let_chains.rs:2:9
-   |
-LL | #![deny(clippy::unnecessary_unwrap)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `-D clippy::unnecessary-unwrap` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_unwrap)]`
 
 error: called `unwrap` on `a` after checking its variant with `is_none`
   --> tests/ui/checked_unwrap/if_let_chains.rs:20:42

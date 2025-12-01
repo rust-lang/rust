@@ -786,7 +786,8 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
             && let DelimiterKind::Parenthesis | DelimiterKind::Invisible = sub.delimiter.kind
         {
             tt =
-                tt_iter.exactly_one().map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
+                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                Itertools::exactly_one(tt_iter).map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
         }
 
         match tt {

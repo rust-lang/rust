@@ -28,7 +28,7 @@ use crate::abi::conv_to_fn_attribute;
 use crate::callee::get_fn;
 use crate::common::SignType;
 
-#[cfg_attr(not(feature = "master"), allow(dead_code))]
+#[cfg_attr(not(feature = "master"), expect(dead_code))]
 pub struct CodegenCx<'gcc, 'tcx> {
     /// A cache of converted ConstAllocs
     pub const_cache: RefCell<HashMap<Allocation, RValue<'gcc>>>,
@@ -132,7 +132,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         context: &'gcc Context<'gcc>,
         codegen_unit: &'tcx CodegenUnit<'tcx>,

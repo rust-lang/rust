@@ -3,6 +3,7 @@
 use core::arch::global_asm;
 use core::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
+use crate::alloc::System;
 use crate::io::Write;
 
 // runtime features
@@ -63,7 +64,9 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 #[unsafe(no_mangle)]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> EntryReturn {
     // FIXME: how to support TLS in library mode?
-    let tls = Box::new(tls::Tls::new());
+    // We use the System allocator here such that the global allocator may use
+    // thread-locals.
+    let tls = Box::new_in(tls::Tls::new(), System);
     let tls_guard = unsafe { tls.activate() };
 
     if secondary {

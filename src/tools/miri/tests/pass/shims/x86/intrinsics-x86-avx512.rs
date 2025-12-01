@@ -55,6 +55,94 @@ unsafe fn test_avx512() {
         assert_eq_m512i(r, e);
     }
     test_mm512_sad_epu8();
+
+    #[target_feature(enable = "avx512bw")]
+    unsafe fn test_mm512_maddubs_epi16() {
+        // `a` is interpreted as `u8x16`, but `_mm512_set_epi8` expects `i8`, so we have to cast.
+        #[rustfmt::skip]
+        let a = _mm512_set_epi8(
+            255u8 as i8, 255u8 as i8,  60,  50, 100, 100, 255u8 as i8, 200u8 as i8,
+            255u8 as i8, 200u8 as i8, 200u8 as i8, 100,  60,  50,  20,  10,
+
+            255u8 as i8, 255u8 as i8,  60,  50, 100, 100, 255u8 as i8, 200u8 as i8,
+            255u8 as i8, 200u8 as i8, 200u8 as i8, 100,  60,  50,  20,  10,
+
+            255u8 as i8, 255u8 as i8,  60,  50, 100, 100, 255u8 as i8, 200u8 as i8,
+            255u8 as i8, 200u8 as i8, 200u8 as i8, 100,  60,  50,  20,  10,
+
+            255u8 as i8, 255u8 as i8,  60,  50, 100, 100, 255u8 as i8, 200u8 as i8,
+            255u8 as i8, 200u8 as i8, 200u8 as i8, 100,  60,  50,  20,  10,
+        );
+
+        let b = _mm512_set_epi8(
+            64, 64, -2, 1, 100, 100, -128, -128, //
+            127, 127, -1, 1, 2, 2, 1, 1, //
+            64, 64, -2, 1, 100, 100, -128, -128, //
+            127, 127, -1, 1, 2, 2, 1, 1, //
+            64, 64, -2, 1, 100, 100, -128, -128, //
+            127, 127, -1, 1, 2, 2, 1, 1, //
+            64, 64, -2, 1, 100, 100, -128, -128, //
+            127, 127, -1, 1, 2, 2, 1, 1, //
+        );
+
+        let r = _mm512_maddubs_epi16(a, b);
+
+        let e = _mm512_set_epi16(
+            32640, -70, 20000, -32768, 32767, -100, 220, 30, //
+            32640, -70, 20000, -32768, 32767, -100, 220, 30, //
+            32640, -70, 20000, -32768, 32767, -100, 220, 30, //
+            32640, -70, 20000, -32768, 32767, -100, 220, 30, //
+        );
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_maddubs_epi16();
+
+    #[target_feature(enable = "avx512f")]
+    unsafe fn test_mm512_permutexvar_epi32() {
+        let a = _mm512_set_epi32(
+            15, 14, 13, 12, //
+            11, 10, 9, 8, //
+            7, 6, 5, 4, //
+            3, 2, 1, 0, //
+        );
+
+        let idx_identity = _mm512_set_epi32(
+            15, 14, 13, 12, //
+            11, 10, 9, 8, //
+            7, 6, 5, 4, //
+            3, 2, 1, 0, //
+        );
+        let r_id = _mm512_permutexvar_epi32(idx_identity, a);
+        assert_eq_m512i(r_id, a);
+
+        // Test some out-of-bounds indices.
+        let edge_cases = _mm512_set_epi32(
+            0,
+            -1,
+            -128,
+            i32::MIN,
+            15,
+            16,
+            128,
+            i32::MAX,
+            0,
+            -1,
+            -128,
+            i32::MIN,
+            15,
+            16,
+            128,
+            i32::MAX,
+        );
+
+        let r = _mm512_permutexvar_epi32(edge_cases, a);
+
+        let e = _mm512_set_epi32(0, 15, 0, 0, 15, 0, 0, 15, 0, 15, 0, 0, 15, 0, 0, 15);
+
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_permutexvar_epi32();
 }
 
 // Some of the constants in the tests below are just bit patterns. They should not
