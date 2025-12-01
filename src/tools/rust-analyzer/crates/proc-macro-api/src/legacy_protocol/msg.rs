@@ -17,19 +17,19 @@ pub enum Request {
     // As such, this is the only request that needs to be supported across all protocol versions
     // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
     /// Performs an API version check between the client and the server.
-    /// Since [`VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
 
     /// Retrieves a list of macros from a given dynamic library.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: Utf8PathBuf },
 
     /// Expands a procedural macro.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Box<ExpandMacro>),
 
     /// Sets server-specific configurations.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
 }
 
@@ -51,23 +51,23 @@ pub enum Response {
     // As such, this is the only request that needs to be supported across all protocol versions
     // and by keeping it first, we ensure it always has the same discriminant encoding in postcard
     /// Returns the API version supported by the server.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ApiVersionCheck(u32),
 
     /// Returns a list of available macros in a dynamic library.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
 
     /// Returns result of a macro expansion.
-    /// Since [`NO_VERSION_CHECK_VERSION`]
+    /// Since [`crate::version::NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
 
     /// Confirms the application of a configuration update.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
 
     /// Returns the result of a macro expansion, including extended span data.
-    /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
+    /// Since [`crate::version::RUST_ANALYZER_SPAN_SUPPORT`]
     ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
 }
 

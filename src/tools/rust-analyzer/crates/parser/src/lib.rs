@@ -3,9 +3,10 @@
 //! NOTE: The crate is undergoing refactors, don't believe everything the docs
 //! say :-)
 //!
-//! The parser doesn't know about concrete representation of tokens and syntax
-//! trees. Abstract [`TokenSource`] and [`TreeSink`] traits are used instead. As
-//! a consequence, this crate does not contain a lexer.
+//! The parser doesn't know about concrete representation of tokens
+//! and syntax trees. Abstract [`Input`] and [`Output`] traits are
+//! used to provide tokens instead. As a consequence, this crate does
+//! not contain a lexer.
 //!
 //! The [`Parser`] struct from the [`parser`] module is a cursor into the
 //! sequence of tokens.  Parsing routines use [`Parser`] to inspect current

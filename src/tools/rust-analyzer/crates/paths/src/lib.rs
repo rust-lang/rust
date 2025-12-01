@@ -1,5 +1,5 @@
-//! Thin wrappers around [`camino::path`], distinguishing between absolute and
-//! relative paths.
+//! Thin wrappers around [`camino::Utf8PathBuf`], distinguishing
+//! between absolute and relative paths.
 
 use std::{
     borrow::Borrow,

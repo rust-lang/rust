@@ -977,15 +977,13 @@ pub enum Rvalue<'db> {
     UnaryOp(UnOp, Operand<'db>),
 
     /// Computes the discriminant of the place, returning it as an integer of type
-    /// [`discriminant_ty`]. Returns zero for types without discriminant.
+    /// `discriminant_ty`. Returns zero for types without discriminant.
     ///
     /// The validity requirements for the underlying value are undecided for this rvalue, see
     /// [#91095]. Note too that the value of the discriminant is not the same thing as the
-    /// variant index; use [`discriminant_for_variant`] to convert.
+    /// variant index; use `discriminant_for_variant` to convert.
     ///
-    /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
     /// [#91095]: https://github.com/rust-lang/rust/issues/91095
-    /// [`discriminant_for_variant`]: crate::ty::Ty::discriminant_for_variant
     Discriminant(Place<'db>),
 
     /// Creates an aggregate value, like a tuple or struct.

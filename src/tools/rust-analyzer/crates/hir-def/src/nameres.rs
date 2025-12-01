@@ -739,7 +739,7 @@ impl ModuleData {
         self.origin.definition_source(db)
     }
 
-    /// Same as [`definition_source`] but only returns the file id to prevent parsing the ASt.
+    /// Same as [`ModuleData::definition_source`] but only returns the file id to prevent parsing the ASt.
     pub fn definition_source_file_id(&self) -> HirFileId {
         match self.origin {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {

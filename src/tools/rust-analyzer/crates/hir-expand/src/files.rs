@@ -295,7 +295,7 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
     /// Falls back to the macro call range if the node cannot be mapped up fully.
     ///
     /// For attributes and derives, this will point back to the attribute only.
-    /// For the entire item use [`InFile::original_file_range_full`].
+    /// For the entire item use `InFile::original_file_range_full`.
     pub fn original_file_range_rooted(self, db: &dyn db::ExpandDatabase) -> FileRange {
         self.borrow().map(SyntaxNode::text_range).original_node_file_range_rooted(db)
     }
