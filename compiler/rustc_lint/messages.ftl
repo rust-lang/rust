@@ -890,10 +890,6 @@ lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not 
 
 lint_unqualified_local_imports = `use` of a local item without leading `self::`, `super::`, or `crate::`
 
-lint_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
-    .label = usage of unsafe attribute
-lint_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
-
 lint_unsupported_group = `{$lint_group}` lint group is not supported with ´--force-warn´
 
 lint_untranslatable_diag = diagnostics should be created using translatable messages

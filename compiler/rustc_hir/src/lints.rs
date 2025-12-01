@@ -62,4 +62,8 @@ pub enum AttributeLintKind {
         target: Target,
         target_span: Span,
     },
+    UnsafeAttrOutsideUnsafe {
+        attribute_name_span: Span,
+        sugg_spans: (Span, Span),
+    },
 }
