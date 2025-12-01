@@ -387,6 +387,70 @@ macro_rules! uint_module {
             }
         }
 
+        #[cfg(not(miri))] // Miri is too slow
+        #[test]
+        fn test_lots_of_gather_scatter() {
+            // Generate a handful of bit patterns to use as inputs
+            let xs = {
+                let mut xs = vec![];
+                let mut x: $T = !0;
+                let mut w = $T::BITS;
+                while w > 0 {
+                    w >>= 1;
+                    xs.push(x);
+                    xs.push(!x);
+                    x ^= x << w;
+                }
+                xs
+            };
+            if $T::BITS == 8 {
+                assert_eq!(&xs, &[0xff, 0x00, 0x0f, 0xf0, 0x33, 0xcc, 0x55, 0xaa]);
+            }
+
+            // `256 * BITS` masks
+            let sparse_masks = (i8::MIN..=i8::MAX)
+                .map(|i| (i as i128 as $T).rotate_right(4))
+                .flat_map(|x| (0..$T::BITS).map(move |s| ((1 as $T) << s) ^ x));
+
+            for sparse in sparse_masks {
+                // Collect the set bits to sequential low bits
+                let dense = sparse.gather_bits(sparse);
+                let count = sparse.count_ones();
+                assert_eq!(count, dense.count_ones());
+                assert_eq!(count, dense.trailing_ones());
+
+                let mut t = sparse;
+                for k in 0..$T::BITS {
+                    let x = ((1 as $T) << k).scatter_bits(sparse);
+                    let y = t.isolate_lowest_one();
+                    assert_eq!(x, y);
+                    t ^= y;
+                }
+
+                let mut t = sparse;
+                for k in 0..count {
+                    let y = t.isolate_lowest_one();
+                    let x = y.gather_bits(sparse);
+                    assert_eq!(x, (1 as $T) << k);
+                    t ^= y;
+                }
+
+                for &x in &xs {
+                    // Gather bits from `x & sparse` to `dense`
+                    let dx = x.gather_bits(sparse);
+                    assert_eq!(dx & !dense, 0);
+
+                    // Scatter bits from `x & dense` to `sparse`
+                    let sx = x.scatter_bits(sparse);
+                    assert_eq!(sx & !sparse, 0);
+
+                    // The other recovers the input (within the mask)
+                    assert_eq!(dx.scatter_bits(sparse), x & sparse);
+                    assert_eq!(sx.gather_bits(sparse), x & dense);
+                }
+            }
+        }
+
         test_runtime_and_compiletime! {
             fn test_div_floor() {
                 assert_eq_const_safe!($T: (8 as $T).div_floor(3), 2);
