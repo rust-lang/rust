@@ -2,7 +2,7 @@
  
 Coercions are implicit operations which transform a value into a different type. A coercion *site* is a position where a coercion is able to be implicitly performed. There are two kinds of coercion sites: 
 - one-to-one
-- LUB (Least-Uppper-Bound)
+- LUB (Least-Upper-Bound)
 
 ```rust
 let one_to_one_coercion: &u32 = &mut 8;
