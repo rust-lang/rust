@@ -4,7 +4,7 @@
 //@ aux-build: impl3.rs
 //@ ignore-backends: gcc
 // Tests the error message when there are multiple implementations of an EII in many crates.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 // has a span but in the other crate
 //~? ERROR multiple implementations of `#[eii1]`

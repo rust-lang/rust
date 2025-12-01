@@ -2,7 +2,7 @@
 //@ check-run-results
 //@ ignore-backends: gcc
 // Tests whether calling EIIs works with the declaration in the same crate.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 #[eii]
 fn hello(x: u64);

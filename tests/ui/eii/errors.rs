@@ -1,6 +1,6 @@
 //@ compile-flags: --crate-type rlib
 // Tests all the kinds of errors when EII attributes are used with wrong syntax.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

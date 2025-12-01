@@ -3,7 +3,7 @@
 //@ ignore-backends: gcc
 // Tests EIIs with default implementations.
 // In the same crate, the explicit implementation should get priority.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 #[eii(eii1)]
 pub fn decl1(x: u64) {

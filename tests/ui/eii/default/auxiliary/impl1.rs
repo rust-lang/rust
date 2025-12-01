@@ -1,7 +1,7 @@
 //@ no-prefer-dynamic
 //@ aux-build: decl_with_default.rs
 #![crate_type = "rlib"]
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 extern crate decl_with_default as decl;
 

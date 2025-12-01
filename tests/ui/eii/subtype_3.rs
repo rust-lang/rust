@@ -2,7 +2,7 @@
 //@ check-pass
 // Uses manual desugaring of EII internals:
 // Tests whether it's ok when the implementation is more general.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

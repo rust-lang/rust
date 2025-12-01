@@ -7,7 +7,7 @@
 // Tests EIIs with default implementations.
 // When an explicit implementation is given in one dependency, and the declaration is in another,
 // the explicit implementation is preferred.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 extern crate decl_with_default;
 extern crate impl1;

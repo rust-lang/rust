@@ -2,7 +2,7 @@
 //@ check-pass
 // Uses manual desugaring of EII internals:
 // Tests whether it's okay to implement an unsafe EII with an unsafe implementation.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

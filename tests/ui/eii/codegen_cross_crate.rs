@@ -4,7 +4,7 @@
 //@ compile-flags: -O
 //@ ignore-backends: gcc
 // Tests whether calling EIIs works with the declaration in another crate.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 
 extern crate codegen2 as codegen;
 

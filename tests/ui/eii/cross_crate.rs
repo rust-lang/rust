@@ -2,7 +2,7 @@
 //@ check-pass
 //@ aux-build: cross_crate_eii_declaration.rs
 // Tests whether calling EIIs works with the declaration in another crate.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]

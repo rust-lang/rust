@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type rlib
 //@ aux-build: cross_crate_eii_declaration.rs
 // Tests whether the type checking still works properly when the declaration is in another crate.
-#![feature(eii)]
+#![feature(extern_item_impls)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
