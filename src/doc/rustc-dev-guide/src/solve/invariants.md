@@ -121,7 +121,7 @@ We do however break this invariant in a few cases, some of which are due to bugs
 If a goal can be proven in a generic environment, the goal should still hold after instantiating
 it with fully concrete types and no where-clauses in scope.
 
-This is assumed by codegen whicih ICEs when encountering non-overflow ambiguity. This invariant is currently broken by specialization ([#147507](https://github.com/rust-lang/rust/issues/147507)) and by marker traits ([#149502](https://github.com/rust-lang/rust/issues/149502)).
+This is assumed by codegen which ICEs when encountering non-overflow ambiguity. This invariant is currently broken by specialization ([#147507](https://github.com/rust-lang/rust/issues/147507)) and by marker traits ([#149502](https://github.com/rust-lang/rust/issues/149502)).
 
 #### The type system is complete during the implicit negative overlap check in coherence ✅
 
