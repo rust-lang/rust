@@ -3689,7 +3689,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let ident = Ident::new(kw::SelfLower, span.normalize_to_macro_rules());
             let res = Res::Local(delegation.id);
             this.innermost_rib_bindings(ValueNS).insert(ident, res);
-            this.visit_block(body);
+
+            //As we lower target_expr_template body to a body of a function we need a label rib (#148889)
+            this.with_label_rib(RibKind::FnOrCoroutine, |this| {
+                this.visit_block(body);
+            });
         });
     }
 
