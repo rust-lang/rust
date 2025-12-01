@@ -37,7 +37,6 @@ impl Std {
 
 impl Step for Std {
     type Output = BuildStamp;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut run = run;
@@ -46,6 +45,10 @@ impl Step for Std {
         }
 
         run.path("library")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -310,10 +313,13 @@ impl Rustc {
 impl Step for Rustc {
     type Output = BuildStamp;
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("rustc-main").path("compiler")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -510,12 +516,14 @@ pub struct CraneliftCodegenBackend {
 
 impl Step for CraneliftCodegenBackend {
     type Output = ();
-
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc_codegen_cranelift").alias("cg_clif")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -580,12 +588,14 @@ pub struct GccCodegenBackend {
 
 impl Step for GccCodegenBackend {
     type Output = ();
-
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc_codegen_gcc").alias("cg_gcc")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -665,11 +675,14 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const IS_HOST: bool = true;
-            /// Most of the tool-checks using this macro are run by default.
-            const DEFAULT: bool = true $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.paths(&[ $path, $( $alt_path ),* ])
+            }
+
+            fn is_default_step(_builder: &Builder<'_>) -> bool {
+                // Most of the tool-checks using this macro are run by default.
+                true $( && const { $default } )?
             }
 
             fn make_run(run: RunConfig<'_>) {

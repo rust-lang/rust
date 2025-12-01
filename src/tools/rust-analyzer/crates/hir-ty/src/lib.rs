@@ -569,6 +569,35 @@ where
     Vec::from_iter(collector.params)
 }
 
+struct TypeInferenceVarCollector<'db> {
+    type_inference_vars: Vec<Ty<'db>>,
+}
+
+impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for TypeInferenceVarCollector<'db> {
+    type Result = ();
+
+    fn visit_ty(&mut self, ty: Ty<'db>) -> Self::Result {
+        use crate::rustc_type_ir::Flags;
+        if ty.is_ty_var() {
+            self.type_inference_vars.push(ty);
+        } else if ty.flags().intersects(rustc_type_ir::TypeFlags::HAS_TY_INFER) {
+            ty.super_visit_with(self);
+        } else {
+            // Fast path: don't visit inner types (e.g. generic arguments) when `flags` indicate
+            // that there are no placeholders.
+        }
+    }
+}
+
+pub fn collect_type_inference_vars<'db, T>(value: &T) -> Vec<Ty<'db>>
+where
+    T: ?Sized + rustc_type_ir::TypeVisitable<DbInterner<'db>>,
+{
+    let mut collector = TypeInferenceVarCollector { type_inference_vars: vec![] };
+    value.visit_with(&mut collector);
+    collector.type_inference_vars
+}
+
 pub fn known_const_to_ast<'db>(
     konst: Const<'db>,
     db: &'db dyn HirDatabase,

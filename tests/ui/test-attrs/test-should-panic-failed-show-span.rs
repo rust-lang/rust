@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ compile-flags: --test
 //@ run-flags: --test-threads=1 --nocapture
 //@ run-fail

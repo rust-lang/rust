@@ -170,10 +170,13 @@ impl Std {
 
 impl Step for Std {
     type Output = ();
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("sysroot").path("library")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -253,10 +256,13 @@ impl Rustc {
 impl Step for Rustc {
     type Output = ();
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("rustc-main").path("compiler")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -398,7 +404,7 @@ macro_rules! lint_any {
         $path:expr,
         $readable_name:expr,
         $mode:expr
-        $(,lint_by_default = $lint_by_default:expr)*
+        $(, lint_by_default = $lint_by_default:expr )?
         ;
     )+) => {
         $(
@@ -412,10 +418,13 @@ macro_rules! lint_any {
 
         impl Step for $name {
             type Output = ();
-            const DEFAULT: bool = if false $(|| $lint_by_default)* { true } else { false };
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)
+            }
+
+            fn is_default_step(_builder: &Builder<'_>) -> bool {
+                false $( || const { $lint_by_default } )?
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -510,10 +519,13 @@ pub struct CI {
 
 impl Step for CI {
     type Output = ();
-    const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("ci")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn make_run(run: RunConfig<'_>) {

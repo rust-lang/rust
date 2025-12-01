@@ -496,8 +496,6 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
-  Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
-  casts are not supported in this mode, but that may change in the future.
 * `-Zmiri-tree-borrows-no-precise-interior-mut` makes Tree Borrows
   track interior mutable data on the level of references instead of on the
   byte-level as is done by default.  Therefore, with this flag, Tree

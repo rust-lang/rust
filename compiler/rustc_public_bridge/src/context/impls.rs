@@ -268,6 +268,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         }
     }
 
+    /// Returns the parent of the given `DefId`.
+    pub fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        self.tcx.opt_parent(def_id)
+    }
+
     /// Return registered tool attributes with the given attribute name.
     ///
     /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool

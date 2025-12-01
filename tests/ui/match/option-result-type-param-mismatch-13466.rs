@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //! Regression test for https://github.com/rust-lang/rust/issues/13466
 
 // Regression test for #13466

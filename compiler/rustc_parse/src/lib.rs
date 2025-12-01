@@ -130,6 +130,13 @@ pub fn utf8_error<E: EmissionGuarantee>(
     };
     let contents = String::from_utf8_lossy(contents).to_string();
     let source = sm.new_source_file(PathBuf::from(path).into(), contents);
+
+    // Avoid out-of-bounds span from lossy UTF-8 conversion.
+    if start as u32 > source.normalized_source_len.0 {
+        err.note(note);
+        return;
+    }
+
     let span = Span::with_root_ctxt(
         source.normalized_byte_pos(start as u32),
         source.normalized_byte_pos(start as u32),

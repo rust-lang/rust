@@ -1,16 +1,11 @@
-// This test verifies that never type fallback preserves the following code in a
-// compiling state. This pattern is fairly common in the wild, notably seen in
-// wasmtime v0.16. Typically this is some closure wrapper that expects a
-// collection of 'known' signatures, and -> ! is not included in that set.
-//
-// This test is specifically targeted by the unit type fallback when
-// encountering a set of obligations like `?T: Foo` and `Trait::Projection =
-// ?T`. In the code below, these are `R: Bar` and `Fn::Output = R`.
+// This test used to test that this pattern is not broken by context dependant
+// never type fallback. However, it got removed, so now this is an example of
+// expected breakage from the never type fallback change.
 //
 //@ revisions: nofallback fallback
-//@ check-pass
+//@[nofallback] check-pass
+//@[fallback] edition: 2024
 
-#![cfg_attr(fallback, feature(never_type_fallback))]
 #![cfg_attr(nofallback, expect(dependency_on_unit_never_type_fallback))]
 
 trait Bar {}
@@ -20,5 +15,5 @@ impl Bar for u32 {}
 fn foo<R: Bar>(_: impl Fn() -> R) {}
 
 fn main() {
-    foo(|| panic!());
+    foo(|| panic!()); //[fallback]~ error: the trait bound `!: Bar` is not satisfied
 }

@@ -17,9 +17,8 @@ use thin_vec::ThinVec;
 
 use crate::{
     AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    LocalModuleId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
-    nameres::MacroSubNs,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
@@ -740,11 +739,15 @@ impl ItemScope {
         let mut entries: Vec<_> = self.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
 
-        let print_macro_sub_ns =
-            |buf: &mut String, macro_id: MacroId| match MacroSubNs::from_id(db, macro_id) {
-                MacroSubNs::Bang => buf.push('!'),
-                MacroSubNs::Attr => buf.push('#'),
-            };
+        let print_macro_sub_ns = |buf: &mut String, macro_id: MacroId| {
+            let styles = crate::nameres::macro_styles_from_id(db, macro_id);
+            if styles.contains(MacroCallStyles::FN_LIKE) {
+                buf.push('!');
+            }
+            if styles.contains(MacroCallStyles::ATTR) || styles.contains(MacroCallStyles::DERIVE) {
+                buf.push('#');
+            }
+        };
 
         for (name, def) in entries {
             let display_name: &dyn fmt::Display = match &name {

@@ -7,7 +7,7 @@ use rustc_ast::{
     TyKind, UnsafeBinderTy,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diag, PResult};
+use rustc_errors::{Applicability, Diag, E0516, PResult};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
-            self.parse_typeof_ty()?
+            self.parse_typeof_ty(lo)?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -784,13 +784,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Parses the `typeof(EXPR)`.
-    // To avoid ambiguity, the type is surrounded by parentheses.
-    fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
+    /// Parses the `typeof(EXPR)` for better diagnostics before returning
+    /// an error type.
+    fn parse_typeof_ty(&mut self, lo: Span) -> PResult<'a, TyKind> {
         self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr_anon_const()?;
+        let _expr = self.parse_expr_anon_const()?;
         self.expect(exp!(CloseParen))?;
-        Ok(TyKind::Typeof(expr))
+        let span = lo.to(self.prev_token.span);
+        let guar = self
+            .dcx()
+            .struct_span_err(span, "`typeof` is a reserved keyword but unimplemented")
+            .with_note("consider replacing `typeof(...)` with an actual type")
+            .with_code(E0516)
+            .emit();
+        Ok(TyKind::Err(guar))
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).

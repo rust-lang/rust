@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:7:24
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |                        ^^^^^^^
@@ -10,7 +10,7 @@ LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:7:24
    |
 LL | fn ice() -> impl AsRef<Fn(&())> {
    |                        ^^^^^^^

@@ -700,7 +700,7 @@ impl GlobalState {
                 };
                 info!("Using proc-macro server at {path}");
 
-                Some(ProcMacroClient::spawn(&path, &env).map_err(|err| {
+                Some(ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref()).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );

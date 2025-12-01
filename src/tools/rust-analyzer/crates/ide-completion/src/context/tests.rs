@@ -90,6 +90,20 @@ fn bar(x: u32) {}
 "#,
         expect![[r#"ty: u32, name: x"#]],
     );
+    check_expected_type_and_name(
+        r#"
+fn foo() { bar(, $0); }
+fn bar(x: u32, y: i32) {}
+"#,
+        expect![[r#"ty: i32, name: y"#]],
+    );
+    check_expected_type_and_name(
+        r#"
+fn foo() { bar(, c$0); }
+fn bar(x: u32, y: i32) {}
+"#,
+        expect![[r#"ty: i32, name: y"#]],
+    );
 }
 
 #[test]

@@ -215,14 +215,6 @@ fn cargo_tests(test_env: &Env, test_args: &TestArg) -> Result<(), String> {
     // That would force `cg_gcc` to *rebuild itself* and only then run tests, which is undesirable.
     let mut env = HashMap::new();
     env.insert(
-        "LD_LIBRARY_PATH".into(),
-        test_env.get("LD_LIBRARY_PATH").expect("LD_LIBRARY_PATH missing!").to_string(),
-    );
-    env.insert(
-        "LIBRARY_PATH".into(),
-        test_env.get("LIBRARY_PATH").expect("LIBRARY_PATH missing!").to_string(),
-    );
-    env.insert(
         "CG_RUSTFLAGS".into(),
         test_env.get("CG_RUSTFLAGS").map(|s| s.as_str()).unwrap_or("").to_string(),
     );
@@ -1065,6 +1057,7 @@ where
         &test_dir,
         &"--compiletest-rustc-args",
         &rustc_args,
+        &"--bypass-ignore-backends",
     ];
 
     if run_ignored_tests {
@@ -1275,11 +1268,6 @@ pub fn run() -> Result<(), String> {
 
     if !args.use_system_gcc {
         args.config_info.setup_gcc_path()?;
-        let gcc_path = args.config_info.gcc_path.clone().expect(
-            "The config module should have emitted an error if the GCC path wasn't provided",
-        );
-        env.insert("LIBRARY_PATH".to_string(), gcc_path.clone());
-        env.insert("LD_LIBRARY_PATH".to_string(), gcc_path);
     }
 
     build_if_no_backend(&env, &args)?;

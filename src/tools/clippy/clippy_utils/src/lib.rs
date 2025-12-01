@@ -136,6 +136,9 @@ use crate::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
 
+/// Methods on `Vec` that also exists on slices.
+pub const VEC_METHODS_SHADOWING_SLICE_METHODS: [Symbol; 3] = [sym::as_ptr, sym::is_empty, sym::len];
+
 #[macro_export]
 macro_rules! extract_msrv_attr {
     () => {

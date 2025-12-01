@@ -6,8 +6,8 @@ LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
    |
    = note: BACKTRACE:
    = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
-   = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
-   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::lifecycle::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/lifecycle.rs:LL:CC
+   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/join_handle.rs:LL:CC
 note: inside `main`
   --> tests/fail-dep/libc/socketpair_block_write_twice.rs:LL:CC
    |

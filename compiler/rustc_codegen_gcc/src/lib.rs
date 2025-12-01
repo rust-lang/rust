@@ -18,7 +18,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
-#![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
+#![expect(clippy::uninlined_format_args)]
 
 // The rustc crates we need
 extern crate rustc_abi;
@@ -43,7 +43,7 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
-#[allow(unused_extern_crates)]
+#[expect(unused_extern_crates)]
 extern crate rustc_driver;
 
 mod abi;
@@ -69,9 +69,10 @@ mod type_;
 mod type_of;
 
 use std::any::Any;
+use std::ffi::CString;
 use std::fmt::Debug;
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -142,7 +143,7 @@ impl TargetInfo {
 
 #[derive(Clone)]
 pub struct LockedTargetInfo {
-    info: Arc<Mutex<IntoDynSyncSend<TargetInfo>>>,
+    info: Arc<Mutex<IntoDynSyncSend<Option<TargetInfo>>>>,
 }
 
 impl Debug for LockedTargetInfo {
@@ -153,11 +154,21 @@ impl Debug for LockedTargetInfo {
 
 impl LockedTargetInfo {
     fn cpu_supports(&self, feature: &str) -> bool {
-        self.info.lock().expect("lock").cpu_supports(feature)
+        self.info
+            .lock()
+            .expect("lock")
+            .as_ref()
+            .expect("target info not initialized")
+            .cpu_supports(feature)
     }
 
     fn supports_target_dependent_type(&self, typ: CType) -> bool {
-        self.info.lock().expect("lock").supports_target_dependent_type(typ)
+        self.info
+            .lock()
+            .expect("lock")
+            .as_ref()
+            .expect("target info not initialized")
+            .supports_target_dependent_type(typ)
     }
 }
 
@@ -169,6 +180,23 @@ pub struct GccCodegenBackend {
 
 static LTO_SUPPORTED: AtomicBool = AtomicBool::new(false);
 
+fn load_libgccjit_if_needed(sysroot_path: &Path) {
+    if gccjit::is_loaded() {
+        // Do not load a libgccjit second time.
+        return;
+    }
+
+    let sysroot_lib_dir = sysroot_path.join("lib");
+    let libgccjit_target_lib_file = sysroot_lib_dir.join("libgccjit.so");
+    let path = libgccjit_target_lib_file.to_str().expect("libgccjit path");
+
+    let string = CString::new(path).expect("string to libgccjit path");
+
+    if let Err(error) = gccjit::load(&string) {
+        panic!("Cannot load libgccjit.so: {}", error);
+    }
+}
+
 impl CodegenBackend for GccCodegenBackend {
     fn locale_resource(&self) -> &'static str {
         crate::DEFAULT_LOCALE_RESOURCE
@@ -178,10 +206,12 @@ impl CodegenBackend for GccCodegenBackend {
         "gcc"
     }
 
-    fn init(&self, _sess: &Session) {
+    fn init(&self, sess: &Session) {
+        load_libgccjit_if_needed(sess.opts.sysroot.path());
+
         #[cfg(feature = "master")]
         {
-            let target_cpu = target_cpu(_sess);
+            let target_cpu = target_cpu(sess);
 
             // Get the second TargetInfo with the correct CPU features by setting the arch.
             let context = Context::default();
@@ -189,7 +219,8 @@ impl CodegenBackend for GccCodegenBackend {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
 
-            **self.target_info.info.lock().expect("lock") = context.get_target_info();
+            *self.target_info.info.lock().expect("lock") =
+                IntoDynSyncSend(Some(context.get_target_info()));
         }
 
         #[cfg(feature = "master")]
@@ -217,6 +248,9 @@ impl CodegenBackend for GccCodegenBackend {
                 .info
                 .lock()
                 .expect("lock")
+                .0
+                .as_ref()
+                .expect("target info not initialized")
                 .supports_128bit_integers
                 .store(check_context.get_last_error() == Ok(None), Ordering::SeqCst);
         }
@@ -438,13 +472,12 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     let info = {
         // Check whether the target supports 128-bit integers, and sized floating point types (like
         // Float16).
-        let context = Context::default();
-        Arc::new(Mutex::new(IntoDynSyncSend(context.get_target_info())))
+        Arc::new(Mutex::new(IntoDynSyncSend(None)))
     };
     #[cfg(not(feature = "master"))]
-    let info = Arc::new(Mutex::new(IntoDynSyncSend(TargetInfo {
+    let info = Arc::new(Mutex::new(IntoDynSyncSend(Some(TargetInfo {
         supports_128bit_integers: AtomicBool::new(false),
-    })));
+    }))));
 
     Box::new(GccCodegenBackend {
         lto_supported: Arc::new(AtomicBool::new(false)),

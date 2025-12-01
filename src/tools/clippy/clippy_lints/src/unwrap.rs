@@ -1,15 +1,21 @@
+use std::borrow::Cow;
+use std::iter;
+
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::source::snippet;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{can_use_if_let_chains, higher, sym};
+use rustc_abi::FieldIdx;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
-use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, Place, PlaceWithHirId};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::hir::place::ProjectionKind;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -114,11 +120,91 @@ impl UnwrappableKind {
     }
 }
 
+#[derive(Clone, Debug, Eq)]
+enum Local {
+    /// `x.field1.field2.field3`
+    WithFieldAccess {
+        local_id: HirId,
+        /// The indices of the field accessed.
+        ///
+        /// Stored last-to-first, e.g. for the example above: `[field3, field2, field1]`
+        field_indices: Vec<FieldIdx>,
+        /// The span of the whole expression
+        span: Span,
+    },
+    /// `x`
+    Pure { local_id: HirId },
+}
+
+/// Identical to derived impl, but ignores `span` on [`Local::WithFieldAccess`]
+impl PartialEq for Local {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::WithFieldAccess {
+                    local_id: self_local_id,
+                    field_indices: self_field_indices,
+                    ..
+                },
+                Self::WithFieldAccess {
+                    local_id: other_local_id,
+                    field_indices: other_field_indices,
+                    ..
+                },
+            ) => self_local_id == other_local_id && self_field_indices == other_field_indices,
+            (
+                Self::Pure {
+                    local_id: self_local_id,
+                },
+                Self::Pure {
+                    local_id: other_local_id,
+                },
+            ) => self_local_id == other_local_id,
+            _ => false,
+        }
+    }
+}
+
+impl Local {
+    fn snippet(&self, cx: &LateContext<'_>) -> Cow<'static, str> {
+        match *self {
+            Self::WithFieldAccess { span, .. } => snippet(cx.sess(), span, "_"),
+            Self::Pure { local_id } => cx.tcx.hir_name(local_id).to_string().into(),
+        }
+    }
+
+    fn is_potentially_local_place(&self, place: &Place<'_>) -> bool {
+        match self {
+            Self::WithFieldAccess {
+                local_id,
+                field_indices,
+                ..
+            } => {
+                is_potentially_local_place(*local_id, place)
+                    // If there were projections other than field projections, err on the side of caution and say that they
+                    // _might_ be mutating something.
+                    //
+                    // The reason we use `<=` and not `==` is that a mutation of `struct` or `struct.field1` should count as
+                    // mutation of the child fields such as `struct.field1.field2`
+                    && place.projections.len() <= field_indices.len()
+                    && iter::zip(&place.projections, field_indices.iter().copied().rev()).all(|(proj, field_idx)| {
+                         match proj.kind {
+                            ProjectionKind::Field(f_idx, _) => f_idx == field_idx,
+                                // If this is a projection we don't expect, it _might_ be mutating something
+                                _ => false,
+                        }
+                    })
+            },
+            Self::Pure { local_id } => is_potentially_local_place(*local_id, place),
+        }
+    }
+}
+
 /// Contains information about whether a variable can be unwrapped.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct UnwrapInfo<'tcx> {
     /// The variable that is checked
-    local_id: HirId,
+    local: Local,
     /// The if itself
     if_expr: &'tcx Expr<'tcx>,
     /// The check, like `x.is_ok()`
@@ -156,38 +242,77 @@ fn collect_unwrap_info<'tcx>(
         }
     }
 
-    match expr.kind {
-        ExprKind::Binary(op, left, right)
-            if matches!(
-                (invert, op.node),
-                (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr)
-            ) =>
-        {
-            let mut unwrap_info = collect_unwrap_info(cx, if_expr, left, branch, invert, false);
-            unwrap_info.extend(collect_unwrap_info(cx, if_expr, right, branch, invert, false));
-            unwrap_info
-        },
-        ExprKind::Unary(UnOp::Not, expr) => collect_unwrap_info(cx, if_expr, expr, branch, !invert, false),
-        ExprKind::MethodCall(method_name, receiver, [], _)
-            if let Some(local_id) = receiver.res_local_id()
-                && let ty = cx.typeck_results().expr_ty(receiver)
-                && let name = method_name.ident.name
-                && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
-        {
-            let safe_to_unwrap = unwrappable != invert;
+    fn inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        if_expr: &'tcx Expr<'_>,
+        expr: &'tcx Expr<'_>,
+        branch: &'tcx Expr<'_>,
+        invert: bool,
+        is_entire_condition: bool,
+        out: &mut Vec<UnwrapInfo<'tcx>>,
+    ) {
+        match expr.kind {
+            ExprKind::Binary(op, left, right)
+                if matches!(
+                    (invert, op.node),
+                    (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr)
+                ) =>
+            {
+                inner(cx, if_expr, left, branch, invert, false, out);
+                inner(cx, if_expr, right, branch, invert, false, out);
+            },
+            ExprKind::Unary(UnOp::Not, expr) => inner(cx, if_expr, expr, branch, !invert, false, out),
+            ExprKind::MethodCall(method_name, receiver, [], _)
+                if let Some(local) = extract_local(cx, receiver)
+                    && let ty = cx.typeck_results().expr_ty(receiver)
+                    && let name = method_name.ident.name
+                    && let Some((kind, unwrappable)) = option_or_result_call(cx, ty, name) =>
+            {
+                let safe_to_unwrap = unwrappable != invert;
 
-            vec![UnwrapInfo {
+                out.push(UnwrapInfo {
+                    local,
+                    if_expr,
+                    check: expr,
+                    check_name: name,
+                    branch,
+                    safe_to_unwrap,
+                    kind,
+                    is_entire_condition,
+                });
+            },
+            _ => {},
+        }
+    }
+
+    let mut out = vec![];
+    inner(cx, if_expr, expr, branch, invert, is_entire_condition, &mut out);
+    out
+}
+
+/// Extracts either a local used by itself ([`Local::Pure`]), or (one or more levels of) field
+/// access to a local ([`Local::WithFieldAccess`])
+fn extract_local(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> Option<Local> {
+    let span = expr.span;
+    let mut field_indices = vec![];
+    while let ExprKind::Field(recv, _) = expr.kind
+        && let Some(field_idx) = cx.typeck_results().opt_field_index(expr.hir_id)
+    {
+        field_indices.push(field_idx);
+        expr = recv;
+    }
+    if let Some(local_id) = expr.res_local_id() {
+        if field_indices.is_empty() {
+            Some(Local::Pure { local_id })
+        } else {
+            Some(Local::WithFieldAccess {
                 local_id,
-                if_expr,
-                check: expr,
-                check_name: name,
-                branch,
-                safe_to_unwrap,
-                kind,
-                is_entire_condition,
-            }]
-        },
-        _ => vec![],
+                field_indices,
+                span,
+            })
+        }
+    } else {
+        None
     }
 }
 
@@ -198,9 +323,9 @@ fn collect_unwrap_info<'tcx>(
 /// `is_some` + `unwrap` is equivalent to `if let Some(..) = ..`, which it would not be if
 /// the option is changed to None between `is_some` and `unwrap`, ditto for `Result`.
 /// (And also `.as_mut()` is a somewhat common method that is still worth linting on.)
-struct MutationVisitor<'tcx> {
+struct MutationVisitor<'tcx, 'lcl> {
     is_mutated: bool,
-    local_id: HirId,
+    local: &'lcl Local,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -221,10 +346,10 @@ fn is_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     }
 }
 
-impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
+impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx, '_> {
     fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::Mutable = bk
-            && is_potentially_local_place(self.local_id, &cat.place)
+            && self.local.is_potentially_local_place(&cat.place)
             && !is_as_mut_use(self.tcx, diag_expr_id)
         {
             self.is_mutated = true;
@@ -232,7 +357,7 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     }
 
     fn mutate(&mut self, cat: &PlaceWithHirId<'tcx>, _: HirId) {
-        if is_potentially_local_place(self.local_id, &cat.place) {
+        if self.local.is_potentially_local_place(&cat.place) {
             self.is_mutated = true;
         }
     }
@@ -256,7 +381,7 @@ impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
             let mut delegate = MutationVisitor {
                 is_mutated: false,
-                local_id: unwrap_info.local_id,
+                local: &unwrap_info.local,
                 tcx: self.cx.tcx,
             };
 
@@ -318,24 +443,17 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
             // find `unwrap[_err]()` or `expect("...")` calls:
             if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
                 && let (self_arg, as_ref_kind) = consume_option_as_ref(self_arg)
-                && let Some(id) = self_arg.res_local_id()
+                && let Some(local) = extract_local(self.cx, self_arg)
                 && matches!(method_name.ident.name, sym::unwrap | sym::expect | sym::unwrap_err)
                 && let call_to_unwrap = matches!(method_name.ident.name, sym::unwrap | sym::expect)
-                && let Some(unwrappable) = self.unwrappables.iter()
-                    .find(|u| u.local_id == id)
+                && let Some(unwrappable) = self.unwrappables.iter().find(|u| u.local == local)
                 // Span contexts should not differ with the conditional branch
                 && let span_ctxt = expr.span.ctxt()
                 && unwrappable.branch.span.ctxt() == span_ctxt
                 && unwrappable.check.span.ctxt() == span_ctxt
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
-                    let is_entire_condition = unwrappable.is_entire_condition;
-                    let unwrappable_variable_name = self.cx.tcx.hir_name(unwrappable.local_id);
-                    let suggested_pattern = if call_to_unwrap {
-                        unwrappable.kind.success_variant_pattern()
-                    } else {
-                        unwrappable.kind.error_variant_pattern()
-                    };
+                    let unwrappable_variable_str = unwrappable.local.snippet(self.cx);
 
                     span_lint_hir_and_then(
                         self.cx,
@@ -343,16 +461,21 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                         expr.hir_id,
                         expr.span,
                         format!(
-                            "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
+                            "called `{}` on `{unwrappable_variable_str}` after checking its variant with `{}`",
                             method_name.ident.name, unwrappable.check_name,
                         ),
                         |diag| {
-                            if is_entire_condition {
+                            if unwrappable.is_entire_condition {
                                 diag.span_suggestion(
                                     unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                     "try",
                                     format!(
-                                        "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_name}",
+                                        "if let {suggested_pattern} = {borrow_prefix}{unwrappable_variable_str}",
+                                        suggested_pattern = if call_to_unwrap {
+                                            unwrappable.kind.success_variant_pattern()
+                                        } else {
+                                            unwrappable.kind.error_variant_pattern()
+                                        },
                                         borrow_prefix = match as_ref_kind {
                                             Some(AsRefKind::AsRef) => "&",
                                             Some(AsRefKind::AsMut) => "&mut ",

@@ -211,19 +211,6 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
-    #[inline]
-    fn blob(self) -> &'a MetadataBlob {
-        self.0
-    }
-
-    #[inline]
-    fn sess(self) -> Option<&'tcx Session> {
-        let (_, sess) = self;
-        Some(sess)
-    }
-}
-
 impl<'a, 'tcx> Metadata<'a, 'tcx> for CrateMetadataRef<'a> {
     #[inline]
     fn blob(self) -> &'a MetadataBlob {
@@ -1862,7 +1849,6 @@ impl<'a> CrateMetadataRef<'a> {
 
 impl CrateMetadata {
     pub(crate) fn new(
-        sess: &Session,
         cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot,
@@ -1876,7 +1862,7 @@ impl CrateMetadata {
     ) -> CrateMetadata {
         let trait_impls = root
             .impls
-            .decode((&blob, sess))
+            .decode(&blob)
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
         let alloc_decoding_state =

@@ -297,9 +297,9 @@ pub fn expand_speculative(
         MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
             pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?, span)
         }
-        MacroDefKind::Declarative(it) => {
-            db.decl_macro_expander(loc.krate, it).expand_unhygienic(tt, span, loc.def.edition)
-        }
+        MacroDefKind::Declarative(it, _) => db
+            .decl_macro_expander(loc.krate, it)
+            .expand_unhygienic(tt, loc.kind.call_style(), span, loc.def.edition),
         MacroDefKind::BuiltIn(_, it) => {
             it.expand(db, actual_macro_call, &tt, span).map_err(Into::into)
         }
@@ -585,7 +585,7 @@ fn attr_source(invoc_attr_index: AttrId, node: &ast::Item) -> Option<ast::Attr> 
 impl TokenExpander {
     fn macro_expander(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
         match id.kind {
-            MacroDefKind::Declarative(ast_id) => {
+            MacroDefKind::Declarative(ast_id, _) => {
                 TokenExpander::DeclarativeMacro(db.decl_macro_expander(id.krate, ast_id))
             }
             MacroDefKind::BuiltIn(_, expander) => TokenExpander::BuiltIn(expander),
@@ -618,48 +618,46 @@ fn macro_expand(
                 db.macro_arg_considering_derives(macro_call_id, &loc.kind);
 
             let arg = &*macro_arg;
-            let res =
-                match loc.def.kind {
-                    MacroDefKind::Declarative(id) => db
-                        .decl_macro_expander(loc.def.krate, id)
-                        .expand(db, arg.clone(), macro_call_id, span),
-                    MacroDefKind::BuiltIn(_, it) => {
-                        it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
-                    }
-                    MacroDefKind::BuiltInDerive(_, it) => {
-                        it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
-                    }
-                    MacroDefKind::BuiltInEager(_, it) => {
-                        // This might look a bit odd, but we do not expand the inputs to eager macros here.
-                        // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
-                        // That kind of expansion uses the ast id map of an eager macros input though which goes through
-                        // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
-                        // will end up going through here again, whereas we want to just want to inspect the raw input.
-                        // As such we just return the input subtree here.
-                        let eager = match &loc.kind {
-                            MacroCallKind::FnLike { eager: None, .. } => {
-                                return ExpandResult::ok(CowArc::Arc(macro_arg.clone()))
-                                    .zip_val(None);
-                            }
-                            MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
-                            _ => None,
-                        };
-
-                        let mut res = it.expand(db, macro_call_id, arg, span).map_err(Into::into);
-
-                        if let Some(EagerCallInfo { error, .. }) = eager {
-                            // FIXME: We should report both errors!
-                            res.err = error.clone().or(res.err);
+            let res = match loc.def.kind {
+                MacroDefKind::Declarative(id, _) => db
+                    .decl_macro_expander(loc.def.krate, id)
+                    .expand(db, arg.clone(), macro_call_id, span),
+                MacroDefKind::BuiltIn(_, it) => {
+                    it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
+                }
+                MacroDefKind::BuiltInDerive(_, it) => {
+                    it.expand(db, macro_call_id, arg, span).map_err(Into::into).zip_val(None)
+                }
+                MacroDefKind::BuiltInEager(_, it) => {
+                    // This might look a bit odd, but we do not expand the inputs to eager macros here.
+                    // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
+                    // That kind of expansion uses the ast id map of an eager macros input though which goes through
+                    // the HirFileId machinery. As eager macro inputs are assigned a macro file id that query
+                    // will end up going through here again, whereas we want to just want to inspect the raw input.
+                    // As such we just return the input subtree here.
+                    let eager = match &loc.kind {
+                        MacroCallKind::FnLike { eager: None, .. } => {
+                            return ExpandResult::ok(CowArc::Arc(macro_arg.clone())).zip_val(None);
                         }
-                        res.zip_val(None)
+                        MacroCallKind::FnLike { eager: Some(eager), .. } => Some(&**eager),
+                        _ => None,
+                    };
+
+                    let mut res = it.expand(db, macro_call_id, arg, span).map_err(Into::into);
+
+                    if let Some(EagerCallInfo { error, .. }) = eager {
+                        // FIXME: We should report both errors!
+                        res.err = error.clone().or(res.err);
                     }
-                    MacroDefKind::BuiltInAttr(_, it) => {
-                        let mut res = it.expand(db, macro_call_id, arg, span);
-                        fixup::reverse_fixups(&mut res.value, &undo_info);
-                        res.zip_val(None)
-                    }
-                    MacroDefKind::ProcMacro(_, _, _) => unreachable!(),
-                };
+                    res.zip_val(None)
+                }
+                MacroDefKind::BuiltInAttr(_, it) => {
+                    let mut res = it.expand(db, macro_call_id, arg, span);
+                    fixup::reverse_fixups(&mut res.value, &undo_info);
+                    res.zip_val(None)
+                }
+                MacroDefKind::ProcMacro(_, _, _) => unreachable!(),
+            };
             (ExpandResult { value: res.value, err: res.err }, span)
         }
     };

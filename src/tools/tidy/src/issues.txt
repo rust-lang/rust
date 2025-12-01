@@ -930,7 +930,6 @@ ui/dst/issue-90528-unsizing-suggestion-4.rs
 ui/dyn-keyword/issue-5153.rs
 ui/dyn-keyword/issue-56327-dyn-trait-in-macro-is-okay.rs
 ui/empty/issue-37026.rs
-ui/entry-point/issue-118772.rs
 ui/enum-discriminant/auxiliary/issue-41394.rs
 ui/enum-discriminant/issue-104519.rs
 ui/enum-discriminant/issue-41394-rpass.rs
@@ -2983,9 +2982,6 @@ ui/typeck/issue-96530.rs
 ui/typeck/issue-96738.rs
 ui/typeck/issue-98260.rs
 ui/typeck/issue-98982.rs
-ui/typeof/issue-100183.rs
-ui/typeof/issue-29184.rs
-ui/typeof/issue-42060.rs
 ui/unboxed-closures/issue-18652.rs
 ui/unboxed-closures/issue-18661.rs
 ui/unboxed-closures/issue-30906.rs

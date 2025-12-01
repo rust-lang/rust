@@ -20,5 +20,5 @@ mod detail {
 fn main() {
     // SingleUseConsts represents "x" using VarDebugInfoContents::Const.
     // It is the only reference to `f` remaining.
-    let x = <() as ::Fun>::FUN;
+    let x = <() as Fun>::FUN;
 }

@@ -1,8 +1,8 @@
 error[E0382]: use of moved value: `c`
-  --> $DIR/closure-print-generic-1.rs:17:5
+  --> $DIR/closure-print-generic-1.rs:18:5
    |
 LL |     let c = to_fn_once(move || {
-   |         - move occurs because `c` has type `{closure@$DIR/closure-print-generic-1.rs:12:24: 12:31}`, which does not implement the `Copy` trait
+   |         - move occurs because `c` has type `{closure@$DIR/closure-print-generic-1.rs:13:24: 13:31}`, which does not implement the `Copy` trait
 ...
 LL |     c();
    |     --- `c` moved due to this call
@@ -10,7 +10,7 @@ LL |     c();
    |     ^ value used here after move
    |
 note: this value implements `FnOnce`, which causes it to be moved when called
-  --> $DIR/closure-print-generic-1.rs:16:5
+  --> $DIR/closure-print-generic-1.rs:17:5
    |
 LL |     c();
    |     ^

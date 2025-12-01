@@ -59,9 +59,14 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
             .into_iter()
             .map(|x| match x {
                 hir::CfgAtom::Flag(key) => (key.as_str(), "".into()),
-                hir::CfgAtom::KeyValue { key, .. } => {
-                    (key.as_str(), SmolStr::from_iter([key.as_str(), " = $0"]))
-                }
+                hir::CfgAtom::KeyValue { key, .. } => (
+                    key.as_str(),
+                    if ctx.config.snippet_cap.is_some() {
+                        SmolStr::from_iter([key.as_str(), " = $0"])
+                    } else {
+                        SmolStr::default()
+                    },
+                ),
             })
             .chain(CFG_CONDITION.iter().map(|&(k, snip)| (k, SmolStr::new_static(snip))))
             .unique_by(|&(s, _)| s)

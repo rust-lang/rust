@@ -477,6 +477,69 @@ pub fn normalize_param_env_or_error<'tcx>(
     ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
+/// Deeply normalize the param env using the next solver ignoring
+/// region errors.
+///
+/// FIXME(-Zhigher-ranked-assumptions): this is a hack to work around
+/// the fact that we don't support placeholder assumptions right now
+/// and is necessary for `compare_method_predicate_entailment`, see the
+/// use of this function for more info. We should remove this once we
+/// have proper support for implied bounds on binders.
+#[instrument(level = "debug", skip(tcx))]
+pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    unnormalized_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+) -> ty::ParamEnv<'tcx> {
+    let predicates: Vec<_> =
+        util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
+
+    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
+
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    if !elaborated_env.has_aliases() {
+        return elaborated_env;
+    }
+
+    let span = cause.span;
+    let infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .ignoring_regions()
+        .build(TypingMode::non_body_analysis());
+    let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
+        infcx.at(&cause, elaborated_env),
+        predicates,
+    ) {
+        Ok(predicates) => predicates,
+        Err(errors) => {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+            // An unnormalized env is better than nothing.
+            debug!("normalize_param_env_or_error: errored resolving predicates");
+            return elaborated_env;
+        }
+    };
+
+    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
+    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
+    // There're placeholder constraints `leaking` out.
+    // See the fixme in the enclosing function's docs for more.
+    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+
+    let predicates = match infcx.fully_resolve(predicates) {
+        Ok(predicates) => predicates,
+        Err(fixup_err) => {
+            span_bug!(
+                span,
+                "inference variables in normalized parameter environment: {}",
+                fixup_err
+            )
+        }
+    };
+    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+}
+
 #[derive(Debug)]
 pub enum EvaluateConstErr {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,

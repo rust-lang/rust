@@ -3184,7 +3184,7 @@ impl Macro {
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {
         match self.id {
             MacroId::Macro2Id(it) => match it.lookup(db).expander {
-                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::Declarative { .. } => MacroKind::Declarative,
                 MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
                     MacroKind::DeclarativeBuiltIn
                 }
@@ -3192,7 +3192,7 @@ impl Macro {
                 MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db).expander {
-                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::Declarative { .. } => MacroKind::Declarative,
                 MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
                     MacroKind::DeclarativeBuiltIn
                 }

@@ -238,7 +238,7 @@ fn eager_macro_recur(
                     None => ExpandResult { value: None, err },
                 }
             }
-            MacroDefKind::Declarative(_)
+            MacroDefKind::Declarative(..)
             | MacroDefKind::BuiltIn(..)
             | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)
