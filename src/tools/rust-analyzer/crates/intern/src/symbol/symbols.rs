@@ -524,4 +524,5 @@ define_symbols! {
     arbitrary_self_types,
     arbitrary_self_types_pointers,
     supertrait_item_shadowing,
+    define_opaque,
 }
