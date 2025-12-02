@@ -990,22 +990,43 @@ impl Step for Openmp {
             .define("LLVM_ENABLE_RUNTIMES", "offload")
             //.define("CMAKE_C_COMPILER", builder.cc(target))
             //.define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
-            .define(
-                "CMAKE_C_COMPILER",
-                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
-            )
-            .define(
-                "CMAKE_CXX_COMPILER",
-                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
-            )
+            //.define(
+            //    "CMAKE_C_COMPILER",
+            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang",
+            //)
+            //.define(
+            //    "CMAKE_CXX_COMPILER",
+            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/bin/clang++",
+            //)
             .define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
             .define("OFFLOAD_STANDALONE_BUILD", "ON")
-            .define(
-                "LLVM_ROOT",
-                "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/build/",
-            )
+            .define("LLVM_ROOT", builder.llvm_out(target))
+            //.define(
+            //    "LLVM_ROOT",
+            //    "/tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/build/",
+            //)
             .define("LLVM_DIR", builder.llvm_out(target).join("lib").join("cmake").join("llvm"));
-        ///tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/lib/cmake/llvm
+
+        if builder.config.llvm_clang {
+            // This is likely the case locally. If we just build clang in the previous step, we
+            // should use it. We wouldn't even need a standalone build here, but it's easier to
+            // unify this with the case below, which needs standalone builds.
+            // We likely wouldn't need to specify these here, they should be found by default.
+            cfg.define("CMAKE_C_COMPILER", builder.cc(target))
+                .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap());
+        } else {
+            // This is the (more complicated) case which we have e.g. in CI. We first build a
+            // standalone llvm/llvm-project including clang. Then we use this clang to build the
+            // llvm submodule of rustc in src/llvm-project. In this case we do *NOT* build clang
+            // again in the llvm submodule to save compile times, this is a hard requirement.
+            // If we build the offload and openmp runtimes in-tree, they assume that clang was
+            // already build in-tree, which is not the case here. We therefore must use standalone
+            // builds of these two runtimes. We now have to specify clang(++) manually to match the
+            // one we build in llvm/llvm-project
+            cfg.define("CMAKE_C_COMPILER", builder.cc(target))
+                .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap());
+        }
+        // /tmp/drehwald1/prog/rust/build/x86_64-unknown-linux-gnu/llvm/lib/cmake/llvm
         //$> cmake ../runtimes \ # Point to the runtimes build
         //   -G Ninja                                  \
         //   -DLLVM_ENABLE_RUNTIMES=openmp               \
