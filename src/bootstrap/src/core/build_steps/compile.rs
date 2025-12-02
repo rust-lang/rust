@@ -7,7 +7,7 @@
 //! goes along from the output of the previous stage.
 
 use std::borrow::Cow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
@@ -2419,7 +2419,7 @@ pub fn add_to_sysroot(
     t!(fs::create_dir_all(sysroot_host_dst));
     t!(fs::create_dir_all(self_contained_dst));
 
-    let mut crates = HashSet::new();
+    let mut crates = HashMap::new();
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         let filename = path.file_name().unwrap().to_str().unwrap();
         let dst = match dependency_type {
@@ -2431,7 +2431,7 @@ pub fn add_to_sysroot(
 
         // Only insert the part before the . to deduplicate different files for the same crate.
         // For example foo-1234.dll and foo-1234.dll.lib.
-        crates.insert(filename.split_once('.').unwrap().0.to_owned());
+        crates.insert(filename.split_once('.').unwrap().0.to_owned(), path);
     }
 
     // Check that none of the rustc_* crates have multiple versions. Otherwise using them from
@@ -2439,13 +2439,20 @@ pub fn add_to_sysroot(
     // external dependency that we build multiple copies of. It is re-exported by
     // rustc_data_structures, so not being able to use extern crate rustc_hash; is not a big
     // issue.
-    let mut seen_crates = HashSet::new();
-    for filestem in crates {
+    let mut seen_crates = HashMap::new();
+    for (filestem, path) in crates {
         if !filestem.contains("rustc_") || filestem.contains("rustc_hash") {
             continue;
         }
-        if !seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned()) {
-            panic!("duplicate rustc crate {filestem}");
+        if let Some(other_path) =
+            seen_crates.insert(filestem.split_once('-').unwrap().0.to_owned(), path.clone())
+        {
+            panic!(
+                "duplicate rustc crate {}\n-  first copy at {}\n- second copy at {}",
+                filestem.split_once('-').unwrap().0.to_owned(),
+                other_path.display(),
+                path.display(),
+            );
         }
     }
 }
