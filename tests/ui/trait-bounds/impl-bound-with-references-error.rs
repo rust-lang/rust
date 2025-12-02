@@ -10,7 +10,7 @@ impl<T> From<T> for LabelText
 //~^ ERROR conflicting implementations of trait `From<LabelText>` for type `LabelText` [E0119]
 where
     T: Into<Cow<'static, str>>,
-    //~^ ERROR cannot find type `Cow` in this scope [E0412]
+    //~^ ERROR cannot find type `Cow` in this scope [E0425]
 {
     fn from(text: T) -> Self {
         LabelText::Plain(text.into()) //~ ERROR expected function, found `LabelText`

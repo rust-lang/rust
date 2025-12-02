@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Foo` in this scope
+error[E0425]: cannot find type `Foo` in this scope
   --> $DIR/issue-83510.rs:7:1
    |
 LL | issue_83510::dance_like_you_want_to_ice!();
@@ -35,5 +35,5 @@ LL | issue_83510::dance_like_you_want_to_ice!();
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0404, E0405, E0412, E0658.
+Some errors have detailed explanations: E0404, E0405, E0425, E0658.
 For more information about an error, try `rustc --explain E0404`.

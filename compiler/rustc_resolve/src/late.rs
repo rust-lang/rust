@@ -622,7 +622,7 @@ impl PathSource<'_, '_, '_> {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
             (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
-            (PathSource::Type | PathSource::DefineOpaques, false) => E0412,
+            (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
@@ -3158,7 +3158,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         result
     }
 
-    /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
+    /// When evaluating a `trait` use its associated types' idents for suggestions in E0425.
     fn resolve_trait_items(&mut self, trait_items: &'ast [Box<AssocItem>]) {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
@@ -4363,7 +4363,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 // There are two different error messages user might receive at
                 // this point:
-                // - E0412 cannot find type `{}` in this scope
+                // - E0425 cannot find type `{}` in this scope
                 // - E0433 failed to resolve: use of undeclared type or module `{}`
                 //
                 // The first one is emitted for paths in type-position, and the
@@ -4371,7 +4371,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 //
                 // Thus (since we're in expression-position at this point), not to
                 // confuse the user, we want to keep the *message* from E0433 (so
-                // `parent_err`), but we want *hints* from E0412 (so `err`).
+                // `parent_err`), but we want *hints* from E0425 (so `err`).
                 //
                 // And that's what happens below - we're just mixing both messages
                 // into a single one.

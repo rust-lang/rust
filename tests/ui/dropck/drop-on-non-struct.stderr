@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `Nonexistent` in this scope
+error[E0425]: cannot find type `Nonexistent` in this scope
   --> $DIR/drop-on-non-struct.rs:9:15
    |
 LL | impl Drop for Nonexistent {
@@ -24,5 +24,5 @@ LL | impl<'a> Drop for &'a mut isize {
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0117, E0120, E0412.
+Some errors have detailed explanations: E0117, E0120, E0425.
 For more information about an error, try `rustc --explain E0117`.
