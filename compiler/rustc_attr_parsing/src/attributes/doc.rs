@@ -115,9 +115,9 @@ impl DocParser {
                     return;
                 };
 
-                // FIXME: convert list into a Vec of `AttributeKind`.
-                for _ in list.mixed() {
-                    // self.attribute.test_attrs.push(AttributeKind::parse());
+                // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
+                for attr in list.mixed() {
+                    self.attribute.test_attrs.push(attr.span());
                 }
             }
             Some(name) => {

@@ -17,6 +17,7 @@ use std::{panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
+use proc_macro2::{TokenStream, TokenTree};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
@@ -25,7 +26,6 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{Attribute, CRATE_HIR_ID};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
-use rustc_proc_macro::{TokenStream, TokenTree};
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
 use rustc_span::edition::Edition;

@@ -5,12 +5,12 @@ use std::env;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use proc_macro2::{TokenStream, TokenTree};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_proc_macro::{TokenStream, TokenTree};
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
