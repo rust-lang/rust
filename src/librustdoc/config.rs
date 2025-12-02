@@ -272,6 +272,8 @@ pub(crate) struct RenderOptions {
     pub(crate) document_private: bool,
     /// Document items that have `doc(hidden)`.
     pub(crate) document_hidden: bool,
+    /// Exclude items explicitly marked #[deprecated].
+    pub(crate) exclude_deprecated: bool,
     /// If `true`, generate a JSON file in the crate folder instead of HTML redirection files.
     pub(crate) generate_redirect_map: bool,
     /// Show the memory layout of types in the docs.
@@ -447,6 +449,7 @@ impl Options {
                     WhenDocumentPrivate => println!("  (when --document-private-items)"),
                     WhenNotDocumentPrivate => println!("  (when not --document-private-items)"),
                     WhenNotDocumentHidden => println!("  (when not --document-hidden-items)"),
+                    WhenExcludeDeprecated => println!("  (when --exclude-deprecated-items)"),
                 }
             }
 
@@ -788,6 +791,7 @@ impl Options {
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
+        let exclude_deprecated = matches.opt_present("exclude-deprecated-items");
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
         let show_type_layout = matches.opt_present("show-type-layout");
@@ -888,6 +892,7 @@ impl Options {
             markdown_playground_url,
             document_private,
             document_hidden,
+            exclude_deprecated,
             generate_redirect_map,
             show_type_layout,
             unstable_features,

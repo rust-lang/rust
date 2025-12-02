@@ -254,6 +254,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "document items that have doc(hidden)",
             "",
         ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "exclude-deprecated-items",
+            "exclude items that are explicitly marked #[deprecated]",
+            "",
+        ),
         opt(Stable, FlagMulti, "", "test", "run code examples as tests", ""),
         opt(Stable, Multi, "", "test-args", "arguments to pass to the test runner", "ARGS"),
         opt(

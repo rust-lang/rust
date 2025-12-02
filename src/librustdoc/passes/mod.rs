@@ -20,6 +20,9 @@ pub(crate) use self::strip_private::STRIP_PRIVATE;
 mod strip_priv_imports;
 pub(crate) use self::strip_priv_imports::STRIP_PRIV_IMPORTS;
 
+mod strip_deprecated;
+pub(crate) use self::strip_deprecated::STRIP_DEPRECATED;
+
 mod propagate_doc_cfg;
 pub(crate) use self::propagate_doc_cfg::PROPAGATE_DOC_CFG;
 
@@ -71,6 +74,8 @@ pub(crate) enum Condition {
     WhenNotDocumentPrivate,
     /// When `--document-hidden-items` is not passed.
     WhenNotDocumentHidden,
+    /// When `--exclude-deprecated-items` is passed.
+    WhenExcludeDeprecated,
 }
 
 /// The full list of passes.
@@ -82,6 +87,7 @@ pub(crate) const PASSES: &[Pass] = &[
     STRIP_HIDDEN,
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
+    STRIP_DEPRECATED,
     PROPAGATE_STABILITY,
     COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
@@ -99,6 +105,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ConditionalPass::new(STRIP_DEPRECATED, WhenExcludeDeprecated),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(PROPAGATE_STABILITY),
     ConditionalPass::always(RUN_LINTS),
