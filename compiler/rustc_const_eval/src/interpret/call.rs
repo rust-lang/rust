@@ -89,6 +89,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let (_, field) = layout.non_1zst_field(self).unwrap();
                 self.unfold_transparent(field, may_unfold)
             }
+            ty::Pat(base, _) => self.layout_of(*base).expect(
+                "if the layout of a pattern type could be computed, so can the layout of its base",
+            ),
             // Not a transparent type, no further unfolding.
             _ => layout,
         }
