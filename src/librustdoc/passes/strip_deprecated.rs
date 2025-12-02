@@ -59,9 +59,8 @@ impl DocFolder for DeprecatedStripper<'_, '_> {
         }
 
         // Determine whether this item itself is explicitly deprecated.
-        let is_explicitly_deprecated = i
-            .def_id()
-            .is_some_and(|did| self.tcx.lookup_deprecation(did).is_some());
+        let is_explicitly_deprecated =
+            i.def_id().is_some_and(|did| self.tcx.lookup_deprecation(did).is_some());
 
         if is_explicitly_deprecated {
             debug!("strip_deprecated: stripping {:?} {:?}", i.type_(), i.name);
