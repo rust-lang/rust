@@ -59,7 +59,7 @@ impl WasiFd {
             }];
             match wasi::fd_read(self.as_raw_fd() as wasi::Fd, &bufs) {
                 Ok(n) => {
-                    buf.advance_unchecked(n);
+                    buf.advance(n);
                     Ok(())
                 }
                 Err(e) => Err(err2io(e)),
