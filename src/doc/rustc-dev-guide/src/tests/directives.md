@@ -273,7 +273,9 @@ This affects which edition is used by `./x test` to run the test.
 For example:
 
 - A test with the `//@ edition: 2018` directive will only run under the 2018 edition.
-- A test with the `//@ edition: 2015..2021` directive can be run under the 2015, 2018, and 2021 editions.
+- A test with the `//@ edition: 2015..2021` directive can be run under the 2015 and the 2018 edition,
+  so the upper bound is exclusive just like in Rust
+  (note that there's no equivalent to Rust's `..=` where the upper bound is inclusive).
   However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
 - A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
   However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
