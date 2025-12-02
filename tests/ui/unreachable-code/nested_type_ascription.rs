@@ -3,7 +3,7 @@
 // This checks that a nested type ascription doesn't cause a crash when the
 // compiler checks if it constitutes a read of the never type.
 //
-//@ known-bug: #149542
+//@ check-pass
 
 #![feature(never_type)]
 #![feature(type_ascription)]
