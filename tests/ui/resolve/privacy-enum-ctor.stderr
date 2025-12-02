@@ -142,7 +142,7 @@ LL + use std::f32::consts::E;
 LL + use std::f64::consts::E;
    |
 
-error[E0412]: cannot find type `Z` in this scope
+error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:58:12
    |
 LL |     pub enum E {
@@ -185,7 +185,7 @@ LL -     let _: Z = m::n::Z;
 LL +     let _: Z = (m::Z::Fn(/* fields */));
    |
 
-error[E0412]: cannot find type `Z` in this scope
+error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:62:12
    |
 LL |     pub enum E {
@@ -200,7 +200,7 @@ note: enum `m::Z` exists but is inaccessible
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Z` in this scope
+error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:65:12
    |
 LL |     pub enum E {
@@ -215,7 +215,7 @@ note: enum `m::Z` exists but is inaccessible
 LL |         pub(in crate::m) enum Z {
    |         ^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
-error[E0412]: cannot find type `Z` in this scope
+error[E0425]: cannot find type `Z` in this scope
   --> $DIR/privacy-enum-ctor.rs:69:12
    |
 LL |     pub enum E {
@@ -433,5 +433,5 @@ LL |     let _: Z = m::n::Z::Struct { s: /* value */ };
 
 error: aborting due to 23 previous errors
 
-Some errors have detailed explanations: E0308, E0412, E0423, E0533, E0603, E0618.
+Some errors have detailed explanations: E0308, E0423, E0425, E0533, E0603, E0618.
 For more information about an error, try `rustc --explain E0308`.

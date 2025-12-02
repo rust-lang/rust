@@ -46,7 +46,7 @@ LL |     mod inner;
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0412]: cannot find type `Y` in this scope
+error[E0425]: cannot find type `Y` in this scope
   --> $DIR/attributes-on-modules-fail.rs:11:14
    |
 LL |     type A = Y;
@@ -57,7 +57,7 @@ help: consider importing this struct
 LL +     use Y;
    |
 
-error[E0412]: cannot find type `X` in this scope
+error[E0425]: cannot find type `X` in this scope
   --> $DIR/attributes-on-modules-fail.rs:15:10
    |
 LL | type A = X;
@@ -70,5 +70,5 @@ LL + use m::X;
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0412, E0658, E0774.
-For more information about an error, try `rustc --explain E0412`.
+Some errors have detailed explanations: E0425, E0658, E0774.
+For more information about an error, try `rustc --explain E0425`.
