@@ -78,6 +78,13 @@ pub struct ProjectJson {
     runnables: Vec<Runnable>,
 }
 
+impl std::ops::Index<CrateArrayIdx> for ProjectJson {
+    type Output = Crate;
+    fn index(&self, index: CrateArrayIdx) -> &Self::Output {
+        &self.crates[index.0]
+    }
+}
+
 impl ProjectJson {
     /// Create a new ProjectJson instance.
     ///
@@ -218,6 +225,14 @@ impl ProjectJson {
             .find(|build| build.build_file.as_std_path() == path)
     }
 
+    pub fn crate_by_label(&self, label: &str) -> Option<&Crate> {
+        // this is fast enough for now, but it's unfortunate that this is O(crates).
+        self.crates
+            .iter()
+            .filter(|krate| krate.is_workspace_member)
+            .find(|krate| krate.build.as_ref().is_some_and(|build| build.label == label))
+    }
+
     /// Returns the path to the project's manifest or root folder, if no manifest exists.
     pub fn manifest_or_root(&self) -> &AbsPath {
         self.manifest.as_ref().map_or(&self.project_root, |manifest| manifest.as_ref())
@@ -256,6 +271,12 @@ pub struct Crate {
     pub(crate) proc_macro_cwd: Option<AbsPathBuf>,
     pub(crate) repository: Option<String>,
     pub build: Option<Build>,
+}
+
+impl Crate {
+    pub fn iter_deps(&self) -> impl ExactSizeIterator<Item = CrateArrayIdx> {
+        self.deps.iter().map(|dep| dep.krate)
+    }
 }
 
 /// Additional, build-specific data about a crate.
