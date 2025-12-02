@@ -6,6 +6,7 @@ use rustc_span::{ExpnId, ExpnKind, Span};
 use crate::coverage::from_mir;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::hir_info::ExtractedHirInfo;
+use crate::coverage::mappings::MappingsError;
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SpanWithBcb {
@@ -62,6 +63,8 @@ pub(crate) struct ExpnNode {
     /// but is helpful for debugging and might be useful later.
     #[expect(dead_code)]
     pub(crate) expn_id: ExpnId,
+    /// Index of this node in a depth-first traversal from the root.
+    pub(crate) dfs_rank: usize,
 
     // Useful info extracted from `ExpnData`.
     pub(crate) expn_kind: ExpnKind,
@@ -100,6 +103,7 @@ impl ExpnNode {
 
         Self {
             expn_id,
+            dfs_rank: usize::MAX,
 
             expn_kind: expn_data.kind,
             call_site,
@@ -124,7 +128,7 @@ pub(crate) fn build_expn_tree(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
-) -> ExpnTree {
+) -> Result<ExpnTree, MappingsError> {
     let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
 
     let mut nodes = FxIndexMap::default();
@@ -156,6 +160,9 @@ pub(crate) fn build_expn_tree(
             curr_expn_id = node.call_site_expn_id;
         }
     }
+
+    // Sort the tree nodes into depth-first order.
+    sort_nodes_depth_first(&mut nodes)?;
 
     // If we have a span for the function signature, associate it with the
     // corresponding expansion tree node.
@@ -189,5 +196,32 @@ pub(crate) fn build_expn_tree(
         }
     }
 
-    ExpnTree { nodes }
+    Ok(ExpnTree { nodes })
+}
+
+/// Sorts the tree nodes in the map into depth-first order.
+///
+/// This allows subsequent operations to iterate over all nodes, while assuming
+/// that every node occurs before all of its descendants.
+fn sort_nodes_depth_first(nodes: &mut FxIndexMap<ExpnId, ExpnNode>) -> Result<(), MappingsError> {
+    let mut dfs_stack = vec![ExpnId::root()];
+    let mut next_dfs_rank = 0usize;
+    while let Some(expn_id) = dfs_stack.pop() {
+        if let Some(node) = nodes.get_mut(&expn_id) {
+            node.dfs_rank = next_dfs_rank;
+            next_dfs_rank += 1;
+            dfs_stack.extend(node.child_expn_ids.iter().rev().copied());
+        }
+    }
+    nodes.sort_by_key(|_expn_id, node| node.dfs_rank);
+
+    // Verify that the depth-first search visited each node exactly once.
+    for (i, &ExpnNode { dfs_rank, .. }) in nodes.values().enumerate() {
+        if dfs_rank != i {
+            tracing::debug!(dfs_rank, i, "expansion tree node's rank does not match its index");
+            return Err(MappingsError::TreeSortFailure);
+        }
+    }
+
+    Ok(())
 }
