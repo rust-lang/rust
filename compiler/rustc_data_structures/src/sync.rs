@@ -46,12 +46,14 @@ pub use self::parallel::{
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
+pub use self::branch_key::BranchKey;
 
 mod freeze;
 mod lock;
 mod parallel;
 mod vec;
 mod worker_local;
+mod branch_key;
 
 /// Keep the conditional imports together in a submodule, so that import-sorting
 /// doesn't split them up.
