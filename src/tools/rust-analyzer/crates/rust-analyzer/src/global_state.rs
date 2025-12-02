@@ -847,21 +847,18 @@ impl GlobalStateSnapshot {
         &self,
         package: &Arc<PackageId>,
     ) -> Option<FxHashSet<Arc<PackageId>>> {
-        for workspace in self.workspaces.iter() {
-            match &workspace.kind {
-                ProjectWorkspaceKind::Cargo { cargo, .. }
-                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
-                    let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
+        self.workspaces.iter().find_map(|workspace| match &workspace.kind {
+            ProjectWorkspaceKind::Cargo { cargo, .. }
+            | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
+                let package = cargo.packages().find(|p| cargo[*p].id == *package)?;
 
-                    return cargo[package]
-                        .all_member_deps
-                        .as_ref()
-                        .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
-                }
-                _ => {}
+                return cargo[package]
+                    .all_member_deps
+                    .as_ref()
+                    .map(|deps| deps.iter().map(|dep| cargo[*dep].id.clone()).collect());
             }
-        }
-        None
+            _ => None,
+        })
     }
 
     pub(crate) fn file_exists(&self, file_id: FileId) -> bool {
