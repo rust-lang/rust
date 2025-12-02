@@ -230,7 +230,7 @@ pub(crate) struct BuiltinNoMangleGeneric {
 #[diag(lint_builtin_const_no_mangle)]
 pub(crate) struct BuiltinConstNoMangle {
     #[suggestion(code = "pub static", applicability = "machine-applicable")]
-    pub suggestion: Span,
+    pub suggestion: Option<Span>,
 }
 
 #[derive(LintDiagnostic)]

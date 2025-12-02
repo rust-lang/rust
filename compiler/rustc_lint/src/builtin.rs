@@ -997,18 +997,23 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     self.check_no_mangle_on_generic_fn(cx, attr_span, it.owner_id.def_id);
                 }
             }
-            hir::ItemKind::Const(..) => {
+            hir::ItemKind::Const(_, generics, ..) => {
                 if find_attr!(attrs, AttributeKind::NoMangle(..)) {
-                    // account for "pub const" (#45562)
-                    let start = cx
-                        .tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(it.span)
-                        .map(|snippet| snippet.find("const").unwrap_or(0))
-                        .unwrap_or(0) as u32;
-                    // `const` is 5 chars
-                    let suggestion = it.span.with_hi(BytePos(it.span.lo().0 + start + 5));
+                    let suggestion =
+                        if generics.params.is_empty() && generics.where_clause_span.is_empty() {
+                            // account for "pub const" (#45562)
+                            let start = cx
+                                .tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(it.span)
+                                .map(|snippet| snippet.find("const").unwrap_or(0))
+                                .unwrap_or(0) as u32;
+                            // `const` is 5 chars
+                            Some(it.span.with_hi(BytePos(it.span.lo().0 + start + 5)))
+                        } else {
+                            None
+                        };
 
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
