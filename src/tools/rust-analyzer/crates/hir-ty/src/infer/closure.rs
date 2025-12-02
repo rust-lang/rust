@@ -367,7 +367,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     _ = self
                         .table
                         .infer_ctxt
-                        .at(&ObligationCause::new(), self.table.trait_env.env)
+                        .at(&ObligationCause::new(), self.table.param_env)
                         .eq(inferred_fnptr_sig, generalized_fnptr_sig)
                         .map(|infer_ok| self.table.register_infer_ok(infer_ok));
 
@@ -749,19 +749,18 @@ impl<'db> InferenceContext<'_, 'db> {
             {
                 // Check that E' = S'.
                 let cause = ObligationCause::new();
-                let InferOk { value: (), obligations } = table
-                    .infer_ctxt
-                    .at(&cause, table.trait_env.env)
-                    .eq(expected_ty, supplied_ty)?;
+                let InferOk { value: (), obligations } =
+                    table.infer_ctxt.at(&cause, table.param_env).eq(expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
             }
 
             let supplied_output_ty = supplied_sig.output();
             let cause = ObligationCause::new();
-            let InferOk { value: (), obligations } = table
-                .infer_ctxt
-                .at(&cause, table.trait_env.env)
-                .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
+            let InferOk { value: (), obligations } =
+                table
+                    .infer_ctxt
+                    .at(&cause, table.param_env)
+                    .eq(expected_sigs.liberated_sig.output(), supplied_output_ty)?;
             all_obligations.extend(obligations);
 
             let inputs = supplied_sig

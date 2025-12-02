@@ -507,7 +507,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
             GenericPredicates::query_all(self.db(), def_id.into())
                 .iter_instantiated_copied(self.interner(), all_args),
             ObligationCause::new(),
-            self.ctx.table.trait_env.env,
+            self.ctx.table.param_env,
         );
 
         let sig =

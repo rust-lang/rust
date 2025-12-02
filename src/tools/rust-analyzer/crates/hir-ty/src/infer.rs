@@ -944,7 +944,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
-        let table = unify::InferenceTable::new(db, trait_env, Some(owner));
+        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));
         let types = InternedStandardTypes::new(table.interner());
         InferenceContext {
             result: InferenceResult::new(types.error),

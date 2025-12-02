@@ -412,9 +412,7 @@ fn resolve_impl_trait_item<'db>(
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
     let krate = ty.krate(db);
-    let environment = resolver
-        .generic_def()
-        .map_or_else(|| crate::TraitEnvironment::empty(krate.id), |d| db.trait_environment(d));
+    let environment = crate::param_env_from_resolver(db, &resolver);
     let traits_in_scope = resolver.traits_in_scope(db);
 
     // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
@@ -428,7 +426,7 @@ fn resolve_impl_trait_item<'db>(
     let ctx = MethodResolutionContext {
         infcx: &infcx,
         resolver: &resolver,
-        env: &environment,
+        param_env: environment.param_env,
         traits_in_scope: &traits_in_scope,
         edition: krate.edition(db),
         unstable_features: &unstable_features,

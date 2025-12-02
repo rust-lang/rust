@@ -124,7 +124,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
                     ctx.table.register_predicate(Obligation::new(
                         ctx.interner(),
                         ObligationCause::new(),
-                        ctx.table.trait_env.env,
+                        ctx.table.param_env,
                         ClauseKind::ConstArgHasType(ct, ctx.types.usize),
                     ));
                     self_ty = Ty::new_slice(ctx.interner(), element_ty);

@@ -4,7 +4,7 @@ use std::hash::Hash;
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, AssocItemId, BlockId, HasModule, ImplId, Lookup, TraitId,
+    AdtId, AssocItemId, HasModule, ImplId, Lookup, TraitId,
     lang_item::LangItems,
     nameres::DefMap,
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
@@ -17,7 +17,6 @@ use rustc_type_ir::{
     inherent::{AdtDef, BoundExistentialPredicates, IntoKind, Span as _},
     solve::Certainty,
 };
-use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -29,60 +28,22 @@ use crate::{
     },
 };
 
-/// A set of clauses that we assume to be true. E.g. if we are inside this function:
-/// ```rust
-/// fn foo<T: Default>(t: T) {}
-/// ```
-/// we assume that `T: Default`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TraitEnvironment<'db> {
+/// Type for `hir`, because commonly we want both param env and a crate in an exported API.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ParamEnvAndCrate<'db> {
+    pub param_env: ParamEnv<'db>,
     pub krate: Crate,
-    pub block: Option<BlockId>,
-    // FIXME make this a BTreeMap
-    traits_from_clauses: Box<[(Ty<'db>, TraitId)]>,
-    pub env: ParamEnv<'db>,
-}
-
-impl<'db> TraitEnvironment<'db> {
-    pub fn empty(krate: Crate) -> Arc<Self> {
-        Arc::new(TraitEnvironment {
-            krate,
-            block: None,
-            traits_from_clauses: Box::default(),
-            env: ParamEnv::empty(),
-        })
-    }
-
-    pub fn new(
-        krate: Crate,
-        block: Option<BlockId>,
-        traits_from_clauses: Box<[(Ty<'db>, TraitId)]>,
-        env: ParamEnv<'db>,
-    ) -> Arc<Self> {
-        Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
-    }
-
-    // pub fn with_block(self: &mut Arc<Self>, block: BlockId) {
-    pub fn with_block(this: &mut Arc<Self>, block: BlockId) {
-        Arc::make_mut(this).block = Some(block);
-    }
-
-    pub fn traits_in_scope_from_clauses(&self, ty: Ty<'db>) -> impl Iterator<Item = TraitId> + '_ {
-        self.traits_from_clauses
-            .iter()
-            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then_some(*trait_id))
-    }
 }
 
 /// This should be used in `hir` only.
 pub fn structurally_normalize_ty<'db>(
     infcx: &InferCtxt<'db>,
     ty: Ty<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
 ) -> Ty<'db> {
     let TyKind::Alias(..) = ty.kind() else { return ty };
     let mut ocx = ObligationCtxt::new(infcx);
-    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env.env, ty).unwrap_or(ty);
+    let ty = ocx.structurally_normalize_ty(&ObligationCause::dummy(), env, ty).unwrap_or(ty);
     ty.replace_infer_with_error(infcx.interner)
 }
 
@@ -192,7 +153,7 @@ impl FnTrait {
 pub fn implements_trait_unique<'db>(
     ty: Ty<'db>,
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
 ) -> bool {
     implements_trait_unique_impl(db, env, trait_, &mut |infcx| {
@@ -203,7 +164,7 @@ pub fn implements_trait_unique<'db>(
 /// This should not be used in `hir-ty`, only in `hir`.
 pub fn implements_trait_unique_with_args<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
     args: GenericArgs<'db>,
 ) -> bool {
@@ -212,7 +173,7 @@ pub fn implements_trait_unique_with_args<'db>(
 
 fn implements_trait_unique_impl<'db>(
     db: &'db dyn HirDatabase,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnvAndCrate<'db>,
     trait_: TraitId,
     create_args: &mut dyn FnMut(&InferCtxt<'db>) -> GenericArgs<'db>,
 ) -> bool {
@@ -222,7 +183,7 @@ fn implements_trait_unique_impl<'db>(
 
     let args = create_args(&infcx);
     let trait_ref = rustc_type_ir::TraitRef::new_from_args(interner, trait_.into(), args);
-    let goal = Goal::new(interner, env.env, trait_ref);
+    let goal = Goal::new(interner, env.param_env, trait_ref);
 
     let result = crate::traits::next_trait_solve_in_ctxt(&infcx, goal);
     matches!(result, Ok((_, Certainty::Yes)))

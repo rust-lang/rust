@@ -25,7 +25,7 @@ use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
-    Adjust, InferenceResult, TraitEnvironment,
+    Adjust, InferenceResult,
     db::HirDatabase,
     diagnostics::match_check::{
         self,
@@ -33,7 +33,7 @@ use crate::{
     },
     display::{DisplayTarget, HirDisplay},
     next_solver::{
-        DbInterner, Ty, TyKind, TypingMode,
+        DbInterner, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
 };
@@ -79,7 +79,7 @@ impl BodyValidationDiagnostic {
         let infer = InferenceResult::for_body(db, owner);
         let body = db.body(owner);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, env.krate);
+        let interner = DbInterner::new_with(db, owner.krate(db));
         let infcx =
             interner.infer_ctxt().build(TypingMode::typeck_for_body(interner, owner.into()));
         let mut validator = ExprValidator {
@@ -100,7 +100,7 @@ struct ExprValidator<'db> {
     owner: DefWithBodyId,
     body: Arc<Body>,
     infer: &'db InferenceResult<'db>,
-    env: Arc<TraitEnvironment<'db>>,
+    env: ParamEnv<'db>,
     diagnostics: Vec<BodyValidationDiagnostic>,
     validate_lints: bool,
     infcx: InferCtxt<'db>,
@@ -210,7 +210,7 @@ impl<'db> ExprValidator<'db> {
             return;
         }
 
-        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env.clone());
+        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
 
         let pattern_arena = Arena::new();
         let mut m_arms = Vec::with_capacity(arms.len());
@@ -332,7 +332,7 @@ impl<'db> ExprValidator<'db> {
             return;
         };
         let pattern_arena = Arena::new();
-        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env.clone());
+        let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
         for stmt in &**statements {
             let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
                 continue;

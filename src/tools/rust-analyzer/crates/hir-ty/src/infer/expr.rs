@@ -4,7 +4,7 @@ use std::{iter::repeat_with, mem};
 
 use either::Either;
 use hir_def::{
-    BlockId, FieldId, GenericDefId, ItemContainerId, Lookup, TupleFieldId, TupleId,
+    FieldId, GenericDefId, ItemContainerId, Lookup, TupleFieldId, TupleId,
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
         Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
@@ -23,7 +23,7 @@ use syntax::ast::RangeOp;
 use tracing::debug;
 
 use crate::{
-    Adjust, Adjustment, CallableDefId, DeclContext, DeclOrigin, Rawness, TraitEnvironment,
+    Adjust, Adjustment, CallableDefId, DeclContext, DeclOrigin, Rawness,
     autoderef::InferenceContextAutoderef,
     consteval,
     db::InternedCoroutine,
@@ -377,11 +377,11 @@ impl<'db> InferenceContext<'_, 'db> {
                 );
                 self.types.bool
             }
-            Expr::Block { statements, tail, label, id } => {
-                self.infer_block(tgt_expr, *id, statements, *tail, *label, expected)
+            Expr::Block { statements, tail, label, id: _ } => {
+                self.infer_block(tgt_expr, statements, *tail, *label, expected)
             }
-            Expr::Unsafe { id, statements, tail } => {
-                self.infer_block(tgt_expr, *id, statements, *tail, None, expected)
+            Expr::Unsafe { id: _, statements, tail } => {
+                self.infer_block(tgt_expr, statements, *tail, None, expected)
             }
             Expr::Const(id) => {
                 self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
@@ -389,8 +389,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 })
                 .1
             }
-            Expr::Async { id, statements, tail } => {
-                self.infer_async_block(tgt_expr, id, statements, tail)
+            Expr::Async { id: _, statements, tail } => {
+                self.infer_async_block(tgt_expr, statements, tail)
             }
             &Expr::Loop { body, label } => {
                 // FIXME: should be:
@@ -1167,7 +1167,6 @@ impl<'db> InferenceContext<'_, 'db> {
     fn infer_async_block(
         &mut self,
         tgt_expr: ExprId,
-        id: &Option<BlockId>,
         statements: &[Statement],
         tail: &Option<ExprId>,
     ) -> Ty<'db> {
@@ -1179,7 +1178,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // FIXME: We should handle async blocks like we handle closures
         let expected = &Expectation::has_type(ret_ty);
         let (_, inner_ty) = self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-            let ty = this.infer_block(tgt_expr, *id, statements, *tail, None, expected);
+            let ty = this.infer_block(tgt_expr, statements, *tail, None, expected);
             if let Some(target) = expected.only_has_type(&mut this.table) {
                 match this.coerce(tgt_expr.into(), ty, target, AllowTwoPhase::No, ExprIsRead::Yes) {
                     Ok(res) => res,
@@ -1447,7 +1446,6 @@ impl<'db> InferenceContext<'_, 'db> {
     fn infer_block(
         &mut self,
         expr: ExprId,
-        block_id: Option<BlockId>,
         statements: &[Statement],
         tail: Option<ExprId>,
         label: Option<LabelId>,
@@ -1455,11 +1453,6 @@ impl<'db> InferenceContext<'_, 'db> {
     ) -> Ty<'db> {
         let coerce_ty = expected.coercion_target_type(&mut self.table);
         let g = self.resolver.update_to_inner_scope(self.db, self.owner, expr);
-        let prev_env = block_id.map(|block_id| {
-            let prev_env = self.table.trait_env.clone();
-            TraitEnvironment::with_block(&mut self.table.trait_env, block_id);
-            prev_env
-        });
 
         let (break_ty, ty) =
             self.with_breakable_ctx(BreakableKind::Block, Some(coerce_ty), label, |this| {
@@ -1566,9 +1559,6 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             });
         self.resolver.reset_to_guard(g);
-        if let Some(prev_env) = prev_env {
-            self.table.trait_env = prev_env;
-        }
 
         break_ty.unwrap_or(ty)
     }
@@ -1974,7 +1964,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         // is polymorphic) and the expected return type.
                         // No argument expectations are produced if unification fails.
                         let origin = ObligationCause::new();
-                        ocx.sup(&origin, self.table.trait_env.env, expected_output, formal_output)?;
+                        ocx.sup(&origin, self.table.param_env, expected_output, formal_output)?;
                         if !ocx.try_evaluate_obligations().is_empty() {
                             return Err(TypeError::Mismatch);
                         }
@@ -2066,7 +2056,7 @@ impl<'db> InferenceContext<'_, 'db> {
             let formal_ty_error = this
                 .table
                 .infer_ctxt
-                .at(&ObligationCause::new(), this.table.trait_env.env)
+                .at(&ObligationCause::new(), this.table.param_env)
                 .eq(formal_input_ty, coerced_ty);
 
             // If neither check failed, the types are compatible
@@ -2143,7 +2133,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.db,
                 GenericDefId::from_callable(self.db, fn_def.0),
             );
-            let param_env = self.table.trait_env.env;
+            let param_env = self.table.param_env;
             self.table.register_predicates(clauses_as_obligations(
                 generic_predicates.iter_instantiated_copied(self.interner(), parameters.as_slice()),
                 ObligationCause::new(),
@@ -2162,7 +2152,7 @@ impl<'db> InferenceContext<'_, 'db> {
                         self.table.register_predicate(Obligation::new(
                             self.interner(),
                             ObligationCause::new(),
-                            self.table.trait_env.env,
+                            self.table.param_env,
                             TraitRef::new(self.interner(), trait_.into(), substs),
                         ));
                     }
