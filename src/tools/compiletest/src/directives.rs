@@ -34,12 +34,18 @@ mod needs;
 mod tests;
 
 pub struct DirectivesCache {
+    /// "Conditions" used by `ignore-*` and `only-*` directives, prepared in
+    /// advance so that they don't have to be evaluated repeatedly.
+    cfg_conditions: cfg::PreparedConditions,
     needs: CachedNeedsConditions,
 }
 
 impl DirectivesCache {
     pub fn load(config: &Config) -> Self {
-        Self { needs: CachedNeedsConditions::load(config) }
+        Self {
+            cfg_conditions: cfg::prepare_conditions(config),
+            needs: CachedNeedsConditions::load(config),
+        }
     }
 }
 
@@ -1058,8 +1064,8 @@ pub(crate) fn make_test_description(
                 };
             }
 
-            decision!(cfg::handle_ignore(config, ln));
-            decision!(cfg::handle_only(config, ln));
+            decision!(cfg::handle_ignore(&cache.cfg_conditions, ln));
+            decision!(cfg::handle_only(&cache.cfg_conditions, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
             decision!(ignore_llvm(config, ln));
             decision!(ignore_backends(config, ln));
