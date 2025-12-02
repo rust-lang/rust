@@ -2582,6 +2582,7 @@ pub unsafe fn collect_ty_garbage() {
     gc.add_slice_storage::<super::predicate::BoundExistentialPredicatesStorage>();
     gc.add_slice_storage::<super::region::RegionAssumptionsStorage>();
     gc.add_slice_storage::<super::ty::TysStorage>();
+    gc.add_slice_storage::<crate::mir::ProjectionStorage>();
 
     // SAFETY:
     //  - By our precondition, there are no unrecorded types.
@@ -2646,4 +2647,5 @@ impl_gc_visit_slice!(
     super::region::RegionAssumptionsStorage,
     super::ty::TysStorage,
     super::consts::ConstsStorage,
+    crate::mir::ProjectionStorage,
 );
