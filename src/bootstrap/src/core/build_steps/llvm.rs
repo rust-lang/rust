@@ -998,7 +998,7 @@ impl Step for OmpOffload {
             //)
             .define("CMAKE_C_COMPILER", builder.cc(target))
             .define("CMAKE_CXX_COMPILER", builder.cxx(target).unwrap())
-            .define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
+            //.define("LLVM_DEFAULT_TARGET_TRIPLE", &target.triple)
             .define("OPENMP_STANDALONE_BUILD", "ON")
             .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
             //.define(
