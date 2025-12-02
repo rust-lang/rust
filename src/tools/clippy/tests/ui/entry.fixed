@@ -1,6 +1,7 @@
 //@needs-asm-support
 
 #![warn(clippy::map_entry)]
+#![allow(todo_macro_calls)]
 
 use std::arch::asm;
 use std::collections::HashMap;

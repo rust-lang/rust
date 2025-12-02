@@ -1,5 +1,5 @@
 #![warn(clippy::missing_const_for_fn)]
-#![expect(clippy::let_and_return)]
+#![expect(clippy::let_and_return, todo_macro_calls)]
 #![feature(const_trait_impl)]
 
 use std::mem::transmute;

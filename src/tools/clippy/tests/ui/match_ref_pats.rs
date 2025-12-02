@@ -1,5 +1,9 @@
 #![warn(clippy::match_ref_pats)]
-#![expect(clippy::diverging_sub_expression, clippy::empty_loop, clippy::enum_variant_names)]
+#![expect(
+    clippy::diverging_sub_expression,
+    clippy::empty_loop,
+    clippy::enum_variant_names
+    todo_macro_calls)]
 
 fn ref_pats() {
     {

@@ -1,5 +1,5 @@
 #![warn(clippy::needless_continue)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, todo_macro_calls)]
 
 macro_rules! zero {
     ($x:expr) => {

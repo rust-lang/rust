@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // This test checks that we're correctly dealing with inductive cycles
 // with canonical inference variables.

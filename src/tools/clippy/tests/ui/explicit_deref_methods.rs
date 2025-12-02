@@ -2,6 +2,7 @@
 #![warn(clippy::explicit_deref_methods)]
 #![allow(
     noop_method_call,
+    todo_macro_calls,
     clippy::deref_addrof,
     clippy::explicit_auto_deref,
     clippy::useless_borrows_in_formatting

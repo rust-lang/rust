@@ -1,5 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 trait Reader: Default {
     fn read_u8_array<A>(&self) -> Result<A, ()> {

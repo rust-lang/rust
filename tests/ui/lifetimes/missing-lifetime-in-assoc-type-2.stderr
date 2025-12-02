@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-2.rs:5:17
+  --> $DIR/missing-lifetime-in-assoc-type-2.rs:6:17
    |
 LL |     type Item = &T;
    |                 ^ this lifetime must come from the implemented type
@@ -13,7 +13,7 @@ LL ~     type Item = &'a T;
    |
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/missing-lifetime-in-assoc-type-2.rs:7:57
+  --> $DIR/missing-lifetime-in-assoc-type-2.rs:8:57
    |
 LL |     type IntoIter = std::collections::btree_map::Values<'a, i32, T>;
    |                                                         ^^ undeclared lifetime

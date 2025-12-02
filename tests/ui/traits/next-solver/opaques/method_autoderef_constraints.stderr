@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `u32: Trait` is not satisfied
-  --> $DIR/method_autoderef_constraints.rs:25:13
+  --> $DIR/method_autoderef_constraints.rs:26:13
    |
 LL | fn foo() -> Inv<impl Trait> {
    |             ^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u32`
    |
 help: the trait `Trait` is implemented for `i32`
-  --> $DIR/method_autoderef_constraints.rs:16:1
+  --> $DIR/method_autoderef_constraints.rs:17:1
    |
 LL | impl Trait for i32 {}
    | ^^^^^^^^^^^^^^^^^^

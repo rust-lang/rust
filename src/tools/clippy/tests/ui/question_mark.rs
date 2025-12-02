@@ -4,7 +4,7 @@
     clippy::no_effect,
     clippy::needless_return,
     clippy::toplevel_ref_arg
-)]
+, todo_macro_calls)]
 
 use std::sync::MutexGuard;
 

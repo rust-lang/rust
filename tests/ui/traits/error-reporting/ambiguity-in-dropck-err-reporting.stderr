@@ -1,11 +1,11 @@
 error[E0107]: missing generics for struct `HandshakeCallback`
-  --> $DIR/ambiguity-in-dropck-err-reporting.rs:9:25
+  --> $DIR/ambiguity-in-dropck-err-reporting.rs:10:25
    |
 LL | impl<C: Clone> Role for HandshakeCallback {
    |                         ^^^^^^^^^^^^^^^^^ expected 1 generic argument
    |
 note: struct defined here, with 1 generic parameter: `C`
-  --> $DIR/ambiguity-in-dropck-err-reporting.rs:8:8
+  --> $DIR/ambiguity-in-dropck-err-reporting.rs:9:8
    |
 LL | struct HandshakeCallback<C>(C);
    |        ^^^^^^^^^^^^^^^^^ -

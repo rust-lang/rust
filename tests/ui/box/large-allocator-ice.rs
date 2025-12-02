@@ -1,6 +1,6 @@
 //@ build-pass
 #![feature(allocator_api)]
-#![allow(unused_must_use)]
+#![allow(unused_must_use, todo_macro_calls)]
 
 use std::alloc::Allocator;
 

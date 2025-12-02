@@ -2,6 +2,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 use std::path::Path;
 use std::ffi::OsStr;

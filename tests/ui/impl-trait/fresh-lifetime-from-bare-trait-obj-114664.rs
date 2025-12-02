@@ -1,6 +1,7 @@
 //@ edition:2015
 //@ check-pass
 // issue: 114664
+#![allow(todo_macro_calls)]
 
 fn ice() -> impl AsRef<Fn(&())> {
     //~^ WARN trait objects without an explicit `dyn` are deprecated

@@ -1,3 +1,5 @@
+#![allow(todo_macro_calls)]
+
 /// This is a test for `#[test]` in doctests
 ///
 /// # Examples
@@ -9,7 +11,7 @@
 ///     assert_eq!(1, 1);
 /// }
 /// ```
-/// 
+///
 /// Make sure we catch multiple tests in one example,
 /// and show that we really parse the attr:
 /// ```
@@ -27,7 +29,7 @@
 ///     ");
 /// }
 /// ```
-/// 
+///
 /// We don't catch examples that aren't run:
 /// ```ignore
 /// #[test]

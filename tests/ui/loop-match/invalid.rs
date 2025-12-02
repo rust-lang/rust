@@ -1,6 +1,6 @@
 // Test that the correct error is emitted when `#[loop_match]` is applied to
 // syntax it does not support.
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 #![feature(loop_match)]
 #![crate_type = "lib"]
 

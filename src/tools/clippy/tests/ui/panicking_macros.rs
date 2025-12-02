@@ -1,4 +1,4 @@
-#![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::let_unit_value)]
+#![allow(clippy::assertions_on_constants, clippy::eq_op, clippy::let_unit_value, todo_macro_calls)]
 #![warn(clippy::unimplemented, clippy::unreachable, clippy::todo, clippy::panic)]
 
 extern crate core;

@@ -1,4 +1,5 @@
 #![warn(clippy::cmp_null)]
+#![allow(todo_macro_calls)]
 
 use std::ptr;
 

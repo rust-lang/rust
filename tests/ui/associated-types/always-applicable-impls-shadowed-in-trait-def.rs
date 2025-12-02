@@ -1,5 +1,6 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 // Testing that even if there's an always applicable blanket impl, the trait
 // definition cannot use that impl to normalize its own associated types.

@@ -1,6 +1,6 @@
 //@aux-build:proc_macro_derive.rs
 #![warn(clippy::ignored_unit_patterns)]
-#![allow(clippy::let_unit_value, clippy::redundant_pattern_matching)]
+#![allow(clippy::let_unit_value, clippy::redundant_pattern_matching, todo_macro_calls)]
 #![expect(clippy::needless_borrow, clippy::single_match)]
 
 fn foo() -> Result<(), ()> {

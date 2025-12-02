@@ -10,7 +10,7 @@
 #![feature(rustc_private)]
 #![feature(panic_always_abort)]
 
-#![allow(invalid_from_utf8)]
+#![allow(invalid_from_utf8, todo_macro_calls)]
 
 extern crate libc;
 

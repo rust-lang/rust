@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::iter_nth_zero)]
 use std::collections::HashSet;
 

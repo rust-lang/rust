@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::map_entry)]
 
 use std::collections::HashMap;

@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `AsyncFn` trait, but this closure only implements `AsyncFnMut`
-  --> $DIR/kind-due-to-arg-with-box-wrap.rs:13:32
+  --> $DIR/kind-due-to-arg-with-box-wrap.rs:14:32
    |
 LL |         takes_asyncfn(Box::new(async || self.an_async_fn().await));
    |         ------------- ---------^^^^^^^^--------------------------
@@ -9,9 +9,9 @@ LL |         takes_asyncfn(Box::new(async || self.an_async_fn().await));
    |         |             the requirement to implement `AsyncFn` derives from here
    |         required by a bound introduced by this call
    |
-   = note: required for `Box<{async closure@$DIR/kind-due-to-arg-with-box-wrap.rs:13:32: 13:40}>` to implement `AsyncFn()`
+   = note: required for `Box<{async closure@$DIR/kind-due-to-arg-with-box-wrap.rs:14:32: 14:40}>` to implement `AsyncFn()`
 note: required by a bound in `takes_asyncfn`
-  --> $DIR/kind-due-to-arg-with-box-wrap.rs:18:32
+  --> $DIR/kind-due-to-arg-with-box-wrap.rs:19:32
    |
 LL | async fn takes_asyncfn(_: impl AsyncFn()) {
    |                                ^^^^^^^^^ required by this bound in `takes_asyncfn`

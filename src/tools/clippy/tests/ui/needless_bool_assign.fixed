@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::needless_bool_assign)]
 
 fn random() -> bool {

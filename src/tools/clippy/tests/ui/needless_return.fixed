@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 #![feature(yeet_expr)]
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![allow(
     clippy::if_same_then_else,
     clippy::single_match,

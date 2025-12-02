@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![recursion_limit = "5"] // To reduce noise
 
 //expect mutability error when ambiguous traits are in scope

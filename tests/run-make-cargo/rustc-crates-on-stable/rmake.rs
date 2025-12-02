@@ -10,7 +10,7 @@ fn main() {
         .env("RUSTC_STAGE", "0")
         .env("RUSTC", rustc_path())
         // We want to disallow all nightly features to simulate a stable build
-        .env("RUSTFLAGS", "-D warnings -Zallow-features=")
+        .env("RUSTFLAGS", "-D warnings --check-cfg=cfg(bootstrap) -Zallow-features=")
         .arg("build")
         .arg("--manifest-path")
         .arg(source_root().join("Cargo.toml"))

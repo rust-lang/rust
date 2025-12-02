@@ -13,7 +13,7 @@
 #![rustfmt::skip]
 
 #![deny(clippy::unused_unit)]
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 #![allow(clippy::from_over_into)]
 
 struct Unitter;

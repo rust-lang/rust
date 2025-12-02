@@ -1,6 +1,7 @@
 //@ check-pass
 //@ edition: 2018
 //@ run-rustfix
+#![allow(todo_macro_calls)]
 
 #![feature(try_blocks)]
 #![warn(unused_parens, unused_braces)]

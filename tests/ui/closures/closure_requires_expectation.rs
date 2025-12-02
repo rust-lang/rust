@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(todo_macro_calls)]
+
 // `slot` is an out reference.
 // We move `state` into a closure, i.e. the closure holds a &'long mut ().
 //

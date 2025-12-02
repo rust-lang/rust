@@ -1,5 +1,5 @@
 #![warn(clippy::match_same_arms)]
-#![allow(clippy::match_single_binding)]
+#![allow(clippy::match_single_binding, todo_macro_calls)]
 #![expect(clippy::disallowed_names, clippy::match_like_matches_macro)]
 
 fn bar<T>(_: T) {}

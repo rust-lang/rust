@@ -1,5 +1,6 @@
 //@ edition:2021
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 use std::future::Future;
 pub trait Pool {

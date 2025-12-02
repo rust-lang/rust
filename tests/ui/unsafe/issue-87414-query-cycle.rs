@@ -1,4 +1,5 @@
 // Regression test for #87414.
+#![allow(todo_macro_calls)]
 
 //@ check-pass
 

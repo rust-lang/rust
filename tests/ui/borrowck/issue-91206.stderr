@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `*inner` as mutable, as it is behind a `&` reference
-  --> $DIR/issue-91206.rs:13:5
+  --> $DIR/issue-91206.rs:14:5
    |
 LL |     inner.clear();
    |     ^^^^^ `inner` is a `&` reference, so it cannot be borrowed as mutable

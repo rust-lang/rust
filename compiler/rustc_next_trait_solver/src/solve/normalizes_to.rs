@@ -693,6 +693,7 @@ where
         panic!("`Tuple` does not have an associated type: {:?}", goal);
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn consider_builtin_pointee_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -972,6 +973,7 @@ where
         panic!("`Unsize` does not have an associated type: {:?}", goal);
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn consider_builtin_discriminant_kind_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,

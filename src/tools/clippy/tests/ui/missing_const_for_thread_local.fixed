@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::missing_const_for_thread_local)]
 
 use std::cell::{Cell, RefCell};

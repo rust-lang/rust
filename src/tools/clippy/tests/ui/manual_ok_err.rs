@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![warn(clippy::manual_ok_err)]
 
 fn funcall() -> Result<u32, &'static str> {

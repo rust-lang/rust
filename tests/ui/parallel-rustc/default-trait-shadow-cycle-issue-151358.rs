@@ -4,6 +4,7 @@
 //
 //@ compile-flags: -Z threads=2
 //@ compare-output-by-lines
+#![allow(todo_macro_calls)]
 
 trait Default {}
 use std::num::NonZero;

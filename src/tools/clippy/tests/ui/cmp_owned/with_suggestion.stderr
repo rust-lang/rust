@@ -1,5 +1,5 @@
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:5:14
+  --> tests/ui/cmp_owned/with_suggestion.rs:6:14
    |
 LL |         x != "foo".to_string();
    |              ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
@@ -8,55 +8,55 @@ LL |         x != "foo".to_string();
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:8:9
+  --> tests/ui/cmp_owned/with_suggestion.rs:9:9
    |
 LL |         "foo".to_string() != x;
    |         ^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:16:10
+  --> tests/ui/cmp_owned/with_suggestion.rs:17:10
    |
 LL |     x != "foo".to_owned();
    |          ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:19:10
+  --> tests/ui/cmp_owned/with_suggestion.rs:20:10
    |
 LL |     x != String::from("foo");
    |          ^^^^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:24:5
+  --> tests/ui/cmp_owned/with_suggestion.rs:25:5
    |
 LL |     Foo.to_owned() == Foo;
    |     ^^^^^^^^^^^^^^ help: try: `Foo`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:27:30
+  --> tests/ui/cmp_owned/with_suggestion.rs:28:30
    |
 LL |     "abc".chars().filter(|c| c.to_owned() != 'X');
    |                              ^^^^^^^^^^^^ help: try: `*c`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:80:21
+  --> tests/ui/cmp_owned/with_suggestion.rs:81:21
    |
 LL |     let _ = foo1 == "foo".to_owned();
    |                     ^^^^^^^^^^^^^^^^ help: try: `"foo"`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:83:21
+  --> tests/ui/cmp_owned/with_suggestion.rs:84:21
    |
 LL |     let _ = foo1 == foo2.to_owned();
    |                     ^^^^^^^^^^^^^^^ help: try: `foo2`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:110:16
+  --> tests/ui/cmp_owned/with_suggestion.rs:111:16
    |
 LL |     if item == t!(frohes_neu_Jahr).to_string() {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t!(frohes_neu_Jahr)`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:141:51
+  --> tests/ui/cmp_owned/with_suggestion.rs:142:51
    |
 LL |                       let res = <$ty>::default() == "$def".to_string();
    |                                                     ^^^^^^^^^^^^^^^^^^ help: try: `"$def"`
@@ -69,7 +69,7 @@ LL | |     }
    = note: this error originates in the macro `all_comes_from_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/with_suggestion.rs:156:16
+  --> tests/ui/cmp_owned/with_suggestion.rs:157:16
    |
 LL |     if path != std::path::PathBuf::from(ROOT) {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `*ROOT`

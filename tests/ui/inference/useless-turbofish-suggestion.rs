@@ -10,6 +10,7 @@
 struct S;
 
 impl S {
+    #[allow(todo_macro_calls)]
     fn f<A, B>(self, _a: A) -> B {
         todo!()
     }

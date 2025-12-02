@@ -1,5 +1,6 @@
 //@aux-build:proc_macros.rs
 #![feature(custom_inner_attributes)]
+#![allow(todo_macro_calls)]
 #![warn(clippy::four_forward_slashes)]
 #![no_main]
 #![rustfmt::skip]
