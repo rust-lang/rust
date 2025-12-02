@@ -289,7 +289,7 @@ enum NodeState<N, S, A: Annotation> {
 #[derive(Copy, Clone, Debug)]
 enum WalkReturn<S, A: Annotation> {
     /// The walk found a cycle, but the entire component is not known to have
-    /// been fully walked yet. We only know the minimum depth of  this
+    /// been fully walked yet. We only know the minimum depth of this
     /// component in a minimum spanning tree of the graph. This component
     /// is tentatively represented by the state of the first node of this
     /// cycle we met, which is at `min_depth`.

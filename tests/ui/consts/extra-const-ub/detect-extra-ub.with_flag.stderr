@@ -37,14 +37,26 @@ error[E0080]: constructing invalid value: encountered an unaligned reference (re
 LL |     let _x: &u32 = transmute(&[0u8; 4]);
    |                    ^^^^^^^^^^^^^^^^^^^^ evaluation of `UNALIGNED_PTR` failed here
 
+error[E0080]: constructing invalid value: encountered a maybe-null function pointer
+  --> $DIR/detect-extra-ub.rs:57:20
+   |
+LL |       let _x: fn() = transmute({
+   |  ____________________^
+LL | |
+LL | |         fn fun() {}
+LL | |         let ptr = fun as fn();
+LL | |         (ptr as *const u8).wrapping_add(10)
+LL | |     });
+   | |______^ evaluation of `MAYBE_NULL_FN_PTR` failed here
+
 error[E0080]: constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
-  --> $DIR/detect-extra-ub.rs:58:13
+  --> $DIR/detect-extra-ub.rs:68:13
    |
 LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `UNINHABITED_VARIANT` failed here
 
 error[E0080]: constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
-  --> $DIR/detect-extra-ub.rs:77:16
+  --> $DIR/detect-extra-ub.rs:87:16
    |
 LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `PARTIAL_POINTER` failed here
@@ -53,11 +65,11 @@ LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
-  --> $DIR/detect-extra-ub.rs:91:16
+  --> $DIR/detect-extra-ub.rs:101:16
    |
 LL |     let _val = &*slice;
    |                ^^^^^^^ evaluation of `OVERSIZED_REF` failed here
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

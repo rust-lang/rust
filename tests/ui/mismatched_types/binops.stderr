@@ -23,11 +23,17 @@ LL |     2 as usize - Some(1);
    |                ^ no implementation for `usize - Option<{integer}>`
    |
    = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
-   = help: the following other types implement trait `Sub<Rhs>`:
-             `&usize` implements `Sub<usize>`
-             `&usize` implements `Sub`
-             `usize` implements `Sub<&usize>`
-             `usize` implements `Sub`
+help: the following other types implement trait `Sub<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `&usize` implements `Sub<usize>`
+   |
+   = note: `&usize` implements `Sub`
+   |
+   = note: `usize` implements `Sub<&usize>`
+   |
+   = note: `usize` implements `Sub`
+   = note: this error originates in the macro `sub_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: cannot multiply `{integer}` by `()`
   --> $DIR/binops.rs:4:7

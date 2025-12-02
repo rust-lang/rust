@@ -1,7 +1,7 @@
-//@ add-core-stubs
-//@ needs-asm-support
+//@ add-minicore
 //@ compile-flags: --target s390x-unknown-linux-gnu
 //@ needs-llvm-components: systemz
+//@ ignore-backends: gcc
 
 #![feature(no_core, lang_items, rustc_attrs)]
 #![crate_type = "rlib"]

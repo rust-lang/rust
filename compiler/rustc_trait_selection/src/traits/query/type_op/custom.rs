@@ -94,15 +94,15 @@ where
         let value = op(&ocx).map_err(|_| {
             infcx.dcx().span_delayed_bug(span, format!("error performing operation: {name}"))
         })?;
-        let errors = ocx.select_all_or_error();
+        let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if errors.is_empty() {
             Ok(value)
         } else if let Err(guar) = infcx.tcx.check_potentially_region_dependent_goals(root_def_id) {
             Err(guar)
         } else {
-            Err(infcx
-                .dcx()
-                .delayed_bug(format!("errors selecting obligation during MIR typeck: {errors:?}")))
+            Err(infcx.dcx().delayed_bug(format!(
+                "errors selecting obligation during MIR typeck: {name} {root_def_id:?} {errors:?}"
+            )))
         }
     })?;
 

@@ -28,7 +28,11 @@ pub(crate) fn complete_record_pattern_fields(
                     record_pat.record_pat_field_list().and_then(|fl| fl.fields().next()).is_some();
 
                 match were_fields_specified {
-                    false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                    false => un
+                        .fields(ctx.db)
+                        .into_iter()
+                        .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
+                        .collect(),
                     true => return,
                 }
             }
@@ -56,7 +60,11 @@ pub(crate) fn complete_record_expr_fields(
                 record_expr.record_expr_field_list().and_then(|fl| fl.fields().next()).is_some();
 
             match were_fields_specified {
-                false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                false => un
+                    .fields(ctx.db)
+                    .into_iter()
+                    .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
+                    .collect(),
                 true => return,
             }
         }
@@ -127,10 +135,7 @@ fn complete_fields(
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
-                ctx: DotAccessExprCtx {
-                    in_block_expr: false,
-                    in_breakable: crate::context::BreakableKind::None,
-                },
+                ctx: DotAccessExprCtx { in_block_expr: false, in_breakable: None },
             },
             None,
             field,
@@ -168,6 +173,33 @@ fn create_foo(foo_desc: &FooDesc) -> () { () }
 
 fn baz() {
     let foo = create_foo(&FooDesc { bar: ${1:()} }$0);
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn literal_struct_completion_shorthand() {
+        check_edit(
+            "FooDesc{}",
+            r#"
+struct FooDesc { pub bar: bool, n: i32 }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let bar = true;
+    let foo = create_foo(&$0);
+}
+            "#,
+            r#"
+struct FooDesc { pub bar: bool, n: i32 }
+
+fn create_foo(foo_desc: &FooDesc) -> () { () }
+
+fn baz() {
+    let bar = true;
+    let foo = create_foo(&FooDesc { bar$1, n: ${2:()} }$0);
 }
             "#,
         )

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 #![feature(no_core)]
 #![feature(lang_items)]
 

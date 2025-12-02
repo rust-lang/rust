@@ -95,6 +95,14 @@ macro_rules! make_mir_visitor {
                 self.super_source_scope_data(scope_data);
             }
 
+            fn visit_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                self.super_statement_debuginfo(stmt_debuginfo, location);
+            }
+
             fn visit_statement(
                 &mut self,
                 statement: & $($mutability)? Statement<'tcx>,
@@ -301,6 +309,7 @@ macro_rules! make_mir_visitor {
             {
                 let BasicBlockData {
                     statements,
+                    after_last_stmt_debuginfos,
                     terminator,
                     is_cleanup: _
                 } = data;
@@ -312,8 +321,11 @@ macro_rules! make_mir_visitor {
                     index += 1;
                 }
 
+                let location = Location { block, statement_index: index };
+                for debuginfo in after_last_stmt_debuginfos as & $($mutability)? [_] {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
                 if let Some(terminator) = terminator {
-                    let location = Location { block, statement_index: index };
                     self.visit_terminator(terminator, location);
                 }
             }
@@ -376,14 +388,45 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            fn super_statement_debuginfo(
+                &mut self,
+                stmt_debuginfo: & $($mutability)? StmtDebugInfo<'tcx>,
+                location: Location
+            ) {
+                match stmt_debuginfo {
+                    StmtDebugInfo::AssignRef(local, place) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    },
+                    StmtDebugInfo::InvalidAssign(local) => {
+                        self.visit_local(
+                            $(& $mutability)? *local,
+                            PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                            location
+                        );
+                    }
+                }
+            }
+
             fn super_statement(
                 &mut self,
                 statement: & $($mutability)? Statement<'tcx>,
                 location: Location
             ) {
-                let Statement { source_info, kind } = statement;
+                let Statement { source_info, kind, debuginfos } = statement;
 
                 self.visit_source_info(source_info);
+                for debuginfo in debuginfos as & $($mutability)? [_] {
+                    self.visit_statement_debuginfo(debuginfo, location);
+                }
                 match kind {
                     StatementKind::Assign(box (place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);
@@ -401,13 +444,6 @@ macro_rules! make_mir_visitor {
                             PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant),
                             location
                         );
-                    }
-                    StatementKind::Deinit(place) => {
-                        self.visit_place(
-                            place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Deinit),
-                            location
-                        )
                     }
                     StatementKind::StorageLive(local) => {
                         self.visit_local(
@@ -739,9 +775,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    Rvalue::NullaryOp(_op, ty) => {
-                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
-                    }
+                    Rvalue::NullaryOp(_op) => {}
 
                     Rvalue::Aggregate(kind, operands) => {
                         let kind = &$($mutability)? **kind;
@@ -1055,6 +1089,10 @@ macro_rules! super_body {
             }
         }
 
+        for var_debug_info in &$($mutability)? $body.var_debug_info {
+            $self.visit_var_debug_info(var_debug_info);
+        }
+
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
             $self.visit_basic_block_data(bb, data);
         }
@@ -1082,10 +1120,6 @@ macro_rules! super_body {
             $self.visit_user_type_annotation(
                 index, annotation
             );
-        }
-
-        for var_debug_info in &$($mutability)? $body.var_debug_info {
-            $self.visit_var_debug_info(var_debug_info);
         }
 
         $self.visit_span($(& $mutability)? $body.span);
@@ -1166,11 +1200,6 @@ macro_rules! visit_place_fns {
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
                     if ty != new_ty { Some(PlaceElem::OpaqueCast(new_ty)) } else { None }
                 }
-                PlaceElem::Subtype(ty) => {
-                    let mut new_ty = ty;
-                    self.visit_ty(&mut new_ty, TyContext::Location(location));
-                    if ty != new_ty { Some(PlaceElem::Subtype(new_ty)) } else { None }
-                }
                 PlaceElem::UnwrapUnsafeBinder(ty) => {
                     let mut new_ty = ty;
                     self.visit_ty(&mut new_ty, TyContext::Location(location));
@@ -1244,7 +1273,6 @@ macro_rules! visit_place_fns {
         ) {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
-                | ProjectionElem::Subtype(ty)
                 | ProjectionElem::Field(_, ty)
                 | ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
@@ -1335,8 +1363,6 @@ pub enum MutatingUseContext {
     Store,
     /// Appears on `SetDiscriminant`
     SetDiscriminant,
-    /// Appears on `Deinit`
-    Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.

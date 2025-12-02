@@ -1,5 +1,6 @@
 //@ run-pass
 //@ proc-macro: count_compound_ops.rs
+//@ ignore-backends: gcc
 
 extern crate count_compound_ops;
 use count_compound_ops::count_compound_ops;

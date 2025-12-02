@@ -1,6 +1,6 @@
 // Test that PAC instructions are emitted when branch-protection is specified.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: GCS PACRET PAUTHLR_NOP PAUTHLR
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: aarch64

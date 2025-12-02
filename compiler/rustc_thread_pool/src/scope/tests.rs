@@ -168,7 +168,7 @@ fn the_final_countdown<'scope>(
     let top_of_stack = 0;
     let p = bottom_of_stack as *const i32 as usize;
     let q = &top_of_stack as *const i32 as usize;
-    let diff = if p > q { p - q } else { q - p };
+    let diff = p.abs_diff(q);
 
     let mut data = max.lock().unwrap();
     *data = Ord::max(diff, *data);

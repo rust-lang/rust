@@ -31,7 +31,8 @@ pub(super) fn check<'tcx>(
         start: Some(start),
         end: Some(end),
         limits: RangeLimits::HalfOpen,
-    }) = higher::Range::hir(arg)
+        span: _,
+    }) = higher::Range::hir(cx, arg)
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),
             ..

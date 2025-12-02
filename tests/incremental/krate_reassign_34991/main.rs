@@ -1,5 +1,6 @@
 //@ aux-build:a.rs
 //@ revisions:rpass1 rpass2
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 

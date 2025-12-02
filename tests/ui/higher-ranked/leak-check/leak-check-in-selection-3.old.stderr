@@ -5,7 +5,7 @@ LL |     impls_indirect_leak::<Box<_>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `impls_indirect_leak`
    |
 note: multiple `impl`s satisfying `Box<_>: Leak<'_>` found
-  --> $DIR/leak-check-in-selection-3.rs:9:1
+  --> $DIR/leak-check-in-selection-3.rs:10:1
    |
 LL | impl Leak<'_> for Box<u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^

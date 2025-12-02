@@ -3,8 +3,6 @@ builtin_macros_alloc_must_statics = allocators must be statics
 
 builtin_macros_asm_attribute_not_supported =
     this attribute is not supported on assembly
-builtin_macros_asm_cfg =
-    the `#[cfg(/* ... */)]` and `#[cfg_attr(/* ... */)]` attributes on assembly are unstable
 
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
@@ -135,6 +133,15 @@ builtin_macros_concat_missing_literal = expected a literal
 builtin_macros_default_arg = `#[default]` attribute does not accept a value
     .suggestion = try using `#[default]`
 
+builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
+
+builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
+    [true] multiple fields
+    *[false] no fields
+}
+
+builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
+
 builtin_macros_derive_macro_call = `derive` cannot be used on items with type macros
 
 builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept arguments
@@ -147,6 +154,7 @@ builtin_macros_duplicate_macro_attribute = duplicated attribute
 
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
+    .cargo_typo = there is a similar Cargo environment variable: `{$suggested_var}`
     .custom = use `std::env::var({$var_expr})` to read the variable at run time
 
 builtin_macros_env_not_unicode = environment variable `{$var}` is not a valid Unicode string
@@ -229,15 +237,6 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
-builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
-
-builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
-    [true] multiple fields
-    *[false] no fields
-}
-
-builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
-
 builtin_macros_incomplete_include = include macro expected single expression in source
 
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
@@ -283,7 +282,7 @@ builtin_macros_requires_cfg_pattern =
     macro requires a cfg-pattern as an argument
     .label = cfg-pattern required
 
-builtin_macros_source_uitls_expected_item = expected item, found `{$token}`
+builtin_macros_source_utils_expected_item = expected item, found `{$token}`
 
 builtin_macros_takes_no_arguments = {$name} takes no arguments
 

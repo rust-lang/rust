@@ -24,10 +24,16 @@ indexmap.workspace = true
 paths = { workspace = true, features = ["serde1"] }
 tt.workspace = true
 stdx.workspace = true
+proc-macro-srv = {workspace = true, optional = true}
 # span = {workspace = true, default-features = false} does not work
 span = { path = "../span", version = "0.0.0", default-features = false}
 
 intern.workspace = true
+postcard.workspace = true
+semver.workspace = true
+
+[features]
+sysroot-abi = ["proc-macro-srv", "proc-macro-srv/sysroot-abi"]
 
 [lints]
 workspace = true

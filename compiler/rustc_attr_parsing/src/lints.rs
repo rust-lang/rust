@@ -43,12 +43,18 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
                     ),
                 },
             ),
-        AttributeLintKind::EmptyAttribute { first_span } => lint_emitter.emit_node_span_lint(
-            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            *id,
-            *first_span,
-            session_diagnostics::EmptyAttributeList { attr_span: *first_span },
-        ),
+        AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
+            lint_emitter.emit_node_span_lint(
+                rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+                *id,
+                *first_span,
+                session_diagnostics::EmptyAttributeList {
+                    attr_span: *first_span,
+                    attr_path: attr_path.clone(),
+                    valid_without_list: *valid_without_list,
+                },
+            )
+        }
         AttributeLintKind::InvalidTarget { name, target, applied, only } => lint_emitter
             .emit_node_span_lint(
                 // This check is here because `deprecated` had its own lint group and removing this would be a breaking change

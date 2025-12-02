@@ -60,6 +60,8 @@ declare_features! (
     (accepted, adx_target_feature, "1.61.0", Some(44839)),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.66.0", Some(60553)),
+    /// Allows #[cfg(...)] on inline assembly templates and operands.
+    (accepted, asm_cfg, "CURRENT_RUSTC_VERSION", Some(140364)),
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `label` operands in inline assembly.
@@ -205,7 +207,7 @@ declare_features! (
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
     /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
     /// for functions with varargs.
-    (accepted, extended_varargs_abi_support, "CURRENT_RUSTC_VERSION", Some(100189)),
+    (accepted, extended_varargs_abi_support, "1.91.0", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -215,6 +217,8 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409)),
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660)),
+    /// Allows using `system` as a calling convention with varargs.
+    (accepted, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
     /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, f16c_target_feature, "1.68.0", Some(44839)),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
@@ -387,6 +391,8 @@ declare_features! (
     (accepted, return_position_impl_trait_in_trait, "1.75.0", Some(91611)),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
+    /// Allows use of the `vector` and related s390x target features.
+    (accepted, s390x_target_feature_vector, "CURRENT_RUSTC_VERSION", Some(145649)),
     /// Allows `Self` in type definitions (RFC 2300).
     (accepted, self_in_typedefs, "1.32.0", Some(49303)),
     /// Allows `Self` struct constructor (RFC 2302).
@@ -400,7 +406,7 @@ declare_features! (
     /// Allows use of `&foo[a..b]` as a slicing syntax.
     (accepted, slicing_syntax, "1.0.0", None),
     /// Allows use of `sse4a` target feature.
-    (accepted, sse4a_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (accepted, sse4a_target_feature, "1.91.0", Some(44839)),
     /// Allows elision of `'static` lifetimes in `static`s and `const`s.
     (accepted, static_in_const, "1.17.0", Some(35897)),
     /// Allows the definition recursive static items.
@@ -414,7 +420,7 @@ declare_features! (
     /// Allows the use of `#[target_feature]` on safe functions.
     (accepted, target_feature_11, "1.86.0", Some(69098)),
     /// Allows use of `tbm` target feature.
-    (accepted, tbm_target_feature, "CURRENT_RUSTC_VERSION", Some(44839)),
+    (accepted, tbm_target_feature, "1.91.0", Some(44839)),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301)),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).

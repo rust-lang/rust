@@ -29,6 +29,6 @@ fn main() {
     }
 }
 
-pub fn callee(x: S) -> S {
+fn callee(x: S) -> S {
     x
 }

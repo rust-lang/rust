@@ -13,7 +13,7 @@ LL +         Foo(val) if val == "hi".to_owned() => true,
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "hi".to_owned();
-LL ~     match foo {
+LL |     match foo {
 LL ~         Foo(VAL) => true,
    |
 
@@ -32,7 +32,7 @@ LL +         Bar { baz } if baz == "hi".to_owned() => true,
 help: consider extracting the expression into a `const`
    |
 LL +     const BAZ: /* Type */ = "hi".to_owned();
-LL ~     match bar {
+LL |     match bar {
 LL ~         Bar { baz: BAZ } => true,
    |
 
@@ -51,7 +51,7 @@ LL +         &[val] if val == "foo".to_string() => {}
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "foo".to_string();
-LL ~     match foo.as_slice() {
+LL |     match foo.as_slice() {
 LL ~         &[VAL] => {}
    |
 

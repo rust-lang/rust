@@ -13,13 +13,8 @@
 // top of this file are present, then assume all args are present.
 //@ normalize-stderr: "note: compiler flags: .*-Z ui-testing.*-Z track-diagnostics" -> "note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics"
 
-// FIXME: this tests a crash in rustc. For stage1, rustc is built with the downloaded standard
-// library which doesn't yet print the thread ID. Normalization can be removed at the stage bump.
-// For the grep: cfg(bootstrap)
-//@normalize-stderr: "thread 'rustc' panicked" -> "thread 'rustc' ($$TID) panicked"
-
 fn main() {
-    break rust
+    break rust;
     //~^ ERROR cannot find value `rust` in this scope
     //~| NOTE created at
     //~| ERROR `break` outside of a loop or labeled block

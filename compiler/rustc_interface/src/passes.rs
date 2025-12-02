@@ -8,6 +8,7 @@ use std::{env, fs, iter};
 use rustc_ast as ast;
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
@@ -595,7 +596,9 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             .map(|fmap| {
                 (
                     escape_dep_filename(&fmap.name.prefer_local().to_string()),
-                    fmap.source_len.0 as u64,
+                    // This needs to be unnormalized,
+                    // as external tools wouldn't know how rustc normalizes them
+                    fmap.unnormalized_source_len as u64,
                     fmap.checksum_hash,
                 )
             })
@@ -925,7 +928,12 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let pre_configured_attrs = rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
 
     let crate_name = get_crate_name(sess, &pre_configured_attrs);
-    let crate_types = collect_crate_types(sess, &pre_configured_attrs);
+    let crate_types = collect_crate_types(
+        sess,
+        &compiler.codegen_backend.supported_crate_types(sess),
+        compiler.codegen_backend.name(),
+        &pre_configured_attrs,
+    );
     let stable_crate_id = StableCrateId::new(
         crate_name,
         crate_types.contains(&CrateType::Executable),
@@ -936,7 +944,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
 
     let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
-    let dep_graph = setup_dep_graph(sess, crate_name, &dep_type);
+    let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id, &dep_type);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -1088,13 +1096,20 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("MIR_borrow_checking", || {
         tcx.par_hir_body_owners(|def_id| {
-            if !tcx.is_typeck_child(def_id.to_def_id()) {
+            let not_typeck_child = !tcx.is_typeck_child(def_id.to_def_id());
+            if not_typeck_child {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
+            }
+            if tcx.is_trivial_const(def_id) {
+                return;
+            }
+            if not_typeck_child {
                 tcx.ensure_ok().mir_borrowck(def_id);
                 tcx.ensure_ok().check_transmutes(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
+            tcx.ensure_ok().check_liveness(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
@@ -1122,18 +1137,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
     sess.time("abi_testing", || abi_test::test_abi(tcx));
-
-    // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
-    // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
-    // in MIR optimizations that may only be reachable through codegen, or other codepaths
-    // that requires the optimized/ctfe MIR, coroutine bodies, or evaluating consts.
-    if tcx.sess.opts.unstable_opts.validate_mir {
-        sess.time("ensuring_final_MIR_is_computable", || {
-            tcx.par_hir_body_owners(|def_id| {
-                tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
-            });
-        });
-    }
 }
 
 /// Runs the type-checking, region checking and other miscellaneous analysis
@@ -1199,6 +1202,22 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_diagnostic_items(());
     });
+
+    // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
+    // (either its `mir_for_ctfe` or `optimized_mir`) since that helps uncover any bugs
+    // in MIR optimizations that may only be reachable through codegen, or other codepaths
+    // that requires the optimized/ctfe MIR, coroutine bodies, or evaluating consts.
+    // Nevertheless, wait after type checking is finished, as optimizing code that does not
+    // type-check is very prone to ICEs.
+    if tcx.sess.opts.unstable_opts.validate_mir {
+        sess.time("ensuring_final_MIR_is_computable", || {
+            tcx.par_hir_body_owners(|def_id| {
+                if !tcx.is_trivial_const(def_id) {
+                    tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
+                }
+            });
+        });
+    }
 }
 
 /// Runs the codegen backend, after which the AST and analysis can
@@ -1233,7 +1252,21 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || codegen_backend.codegen_crate(tcx));
+    let codegen = tcx.sess.time("codegen_crate", move || {
+        if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+            // Skip crate items and just output metadata in -Z no-codegen mode.
+            tcx.sess.dcx().abort_if_errors();
+
+            // Linker::link will skip join_codegen in case of a CodegenResults Any value.
+            Box::new(CodegenResults {
+                modules: vec![],
+                allocator_module: None,
+                crate_info: CrateInfo::new(tcx, "<dummy cpu>".to_owned()),
+            })
+        } else {
+            codegen_backend.codegen_crate(tcx)
+        }
+    });
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 

@@ -2,7 +2,7 @@
 // does not prevent crates without a panic_impl from compiling.
 // See rust-lang/rust#109996
 
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ compile-flags: -Cdebug-assertions=yes
 

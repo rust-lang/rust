@@ -168,4 +168,21 @@ fn enum_variant_ok() {
     let _ = const { std::io::ErrorKind::InvalidFilename };
 }
 
+#[clippy::msrv = "1.38.0"]
+const fn uncalled_len() {
+    let _ = Vec::<usize>::len;
+    let x = str::len;
+    let _ = x("");
+    //~^ incompatible_msrv
+    let _ = "".len();
+    //~^ incompatible_msrv
+}
+
+#[clippy::msrv = "1.0.0"]
+fn vec_macro() {
+    let _: Vec<u32> = vec![];
+    let _: Vec<u32> = vec![1; 3];
+    let _: Vec<u32> = vec![1, 2];
+}
+
 fn main() {}

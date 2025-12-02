@@ -21,15 +21,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -48,8 +45,10 @@ mod errors;
 mod expect;
 mod for_loops_over_fallibles;
 mod foreign_modules;
+mod function_cast_as_integer;
 mod if_let_rescope;
 mod impl_trait_overcaptures;
+mod interior_mutable_consts;
 mod internal;
 mod invalid_from_utf8;
 mod late;
@@ -92,8 +91,10 @@ use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
+use function_cast_as_integer::*;
 use if_let_rescope::IfLetRescope;
 use impl_trait_overcaptures::ImplTraitOvercaptures;
+use interior_mutable_consts::*;
 use internal::*;
 use invalid_from_utf8::*;
 use let_underscore::*;
@@ -191,7 +192,7 @@ late_lint_methods!(
         BuiltinCombinedModuleLateLintPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
-            DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
+            DefaultCouldBeDerived: DefaultCouldBeDerived,
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesLint: ImproperCTypesLint,
@@ -240,10 +241,12 @@ late_lint_methods!(
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
+            InteriorMutableConsts: InteriorMutableConsts,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            FunctionCastsAsInteger: FunctionCastsAsInteger,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
         ]
@@ -362,6 +365,10 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
+    store.register_renamed(
+        "repr_transparent_external_private_fields",
+        "repr_transparent_non_zst_fields",
+    );
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -654,6 +661,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
     store.register_lints(&SymbolInternStringLiteral::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
+    store.register_lints(&ImplicitSysrootCrateImport::lint_vec());
+    store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
@@ -676,6 +685,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
             LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
+            LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
         ],
     );
 }

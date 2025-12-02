@@ -2,7 +2,7 @@
 #![allow(
     unused,
     clippy::diverging_sub_expression,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::redundant_pattern_matching
 )]
 #![warn(clippy::nonminimal_bool)]

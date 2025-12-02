@@ -490,17 +490,9 @@ fun:__dfso_*=uninstrumented
 fun:__dfso_*=discard
 
 # Rust functions.
-fun:__rdl_alloc=uninstrumented
-fun:__rdl_alloc_zeroed=uninstrumented
-fun:__rdl_dealloc=uninstrumented
-fun:__rdl_realloc=uninstrumented
-fun:__rg_oom=uninstrumented
-fun:__rust_alloc=uninstrumented
-fun:__rust_alloc_error_handler=uninstrumented
-fun:__rust_alloc_zeroed=uninstrumented
-fun:__rust_dealloc=uninstrumented
-fun:__rust_realloc=uninstrumented
 fun:_ZN4core*=uninstrumented
+fun:_R*4core*=uninstrumented
 fun:_ZN3std*=uninstrumented
+fun:_R*3std*=uninstrumented
 fun:rust_eh_personality=uninstrumented
 fun:_R*__rustc*=uninstrumented

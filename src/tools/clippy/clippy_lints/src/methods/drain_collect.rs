@@ -1,7 +1,7 @@
 use crate::methods::DRAIN_COLLECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{is_range_full, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
@@ -35,8 +35,8 @@ fn check_vec(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>
 
 /// Checks `std::string::String`
 fn check_string(cx: &LateContext<'_>, args: &[Expr<'_>], expr: Ty<'_>, recv: Ty<'_>, recv_path: &Path<'_>) -> bool {
-    is_type_lang_item(cx, expr, LangItem::String)
-        && is_type_lang_item(cx, recv, LangItem::String)
+    expr.is_lang_item(cx, LangItem::String)
+        && recv.is_lang_item(cx, LangItem::String)
         && matches!(args, [arg] if is_range_full(cx, arg, Some(recv_path)))
 }
 

@@ -405,6 +405,8 @@ fn recursive_normalize(use_tree: &ast::UseTree, style: NormalizationStyle) -> Op
                 } else {
                     ted::replace_with_many(subtree.syntax(), elements);
                 }
+                // Silence unused assignment warning on `modified`.
+                let _ = modified;
                 modified = true;
             } else {
                 modified |= recursive_normalize(&subtree, NormalizationStyle::Default).is_some();

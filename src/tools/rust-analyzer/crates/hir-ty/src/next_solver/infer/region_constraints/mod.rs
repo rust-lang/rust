@@ -1,7 +1,6 @@
 //! See `README.md`.
 
 use std::ops::Range;
-use std::sync::Arc;
 use std::{cmp, fmt, mem};
 
 use ena::undo_log::{Rollback, UndoLogs};
@@ -18,9 +17,7 @@ use super::MemberConstraint;
 use super::unify_key::RegionVidKey;
 use crate::next_solver::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 use crate::next_solver::infer::unify_key::RegionVariableValue;
-use crate::next_solver::{
-    AliasTy, Binder, DbInterner, OpaqueTypeKey, ParamTy, PlaceholderTy, Region, Ty,
-};
+use crate::next_solver::{AliasTy, Binder, DbInterner, ParamTy, PlaceholderTy, Region, Ty};
 
 #[derive(Debug, Clone, Default)]
 pub struct RegionConstraintStorage<'db> {
@@ -254,6 +251,7 @@ pub(crate) enum UndoLog<'db> {
     AddConstraint(usize),
 
     /// We added the given `verify`.
+    #[expect(dead_code, reason = "this is used in rustc")]
     AddVerify(usize),
 
     /// We added a GLB/LUB "combination variable".

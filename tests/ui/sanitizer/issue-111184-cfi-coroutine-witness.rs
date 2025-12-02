@@ -7,6 +7,7 @@
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
 //@ build-pass
+//@ ignore-backends: gcc
 
 use std::future::Future;
 

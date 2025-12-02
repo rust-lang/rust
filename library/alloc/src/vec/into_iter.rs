@@ -7,6 +7,7 @@ use core::mem::{ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::num::NonZero;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
+use core::panic::UnwindSafe;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 use core::{array, fmt};
@@ -59,6 +60,11 @@ pub struct IntoIter<
     /// For non-ZSTs the pointer is treated as `NonNull<T>`
     pub(super) end: *const T,
 }
+
+// Manually mirroring what `Vec` has,
+// because otherwise we get `T: RefUnwindSafe` from `NonNull`.
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: UnwindSafe, A: Allocator + UnwindSafe> UnwindSafe for IntoIter<T, A> {}
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<T, A> {

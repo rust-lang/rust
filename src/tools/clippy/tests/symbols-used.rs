@@ -18,7 +18,6 @@ type Result<T, E = AnyError> = std::result::Result<T, E>;
 type AnyError = Box<dyn std::error::Error>;
 
 #[test]
-#[allow(clippy::case_sensitive_file_extension_comparisons)]
 fn all_symbols_are_used() -> Result<()> {
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return Ok(());

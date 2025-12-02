@@ -9,7 +9,16 @@ help: the trait `Trait<_, _, _>` is not implemented for `A<X>`
    |
 LL | struct A<T>(*const T);
    | ^^^^^^^^^^^
-   = help: the trait `Trait<U, V, D>` is implemented for `A<T>`
+help: the trait `Trait<U, V, D>` is implemented for `A<T>`
+  --> $DIR/incompleteness-unstable-result.rs:34:1
+   |
+LL | / impl<T, U, V, D> Trait<U, V, D> for A<T>
+LL | | where
+LL | |     T: IncompleteGuidance<U, V>,
+LL | |     A<T>: Trait<U, D, V>,
+LL | |     B<T>: Trait<U, V, D>,
+LL | |     (): ToU8<D>,
+   | |________________^
 note: required for `A<X>` to implement `Trait<_, _, _>`
   --> $DIR/incompleteness-unstable-result.rs:34:18
    |

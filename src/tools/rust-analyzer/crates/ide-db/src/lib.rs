@@ -2,6 +2,8 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+extern crate self as ide_db;
+
 mod apply_change;
 
 pub mod active_parameter;
@@ -14,6 +16,8 @@ pub mod items_locator;
 pub mod label;
 pub mod path_transform;
 pub mod prime_caches;
+pub mod ra_fixture;
+pub mod range_mapper;
 pub mod rename;
 pub mod rust_doc;
 pub mod search;
@@ -60,7 +64,7 @@ use hir::{
 };
 use triomphe::Arc;
 
-use crate::{line_index::LineIndex, symbol_index::SymbolsDatabase};
+use crate::line_index::LineIndex;
 pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 pub use ::line_index;
@@ -191,8 +195,12 @@ impl RootDatabase {
         db.set_all_crates(Arc::new(Box::new([])));
         CrateGraphBuilder::default().set_in_db(&mut db);
         db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
-        db.set_local_roots_with_durability(Default::default(), Durability::MEDIUM);
-        db.set_library_roots_with_durability(Default::default(), Durability::MEDIUM);
+        _ = crate::symbol_index::LibraryRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&db);
+        _ = crate::symbol_index::LocalRoots::builder(Default::default())
+            .durability(Durability::MEDIUM)
+            .new(&db);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
         db.update_base_query_lru_capacities(lru_capacity);
         db
@@ -363,4 +371,26 @@ pub enum Severity {
     Warning,
     WeakWarning,
     Allow,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct MiniCore<'a>(&'a str);
+
+impl<'a> MiniCore<'a> {
+    #[inline]
+    pub fn new(minicore: &'a str) -> Self {
+        Self(minicore)
+    }
+
+    #[inline]
+    pub const fn default() -> Self {
+        Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl<'a> Default for MiniCore<'a> {
+    #[inline]
+    fn default() -> Self {
+        Self::default()
+    }
 }

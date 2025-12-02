@@ -1,5 +1,5 @@
 //@ revisions: wasm32-unknown wasm64-unknown wasm32-wasip1
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ [wasm32-unknown] compile-flags: --target wasm32-unknown-unknown
 //@ [wasm64-unknown] compile-flags: --target wasm64-unknown-unknown

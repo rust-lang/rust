@@ -13,11 +13,11 @@ pub use i32 as int;
 "#,
         expect![[r#"
             crate
-            foo: t
-            int: ti
+            - foo : type
+            - int : type (import)
 
             crate::foo
-            int: ti
+            - int : type (import)
         "#]],
     );
 }

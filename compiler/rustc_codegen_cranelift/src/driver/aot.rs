@@ -24,9 +24,8 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{CodegenUnit, MonoItem, MonoItemData, Visibility};
 use rustc_session::Session;
-use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
+use rustc_session::config::{OutFileName, OutputFilenames, OutputType};
 
-use crate::CodegenCx;
 use crate::base::CodegenedFunction;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
@@ -98,8 +97,8 @@ impl OngoingCodegen {
                         sess,
                         &module_regular.name,
                         &[
-                            ("o", &module_regular.object.as_ref().unwrap()),
-                            ("asm.o", &module_global_asm.object.as_ref().unwrap()),
+                            ("o", module_regular.object.as_ref().unwrap()),
+                            ("asm.o", module_global_asm.object.as_ref().unwrap()),
                         ],
                         &[],
                     )
@@ -107,7 +106,7 @@ impl OngoingCodegen {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                         sess,
                         &module_regular.name,
-                        &[("o", &module_regular.object.as_ref().unwrap())],
+                        &[("o", module_regular.object.as_ref().unwrap())],
                         &[],
                     )
                 };
@@ -309,7 +308,7 @@ fn produce_final_output_artifacts(
                 module.for_each_output(|path, ty| {
                     if sess.opts.output_types.contains_key(&ty) {
                         let descr = ty.shorthand();
-                        sess.dcx().emit_artifact_notification(&path, descr);
+                        sess.dcx().emit_artifact_notification(path, descr);
                     }
                 });
             }
@@ -451,8 +450,8 @@ fn reuse_workproduct_for_cgu(
         tcx.sess.invocation_temp.as_deref(),
     );
     let source_file_regular = rustc_incremental::in_incr_comp_dir_sess(
-        &tcx.sess,
-        &work_product.saved_files.get("o").expect("no saved object file in work product"),
+        tcx.sess,
+        work_product.saved_files.get("o").expect("no saved object file in work product"),
     );
 
     if let Err(err) = rustc_fs_util::link_or_copy(&source_file_regular, &obj_out_regular) {
@@ -467,7 +466,7 @@ fn reuse_workproduct_for_cgu(
     let obj_out_global_asm =
         crate::global_asm::add_file_stem_postfix(obj_out_regular.clone(), ".asm");
     let source_file_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
-        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, asm_o);
+        let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(tcx.sess, asm_o);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
         {
             return Err(format!(
@@ -511,18 +510,14 @@ fn codegen_cgu_content(
     tcx: TyCtxt<'_>,
     module: &mut dyn Module,
     cgu_name: rustc_span::Symbol,
-) -> (CodegenCx, Vec<CodegenedFunction>) {
+) -> (Option<DebugContext>, Vec<CodegenedFunction>, String) {
     let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
 
     let cgu = tcx.codegen_unit(cgu_name);
     let mono_items = cgu.items_in_deterministic_order(tcx);
 
-    let mut cx = crate::CodegenCx::new(
-        tcx,
-        module.isa(),
-        tcx.sess.opts.debuginfo != DebugInfo::None,
-        cgu_name,
-    );
+    let mut debug_context = DebugContext::new(tcx, module.isa(), false, cgu_name.as_str());
+    let mut global_asm = String::new();
     let mut type_dbg = TypeDebugContext::default();
     super::predefine_mono_items(tcx, module, &mono_items);
     let mut codegened_functions = vec![];
@@ -532,7 +527,7 @@ fn codegen_cgu_content(
                 let flags = tcx.codegen_instance_attrs(instance.def).flags;
                 if flags.contains(CodegenFnAttrFlags::NAKED) {
                     rustc_codegen_ssa::mir::naked_asm::codegen_naked_asm(
-                        &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                        &mut GlobalAsmContext { tcx, global_asm: &mut global_asm },
                         instance,
                         MonoItemData {
                             linkage: RLinkage::External,
@@ -548,7 +543,8 @@ fn codegen_cgu_content(
                 }
                 let codegened_function = crate::base::codegen_fn(
                     tcx,
-                    &mut cx,
+                    cgu_name,
+                    debug_context.as_mut(),
                     &mut type_dbg,
                     Function::new(),
                     module,
@@ -558,13 +554,13 @@ fn codegen_cgu_content(
             }
             MonoItem::Static(def_id) => {
                 let data_id = crate::constant::codegen_static(tcx, module, def_id);
-                if let Some(debug_context) = &mut cx.debug_context {
+                if let Some(debug_context) = debug_context.as_mut() {
                     debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
                 }
             }
             MonoItem::GlobalAsm(item_id) => {
                 rustc_codegen_ssa::base::codegen_global_asm(
-                    &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                    &mut GlobalAsmContext { tcx, global_asm: &mut global_asm },
                     item_id,
                 );
             }
@@ -572,7 +568,7 @@ fn codegen_cgu_content(
     }
     crate::main_shim::maybe_create_entry_wrapper(tcx, module, false, cgu.is_primary());
 
-    (cx, codegened_functions)
+    (debug_context, codegened_functions, global_asm)
 }
 
 fn module_codegen(
@@ -585,13 +581,17 @@ fn module_codegen(
 ) -> OngoingModuleCodegen {
     let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-    let (mut cx, codegened_functions) = codegen_cgu_content(tcx, &mut module, cgu_name);
+    let (mut debug_context, codegened_functions, mut global_asm) =
+        codegen_cgu_content(tcx, &mut module, cgu_name);
 
     let cgu_name = cgu_name.as_str().to_owned();
 
     let producer = crate::debuginfo::producer(tcx.sess);
 
     let profiler = tcx.prof.clone();
+    let invocation_temp = tcx.sess.invocation_temp.clone();
+    let output_filenames = tcx.output_filenames(()).clone();
+    let should_write_ir = crate::pretty_clif::should_write_ir(tcx.sess);
 
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
         profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
@@ -602,10 +602,13 @@ fn module_codegen(
             let mut cached_context = Context::new();
             for codegened_func in codegened_functions {
                 crate::base::compile_fn(
-                    &mut cx,
                     &profiler,
+                    &output_filenames,
+                    should_write_ir,
                     &mut cached_context,
                     &mut module,
+                    debug_context.as_mut(),
+                    &mut global_asm,
                     codegened_func,
                 );
             }
@@ -616,8 +619,8 @@ fn module_codegen(
                 crate::global_asm::compile_global_asm(
                     &global_asm_config,
                     &cgu_name,
-                    &cx.global_asm,
-                    cx.invocation_temp.as_deref(),
+                    global_asm,
+                    invocation_temp.as_deref(),
                 )
             })?;
 
@@ -625,11 +628,11 @@ fn module_codegen(
             profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
-                    cx.invocation_temp.as_deref(),
+                    invocation_temp.as_deref(),
                     &profiler,
                     cgu_name,
                     module,
-                    cx.debug_context,
+                    debug_context,
                     global_asm_object_file,
                     &producer,
                 )
@@ -671,18 +674,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
     }
     .to_owned();
 
-    let cgus = if tcx.sess.opts.output_types.should_codegen() {
-        tcx.collect_and_partition_mono_items(()).codegen_units
-    } else {
-        // If only `--emit metadata` is used, we shouldn't perform any codegen.
-        // Also `tcx.collect_and_partition_mono_items` may panic in that case.
-        return Box::new(OngoingCodegen {
-            modules: vec![],
-            allocator_module: None,
-            crate_info: CrateInfo::new(tcx, target_cpu),
-            concurrency_limiter: ConcurrencyLimiter::new(0),
-        });
-    };
+    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
     if tcx.dep_graph.is_fully_enabled() {
         for cgu in cgus {
@@ -692,7 +684,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
 
     // Calculate the CGU reuse
     let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+        cgus.iter().map(|cgu| determine_cgu_reuse(tcx, cgu)).collect::<Vec<_>>()
     });
 
     rustc_codegen_ssa::assert_module_sources::assert_module_sources(tcx, &|cgu_reuse_tracker| {
@@ -706,7 +698,7 @@ pub(crate) fn run_aot(tcx: TyCtxt<'_>) -> Box<OngoingCodegen> {
 
     let disable_incr_cache = disable_incr_cache();
     let (todo_cgus, done_cgus) =
-        cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
+        cgus.iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
             _ if disable_incr_cache => true,
             CguReuse::No => true,
             CguReuse::PreLto | CguReuse::PostLto => false,

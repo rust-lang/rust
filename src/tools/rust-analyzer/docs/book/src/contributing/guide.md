@@ -7,7 +7,7 @@ This guide describes the current state of rust-analyzer as of the 2024-01-01 rel
 architectural solutions related to the problem of building IDE-first compiler
 for Rust. There is a video version of this guide as well -
 however, it's based on an older 2019-01-20 release (git tag [guide-2019-01]):
-https://youtu.be/ANKBNiSWyfc.
+<https://youtu.be/ANKBNiSWyfc>.
 
 [guide-2019-01]: https://github.com/rust-lang/rust-analyzer/tree/guide-2019-01
 [2024-01-01]: https://github.com/rust-lang/rust-analyzer/tree/2024-01-01
@@ -235,7 +235,7 @@ of type `V`. Queries come in two basic varieties:
   intelligently) when we can re-use these memoized values and when we have to
   recompute them.
 
-For further discussion, its important to understand one bit of "fairly
+For further discussion, it's important to understand one bit of "fairly
 intelligently". Suppose we have two functions, `f1` and `f2`, and one input,
 `z`. We call `f1(X)` which in turn calls `f2(Y)` which inspects `i(Z)`. `i(Z)`
 returns some value `V1`, `f2` uses that and returns `R1`, `f1` uses that and

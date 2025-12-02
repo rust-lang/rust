@@ -1,5 +1,3 @@
-#![deny(dependency_on_unit_never_type_fallback)]
-
 fn create_ok_default<C>() -> Result<C, ()>
 where
     C: Default,

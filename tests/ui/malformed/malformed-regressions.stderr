@@ -29,7 +29,7 @@ LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...",
    = and 1 other candidate
 
 error[E0539]: malformed `link` attribute input
-  --> $DIR/malformed-regressions.rs:8:1
+  --> $DIR/malformed-regressions.rs:10:1
    |
 LL | #[link = ""]
    | ^^^^^^^^^^^^ expected this to be a list
@@ -51,6 +51,18 @@ LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...",
    |
    = and 1 other candidate
 
+warning: attribute should be applied to an `extern` block with non-Rust ABI
+  --> $DIR/malformed-regressions.rs:7:1
+   |
+LL | #[link]
+   | ^^^^^^^
+...
+LL | fn main() {}
+   | ------------ not an `extern` block
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
+
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
   --> $DIR/malformed-regressions.rs:3:1
    |
@@ -69,7 +81,7 @@ LL | #[inline = ""]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: aborting due to 5 previous errors
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:

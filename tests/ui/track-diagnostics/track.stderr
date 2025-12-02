@@ -1,7 +1,7 @@
 error[E0425]: cannot find value `rust` in this scope
   --> $DIR/track.rs:LL:CC
    |
-LL |     break rust
+LL |     break rust;
    |           ^^^^ not found in this scope
    |
    = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
@@ -9,7 +9,7 @@ LL |     break rust
 error[E0268]: `break` outside of a loop or labeled block
   --> $DIR/track.rs:LL:CC
    |
-LL |     break rust
+LL |     break rust;
    |     ^^^^^^^^^^ cannot `break` outside of a loop or labeled block
    |
    = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/loops.rs:LL:CC
@@ -17,7 +17,7 @@ LL |     break rust
 error: internal compiler error: It looks like you're trying to break rust; would you like some ICE?
   --> $DIR/track.rs:LL:CC
    |
-LL |     break rust
+LL |     break rust;
    |     ^^^^^^^^^^
    |
    = note: -Ztrack-diagnostics: created at compiler/rustc_hir_typeck/src/lib.rs:LL:CC
@@ -41,7 +41,7 @@ note: compiler flags: ... -Z ui-testing ... -Z track-diagnostics
 
 query stack during panic:
 #0 [typeck] type-checking `main`
-#1 [analysis] running analysis passes on this crate
+#1 [analysis] running analysis passes on crate `track`
 end of query stack
 error: aborting due to 3 previous errors
 

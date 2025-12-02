@@ -36,12 +36,7 @@ impl GccOutput {
             return;
         }
 
-        // At build time, cg_gcc has to link to libgccjit.so (the unversioned symbol).
-        // However, at runtime, it will by default look for libgccjit.so.0.
-        // So when we install the built libgccjit.so file to the target `directory`, we add it there
-        // with the `.0` suffix.
-        let mut target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
-        target_filename.push_str(".0");
+        let target_filename = self.libgccjit.file_name().unwrap().to_str().unwrap().to_string();
 
         // If we build libgccjit ourselves, then `self.libgccjit` can actually be a symlink.
         // In that case, we have to resolve it first, otherwise we'd create a symlink to a symlink,
@@ -128,7 +123,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         &builder.config,
         builder.config.rust_info.is_managed_git_subrepository(),
     );
-    builder.verbose(|| {
+    builder.do_if_verbose(|| {
         eprintln!("GCC freshness: {source:?}");
     });
     match source {

@@ -163,6 +163,9 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::offload
+        | sym::offset_of
+        | sym::overflow_checks
         | sym::powf16
         | sym::powf32
         | sym::powf64
@@ -287,6 +290,7 @@ pub(crate) fn check_intrinsic_type(
         sym::size_of_val | sym::align_of_val => {
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
+        sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
@@ -310,6 +314,7 @@ pub(crate) fn check_intrinsic_type(
             let type_id = tcx.type_of(tcx.lang_items().type_id().unwrap()).instantiate_identity();
             (0, 0, vec![type_id, type_id], tcx.types.bool)
         }
+        sym::offload => (3, 0, vec![param(0), param(1)], param(2)),
         sym::offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::arith_offset => (
             1,
@@ -643,15 +648,15 @@ pub(crate) fn check_intrinsic_type(
         sym::aggregate_raw_ptr => (3, 0, vec![param(1), param(2)], param(0)),
         sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
-        sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
+        sym::ub_checks | sym::overflow_checks => (0, 0, Vec::new(), tcx.types.bool),
 
         sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
-        // contract_checks() -> bool
-        sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
         // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
         sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
-        sym::contract_check_ensures => (2, 0, vec![param(0), param(1)], param(1)),
+        sym::contract_check_ensures => {
+            (2, 0, vec![Ty::new_option(tcx, param(0)), param(1)], param(1))
+        }
 
         sym::simd_eq | sym::simd_ne | sym::simd_lt | sym::simd_le | sym::simd_gt | sym::simd_ge => {
             (2, 0, vec![param(0), param(0)], param(1))
@@ -695,8 +700,8 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![param(0), param(0), param(0)], param(0))
         }
         sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
-        sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
-        sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
+        sym::simd_masked_load => (3, 1, vec![param(0), param(1), param(2)], param(2)),
+        sym::simd_masked_store => (3, 1, vec![param(0), param(1), param(2)], tcx.types.unit),
         sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
         sym::simd_insert | sym::simd_insert_dyn => {
             (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0))

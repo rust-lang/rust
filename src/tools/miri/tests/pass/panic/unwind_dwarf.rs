@@ -15,7 +15,7 @@ struct Exception {
     cause: Box<dyn Any + Send>,
 }
 
-pub fn panic(data: Box<dyn Any + Send>) -> u32 {
+fn panic(data: Box<dyn Any + Send>) -> u32 {
     extern "C" fn exception_cleanup(
         _unwind_code: uw::_Unwind_Reason_Code,
         _exception: *mut uw::_Unwind_Exception,
@@ -53,7 +53,7 @@ fn miri_exception_class() -> uw::_Unwind_Exception_Class {
     0x4d4f5a_00_4d495249
 }
 
-pub fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     struct Data<F, R> {
         f: Option<F>,
         r: Option<R>,

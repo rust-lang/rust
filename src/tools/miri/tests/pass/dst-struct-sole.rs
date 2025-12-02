@@ -33,7 +33,7 @@ impl ToBar for Bar {
     }
 }
 
-pub fn main() {
+fn main() {
     // With a vec of ints.
     let f1 = Fat { ptr: [1, 2, 3] };
     foo(&f1);

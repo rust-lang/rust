@@ -1,4 +1,4 @@
-error: Undefined Behavior: `pthread_cond_t` can't be moved after first use
+error: Undefined Behavior: `pthread_cond_t` was not properly initialized at this location, or it got overwritten
   --> tests/fail-dep/concurrency/libc_pthread_cond_move.rs:LL:CC
    |
 LL |         libc::pthread_cond_destroy(cond2.as_mut_ptr());

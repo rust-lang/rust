@@ -2,9 +2,10 @@
 //! on a target via the base CPU, but disabled in this file via a `-C` flag.
 //@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu
 //@ compile-flags: -Ctarget-cpu=pentium4 -C target-feature=-sse,-sse2
-//@ add-core-stubs
+//@ add-minicore
 //@ build-fail
 //@ needs-llvm-components: x86
+//@ ignore-backends: gcc
 #![feature(no_core, repr_simd)]
 #![no_core]
 #![allow(improper_ctypes_definitions)]

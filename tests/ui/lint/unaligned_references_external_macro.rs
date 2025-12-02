@@ -2,7 +2,7 @@
 
 extern crate unaligned_references_external_crate;
 
-unaligned_references_external_crate::mac! { //~ERROR reference to packed field is unaligned
+unaligned_references_external_crate::mac! { //~ERROR reference to field of packed struct is unaligned
     #[repr(packed)]
     pub struct X {
         pub field: u16

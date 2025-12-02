@@ -1,9 +1,7 @@
 //! Reports references in code that the IDE layer cannot resolve.
 use hir::{AnyDiagnostic, Crate, Module, Semantics, db::HirDatabase, sym};
 use ide::{AnalysisHost, RootDatabase, TextRange};
-use ide_db::{
-    EditionedFileId, FxHashSet, LineIndexDatabase as _, base_db::SourceDatabase, defs::NameRefClass,
-};
+use ide_db::{FxHashSet, LineIndexDatabase as _, base_db::SourceDatabase, defs::NameRefClass};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use parser::SyntaxKind;
 use syntax::{AstNode, WalkEvent, ast};
@@ -139,9 +137,7 @@ fn all_unresolved_references(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
 ) -> Vec<TextRange> {
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
+    let file_id = sema.attach_first_edition(file_id);
     let file = sema.parse(file_id);
     let root = file.syntax();
 

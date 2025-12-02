@@ -466,7 +466,7 @@ impl<'a> Parser<'a> {
 
     // Public for rustfmt usage.
     pub fn parse_ident(&mut self) -> PResult<'a, Ident> {
-        self.parse_ident_common(true)
+        self.parse_ident_common(self.may_recover())
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
@@ -606,7 +606,20 @@ impl<'a> Parser<'a> {
             // Do an ASCII case-insensitive match, because all keywords are ASCII.
             && ident.as_str().eq_ignore_ascii_case(exp.kw.as_str())
         {
-            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: exp.kw.as_str() });
+            let kw = exp.kw.as_str();
+            let is_upper = kw.chars().all(char::is_uppercase);
+            let is_lower = kw.chars().all(char::is_lowercase);
+
+            let case = match (is_upper, is_lower) {
+                (true, true) => {
+                    unreachable!("keyword that is both fully upper- and fully lowercase")
+                }
+                (true, false) => errors::Case::Upper,
+                (false, true) => errors::Case::Lower,
+                (false, false) => errors::Case::Mixed,
+            };
+
+            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw, case });
             self.bump();
             true
         } else {
@@ -1315,9 +1328,14 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Mut)) { Mutability::Mut } else { Mutability::Not }
     }
 
-    /// Parses reference binding mode (`ref`, `ref mut`, or nothing).
+    /// Parses reference binding mode (`ref`, `ref mut`, `ref pin const`, `ref pin mut`, or nothing).
     fn parse_byref(&mut self) -> ByRef {
-        if self.eat_keyword(exp!(Ref)) { ByRef::Yes(self.parse_mutability()) } else { ByRef::No }
+        if self.eat_keyword(exp!(Ref)) {
+            let (pinnedness, mutability) = self.parse_pin_and_mut();
+            ByRef::Yes(pinnedness, mutability)
+        } else {
+            ByRef::No
+        }
     }
 
     /// Possibly parses mutability (`const` or `mut`).

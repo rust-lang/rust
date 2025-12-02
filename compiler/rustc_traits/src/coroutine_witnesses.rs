@@ -63,7 +63,7 @@ fn compute_assumptions<'tcx>(
                 ty::ClauseKind::WellFormed(ty.into()),
             )
         }));
-        let _errors = ocx.select_all_or_error();
+        let _errors = ocx.evaluate_obligations_error_on_ambiguity();
 
         let region_obligations = infcx.take_registered_region_obligations();
         let region_assumptions = infcx.take_registered_region_assumptions();

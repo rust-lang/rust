@@ -42,7 +42,7 @@ SOURCE_FILE
   WHITESPACE "\n"
 error 6: expected fn, trait or impl
 error 38: expected a name
-error 40: missing type for `const` or `static`
+error 40: missing type for `const`
 error 40: expected SEMICOLON
 error 44: expected an item
 error 44: expected an item

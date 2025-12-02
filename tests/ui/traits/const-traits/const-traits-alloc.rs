@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 #![feature(const_trait_impl, const_default)]
 #![allow(dead_code)]
 // alloc::string

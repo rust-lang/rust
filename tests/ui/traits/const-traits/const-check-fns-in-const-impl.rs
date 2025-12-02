@@ -3,8 +3,7 @@
 #![feature(const_trait_impl)]
 
 struct S;
-#[const_trait]
-trait T {
+const trait T {
     fn foo();
 }
 

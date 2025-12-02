@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
+use clippy_utils::ty::is_copy;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -27,7 +28,7 @@ pub(super) fn check<'tcx>(
     msrv: Msrv,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
+    if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option) {
         if !is_copy(cx, cx.typeck_results().expr_ty(unwrap_arg)) {
             // Replacing `.map(<f>).unwrap_or(<a>)` with `.map_or(<a>, <f>)` can sometimes lead to
             // borrowck errors, see #10579 for one such instance.

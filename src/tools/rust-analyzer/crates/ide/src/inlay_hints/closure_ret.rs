@@ -13,7 +13,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     closure: ast::ClosureExpr,
 ) -> Option<()> {

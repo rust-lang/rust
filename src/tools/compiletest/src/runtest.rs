@@ -6,7 +6,6 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::sync::Arc;
 use std::{env, fmt, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
@@ -19,7 +18,6 @@ use crate::common::{
     CompareMode, Config, Debugger, FailMode, PassMode, RunFailMode, RunResult, TestMode, TestPaths,
     TestSuite, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT, UI_STDERR, UI_STDOUT, UI_SVG,
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
-    output_testname_unique,
 };
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
@@ -110,7 +108,7 @@ fn dylib_name(name: &str) -> String {
 }
 
 pub fn run(
-    config: Arc<Config>,
+    config: &Config,
     stdout: &dyn ConsoleOut,
     stderr: &dyn ConsoleOut,
     testpaths: &TestPaths,
@@ -202,10 +200,11 @@ pub fn compute_stamp_hash(config: &Config) -> String {
         }
 
         Some(Debugger::Lldb) => {
-            config.python.hash(&mut hash);
-            config.lldb_python_dir.hash(&mut hash);
+            // LLDB debuginfo tests now use LLDB's embedded Python, with an
+            // explicit PYTHONPATH, so they don't depend on `--python` or
+            // the ambient PYTHONPATH.
+            config.lldb.hash(&mut hash);
             env::var_os("PATH").hash(&mut hash);
-            env::var_os("PYTHONPATH").hash(&mut hash);
         }
 
         None => {}
@@ -564,7 +563,7 @@ impl<'test> TestCx<'test> {
         self.maybe_add_external_args(&mut rustc, &self.config.target_rustcflags);
         rustc.args(&self.props.compile_flags);
 
-        self.compose_and_run_compiler(rustc, Some(src), self.testpaths)
+        self.compose_and_run_compiler(rustc, Some(src))
     }
 
     fn maybe_add_external_args(&self, cmd: &mut Command, args: &Vec<String>) {
@@ -878,6 +877,21 @@ impl<'test> TestCx<'test> {
                     prefix = self.error_prefix(),
                     n = not_found.len(),
                 );
+
+                // FIXME: Ideally, we should check this at the place where we actually parse error annotations.
+                // it's better to use (negated) heuristic inside normalize_output if possible
+                if let Some(human_format) = self.props.compile_flags.iter().find(|flag| {
+                    // `human`, `human-unicode`, `short` will not generate JSON output
+                    flag.contains("error-format")
+                        && (flag.contains("short") || flag.contains("human"))
+                }) {
+                    let msg = format!(
+                        "tests with compile flag `{}` should not have error annotations such as `//~ ERROR`",
+                        human_format
+                    ).color(Color::Red);
+                    writeln!(self.stdout, "{}", msg);
+                }
+
                 for error in &not_found {
                     print_error(error);
                     let mut suggestions = Vec::new();
@@ -980,30 +994,41 @@ impl<'test> TestCx<'test> {
             passes,
         );
 
-        self.compose_and_run_compiler(rustc, None, self.testpaths)
+        self.compose_and_run_compiler(rustc, None)
     }
 
     /// `root_out_dir` and `root_testpaths` refer to the parameters of the actual test being run.
     /// Auxiliaries, no matter how deep, have the same root_out_dir and root_testpaths.
-    fn document(&self, root_out_dir: &Utf8Path, root_testpaths: &TestPaths) -> ProcRes {
+    fn document(&self, root_out_dir: &Utf8Path, kind: DocKind) -> ProcRes {
+        self.document_inner(&self.testpaths.file, root_out_dir, kind)
+    }
+
+    /// Like `document`, but takes an explicit `file_to_doc` argument so that
+    /// it can also be used for documenting auxiliaries, in addition to
+    /// documenting the main test file.
+    fn document_inner(
+        &self,
+        file_to_doc: &Utf8Path,
+        root_out_dir: &Utf8Path,
+        kind: DocKind,
+    ) -> ProcRes {
         if self.props.build_aux_docs {
+            assert_eq!(kind, DocKind::Html, "build-aux-docs only make sense for html output");
+
             for rel_ab in &self.props.aux.builds {
-                let aux_testpaths = self.compute_aux_test_paths(root_testpaths, rel_ab);
-                let props_for_aux =
-                    self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+                let aux_path = self.resolve_aux_path(rel_ab);
+                let props_for_aux = self.props.from_aux_file(&aux_path, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
                     stdout: self.stdout,
                     stderr: self.stderr,
                     props: &props_for_aux,
-                    testpaths: &aux_testpaths,
+                    testpaths: self.testpaths,
                     revision: self.revision,
                 };
                 // Create the directory for the stdout/stderr files.
                 create_dir_all(aux_cx.output_base_dir()).unwrap();
-                // use root_testpaths here, because aux-builds should have the
-                // same --out-dir and auxiliary directory.
-                let auxres = aux_cx.document(&root_out_dir, root_testpaths);
+                let auxres = aux_cx.document_inner(&aux_path, &root_out_dir, kind);
                 if !auxres.status.success() {
                     return auxres;
                 }
@@ -1017,7 +1042,7 @@ impl<'test> TestCx<'test> {
         // actual --out-dir given to the auxiliary or test, as opposed to the root out dir for the entire
         // test
         let out_dir: Cow<'_, Utf8Path> = if self.props.unique_doc_out_dir {
-            let file_name = self.testpaths.file.file_stem().expect("file name should not be empty");
+            let file_name = file_to_doc.file_stem().expect("file name should not be empty");
             let out_dir = Utf8PathBuf::from_iter([
                 root_out_dir,
                 Utf8Path::new("docs"),
@@ -1031,7 +1056,7 @@ impl<'test> TestCx<'test> {
         };
 
         let mut rustdoc = Command::new(rustdoc_path);
-        let current_dir = output_base_dir(self.config, root_testpaths, self.safe_revision());
+        let current_dir = self.output_base_dir();
         rustdoc.current_dir(current_dir);
         rustdoc
             .arg("-L")
@@ -1042,21 +1067,24 @@ impl<'test> TestCx<'test> {
             .arg(out_dir.as_ref())
             .arg("--deny")
             .arg("warnings")
-            .arg(&self.testpaths.file)
+            .arg(file_to_doc)
             .arg("-A")
             .arg("internal_features")
             .args(&self.props.compile_flags)
             .args(&self.props.doc_flags);
 
-        if self.config.mode == TestMode::RustdocJson {
-            rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+        match kind {
+            DocKind::Html => {}
+            DocKind::Json => {
+                rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+            }
         }
 
         if let Some(ref linker) = self.config.target_linker {
             rustdoc.arg(format!("-Clinker={}", linker));
         }
 
-        self.compose_and_run_compiler(rustdoc, None, root_testpaths)
+        self.compose_and_run_compiler(rustdoc, None)
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
@@ -1171,24 +1199,21 @@ impl<'test> TestCx<'test> {
 
     /// For each `aux-build: foo/bar` annotation, we check to find the file in an `auxiliary`
     /// directory relative to the test itself (not any intermediate auxiliaries).
-    fn compute_aux_test_paths(&self, of: &TestPaths, rel_ab: &str) -> TestPaths {
-        let test_ab =
-            of.file.parent().expect("test file path has no parent").join("auxiliary").join(rel_ab);
-        if !test_ab.exists() {
-            self.fatal(&format!("aux-build `{}` source not found", test_ab))
+    fn resolve_aux_path(&self, relative_aux_path: &str) -> Utf8PathBuf {
+        let aux_path = self
+            .testpaths
+            .file
+            .parent()
+            .expect("test file path has no parent")
+            .join("auxiliary")
+            .join(relative_aux_path);
+        if !aux_path.exists() {
+            self.fatal(&format!(
+                "auxiliary source file `{relative_aux_path}` not found at `{aux_path}`"
+            ));
         }
 
-        TestPaths {
-            file: test_ab,
-            relative_dir: of
-                .relative_dir
-                .join(self.output_testname_unique())
-                .join("auxiliary")
-                .join(rel_ab)
-                .parent()
-                .expect("aux-build path has no parent")
-                .to_path_buf(),
-        }
+        aux_path
     }
 
     fn is_vxworks_pure_static(&self) -> bool {
@@ -1234,13 +1259,13 @@ impl<'test> TestCx<'test> {
         aux_dir
     }
 
-    fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Utf8Path, rustc: &mut Command) {
+    fn build_all_auxiliary(&self, aux_dir: &Utf8Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux.builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir, None);
+            self.build_auxiliary(rel_ab, &aux_dir, None);
         }
 
         for rel_ab in &self.props.aux.bins {
-            self.build_auxiliary(of, rel_ab, &aux_dir, Some(AuxType::Bin));
+            self.build_auxiliary(rel_ab, &aux_dir, Some(AuxType::Bin));
         }
 
         let path_to_crate_name = |path: &str| -> String {
@@ -1259,12 +1284,12 @@ impl<'test> TestCx<'test> {
             };
 
         for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, None);
+            let aux_type = self.build_auxiliary(&aux_path, &aux_dir, None);
             add_extern(rustc, aux_name, aux_path, aux_type);
         }
 
         for proc_macro in &self.props.aux.proc_macros {
-            self.build_auxiliary(of, proc_macro, &aux_dir, Some(AuxType::ProcMacro));
+            self.build_auxiliary(proc_macro, &aux_dir, Some(AuxType::ProcMacro));
             let crate_name = path_to_crate_name(proc_macro);
             add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
         }
@@ -1272,7 +1297,7 @@ impl<'test> TestCx<'test> {
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
         if let Some(aux_file) = &self.props.aux.codegen_backend {
-            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, None);
+            let aux_type = self.build_auxiliary(aux_file, aux_dir, None);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
                 rustc.arg(format!("-Zcodegen-backend={}", lib_path));
@@ -1282,20 +1307,15 @@ impl<'test> TestCx<'test> {
 
     /// `root_testpaths` refers to the path of the original test. the auxiliary and the test with an
     /// aux-build have the same `root_testpaths`.
-    fn compose_and_run_compiler(
-        &self,
-        mut rustc: Command,
-        input: Option<String>,
-        root_testpaths: &TestPaths,
-    ) -> ProcRes {
-        if self.props.add_core_stubs {
+    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
+        if self.props.add_minicore {
             let minicore_path = self.build_minicore();
             rustc.arg("--extern");
             rustc.arg(&format!("minicore={}", minicore_path));
         }
 
         let aux_dir = self.aux_output_dir();
-        self.build_all_auxiliary(root_testpaths, &aux_dir, &mut rustc);
+        self.build_all_auxiliary(&aux_dir, &mut rustc);
 
         rustc.envs(self.props.rustc_env.clone());
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
@@ -1322,7 +1342,7 @@ impl<'test> TestCx<'test> {
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
-        rustc.args(self.props.core_stubs_compile_flags.clone());
+        rustc.args(self.props.minicore_compile_flags.clone());
 
         let res = self.compose_and_run(rustc, self.config.compile_lib_path.as_path(), None, None);
         if !res.status.success() {
@@ -1340,14 +1360,12 @@ impl<'test> TestCx<'test> {
     /// If `aux_type` is `None`, then this will determine the aux-type automatically.
     fn build_auxiliary(
         &self,
-        of: &TestPaths,
         source_path: &str,
         aux_dir: &Utf8Path,
         aux_type: Option<AuxType>,
     ) -> AuxType {
-        let aux_testpaths = self.compute_aux_test_paths(of, source_path);
-        let mut aux_props =
-            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let aux_path = self.resolve_aux_path(source_path);
+        let mut aux_props = self.props.from_aux_file(&aux_path, self.revision, self.config);
         if aux_type == Some(AuxType::ProcMacro) {
             aux_props.force_host = true;
         }
@@ -1364,21 +1382,20 @@ impl<'test> TestCx<'test> {
             stdout: self.stdout,
             stderr: self.stderr,
             props: &aux_props,
-            testpaths: &aux_testpaths,
+            testpaths: self.testpaths,
             revision: self.revision,
         };
         // Create the directory for the stdout/stderr files.
         create_dir_all(aux_cx.output_base_dir()).unwrap();
-        let input_file = &aux_testpaths.file;
         let mut aux_rustc = aux_cx.make_compile_args(
-            input_file,
+            &aux_path,
             aux_output,
             Emit::None,
             AllowUnused::No,
             LinkToAux::No,
             Vec::new(),
         );
-        aux_cx.build_all_auxiliary(of, &aux_dir, &mut aux_rustc);
+        aux_cx.build_all_auxiliary(&aux_dir, &mut aux_rustc);
 
         aux_rustc.envs(aux_props.rustc_env.clone());
         for key in &aux_props.unset_rustc_env {
@@ -1433,7 +1450,7 @@ impl<'test> TestCx<'test> {
 
         aux_rustc.arg("-L").arg(&aux_dir);
 
-        if aux_props.add_core_stubs {
+        if aux_props.add_minicore {
             let minicore_path = self.build_minicore();
             aux_rustc.arg("--extern");
             aux_rustc.arg(&format!("minicore={}", minicore_path));
@@ -1447,7 +1464,7 @@ impl<'test> TestCx<'test> {
         );
         if !auxres.status.success() {
             self.fatal_proc_rec(
-                &format!("auxiliary build of {} failed to compile: ", aux_testpaths.file),
+                &format!("auxiliary build of {aux_path} failed to compile: "),
                 &auxres,
             );
         }
@@ -1618,8 +1635,7 @@ impl<'test> TestCx<'test> {
                     // executed and that don't specify their own optimization levels.
                     // Note: aux libs don't have a pass-mode, so they won't get optimized
                     // unless compile-flags are set in the aux file.
-                    if self.config.optimize_tests
-                        && self.props.pass_mode(&self.config) == Some(PassMode::Run)
+                    if self.props.pass_mode(&self.config) == Some(PassMode::Run)
                         && !self
                             .props
                             .compile_flags
@@ -1823,8 +1839,9 @@ impl<'test> TestCx<'test> {
 
         // Add `-A unused` before `config` flags and in-test (`props`) flags, so that they can
         // overwrite this.
+        // Don't allow `unused_attributes` since these are usually actual mistakes, rather than just unused code.
         if let AllowUnused::Yes = allow_unused {
-            rustc.args(&["-A", "unused"]);
+            rustc.args(&["-A", "unused", "-W", "unused_attributes"]);
         }
 
         // Allow tests to use internal features.
@@ -1874,7 +1891,7 @@ impl<'test> TestCx<'test> {
         // change the default.
         //
         // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
-        if self.props.add_core_stubs {
+        if self.props.add_minicore {
             rustc.arg("-Cpanic=abort");
             rustc.arg("-Cforce-unwind-tables=yes");
         }
@@ -2008,11 +2025,6 @@ impl<'test> TestCx<'test> {
         self.aux_output_dir_name().join("bin")
     }
 
-    /// Generates a unique name for the test, such as `testname.revision.mode`.
-    fn output_testname_unique(&self) -> Utf8PathBuf {
-        output_testname_unique(self.config, self.testpaths, self.safe_revision())
-    }
-
     /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
@@ -2107,7 +2119,7 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
 
-        let proc_res = self.compose_and_run_compiler(rustc, None, self.testpaths);
+        let proc_res = self.compose_and_run_compiler(rustc, None);
         (proc_res, output_path)
     }
 
@@ -2185,9 +2197,9 @@ impl<'test> TestCx<'test> {
             Vec::new(),
         );
         let aux_dir = new_rustdoc.aux_output_dir();
-        new_rustdoc.build_all_auxiliary(&new_rustdoc.testpaths, &aux_dir, &mut rustc);
+        new_rustdoc.build_all_auxiliary(&aux_dir, &mut rustc);
 
-        let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
+        let proc_res = new_rustdoc.document(&compare_dir, DocKind::Html);
         if !proc_res.status.success() {
             writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
@@ -2754,12 +2766,11 @@ impl<'test> TestCx<'test> {
             .map_err(|err| format!("failed to load expected output from `{}`: {}", path, err))
     }
 
+    /// Attempts to delete a file, succeeding if the file does not exist.
     fn delete_file(&self, file: &Utf8Path) {
-        if !file.exists() {
-            // Deleting a nonexistent file would error.
-            return;
-        }
-        if let Err(e) = fs::remove_file(file.as_std_path()) {
+        if let Err(e) = fs::remove_file(file.as_std_path())
+            && e.kind() != io::ErrorKind::NotFound
+        {
             self.fatal(&format!("failed to delete `{}`: {}", file, e,));
         }
     }
@@ -2981,7 +2992,7 @@ impl<'test> TestCx<'test> {
                         self.delete_file(&examined_path);
                     }
                     // If we want them to be the same, but they are different, then error.
-                    // We do this wether we bless or not
+                    // We do this whether we bless or not
                     (_, true, false) => {
                         self.fatal_proc_rec(
                             &format!("`{}` should not have different output from base test!", kind),
@@ -3103,6 +3114,12 @@ enum CompareOutcome {
     Blessed,
     /// Outputs differed and an error should be emitted
     Differed,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DocKind {
+    Html,
+    Json,
 }
 
 impl CompareOutcome {

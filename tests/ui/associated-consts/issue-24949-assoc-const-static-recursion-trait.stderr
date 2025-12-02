@@ -30,7 +30,7 @@ note: ...which requires elaborating drops for `<impl at $DIR/issue-24949-assoc-c
 LL |     const BAR: u32 = TRAIT_REF_BAR;
    |                      ^^^^^^^^^^^^^
    = note: ...which again requires simplifying constant for the type system `TRAIT_REF_BAR`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
+   = note: cycle used when running analysis passes on crate `issue_24949_assoc_const_static_recursion_trait`
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

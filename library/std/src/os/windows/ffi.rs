@@ -141,7 +141,7 @@ impl OsStrExt for OsStr {
 pub struct EncodeWide<'a> {
     inner: alloc::wtf8::EncodeWide<'a>,
 }
-#[stable(feature = "encode_wide_debug", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "encode_wide_debug", since = "1.91.0")]
 impl fmt::Debug for EncodeWide<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.inner, f)

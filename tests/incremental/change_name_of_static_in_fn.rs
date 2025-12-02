@@ -1,4 +1,5 @@
 //@ revisions:rpass1 rpass2 rpass3
+//@ ignore-backends: gcc
 
 // See issue #57692.
 

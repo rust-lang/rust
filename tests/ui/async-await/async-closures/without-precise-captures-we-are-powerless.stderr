@@ -28,6 +28,12 @@ LL |     outlives::<'a>(c());
 LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
+   |
+LL | fn outlives<'a>(_: impl Sized + 'a) {}
+   |                                 ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:26:13
@@ -73,6 +79,12 @@ LL |     outlives::<'a>(c());
 LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
+   |
+LL | fn outlives<'a>(_: impl Sized + 'a) {}
+   |                                 ^^
 
 error[E0505]: cannot move out of `c` because it is borrowed
   --> $DIR/without-precise-captures-we-are-powerless.rs:32:30
@@ -89,6 +101,12 @@ LL |     outlives::<'a>(c());
    |     argument requires that `c` is borrowed for `'a`
 LL |     outlives::<'a>(call_once(c));
    |                              ^ move out of `c` occurs here
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
+   |
+LL | fn outlives<'a>(_: impl Sized + 'a) {}
+   |                                 ^^
 
 error[E0597]: `x` does not live long enough
   --> $DIR/without-precise-captures-we-are-powerless.rs:36:13
@@ -129,6 +147,12 @@ LL |     outlives::<'a>(c());
 LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
+   |
+LL | fn outlives<'a>(_: impl Sized + 'a) {}
+   |                                 ^^
 
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/without-precise-captures-we-are-powerless.rs:44:5
@@ -141,7 +165,44 @@ help: add explicit lifetime `'a` to the type of `x`
 LL | fn through_field_and_ref_move<'a>(x: &'a S<'a>) {
    |                                       ++
 
-error: aborting due to 10 previous errors
+error[E0597]: `x` does not live long enough
+  --> $DIR/without-precise-captures-we-are-powerless.rs:52:13
+   |
+LL | fn through_method<'a>(x: &'a i32) {
+   |                   -- lifetime `'a` defined here
+LL |     let c = async || { println!("{}", *x); };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+LL |     T.outlives::<'a>(c());
+LL |     T.outlives::<'a>(call_once(c));
+   |     ------------------------------ argument requires that `x` is borrowed for `'a`
+...
+LL | }
+   |  - `x` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/without-precise-captures-we-are-powerless.rs:57:22
+   |
+LL | fn through_method<'a>(x: &'a i32) {
+   |                   -- lifetime `'a` defined here
+...
+LL |     let c = async move || { println!("{}", *x); };
+   |         - binding `c` declared here
+LL |     T.outlives::<'a>(c());
+   |     -----------------^---
+   |     |                |
+   |     |                borrowed value does not live long enough
+   |     argument requires that `c` is borrowed for `'a`
+LL |     T.outlives::<'a>(call_once(c));
+LL | }
+   | - `c` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $DIR/without-precise-captures-we-are-powerless.rs:49:47
+   |
+LL |     fn outlives<'a>(&'a self, _: impl Sized + 'a) {}
+   |                                               ^^
+
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0505, E0597, E0621.
 For more information about an error, try `rustc --explain E0505`.

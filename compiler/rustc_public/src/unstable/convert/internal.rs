@@ -40,7 +40,7 @@ impl RustcInternal for CrateNum {
         _tables: &mut Tables<'_, BridgeTys>,
         _tcx: impl InternalCx<'tcx>,
     ) -> Self::T<'tcx> {
-        rustc_span::def_id::CrateNum::from_usize(*self)
+        rustc_span::def_id::CrateNum::from_usize(self.0)
     }
 }
 
@@ -702,9 +702,6 @@ impl RustcInternal for ProjectionElem {
             }
             ProjectionElem::OpaqueCast(ty) => {
                 rustc_middle::mir::PlaceElem::OpaqueCast(ty.internal(tables, tcx))
-            }
-            ProjectionElem::Subtype(ty) => {
-                rustc_middle::mir::PlaceElem::Subtype(ty.internal(tables, tcx))
             }
         }
     }

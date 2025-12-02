@@ -3,15 +3,15 @@ use std::ops::Deref;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty};
+use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType, Ty};
 use tracing::instrument;
 
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, UndoLog};
 
 #[derive(Default, Debug, Clone)]
 pub struct OpaqueTypeStorage<'tcx> {
-    opaque_types: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-    duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>,
+    opaque_types: FxIndexMap<OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>>,
+    duplicate_entries: Vec<(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)>,
 }
 
 /// The number of entries in the opaque type storage at a given point.
@@ -35,7 +35,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     pub(crate) fn remove(
         &mut self,
         key: OpaqueTypeKey<'tcx>,
-        prev: Option<OpaqueHiddenType<'tcx>>,
+        prev: Option<ProvisionalHiddenType<'tcx>>,
     ) {
         if let Some(prev) = prev {
             *self.opaque_types.get_mut(&key).unwrap() = prev;
@@ -60,7 +60,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
 
     pub(crate) fn take_opaque_types(
         &mut self,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries))
     }
@@ -75,7 +75,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     pub fn opaque_types_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         self.opaque_types
             .iter()
             .skip(prev_entries.opaque_types)
@@ -90,7 +90,7 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     /// to also consider duplicate entries.
     pub fn iter_lookup_table(
         &self,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         self.opaque_types.iter().map(|(k, v)| (*k, *v))
     }
 
@@ -101,13 +101,13 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
     /// accesses them.
     pub fn iter_duplicate_entries(
         &self,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         self.duplicate_entries.iter().copied()
     }
 
     pub fn iter_opaque_types(
         &self,
-    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+    ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         opaque_types.iter().map(|(k, v)| (*k, *v)).chain(duplicate_entries.iter().copied())
     }
@@ -146,7 +146,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
     pub fn register(
         &mut self,
         key: OpaqueTypeKey<'tcx>,
-        hidden_type: OpaqueHiddenType<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let Some(entry) = self.storage.opaque_types.get_mut(&key) {
             let prev = std::mem::replace(entry, hidden_type);
@@ -158,7 +158,11 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
         None
     }
 
-    pub fn add_duplicate(&mut self, key: OpaqueTypeKey<'tcx>, hidden_type: OpaqueHiddenType<'tcx>) {
+    pub fn add_duplicate(
+        &mut self,
+        key: OpaqueTypeKey<'tcx>,
+        hidden_type: ProvisionalHiddenType<'tcx>,
+    ) {
         self.storage.duplicate_entries.push((key, hidden_type));
         self.undo_log.push(UndoLog::DuplicateOpaqueType);
     }

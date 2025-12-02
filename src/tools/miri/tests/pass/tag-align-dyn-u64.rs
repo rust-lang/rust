@@ -24,7 +24,7 @@ fn is_u64_aligned(u: &Tag<u64>) -> bool {
     return (p & (u64_align - 1)) == 0;
 }
 
-pub fn main() {
+fn main() {
     let x = mk_rec();
     assert!(is_u64_aligned(&x.t));
 }

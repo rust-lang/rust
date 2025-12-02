@@ -17,14 +17,14 @@ use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
+use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
 
 use crate::common::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
-use crate::type_::Type;
+use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
-use crate::{base, debuginfo, llvm};
+use crate::{base, debuginfo};
 
 pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
@@ -204,7 +204,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(g2, g1);
         g2
-    } else if cx.tcx.sess.target.arch == "x86"
+    } else if cx.tcx.sess.target.arch == Arch::X86
         && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
@@ -241,11 +241,13 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", name);
                 });
-                llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
                 gv
             }
-            _ => self.define_private_global(self.val_ty(cv)),
+            _ => self.define_global("", self.val_ty(cv)).unwrap_or_else(|| {
+                bug!("anonymous global symbol is already defined");
+            }),
         };
+        llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
         llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::set_unnamed_address(gv, llvm::UnnamedAddr::Global);
@@ -494,16 +496,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                 let alloc = self.create_metadata(bytes);
                 let data = [section, alloc];
-                let meta =
-                    unsafe { llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len()) };
-                let val = self.get_metadata_value(meta);
-                unsafe {
-                    llvm::LLVMAddNamedMetadataOperand(
-                        self.llmod,
-                        c"wasm.custom_sections".as_ptr(),
-                        val,
-                    )
-                };
+                self.module_add_named_metadata_node(self.llmod(), c"wasm.custom_sections", &data);
             }
         } else {
             base::set_link_section(g, attrs);
@@ -564,7 +557,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let g = self.define_global(&sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
-        set_global_alignment(self, g, self.tcx.data_layout.i8_align.abi);
+        set_global_alignment(self, g, self.tcx.data_layout.i8_align);
         llvm::set_initializer(g, llval);
         llvm::set_linkage(g, llvm::Linkage::PrivateLinkage);
         llvm::set_section(g, c"__TEXT,__cstring,cstring_literals");
@@ -680,7 +673,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let methname_g = self.define_global(&methname_sym, methname_llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", methname_sym);
         });
-        set_global_alignment(self, methname_g, self.tcx.data_layout.i8_align.abi);
+        set_global_alignment(self, methname_g, self.tcx.data_layout.i8_align);
         llvm::set_initializer(methname_g, methname_llval);
         llvm::set_linkage(methname_g, llvm::Linkage::PrivateLinkage);
         llvm::set_section(

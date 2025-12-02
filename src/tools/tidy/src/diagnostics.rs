@@ -1,9 +1,31 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use termcolor::{Color, WriteColor};
+use termcolor::Color;
+
+#[derive(Clone, Default)]
+///CLI flags used by tidy.
+pub struct TidyFlags {
+    ///Applies style and formatting changes during a tidy run.
+    bless: bool,
+}
+
+impl TidyFlags {
+    pub fn new(cfg_args: &[String]) -> Self {
+        let mut flags = Self::default();
+
+        for arg in cfg_args {
+            match arg.as_str() {
+                "--bless" => flags.bless = true,
+                _ => continue,
+            }
+        }
+        flags
+    }
+}
 
 /// Collects diagnostics from all tidy steps, and contains shared information
 /// that determines how should message and logs be presented.
@@ -11,22 +33,32 @@ use termcolor::{Color, WriteColor};
 /// Since checks are executed in parallel, the context is internally synchronized, to avoid
 /// all checks to lock it explicitly.
 #[derive(Clone)]
-pub struct DiagCtx(Arc<Mutex<DiagCtxInner>>);
+pub struct TidyCtx {
+    tidy_flags: TidyFlags,
+    diag_ctx: Arc<Mutex<DiagCtxInner>>,
+}
 
-impl DiagCtx {
-    pub fn new(root_path: &Path, verbose: bool) -> Self {
-        Self(Arc::new(Mutex::new(DiagCtxInner {
-            running_checks: Default::default(),
-            finished_checks: Default::default(),
-            root_path: root_path.to_path_buf(),
-            verbose,
-        })))
+impl TidyCtx {
+    pub fn new(root_path: &Path, verbose: bool, tidy_flags: TidyFlags) -> Self {
+        Self {
+            diag_ctx: Arc::new(Mutex::new(DiagCtxInner {
+                running_checks: Default::default(),
+                finished_checks: Default::default(),
+                root_path: root_path.to_path_buf(),
+                verbose,
+            })),
+            tidy_flags,
+        }
+    }
+
+    pub fn is_bless_enabled(&self) -> bool {
+        self.tidy_flags.bless
     }
 
     pub fn start_check<Id: Into<CheckId>>(&self, id: Id) -> RunningCheck {
         let mut id = id.into();
 
-        let mut ctx = self.0.lock().unwrap();
+        let mut ctx = self.diag_ctx.lock().unwrap();
 
         // Shorten path for shorter diagnostics
         id.path = match id.path {
@@ -38,14 +70,14 @@ impl DiagCtx {
         RunningCheck {
             id,
             bad: false,
-            ctx: self.0.clone(),
+            ctx: self.diag_ctx.clone(),
             #[cfg(test)]
             errors: vec![],
         }
     }
 
     pub fn into_failed_checks(self) -> Vec<FinishedCheck> {
-        let ctx = Arc::into_inner(self.0).unwrap().into_inner().unwrap();
+        let ctx = Arc::into_inner(self.diag_ctx).unwrap().into_inner().unwrap();
         assert!(ctx.running_checks.is_empty(), "Some checks are still running");
         ctx.finished_checks.into_iter().filter(|c| c.bad).collect()
     }
@@ -151,7 +183,7 @@ impl RunningCheck {
     /// Useful if you want to run some functions from tidy without configuring
     /// diagnostics.
     pub fn new_noop() -> Self {
-        let ctx = DiagCtx::new(Path::new(""), false);
+        let ctx = TidyCtx::new(Path::new(""), false, TidyFlags::default());
         ctx.start_check("noop")
     }
 
@@ -214,30 +246,63 @@ pub const COLOR_WARNING: Color = Color::Yellow;
 /// Output a message to stderr.
 /// The message can be optionally scoped to a certain check, and it can also have a certain color.
 pub fn output_message(msg: &str, id: Option<&CheckId>, color: Option<Color>) {
-    use std::io::Write;
+    use termcolor::{ColorChoice, ColorSpec};
 
-    use termcolor::{ColorChoice, ColorSpec, StandardStream};
+    let stderr: &mut dyn termcolor::WriteColor = if cfg!(test) {
+        &mut StderrForUnitTests
+    } else {
+        &mut termcolor::StandardStream::stderr(ColorChoice::Auto)
+    };
 
-    let mut stderr = StandardStream::stderr(ColorChoice::Auto);
     if let Some(color) = &color {
         stderr.set_color(ColorSpec::new().set_fg(Some(*color))).unwrap();
     }
 
     match id {
         Some(id) => {
-            write!(&mut stderr, "tidy [{}", id.name).unwrap();
+            write!(stderr, "tidy [{}", id.name).unwrap();
             if let Some(path) = &id.path {
-                write!(&mut stderr, " ({})", path.display()).unwrap();
+                write!(stderr, " ({})", path.display()).unwrap();
             }
-            write!(&mut stderr, "]").unwrap();
+            write!(stderr, "]").unwrap();
         }
         None => {
-            write!(&mut stderr, "tidy").unwrap();
+            write!(stderr, "tidy").unwrap();
         }
     }
     if color.is_some() {
         stderr.set_color(&ColorSpec::new()).unwrap();
     }
 
-    writeln!(&mut stderr, ": {msg}").unwrap();
+    writeln!(stderr, ": {msg}").unwrap();
+}
+
+/// An implementation of `io::Write` and `termcolor::WriteColor` that writes
+/// to stderr via `eprint!`, so that the output can be properly captured when
+/// running tidy's unit tests.
+struct StderrForUnitTests;
+
+impl io::Write for StderrForUnitTests {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        eprint!("{}", String::from_utf8_lossy(buf));
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl termcolor::WriteColor for StderrForUnitTests {
+    fn supports_color(&self) -> bool {
+        false
+    }
+
+    fn set_color(&mut self, _spec: &termcolor::ColorSpec) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn reset(&mut self) -> io::Result<()> {
+        Ok(())
+    }
 }

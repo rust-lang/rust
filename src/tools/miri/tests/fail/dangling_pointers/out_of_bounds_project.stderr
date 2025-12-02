@@ -11,8 +11,6 @@ help: ALLOC was allocated here:
    |
 LL |     let v = 0u32;
    |         ^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
    = note: this error originates in the macro `addr_of` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

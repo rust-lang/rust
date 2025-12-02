@@ -1,5 +1,3 @@
-//@no-rustfix
-
 #[cfg_attr(all(), must_use, deprecated)]
 fn issue_12320() {}
 //~^ must_use_unit

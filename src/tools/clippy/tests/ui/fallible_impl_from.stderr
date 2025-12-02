@@ -1,5 +1,5 @@
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:6:1
+  --> tests/ui/fallible_impl_from.rs:5:1
    |
 LL | / impl From<String> for Foo {
 LL | |
@@ -11,7 +11,7 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:10:13
+  --> tests/ui/fallible_impl_from.rs:9:13
    |
 LL |         Foo(s.parse().unwrap())
    |             ^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | #![deny(clippy::fallible_impl_from)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:29:1
+  --> tests/ui/fallible_impl_from.rs:28:1
    |
 LL | / impl From<usize> for Invalid {
 LL | |
@@ -34,13 +34,13 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:34:13
+  --> tests/ui/fallible_impl_from.rs:33:13
    |
 LL |             panic!();
    |             ^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:40:1
+  --> tests/ui/fallible_impl_from.rs:39:1
    |
 LL | / impl From<Option<String>> for Invalid {
 LL | |
@@ -52,7 +52,7 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:44:17
+  --> tests/ui/fallible_impl_from.rs:43:17
    |
 LL |         let s = s.unwrap();
    |                 ^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |             panic!("{:?}", s);
    |             ^^^^^^^^^^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:60:1
+  --> tests/ui/fallible_impl_from.rs:59:1
    |
 LL | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
 LL | |
@@ -77,12 +77,12 @@ LL | | }
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:64:12
+  --> tests/ui/fallible_impl_from.rs:63:12
    |
 LL |         if s.parse::<u32>().ok().unwrap() != 42 {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |             panic!("{:?}", s);
-   |             ^^^^^^^^^^^^^^^^^
+LL |             panic!("{s:?}");
+   |             ^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

@@ -1,14 +1,15 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
-use clippy_utils::{is_diag_item_method, path_to_local_id, paths, sym};
+use clippy_utils::{paths, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
+    BindingMode, Expr, ExprKind, HirId, LangItem, LetStmt, MatchSource, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -214,7 +215,7 @@ fn indirect_usage<'tcx>(
     {
         let mut path_to_binding = None;
         let _: Option<!> = for_each_expr(cx, init_expr, |e| {
-            if path_to_local_id(e, binding) {
+            if e.res_local_id() == Some(binding) {
                 path_to_binding = Some(e);
             }
             ControlFlow::Continue(Descend::from(path_to_binding.is_none()))
@@ -271,7 +272,6 @@ struct IterUsage {
     span: Span,
 }
 
-#[allow(clippy::too_many_lines)]
 fn parse_iter_usage<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
@@ -304,7 +304,7 @@ fn parse_iter_usage<'tcx>(
                     };
                 },
                 (sym::nth | sym::skip, [idx_expr]) if cx.tcx.trait_of_assoc(did) == Some(iter_id) => {
-                    if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval(idx_expr) {
+                    if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval_local(idx_expr, ctxt) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
                         } else if let Some((_, Node::Expr(next_expr))) = iter.next()
@@ -332,12 +332,12 @@ fn parse_iter_usage<'tcx>(
     let (unwrap_kind, span) = if let Some((_, Node::Expr(e))) = iter.next() {
         match e.kind {
             ExprKind::Call(
-                Expr {
-                    kind: ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, ..)),
+                &Expr {
+                    kind: ExprKind::Path(qpath),
                     ..
                 },
                 [_],
-            ) => {
+            ) if cx.tcx.qpath_is_lang_item(qpath, LangItem::TryTraitBranch) => {
                 let parent_span = e.span.parent_callsite().unwrap();
                 if parent_span.ctxt() == ctxt {
                     (Some(UnwrapKind::QuestionMark), parent_span)
@@ -351,7 +351,9 @@ fn parse_iter_usage<'tcx>(
                     && cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .is_some_and(|id| is_diag_item_method(cx, id, sym::Option)) =>
+                        .opt_parent(cx)
+                        .opt_impl_ty(cx)
+                        .is_diag_item(cx, sym::Option) =>
             {
                 (Some(UnwrapKind::Unwrap), e.span)
             },

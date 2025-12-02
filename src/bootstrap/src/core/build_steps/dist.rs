@@ -22,7 +22,7 @@ use tracing::instrument;
 use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{
-    self, RustcPrivateCompilers, Tool, ToolTargetBuildMode, get_tool_target_compiler,
+    self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
@@ -63,11 +63,13 @@ pub struct Docs {
 
 impl Step for Docs {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.docs;
-        run.alias("rust-docs").default_condition(default)
+        run.alias("rust-docs")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -107,11 +109,13 @@ pub struct JsonDocs {
 
 impl Step for JsonDocs {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.config.docs;
-        run.alias("rust-docs-json").default_condition(default)
+        run.alias("rust-docs-json")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -156,13 +160,14 @@ pub struct RustcDocs {
 
 impl Step for RustcDocs {
     type Output = GeneratedTarball;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("rustc-docs").default_condition(builder.config.compiler_docs)
+        run.alias("rustc-docs")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.compiler_docs
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -295,36 +300,65 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     }
 }
 
+fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
+    if builder.config.dry_run() {
+        return;
+    }
+
+    let (_, lib_path) = get_cc_search_dirs(target, builder);
+
+    // Libraries necessary to link the windows-gnullvm toolchains.
+    // System libraries will be preferred if they are available (see #67429).
+    let target_libs = [
+        // MinGW libs
+        "libunwind.a",
+        "libunwind.dll.a",
+        "libmingw32.a",
+        "libmingwex.a",
+        "libmsvcrt.a",
+        // Windows import libs, remove them once std transitions to raw-dylib
+        "libkernel32.a",
+        "libuser32.a",
+        "libntdll.a",
+        "libuserenv.a",
+        "libws2_32.a",
+        "libdbghelp.a",
+    ];
+
+    //Find mingw artifacts we want to bundle
+    let target_libs = find_files(&target_libs, &lib_path);
+
+    //Copy platform libs to platform-specific lib directory
+    let plat_target_lib_self_contained_dir =
+        plat_root.join("lib/rustlib").join(target).join("lib/self-contained");
+    fs::create_dir_all(&plat_target_lib_self_contained_dir)
+        .expect("creating plat_target_lib_self_contained_dir failed");
+    for src in target_libs {
+        builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
+    }
+}
+
 fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
     if builder.config.dry_run() {
         return;
     }
 
-    let (bin_path, libs_path) = get_cc_search_dirs(target, builder);
+    let (bin_path, _) = get_cc_search_dirs(target, builder);
 
     let mut rustc_dlls = vec![];
     // windows-gnu and windows-gnullvm require different runtime libs
-    if target.ends_with("windows-gnu") {
+    if target.is_windows_gnu() {
         rustc_dlls.push("libwinpthread-1.dll");
         if target.starts_with("i686-") {
             rustc_dlls.push("libgcc_s_dw2-1.dll");
         } else {
             rustc_dlls.push("libgcc_s_seh-1.dll");
         }
-    } else if target.ends_with("windows-gnullvm") {
+    } else if target.is_windows_gnullvm() {
         rustc_dlls.push("libunwind.dll");
     } else {
         panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
     }
-    // FIXME(#144656): Remove this whole `let ...`
-    let bin_path = if target.ends_with("windows-gnullvm") && builder.host_target != target {
-        bin_path
-            .into_iter()
-            .chain(libs_path.iter().map(|path| path.with_file_name("bin")))
-            .collect()
-    } else {
-        bin_path
-    };
     let rustc_dlls = find_files(&rustc_dlls, &bin_path);
 
     // Copy runtime dlls next to rustc.exe
@@ -382,10 +416,13 @@ pub struct Mingw {
 
 impl Step for Mingw {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-mingw")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -394,14 +431,20 @@ impl Step for Mingw {
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
-        if !target.ends_with("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
+        if !target.contains("pc-windows-gnu") || !builder.config.dist_include_mingw_linker {
             return None;
         }
 
         let mut tarball = Tarball::new(builder, "rust-mingw", &target.triple);
         tarball.set_product_name("Rust MinGW");
 
-        make_win_dist(tarball.image_dir(), target, builder);
+        if target.ends_with("pc-windows-gnu") {
+            make_win_dist(tarball.image_dir(), target, builder);
+        } else if target.ends_with("pc-windows-gnullvm") {
+            make_win_llvm_dist(tarball.image_dir(), target, builder);
+        } else {
+            unreachable!();
+        }
 
         Some(tarball.generate())
     }
@@ -428,12 +471,14 @@ pub struct Rustc {
 
 impl Step for Rustc {
     type Output = GeneratedTarball;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -625,7 +670,7 @@ fn generate_target_spec_json_schema(builder: &Builder<'_>, sysroot: &Path) {
     // We do this by using the stage 1 compiler, which is always compiled for the host,
     // even in a cross build.
     let stage1_host = builder.compiler(1, builder.host_target);
-    let mut rustc = command(builder.rustc(stage1_host)).fail_fast();
+    let mut rustc = builder.rustc_cmd(stage1_host).fail_fast();
     rustc
         .env("RUSTC_BOOTSTRAP", "1")
         .args(["--print=target-spec-json-schema", "-Zunstable-options"]);
@@ -800,10 +845,13 @@ impl Std {
 
 impl Step for Std {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-std")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -862,11 +910,14 @@ impl RustcDev {
 
 impl Step for RustcDev {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc-dev")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -928,11 +979,12 @@ pub struct Analysis {
 impl Step for Analysis {
     type Output = Option<GeneratedTarball>;
 
-    const DEFAULT: bool = true;
-
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "analysis");
-        run.alias("rust-analysis").default_condition(default)
+        run.alias("rust-analysis")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "analysis")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1100,11 +1152,14 @@ pub struct Src;
 impl Step for Src {
     /// The output path of the src installer tarball
     type Output = GeneratedTarball;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-src")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1161,12 +1216,14 @@ pub struct PlainSourceTarball;
 impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("rustc-src").default_condition(builder.config.rust_dist_src)
+        run.alias("rustc-src")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.rust_dist_src
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1199,11 +1256,11 @@ impl Step for PlainSourceTarball {
             "bootstrap.example.toml",
             "configure",
             "license-metadata.json",
-            "package-lock.json",
             "package.json",
             "x",
             "x.ps1",
             "x.py",
+            "yarn.lock",
             // tidy-alphabetical-end
         ];
         let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];
@@ -1309,12 +1366,14 @@ pub struct Cargo {
 
 impl Step for Cargo {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "cargo");
-        run.alias("cargo").default_condition(default)
+        run.alias("cargo")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "cargo")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1367,12 +1426,14 @@ pub struct RustAnalyzer {
 
 impl Step for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rust-analyzer");
-        run.alias("rust-analyzer").default_condition(default)
+        run.alias("rust-analyzer")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1410,12 +1471,14 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "clippy");
-        run.alias("clippy").default_condition(default)
+        run.alias("clippy")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "clippy")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1456,12 +1519,14 @@ pub struct Miri {
 
 impl Step for Miri {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "miri");
-        run.alias("miri").default_condition(default)
+        run.alias("miri")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1504,20 +1569,21 @@ pub struct CraneliftCodegenBackend {
 
 impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_cranelift")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
         // We only want to build the cranelift backend in `x dist` if the backend was enabled
         // in rust.codegen-backends.
         // Sadly, we don't have access to the actual target for which we're disting clif here..
         // So we just use the host target.
-        let clif_enabled_by_default = run
-            .builder
+        builder
             .config
-            .enabled_codegen_backends(run.builder.host_target)
-            .contains(&CodegenBackendKind::Cranelift);
-        run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
+            .enabled_codegen_backends(builder.host_target)
+            .contains(&CodegenBackendKind::Cranelift)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1590,12 +1656,14 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rustfmt");
-        run.alias("rustfmt").default_condition(default)
+        run.alias("rustfmt")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "rustfmt")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1632,12 +1700,14 @@ pub struct Extended {
 
 impl Step for Extended {
     type Output = ();
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.alias("extended").default_condition(builder.config.extended)
+        run.alias("extended")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.extended
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1677,7 +1747,7 @@ impl Step for Extended {
         tarballs.push(builder.ensure(Rustc { target_compiler }));
         tarballs.push(builder.ensure(Std { build_compiler, target }).expect("missing std"));
 
-        if target.is_windows_gnu() {
+        if target.is_windows_gnu() || target.is_windows_gnullvm() {
             tarballs.push(builder.ensure(Mingw { target }).expect("missing mingw"));
         }
 
@@ -1824,8 +1894,7 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        // FIXME(mati865): `gnullvm` here is temporary, remove it once it can host itself
-        if target.is_windows() && !target.contains("gnullvm") {
+        if target.is_windows() {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
@@ -1863,7 +1932,7 @@ impl Step for Extended {
                     prepare(tool);
                 }
             }
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 prepare("rust-mingw");
             }
 
@@ -2028,7 +2097,7 @@ impl Step for Extended {
                 .arg("-t")
                 .arg(etc.join("msi/remove-duplicates.xsl"))
                 .run(builder);
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 command(&heat)
                     .current_dir(&exe)
                     .arg("dir")
@@ -2077,7 +2146,7 @@ impl Step for Extended {
                 if built_tools.contains("miri") {
                     cmd.arg("-dMiriDir=miri");
                 }
-                if target.is_windows_gnu() {
+                if target.is_windows_gnu() || target.is_windows_gnullvm() {
                     cmd.arg("-dGccDir=rust-mingw");
                 }
                 cmd.run(builder);
@@ -2105,7 +2174,7 @@ impl Step for Extended {
             }
             candle("AnalysisGroup.wxs".as_ref());
 
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 candle("GccGroup.wxs".as_ref());
             }
 
@@ -2148,7 +2217,7 @@ impl Step for Extended {
                 cmd.arg("DocsGroup.wixobj");
             }
 
-            if target.is_windows_gnu() {
+            if target.is_windows_gnu() || target.is_windows_gnullvm() {
                 cmd.arg("GccGroup.wixobj");
             }
             // ICE57 wrongly complains about the shortcuts
@@ -2187,7 +2256,7 @@ fn add_env(
         .env("CFG_BUILD", target.triple)
         .env("CFG_CHANNEL", &builder.config.channel);
 
-    if target.contains("windows-gnullvm") {
+    if target.is_windows_gnullvm() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "LLVM");
     } else if target.is_windows_gnu() {
         cmd.env("CFG_MINGW", "1").env("CFG_ABI", "GNU");
@@ -2304,7 +2373,7 @@ fn maybe_install_llvm(
         let mut cmd = command(host_llvm_config);
         cmd.cached();
         cmd.arg("--libfiles");
-        builder.verbose(|| println!("running {cmd:?}"));
+        builder.do_if_verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.host_target);
         let target_llvm_out = &builder.llvm_out(target);
@@ -2379,17 +2448,18 @@ pub struct LlvmTools {
 impl Step for LlvmTools {
     type Output = Option<GeneratedTarball>;
     const IS_HOST: bool = true;
-    const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "llvm-tools");
-
         let mut run = run.alias("llvm-tools");
         for tool in LLVM_TOOLS {
             run = run.alias(tool);
         }
 
-        run.default_condition(default)
+        run
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "llvm-tools")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2482,12 +2552,14 @@ pub struct LlvmBitcodeLinker {
 
 impl Step for LlvmBitcodeLinker {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
-        run.alias("llvm-bitcode-linker").default_condition(default)
+        run.alias("llvm-bitcode-linker")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        should_build_extended_tool(builder, "llvm-bitcode-linker")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2534,11 +2606,14 @@ pub struct RustDev {
 
 impl Step for RustDev {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-dev")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2695,10 +2770,14 @@ impl Step for BuildManifest {
     }
 
     fn run(self, builder: &Builder<'_>) -> GeneratedTarball {
-        let build_manifest = builder.tool_exe(Tool::BuildManifest);
+        // FIXME: Should BuildManifest actually be built for `self.target`?
+        // Today CI only builds this step where that matches the host_target so it doesn't matter
+        // today.
+        let build_manifest =
+            builder.ensure(tool::BuildManifest::new(builder, builder.config.host_target));
 
         let tarball = Tarball::new(builder, "build-manifest", &self.target.triple);
-        tarball.add_file(&build_manifest, "bin", FileType::Executable);
+        tarball.add_file(&build_manifest.tool_path, "bin", FileType::Executable);
         tarball.generate()
     }
 
@@ -2719,11 +2798,14 @@ pub struct ReproducibleArtifacts {
 
 impl Step for ReproducibleArtifacts {
     type Output = Option<GeneratedTarball>;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("reproducible-artifacts")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {

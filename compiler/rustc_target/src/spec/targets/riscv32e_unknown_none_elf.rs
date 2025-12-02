@@ -1,9 +1,9 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+    Abi, Arch, Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
-    let abi = "ilp32e";
     Target {
         // The below `data_layout` is explicitly specified by the ilp32e ABI in LLVM. See also
         // `options.llvm_abiname`.
@@ -16,15 +16,15 @@ pub(crate) fn target() -> Target {
             std: Some(false),
         },
         pointer_width: 32,
-        arch: "riscv32".into(),
+        arch: Arch::RiscV32,
 
         options: TargetOptions {
-            abi: abi.into(),
+            abi: Abi::Ilp32e,
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             cpu: "generic-rv32".into(),
             // The ilp32e ABI specifies the `data_layout`
-            llvm_abiname: abi.into(),
+            llvm_abiname: "ilp32e".into(),
             max_atomic_width: Some(32),
             atomic_cas: false,
             features: "+e,+forced-atomics".into(),

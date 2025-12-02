@@ -3,9 +3,6 @@ error: abnormal termination: invalid handle 1 passed to GetThreadId
    |
 LL |     let _tid = unsafe { GetThreadId(std::ptr::dangling_mut()) };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail-dep/concurrency/windows_thread_invalid.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

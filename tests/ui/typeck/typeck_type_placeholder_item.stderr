@@ -48,20 +48,27 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:7:14
    |
 LL | fn test() -> _ { 5 }
-   |              ^
-   |              |
-   |              not allowed in type signatures
-   |              help: replace with the correct return type: `i32`
+   |              ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn test() -> _ { 5 }
+LL + fn test() -> i32 { 5 }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:10:16
    |
 LL | fn test2() -> (_, _) { (5, 5) }
-   |               -^--^-
-   |               ||  |
-   |               ||  not allowed in type signatures
-   |               |not allowed in type signatures
-   |               help: replace with the correct return type: `(i32, i32)`
+   |                ^  ^ not allowed in type signatures
+   |                |
+   |                not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn test2() -> (_, _) { (5, 5) }
+LL + fn test2() -> (i32, i32) { (5, 5) }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/typeck_type_placeholder_item.rs:13:15
@@ -189,19 +196,25 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:47:26
    |
 LL | fn test11(x: &usize) -> &_ {
-   |                         -^
-   |                         ||
-   |                         |not allowed in type signatures
-   |                         help: replace with the correct return type: `&&usize`
+   |                          ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn test11(x: &usize) -> &_ {
+LL + fn test11(x: &usize) -> &&usize {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:52:52
    |
 LL | unsafe fn test12(x: *const usize) -> *const *const _ {
-   |                                      --------------^
-   |                                      |             |
-   |                                      |             not allowed in type signatures
-   |                                      help: replace with the correct return type: `*const *const usize`
+   |                                                    ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - unsafe fn test12(x: *const usize) -> *const *const _ {
+LL + unsafe fn test12(x: *const usize) -> *const *const usize {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
   --> $DIR/typeck_type_placeholder_item.rs:58:24
@@ -261,20 +274,27 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:80:21
    |
 LL |     fn fn_test() -> _ { 5 }
-   |                     ^
-   |                     |
-   |                     not allowed in type signatures
-   |                     help: replace with the correct return type: `i32`
+   |                     ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn fn_test() -> _ { 5 }
+LL +     fn fn_test() -> i32 { 5 }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:83:23
    |
 LL |     fn fn_test2() -> (_, _) { (5, 5) }
-   |                      -^--^-
-   |                      ||  |
-   |                      ||  not allowed in type signatures
-   |                      |not allowed in type signatures
-   |                      help: replace with the correct return type: `(i32, i32)`
+   |                       ^  ^ not allowed in type signatures
+   |                       |
+   |                       not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn fn_test2() -> (_, _) { (5, 5) }
+LL +     fn fn_test2() -> (i32, i32) { (5, 5) }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/typeck_type_placeholder_item.rs:86:22
@@ -374,20 +394,27 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:134:30
    |
 LL |     fn fn_test12(x: i32) -> (_, _) { (x, x) }
-   |                             -^--^-
-   |                             ||  |
-   |                             ||  not allowed in type signatures
-   |                             |not allowed in type signatures
-   |                             help: replace with the correct return type: `(i32, i32)`
+   |                              ^  ^ not allowed in type signatures
+   |                              |
+   |                              not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn fn_test12(x: i32) -> (_, _) { (x, x) }
+LL +     fn fn_test12(x: i32) -> (i32, i32) { (x, x) }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:137:33
    |
 LL |     fn fn_test13(x: _) -> (i32, _) { (x, x) }
-   |                           ------^-
-   |                           |     |
-   |                           |     not allowed in type signatures
-   |                           help: replace with the correct return type: `(i32, i32)`
+   |                                 ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn fn_test13(x: _) -> (i32, _) { (x, x) }
+LL +     fn fn_test13(x: _) -> (i32, i32) { (x, x) }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
   --> $DIR/typeck_type_placeholder_item.rs:142:31
@@ -528,10 +555,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:226:31
    |
 LL | fn value() -> Option<&'static _> {
-   |               ----------------^-
-   |               |               |
-   |               |               not allowed in type signatures
-   |               help: replace with the correct return type: `Option<&'static u8>`
+   |                               ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL - fn value() -> Option<&'static _> {
+LL + fn value() -> Option<&'static u8> {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item.rs:231:17
@@ -549,10 +579,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:235:31
    |
 LL | fn evens_squared(n: usize) -> _ {
-   |                               ^
-   |                               |
-   |                               not allowed in type signatures
-   |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
+   |                               ^ not allowed in type signatures
+   |
+help: replace with an appropriate return type
+   |
+LL - fn evens_squared(n: usize) -> _ {
+LL + fn evens_squared(n: usize) -> impl Iterator<Item = usize> {
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item.rs:240:10
@@ -570,10 +603,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:40:24
    |
 LL |     fn test9(&self) -> _ { () }
-   |                        ^
-   |                        |
-   |                        not allowed in type signatures
-   |                        help: replace with the correct return type: `()`
+   |                        ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -     fn test9(&self) -> _ { () }
+LL +     fn test9(&self) -> () { () }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
   --> $DIR/typeck_type_placeholder_item.rs:43:27
@@ -585,10 +621,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:107:31
    |
 LL |         fn fn_test9(&self) -> _ { () }
-   |                               ^
-   |                               |
-   |                               not allowed in type signatures
-   |                               help: replace with the correct return type: `()`
+   |                               ^ not allowed in type signatures
+   |
+help: replace with the correct return type
+   |
+LL -         fn fn_test9(&self) -> _ { () }
+LL +         fn fn_test9(&self) -> () { () }
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for methods
   --> $DIR/typeck_type_placeholder_item.rs:110:34
@@ -632,6 +671,11 @@ error[E0015]: cannot call non-const function `map::<u8>` in constants
 LL | const _: Option<_> = map(value);
    |                      ^^^^^^^^^^
    |
+note: function `map` is not const
+  --> $DIR/typeck_type_placeholder_item.rs:222:1
+   |
+LL | fn map<T>(_: fn() -> Option<&'static T>) -> Option<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:240:29: 240:32}>` in constants
@@ -640,6 +684,13 @@ error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
+note: method `filter` is not const because trait `Iterator` is not const
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this trait is not const
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this method is not const
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:240:29: 240:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:240:49: 240:52}>` in constants
@@ -648,6 +699,13 @@ error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closu
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                                             ^^^^^^^^^^^^^^
    |
+note: method `map` is not const because trait `Iterator` is not const
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this trait is not const
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: this method is not const
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 83 previous errors

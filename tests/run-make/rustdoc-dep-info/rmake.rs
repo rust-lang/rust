@@ -45,4 +45,15 @@ fn main() {
     assert!(!path("precedence1.d").exists());
     assert!(!path("precedence2.d").exists());
     assert!(path("precedence3.d").exists());
+
+    // stdout (-) also wins if being the last.
+    let result = rustdoc()
+        .input("lib.rs")
+        .arg("-Zunstable-options")
+        .emit("dep-info=precedence1.d")
+        .emit("dep-info=-")
+        .run();
+    assert!(!path("precedence1.d").exists());
+    assert!(!path("-").exists()); // `-` shouldn't be treated as a file path
+    assert!(!result.stdout().is_empty()); // Something emitted to stdout
 }

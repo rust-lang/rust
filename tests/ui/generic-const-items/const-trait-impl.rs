@@ -11,8 +11,7 @@ const CREATE<T: const Create>: T = T::create();
 pub const K0: i32 = CREATE::<i32>;
 pub const K1: i32 = CREATE; // arg inferred
 
-#[const_trait]
-trait Create {
+const trait Create {
     fn create() -> Self;
 }
 
@@ -22,7 +21,7 @@ impl const Create for i32 {
     }
 }
 
-trait Mod { // doesn't need to be a `#[const_trait]`
+trait Mod { // doesn't need to be a const trait
     const CREATE<T: const Create>: T;
 }
 

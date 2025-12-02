@@ -270,13 +270,7 @@
 //! * [DOT language](https://www.graphviz.org/doc/info/lang.html)
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
-    test(attr(allow(unused_variables), deny(warnings)))
-)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

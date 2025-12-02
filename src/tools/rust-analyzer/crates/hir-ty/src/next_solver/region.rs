@@ -1,9 +1,10 @@
 //! Things related to regions.
 
 use hir_def::LifetimeParamId;
-use intern::{Interned, Symbol};
+use intern::Symbol;
 use rustc_type_ir::{
-    BoundVar, Flags, INNERMOST, RegionVid, TypeFlags, TypeFoldable, TypeVisitable, VisitorResult,
+    BoundVar, BoundVarIndexKind, DebruijnIndex, Flags, INNERMOST, RegionVid, TypeFlags,
+    TypeFoldable, TypeVisitable,
     inherent::{IntoKind, PlaceholderLike, SliceLike},
     relate::Relate,
 };
@@ -15,12 +16,18 @@ use super::{
     interner::{BoundVarKind, DbInterner, Placeholder},
 };
 
-type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
+pub type RegionKind<'db> = rustc_type_ir::RegionKind<DbInterner<'db>>;
 
-#[salsa::interned(constructor = new_, debug)]
+#[salsa::interned(constructor = new_)]
 pub struct Region<'db> {
     #[returns(ref)]
     kind_: RegionKind<'db>,
+}
+
+impl std::fmt::Debug for Region<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.kind().fmt(f)
+    }
 }
 
 impl<'db> Region<'db> {
@@ -29,13 +36,12 @@ impl<'db> Region<'db> {
     }
 
     pub fn inner(&self) -> &RegionKind<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.kind_(db);
             // SAFETY: The caller already has access to a `Region<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute::<&RegionKind<'_>, &RegionKind<'db>>(inner) }
         })
-        .unwrap()
     }
 
     pub fn new_early_param(
@@ -53,12 +59,36 @@ impl<'db> Region<'db> {
         Region::new(interner, RegionKind::ReVar(v))
     }
 
+    pub fn new_erased(interner: DbInterner<'db>) -> Region<'db> {
+        Region::new(interner, RegionKind::ReErased)
+    }
+
+    pub fn new_bound(
+        interner: DbInterner<'db>,
+        index: DebruijnIndex,
+        bound: BoundRegion,
+    ) -> Region<'db> {
+        Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(index), bound))
+    }
+
     pub fn is_placeholder(&self) -> bool {
         matches!(self.inner(), RegionKind::RePlaceholder(..))
     }
 
     pub fn is_static(&self) -> bool {
         matches!(self.inner(), RegionKind::ReStatic)
+    }
+
+    pub fn is_erased(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReErased)
+    }
+
+    pub fn is_var(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReVar(_))
+    }
+
+    pub fn is_error(&self) -> bool {
+        matches!(self.inner(), RegionKind::ReError(_))
     }
 
     pub fn error(interner: DbInterner<'db>) -> Self {
@@ -91,7 +121,11 @@ impl<'db> Region<'db> {
             RegionKind::ReStatic => {
                 flags |= TypeFlags::HAS_FREE_REGIONS;
             }
-            RegionKind::ReBound(..) => {
+            RegionKind::ReBound(BoundVarIndexKind::Canonical, ..) => {
+                flags |= TypeFlags::HAS_RE_BOUND;
+                flags |= TypeFlags::HAS_CANONICAL_BOUND;
+            }
+            RegionKind::ReBound(BoundVarIndexKind::Bound(..), ..) => {
                 flags |= TypeFlags::HAS_RE_BOUND;
             }
             RegionKind::ReErased => {
@@ -268,7 +302,7 @@ impl<'db> Flags for Region<'db> {
 
     fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
         match &self.inner() {
-            RegionKind::ReBound(debruijn, _) => debruijn.shifted_in(1),
+            RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),
             _ => INNERMOST,
         }
     }
@@ -280,7 +314,7 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
         debruijn: rustc_type_ir::DebruijnIndex,
         var: BoundRegion,
     ) -> Self {
-        Region::new(interner, RegionKind::ReBound(debruijn, var))
+        Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
     fn new_anon_bound(
@@ -290,7 +324,20 @@ impl<'db> rustc_type_ir::inherent::Region<DbInterner<'db>> for Region<'db> {
     ) -> Self {
         Region::new(
             interner,
-            RegionKind::ReBound(debruijn, BoundRegion { var, kind: BoundRegionKind::Anon }),
+            RegionKind::ReBound(
+                BoundVarIndexKind::Bound(debruijn),
+                BoundRegion { var, kind: BoundRegionKind::Anon },
+            ),
+        )
+    }
+
+    fn new_canonical_bound(interner: DbInterner<'db>, var: rustc_type_ir::BoundVar) -> Self {
+        Region::new(
+            interner,
+            RegionKind::ReBound(
+                BoundVarIndexKind::Canonical,
+                BoundRegion { var, kind: BoundRegionKind::Anon },
+            ),
         )
     }
 

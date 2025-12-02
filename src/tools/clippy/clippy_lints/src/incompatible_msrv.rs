@@ -1,15 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::{is_in_const_context, is_in_test};
+use clippy_utils::{is_in_const_context, is_in_test, sym};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, QPath, RustcVersion, StabilityLevel, StableSince};
+use rustc_hir::{self as hir, AmbigArg, Expr, ExprKind, HirId, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::{ExpnKind, Span, sym};
+use rustc_span::{ExpnKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -78,11 +77,40 @@ enum Availability {
     Since(RustcVersion),
 }
 
+/// All known std crates containing a stability attribute.
+struct StdCrates([Option<CrateNum>; 6]);
+impl StdCrates {
+    fn new(tcx: TyCtxt<'_>) -> Self {
+        let mut res = Self([None; _]);
+        for &krate in tcx.crates(()) {
+            // FIXME(@Jarcho): We should have an internal lint to detect when this list is out of date.
+            match tcx.crate_name(krate) {
+                sym::alloc => res.0[0] = Some(krate),
+                sym::core => res.0[1] = Some(krate),
+                sym::core_arch => res.0[2] = Some(krate),
+                sym::proc_macro => res.0[3] = Some(krate),
+                sym::std => res.0[4] = Some(krate),
+                sym::std_detect => res.0[5] = Some(krate),
+                _ => {},
+            }
+        }
+        res
+    }
+
+    fn contains(&self, krate: CrateNum) -> bool {
+        self.0.contains(&Some(krate))
+    }
+}
+
 pub struct IncompatibleMsrv {
     msrv: Msrv,
     availability_cache: FxHashMap<(DefId, bool), Availability>,
     check_in_tests: bool,
-    core_crate: Option<CrateNum>,
+    std_crates: StdCrates,
+
+    // The most recently called path. Used to skip checking the path after it's
+    // been checked when visiting the call expression.
+    called_path: Option<HirId>,
 }
 
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
@@ -93,11 +121,8 @@ impl IncompatibleMsrv {
             msrv: conf.msrv,
             availability_cache: FxHashMap::default(),
             check_in_tests: conf.check_incompatible_msrv_in_tests,
-            core_crate: tcx
-                .crates(())
-                .iter()
-                .find(|krate| tcx.crate_name(**krate) == sym::core)
-                .copied(),
+            std_crates: StdCrates::new(tcx),
+            called_path: None,
         }
     }
 
@@ -140,27 +165,33 @@ impl IncompatibleMsrv {
     }
 
     /// Emit lint if `def_id`, associated with `node` and `span`, is below the current MSRV.
-    fn emit_lint_if_under_msrv(&mut self, cx: &LateContext<'_>, def_id: DefId, node: HirId, span: Span) {
-        if def_id.is_local() {
-            // We don't check local items since their MSRV is supposed to always be valid.
+    fn emit_lint_if_under_msrv(
+        &mut self,
+        cx: &LateContext<'_>,
+        needs_const: bool,
+        def_id: DefId,
+        node: HirId,
+        span: Span,
+    ) {
+        if !self.std_crates.contains(def_id.krate) {
+            // No stability attributes to lookup for these items.
             return;
         }
-        let expn_data = span.ctxt().outer_expn_data();
-        if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = expn_data.kind {
-            // Desugared expressions get to cheat and stability is ignored.
-            // Intentionally not using `.from_expansion()`, since we do still care about macro expansions
-            return;
+        // Use `from_expansion` to fast-path the common case.
+        if span.from_expansion() {
+            let expn = span.ctxt().outer_expn_data();
+            match expn.kind {
+                // FIXME(@Jarcho): Check that the actual desugaring or std macro is supported by the
+                // current MSRV. Note that nested expansions need to be handled as well.
+                ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => return,
+                ExpnKind::Macro(..) if expn.macro_def_id.is_some_and(|did| self.std_crates.contains(did.krate)) => {
+                    return;
+                },
+                // All other expansions share the target's MSRV.
+                // FIXME(@Jarcho): What should we do about version dependant macros from external crates?
+                _ => {},
+            }
         }
-        // Functions coming from `core` while expanding a macro such as `assert*!()` get to cheat too: the
-        // macros may have existed prior to the checked MSRV, but their expansion with a recent compiler
-        // might use recent functions or methods. Compiling with an older compiler would not use those.
-        if Some(def_id.krate) == self.core_crate && expn_data.macro_def_id.map(|did| did.krate) == self.core_crate {
-            return;
-        }
-
-        let needs_const = cx.enclosing_body.is_some()
-            && is_in_const_context(cx)
-            && matches!(cx.tcx.def_kind(def_id), DefKind::AssocFn | DefKind::Fn);
 
         if (self.check_in_tests || !is_in_test(cx.tcx, node))
             && let Some(current) = self.msrv.current(cx)
@@ -190,28 +221,45 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
                 if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    self.emit_lint_if_under_msrv(cx, method_did, expr.hir_id, span);
+                    self.emit_lint_if_under_msrv(cx, is_in_const_context(cx), method_did, expr.hir_id, span);
                 }
+            },
+            ExprKind::Call(callee, _) if let ExprKind::Path(qpath) = callee.kind => {
+                self.called_path = Some(callee.hir_id);
+                let needs_const = is_in_const_context(cx);
+                let def_id = if let Some(def_id) = cx.qpath_res(&qpath, callee.hir_id).opt_def_id() {
+                    def_id
+                } else if needs_const && let ty::FnDef(def_id, _) = *cx.typeck_results().expr_ty(callee).kind() {
+                    // Edge case where a function is first assigned then called.
+                    // We previously would have warned for the non-const MSRV, when
+                    // checking the path, but now that it's called the const MSRV
+                    // must also be met.
+                    def_id
+                } else {
+                    return;
+                };
+                self.emit_lint_if_under_msrv(cx, needs_const, def_id, expr.hir_id, callee.span);
             },
             // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
             // not be linted as they will not be generated in older compilers if the function is not available,
             // and the compiler is allowed to call unstable functions.
-            ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) => {
-                if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id() {
-                    self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, expr.span);
-                }
+            ExprKind::Path(qpath)
+                if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id()
+                    && self.called_path != Some(expr.hir_id) =>
+            {
+                self.emit_lint_if_under_msrv(cx, false, path_def_id, expr.hir_id, expr.span);
             },
             _ => {},
         }
     }
 
     fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
-        if let hir::TyKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = hir_ty.kind
+        if let hir::TyKind::Path(qpath) = hir_ty.kind
             && let Some(ty_def_id) = cx.qpath_res(&qpath, hir_ty.hir_id).opt_def_id()
             // `CStr` and `CString` have been moved around but have been available since Rust 1.0.0
             && !matches!(cx.tcx.get_diagnostic_name(ty_def_id), Some(sym::cstr_type | sym::cstring_type))
         {
-            self.emit_lint_if_under_msrv(cx, ty_def_id, hir_ty.hir_id, hir_ty.span);
+            self.emit_lint_if_under_msrv(cx, false, ty_def_id, hir_ty.hir_id, hir_ty.span);
         }
     }
 }

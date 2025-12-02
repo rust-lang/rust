@@ -20,8 +20,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                 ArgParser::NoArgs => None,
                 ArgParser::NameValue(name_value) => {
                     let Some(str_value) = name_value.value_as_str() else {
-                        let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
-                            .suggestions(cx.attr_style, "ignore");
+                        let suggestions = cx.suggestions();
                         let span = cx.attr_span;
                         cx.emit_lint(
                             AttributeLintKind::IllFormedAttributeInput { suggestions },
@@ -32,8 +31,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                     Some(str_value)
                 }
                 ArgParser::List(_) => {
-                    let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
-                        .suggestions(cx.attr_style, "ignore");
+                    let suggestions = cx.suggestions();
                     let span = cx.attr_span;
                     cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                     return None;

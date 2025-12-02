@@ -44,7 +44,7 @@ fn main() {
     //~^ ERROR ambiguous associated type [E0223]
     //~| HELP if there were a trait named `Example` with associated type `wrapping`
 
-    // this one ideally should suggest `downcast_mut_unchecked`
+    // this one ideally should suggest `downcast_unchecked_mut`
     <dyn std::any::Any>::downcast::mut_unchecked;
     //~^ ERROR ambiguous associated type [E0223]
     //~| HELP if there were a trait named `Example` with associated type `downcast`

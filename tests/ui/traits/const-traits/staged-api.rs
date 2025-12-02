@@ -86,13 +86,11 @@ const fn implicitly_stable_const_context() {
 }
 
 // check that const stability of impls and traits must match
-#[const_trait]
 #[rustc_const_unstable(feature = "beef", issue = "none")]
-trait U {}
+const trait U {}
 
-#[const_trait]
 #[rustc_const_stable(since = "0.0.0", feature = "beef2")]
-trait S {}
+const trait S {}
 
 // implied stable
 impl const U for u8 {}

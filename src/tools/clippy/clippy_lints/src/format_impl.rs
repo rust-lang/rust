@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators, sym};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::{get_parent_as_impl, peel_ref_operators, sym};
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
@@ -157,8 +158,12 @@ impl FormatImplExpr<'_, '_> {
             && path.ident.name == sym::to_string
             // Is the method a part of the ToString trait? (i.e. not to_string() implemented
             // separately)
-            && let Some(expr_def_id) = self.cx.typeck_results().type_dependent_def_id(self.expr.hir_id)
-            && is_diag_trait_item(self.cx, expr_def_id, sym::ToString)
+            && self
+                .cx
+                .typeck_results()
+                .type_dependent_def_id(self.expr.hir_id)
+                .opt_parent(self.cx)
+                .is_diag_item(self.cx, sym::ToString)
             // Is the method is called on self
             && let ExprKind::Path(QPath::Resolved(_, path)) = self_arg.kind
             && let [segment] = path.segments
@@ -210,7 +215,7 @@ impl FormatImplExpr<'_, '_> {
         // Since the argument to fmt is itself a reference: &self
         let reference = peel_ref_operators(self.cx, arg);
         // Is the reference self?
-        if path_to_local(reference).map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
+        if reference.res_local_id().map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
             let FormatTraitNames { name, .. } = self.format_trait_impl;
             span_lint(
                 self.cx,

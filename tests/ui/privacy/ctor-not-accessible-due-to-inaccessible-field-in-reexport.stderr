@@ -1,0 +1,36 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/ctor-not-accessible-due-to-inaccessible-field-in-reexport.rs:12:33
+   |
+LL |             let crate::Foo(x) = crate::Foo(42);
+   |                                 ^^^^^^^^^^
+   |
+note: the type is accessed through this re-export, but the type's constructor is not visible in this import's scope due to private fields
+  --> $DIR/ctor-not-accessible-due-to-inaccessible-field-in-reexport.rs:3:9
+   |
+LL | pub use my_mod::Foo;
+   |         ^^^^^^^^^^^
+help: the type can be constructed directly, because its fields are available from the current scope
+   |
+LL |             let crate::Foo(x) = crate::my_mod::Foo(42);
+   |                                        ++++++++
+
+error[E0532]: cannot match against a tuple struct which contains private fields
+  --> $DIR/ctor-not-accessible-due-to-inaccessible-field-in-reexport.rs:12:17
+   |
+LL |             let crate::Foo(x) = crate::Foo(42);
+   |                 ^^^^^^^^^^
+   |
+note: the type is accessed through this re-export, but the type's constructor is not visible in this import's scope due to private fields
+  --> $DIR/ctor-not-accessible-due-to-inaccessible-field-in-reexport.rs:3:9
+   |
+LL | pub use my_mod::Foo;
+   |         ^^^^^^^^^^^
+help: the type can be constructed directly, because its fields are available from the current scope
+   |
+LL |             let crate::my_mod::Foo(x) = crate::Foo(42);
+   |                        ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0532.
+For more information about an error, try `rustc --explain E0423`.

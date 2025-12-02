@@ -1,3 +1,4 @@
+use crate::marker::Destruct;
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
@@ -216,8 +217,9 @@ impl<T> ManuallyDrop<T> {
     ///
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[stable(feature = "manually_drop_take", since = "1.42.0")]
+    #[rustc_const_unstable(feature = "const_manually_drop_take", issue = "148773")]
     #[inline]
-    pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
+    pub const unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
         // SAFETY: we are reading from a reference, which is guaranteed
         // to be valid for reads.
         unsafe { ptr::read(&slot.value) }
@@ -249,7 +251,11 @@ impl<T: ?Sized> ManuallyDrop<T> {
     /// [pinned]: crate::pin
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
-    pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn drop(slot: &mut ManuallyDrop<T>)
+    where
+        T: [const] Destruct,
+    {
         // SAFETY: we are dropping the value pointed to by a mutable reference
         // which is guaranteed to be valid for writes.
         // It is up to the caller to make sure that `slot` isn't dropped again.

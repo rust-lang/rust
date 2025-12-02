@@ -43,7 +43,7 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
         return None;
     }
 
-    let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(module.krate()));
+    let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(module.krate()));
 
     let src_type_path = {
         let src_type_path = src_type.syntax().descendants().find_map(ast::Path::cast)?;

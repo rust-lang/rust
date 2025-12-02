@@ -1,8 +1,8 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
-use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{is_receiver_of_method_call, is_trait_method, strip_pat_refs, sym};
+use clippy_utils::{is_receiver_of_method_call, strip_pat_refs, sym};
 use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -14,7 +14,7 @@ use super::SEARCH_IS_SOME;
 
 /// lint searching an Iterator followed by `is_some()`
 /// or calling `find()` on a string followed by `is_some()` or `is_none()`
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+#[expect(clippy::too_many_arguments, clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'_>,
     expr: &'tcx hir::Expr<'_>,
@@ -27,89 +27,81 @@ pub(super) fn check<'tcx>(
 ) {
     let option_check_method = if is_some { "is_some" } else { "is_none" };
     // lint if caller of search is an Iterator
-    if is_trait_method(cx, is_some_recv, sym::Iterator) {
+    if cx
+        .ty_based_def(is_some_recv)
+        .opt_parent(cx)
+        .is_diag_item(cx, sym::Iterator)
+    {
         let msg = format!("called `{option_check_method}()` after searching an `Iterator` with `{search_method}`");
         let search_snippet = snippet(cx, search_arg.span, "..");
-        if search_snippet.lines().count() <= 1 {
-            // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
-            // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
-            let mut applicability = Applicability::MachineApplicable;
-            let any_search_snippet = if search_method == sym::find
-                && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
-                && let closure_body = cx.tcx.hir_body(body)
-                && let Some(closure_arg) = closure_body.params.first()
-            {
-                if let PatKind::Ref(..) = closure_arg.pat.kind {
-                    Some(search_snippet.replacen('&', "", 1))
-                } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
-                    // `find()` provides a reference to the item, but `any` does not,
-                    // so we should fix item usages for suggestion
-                    if let Some(closure_sugg) = deref_closure_args(cx, search_arg) {
-                        applicability = closure_sugg.applicability;
-                        Some(closure_sugg.suggestion)
-                    } else {
-                        Some(search_snippet.to_string())
-                    }
+        // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
+        // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
+        let mut applicability = Applicability::MachineApplicable;
+        let any_search_snippet = if search_method == sym::find
+            && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
+            && let closure_body = cx.tcx.hir_body(body)
+            && let Some(closure_arg) = closure_body.params.first()
+        {
+            if let PatKind::Ref(..) = closure_arg.pat.kind {
+                Some(search_snippet.replacen('&', "", 1))
+            } else if let PatKind::Binding(..) = strip_pat_refs(closure_arg.pat).kind {
+                // `find()` provides a reference to the item, but `any` does not,
+                // so we should fix item usages for suggestion
+                if let Some(closure_sugg) = deref_closure_args(cx, search_arg) {
+                    applicability = closure_sugg.applicability;
+                    Some(closure_sugg.suggestion)
                 } else {
-                    None
+                    Some(search_snippet.to_string())
                 }
             } else {
                 None
-            };
-            // add note if not multi-line
-            if is_some {
-                span_lint_and_sugg(
-                    cx,
-                    SEARCH_IS_SOME,
-                    method_span.with_hi(expr.span.hi()),
-                    msg,
-                    "consider using",
-                    format!(
-                        "any({})",
-                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
-                    ),
-                    applicability,
-                );
-            } else {
-                let iter = snippet(cx, search_recv.span, "..");
-                let sugg = if is_receiver_of_method_call(cx, expr) {
-                    format!(
-                        "(!{iter}.any({}))",
-                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
-                    )
-                } else {
-                    format!(
-                        "!{iter}.any({})",
-                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
-                    )
-                };
-                span_lint_and_sugg(
-                    cx,
-                    SEARCH_IS_SOME,
-                    expr.span,
-                    msg,
-                    "consider using",
-                    sugg,
-                    applicability,
-                );
             }
         } else {
-            let hint = format!(
-                "this is more succinctly expressed by calling `any()`{}",
-                if option_check_method == "is_none" {
-                    " with negation"
-                } else {
-                    ""
-                }
+            None
+        };
+        // add note if not multi-line
+        if is_some {
+            span_lint_and_sugg(
+                cx,
+                SEARCH_IS_SOME,
+                method_span.with_hi(expr.span.hi()),
+                msg,
+                "consider using",
+                format!(
+                    "any({})",
+                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                ),
+                applicability,
             );
-            span_lint_and_help(cx, SEARCH_IS_SOME, expr.span, msg, None, hint);
+        } else {
+            let iter = snippet(cx, search_recv.span, "..");
+            let sugg = if is_receiver_of_method_call(cx, expr) {
+                format!(
+                    "(!{iter}.any({}))",
+                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                )
+            } else {
+                format!(
+                    "!{iter}.any({})",
+                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                )
+            };
+            span_lint_and_sugg(
+                cx,
+                SEARCH_IS_SOME,
+                expr.span,
+                msg,
+                "consider using",
+                sugg,
+                applicability,
+            );
         }
     }
     // lint if `find()` is called by `String` or `&str`
     else if search_method == sym::find {
         let is_string_or_str_slice = |e| {
             let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
-            if is_type_lang_item(cx, self_ty, hir::LangItem::String) {
+            if self_ty.is_lang_item(cx, hir::LangItem::String) {
                 true
             } else {
                 self_ty.is_str()

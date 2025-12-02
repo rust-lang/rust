@@ -1,7 +1,5 @@
 //! Snapshotting in the infer ctxt of the next-trait-solver.
 
-use std::marker::PhantomData;
-
 use ena::snapshot_vec as sv;
 use ena::undo_log::{Rollback, UndoLogs};
 use ena::unify as ut;
@@ -14,7 +12,6 @@ use crate::next_solver::infer::opaque_types::OpaqueHiddenType;
 use crate::next_solver::infer::unify_key::ConstVidKey;
 use crate::next_solver::infer::unify_key::RegionVidKey;
 use crate::next_solver::infer::{InferCtxtInner, region_constraints, type_variable};
-use crate::traits;
 
 pub struct Snapshot {
     pub(crate) undo_len: usize,
@@ -31,7 +28,8 @@ pub(crate) enum UndoLog<'db> {
     FloatUnificationTable(sv::UndoLog<ut::Delegate<FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'db>),
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'db>>>),
-    PushRegionObligation,
+    PushTypeOutlivesConstraint,
+    PushRegionAssumption,
 }
 
 macro_rules! impl_from {
@@ -77,8 +75,13 @@ impl<'db> Rollback<UndoLog<'db>> for InferCtxtInner<'db> {
             UndoLog::RegionUnificationTable(undo) => {
                 self.region_constraint_storage.as_mut().unwrap().unification_table.reverse(undo)
             }
-            UndoLog::PushRegionObligation => {
-                self.region_obligations.pop();
+            UndoLog::PushTypeOutlivesConstraint => {
+                let popped = self.region_obligations.pop();
+                assert!(popped.is_some(), "pushed region constraint but could not pop it");
+            }
+            UndoLog::PushRegionAssumption => {
+                let popped = self.region_assumptions.pop();
+                assert!(popped.is_some(), "pushed region assumption but could not pop it");
             }
         }
     }

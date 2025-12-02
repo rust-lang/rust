@@ -3,7 +3,7 @@
 #![warn(clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
 #![allow(
     clippy::let_unit_value,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::redundant_guards,
     clippy::redundant_locals
 )]

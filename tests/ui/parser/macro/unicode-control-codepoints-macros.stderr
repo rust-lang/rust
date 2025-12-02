@@ -1,5 +1,5 @@
 error: unicode codepoint changing visible direction of text present in doc comment
-  --> $DIR/unicode-control-codepoints-macros.rs:20:9
+  --> $DIR/unicode-control-codepoints-macros.rs:21:9
    |
 LL |         /// �test� RTL in doc in vec
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
@@ -10,7 +10,7 @@ LL |         /// �test� RTL in doc in vec
    = note: `#[deny(text_direction_codepoint_in_literal)]` on by default
 
 error: unicode codepoint changing visible direction of text present in doc comment
-  --> $DIR/unicode-control-codepoints-macros.rs:25:9
+  --> $DIR/unicode-control-codepoints-macros.rs:26:9
    |
 LL | /         /**
 LL | |          * �test� RTL in doc in macro
@@ -22,7 +22,7 @@ LL | |          */
    = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
 
 error: unicode codepoint changing visible direction of text present in doc comment
-  --> $DIR/unicode-control-codepoints-macros.rs:32:9
+  --> $DIR/unicode-control-codepoints-macros.rs:33:9
    |
 LL | /         /**
 LL | |          * �test� RTL in doc in macro
@@ -34,7 +34,7 @@ LL | |          */
    = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
 
 error: unicode codepoint changing visible direction of text present in doc comment
-  --> $DIR/unicode-control-codepoints-macros.rs:40:9
+  --> $DIR/unicode-control-codepoints-macros.rs:41:9
    |
 LL |         /// �test� RTL in doc in proc macro
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints
@@ -44,7 +44,7 @@ LL |         /// �test� RTL in doc in proc macro
    = note: if you want to keep them but make them visible in your source code, you can escape them: '\u{202e}', '\u{2066}'
 
 error: unicode codepoint changing visible direction of text present in doc comment
-  --> $DIR/unicode-control-codepoints-macros.rs:45:9
+  --> $DIR/unicode-control-codepoints-macros.rs:46:9
    |
 LL |         /// �test� RTL in doc in proc macro
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this doc comment contains invisible unicode text flow control codepoints

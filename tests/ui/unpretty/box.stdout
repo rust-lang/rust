@@ -4,7 +4,7 @@ params: [
 body:
     Expr {
         ty: ()
-        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(11)), backwards_incompatible: None }
+        temp_scope_id: 11
         span: $DIR/box.rs:6:11: 8:2 (#0)
         kind: 
             Scope {
@@ -13,7 +13,7 @@ body:
                 value:
                     Expr {
                         ty: ()
-                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(11)), backwards_incompatible: None }
+                        temp_scope_id: 11
                         span: $DIR/box.rs:6:11: 8:2 (#0)
                         kind: 
                             Block {
@@ -38,7 +38,7 @@ body:
                                             initializer: Some(
                                                 Expr {
                                                     ty: std::boxed::Box<i32, std::alloc::Global>
-                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                    temp_scope_id: 3
                                                     span: $DIR/box.rs:7:13: 7:35 (#0)
                                                     kind: 
                                                         Scope {
@@ -47,13 +47,13 @@ body:
                                                             value:
                                                                 Expr {
                                                                     ty: std::boxed::Box<i32, std::alloc::Global>
-                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                    temp_scope_id: 3
                                                                     span: $DIR/box.rs:7:13: 7:35 (#0)
                                                                     kind: 
                                                                         Box {
                                                                             Expr {
                                                                                 ty: i32
-                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                                temp_scope_id: 8
                                                                                 span: $DIR/box.rs:7:33: 7:34 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -62,7 +62,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: i32
-                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                                                                                                temp_scope_id: 8
                                                                                                 span: $DIR/box.rs:7:33: 7:34 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed), span: $DIR/box.rs:7:33: 7:34 (#0) }, neg: false)

@@ -1,3 +1,5 @@
+#![feature(doc_cfg)]
+
 #![crate_name = "foo"]
 
 //@ has 'foo/index.html'

@@ -644,6 +644,20 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn expr_loop(&self, body: ast::BlockExpr) -> ast::LoopExpr {
+        let ast::Expr::LoopExpr(ast) = make::expr_loop(body.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(body.syntax().clone(), ast.loop_body().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn expr_while_loop(&self, condition: ast::Expr, body: ast::BlockExpr) -> ast::WhileExpr {
         let ast = make::expr_while_loop(condition.clone(), body.clone()).clone_for_update();
 

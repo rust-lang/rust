@@ -1,0 +1,23 @@
+error: use of `Debug`-based formatting
+  --> tests/ui/use_debug.rs:9:20
+   |
+LL |         write!(f, "{:?}", 43.1415)
+   |                    ^^^^
+   |
+   = note: `-D clippy::use-debug` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_debug)]`
+
+error: use of `Debug`-based formatting
+  --> tests/ui/use_debug.rs:22:19
+   |
+LL |     print!("Hello {:?}", "World");
+   |                   ^^^^
+
+error: use of `Debug`-based formatting
+  --> tests/ui/use_debug.rs:25:19
+   |
+LL |     print!("Hello {:#?}", "#orld");
+   |                   ^^^^^
+
+error: aborting due to 3 previous errors
+

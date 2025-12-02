@@ -1,5 +1,6 @@
 //@ run-pass
 //@ compile-flags: -Ccodegen-units=1 -Cllvm-args=--inline-threshold=0 -Clink-dead-code -Copt-level=0 -Cdebuginfo=2
+//@ ignore-backends: gcc
 
 // Make sure LLVM does not miscompile this.
 

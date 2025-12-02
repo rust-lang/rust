@@ -232,4 +232,7 @@ pub enum PatAdjust {
     /// An implicit call to `Deref(Mut)::deref(_mut)` before matching, such as when matching the
     /// pattern `[..]` against a scrutinee of type `Vec<T>`.
     OverloadedDeref,
+    /// An implicit dereference before matching a `&pin` reference (under feature `pin_ergonomics`),
+    /// which will be lowered as a builtin deref of the private field `__pointer` in `Pin`
+    PinDeref,
 }

@@ -134,6 +134,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// ```
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
+    #[rustc_should_not_be_called_on_const_items]
     pub fn force(this: &LazyCell<T, F>) -> &T {
         // SAFETY:
         // This invalidates any mutable references to the data. The resulting

@@ -14,28 +14,22 @@ LL |     let b = slice.repeat(1);
    |             ^^^^^^^^^^^^^^^ help: consider using `.to_vec()` instead: `slice.to_vec()`
 
 error: calling `repeat(1)` on str
-  --> tests/ui/repeat_once.rs:13:13
-   |
-LL |     let c = "hello".repeat(N);
-   |             ^^^^^^^^^^^^^^^^^ help: consider using `.to_string()` instead: `"hello".to_string()`
-
-error: calling `repeat(1)` on str
-  --> tests/ui/repeat_once.rs:15:13
+  --> tests/ui/repeat_once.rs:14:13
    |
 LL |     let d = "hi".repeat(1);
    |             ^^^^^^^^^^^^^^ help: consider using `.to_string()` instead: `"hi".to_string()`
 
 error: calling `repeat(1)` on str
-  --> tests/ui/repeat_once.rs:17:13
+  --> tests/ui/repeat_once.rs:16:13
    |
 LL |     let e = s.repeat(1);
    |             ^^^^^^^^^^^ help: consider using `.to_string()` instead: `s.to_string()`
 
 error: calling `repeat(1)` on a string literal
-  --> tests/ui/repeat_once.rs:19:13
+  --> tests/ui/repeat_once.rs:18:13
    |
 LL |     let f = string.repeat(1);
    |             ^^^^^^^^^^^^^^^^ help: consider using `.clone()` instead: `string.clone()`
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 

@@ -2,9 +2,10 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_lint_allowed, path_to_local};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -93,7 +94,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
         // We'll just ignore mut and ref mut for simplicity sake right now
         if let hir::PatKind::Binding(hir::BindingMode(by_ref, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
             pat.kind
-            && by_ref != hir::ByRef::Yes(hir::Mutability::Mut)
+            && !matches!(by_ref, hir::ByRef::Yes(_, hir::Mutability::Mut))
         {
             // This block catches bindings with sub patterns. It would be hard to build a correct suggestion
             // for them and it's likely that the user knows what they are doing in such a case.
@@ -225,7 +226,7 @@ impl<'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let Some(local_id) = path_to_local(expr) {
+        if let Some(local_id) = expr.res_local_id() {
             let Self {
                 cx,
                 ref mut slice_lint_info,

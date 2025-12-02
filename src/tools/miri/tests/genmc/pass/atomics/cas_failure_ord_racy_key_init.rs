@@ -26,9 +26,6 @@ static mut VALUES: [usize; 2] = [0, 0];
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    KEY.store(KEY_SENTVAL, Relaxed);
-
     unsafe {
         let mut a = 0;
         let mut b = 0;

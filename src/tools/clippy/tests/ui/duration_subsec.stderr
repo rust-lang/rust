@@ -25,11 +25,5 @@ error: calling `subsec_micros()` is more concise than this calculation
 LL |     let _ = (&dur).subsec_nanos() / 1_000;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(&dur).subsec_micros()`
 
-error: calling `subsec_micros()` is more concise than this calculation
-  --> tests/ui/duration_subsec.rs:28:13
-   |
-LL |     let _ = dur.subsec_nanos() / NANOS_IN_MICRO;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `dur.subsec_micros()`
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

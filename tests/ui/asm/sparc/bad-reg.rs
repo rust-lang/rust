@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: sparc sparcv8plus sparc64
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
 //@[sparc] needs-llvm-components: sparc
@@ -6,7 +6,7 @@
 //@[sparcv8plus] needs-llvm-components: sparc
 //@[sparc64] compile-flags: --target sparc64-unknown-linux-gnu
 //@[sparc64] needs-llvm-components: sparc
-//@ needs-asm-support
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(no_core, asm_experimental_arch)]

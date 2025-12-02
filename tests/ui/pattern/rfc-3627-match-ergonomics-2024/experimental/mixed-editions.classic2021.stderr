@@ -59,20 +59,20 @@ LL |     let [&bind_ref_mut!(x)] = &mut [0];
    |          |
    |          help: replace this `&` with `&mut`: `&mut`
 
-error: binding modifiers may only be written when the default binding mode is `move`
+error: cannot explicitly borrow within an implicitly-borrowing pattern
   --> $DIR/mixed-editions.rs:30:10
    |
 LL |     let [bind_ref!(y)] = &[0];
    |          ^^^^^^^^^^^^ occurs within macro expansion
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/mixed-editions.rs:30:9
    |
 LL |     let [bind_ref!(y)] = &[0];
-   |         ^^^^^^^^^^^^^^ this matches on type `&_`
+   |         ^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
    = note: this error originates in the macro `bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: make the implied reference pattern explicit
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL |     let &[bind_ref!(y)] = &[0];
    |         +
@@ -81,19 +81,25 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:61:21
    |
 LL |     let match_ref!([x]) = &&mut [0];
-   |                     ^ cannot borrow as mutable
+   |                     ^     --------- this cannot be borrowed as mutable
+   |                     |
+   |                     cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:65:22
    |
 LL |     let &match_ctor!(y) = &&mut [0];
-   |                      ^ cannot borrow as mutable
+   |                      ^    --------- this cannot be borrowed as mutable
+   |                      |
+   |                      cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:69:11
    |
 LL |     let &[bind!(z)] = &&mut [0];
-   |           ^^^^^^^^ cannot borrow as mutable
+   |           ^^^^^^^^    --------- this cannot be borrowed as mutable
+   |           |
+   |           cannot borrow as mutable
    |
    = note: this error originates in the macro `bind` (in Nightly builds, run with -Z macro-backtrace for more info)
 

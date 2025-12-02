@@ -4,6 +4,11 @@ error[E0015]: cannot call non-const function `bar` in statics
 LL | static foo: Foo = bar();
    |                   ^^^^^
    |
+note: function `bar` is not const
+  --> $DIR/mir_check_nonconst.rs:4:1
+   |
+LL | fn bar() -> Foo {
+   | ^^^^^^^^^^^^^^^
    = note: calls in statics are limited to constant functions, tuple structs and tuple variants
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
 

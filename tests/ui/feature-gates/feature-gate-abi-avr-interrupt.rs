@@ -1,6 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: avr
 //@ compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items)]
 

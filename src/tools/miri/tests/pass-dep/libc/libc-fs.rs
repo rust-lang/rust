@@ -36,6 +36,10 @@ fn main() {
     test_posix_realpath_errors();
     #[cfg(target_os = "linux")]
     test_posix_fadvise();
+    #[cfg(not(target_os = "macos"))]
+    test_posix_fallocate::<libc::off_t>(libc::posix_fallocate);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
     test_isatty();
@@ -333,6 +337,74 @@ fn test_posix_fadvise() {
     drop(file);
     remove_file(&path).unwrap();
     assert_eq!(result, 0);
+}
+
+#[cfg(not(target_os = "macos"))]
+fn test_posix_fallocate<T: From<i32>>(
+    posix_fallocate: unsafe extern "C" fn(fd: libc::c_int, offset: T, len: T) -> libc::c_int,
+) {
+    // libc::off_t is i32 in target i686-unknown-linux-gnu
+    // https://docs.rs/libc/latest/i686-unknown-linux-gnu/libc/type.off_t.html
+
+    let test_errors = || {
+        // invalid fd
+        let ret = unsafe { posix_fallocate(42, T::from(0), T::from(10)) };
+        assert_eq!(ret, libc::EBADF);
+
+        let path = utils::prepare("miri_test_libc_posix_fallocate_errors.txt");
+        let file = File::create(&path).unwrap();
+
+        // invalid offset
+        let ret = unsafe { posix_fallocate(file.as_raw_fd(), T::from(-10), T::from(10)) };
+        assert_eq!(ret, libc::EINVAL);
+
+        // invalid len
+        let ret = unsafe { posix_fallocate(file.as_raw_fd(), T::from(0), T::from(-10)) };
+        assert_eq!(ret, libc::EINVAL);
+
+        // fd not writable
+        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) };
+        let ret = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+        assert_eq!(ret, libc::EBADF);
+    };
+
+    let test = || {
+        let bytes = b"hello";
+        let path = utils::prepare("miri_test_libc_posix_fallocate.txt");
+        let mut file = File::create(&path).unwrap();
+        file.write_all(bytes).unwrap();
+        file.sync_all().unwrap();
+        assert_eq!(file.metadata().unwrap().len(), 5);
+
+        let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+
+        // Allocate to a bigger size from offset 0
+        let mut res = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Write after allocation
+        file.write(b"dup").unwrap();
+        file.sync_all().unwrap();
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Can't truncate to a smaller size with possix_fallocate
+        res = unsafe { posix_fallocate(fd, T::from(0), T::from(3)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 10);
+
+        // Allocate from offset
+        res = unsafe { posix_fallocate(fd, T::from(7), T::from(7)) };
+        assert_eq!(res, 0);
+        assert_eq!(file.metadata().unwrap().len(), 14);
+
+        remove_file(&path).unwrap();
+    };
+
+    test_errors();
+    test();
 }
 
 #[cfg(target_os = "linux")]

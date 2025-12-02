@@ -8,7 +8,7 @@ use crate::dep_graph::DepNodeIndex;
 #[derive(Default, Debug)]
 pub(crate) struct EdgesVec {
     max: u32,
-    edges: SmallVec<[DepNodeIndex; EdgesVec::INLINE_CAPACITY]>,
+    edges: SmallVec<[DepNodeIndex; 8]>,
 }
 
 impl Hash for EdgesVec {
@@ -19,8 +19,6 @@ impl Hash for EdgesVec {
 }
 
 impl EdgesVec {
-    pub(crate) const INLINE_CAPACITY: usize = 8;
-
     #[inline]
     pub(crate) fn new() -> Self {
         Self::default()

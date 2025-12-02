@@ -8,6 +8,9 @@ use crate::num::NonZero;
 /// Infinite iterators like `repeat()` are often used with adapters like
 /// [`Iterator::take()`], in order to make them finite.
 ///
+/// If you know the number of repetitions in advance, consider using [`repeat_n()`]
+/// instead, as it is more efficient and conveys the intent more clearly.
+///
 /// Use [`str::repeat()`] instead of this function if you just want to repeat
 /// a char/string `n` times.
 ///
@@ -15,6 +18,7 @@ use crate::num::NonZero;
 /// or if you do not want to keep the repeated element in memory, you can
 /// instead use the [`repeat_with()`] function.
 ///
+/// [`repeat_n()`]: crate::iter::repeat_n
 /// [`repeat_with()`]: crate::iter::repeat_with
 /// [`str::repeat()`]: ../../std/primitive.str.html#method.repeat
 ///
@@ -97,8 +101,9 @@ impl<A: Clone> Iterator for Repeat<A> {
         Some(self.element.clone())
     }
 
+    #[track_caller]
     fn last(self) -> Option<A> {
-        Some(self.element)
+        panic!("iterator is infinite");
     }
 
     #[track_caller]

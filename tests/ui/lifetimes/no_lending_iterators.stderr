@@ -10,11 +10,15 @@ note: you can't create an `Iterator` that borrows each `Item` from itself, but y
 LL | impl Iterator for Data {
    |                   ^^^^
 
-error: in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+error: missing lifetime in associated type
   --> $DIR/no_lending_iterators.rs:18:17
    |
+LL | impl Bar for usize {
+   |     - you could add a lifetime on the impl block, if the trait or the self type could have one
 LL |     type Item = &usize;
    |                 ^ this lifetime must come from the implemented type
+   |
+   = note: in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
 
 error[E0195]: lifetime parameters or bounds on associated type `Item` do not match the trait declaration
   --> $DIR/no_lending_iterators.rs:27:14

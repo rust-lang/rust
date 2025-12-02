@@ -4,6 +4,7 @@
 //@ needs-asm-support
 //@ needs-unwind
 //@ compile-flags: -Zinline-mir-hint-threshold=1000 -C debuginfo=full
+//@ ignore-backends: gcc
 #![feature(asm_unwind)]
 
 struct D;

@@ -3,9 +3,9 @@
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
 #![feature(wtf8_internals)]
-#![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
+#![feature(deque_extend_front)]
 #![feature(downcast_unchecked)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
@@ -36,17 +36,17 @@
 #![feature(local_waker)]
 #![feature(str_as_str)]
 #![feature(strict_provenance_lints)]
-#![feature(vec_deque_pop_if)]
+#![feature(string_replace_in_place)]
 #![feature(vec_deque_truncate_front)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(vec_peek_mut)]
+#![feature(vec_try_remove)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate alloc;
-extern crate test;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 

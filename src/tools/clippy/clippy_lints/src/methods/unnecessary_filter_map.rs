@@ -1,15 +1,16 @@
 use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::ty::is_copy;
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::ty::{is_copy, option_arg_ty};
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id, sym};
+use clippy_utils::{as_some_expr, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::ty;
-use rustc_span::Symbol;
+use rustc_span::Span;
+use std::fmt::Display;
 
 use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
@@ -17,9 +18,10 @@ pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
     arg: &'tcx hir::Expr<'tcx>,
-    name: Symbol,
+    call_span: Span,
+    kind: Kind,
 ) {
-    if !is_trait_method(cx, expr, sym::Iterator) {
+    if !cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator) {
         return;
     }
 
@@ -44,61 +46,87 @@ pub(super) fn check<'tcx>(
         let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
-            if name == sym::filter_map
-                && let hir::ExprKind::Call(expr, args) = body.value.kind
-                && is_res_lang_ctor(cx, path_res(cx, expr), OptionSome)
-                && let hir::ExprKind::Path(_) = args[0].kind
+            if kind.is_filter_map()
+                && let Some(arg) = as_some_expr(cx, body.value)
+                && let hir::ExprKind::Path(_) = arg.kind
             {
                 span_lint(
                     cx,
                     UNNECESSARY_FILTER_MAP,
-                    expr.span,
+                    call_span,
                     String::from("this call to `.filter_map(..)` is unnecessary"),
                 );
                 return;
             }
-            if name == sym::filter_map {
-                "map(..)"
-            } else {
-                "map(..).next()"
+            match kind {
+                Kind::FilterMap => "map(..)",
+                Kind::FindMap => "map(..).next()",
             }
         } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
-            match cx.typeck_results().expr_ty(body.value).kind() {
-                ty::Adt(adt, subst)
-                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
-                {
-                    if name == sym::filter_map {
-                        "filter(..)"
-                    } else {
-                        "find(..)"
-                    }
-                },
-                _ => return,
+            let ty = cx.typeck_results().expr_ty(body.value);
+            if option_arg_ty(cx, ty).is_some_and(|t| t == in_ty) {
+                match kind {
+                    Kind::FilterMap => "filter(..)",
+                    Kind::FindMap => "find(..)",
+                }
+            } else {
+                return;
             }
         } else {
             return;
         };
         span_lint(
             cx,
-            if name == sym::filter_map {
-                UNNECESSARY_FILTER_MAP
-            } else {
-                UNNECESSARY_FIND_MAP
+            match kind {
+                Kind::FilterMap => UNNECESSARY_FILTER_MAP,
+                Kind::FindMap => UNNECESSARY_FIND_MAP,
             },
-            expr.span,
-            format!("this `.{name}(..)` can be written more simply using `.{sugg}`"),
+            call_span,
+            format!("this `.{kind}(..)` can be written more simply using `.{sugg}`"),
         );
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum Kind {
+    FilterMap,
+    FindMap,
+}
+
+impl Kind {
+    fn is_filter_map(self) -> bool {
+        matches!(self, Self::FilterMap)
+    }
+}
+
+impl Display for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FilterMap => f.write_str("filter_map"),
+            Self::FindMap => f.write_str("find_map"),
+        }
     }
 }
 
 // returns (found_mapping, found_filtering)
 fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
     match expr.kind {
+        hir::ExprKind::Path(ref path)
+            if cx
+                .qpath_res(path, expr.hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, OptionNone) =>
+        {
+            // None
+            (false, true)
+        },
         hir::ExprKind::Call(func, args) => {
-            if is_res_lang_ctor(cx, path_res(cx, func), OptionSome) {
-                if path_to_local_id(&args[0], arg_id) {
+            if func.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome) {
+                if args[0].res_local_id() == Some(arg_id) {
+                    // Some(arg_id)
                     return (false, false);
                 }
+                // Some(not arg_id)
                 return (true, false);
             }
             (true, true)
@@ -106,10 +134,12 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
         hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
             if segment.ident.name == sym::then_some
                 && cx.typeck_results().expr_ty(recv).is_bool()
-                && path_to_local_id(arg, arg_id)
+                && arg.res_local_id() == Some(arg_id)
             {
+                // bool.then_some(arg_id)
                 (false, true)
             } else {
+                // bool.then_some(not arg_id)
                 (true, true)
             }
         },
@@ -132,9 +162,6 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             let if_check = check_expression(cx, arg_id, if_arm);
             let else_check = check_expression(cx, arg_id, else_arm);
             (if_check.0 | else_check.0, if_check.1 | else_check.1)
-        },
-        hir::ExprKind::Path(ref path) if is_res_lang_ctor(cx, cx.qpath_res(path, expr.hir_id), OptionNone) => {
-            (false, true)
         },
         _ => (true, true),
     }

@@ -329,4 +329,18 @@ fn allowed_manual_unwrap_or_zero() -> u32 {
     }
 }
 
+fn issue_15807() {
+    let uncopyable_res: Result<usize, String> = Ok(1);
+    let _ = if let Ok(v) = uncopyable_res { v } else { 2 };
+
+    let x = uncopyable_res;
+    let _ = if let Ok(v) = x { v } else { 2 };
+    //~^ manual_unwrap_or
+
+    let copyable_res: Result<usize, ()> = Ok(1);
+    let _ = if let Ok(v) = copyable_res { v } else { 2 };
+    //~^ manual_unwrap_or
+    let _ = copyable_res;
+}
+
 fn main() {}

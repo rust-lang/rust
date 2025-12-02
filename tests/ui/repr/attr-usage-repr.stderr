@@ -41,9 +41,27 @@ error[E0517]: attribute should be applied to a struct, enum, or union
    |
 LL | #[repr()]
    | ^^^^^^^^^
+LL |
 LL | type SirThisIsAType = i32;
    | -------------------------- not a struct, enum, or union
 
-error: aborting due to 5 previous errors
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:52:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+
+error: aborting due to 5 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0517`.

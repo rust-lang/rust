@@ -6,6 +6,7 @@
 //@ dont-check-compiler-stderr
 //@ aux-build: rustc-rust-log-aux.rs
 //@ rustc-env:RUSTC_LOG=debug
+//@ ignore-backends: gcc
 
 #[cfg(rpass1)]
 fn main() {}

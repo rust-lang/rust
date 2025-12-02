@@ -135,6 +135,10 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_abi_mismatch(expr.span, caller_sig.abi, callee_sig.abi);
         }
 
+        if !callee_sig.abi.supports_guaranteed_tail_call() {
+            self.report_unsupported_abi(expr.span, callee_sig.abi);
+        }
+
         // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
         // e.g.
         // ```
@@ -283,7 +287,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
     fn report_calling_closure(&mut self, fun: &Expr<'_>, tupled_args: Ty<'_>, expr: &Expr<'_>) {
         let underscored_args = match tupled_args.kind() {
             ty::Tuple(tys) if tys.is_empty() => "".to_owned(),
-            ty::Tuple(tys) => std::iter::repeat("_, ").take(tys.len() - 1).chain(["_"]).collect(),
+            ty::Tuple(tys) => std::iter::repeat_n("_, ", tys.len() - 1).chain(["_"]).collect(),
             _ => "_".to_owned(),
         };
 
@@ -354,6 +358,16 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             .struct_span_err(sp, "mismatched function ABIs")
             .with_note("`become` requires caller and callee to have the same ABI")
             .with_note(format!("caller ABI is `{caller_abi}`, while callee ABI is `{callee_abi}`"))
+            .emit();
+        self.found_errors = Err(err);
+    }
+
+    fn report_unsupported_abi(&mut self, sp: Span, callee_abi: ExternAbi) {
+        let err = self
+            .tcx
+            .dcx()
+            .struct_span_err(sp, "ABI does not support guaranteed tail calls")
+            .with_note(format!("`become` is not supported for `extern {callee_abi}` functions"))
             .emit();
         self.found_errors = Err(err);
     }

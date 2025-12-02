@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
@@ -10,7 +9,6 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -49,7 +47,7 @@ use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
+use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
@@ -119,7 +117,7 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
-) -> Result<&ConcreteOpaqueTypes<'_>, ErrorGuaranteed> {
+) -> Result<&FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'_>>, ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
@@ -130,7 +128,7 @@ fn mir_borrowck(
         Err(guar)
     } else if input_body.should_skip() {
         debug!("Skipping borrowck because of injected body");
-        let opaque_types = ConcreteOpaqueTypes(Default::default());
+        let opaque_types = Default::default();
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
@@ -278,7 +276,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         fold_regions(tcx, self.inner, |r, depth| match r.kind() {
-            ty::ReBound(debruijn, br) => {
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::from_usize(br.var.index()))
             }
@@ -537,13 +535,11 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let (mut flow_analysis, flow_entry_states) =
-        get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
-        &mut flow_analysis,
-        &flow_entry_states,
+        &flow_results,
         &mut mbcx,
     );
 
@@ -604,7 +600,7 @@ fn get_flow_results<'a, 'tcx>(
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
-) -> (Borrowck<'a, 'tcx>, Results<BorrowckDomain>) {
+) -> Results<'tcx, Borrowck<'a, 'tcx>> {
     // We compute these three analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
@@ -629,14 +625,14 @@ fn get_flow_results<'a, 'tcx>(
         ever_inits: ever_inits.analysis,
     };
 
-    assert_eq!(borrows.results.len(), uninits.results.len());
-    assert_eq!(borrows.results.len(), ever_inits.results.len());
-    let results: Results<_> =
-        itertools::izip!(borrows.results, uninits.results, ever_inits.results)
+    assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
+    assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
+    let entry_states: EntryStates<_> =
+        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
             .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
             .collect();
 
-    (analysis, results)
+    Results { analysis, entry_states }
 }
 
 pub(crate) struct BorrowckInferCtxt<'tcx> {
@@ -790,7 +786,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         stmt: &Statement<'tcx>,
         location: Location,
@@ -857,7 +853,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             }
             StatementKind::Nop
             | StatementKind::Retag { .. }
-            | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
@@ -866,7 +861,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         term: &Terminator<'tcx>,
         loc: Location,
@@ -986,7 +981,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &mut Borrowck<'a, 'tcx>,
+        _analysis: &Borrowck<'a, 'tcx>,
         state: &BorrowckDomain,
         term: &Terminator<'tcx>,
         loc: Location,
@@ -1539,24 +1534,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 self.consume_operand(location, (operand, span), state)
             }
 
-            &Rvalue::CopyForDeref(place) => {
-                self.access_place(
-                    location,
-                    (place, span),
-                    (Deep, Read(ReadKind::Copy)),
-                    LocalMutationIsAllowed::No,
-                    state,
-                );
-
-                // Finally, check if path was already moved.
-                self.check_if_path_or_subpath_is_moved(
-                    location,
-                    InitializationRequiringAction::Use,
-                    (place.as_ref(), span),
-                    state,
-                );
-            }
-
             &Rvalue::Discriminant(place) => {
                 let af = match *rvalue {
                     Rvalue::Discriminant(..) => None,
@@ -1582,7 +1559,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 self.consume_operand(location, (operand2, span), state);
             }
 
-            Rvalue::NullaryOp(_op, _ty) => {
+            Rvalue::NullaryOp(_op) => {
                 // nullary ops take no dynamic input; no borrowck effect.
             }
 
@@ -1618,6 +1595,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             Rvalue::WrapUnsafeBinder(op, _) => {
                 self.consume_operand(location, (op, span), state);
             }
+
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
         }
     }
 
@@ -1989,10 +1968,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 },
                 // `OpaqueCast`: only transmutes the type, so no moves there.
                 // `Downcast`  : only changes information about a `Place` without moving.
-                // `Subtype`   : only transmutes the type, so no moves.
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Subtype(_)
                 | ProjectionElem::Downcast(_, _)
                 | ProjectionElem::UnwrapUnsafeBinder(_) => (),
             }
@@ -2218,7 +2195,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/) |
-                ProjectionElem::Subtype(_) |
                 ProjectionElem::OpaqueCast(_) |
                 ProjectionElem::ConstantIndex { .. } |
                 // assigning to P[i] requires P to be valid.
@@ -2604,13 +2580,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
                     }
+                    // Check as the inner reference type if it is a field projection
+                    // from the `&pin` pattern
+                    ProjectionElem::Field(FieldIdx::ZERO, _)
+                        if let Some(adt) =
+                            place_base.ty(self.body(), self.infcx.tcx).ty.ty_adt_def()
+                            && adt.is_pin()
+                            && self.infcx.tcx.features().pin_ergonomics() =>
+                    {
+                        self.is_mutable(place_base, is_local_mutation_allowed)
+                    }
                     // All other projections are owned by their base path, so mutable if
                     // base path is mutable
                     ProjectionElem::Field(..)
                     | ProjectionElem::Index(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
-                    | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::UnwrapUnsafeBinder(_) => {

@@ -3,9 +3,6 @@ error: abnormal termination: trace/breakpoint trap
    |
 LL |     core::intrinsics::breakpoint();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
-   |
-   = note: BACKTRACE:
-   = note: inside `main` at tests/fail/breakpoint.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

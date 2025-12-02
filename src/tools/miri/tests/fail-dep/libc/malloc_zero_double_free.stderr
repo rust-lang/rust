@@ -16,8 +16,6 @@ help: ALLOC was deallocated here:
    |
 LL |         libc::free(ptr);
    |         ^^^^^^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail-dep/libc/malloc_zero_double_free.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

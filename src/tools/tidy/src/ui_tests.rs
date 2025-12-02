@@ -7,16 +7,17 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 
 const ISSUES_TXT_HEADER: &str = r#"============================================================
     ⚠️⚠️⚠️NOTHING SHOULD EVER BE ADDED TO THIS LIST⚠️⚠️⚠️
 ============================================================
 "#;
 
-pub fn check(root_path: &Path, bless: bool, diag_ctx: DiagCtx) {
+pub fn check(root_path: &Path, tidy_ctx: TidyCtx) {
     let path = &root_path.join("tests");
-    let mut check = diag_ctx.start_check(CheckId::new("ui_tests").path(path));
+    let mut check = tidy_ctx.start_check(CheckId::new("ui_tests").path(path));
+    let bless = tidy_ctx.is_bless_enabled();
 
     // the list of files in ui tests that are allowed to start with `issue-XXXX`
     // BTreeSet because we would like a stable ordering so --bless works
@@ -81,21 +82,20 @@ fn deny_new_top_level_ui_tests(check: &mut RunningCheck, tests_path: &Path) {
     // - <https://github.com/rust-lang/rust/issues/73494>
     // - <https://github.com/rust-lang/rust/issues/133895>
 
-    let top_level_ui_tests = walkdir::WalkDir::new(tests_path)
-        .min_depth(1)
-        .max_depth(1)
+    let top_level_ui_tests = ignore::WalkBuilder::new(tests_path)
+        .max_depth(Some(1))
         .follow_links(false)
-        .same_file_system(true)
-        .into_iter()
+        .build()
         .flatten()
         .filter(|e| {
             let file_name = e.file_name();
             file_name != ".gitattributes" && file_name != "README.md"
         })
-        .filter(|e| !e.file_type().is_dir());
+        .filter(|e| !e.file_type().is_some_and(|f| f.is_dir()));
+
     for entry in top_level_ui_tests {
         check.error(format!(
-            "ui tests should be added under meaningful subdirectories: `{}`",
+            "ui tests should be added under meaningful subdirectories: `{}`, see https://github.com/rust-lang/compiler-team/issues/902",
             entry.path().display()
         ));
     }
@@ -157,6 +157,7 @@ fn check_unexpected_extension(check: &mut RunningCheck, file_path: &Path, ext: &
         "tests/ui/crate-loading/auxiliary/libfoo.rlib", // testing loading a manually created rlib
         "tests/ui/include-macros/data.bin", // testing including data with the include macros
         "tests/ui/include-macros/file.txt", // testing including data with the include macros
+        "tests/ui/include-macros/invalid-utf8-binary-file.bin", // testing including data with the include macros
         "tests/ui/macros/macro-expanded-include/file.txt", // testing including data with the include macros
         "tests/ui/macros/not-utf8.bin", // testing including data with the include macros
         "tests/ui/macros/syntax-extension-source-utils-files/includeme.fragment", // more include

@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::cmp;
 
 use libc::c_uint;
@@ -13,21 +12,19 @@ use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::{bug, ty};
-use rustc_session::config;
+use rustc_session::{Session, config};
 use rustc_target::callconv::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode,
 };
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{Arch, SanitizerSet};
 use smallvec::SmallVec;
 
 use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
 use crate::llvm_util;
-use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -42,13 +39,11 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 4] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
-    (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
-    (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
 ];
 
 fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
@@ -84,16 +79,24 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
         }
         for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
             if regular.contains(attr) {
-                // captures(...) is only available since LLVM 21.
-                if (attr == ArgAttribute::CapturesReadOnly || attr == ArgAttribute::CapturesAddress)
-                    && llvm_util::get_version() < (21, 0, 0)
-                {
-                    continue;
-                }
                 attrs.push(llattr.create_attr(cx.llcx));
             }
         }
-    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+        // captures(...) is only available since LLVM 21.
+        if (21, 0, 0) <= llvm_util::get_version() {
+            const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
+                (ArgAttribute::CapturesNone, llvm::AttributeKind::CapturesNone),
+                (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
+                (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
+            ];
+            for (attr, llattr) in CAPTURES_ATTRIBUTES {
+                if regular.contains(attr) {
+                    attrs.push(llattr.create_attr(cx.llcx));
+                    break;
+                }
+            }
+        }
+    } else if cx.tcx.sess.sanitizers().contains(SanitizerSet::MEMORY) {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
         // memory sanitizer's behavior.
 
@@ -246,10 +249,11 @@ impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                     scratch_align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
+                    None,
                 );
                 bx.lifetime_end(llscratch, scratch_size);
             }
-            _ => {
+            PassMode::Pair(..) | PassMode::Direct { .. } => {
                 OperandRef::from_immediate_or_packed_pair(bx, val, self.layout).val.store(bx, dst);
             }
         }
@@ -399,7 +403,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv {
-        llvm::CallConv::from_conv(self.conv, cx.tcx.sess.target.arch.borrow())
+        to_llvm_calling_convention(cx.tcx.sess, self.conv)
     }
 
     fn apply_attrs_llfn(
@@ -524,6 +528,28 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     let ii = apply(b);
                     if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
+                        let primitive_b = scalar_b.primitive();
+                        let scalar_b = if let rustc_abi::Primitive::Int(int, false) = primitive_b
+                            && let ty::Ref(_, pointee_ty, _) = *arg.layout.ty.kind()
+                            && let ty::Slice(element_ty) = *pointee_ty.kind()
+                            && let elem_size = cx.layout_of(element_ty).size
+                            && elem_size != rustc_abi::Size::ZERO
+                        {
+                            // Ideally the layout calculations would have set the range,
+                            // but that's complicated due to cycles, so in the mean time
+                            // we calculate and apply it here.
+                            debug_assert!(scalar_b.is_always_valid(cx));
+                            let isize_max = int.signed_max() as u64;
+                            rustc_abi::Scalar::Initialized {
+                                value: primitive_b,
+                                valid_range: rustc_abi::WrappingRange {
+                                    start: 0,
+                                    end: u128::from(isize_max / elem_size.bytes()),
+                                },
+                            }
+                        } else {
+                            scalar_b
+                        };
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
                 }
@@ -538,7 +564,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         // If the declaration has an associated instance, compute extra attributes based on that.
         if let Some(instance) = instance {
-            llfn_attrs_from_instance(cx, llfn, instance);
+            llfn_attrs_from_instance(
+                cx,
+                cx.tcx,
+                llfn,
+                &cx.tcx.codegen_instance_attrs(instance.def),
+                Some(instance),
+            );
         }
     }
 
@@ -656,43 +688,39 @@ impl AbiBuilderMethods for Builder<'_, '_, '_> {
     }
 }
 
-impl llvm::CallConv {
-    pub(crate) fn from_conv(conv: CanonAbi, arch: &str) -> Self {
-        match conv {
-            CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
-            CanonAbi::RustCold => llvm::PreserveMost,
-            // Functions with this calling convention can only be called from assembly, but it is
-            // possible to declare an `extern "custom"` block, so the backend still needs a calling
-            // convention for declaring foreign functions.
-            CanonAbi::Custom => llvm::CCallConv,
-            CanonAbi::GpuKernel => {
-                if arch == "amdgpu" {
-                    llvm::AmdgpuKernel
-                } else if arch == "nvptx64" {
-                    llvm::PtxKernel
-                } else {
-                    panic!("Architecture {arch} does not support GpuKernel calling convention");
-                }
-            }
-            CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
-                InterruptKind::Avr => llvm::AvrInterrupt,
-                InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,
-                InterruptKind::Msp430 => llvm::Msp430Intr,
-                InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => llvm::CCallConv,
-                InterruptKind::X86 => llvm::X86_Intr,
-            },
-            CanonAbi::Arm(arm_call) => match arm_call {
-                ArmCall::Aapcs => llvm::ArmAapcsCallConv,
-                ArmCall::CCmseNonSecureCall | ArmCall::CCmseNonSecureEntry => llvm::CCallConv,
-            },
-            CanonAbi::X86(x86_call) => match x86_call {
-                X86Call::Fastcall => llvm::X86FastcallCallConv,
-                X86Call::Stdcall => llvm::X86StdcallCallConv,
-                X86Call::SysV64 => llvm::X86_64_SysV,
-                X86Call::Thiscall => llvm::X86_ThisCall,
-                X86Call::Vectorcall => llvm::X86_VectorCall,
-                X86Call::Win64 => llvm::X86_64_Win64,
-            },
-        }
+/// Determines the appropriate [`llvm::CallConv`] to use for a given function
+/// ABI, for the current target.
+pub(crate) fn to_llvm_calling_convention(sess: &Session, abi: CanonAbi) -> llvm::CallConv {
+    match abi {
+        CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
+        CanonAbi::RustCold => llvm::PreserveMost,
+        // Functions with this calling convention can only be called from assembly, but it is
+        // possible to declare an `extern "custom"` block, so the backend still needs a calling
+        // convention for declaring foreign functions.
+        CanonAbi::Custom => llvm::CCallConv,
+        CanonAbi::GpuKernel => match &sess.target.arch {
+            Arch::AmdGpu => llvm::AmdgpuKernel,
+            Arch::Nvptx64 => llvm::PtxKernel,
+            arch => panic!("Architecture {arch} does not support GpuKernel calling convention"),
+        },
+        CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
+            InterruptKind::Avr => llvm::AvrInterrupt,
+            InterruptKind::AvrNonBlocking => llvm::AvrNonBlockingInterrupt,
+            InterruptKind::Msp430 => llvm::Msp430Intr,
+            InterruptKind::RiscvMachine | InterruptKind::RiscvSupervisor => llvm::CCallConv,
+            InterruptKind::X86 => llvm::X86_Intr,
+        },
+        CanonAbi::Arm(arm_call) => match arm_call {
+            ArmCall::Aapcs => llvm::ArmAapcsCallConv,
+            ArmCall::CCmseNonSecureCall | ArmCall::CCmseNonSecureEntry => llvm::CCallConv,
+        },
+        CanonAbi::X86(x86_call) => match x86_call {
+            X86Call::Fastcall => llvm::X86FastcallCallConv,
+            X86Call::Stdcall => llvm::X86StdcallCallConv,
+            X86Call::SysV64 => llvm::X86_64_SysV,
+            X86Call::Thiscall => llvm::X86_ThisCall,
+            X86Call::Vectorcall => llvm::X86_VectorCall,
+            X86Call::Win64 => llvm::X86_64_Win64,
+        },
     }
 }

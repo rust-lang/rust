@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getVar, nonnull, getSettingValue */
+/* global addClass, getNakedUrl, getVar, getSettingValue, hasClass, nonnull */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
 "use strict";
@@ -28,7 +28,7 @@ if (!Array.prototype.toSpliced) {
  * @template T
  * @param {Iterable<T>} arr
  * @param {function(T): Promise<any>} func
- * @param {function(T): boolean} funcBtwn
+ * @param {function(T): void} funcBtwn
  */
 async function onEachBtwnAsync(arr, func, funcBtwn) {
     let skipped = true;
@@ -91,54 +91,55 @@ if (!Promise.withResolvers) {
 // ==================== Core search logic begin ====================
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
-const itemTypes = [
-    "keyword",
-    "primitive",
-    "mod",
-    "externcrate",
-    "import",
-    "struct", // 5
-    "enum",
-    "fn",
-    "type",
-    "static",
-    "trait", // 10
-    "impl",
-    "tymethod",
-    "method",
-    "structfield",
-    "variant", // 15
-    "macro",
-    "associatedtype",
-    "constant",
-    "associatedconstant",
-    "union", // 20
-    "foreigntype",
-    "existential",
-    "attr",
-    "derive",
-    "traitalias", // 25
-    "generic",
-    "attribute",
-];
+const itemTypes = Object.freeze({
+    keyword: 0,
+    primitive: 1,
+    mod: 2,
+    externcrate: 3,
+    import: 4,
+    struct: 5,
+    enum: 6,
+    fn: 7,
+    type: 8,
+    static: 9,
+    trait: 10,
+    impl: 11,
+    tymethod: 12,
+    method: 13,
+    structfield: 14,
+    variant: 15,
+    macro: 16,
+    associatedtype: 17,
+    constant: 18,
+    associatedconstant: 19,
+    union: 20,
+    foreigntype: 21,
+    existential: 22,
+    attr: 23,
+    derive: 24,
+    traitalias: 25,
+    generic: 26,
+    attribute: 27,
+});
+const itemTypesName = Array.from(Object.keys(itemTypes));
 
-// used for special search precedence
-/** @type {rustdoc.ItemType} */
-const TY_PRIMITIVE = 1;
-/** @type {rustdoc.ItemType} */
-const TY_GENERIC = 26;
-/** @type {rustdoc.ItemType} */
-const TY_IMPORT = 4;
-/** @type {rustdoc.ItemType} */
-const TY_TRAIT = 10;
-/** @type {rustdoc.ItemType} */
-const TY_FN = 7;
-/** @type {rustdoc.ItemType} */
-const TY_METHOD = 13;
-/** @type {rustdoc.ItemType} */
-const TY_TYMETHOD = 12;
-/** @type {rustdoc.ItemType} */
-const TY_ASSOCTYPE = 17;
+// When filtering, some types might be included as well. For example, when you filter on `constant`,
+// we also include associated constant items.
+//
+// This map is built as follows: the first item of the array is the type to be included when the
+// second type of the array is used as filter.
+const itemParents = new Map([
+    [itemTypes.associatedconstant, itemTypes.constant],
+    [itemTypes.method, itemTypes.fn],
+    [itemTypes.tymethod, itemTypes.fn],
+    [itemTypes.primitive, itemTypes.type],
+    [itemTypes.associatedtype, itemTypes.type],
+    [itemTypes.traitalias, itemTypes.trait],
+    [itemTypes.attr, itemTypes.macro],
+    [itemTypes.derive, itemTypes.macro],
+    [itemTypes.externcrate, itemTypes.import],
+]);
+
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -149,7 +150,10 @@ const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 const UNBOXING_LIMIT = 5;
 
 // used for search query verification
-const REGEX_IDENT = /\p{ID_Start}\p{ID_Continue}*|_\p{ID_Continue}+/uy;
+// because searches are often performed using substrings of identifiers,
+// and not just full identiferes, we allow them to start with chars that otherwise
+// can only appear in the middle of identifiers
+const REGEX_IDENT = /\p{ID_Continue}+/uy;
 const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
 
 const MAX_RESULTS = 200;
@@ -299,7 +303,7 @@ function isEndCharacter(c) {
  * @returns
  */
 function isFnLikeTy(ty) {
-    return ty === TY_FN || ty === TY_METHOD || ty === TY_TYMETHOD;
+    return ty === itemTypes.fn || ty === itemTypes.method || ty === itemTypes.tymethod;
 }
 
 /**
@@ -1077,6 +1081,34 @@ function isPathSeparator(c) {
 }
 
 /**
+ * Given an array and an ascending list of indices,
+ * efficiently removes each index in the array.
+ *
+ * @template T
+ * @param {Array<T>} a
+ * @param {Array<number>} idxList
+ */
+function removeIdxListAsc(a, idxList) {
+    if (idxList.length === 0) {
+        return;
+    }
+    let removed = 0;
+    let i = idxList[0];
+    let nextToRemove = idxList[0];
+    while (i < a.length - idxList.length) {
+        while (i === nextToRemove && removed < idxList.length) {
+            removed++;
+            i++;
+            nextToRemove = idxList[removed];
+        }
+        a[i] = a[i + removed];
+        i++;
+    }
+    // truncate array
+    a.length -= idxList.length;
+}
+
+/**
  * @template T
  */
 class VlqHexDecoder {
@@ -1174,8 +1206,9 @@ function itemTypeFromName(typename) {
     if (typename === null) {
         return NO_TYPE_FILTER;
     }
-    const index = itemTypes.findIndex(i => i === typename);
-    if (index < 0) {
+    // @ts-expect-error
+    const index = itemTypes[typename];
+    if (index === undefined) {
         throw ["Unknown type filter ", typename];
     }
     return index;
@@ -1298,21 +1331,21 @@ class DocSearch {
             }
             return -1;
         };
-        const typeNameIdOfOutput = await first(output, TY_ASSOCTYPE, "");
-        const typeNameIdOfFnPtr = await first(fn, TY_PRIMITIVE, "");
-        const typeNameIdOfFn = await first(fn, TY_TRAIT, "core::ops");
-        const typeNameIdOfFnMut = await first(fnMut, TY_TRAIT, "core::ops");
-        const typeNameIdOfFnOnce = await first(fnOnce, TY_TRAIT, "core::ops");
-        const typeNameIdOfArray = await first(array, TY_PRIMITIVE, "");
-        const typeNameIdOfSlice = await first(slice, TY_PRIMITIVE, "");
-        const typeNameIdOfArrayOrSlice = await first(arrayOrSlice, TY_PRIMITIVE, "");
-        const typeNameIdOfTuple = await first(tuple, TY_PRIMITIVE, "");
-        const typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
-        const typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
-        const typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
-        const typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
-        const typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
-        const typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
+        const typeNameIdOfOutput = await first(output, itemTypes.associatedtype, "");
+        const typeNameIdOfFnPtr = await first(fn, itemTypes.primitive, "");
+        const typeNameIdOfFn = await first(fn, itemTypes.trait, "core::ops");
+        const typeNameIdOfFnMut = await first(fnMut, itemTypes.trait, "core::ops");
+        const typeNameIdOfFnOnce = await first(fnOnce, itemTypes.trait, "core::ops");
+        const typeNameIdOfArray = await first(array, itemTypes.primitive, "");
+        const typeNameIdOfSlice = await first(slice, itemTypes.primitive, "");
+        const typeNameIdOfArrayOrSlice = await first(arrayOrSlice, itemTypes.primitive, "");
+        const typeNameIdOfTuple = await first(tuple, itemTypes.primitive, "");
+        const typeNameIdOfUnit = await first(unit, itemTypes.primitive, "");
+        const typeNameIdOfTupleOrUnit = await first(tupleOrUnit, itemTypes.primitive, "");
+        const typeNameIdOfReference = await first(reference, itemTypes.primitive, "");
+        const typeNameIdOfPointer = await first(pointer, itemTypes.primitive, "");
+        const typeNameIdOfHof = await first(hof, itemTypes.primitive, "");
+        const typeNameIdOfNever = await first(never, itemTypes.primitive, "");
         this.typeNameIds = {
             typeNameIdOfOutput,
             typeNameIdOfFnPtr,
@@ -1489,7 +1522,7 @@ class DocSearch {
             /** @param {rustdoc.ParserQueryElement} elem */
             const checkTypeFilter = elem => {
                 const ty = itemTypeFromName(elem.typeFilter);
-                if (ty === TY_GENERIC && elem.generics.length !== 0) {
+                if (ty === itemTypes.generic && elem.generics.length !== 0) {
                     throw [
                         "Generic type parameter ",
                         elem.name,
@@ -1598,11 +1631,13 @@ class DocSearch {
          * module_path,
          * exact_module_path,
          * parent,
+         * trait_parent,
          * deprecated,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1616,8 +1651,9 @@ class DocSearch {
             modulePath: raw[2] === 0 ? null : raw[2] - 1,
             exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
             parent: raw[4] === 0 ? null : raw[4] - 1,
-            deprecated: raw[5] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+            traitParent: raw[5] === 0 ? null : raw[5] - 1,
+            deprecated: raw[6] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
         };
     }
 
@@ -1853,14 +1889,25 @@ class DocSearch {
         if (!entry && !path) {
             return null;
         }
+        /** @type {function("parent" | "traitParent"): Promise<rustdoc.RowParent>} */
+        const buildParentLike = async field => {
+            const [name, path] = entry !== null && entry[field] !== null ?
+                await Promise.all([this.getName(entry[field]), this.getPathData(entry[field])]) :
+                [null, null];
+            if (name !== null && path !== null) {
+                return { name, path };
+            }
+            return null;
+        };
+
         const [
             moduleName,
             modulePathData,
             exactModuleName,
             exactModulePathData,
-            parentName,
-            parentPath,
-            crate,
+            parent,
+            traitParent,
+            crateOrNull,
         ] = await Promise.all([
             entry && entry.modulePath !== null ? this.getName(entry.modulePath) : null,
             entry && entry.modulePath !== null ? this.getPathData(entry.modulePath) : null,
@@ -1870,14 +1917,11 @@ class DocSearch {
             entry && entry.exactModulePath !== null ?
                 this.getPathData(entry.exactModulePath) :
                 null,
-            entry && entry.parent !== null ?
-                this.getName(entry.parent) :
-                null,
-            entry && entry.parent !== null ?
-                this.getPathData(entry.parent) :
-                null,
-            entry ? nonnull(await this.getName(entry.krate)) : "",
+            buildParentLike("parent"),
+            buildParentLike("traitParent"),
+            entry ? this.getName(entry.krate) : "",
         ]);
+        const crate = crateOrNull === null ? "" : crateOrNull;
         const name = name_ === null ? "" : name_;
         const normalizedName = (name.indexOf("_") === -1 ?
             name :
@@ -1886,6 +1930,7 @@ class DocSearch {
             (modulePathData.modulePath === "" ?
                 moduleName :
                 `${modulePathData.modulePath}::${moduleName}`);
+
         return {
             id,
             crate,
@@ -1901,9 +1946,8 @@ class DocSearch {
             path,
             functionData,
             deprecated: entry ? entry.deprecated : false,
-            parent: parentName !== null && parentPath !== null ?
-                { name: parentName, path: parentPath } :
-                null,
+            parent,
+            traitParent,
         };
     }
 
@@ -1991,7 +2035,7 @@ class DocSearch {
             result = {
                 id,
                 name: "",
-                ty: TY_GENERIC,
+                ty: itemTypes.generic,
                 path: null,
                 exactPath: null,
                 generics,
@@ -2003,7 +2047,7 @@ class DocSearch {
             result = {
                 id: null,
                 name: "",
-                ty: TY_GENERIC,
+                ty: itemTypes.generic,
                 path: null,
                 exactPath: null,
                 generics,
@@ -2020,7 +2064,7 @@ class DocSearch {
                 return {
                     id: null,
                     name: "",
-                    ty: TY_GENERIC,
+                    ty: itemTypes.generic,
                     path: null,
                     exactPath: null,
                     generics,
@@ -2088,8 +2132,8 @@ class DocSearch {
      *
      * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} parsedQuery
      *     - The parsed user query
-     * @param  {Object} filterCrates - Crate to search in if defined
-     * @param  {string} currentCrate - Current crate, to rank results from this crate higher
+     * @param  {string|null} filterCrates - Crate to search in if defined
+     * @param  {string|null} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
@@ -2101,12 +2145,13 @@ class DocSearch {
 
         /**
          * @param {rustdoc.Row} item
-         * @returns {[string, string, string]}
+         * @returns {[string, string, string, string|null]}
          */
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
-            const type = itemTypes[item.ty];
+            let traitPath = null;
+            const type = itemTypesName[item.ty];
             const name = item.name;
             let path = item.modulePath;
             let exactPath = item.exactModulePath;
@@ -2130,7 +2175,7 @@ class DocSearch {
             } else if (item.parent) {
                 const myparent = item.parent;
                 let anchor = type + "." + name;
-                const parentType = itemTypes[myparent.path.ty];
+                const parentType = itemTypesName[myparent.path.ty];
                 let pageType = parentType;
                 let pageName = myparent.name;
                 exactPath = `${myparent.path.exactModulePath}::${myparent.name}`;
@@ -2163,7 +2208,11 @@ class DocSearch {
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
             }
-            return [displayPath, href, `${exactPath}::${name}`];
+            if (item.traitParent) {
+                const tparent = item.traitParent;
+                traitPath = `${tparent.path.exactModulePath}::${tparent.name}::${name}`;
+            }
+            return [displayPath, href, `${exactPath}::${name}`, traitPath];
         };
 
         /**
@@ -2372,7 +2421,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ", highlighted: false }, result),
                     );
                     pushText({ name: sb, highlighted: fnType.highlighted }, result);
@@ -2386,7 +2434,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2405,7 +2452,6 @@ class DocSearch {
                             prevHighlighted = !!value.highlighted;
                             await writeFn(value, result);
                         },
-                        // @ts-expect-error
                         value => pushText({
                             name: " ",
                             highlighted: prevHighlighted && value.highlighted,
@@ -2466,18 +2512,17 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, where),
-                        // @ts-expect-error
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
-                    if (fnType.ty === TY_PRIMITIVE) {
+                    if (fnType.ty === itemTypes.primitive) {
                         if (await writeSpecialPrimitive(fnType, result)) {
                             return;
                         }
-                    } else if (fnType.ty === TY_TRAIT && (
+                    } else if (fnType.ty === itemTypes.trait && (
                         fnType.id === typeNameIds.typeNameIdOfFn ||
                         fnType.id === typeNameIds.typeNameIdOfFnMut ||
                         fnType.id === typeNameIds.typeNameIdOfFnOnce ||
@@ -2496,7 +2541,6 @@ class DocSearch {
                         await onEachBtwnAsync(
                             fnType.generics,
                             value => writeFn(value, result),
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                         if (fnType.generics.length > 1) {
@@ -2519,6 +2563,7 @@ class DocSearch {
                                 async([key, values]) => [await this.getName(key), values],
                             )),
                             async([name, values]) => {
+                                // values[0] cannot be null due to length check
                                 // @ts-expect-error
                                 if (values.length === 1 && values[0].id < 0 &&
                                     // @ts-expect-error
@@ -2544,14 +2589,12 @@ class DocSearch {
                                 await onEachBtwnAsync(
                                     values || [],
                                     value => writeFn(value, result),
-                                    // @ts-expect-error
                                     () => pushText({ name: " + ",  highlighted: false }, result),
                                 );
                                 if (values.length !== 1) {
                                     pushText({ name: ")", highlighted: false }, result);
                                 }
                             },
-                            // @ts-expect-error
                             () => pushText({ name: ", ",  highlighted: false }, result),
                         );
                     }
@@ -2561,7 +2604,6 @@ class DocSearch {
                     await onEachBtwnAsync(
                         fnType.generics,
                         value => writeFn(value, result),
-                        // @ts-expect-error
                         () => pushText({ name: ", ",  highlighted: false }, result),
                     );
                     if (hasBindings || fnType.generics.length > 0) {
@@ -2574,14 +2616,12 @@ class DocSearch {
             await onEachBtwnAsync(
                 fnInputs,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
             pushText({ name: " -> ", highlighted: false }, type);
             await onEachBtwnAsync(
                 fnOutput,
                 fnType => writeFn(fnType, type),
-                // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
 
@@ -2598,7 +2638,13 @@ class DocSearch {
          * @returns {rustdoc.ResultObject[]}
          */
         const transformResults = (results, typeInfo, duplicates) => {
+            /** @type {rustdoc.ResultObject[]} */
             const out = [];
+
+            // if we match a trait-associated item, we want to go back and
+            // remove all the items that are their equivalent but in an impl block.
+            /** @type {Map<string, number[]>} */
+            const traitImplIdxMap = new Map();
 
             for (const result of results) {
                 const item = result.item;
@@ -2630,23 +2676,41 @@ class DocSearch {
                         item,
                         displayPath: pathSplitter(res[0]),
                         fullPath: "",
+                        traitPath: null,
                         href: "",
                         displayTypeSignature: null,
                     }, result);
 
+                    // unlike other items, methods have a different ty when they are
+                    // in an impl block vs a trait.  want to normalize this away.
+                    let ty = obj.item.ty;
+                    if (ty === itemTypes.tymethod) {
+                        ty = itemTypes.method;
+                    }
                     // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath = res[2] + "|" + obj.item.ty;
+                    obj.fullPath = res[2] + "|" + ty;
+                    if (res[3]) {
+                        // "tymethod" is never used on impl blocks
+                        // (this is the reason we need to normalize tymethod away).
+                        obj.traitPath = res[3] + "|" + obj.item.ty;
+                    }
 
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
 
-                    // Exports are specifically not shown if the items they point at
-                    // are already in the results.
-                    if (obj.item.ty === TY_IMPORT && duplicates.has(res[2])) {
+                    // If we're showing something like `Iterator::next`,
+                    // we don't want to also show a bunch of `<SomeType as Iterator>::next`
+                    if (obj.traitPath && duplicates.has(obj.traitPath)) {
                         continue;
                     }
-                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
+
+                    // Exports are specifically not shown if the items they point at
+                    // are already in the results.
+                    if (obj.item.ty === itemTypes.import && duplicates.has(res[2])) {
+                        continue;
+                    }
+                    if (duplicates.has(res[2] + "|" + itemTypes.import)) {
                         continue;
                     }
                     duplicates.add(obj.fullPath);
@@ -2661,14 +2725,29 @@ class DocSearch {
                         );
                     }
 
+                    // FIXME: if the trait item matches but is cut off due to MAX_RESULTS,
+                    // this deduplication will not happen.
                     obj.href = res[1];
+                    if (obj.traitPath) {
+                        let list = traitImplIdxMap.get(obj.traitPath);
+                        if (list === undefined) {
+                            list = [];
+                        }
+                        list.push(out.length);
+                        traitImplIdxMap.set(obj.traitPath, list);
+                    } else {
+                        const toRemoveList = traitImplIdxMap.get(obj.fullPath);
+                        if (toRemoveList) {
+                            removeIdxListAsc(out, toRemoveList);
+                        }
+                        traitImplIdxMap.delete(obj.fullPath);
+                    }
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
                         break;
                     }
                 }
             }
-
             return out;
         };
 
@@ -2677,7 +2756,7 @@ class DocSearch {
              * @this {DocSearch}
              * @param {Array<rustdoc.PlainResultObject|null>} results
              * @param {"sig"|"elems"|"returned"|null} typeInfo
-             * @param {string} preferredCrate
+             * @param {string|null} preferredCrate
              * @param {Set<string>} duplicates
              * @returns {AsyncGenerator<rustdoc.ResultObject, number>}
              */
@@ -2949,10 +3028,8 @@ class DocSearch {
                     )) {
                         continue;
                     }
-                    // @ts-expect-error
-                    if (fnType.id < 0) {
+                    if (fnType.id !== null && fnType.id < 0) {
                         const highlightedGenerics = unifyFunctionTypes(
-                            // @ts-expect-error
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
@@ -3808,26 +3885,14 @@ class DocSearch {
             if (filter <= NO_TYPE_FILTER || filter === type) return true;
 
             // Match related items
-            const name = itemTypes[type];
-            switch (itemTypes[filter]) {
-                case "constant":
-                    return name === "associatedconstant";
-                case "fn":
-                    return name === "method" || name === "tymethod";
-                case "type":
-                    return name === "primitive" || name === "associatedtype";
-                case "trait":
-                    return name === "traitalias";
-            }
-
-            // No match
-            return false;
+            // @ts-expect-error
+            return filter === itemParents.get(type);
         }
 
         const innerRunNameQuery =
             /**
              * @this {DocSearch}
-             * @param {string} currentCrate
+             * @param {string|null} currentCrate
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(currentCrate) {
@@ -3850,16 +3915,25 @@ class DocSearch {
                  * @returns {Promise<rustdoc.PlainResultObject?>}
                  */
                 const handleAlias = async(name, alias, dist, index) => {
+                    const item = nonnull(await this.getRow(alias, false));
+                    // space both is an alias for ::,
+                    // and is also allowed to appear in doc alias names
+                    const path_dist = name.includes(" ") || parsedQuery.elems.length === 0 ?
+                        0 : checkRowPath(parsedQuery.elems[0].pathWithoutLast, item);
+                    // path distance exceeds max, omit alias from results
+                    if (path_dist === null) {
+                        return null;
+                    }
                     return {
                         id: alias,
                         dist,
-                        path_dist: 0,
+                        path_dist,
                         index,
                         alias: name,
                         is_alias: true,
                         elems: [], // only used in type-based queries
                         returned: [], // only used in type-based queries
-                        item: nonnull(await this.getRow(alias, false)),
+                        item,
                     };
                 };
                 /**
@@ -4060,7 +4134,7 @@ class DocSearch {
              * @param {rustdoc.ParserQueryElement[]} inputs
              * @param {rustdoc.ParserQueryElement[]} output
              * @param {"sig"|"elems"|"returned"|null} typeInfo
-             * @param {string} currentCrate
+             * @param {string|null} currentCrate
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(inputs, output, typeInfo, currentCrate) {
@@ -4156,7 +4230,7 @@ class DocSearch {
                      * ]>[]}
                      * */
                     const typePromises = [];
-                    if (typeFilter !== TY_GENERIC && searchResults) {
+                    if (typeFilter !== itemTypes.generic && searchResults) {
                         for (const id of searchResults.matches().entries()) {
                             typePromises.push(Promise.all([
                                 this.getName(id),
@@ -4172,7 +4246,7 @@ class DocSearch {
                             ty && !ty[polarity].every(bitmap => {
                                 return bitmap.isEmpty();
                             }) &&
-                            path && path.ty !== TY_ASSOCTYPE &&
+                            path && path.ty !== itemTypes.associatedtype &&
                             (elem.pathWithoutLast.length === 0 ||
                                 checkPath(
                                     elem.pathWithoutLast,
@@ -4180,14 +4254,14 @@ class DocSearch {
                                 ) === 0),
                             );
                     if (types.length === 0) {
-                        const areGenericsAllowed = typeFilter === TY_GENERIC || (
+                        const areGenericsAllowed = typeFilter === itemTypes.generic || (
                             typeFilter === -1 &&
                             (parsedQuery.totalElems > 1 || parsedQuery.hasReturnArrow) &&
                             elem.pathWithoutLast.length === 0 &&
                             elem.generics.length === 0 &&
                             elem.bindings.size === 0
                         );
-                        if (typeFilter !== TY_GENERIC &&
+                        if (typeFilter !== itemTypes.generic &&
                             (elem.name.length >= 3 || !areGenericsAllowed)
                         ) {
                             /** @type {string|null} */
@@ -4211,7 +4285,7 @@ class DocSearch {
                                         !ty[polarity].every(bitmap => {
                                             return bitmap.isEmpty();
                                         }) &&
-                                        path.ty !== TY_ASSOCTYPE
+                                        path.ty !== itemTypes.associatedtype
                                     ) {
                                         let dist = editDistance(
                                             name,
@@ -4273,7 +4347,7 @@ class DocSearch {
                                 queryElem: {
                                     name: elem.name,
                                     id: (-genericId) - 1,
-                                    typeFilter: TY_GENERIC,
+                                    typeFilter: itemTypes.generic,
                                     generics: [],
                                     bindings: EMPTY_BINDINGS_MAP,
                                     fullPath: elem.fullPath,
@@ -4721,6 +4795,15 @@ function printTab(nb) {
         if (nb === iter) {
             addClass(elem, "selected");
             foundCurrentTab = true;
+            onEachLazy(document.querySelectorAll(
+                ".search-form",
+            ), form => {
+                if (hasClass(elem.firstElementChild, "loading")) {
+                    addClass(form, "loading");
+                } else {
+                    removeClass(form, "loading");
+                }
+            });
         } else {
             removeClass(elem, "selected");
         }
@@ -4831,7 +4914,7 @@ async function addTab(results, query, display, finishedCallback, isTypeSearch) {
         count += 1;
 
         const name = obj.item.name;
-        const type = itemTypes[obj.item.ty];
+        const type = itemTypesName[obj.item.ty];
         const longType = longItemTypes[obj.item.ty];
         const typeName = longType.length !== 0 ? `${longType}` : "?";
 
@@ -4936,7 +5019,9 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
                 await Promise.all(descList);
                 // need to make sure the element is shown before
                 // running this callback
-                yieldToBrowser().then(() => finishedCallback(count, output));
+                yieldToBrowser().then(() => {
+                    finishedCallback(count, output);
+                });
             }
         });
     };
@@ -4954,9 +5039,11 @@ ${obj.displayPath}<span class="${type}">${name}</span>\
     if (query.proposeCorrectionFrom !== null && isTypeSearch) {
         const orig = query.proposeCorrectionFrom;
         const targ = query.proposeCorrectionTo;
-        correctionOutput = "<h3 class=\"search-corrections\">" +
-            `Type "${orig}" not found and used as generic parameter. ` +
-            `Consider searching for "${targ}" instead.</h3>`;
+        let message = `Type "${orig}" not found and used as generic parameter.`;
+        if (targ !== null) {
+            message += ` Consider searching for "${targ}" instead.`;
+        }
+        correctionOutput = `<h3 class="search-corrections">${message}</h3>`;
     }
     if (firstResult.value) {
         if (correctionOutput !== "") {
@@ -5073,6 +5160,7 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
                 count < 100 ? `\u{2007}(${count})\u{2007}` : `\u{2007}(${count})`;
             tabCount.innerHTML = fmtNbElems;
             tabCount.className = "count";
+            printTab(window.searchState.currentTab);
         }, isTypeSearch),
     ];
 }
@@ -5081,7 +5169,7 @@ function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
  * @param {DocSearch} docSearch
  * @param {rustdoc.ResultsTable} results
  * @param {boolean} goToFirst
- * @param {string} filterCrates
+ * @param {string|null} filterCrates
  */
 async function showResults(docSearch, results, goToFirst, filterCrates) {
     const search = window.searchState.outputElement();
@@ -5132,9 +5220,12 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     resultsElem.id = "results";
 
     search.innerHTML = "";
-    for (const [tab, output] of tabs) {
+    for (const [tabNb, [tab, output]] of tabs.entries()) {
         tabsElem.appendChild(tab);
+        const isCurrentTab = window.searchState.currentTab === tabNb;
         const placeholder = document.createElement("div");
+        placeholder.className = isCurrentTab ? "search-results active" : "search-results";
+        placeholder.innerHTML = "Loading...";
         output.then(output => {
             if (placeholder.parentElement) {
                 placeholder.parentElement.replaceChild(output, placeholder);
@@ -5151,6 +5242,8 @@ async function showResults(docSearch, results, goToFirst, filterCrates) {
     }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
+        // #crate-search is an input element
+        // @ts-expect-error
         crateSearch.addEventListener("input", updateCrate);
     }
     search.appendChild(tabsElem);
@@ -5230,10 +5323,8 @@ async function search(forced) {
 
     await showResults(
         docSearch,
-        // @ts-expect-error
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
         params.go_to_first,
-        // @ts-expect-error
         filterCrates);
 }
 
@@ -5310,27 +5401,33 @@ function registerSearchEvents() {
         }
         // up and down arrow select next/previous search result, or the
         // search box if we're already at the top.
+        //
+        // the .focus() calls are safe because there's no kind of element
+        // that lacks .focus() that should be in the document.
         if (e.which === 38) { // up
-            // @ts-expect-error
-            const previous = document.activeElement.previousElementSibling;
-            if (previous) {
-                // @ts-expect-error
-                previous.focus();
-            } else {
-                searchState.focus();
+            const active = document.activeElement;
+            if (active) {
+                const previous = active.previousElementSibling;
+                if (previous) {
+                    // @ts-expect-error
+                    previous.focus();
+                } else {
+                    searchState.focus();
+                }
             }
             e.preventDefault();
         } else if (e.which === 40) { // down
-            // @ts-expect-error
-            const next = document.activeElement.nextElementSibling;
-            if (next) {
-                // @ts-expect-error
-                next.focus();
-            }
-            // @ts-expect-error
-            const rect = document.activeElement.getBoundingClientRect();
-            if (window.innerHeight - rect.bottom < rect.height) {
-                window.scrollBy(0, rect.height);
+            const active = document.activeElement;
+            if (active) {
+                const next = active.nextElementSibling;
+                if (next) {
+                    // @ts-expect-error
+                    next.focus();
+                }
+                const rect = active.getBoundingClientRect();
+                if (window.innerHeight - rect.bottom < rect.height) {
+                    window.scrollBy(0, rect.height);
+                }
             }
             e.preventDefault();
         } else if (e.which === 37) { // left
@@ -5354,7 +5451,9 @@ function registerSearchEvents() {
     });
 }
 
-// @ts-expect-error
+/**
+ * @param {Event & { target: HTMLInputElement }} ev
+ */
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.
@@ -5391,11 +5490,6 @@ if (ROOT_PATH === null) {
 const database = await Stringdex.loadDatabase(hooks);
 if (typeof window !== "undefined") {
     docSearch = new DocSearch(ROOT_PATH, database);
-    onEachLazy(document.querySelectorAll(
-        ".search-form.loading",
-    ), form => {
-        removeClass(form, "loading");
-    });
     registerSearchEvents();
     // If there's a search term in the URL, execute the search now.
     if (window.searchState.getQueryStringParams().search !== undefined) {

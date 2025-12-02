@@ -11,7 +11,7 @@ LL |         (&mut self).bar();
    = note: `#[warn(unconditional_recursion)]` on by default
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:7:9
+  --> $DIR/issue-51191.rs:8:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
@@ -22,13 +22,17 @@ note: the binding is already a mutable borrow
 LL |     fn bar(self: &mut Self) {
    |                  ^^^^^^^^^
 help: try removing `&mut` here
-  --> $DIR/issue-51191.rs:7:9
+  --> $DIR/issue-51191.rs:8:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^
+help: consider making the binding mutable if you need to reborrow multiple times
+   |
+LL |     fn bar(mut self: &mut Self) {
+   |            +++
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:13:9
+  --> $DIR/issue-51191.rs:14:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
@@ -39,30 +43,32 @@ LL |     fn imm(mut self) {
    |            +++
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:22:9
+  --> $DIR/issue-51191.rs:23:9
    |
+LL |     fn immref(&self) {
+   |               ----- this cannot be borrowed as mutable
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/issue-51191.rs:22:9
+  --> $DIR/issue-51191.rs:23:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
-  --> $DIR/issue-51191.rs:28:9
+  --> $DIR/issue-51191.rs:29:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^ cannot borrow as mutable
    |
 note: the binding is already a mutable borrow
-  --> $DIR/issue-51191.rs:27:16
+  --> $DIR/issue-51191.rs:28:16
    |
 LL |     fn mtblref(&mut self) {
    |                ^^^^^^^^^
 help: try removing `&mut` here
-  --> $DIR/issue-51191.rs:28:9
+  --> $DIR/issue-51191.rs:29:9
    |
 LL |         (&mut self).bar();
    |         ^^^^^^^^^^^

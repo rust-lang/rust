@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: aarch64-linux aarch64-darwin wasm32-wasip1
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 

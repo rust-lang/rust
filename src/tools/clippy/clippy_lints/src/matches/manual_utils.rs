@@ -1,17 +1,17 @@
 use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
 use crate::matches::MATCH_AS_REF;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_copy, is_type_diagnostic_item, is_unsafe_fn, peel_and_count_ty_refs};
+use clippy_utils::ty::{is_copy, is_unsafe_fn, peel_and_count_ty_refs};
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed, is_res_lang_ctor,
-    path_res, path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
+    CaptureKind, as_some_pattern, can_move_expr_to_closure, expr_requires_coercion, is_else_clause, is_lint_allowed,
+    is_none_expr, is_none_pattern, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::def::Res;
-use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatExpr, PatExprKind, PatKind, Path, QPath};
+use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{SyntaxContext, sym};
 
@@ -33,8 +33,7 @@ where
     let (scrutinee_ty, ty_ref_count, ty_mutability) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(scrutinee));
     let ty_mutability = ty_mutability.unwrap_or(Mutability::Mut);
 
-    if !(is_type_diagnostic_item(cx, scrutinee_ty, sym::Option)
-        && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Option))
+    if !(scrutinee_ty.is_diag_item(cx, sym::Option) && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Option))
     {
         return None;
     }
@@ -44,16 +43,16 @@ where
         try_parse_pattern(cx, then_pat, expr_ctxt),
         else_pat.map_or(Some(OptionPat::Wild), |p| try_parse_pattern(cx, p, expr_ctxt)),
     ) {
-        (Some(OptionPat::Wild), Some(OptionPat::Some { pattern, ref_count })) if is_none_expr(cx, then_body) => {
+        (Some(OptionPat::Wild), Some(OptionPat::Some { pattern, ref_count })) if is_none_arm_body(cx, then_body) => {
             (else_body, pattern, ref_count, true)
         },
-        (Some(OptionPat::None), Some(OptionPat::Some { pattern, ref_count })) if is_none_expr(cx, then_body) => {
+        (Some(OptionPat::None), Some(OptionPat::Some { pattern, ref_count })) if is_none_arm_body(cx, then_body) => {
             (else_body, pattern, ref_count, false)
         },
-        (Some(OptionPat::Some { pattern, ref_count }), Some(OptionPat::Wild)) if is_none_expr(cx, else_body) => {
+        (Some(OptionPat::Some { pattern, ref_count }), Some(OptionPat::Wild)) if is_none_arm_body(cx, else_body) => {
             (then_body, pattern, ref_count, true)
         },
-        (Some(OptionPat::Some { pattern, ref_count }), Some(OptionPat::None)) if is_none_expr(cx, else_body) => {
+        (Some(OptionPat::Some { pattern, ref_count }), Some(OptionPat::None)) if is_none_arm_body(cx, else_body) => {
             (then_body, pattern, ref_count, false)
         },
         _ => return None,
@@ -138,7 +137,7 @@ where
         {
             snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
         } else {
-            if path_to_local_id(some_expr.expr, id)
+            if some_expr.expr.res_local_id() == Some(id)
                 && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
                 && binding_ref.is_some()
             {
@@ -190,7 +189,7 @@ pub struct SuggInfo<'a> {
 fn can_pass_as_func<'tcx>(cx: &LateContext<'tcx>, binding: HirId, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     match expr.kind {
         ExprKind::Call(func, [arg])
-            if path_to_local_id(arg, binding)
+            if arg.res_local_id() == Some(binding)
                 && cx.typeck_results().expr_adjustments(arg).is_empty()
                 && !is_unsafe_fn(cx, cx.typeck_results().expr_ty(func).peel_refs()) =>
         {
@@ -254,14 +253,10 @@ pub(super) fn try_parse_pattern<'tcx>(
     ) -> Option<OptionPat<'tcx>> {
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
-            PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
-            PatKind::Expr(PatExpr {
-                kind: PatExprKind::Path(qpath),
-                hir_id,
-                ..
-            }) if is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone) => Some(OptionPat::None),
-            PatKind::TupleStruct(ref qpath, [pattern], _)
-                if is_res_lang_ctor(cx, cx.qpath_res(qpath, pat.hir_id), OptionSome) && pat.span.ctxt() == ctxt =>
+            PatKind::Ref(pat, _, _) => f(cx, pat, ref_count + 1, ctxt),
+            _ if is_none_pattern(cx, pat) => Some(OptionPat::None),
+            _ if let Some([pattern]) = as_some_pattern(cx, pat)
+                && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
@@ -271,7 +266,7 @@ pub(super) fn try_parse_pattern<'tcx>(
     f(cx, pat, 0, ctxt)
 }
 
-// Checks for the `None` value.
-fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
+/// Checks for the `None` value, possibly in a block.
+fn is_none_arm_body(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    is_none_expr(cx, peel_blocks(expr))
 }

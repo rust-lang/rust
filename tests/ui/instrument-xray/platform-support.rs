@@ -19,6 +19,7 @@
 //@[aarch64-darwin] needs-llvm-components: aarch64
 //@[aarch64-darwin] compile-flags: -Z instrument-xray --target=aarch64-apple-darwin
 //@[aarch64-darwin] check-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

@@ -1,14 +1,16 @@
 //@ run-pass
-#![feature(associated_const_equality)]
-#![allow(unused)]
+#![feature(associated_const_equality, min_generic_const_args)]
+#![allow(unused, incomplete_features)]
 
 pub trait Foo {
+  #[type_const]
   const N: usize;
 }
 
 pub struct Bar;
 
 impl Foo for Bar {
+  #[type_const]
   const N: usize = 3;
 }
 

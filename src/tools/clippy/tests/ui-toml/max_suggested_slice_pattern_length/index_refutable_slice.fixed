@@ -1,4 +1,3 @@
-#![allow(clippy::uninlined_format_args)]
 #![deny(clippy::index_refutable_slice)]
 
 fn below_limit() {

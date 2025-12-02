@@ -1,8 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
@@ -455,10 +453,6 @@ impl MultiSpan {
             }
         }
         replacements_occurred
-    }
-
-    pub fn pop_span_label(&mut self) -> Option<(Span, DiagMessage)> {
-        self.span_labels.pop()
     }
 
     /// Returns the strings to highlight. We always ensure that there

@@ -6,7 +6,7 @@ use rustc_span::InnerSpan;
 pub(crate) use self::Diagnostic::*;
 use self::OptimizationDiagnosticKind::*;
 use super::{DiagnosticInfo, SMDiagnostic};
-use crate::value::Value;
+use crate::llvm::Value;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum OptimizationDiagnosticKind {

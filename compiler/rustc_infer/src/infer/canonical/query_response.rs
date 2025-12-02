@@ -85,11 +85,29 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
+        // While we ignore region constraints and pending obligations,
+        // we do return constrained opaque types to avoid unconstrained
+        // inference variables in the response. This is important as we want
+        // to check that opaques in deref steps stay unconstrained.
+        //
+        // This doesn't handle the more general case for non-opaques as
+        // ambiguous `Projection` obligations have same the issue.
+        let opaque_types = if self.next_trait_solver() {
+            self.inner
+                .borrow_mut()
+                .opaque_type_storage
+                .iter_opaque_types()
+                .map(|(k, v)| (k, v.ty))
+                .collect()
+        } else {
+            vec![]
+        };
+
         self.canonicalize_response(QueryResponse {
             var_values: inference_vars,
             region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
-            opaque_types: vec![],
+            opaque_types,
             value: answer,
         })
     }
@@ -107,7 +125,7 @@ impl<'tcx> InferCtxt<'tcx> {
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
     {
         // Select everything, returning errors.
-        let errors = fulfill_cx.select_all_or_error(self);
+        let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self);
 
         // True error!
         if errors.iter().any(|e| e.is_true_error()) {
@@ -422,28 +440,28 @@ impl<'tcx> InferCtxt<'tcx> {
                     // and only use it for placeholders. We need to handle the
                     // `sub_root` of type inference variables which would make this
                     // more involved. They are also a lot rarer than region variables.
-                    if let ty::Bound(debruijn, b) = *result_value.kind()
+                    if let ty::Bound(index_kind, b) = *result_value.kind()
                         && !matches!(
                             query_response.variables[b.var.as_usize()],
                             CanonicalVarKind::Ty { .. }
                         )
                     {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Lifetime(result_value) => {
-                    if let ty::ReBound(debruijn, b) = result_value.kind() {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                    if let ty::ReBound(index_kind, b) = result_value.kind() {
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
+                    if let ty::ConstKind::Bound(index_kind, b) = result_value.kind() {
+                        // We only allow a `Canonical` index in generic parameters.
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                         opt_values[b.var] = Some(*original_value);
                     }
                 }

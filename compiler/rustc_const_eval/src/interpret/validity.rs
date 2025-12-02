@@ -639,12 +639,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             // This can actually occur with transmutes.
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
-                        // In a const, any kind of mutable reference is not good.
-                        if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
-                            if ptr_expected_mutbl == Mutability::Mut {
-                                throw_validation_failure!(self.path, MutableRefInConst);
-                            }
-                        }
                     }
                 }
                 // Potentially skip recursive check.
@@ -757,14 +751,12 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     );
                     // FIXME: Check if the signature matches
                 } else {
-                    // Otherwise (for standalone Miri), we have to still check it to be non-null.
+                    // Otherwise (for standalone Miri and for `-Zextra-const-ub-checks`),
+                    // we have to still check it to be non-null.
                     if self.ecx.scalar_may_be_null(scalar)? {
                         let maybe =
                             !M::Provenance::OFFSET_IS_ADDR && matches!(scalar, Scalar::Ptr(..));
-                        // This can't be a "maybe-null" pointer since the check for this being
-                        // a fn ptr at all already ensures that the pointer is inbounds.
-                        assert!(!maybe);
-                        throw_validation_failure!(self.path, NullFnPtr);
+                        throw_validation_failure!(self.path, NullFnPtr { maybe });
                     }
                 }
                 if self.reset_provenance_and_padding {
@@ -1263,9 +1255,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 // When you extend this match, make sure to also add tests to
                 // tests/ui/type/pattern_types/validity.rs((
                 match **pat {
-                    // Range patterns are precisely reflected into `valid_range` and thus
+                    // Range and non-null patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
                     ty::PatternKind::Range { .. } => {},
+                    ty::PatternKind::NotNull => {},
 
                     // FIXME(pattern_types): check that the value is covered by one of the variants.
                     // For now, we rely on layout computation setting the scalar's `valid_range` to

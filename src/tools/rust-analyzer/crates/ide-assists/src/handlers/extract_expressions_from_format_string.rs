@@ -108,9 +108,7 @@ pub(crate) fn extract_expressions_from_format_string(
                 match arg {
                     Arg::Expr(s) => {
                         // insert arg
-                        // FIXME: use the crate's edition for parsing
-                        let expr =
-                            ast::Expr::parse(&s, syntax::Edition::CURRENT_FIXME).syntax_node();
+                        let expr = ast::Expr::parse(&s, ctx.edition()).syntax_node();
                         let mut expr_tt = utils::tt_from_syntax(expr);
                         new_tt_bits.append(&mut expr_tt);
                     }

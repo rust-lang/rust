@@ -1,7 +1,6 @@
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Trait {}
+const trait Trait {}
 
 // Regression test for issue #90052.
 fn non_const_function<T: [const] Trait>() {} //~ ERROR `[const]` is not allowed

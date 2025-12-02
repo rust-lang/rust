@@ -4,7 +4,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::{is_lint_allowed, paths};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
-use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Item, UnsafeSource};
+use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, HirId, Item, UnsafeSource};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -13,7 +13,13 @@ use rustc_span::{Span, sym};
 use super::UNSAFE_DERIVE_DESERIALIZE;
 
 /// Implementation of the `UNSAFE_DERIVE_DESERIALIZE` lint.
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &Item<'_>,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+    adt_hir_id: HirId,
+) {
     fn has_unsafe<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>) -> bool {
         let mut visitor = UnsafeVisitor { cx };
         walk_item(&mut visitor, item).is_break()
@@ -22,8 +28,6 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     if let Some(trait_def_id) = trait_ref.trait_def_id()
         && paths::SERDE_DESERIALIZE.matches(cx, trait_def_id)
         && let ty::Adt(def, _) = ty.kind()
-        && let Some(local_def_id) = def.did().as_local()
-        && let adt_hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id)
         && !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id)
         && cx
             .tcx

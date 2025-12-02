@@ -10,6 +10,7 @@ use tracing::debug;
 
 use crate::clean::types::ExternalLocation;
 use crate::clean::{self, ExternalCrate, ItemId, PrimitiveType};
+use crate::config::RenderOptions;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::formats::Impl;
@@ -125,8 +126,6 @@ pub(crate) struct Cache {
     ///
     /// Links are indexed by the DefId of the item they document.
     pub(crate) intra_doc_links: FxHashMap<ItemId, FxIndexSet<clean::ItemLink>>,
-    /// Cfg that have been hidden via #![doc(cfg_hide(...))]
-    pub(crate) hidden_cfg: FxHashSet<clean::cfg::Cfg>,
 
     /// Contains the list of `DefId`s which have been inlined. It is used when generating files
     /// to check if a stripped item should get its file generated or not: if it's inside a
@@ -148,9 +147,21 @@ impl Cache {
         Cache { document_private, document_hidden, ..Cache::default() }
     }
 
+    fn parent_stack_last_impl_and_trait_id(&self) -> (Option<DefId>, Option<DefId>) {
+        if let Some(ParentStackItem::Impl { item_id, trait_, .. }) = self.parent_stack.last() {
+            (item_id.as_def_id(), trait_.as_ref().map(|tr| tr.def_id()))
+        } else {
+            (None, None)
+        }
+    }
+
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
     /// in `krate` due to the data being moved into the `Cache`.
-    pub(crate) fn populate(cx: &mut DocContext<'_>, mut krate: clean::Crate) -> clean::Crate {
+    pub(crate) fn populate(
+        cx: &mut DocContext<'_>,
+        mut krate: clean::Crate,
+        render_options: &RenderOptions,
+    ) -> clean::Crate {
         let tcx = cx.tcx;
 
         // Crawl the crate to build various caches used for the output
@@ -158,7 +169,6 @@ impl Cache {
         assert!(cx.external_traits.is_empty());
         cx.cache.traits = mem::take(&mut krate.external_traits);
 
-        let render_options = &cx.render_options;
         let extern_url_takes_precedence = render_options.extern_html_root_takes_precedence;
         let dst = &render_options.output;
 
@@ -574,11 +584,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
-    };
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
     let search_type = get_function_type_for_search(
         item,
         tcx,
@@ -596,12 +602,15 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         desc,
         parent: parent_did,
         parent_idx: None,
+        trait_parent,
+        trait_parent_idx: None,
         exact_module_path: None,
         impl_id,
         search_type,
         aliases,
         deprecation,
     };
+
     cache.search_index.push(index_item);
 }
 
@@ -610,19 +619,21 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
 /// See [`Cache::orphan_impl_items`].
 fn handle_orphan_impl_child(cache: &mut Cache, item: &clean::Item, parent_did: DefId) {
     let impl_generics = clean_impl_generics(cache.parent_stack.last());
-    let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
-        item_id.as_def_id()
-    } else {
-        None
+    let (impl_id, trait_parent) = cache.parent_stack_last_impl_and_trait_id();
+    let orphan_item = OrphanImplItem {
+        parent: parent_did,
+        trait_parent,
+        item: item.clone(),
+        impl_generics,
+        impl_id,
     };
-    let orphan_item =
-        OrphanImplItem { parent: parent_did, item: item.clone(), impl_generics, impl_id };
     cache.orphan_impl_items.push(orphan_item);
 }
 
 pub(crate) struct OrphanImplItem {
     pub(crate) parent: DefId,
     pub(crate) impl_id: Option<DefId>,
+    pub(crate) trait_parent: Option<DefId>,
     pub(crate) item: clean::Item,
     pub(crate) impl_generics: Option<(clean::Type, clean::Generics)>,
 }

@@ -2,15 +2,11 @@ use std::ops::ControlFlow;
 
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{
-    get_type_diagnostic_name, has_non_owning_mutable_access, make_normalized_projection, make_projection,
-};
-use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
-    path_to_local_id, sym,
-};
+use clippy_utils::ty::{has_non_owning_mutable_access, make_normalized_projection, make_projection};
+use clippy_utils::{CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, sym};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
@@ -42,11 +38,14 @@ pub(super) fn check<'tcx>(
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
 
+            let sugg: String;
+            let mut app;
+
             if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
-                let mut app = Applicability::MachineApplicable;
+                app = Applicability::MachineApplicable;
                 let collect_ty = cx.typeck_results().expr_ty(collect_expr);
 
-                let sugg: String = match name.ident.name {
+                sugg = match name.ident.name {
                     sym::len => {
                         if let Some(adt) = collect_ty.ty_adt_def()
                             && matches!(
@@ -82,23 +81,29 @@ pub(super) fn check<'tcx>(
                     },
                     _ => return,
                 };
-
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    call_span.with_hi(parent.span.hi()),
-                    NEEDLESS_COLLECT_MSG,
-                    "replace with",
-                    sugg,
-                    app,
-                );
+            } else if let ExprKind::Index(_, index, _) = parent.kind {
+                app = Applicability::MaybeIncorrect;
+                let snip = snippet_with_applicability(cx, index.span, "_", &mut app);
+                sugg = format!("nth({snip}).unwrap()");
+            } else {
+                return;
             }
+
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_COLLECT,
+                call_span.with_hi(parent.span.hi()),
+                NEEDLESS_COLLECT_MSG,
+                "replace with",
+                sugg,
+                app,
+            );
         },
         Node::LetStmt(l) => {
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
                 && let ty = cx.typeck_results().expr_ty(collect_expr)
                 && matches!(
-                    get_type_diagnostic_name(cx, ty),
+                    ty.opt_diag_name(cx),
                     Some(sym::Vec | sym::VecDeque | sym::BinaryHeap | sym::LinkedList)
                 )
                 && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
@@ -339,14 +344,18 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
             if args.is_empty()
                 && method_name.ident.name == sym::collect
-                && is_trait_method(self.cx, expr, sym::Iterator)
+                && self
+                    .cx
+                    .ty_based_def(expr)
+                    .opt_parent(self.cx)
+                    .is_diag_item(self.cx, sym::Iterator)
             {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);
                 return;
             }
 
-            if path_to_local_id(recv, self.target) {
+            if recv.res_local_id() == Some(self.target) {
                 if self
                     .illegal_mutable_capture_ids
                     .intersection(&self.current_mutably_captured_ids)
@@ -384,7 +393,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 return;
             }
 
-            if let Some(hir_id) = path_to_local(recv)
+            if let Some(hir_id) = recv.res_local_id()
                 && let Some(index) = self.hir_id_uses_map.remove(&hir_id)
             {
                 if self
@@ -402,7 +411,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
             }
         }
         // Check if the collection is used for anything else
-        if path_to_local_id(expr, self.target) {
+        if expr.res_local_id() == Some(self.target) {
             self.seen_other = true;
         } else {
             walk_expr(self, expr);
@@ -464,7 +473,7 @@ impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if path_to_local_id(expr, self.id) {
+        if expr.res_local_id() == Some(self.id) {
             self.count += 1;
         } else {
             walk_expr(self, expr);
@@ -549,13 +558,17 @@ impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
             && (recv.hir_id == self.hir_id_of_expr
                 || self
                     .hir_id_of_let_binding
-                    .is_some_and(|hid| path_to_local_id(recv, hid)))
-            && !is_trait_method(self.cx, expr, sym::Iterator)
+                    .is_some_and(|hid| recv.res_local_id() == Some(hid)))
+            && !self
+                .cx
+                .ty_based_def(expr)
+                .opt_parent(self.cx)
+                .is_diag_item(self.cx, sym::Iterator)
         {
             return ControlFlow::Break(());
         } else if let ExprKind::Assign(place, value, _span) = &expr.kind
             && value.hir_id == self.hir_id_of_expr
-            && let Some(id) = path_to_local(place)
+            && let Some(id) = place.res_local_id()
         {
             // our iterator was directly assigned to a variable
             self.hir_id_of_let_binding = Some(id);

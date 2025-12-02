@@ -2,6 +2,7 @@
 //@ proc-macro: tokyo.rs
 //@ compile-flags:--extern tokyo
 //@ edition:2021
+//@ ignore-backends: gcc
 
 use tokyo::main;
 

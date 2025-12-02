@@ -1,5 +1,5 @@
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:16:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:20:1
    |
 LL | /  impl PartialOrd for A {
 LL | |
@@ -15,7 +15,7 @@ LL | |  }
    = help: to override `-D warnings` add `#[allow(clippy::non_canonical_partial_ord_impl)]`
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:51:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:55:1
    |
 LL | / impl PartialOrd for C {
 LL | |
@@ -32,7 +32,22 @@ LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp
    |
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:198:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:191:9
+   |
+LL | /          impl PartialOrd for A {
+LL | |
+LL | |              fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+   | | _____________________________________________________________________-
+LL | ||                 todo!();
+LL | ||             }
+   | ||_____________- help: change this to: `{ Some(self.cmp(other)) }`
+LL | |          }
+   | |__________^
+   |
+   = note: this error originates in the macro `__inline_mac_mod_issue12788` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: non-canonical implementation of `partial_cmp` on an `Ord` type
+  --> tests/ui/non_canonical_partial_ord_impl.rs:271:1
    |
 LL | /  impl PartialOrd for K {
 LL | |
@@ -45,7 +60,7 @@ LL | |  }
    | |__^
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:216:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:289:1
    |
 LL | /  impl PartialOrd for L {
 LL | |
@@ -57,5 +72,5 @@ LL | ||     }
 LL | |  }
    | |__^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

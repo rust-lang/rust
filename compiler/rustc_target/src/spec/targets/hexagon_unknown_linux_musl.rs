@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -8,6 +8,7 @@ pub(crate) fn target() -> Target {
     base.features = "-small-data,+hvx-length128b".into();
 
     base.has_rpath = true;
+    base.linker = Some("rust-lld".into());
     base.linker_flavor = LinkerFlavor::Unix(Cc::Yes);
 
     base.c_enum_min_bits = Some(8);
@@ -15,7 +16,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "hexagon-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("Hexagon Linux with musl 1.2.3".into()),
+            description: Some("Hexagon Linux with musl 1.2.5".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),
@@ -28,7 +29,7 @@ pub(crate) fn target() -> Target {
             ":2048:2048"
         )
         .into(),
-        arch: "hexagon".into(),
+        arch: Arch::Hexagon,
         options: base,
     }
 }

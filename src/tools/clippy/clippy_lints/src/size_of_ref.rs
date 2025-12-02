@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::path_def_id;
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::ty::peel_and_count_ty_refs;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -57,8 +57,7 @@ declare_lint_pass!(SizeOfRef => [SIZE_OF_REF]);
 impl LateLintPass<'_> for SizeOfRef {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Call(path, [arg]) = expr.kind
-            && let Some(def_id) = path_def_id(cx, path)
-            && cx.tcx.is_diagnostic_item(sym::mem_size_of_val, def_id)
+            && path.basic_res().is_diag_item(cx, sym::mem_size_of_val)
             && let arg_ty = cx.typeck_results().expr_ty(arg)
             && peel_and_count_ty_refs(arg_ty).1 > 1
         {

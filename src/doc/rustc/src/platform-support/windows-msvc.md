@@ -12,6 +12,7 @@ Windows MSVC targets.
 
 [@ChrisDenton](https://github.com/ChrisDenton)
 [@dpaoliello](https://github.com/dpaoliello)
+[@Fulgen301](https://github.com/Fulgen301)
 [@lambdageek](https://github.com/lambdageek)
 [@sivadeilra](https://github.com/sivadeilra)
 [@wesleywiser](https://github.com/wesleywiser)

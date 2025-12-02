@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::filter_not_rust;
 
@@ -17,8 +17,8 @@ struct RevisionInfo<'a> {
     llvm_components: Option<Vec<&'a str>>,
 }
 
-pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
+pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("target-specific-tests").path(tests_path));
 
     crate::walk::walk(tests_path, |path, _is_dir| filter_not_rust(path), &mut |entry, content| {
         if content.contains("// ignore-tidy-target-specific-tests") {

@@ -41,7 +41,7 @@ clap_complete = "4.4"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"
-object = { version = "0.36.3", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
+object = { version = "0.37", default-features = false, features = ["archive", "coff", "read_core", "std", "unaligned"] }
 opener = "0.8"
 semver = "1.0"
 serde = "1.0"

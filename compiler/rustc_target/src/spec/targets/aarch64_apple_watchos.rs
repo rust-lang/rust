@@ -1,8 +1,8 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("watchos", Arch::Arm64, TargetEnv::Normal);
+    let (opts, llvm_target, arch) = base(Os::WatchOs, Arch::Arm64, TargetEnv::Normal);
     Target {
         llvm_target,
         metadata: TargetMetadata {
@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch,
         options: TargetOptions {
-            features: "+v8a,+neon,+fp-armv8,+apple-a7".into(),
+            features: "+v8a,+neon,+apple-a7".into(),
             max_atomic_width: Some(128),
             dynamic_linking: false,
             position_independent_executables: true,

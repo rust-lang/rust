@@ -31,11 +31,8 @@
 //! in the HIR, especially for multiple identifiers.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(rust_logo)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::sync::Arc;
@@ -51,6 +48,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
+use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
@@ -77,6 +75,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod contract;
 mod delegation;
 mod errors;
 mod expr;
@@ -92,6 +91,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
     resolver: &'a mut ResolverAstLowering,
+    disambiguator: DisambiguatorState,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -135,9 +135,11 @@ struct LoweringContext<'a, 'hir> {
     #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
+    allow_contracts: Arc<[Symbol]>,
     allow_try_trait: Arc<[Symbol]>,
     allow_gen_future: Arc<[Symbol]>,
     allow_pattern_type: Arc<[Symbol]>,
+    allow_async_gen: Arc<[Symbol]>,
     allow_async_iterator: Arc<[Symbol]>,
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
@@ -154,6 +156,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Pseudo-globals.
             tcx,
             resolver,
+            disambiguator: DisambiguatorState::new(),
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -179,15 +182,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_item: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
-            allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_contracts: [sym::contracts_internals].into(),
+            allow_try_trait: [
+                sym::try_trait_v2,
+                sym::try_trait_v2_residual,
+                sym::yeet_desugar_details,
+            ]
+            .into(),
             allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
                 [sym::gen_future].into()
             },
-            allow_for_await: [sym::async_iterator].into(),
+            allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
             allow_async_fn_traits: [sym::async_fn_traits].into(),
+            allow_async_gen: [sym::async_gen_internals].into(),
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
@@ -296,6 +306,7 @@ enum RelaxedBoundPolicy<'a> {
 enum RelaxedBoundForbiddenReason {
     TraitObjectTy,
     SuperTrait,
+    TraitAlias,
     AssocTyBounds,
     LateBoundVarsInScope,
 }
@@ -544,6 +555,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         node_id: ast::NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        def_path_data: DefPathData,
         span: Span,
     ) -> LocalDefId {
         let parent = self.current_hir_id_owner.def_id;
@@ -559,7 +571,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let def_id = self
             .tcx
             .at(span)
-            .create_def(parent, name, def_kind, None, &mut self.resolver.disambiguator)
+            .create_def(parent, name, def_kind, Some(def_path_data), &mut self.disambiguator)
             .def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
@@ -844,6 +856,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param,
                     Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
+                    DefPathData::DesugaredAnonymousLifetime,
                     ident.span,
                 );
                 debug!(?_def_id);
@@ -1354,7 +1367,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lower_ty(ty, itctx),
                 self.lower_array_length_to_const_arg(length),
             ),
-            TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
@@ -2085,12 +2097,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         rbp: RelaxedBoundPolicy<'_>,
     ) {
-        // Even though feature `more_maybe_bounds` bypasses the given policy and (currently) enables
-        // relaxed bounds in every conceivable position[^1], we don't want to advertise it to the user
-        // (via a feature gate) since it's super internal. Besides this, it'd be quite distracting.
+        // Even though feature `more_maybe_bounds` enables the user to relax all default bounds
+        // other than `Sized` in a lot more positions (thereby bypassing the given policy), we don't
+        // want to advertise it to the user (via a feature gate error) since it's super internal.
         //
-        // [^1]: Strictly speaking, this is incorrect (at the very least for `Sized`) because it's
-        //       no longer fully consistent with default trait elaboration in HIR ty lowering.
+        // FIXME(more_maybe_bounds): Moreover, if we actually were to add proper default traits
+        // (like a hypothetical `Move` or `Leak`) we would want to validate the location according
+        // to default trait elaboration in HIR ty lowering (which depends on the specific trait in
+        // question: E.g., `?Sized` & `?Move` most likely won't be allowed in all the same places).
 
         match rbp {
             RelaxedBoundPolicy::Allowed => return,
@@ -2103,33 +2117,41 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             RelaxedBoundPolicy::Forbidden(reason) => {
+                let gate = |context, subject| {
+                    let extended = self.tcx.features().more_maybe_bounds();
+                    let is_sized = trait_ref
+                        .trait_def_id()
+                        .is_some_and(|def_id| self.tcx.is_lang_item(def_id, hir::LangItem::Sized));
+
+                    if extended && !is_sized {
+                        return;
+                    }
+
+                    let prefix = if extended { "`Sized` " } else { "" };
+                    let mut diag = self.dcx().struct_span_err(
+                        span,
+                        format!("relaxed {prefix}bounds are not permitted in {context}"),
+                    );
+                    if is_sized {
+                        diag.note(format!(
+                            "{subject} are not implicitly bounded by `Sized`, \
+                             so there is nothing to relax"
+                        ));
+                    }
+                    diag.emit();
+                };
+
                 match reason {
                     RelaxedBoundForbiddenReason::TraitObjectTy => {
-                        if self.tcx.features().more_maybe_bounds() {
-                            return;
-                        }
-
-                        self.dcx().span_err(
-                            span,
-                            "relaxed bounds are not permitted in trait object types",
-                        );
+                        gate("trait object types", "trait object types");
                         return;
                     }
                     RelaxedBoundForbiddenReason::SuperTrait => {
-                        if self.tcx.features().more_maybe_bounds() {
-                            return;
-                        }
-
-                        let mut diag = self.dcx().struct_span_err(
-                            span,
-                            "relaxed bounds are not permitted in supertrait bounds",
-                        );
-                        if let Some(def_id) = trait_ref.trait_def_id()
-                            && self.tcx.is_lang_item(def_id, hir::LangItem::Sized)
-                        {
-                            diag.note("traits are `?Sized` by default");
-                        }
-                        diag.emit();
+                        gate("supertrait bounds", "traits");
+                        return;
+                    }
+                    RelaxedBoundForbiddenReason::TraitAlias => {
+                        gate("trait alias bounds", "trait aliases");
                         return;
                     }
                     RelaxedBoundForbiddenReason::AssocTyBounds
@@ -2142,7 +2164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .struct_span_err(span, "this relaxed bound is not permitted here")
             .with_note(
                 "in this context, relaxed bounds are only allowed on \
-                 type parameters defined by the closest item",
+                 type parameters defined on the closest item",
             )
             .emit();
     }
@@ -2278,7 +2300,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
+            let def_id = self.create_def(
+                node_id,
+                None,
+                DefKind::AnonConst,
+                DefPathData::LateAnonConst,
+                span,
+            );
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {
@@ -2301,6 +2329,33 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
 
         self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind })
+    }
+
+    fn lower_const_item_rhs(
+        &mut self,
+        attrs: &[hir::Attribute],
+        rhs: Option<&ConstItemRhs>,
+        span: Span,
+    ) -> hir::ConstItemRhs<'hir> {
+        match rhs {
+            Some(ConstItemRhs::TypeConst(anon)) => {
+                hir::ConstItemRhs::TypeConst(self.lower_anon_const_to_const_arg(anon))
+            }
+            None if attr::contains_name(attrs, sym::type_const) => {
+                let const_arg = ConstArg {
+                    hir_id: self.next_id(),
+                    kind: hir::ConstArgKind::Error(
+                        DUMMY_SP,
+                        self.dcx().span_delayed_bug(DUMMY_SP, "no block"),
+                    ),
+                };
+                hir::ConstItemRhs::TypeConst(self.arena.alloc(const_arg))
+            }
+            Some(ConstItemRhs::Body(body)) => {
+                hir::ConstItemRhs::Body(self.lower_const_body(span, Some(body)))
+            }
+            None => hir::ConstItemRhs::Body(self.lower_const_body(span, None)),
+        }
     }
 
     /// See [`hir::ConstArg`] for when to use this function vs
@@ -2508,8 +2563,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         lang_item: hir::LangItem,
         fields: &'hir [hir::PatField<'hir>],
     ) -> &'hir hir::Pat<'hir> {
-        let qpath = hir::QPath::LangItem(lang_item, self.lower_span(span));
-        self.pat(span, hir::PatKind::Struct(qpath, fields, None))
+        let path = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
+        self.pat(span, hir::PatKind::Struct(path, fields, None))
     }
 
     fn pat_ident(&mut self, span: Span, ident: Ident) -> (&'hir hir::Pat<'hir>, HirId) {

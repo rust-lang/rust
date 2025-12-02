@@ -199,7 +199,7 @@ fn augment_references_with_imports(
             {
                 visited_modules.insert(ref_module);
 
-                let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(ref_module.krate()));
+                let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(ref_module.krate()));
                 let import_scope =
                     ImportScope::find_insert_use_container(new_name.syntax(), &ctx.sema);
                 let path = ref_module

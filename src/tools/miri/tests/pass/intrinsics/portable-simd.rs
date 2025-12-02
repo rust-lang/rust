@@ -6,17 +6,142 @@
     rustc_attrs,
     intrinsics,
     core_intrinsics,
-    repr_simd
+    repr_simd,
+    f16,
+    f128
 )]
-#![allow(incomplete_features, internal_features)]
+#![allow(incomplete_features, internal_features, non_camel_case_types)]
+use std::fmt::{self, Debug, Formatter};
 use std::intrinsics::simd as intrinsics;
 use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+#[repr(simd, packed)]
+#[derive(Copy)]
+struct PackedSimd<T, const N: usize>([T; N]);
+
+impl<T: Copy, const N: usize> Clone for PackedSimd<T, N> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: PartialEq + Copy, const N: usize> PartialEq for PackedSimd<T, N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.into_array() == other.into_array()
+    }
+}
+
+impl<T: Debug + Copy, const N: usize> Debug for PackedSimd<T, N> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        Debug::fmt(&self.into_array(), f)
+    }
+}
+
+type f16x2 = PackedSimd<f16, 2>;
+type f16x4 = PackedSimd<f16, 4>;
+
+type f128x2 = PackedSimd<f128, 2>;
+type f128x4 = PackedSimd<f128, 4>;
+
+impl<T: Copy, const N: usize> PackedSimd<T, N> {
+    fn splat(x: T) -> Self {
+        Self([x; N])
+    }
+    fn from_array(a: [T; N]) -> Self {
+        Self(a)
+    }
+    fn into_array(self) -> [T; N] {
+        // as we have `repr(packed)`, there shouldn't be any padding bytes
+        unsafe { std::mem::transmute_copy(&self) }
+    }
+}
+
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+pub const unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+
+fn simd_ops_f16() {
+    use intrinsics::*;
+
+    // small hack to make type inference better
+    macro_rules! assert_eq {
+        ($a:expr, $b:expr $(,$t:tt)*) => {{
+            let a = $a;
+            let b = $b;
+            if false { let _inference = b == a; }
+            ::std::assert_eq!(a, b, $(,$t)*)
+        }}
+    }
+
+    let a = f16x4::splat(10.0);
+    let b = f16x4::from_array([1.0, 2.0, 3.0, -4.0]);
+
+    unsafe {
+        assert_eq!(simd_neg(b), f16x4::from_array([-1.0, -2.0, -3.0, 4.0]));
+        assert_eq!(simd_add(a, b), f16x4::from_array([11.0, 12.0, 13.0, 6.0]));
+        assert_eq!(simd_sub(a, b), f16x4::from_array([9.0, 8.0, 7.0, 14.0]));
+        assert_eq!(simd_mul(a, b), f16x4::from_array([10.0, 20.0, 30.0, -40.0]));
+        assert_eq!(simd_div(b, a), f16x4::from_array([0.1, 0.2, 0.3, -0.4]));
+        assert_eq!(simd_div(a, f16x4::splat(2.0)), f16x4::splat(5.0));
+        assert_eq!(simd_rem(a, b), f16x4::from_array([0.0, 0.0, 1.0, 2.0]));
+        assert_eq!(simd_fabs(b), f16x4::from_array([1.0, 2.0, 3.0, 4.0]));
+        assert_eq!(
+            simd_fmax(a, simd_mul(b, f16x4::splat(4.0))),
+            f16x4::from_array([10.0, 10.0, 12.0, 10.0])
+        );
+        assert_eq!(
+            simd_fmin(a, simd_mul(b, f16x4::splat(4.0))),
+            f16x4::from_array([4.0, 8.0, 10.0, -16.0])
+        );
+
+        assert_eq!(simd_fma(a, b, a), simd_add(simd_mul(a, b), a));
+        assert_eq!(simd_fma(b, b, a), simd_add(simd_mul(b, b), a));
+        assert_eq!(simd_fma(a, b, b), simd_add(simd_mul(a, b), b));
+        assert_eq!(
+            simd_fma(f16x4::splat(-3.2), b, f16x4::splat(f16::NEG_INFINITY)),
+            f16x4::splat(f16::NEG_INFINITY)
+        );
+
+        assert_eq!(simd_relaxed_fma(a, b, a), simd_add(simd_mul(a, b), a));
+        assert_eq!(simd_relaxed_fma(b, b, a), simd_add(simd_mul(b, b), a));
+        assert_eq!(simd_relaxed_fma(a, b, b), simd_add(simd_mul(a, b), b));
+        assert_eq!(
+            simd_relaxed_fma(f16x4::splat(-3.2), b, f16x4::splat(f16::NEG_INFINITY)),
+            f16x4::splat(f16::NEG_INFINITY)
+        );
+
+        assert_eq!(simd_eq(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
+        assert_eq!(simd_ne(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
+        assert_eq!(simd_le(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, !0, !0, 0]));
+        assert_eq!(simd_lt(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([0, 0, !0, 0]));
+        assert_eq!(simd_ge(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, !0, 0, !0]));
+        assert_eq!(simd_gt(a, simd_mul(f16x4::splat(5.0), b)), i32x4::from_array([!0, 0, 0, !0]));
+
+        assert_eq!(simd_reduce_add_ordered(a, 0.0), 40.0f16);
+        assert_eq!(simd_reduce_add_ordered(b, 0.0), 2.0f16);
+        assert_eq!(simd_reduce_mul_ordered(a, 1.0), 10000.0f16);
+        assert_eq!(simd_reduce_mul_ordered(b, 1.0), -24.0f16);
+        assert_eq!(simd_reduce_max(a), 10.0f16);
+        assert_eq!(simd_reduce_max(b), 3.0f16);
+        assert_eq!(simd_reduce_min(a), 10.0f16);
+        assert_eq!(simd_reduce_min(b), -4.0f16);
+
+        assert_eq!(
+            simd_fmax(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            f16x2::from_array([0.0, 0.0])
+        );
+        assert_eq!(simd_reduce_max(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
+        assert_eq!(simd_reduce_max(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
+        assert_eq!(
+            simd_fmin(f16x2::from_array([0.0, f16::NAN]), f16x2::from_array([f16::NAN, 0.0])),
+            f16x2::from_array([0.0, 0.0])
+        );
+        assert_eq!(simd_reduce_min(f16x2::from_array([0.0, f16::NAN])), 0.0f16);
+        assert_eq!(simd_reduce_min(f16x2::from_array([f16::NAN, 0.0])), 0.0f16);
+    }
+}
 
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);
@@ -148,6 +273,87 @@ fn simd_ops_f64() {
     assert_eq!(f64x2::from_array([f64::NAN, 0.0]).reduce_min(), 0.0);
 }
 
+fn simd_ops_f128() {
+    use intrinsics::*;
+
+    // small hack to make type inference better
+    macro_rules! assert_eq {
+        ($a:expr, $b:expr $(,$t:tt)*) => {{
+            let a = $a;
+            let b = $b;
+            if false { let _inference = b == a; }
+            ::std::assert_eq!(a, b, $(,$t)*)
+        }}
+    }
+
+    let a = f128x4::splat(10.0);
+    let b = f128x4::from_array([1.0, 2.0, 3.0, -4.0]);
+
+    unsafe {
+        assert_eq!(simd_neg(b), f128x4::from_array([-1.0, -2.0, -3.0, 4.0]));
+        assert_eq!(simd_add(a, b), f128x4::from_array([11.0, 12.0, 13.0, 6.0]));
+        assert_eq!(simd_sub(a, b), f128x4::from_array([9.0, 8.0, 7.0, 14.0]));
+        assert_eq!(simd_mul(a, b), f128x4::from_array([10.0, 20.0, 30.0, -40.0]));
+        assert_eq!(simd_div(b, a), f128x4::from_array([0.1, 0.2, 0.3, -0.4]));
+        assert_eq!(simd_div(a, f128x4::splat(2.0)), f128x4::splat(5.0));
+        assert_eq!(simd_rem(a, b), f128x4::from_array([0.0, 0.0, 1.0, 2.0]));
+        assert_eq!(simd_fabs(b), f128x4::from_array([1.0, 2.0, 3.0, 4.0]));
+        assert_eq!(
+            simd_fmax(a, simd_mul(b, f128x4::splat(4.0))),
+            f128x4::from_array([10.0, 10.0, 12.0, 10.0])
+        );
+        assert_eq!(
+            simd_fmin(a, simd_mul(b, f128x4::splat(4.0))),
+            f128x4::from_array([4.0, 8.0, 10.0, -16.0])
+        );
+
+        assert_eq!(simd_fma(a, b, a), simd_add(simd_mul(a, b), a));
+        assert_eq!(simd_fma(b, b, a), simd_add(simd_mul(b, b), a));
+        assert_eq!(simd_fma(a, b, b), simd_add(simd_mul(a, b), b));
+        assert_eq!(
+            simd_fma(f128x4::splat(-3.2), b, f128x4::splat(f128::NEG_INFINITY)),
+            f128x4::splat(f128::NEG_INFINITY)
+        );
+
+        assert_eq!(simd_relaxed_fma(a, b, a), simd_add(simd_mul(a, b), a));
+        assert_eq!(simd_relaxed_fma(b, b, a), simd_add(simd_mul(b, b), a));
+        assert_eq!(simd_relaxed_fma(a, b, b), simd_add(simd_mul(a, b), b));
+        assert_eq!(
+            simd_relaxed_fma(f128x4::splat(-3.2), b, f128x4::splat(f128::NEG_INFINITY)),
+            f128x4::splat(f128::NEG_INFINITY)
+        );
+
+        assert_eq!(simd_eq(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, !0, 0, 0]));
+        assert_eq!(simd_ne(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([!0, 0, !0, !0]));
+        assert_eq!(simd_le(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, !0, !0, 0]));
+        assert_eq!(simd_lt(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([0, 0, !0, 0]));
+        assert_eq!(simd_ge(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([!0, !0, 0, !0]));
+        assert_eq!(simd_gt(a, simd_mul(f128x4::splat(5.0), b)), i32x4::from_array([!0, 0, 0, !0]));
+
+        assert_eq!(simd_reduce_add_ordered(a, 0.0), 40.0f128);
+        assert_eq!(simd_reduce_add_ordered(b, 0.0), 2.0f128);
+        assert_eq!(simd_reduce_mul_ordered(a, 1.0), 10000.0f128);
+        assert_eq!(simd_reduce_mul_ordered(b, 1.0), -24.0f128);
+        assert_eq!(simd_reduce_max(a), 10.0f128);
+        assert_eq!(simd_reduce_max(b), 3.0f128);
+        assert_eq!(simd_reduce_min(a), 10.0f128);
+        assert_eq!(simd_reduce_min(b), -4.0f128);
+
+        assert_eq!(
+            simd_fmax(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            f128x2::from_array([0.0, 0.0])
+        );
+        assert_eq!(simd_reduce_max(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
+        assert_eq!(simd_reduce_max(f128x2::from_array([f128::NAN, 0.0])), 0.0f128);
+        assert_eq!(
+            simd_fmin(f128x2::from_array([0.0, f128::NAN]), f128x2::from_array([f128::NAN, 0.0])),
+            f128x2::from_array([0.0, 0.0])
+        );
+        assert_eq!(simd_reduce_min(f128x2::from_array([0.0, f128::NAN])), 0.0f128);
+        assert_eq!(simd_reduce_min(f128x2::from_array([f128::NAN, 0.0])), 0.0f128);
+    }
+}
+
 fn simd_ops_i32() {
     let a = i32x4::splat(10);
     let b = i32x4::from_array([1, 2, 3, -4]);
@@ -248,6 +454,18 @@ fn simd_ops_i32() {
             0x3fffffffu32 as i32
         ])
     );
+
+    // these values are taken from the doctests of `u32::funnel_shl` and `u32::funnel_shr`
+    let c = u32x4::splat(0x010000b3);
+    let d = u32x4::splat(0x2fe78e45);
+
+    unsafe {
+        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(0)), c);
+        assert_eq!(intrinsics::simd_funnel_shl(c, d, u32x4::splat(8)), u32x4::splat(0x0000b32f));
+
+        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(0)), d);
+        assert_eq!(intrinsics::simd_funnel_shr(c, d, u32x4::splat(8)), u32x4::splat(0xb32fe78e));
+    }
 }
 
 fn simd_mask() {
@@ -563,6 +781,31 @@ fn simd_gather_scatter() {
 }
 
 fn simd_round() {
+    unsafe {
+        use intrinsics::*;
+
+        assert_eq!(
+            simd_ceil(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([1.0, 2.0, 2.0, -4.0])
+        );
+        assert_eq!(
+            simd_floor(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.0, 1.0, 2.0, -5.0])
+        );
+        assert_eq!(
+            simd_round(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([1.0, 1.0, 2.0, -5.0])
+        );
+        assert_eq!(
+            simd_round_ties_even(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([1.0, 1.0, 2.0, -4.0])
+        );
+        assert_eq!(
+            simd_trunc(f16x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f16x4::from_array([0.0, 1.0, 2.0, -4.0])
+        );
+    }
+
     assert_eq!(
         f32x4::from_array([0.9, 1.001, 2.0, -4.5]).ceil(),
         f32x4::from_array([1.0, 2.0, 2.0, -4.0])
@@ -604,6 +847,31 @@ fn simd_round() {
         f64x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),
         f64x4::from_array([0.0, 1.0, 2.0, -4.0])
     );
+
+    unsafe {
+        use intrinsics::*;
+
+        assert_eq!(
+            simd_ceil(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f128x4::from_array([1.0, 2.0, 2.0, -4.0])
+        );
+        assert_eq!(
+            simd_floor(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f128x4::from_array([0.0, 1.0, 2.0, -5.0])
+        );
+        assert_eq!(
+            simd_round(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f128x4::from_array([1.0, 1.0, 2.0, -5.0])
+        );
+        assert_eq!(
+            simd_round_ties_even(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f128x4::from_array([1.0, 1.0, 2.0, -4.0])
+        );
+        assert_eq!(
+            simd_trunc(f128x4::from_array([0.9, 1.001, 2.0, -4.5])),
+            f128x4::from_array([0.0, 1.0, 2.0, -4.0])
+        );
+    }
 }
 
 fn simd_intrinsics() {
@@ -680,26 +948,93 @@ fn simd_float_intrinsics() {
 }
 
 fn simd_masked_loadstore() {
+    use intrinsics::*;
+
     // The buffer is deliberarely too short, so reading the last element would be UB.
     let buf = [3i32; 3];
     let default = i32x4::splat(0);
     let mask = i32x4::from_array([!0, !0, !0, 0]);
-    let vals = unsafe { intrinsics::simd_masked_load(mask, buf.as_ptr(), default) };
+    let vals =
+        unsafe { simd_masked_load::<_, _, _, { SimdAlign::Element }>(mask, buf.as_ptr(), default) };
     assert_eq!(vals, i32x4::from_array([3, 3, 3, 0]));
     // Also read in a way that the *first* element is OOB.
     let mask2 = i32x4::from_array([0, !0, !0, !0]);
-    let vals =
-        unsafe { intrinsics::simd_masked_load(mask2, buf.as_ptr().wrapping_sub(1), default) };
+    let vals = unsafe {
+        simd_masked_load::<_, _, _, { SimdAlign::Element }>(
+            mask2,
+            buf.as_ptr().wrapping_sub(1),
+            default,
+        )
+    };
     assert_eq!(vals, i32x4::from_array([0, 3, 3, 3]));
 
     // The buffer is deliberarely too short, so writing the last element would be UB.
     let mut buf = [42i32; 3];
     let vals = i32x4::from_array([1, 2, 3, 4]);
-    unsafe { intrinsics::simd_masked_store(mask, buf.as_mut_ptr(), vals) };
+    unsafe { simd_masked_store::<_, _, _, { SimdAlign::Element }>(mask, buf.as_mut_ptr(), vals) };
     assert_eq!(buf, [1, 2, 3]);
     // Also write in a way that the *first* element is OOB.
-    unsafe { intrinsics::simd_masked_store(mask2, buf.as_mut_ptr().wrapping_sub(1), vals) };
+    unsafe {
+        simd_masked_store::<_, _, _, { SimdAlign::Element }>(
+            mask2,
+            buf.as_mut_ptr().wrapping_sub(1),
+            vals,
+        )
+    };
     assert_eq!(buf, [2, 3, 4]);
+
+    // we use a purposely misaliged buffer to make sure Miri doesn't error in this case
+    let buf = [0x03030303_i32; 5];
+    let default = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    let vals = unsafe {
+        simd_masked_load::<_, _, _, { SimdAlign::Unaligned }>(
+            mask,
+            buf.as_ptr().byte_offset(1), // this is guaranteed to be unaligned
+            default,
+        )
+    };
+    assert_eq!(vals, i32x4::splat(0x03030303));
+
+    let mut buf = [0i32; 5];
+    let mask = i32x4::splat(!0);
+    unsafe {
+        simd_masked_store::<_, _, _, { SimdAlign::Unaligned }>(
+            mask,
+            buf.as_mut_ptr().byte_offset(1), // this is guaranteed to be unaligned
+            vals,
+        )
+    };
+    assert_eq!(
+        buf,
+        [
+            i32::from_ne_bytes([0, 3, 3, 3]),
+            0x03030303,
+            0x03030303,
+            0x03030303,
+            i32::from_ne_bytes([3, 0, 0, 0])
+        ]
+    );
+
+    // `repr(simd)` types like `Simd<T, N>` have the correct alignment for vectors
+    let buf = i32x4::splat(3);
+    let default = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    let vals = unsafe {
+        simd_masked_load::<_, _, _, { SimdAlign::Vector }>(
+            mask,
+            &raw const buf as *const i32,
+            default,
+        )
+    };
+    assert_eq!(vals, buf);
+
+    let mut buf = i32x4::splat(0);
+    let mask = i32x4::splat(!0);
+    unsafe {
+        simd_masked_store::<_, _, _, { SimdAlign::Vector }>(mask, &raw mut buf as *mut i32, vals)
+    };
+    assert_eq!(buf, vals);
 }
 
 fn simd_ops_non_pow2() {
@@ -724,8 +1059,10 @@ fn simd_ops_non_pow2() {
 
 fn main() {
     simd_mask();
+    simd_ops_f16();
     simd_ops_f32();
     simd_ops_f64();
+    simd_ops_f128();
     simd_ops_i32();
     simd_ops_non_pow2();
     simd_cast();

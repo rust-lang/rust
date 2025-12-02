@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, SpanData};
 use smallvec::SmallVec;
 
-use crate::borrow_tracker::{GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind};
 use crate::*;
 
 /// Error reporting
@@ -221,7 +221,7 @@ impl AllocHistory {
     pub fn new(id: AllocId, item: Item, machine: &MiriMachine<'_>) -> Self {
         Self {
             id,
-            root: (item, machine.current_span()),
+            root: (item, machine.current_user_relevant_span()),
             creations: SmallVec::new(),
             invalidations: SmallVec::new(),
             protectors: SmallVec::new(),
@@ -269,11 +269,11 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
         };
         self.history
             .creations
-            .push(Creation { retag: op.clone(), span: self.machine.current_span() });
+            .push(Creation { retag: op.clone(), span: self.machine.current_user_relevant_span() });
     }
 
     pub fn log_invalidation(&mut self, tag: BorTag) {
-        let mut span = self.machine.current_span();
+        let mut span = self.machine.current_user_relevant_span();
         let (range, cause) = match &self.operation {
             Operation::Retag(RetagOp { info, range, permission, .. }) => {
                 if info.cause == RetagCause::FnEntry {
@@ -298,7 +298,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
         };
         self.history
             .protectors
-            .push(Protection { tag: op.new_tag, span: self.machine.current_span() });
+            .push(Protection { tag: op.new_tag, span: self.machine.current_user_relevant_span() });
     }
 
     pub fn get_logs_relevant_to(

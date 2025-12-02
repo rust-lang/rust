@@ -42,8 +42,8 @@ fn main() {
     assert_const!(3);
     assert_const!(-1);
 
-    // Don't lint if based on `cfg!(..)`:
     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
+    //~^ assertions_on_constants
 
     let flag: bool = cfg!(not(feature = "asdf"));
     assert!(flag);
@@ -62,9 +62,37 @@ fn main() {
     const _: () = assert!(N.is_power_of_two());
 }
 
+const C: bool = true;
+
 const _: () = {
     assert!(true);
     //~^ assertions_on_constants
 
     assert!(8 == (7 + 1));
+    //~^ assertions_on_constants
+
+    assert!(C);
 };
+
+#[clippy::msrv = "1.57"]
+fn _f1() {
+    assert!(C);
+    //~^ assertions_on_constants
+}
+
+#[clippy::msrv = "1.56"]
+fn _f2() {
+    assert!(C);
+}
+
+#[clippy::msrv = "1.79"]
+fn _f3() {
+    assert!(C);
+    //~^ assertions_on_constants
+}
+
+#[clippy::msrv = "1.78"]
+fn _f4() {
+    assert!(C);
+    //~^ assertions_on_constants
+}

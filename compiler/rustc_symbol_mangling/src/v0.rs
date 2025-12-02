@@ -262,15 +262,19 @@ impl<'tcx> V0SymbolMangler<'tcx> {
     fn print_pat(&mut self, pat: ty::Pattern<'tcx>) -> Result<(), std::fmt::Error> {
         Ok(match *pat {
             ty::PatternKind::Range { start, end } => {
-                let consts = [start, end];
-                for ct in consts {
-                    Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct).print(self)?;
-                }
+                self.push("R");
+                self.print_const(start)?;
+                self.print_const(end)?;
+            }
+            ty::PatternKind::NotNull => {
+                self.tcx.types.unit.print(self)?;
             }
             ty::PatternKind::Or(patterns) => {
+                self.push("O");
                 for pat in patterns {
                     self.print_pat(pat)?;
                 }
+                self.push("E");
             }
         })
     }
@@ -310,7 +314,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
 
         let self_ty = self.tcx.type_of(impl_def_id);
-        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_opt_trait_ref(impl_def_id);
         let generics = self.tcx.generics_of(impl_def_id);
         // We have two cases to worry about here:
         // 1. We're printing a nested item inside of an impl item, like an inner
@@ -412,7 +416,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
 
             // Bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon }) => {
+            ty::ReBound(
+                ty::BoundVarIndexKind::Bound(debruijn),
+                ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+            ) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + var.as_u32();
 
@@ -498,12 +505,9 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             ty::Pat(ty, pat) => {
-                // HACK: Represent as tuple until we have something better.
-                // HACK: constants are used in arrays, even if the types don't match.
-                self.push("T");
+                self.push("W");
                 ty.print(self)?;
                 self.print_pat(pat)?;
-                self.push("E");
             }
 
             ty::Array(ty, len) => {
@@ -873,18 +877,20 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::ValueNs(_) => 'v',
             DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
-            DefPathData::AnonConst => 'k',
+            DefPathData::AnonConst => 'K',
+            DefPathData::LateAnonConst => 'k',
             DefPathData::OpaqueTy => 'i',
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
+            DefPathData::GlobalAsm => 'a',
 
             // These should never show up as `print_path_with_simple` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
-            | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
+            | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

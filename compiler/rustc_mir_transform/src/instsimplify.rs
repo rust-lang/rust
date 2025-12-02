@@ -169,7 +169,10 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
     }
 
     fn simplify_ub_check(&self, rvalue: &mut Rvalue<'tcx>) {
-        let Rvalue::NullaryOp(NullOp::UbChecks, _) = *rvalue else { return };
+        // FIXME: Should we do the same for overflow checks?
+        let Rvalue::NullaryOp(NullOp::RuntimeChecks(RuntimeChecks::UbChecks)) = *rvalue else {
+            return;
+        };
 
         let const_ = Const::from_bool(self.tcx, self.tcx.sess.ub_checks());
         let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
@@ -264,6 +267,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         terminator: &mut Terminator<'tcx>,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
+        let source_info = terminator.source_info;
         if let TerminatorKind::Call {
             func, args, destination, target: Some(destination_block), ..
         } = &terminator.kind
@@ -272,12 +276,16 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             && self.tcx.is_intrinsic(fn_def_id, sym::align_of_val)
             && let ty::Slice(elem_ty) = *generics.type_at(0).kind()
         {
+            let align_def_id = self.tcx.require_lang_item(LangItem::AlignOf, source_info.span);
+            let align_const = Operand::unevaluated_constant(
+                self.tcx,
+                align_def_id,
+                &[elem_ty.into()],
+                source_info.span,
+            );
             statements.push(Statement::new(
-                terminator.source_info,
-                StatementKind::Assign(Box::new((
-                    *destination,
-                    Rvalue::NullaryOp(NullOp::AlignOf, elem_ty),
-                ))),
+                source_info,
+                StatementKind::Assign(Box::new((*destination, Rvalue::Use(align_const)))),
             ));
             terminator.kind = TerminatorKind::Goto { target: *destination_block };
         }

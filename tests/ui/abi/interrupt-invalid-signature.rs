@@ -7,7 +7,7 @@ A notable and interesting exception is x86.
 
 This test uses `cfg` because it is not testing whether these ABIs work on the platform.
 */
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x64 i686 riscv32 riscv64 avr msp430
 //
 //@ [x64] needs-llvm-components: x86
@@ -22,6 +22,7 @@ This test uses `cfg` because it is not testing whether these ABIs work on the pl
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,

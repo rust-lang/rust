@@ -3,7 +3,7 @@
 // Eliminate intermediate instructions during `nop` tests
 //@ compile-flags: -Copt-level=1
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: MSVC MINGW softfloat
 //@ [MSVC] needs-llvm-components: x86
 //@ [MSVC] compile-flags: --target x86_64-pc-windows-msvc

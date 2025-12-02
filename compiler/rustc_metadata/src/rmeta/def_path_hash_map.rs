@@ -12,11 +12,12 @@ pub(crate) enum DefPathHashMapRef<'tcx> {
 
 impl DefPathHashMapRef<'_> {
     #[inline]
-    pub(crate) fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> DefIndex {
+    pub(crate) fn def_path_hash_to_def_index(
+        &self,
+        def_path_hash: &DefPathHash,
+    ) -> Option<DefIndex> {
         match *self {
-            DefPathHashMapRef::OwnedFromMetadata(ref map) => {
-                map.get(&def_path_hash.local_hash()).unwrap()
-            }
+            DefPathHashMapRef::OwnedFromMetadata(ref map) => map.get(&def_path_hash.local_hash()),
             DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }

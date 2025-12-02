@@ -114,7 +114,6 @@ trait FooQux = FooBaz;
 //~^ ERROR attribute cannot be used on
 impl<T> Bar<T> {
     #[rustc_force_inline]
-//~^ ERROR attribute cannot be used on
     fn foo() {}
 }
 

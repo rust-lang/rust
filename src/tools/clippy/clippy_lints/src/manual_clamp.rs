@@ -3,13 +3,11 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::{
-    MaybePath, eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id,
-    peel_blocks, peel_blocks_with_stmt, sym,
-};
+use clippy_utils::{eq_expr_value, is_in_const_context, peel_blocks, peel_blocks_with_stmt, sym};
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::Res;
@@ -292,10 +290,12 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 /// # ;
 /// ```
 fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<ClampSuggestion<'tcx>> {
-    if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = &expr.kind
-        && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point() || is_trait_method(cx, expr, sym::Ord))
+    if let ExprKind::MethodCall(seg_second, receiver, [arg_second], _) = expr.kind
+        && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
+            || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
         && let ExprKind::MethodCall(seg_first, input, [arg_first], _) = &receiver.kind
-        && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point() || is_trait_method(cx, receiver, sym::Ord))
+        && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
+            || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
         let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
         let (min, max) = match (seg_first.ident.name, seg_second.ident.name) {
@@ -331,18 +331,18 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
     fn segment<'tcx>(cx: &LateContext<'_>, func: &Expr<'tcx>) -> Option<FunctionType<'tcx>> {
         match func.kind {
             ExprKind::Path(QPath::Resolved(None, path)) => {
-                let id = path.res.opt_def_id()?;
-                match cx.tcx.get_diagnostic_name(id) {
+                let def = path.res.opt_def(cx)?;
+                match cx.tcx.get_diagnostic_name(def.1) {
                     Some(sym::cmp_min) => Some(FunctionType::CmpMin),
                     Some(sym::cmp_max) => Some(FunctionType::CmpMax),
-                    _ if is_diag_trait_item(cx, id, sym::Ord) => {
+                    _ if def.assoc_fn_parent(cx).is_diag_item(cx, sym::Ord) => {
                         Some(FunctionType::OrdOrFloat(path.segments.last().expect("infallible")))
                     },
                     _ => None,
                 }
             },
             ExprKind::Path(QPath::TypeRelative(ty, seg)) => {
-                matches!(path_res(cx, ty), Res::PrimTy(PrimTy::Float(_))).then(|| FunctionType::OrdOrFloat(seg))
+                matches!(ty.basic_res(), Res::PrimTy(PrimTy::Float(_))).then(|| FunctionType::OrdOrFloat(seg))
             },
             _ => None,
         }
@@ -435,7 +435,7 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
         let first = BinaryOp::new(first)?;
         let second = BinaryOp::new(second)?;
         if let PatKind::Binding(_, binding, _, None) = &last_arm.pat.kind
-            && path_to_local_id(peel_blocks_with_stmt(last_arm.body), *binding)
+            && peel_blocks_with_stmt(last_arm.body).res_local_id() == Some(*binding)
             && last_arm.guard.is_none()
         {
             // Proceed as normal
@@ -516,7 +516,7 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
                     },
                     span: first_expr.span.to(second_expr.span),
                     make_assignment: Some(maybe_input_first_path),
-                    hir_with_ignore_attr: Some(first_expr.hir_id()),
+                    hir_with_ignore_attr: Some(first_expr.hir_id),
                 })
             } else {
                 None
@@ -655,8 +655,8 @@ fn is_clamp_meta_pattern<'tcx>(
                 let (min, max) = (second_expr, first_expr);
                 let refers_to_input = match input_hir_ids {
                     Some((first_hir_id, second_hir_id)) => {
-                        path_to_local_id(peel_blocks(first_bin.left), first_hir_id)
-                            && path_to_local_id(peel_blocks(second_bin.left), second_hir_id)
+                        peel_blocks(first_bin.left).res_local_id() == Some(first_hir_id)
+                            && peel_blocks(second_bin.left).res_local_id() == Some(second_hir_id)
                     },
                     None => eq_expr_value(cx, first_bin.left, second_bin.left),
                 };

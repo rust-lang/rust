@@ -365,6 +365,20 @@ pub trait CommandExt: Sealed {
     /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfoa
     #[unstable(feature = "windows_process_extensions_startupinfo", issue = "141010")]
     fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) -> &mut process::Command;
+
+    /// If this flag is set to `true`, each inheritable handle in the calling
+    /// process is inherited by the new process. If the flag is `false`, the
+    /// handles are not inherited.
+    ///
+    /// The default value for this flag is `true`.
+    ///
+    /// **Note** that inherited handles have the same value and access rights
+    /// as the original handles. For additional discussion of inheritable handles,
+    /// see the [Remarks][1] section of the `CreateProcessW` documentation.
+    ///
+    /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw#remarks
+    #[unstable(feature = "windows_process_extensions_inherit_handles", issue = "146407")]
+    fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -419,6 +433,11 @@ impl CommandExt for process::Command {
 
     fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) -> &mut process::Command {
         self.as_inner_mut().startupinfo_force_feedback(enabled);
+        self
+    }
+
+    fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command {
+        self.as_inner_mut().inherit_handles(inherit_handles);
         self
     }
 }

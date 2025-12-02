@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-fail
 //@ compile-flags: --crate-type=lib --target thumbv4t-none-eabi
 //@ needs-llvm-components: arm

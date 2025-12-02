@@ -127,7 +127,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else if all_fields_1zst(def.variant(var1))? {
             def.variant(var0)
         } else {
-            // No varant is all-1-ZST, so no NPO.
+            // No variant is all-1-ZST, so no NPO.
             return interp_ok(layout);
         };
         // The "relevant" variant must have exactly one field, and its type is the "inner" type.

@@ -4,6 +4,7 @@ fn main() {
     let (x_u8, x_u16, x_u32, x_u64) = (1u8, 1u16, 1u32, 1u64);
     let (x_i8, x_i16, x_i32, x_i64) = (1i8, 1i16, 1i32, 1i64);
     let a_u32 = 1u32;
+    const N: u32 = 5;
     // True positives
     let y_u8 = (x_u8 >> 3) | (x_u8 << 5);
     //~^ manual_rotate
@@ -29,6 +30,9 @@ fn main() {
     //~^ manual_rotate
     let y_u64_as = (x_u32 as u64 >> 8) | ((x_u32 as u64) << 56);
     //~^ manual_rotate
+    // shift by a const
+    let _ = (x_i64 >> N) | (x_i64 << (64 - N));
+    //~^ manual_rotate
 
     // False positives - can't be replaced with a rotation
     let y_u8_false = (x_u8 >> 6) | (x_u8 << 3);
@@ -39,4 +43,21 @@ fn main() {
     // Has side effects and therefore should not be matched
     let mut l = vec![12_u8, 34];
     let y = (l.pop().unwrap() << 3) + (l.pop().unwrap() >> 5);
+}
+
+fn issue13028() {
+    let s = 5;
+    let u = 5;
+    let x: u32 = 123456;
+
+    let _ = (x << s) | (x >> (32 - s));
+    //~^ manual_rotate
+    let _ = (x << s) | (x >> (31 ^ s));
+    //~^ manual_rotate
+    // still works with consts
+    let _ = (x >> 9) | (x << (32 - 9));
+    //~^ manual_rotate
+
+    // don't lint, because `s` and `u` are different variables, albeit with the same value
+    let _ = (x << s) | (x >> (32 - u));
 }

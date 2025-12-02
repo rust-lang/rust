@@ -3,6 +3,9 @@
 
 Target for cross-compiling Linux user-mode applications targeting the Arm BE8 architecture.
 
+See [`arm-linux`](arm-linux.md) for information applicable to all Arm Linux
+targets.
+
 ## Overview
 BE8 architecture retains the same little-endian ordered code-stream used by conventional little endian Arm systems, however the data accesses are in big-endian. BE8 is used primarily in high-performance networking applications where the ability to read packets in their native "Network Byte Order" is important (many network protocols transmit data in big-endian byte order for their wire formats).
 
@@ -17,7 +20,7 @@ BE8 architecture is the default big-endian architecture for Arm since [Armv6](ht
 The target is cross-compiled. This target supports `std` in the normal way (indeed only nominal changes are required from the standard Arm configuration).
 
 ## Target definition
-The target definition can be seen [here](https://github.com/rust-lang/rust/blob/master/compiler/rustc_target/src/spec/targets/armeb_unknown_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the Armv8 core. Though this can likely be modified as required.
+The target definition can be seen [here](https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_target/src/spec/targets/armeb_unknown_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the Armv8 core. Though this can likely be modified as required.
 
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this target.

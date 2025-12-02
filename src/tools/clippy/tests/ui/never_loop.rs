@@ -1,12 +1,9 @@
 #![feature(try_blocks)]
-#![allow(
-    clippy::eq_op,
-    clippy::single_match,
-    unused_assignments,
-    unused_variables,
-    clippy::while_immutable_condition
-)]
+#![expect(clippy::eq_op, clippy::single_match, clippy::while_immutable_condition)]
 //@no-rustfix
+
+use std::arch::asm;
+
 fn test1() {
     let mut x = 0;
     loop {
@@ -520,5 +517,32 @@ fn issue15350() {
                 break 'foo;
             }
         }
+    }
+}
+
+fn issue15673() {
+    loop {
+        unsafe {
+            // No lint since we don't analyze the inside of the asm
+            asm! {
+                "/* {} */",
+                label {
+                    break;
+                }
+            }
+        }
+    }
+
+    //~v never_loop
+    loop {
+        unsafe {
+            asm! {
+                "/* {} */",
+                label {
+                    break;
+                }
+            }
+        }
+        return;
     }
 }

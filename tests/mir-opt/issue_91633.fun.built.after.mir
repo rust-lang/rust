@@ -23,8 +23,8 @@ fn fun(_1: &[T]) -> &T {
     bb1: {
         _2 = &(*_1)[_3];
         FakeRead(ForLet(None), _2);
-        _0 = &(*_2);
         StorageDead(_3);
+        _0 = &(*_2);
         StorageDead(_2);
         return;
     }

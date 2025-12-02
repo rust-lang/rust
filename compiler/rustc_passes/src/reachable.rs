@@ -217,7 +217,7 @@ impl<'tcx> ReachableContext<'tcx> {
                             // We can't figure out which value the constant will evaluate to. In
                             // lieu of that, we have to consider everything mentioned in the const
                             // initializer reachable, since it *may* end up in the final value.
-                            Err(ErrorHandled::TooGeneric(_)) => self.visit_nested_body(init),
+                            Err(ErrorHandled::TooGeneric(_)) => self.visit_const_item_rhs(init),
                             // If there was an error evaluating the const, nothing can be reachable
                             // via it, and anyway compilation will fail.
                             Err(ErrorHandled::Reported(..)) => {}
@@ -253,16 +253,16 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
                         // Keep going, nothing to get exported
                     }
-                    hir::TraitItemKind::Const(_, Some(body_id))
-                    | hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
+                    hir::TraitItemKind::Const(_, Some(rhs)) => self.visit_const_item_rhs(rhs),
+                    hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)) => {
                         self.visit_nested_body(body_id);
                     }
                     hir::TraitItemKind::Type(..) => {}
                 }
             }
             Node::ImplItem(impl_item) => match impl_item.kind {
-                hir::ImplItemKind::Const(_, body) => {
-                    self.visit_nested_body(body);
+                hir::ImplItemKind::Const(_, rhs) => {
+                    self.visit_const_item_rhs(rhs);
                 }
                 hir::ImplItemKind::Fn(_, body) => {
                     if recursively_reachable(self.tcx, impl_item.hir_id().owner.to_def_id()) {
@@ -404,9 +404,7 @@ fn check_item<'tcx>(
     let items = tcx.associated_item_def_ids(id.owner_id);
     worklist.extend(items.iter().map(|ii_ref| ii_ref.expect_local()));
 
-    let Some(trait_def_id) = tcx.trait_id_of_impl(id.owner_id.to_def_id()) else {
-        unreachable!();
-    };
+    let trait_def_id = tcx.impl_trait_id(id.owner_id.to_def_id());
 
     if !trait_def_id.is_local() {
         return;

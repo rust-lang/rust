@@ -8,12 +8,14 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
     let tcx = cx.tcx();
 
-    if !layout.size.bytes().is_multiple_of(layout.align.abi.bytes()) {
+    if !layout.size.bytes().is_multiple_of(layout.align.bytes()) {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
     }
     if layout.size.bytes() >= tcx.data_layout.obj_size_bound() {
         bug!("size is too large, in the following layout:\n{layout:#?}");
     }
+    // FIXME(#124403): Once `repr_c_enums_larger_than_int` is a hard error, we could assert
+    // here that a repr(c) enum discriminant is never larger than a c_int.
 
     if !cfg!(debug_assertions) {
         // Stop here, the rest is kind of expensive.
@@ -279,10 +281,16 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
 
                     // Ensure that for niche encoded tags the discriminant coincides with the variant index.
-                    assert_eq!(
-                        layout.ty.discriminant_for_variant(tcx, idx).unwrap().val,
-                        u128::from(idx.as_u32()),
-                    );
+                    let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
+                    if val != u128::from(idx.as_u32()) {
+                        let adt_def = layout.ty.ty_adt_def().unwrap();
+                        cx.tcx().dcx().span_delayed_bug(
+                            cx.tcx().def_span(adt_def.did()),
+                            format!(
+                                "variant {idx:?} has discriminant {val:?} in niche-encoded type"
+                            ),
+                        );
+                    }
                 }
             }
             for variant in variants.iter() {
@@ -300,8 +308,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 if variant.align.abi > layout.align.abi {
                     bug!(
                         "Type with alignment {} bytes has variant with alignment {} bytes: {layout:#?}",
-                        layout.align.abi.bytes(),
-                        variant.align.abi.bytes(),
+                        layout.align.bytes(),
+                        variant.align.bytes(),
                     )
                 }
                 // Skip empty variants.

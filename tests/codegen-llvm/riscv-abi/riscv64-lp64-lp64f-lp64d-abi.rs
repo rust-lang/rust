@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target riscv64gc-unknown-linux-gnu -Copt-level=3 -C no-prepopulate-passes -C panic=abort
 //@ needs-llvm-components: riscv
 

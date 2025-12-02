@@ -1,0 +1,62 @@
+error: value assigned to `value` is never read
+  --> $DIR/unused-assign-148960.rs:6:21
+   |
+LL |     let mut value = b"0".to_vec();
+   |                     ^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+note: the lint level is defined here
+  --> $DIR/unused-assign-148960.rs:2:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_assignments)]` implied by `#[deny(unused)]`
+
+error: value assigned to `x` is never read
+  --> $DIR/unused-assign-148960.rs:12:17
+   |
+LL |     let mut x = 1;
+   |                 ^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `x` is never read
+  --> $DIR/unused-assign-148960.rs:13:5
+   |
+LL |     x = 2;
+   |     ^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: value assigned to `p` is never read
+  --> $DIR/unused-assign-148960.rs:24:17
+   |
+LL |     let mut p = Point { x: 1, y: 1 };
+   |                 ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: variable `foo` is assigned to, but never used
+  --> $DIR/unused-assign-148960.rs:38:9
+   |
+LL |     let mut foo = Foo;
+   |         ^^^^^^^
+   |
+   = note: consider using `_foo` instead
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+help: you might have meant to pattern match on the similarly named struct `Foo`
+   |
+LL -     let mut foo = Foo;
+LL +     let Foo = Foo;
+   |
+
+error: value assigned to `foo` is never read
+  --> $DIR/unused-assign-148960.rs:39:5
+   |
+LL |     foo = Foo;
+   |     ^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+error: aborting due to 6 previous errors
+

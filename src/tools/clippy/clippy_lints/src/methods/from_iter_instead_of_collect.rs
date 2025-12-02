@@ -1,9 +1,10 @@
 use std::fmt::Write as _;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_path_diagnostic_item, sugg};
 use rustc_ast::join_path_idents;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -15,7 +16,7 @@ use rustc_span::sym;
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>], func: &Expr<'_>) {
-    if is_path_diagnostic_item(cx, func, sym::from_iter_fn)
+    if func.res(cx).is_diag_item(cx, sym::from_iter_fn)
         && let arg_ty = cx.typeck_results().expr_ty(&args[0])
         && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && implements_trait(cx, arg_ty, iter_id, &[])

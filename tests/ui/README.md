@@ -113,12 +113,6 @@ See [Tracking Issue for autodiff #124509](https://github.com/rust-lang/rust/issu
 
 Tests for automatic referencing and dereferencing behavior, such as automatically adding reference operations (`&` or `&mut`) to make a value match a method's receiver type. Sometimes abbreviated as "auto-ref" or "auto-deref".
 
-## `tests/ui/auxiliary/`: Auxiliary files for tests directly under `tests/ui`.
-
-This top-level `auxiliary` subdirectory contains support files for tests immediately under `tests/ui/`.
-
-**FIXME(#133895)**: tests immediately under `tests/ui/` should be rehomed to more suitable subdirectories, after which this subdirectory can be removed.
-
 ## `tests/ui/backtrace/`: Backtraces
 
 Runtime panics and error handling generate backtraces to assist in debugging and diagnostics.
@@ -542,12 +536,6 @@ These tests are about very different topics, only unified by the fact that they 
 
 Accompanies `tests/ui/error-codes/`, exercises the `--explain` cli flag.
 
-## `tests/ui/explicit/`: Errors involving the concept of "explicit"
-
-This category contains three tests: two which are about the specific error `explicit use of destructor method`, and one which is about explicit annotation of lifetimes: https://doc.rust-lang.org/stable/rust-by-example/scope/lifetime/explicit.html.
-
-**FIXME**: Rehome the two tests about the destructor method with `drop`-related categories, and rehome the last test with a category related to lifetimes.
-
 ## `tests/ui/explicit-tail-calls/`
 
 Exercises `#![feature(explicit_tail_calls)]` and the `become` keyword. See [Explicit Tail Calls #3407](https://github.com/rust-lang/rfcs/pull/3407).
@@ -584,10 +572,6 @@ Exercises the `format!` macro.
 ## `tests/ui/fn/`
 
 A broad category of tests on functions.
-
-## `tests/ui/fn-main/`
-
-**FIXME**: Serves a duplicate purpose with `ui/entry-point`, should be combined.
 
 ## `tests/ui/for/`: `for` keyword
 
@@ -737,10 +721,6 @@ See [Instrument coverage | The rustc book](https://doc.rust-lang.org/rustc/instr
 
 See [Tracking issue for `-Z instrument-xray` #102921](https://github.com/rust-lang/rust/issues/102921).
 
-## `tests/ui/interior-mutability/`
-
-**FIXME**: contains a single test, probably better rehomed.
-
 ## `tests/ui/internal/`
 
 Tests for `internal_unstable` and the attribute header `#![feature(allow_internal_unstable)]`, which lets compiler developers mark features as internal to the compiler, and unstable for standard library use.
@@ -762,16 +742,6 @@ Various tests related to rejecting invalid inputs.
 ## `tests/ui/invalid-compile-flags/`
 
 Tests for checking that invalid usage of compiler flags are rejected.
-
-## `tests/ui/invalid-module-declaration/`
-
-**FIXME**: Consider merging into module/resolve directories.
-
-## `tests/ui/invalid-self-argument/`: `self` as a function argument incorrectly
-
-Tests with erroneous ways of using `self`, such as having it not be the first argument, or using it in a non-associated function (no `impl` or `trait`).
-
-**FIXME**: Maybe merge with `ui/self`.
 
 ## `tests/ui/io-checks/`
 
@@ -895,12 +865,6 @@ Exercise *Link-Time Optimization* (LTO), involving the flags `-C lto` or `-Z thi
 
 Tests on changes to inference variable lattice LUB/GLB, see <https://github.com/rust-lang/rust/pull/45853>.
 
-## `tests/ui/macro_backtrace/`: `-Zmacro-backtrace`
-
-Contains a single test, checking the unstable command-line flag to enable detailed macro backtraces.
-
-**FIXME**: This could be merged with `ui/macros`, which already contains other macro backtrace tests.
-
 ## `tests/ui/macros/`
 
 Broad category of tests on macros.
@@ -949,12 +913,6 @@ Something is missing which could be added to fix (e.g. suggestions).
 
 **FIXME**: this is way too vague, tests should be rehomed.
 
-## `tests/ui/missing_non_modrs_mod/`
-
-This directory is a small tree of `mod` dependencies, but the root, `foo.rs`, is looking for a file which does not exist. The test checks that the error is reported at the top-level module.
-
-**FIXME**: Merge with `tests/ui/modules/`.
-
 ## `tests/ui/missing-trait-bounds/`
 
 Tests for checking missing trait bounds, and their diagnostics.
@@ -966,10 +924,6 @@ Tests for checking missing trait bounds, and their diagnostics.
 Tests on the module system.
 
 **FIXME**: `tests/ui/imports/` should probably be merged with this.
-
-## `tests/ui/modules_and_files_visibility/`
-
-**FIXME**: Merge with `tests/ui/modules/`.
 
 ## `tests/ui/moves`
 
@@ -1138,12 +1092,6 @@ Contains only 2 tests, related to a single issue, which was about an error cause
 A large category about function and type public/private visibility, and its impact when using features across crates. Checks both visibility-related error messages and previously buggy cases.
 
 **FIXME**: merge with `tests/ui/privacy/`.
-
-## `tests/ui/qualified/`
-
-Contains few tests on qualified paths where a type parameter is provided at the end: `type A = <S as Tr>::A::f<u8>;`. The tests check if this fails during type checking, not parsing.
-
-**FIXME**: Should be rehomed to `ui/typeck`.
 
 ## `tests/ui/query-system/`
 
@@ -1586,12 +1534,6 @@ Tests on various well-formedness checks, e.g. [Type-checking normal functions](h
 ## `tests/ui/where-clauses/`
 
 Tests on `where` clauses. See [Where clauses | Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses).
-
-## `tests/ui/while/`
-
-Tests on the `while` keyword and the `while` construct.
-
-**FIXME**: merge with `ui/for-loop-while`.
 
 ## `tests/ui/windows-subsystem/`: `#![windows_subsystem = ""]`
 

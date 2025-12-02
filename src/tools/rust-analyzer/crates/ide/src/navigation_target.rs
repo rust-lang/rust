@@ -6,21 +6,21 @@ use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     AssocItem, Crate, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId,
-    InFile, LocalSource, ModuleSource, Semantics, db::ExpandDatabase, symbols::FileSymbol,
+    InFile, LocalSource, ModuleSource, Semantics, Symbol, db::ExpandDatabase, sym,
+    symbols::FileSymbol,
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
-    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb, salsa},
+    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb},
     defs::{Definition, find_std_module},
     documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
+    ra_fixture::UpmapFromRaFixture,
 };
-use span::Edition;
 use stdx::never;
 use syntax::{
-    AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
+    AstNode, SyntaxNode, TextRange,
     ast::{self, HasName},
-    format_smolstr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -47,17 +47,15 @@ pub struct NavigationTarget {
     ///
     /// This range must be contained within [`Self::full_range`].
     pub focus_range: Option<TextRange>,
-    // FIXME: Symbol
-    pub name: SmolStr,
+    pub name: Symbol,
     pub kind: Option<SymbolKind>,
-    // FIXME: Symbol
-    pub container_name: Option<SmolStr>,
+    pub container_name: Option<Symbol>,
     pub description: Option<String>,
-    pub docs: Option<Documentation>,
+    // FIXME: Use the database lifetime here.
+    pub docs: Option<Documentation<'static>>,
     /// In addition to a `name` field, a `NavigationTarget` may also be aliased
     /// In such cases we want a `NavigationTarget` to be accessible by its alias
-    // FIXME: Symbol
-    pub alias: Option<SmolStr>,
+    pub alias: Option<Symbol>,
 }
 
 impl fmt::Debug for NavigationTarget {
@@ -75,6 +73,44 @@ impl fmt::Debug for NavigationTarget {
         f.field("name", &self.name);
         opt!(kind container_name description docs);
         f.finish()
+    }
+}
+
+impl UpmapFromRaFixture for NavigationTarget {
+    fn upmap_from_ra_fixture(
+        self,
+        analysis: &ide_db::ra_fixture::RaFixtureAnalysis,
+        _virtual_file_id: FileId,
+        real_file_id: FileId,
+    ) -> Result<Self, ()> {
+        let virtual_file_id = self.file_id;
+        Ok(NavigationTarget {
+            file_id: real_file_id,
+            full_range: self.full_range.upmap_from_ra_fixture(
+                analysis,
+                virtual_file_id,
+                real_file_id,
+            )?,
+            focus_range: self.focus_range.upmap_from_ra_fixture(
+                analysis,
+                virtual_file_id,
+                real_file_id,
+            )?,
+            name: self.name.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
+            kind: self.kind.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
+            container_name: self.container_name.upmap_from_ra_fixture(
+                analysis,
+                virtual_file_id,
+                real_file_id,
+            )?,
+            description: self.description.upmap_from_ra_fixture(
+                analysis,
+                virtual_file_id,
+                real_file_id,
+            )?,
+            docs: self.docs.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
+            alias: self.alias.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
+        })
     }
 }
 
@@ -110,9 +146,7 @@ impl NavigationTarget {
         db: &RootDatabase,
         module: hir::Module,
     ) -> UpmappingResult<NavigationTarget> {
-        let edition = module.krate().edition(db);
-        let name =
-            module.name(db).map(|it| it.display_no_db(edition).to_smolstr()).unwrap_or_default();
+        let name = module.name(db).map(|it| it.symbol().clone()).unwrap_or_else(|| sym::underscore);
         match module.declaration_source(db) {
             Some(InFile { value, file_id }) => {
                 orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
@@ -124,7 +158,7 @@ impl NavigationTarget {
                             full_range,
                             SymbolKind::Module,
                         );
-                        res.docs = module.docs(db);
+                        res.docs = module.docs(db).map(Documentation::into_owned);
                         res.description = Some(
                             module.display(db, module.krate().to_display_target(db)).to_string(),
                         );
@@ -160,7 +194,8 @@ impl NavigationTarget {
         InFile { file_id, value }: InFile<&dyn ast::HasName>,
         kind: SymbolKind,
     ) -> UpmappingResult<NavigationTarget> {
-        let name: SmolStr = value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
+        let name =
+            value.name().map(|it| Symbol::intern(&it.text())).unwrap_or_else(|| sym::underscore);
 
         orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
@@ -171,7 +206,7 @@ impl NavigationTarget {
 
     pub(crate) fn from_syntax(
         file_id: FileId,
-        name: SmolStr,
+        name: Symbol,
         focus_range: Option<TextRange>,
         full_range: TextRange,
         kind: SymbolKind,
@@ -196,8 +231,6 @@ impl TryToNav for FileSymbol {
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let edition =
-            self.def.module(db).map(|it| it.krate().edition(db)).unwrap_or(Edition::CURRENT);
         let display_target = self.def.krate(db).to_display_target(db);
         Some(
             orig_range_with_focus_r(
@@ -209,11 +242,12 @@ impl TryToNav for FileSymbol {
             .map(|(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget {
                     file_id,
-                    name: self.is_alias.then(|| self.def.name(db)).flatten().map_or_else(
-                        || self.name.as_str().into(),
-                        |it| it.display_no_db(edition).to_smolstr(),
-                    ),
-                    alias: self.is_alias.then(|| self.name.as_str().into()),
+                    name: self
+                        .is_alias
+                        .then(|| self.def.name(db))
+                        .flatten()
+                        .map_or_else(|| self.name.clone(), |it| it.symbol().clone()),
+                    alias: self.is_alias.then(|| self.name.clone()),
                     kind: Some(self.def.into()),
                     full_range,
                     focus_range,
@@ -310,52 +344,50 @@ impl TryToNav for hir::ModuleDef {
 
 pub(crate) trait ToNavFromAst: Sized {
     const KIND: SymbolKind;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
         _ = db;
         None
     }
 }
 
-fn container_name(db: &RootDatabase, t: impl HasContainer, edition: Edition) -> Option<SmolStr> {
+fn container_name(db: &RootDatabase, t: impl HasContainer) -> Option<Symbol> {
     match t.container(db) {
-        hir::ItemContainer::Trait(it) => Some(it.name(db).display_no_db(edition).to_smolstr()),
+        hir::ItemContainer::Trait(it) => Some(it.name(db).symbol().clone()),
         // FIXME: Handle owners of blocks correctly here
-        hir::ItemContainer::Module(it) => {
-            it.name(db).map(|name| name.display_no_db(edition).to_smolstr())
-        }
+        hir::ItemContainer::Module(it) => it.name(db).map(|name| name.symbol().clone()),
         _ => None,
     }
 }
 
 impl ToNavFromAst for hir::Function {
     const KIND: SymbolKind = SymbolKind::Function;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 
 impl ToNavFromAst for hir::Const {
     const KIND: SymbolKind = SymbolKind::Const;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::Static {
     const KIND: SymbolKind = SymbolKind::Static;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::Struct {
     const KIND: SymbolKind = SymbolKind::Struct;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::Enum {
     const KIND: SymbolKind = SymbolKind::Enum;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::Variant {
@@ -363,26 +395,26 @@ impl ToNavFromAst for hir::Variant {
 }
 impl ToNavFromAst for hir::Union {
     const KIND: SymbolKind = SymbolKind::Union;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::TypeAlias {
     const KIND: SymbolKind = SymbolKind::TypeAlias;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 impl ToNavFromAst for hir::Trait {
     const KIND: SymbolKind = SymbolKind::Trait;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
+    fn container_name(self, db: &RootDatabase) -> Option<Symbol> {
+        container_name(db, self)
     }
 }
 
 impl<D> TryToNav for D
 where
-    D: HasSource + ToNavFromAst + Copy + HasDocs + HirDisplay + HasCrate,
+    D: HasSource + ToNavFromAst + Copy + HasDocs + for<'db> HirDisplay<'db> + HasCrate,
     D::Ast: ast::HasName,
 {
     fn try_to_nav(
@@ -398,8 +430,8 @@ where
                 D::KIND,
             )
             .map(|mut res| {
-                res.docs = self.docs(db);
-                res.description = salsa::attach(db, || {
+                res.docs = self.docs(db).map(Documentation::into_owned);
+                res.description = hir::attach_db(db, || {
                     Some(self.display(db, self.krate(db).to_display_target(db)).to_string())
                 });
                 res.container_name = self.container_name(db);
@@ -412,10 +444,8 @@ where
 impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
         let InFile { file_id, value } = self.definition_source(db);
-        let edition = self.krate(db).edition(db);
 
-        let name =
-            self.name(db).map(|it| it.display_no_db(edition).to_smolstr()).unwrap_or_default();
+        let name = self.name(db).map(|it| it.symbol().clone()).unwrap_or_else(|| sym::underscore);
         let (syntax, focus) = match &value {
             ModuleSource::SourceFile(node) => (node.syntax(), None),
             ModuleSource::Module(node) => (node.syntax(), node.name()),
@@ -460,7 +490,7 @@ impl TryToNav for hir::Impl {
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 NavigationTarget::from_syntax(
                     file_id,
-                    "impl".into(),
+                    sym::kw_impl,
                     focus_range,
                     full_range,
                     SymbolKind::Impl,
@@ -482,24 +512,20 @@ impl TryToNav for hir::ExternCrateDecl {
             .rename()
             .map_or_else(|| value.name_ref().map(Either::Left), |it| it.name().map(Either::Right));
         let krate = self.module(db).krate();
-        let edition = krate.edition(db);
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), focus).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
                 let mut res = NavigationTarget::from_syntax(
                     file_id,
-                    self.alias_or_name(db)
-                        .unwrap_or_else(|| self.name(db))
-                        .display_no_db(edition)
-                        .to_smolstr(),
+                    self.alias_or_name(db).unwrap_or_else(|| self.name(db)).symbol().clone(),
                     focus_range,
                     full_range,
                     SymbolKind::Module,
                 );
 
-                res.docs = self.docs(db);
+                res.docs = self.docs(db).map(Documentation::into_owned);
                 res.description = Some(self.display(db, krate.to_display_target(db)).to_string());
-                res.container_name = container_name(db, *self, edition);
+                res.container_name = container_name(db, *self);
                 res
             },
         ))
@@ -519,10 +545,9 @@ impl TryToNav for hir::Field {
             FieldSource::Named(it) => {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
-                        res.docs = self.docs(db);
-                        res.description = salsa::attach(db, || {
-                            Some(self.display(db, krate.to_display_target(db)).to_string())
-                        });
+                        res.docs = self.docs(db).map(Documentation::into_owned);
+                        res.description =
+                            Some(self.display(db, krate.to_display_target(db)).to_string());
                         res
                     },
                 )
@@ -531,7 +556,7 @@ impl TryToNav for hir::Field {
                 |(FileRange { file_id, range: full_range }, focus_range)| {
                     NavigationTarget::from_syntax(
                         file_id,
-                        format_smolstr!("{}", self.index()),
+                        Symbol::integer(self.index()),
                         focus_range,
                         full_range,
                         SymbolKind::Field,
@@ -561,7 +586,7 @@ impl TryToNav for hir::Macro {
                 self.kind(db).into(),
             )
             .map(|mut res| {
-                res.docs = self.docs(db);
+                res.docs = self.docs(db).map(Documentation::into_owned);
                 res
             }),
         )
@@ -616,11 +641,10 @@ impl ToNav for LocalSource {
             Either::Left(bind_pat) => (bind_pat.syntax(), bind_pat.name()),
             Either::Right(it) => (it.syntax(), it.name()),
         };
-        let edition = self.local.parent(db).module(db).krate().edition(db);
 
         orig_range_with_focus(db, file_id, node, name).map(
             |(FileRange { file_id, range: full_range }, focus_range)| {
-                let name = local.name(db).display_no_db(edition).to_smolstr();
+                let name = local.name(db).symbol().clone();
                 let kind = if local.is_self(db) {
                     SymbolKind::SelfParam
                 } else if local.is_param(db) {
@@ -657,8 +681,7 @@ impl TryToNav for hir::Label {
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
         let InFile { file_id, value } = self.source(db)?;
-        // Labels can't be keywords, so no escaping needed.
-        let name = self.name(db).display_no_db(Edition::Edition2015).to_smolstr();
+        let name = self.name(db).symbol().clone();
 
         Some(orig_range_with_focus(db, file_id, value.syntax(), value.lifetime()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -683,8 +706,7 @@ impl TryToNav for hir::TypeParam {
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
         let InFile { file_id, value } = self.merge().source(db)?;
-        let edition = self.module(db).krate().edition(db);
-        let name = self.name(db).display_no_db(edition).to_smolstr();
+        let name = self.name(db).symbol().clone();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Type(x)) => Either::Left(x),
@@ -733,8 +755,7 @@ impl TryToNav for hir::LifetimeParam {
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
         let InFile { file_id, value } = self.source(db)?;
-        // Lifetimes cannot be keywords, so not escaping needed.
-        let name = self.name(db).display_no_db(Edition::Edition2015).to_smolstr();
+        let name = self.name(db).symbol().clone();
 
         Some(orig_range(db, file_id, value.syntax()).map(
             |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
@@ -759,8 +780,7 @@ impl TryToNav for hir::ConstParam {
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
         let InFile { file_id, value } = self.merge().source(db)?;
-        let edition = self.module(db).krate().edition(db);
-        let name = self.name(db).display_no_db(edition).to_smolstr();
+        let name = self.name(db).symbol().clone();
 
         let value = match value {
             Either::Left(ast::TypeOrConstParam::Const(x)) => x,
@@ -795,21 +815,17 @@ impl TryToNav for hir::InlineAsmOperand {
         let InFile { file_id, value } = &self.source(db)?;
         let file_id = *file_id;
         Some(orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
-            |(FileRange { file_id, range: full_range }, focus_range)| {
-                let edition = self.parent(db).module(db).krate().edition(db);
-                NavigationTarget {
-                    file_id,
-                    name: self
-                        .name(db)
-                        .map_or_else(|| "_".into(), |it| it.display(db, edition).to_smolstr()),
-                    alias: None,
-                    kind: Some(SymbolKind::Local),
-                    full_range,
-                    focus_range,
-                    container_name: None,
-                    description: None,
-                    docs: None,
-                }
+            |(FileRange { file_id, range: full_range }, focus_range)| NavigationTarget {
+                file_id,
+                name:
+                    self.name(db).map_or_else(|| sym::underscore.clone(), |it| it.symbol().clone()),
+                alias: None,
+                kind: Some(SymbolKind::Local),
+                full_range,
+                focus_range,
+                container_name: None,
+                description: None,
+                docs: None,
             },
         ))
     }
@@ -900,7 +916,7 @@ pub(crate) fn orig_range_with_focus_r(
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     let Some(name) = focus_range else { return orig_range_r(db, hir_file, value) };
 
-    let call_kind = || db.lookup_intern_macro_call(hir_file.macro_file().unwrap()).kind;
+    let call = || db.lookup_intern_macro_call(hir_file.macro_file().unwrap());
 
     let def_range =
         || db.lookup_intern_macro_call(hir_file.macro_file().unwrap()).def.definition_range(db);
@@ -926,7 +942,8 @@ pub(crate) fn orig_range_with_focus_r(
                             // name lies outside the node, so instead point to the macro call which
                             // *should* contain the name
                             _ => {
-                                let kind = call_kind();
+                                let call = call();
+                                let kind = call.kind;
                                 let range = kind.clone().original_call_range_with_input(db);
                                 //If the focus range is in the attribute/derive body, we
                                 // need to point the call site to the entire body, if not, fall back
@@ -938,7 +955,7 @@ pub(crate) fn orig_range_with_focus_r(
                                 {
                                     range
                                 } else {
-                                    kind.original_call_range(db)
+                                    kind.original_call_range(db, call.krate)
                                 }
                             }
                         },
@@ -967,11 +984,14 @@ pub(crate) fn orig_range_with_focus_r(
                         },
                     ),
                     // node is in macro def, just show the focus
-                    _ => (
-                        // show the macro call
-                        (call_kind().original_call_range(db), None),
-                        Some((focus_range, Some(focus_range))),
-                    ),
+                    _ => {
+                        let call = call();
+                        (
+                            // show the macro call
+                            (call.kind.original_call_range(db, call.krate), None),
+                            Some((focus_range, Some(focus_range))),
+                        )
+                    }
                 }
             }
             // lost name? can't happen for single tokens

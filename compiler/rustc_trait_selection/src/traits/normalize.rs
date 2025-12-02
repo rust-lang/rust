@@ -73,7 +73,7 @@ impl<'tcx> At<'_, 'tcx> {
             let value = self
                 .normalize(value)
                 .into_value_registering_obligations(self.infcx, &mut *fulfill_cx);
-            let errors = fulfill_cx.select_all_or_error(self.infcx);
+            let errors = fulfill_cx.evaluate_obligations_error_on_ambiguity(self.infcx);
             let value = self.infcx.resolve_vars_if_possible(value);
             if errors.is_empty() {
                 Ok(value)
@@ -333,10 +333,11 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let res = if free.kind(infcx.tcx).is_type() {
             infcx.tcx.type_of(free.def_id).instantiate(infcx.tcx, free.args).fold_with(self).into()
         } else {
-            // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
-            // this should instead use that rather than evaluating.
-            super::evaluate_const(infcx, free.to_term(infcx.tcx).expect_const(), self.param_env)
-                .super_fold_with(self)
+            infcx
+                .tcx
+                .const_of_item(free.def_id)
+                .instantiate(infcx.tcx, free.args)
+                .fold_with(self)
                 .into()
         };
         self.depth -= 1;
@@ -436,51 +437,47 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             return ct;
         }
 
-        // Doing "proper" normalization of const aliases is inherently cyclic until const items
-        // are real aliases instead of having bodies. We gate proper const alias handling behind
-        // mgca to avoid breaking stable code, though this should become the "main" codepath long
-        // before mgca is stabilized.
+        let uv = match ct.kind() {
+            ty::ConstKind::Unevaluated(uv) => uv,
+            _ => return ct.super_fold_with(self),
+        };
+
+        // Note that the AssocConst and Const cases are unreachable on stable,
+        // unless a `min_generic_const_args` feature gate error has already
+        // been emitted earlier in compilation.
         //
-        // FIXME(BoxyUwU): Enabling this by default is blocked on a refactoring to how const items
-        // are represented.
-        if tcx.features().min_generic_const_args() {
-            let uv = match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => uv,
-                _ => return ct.super_fold_with(self),
-            };
-
-            let ct = match tcx.def_kind(uv.def) {
-                DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
-                    DefKind::Trait => self.normalize_trait_projection(uv.into()),
-                    DefKind::Impl { of_trait: false } => {
-                        self.normalize_inherent_projection(uv.into())
-                    }
-                    kind => unreachable!(
-                        "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
-                        kind
-                    ),
-                },
-                DefKind::Const | DefKind::AnonConst => self.normalize_free_alias(uv.into()),
-                kind => {
-                    unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
+        // That's because we can only end up with an Unevaluated ty::Const for a const item
+        // if it was marked with `#[type_const]`. Using this attribute without the mgca
+        // feature gate causes a parse error.
+        let ct = match tcx.def_kind(uv.def) {
+            DefKind::AssocConst => match tcx.def_kind(tcx.parent(uv.def)) {
+                DefKind::Trait => self.normalize_trait_projection(uv.into()).expect_const(),
+                DefKind::Impl { of_trait: false } => {
+                    self.normalize_inherent_projection(uv.into()).expect_const()
                 }
-            };
+                kind => unreachable!(
+                    "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
+                    kind
+                ),
+            },
+            DefKind::Const => self.normalize_free_alias(uv.into()).expect_const(),
+            DefKind::AnonConst => {
+                let ct = ct.super_fold_with(self);
+                super::with_replaced_escaping_bound_vars(
+                    self.selcx.infcx,
+                    &mut self.universes,
+                    ct,
+                    |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
+                )
+            }
+            kind => {
+                unreachable!("unexpected `DefKind` for const alias to resolve to: {:?}", kind)
+            }
+        };
 
-            // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
-            // unnormalized after const evaluation returns.
-            ct.expect_const().super_fold_with(self)
-        } else {
-            let ct = ct.super_fold_with(self);
-            return super::with_replaced_escaping_bound_vars(
-                self.selcx.infcx,
-                &mut self.universes,
-                ct,
-                |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
-            )
-            .super_fold_with(self);
-            // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
-            // unnormalized after const evaluation returns.
-        }
+        // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
+        // unnormalized after const evaluation returns.
+        ct.super_fold_with(self)
     }
 
     #[inline]

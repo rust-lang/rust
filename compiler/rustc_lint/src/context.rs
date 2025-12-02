@@ -718,7 +718,7 @@ impl<'tcx> LateContext<'tcx> {
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
             hir::QPath::Resolved(_, path) => path.res,
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
+            hir::QPath::TypeRelative(..) => self
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)
                 .or_else(|| {
@@ -978,9 +978,9 @@ impl<'tcx> LateContext<'tcx> {
                     ..
                 }) => *init,
                 hir::Node::Item(item) => match item.kind {
-                    hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
-                        Some(self.tcx.hir_body(body_id).value)
-                    }
+                    // FIXME(mgca): figure out how to handle ConstArgKind::Path (or don't but add warning in docs here)
+                    hir::ItemKind::Const(.., hir::ConstItemRhs::Body(body_id))
+                    | hir::ItemKind::Static(.., body_id) => Some(self.tcx.hir_body(body_id).value),
                     _ => None,
                 },
                 _ => None,

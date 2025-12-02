@@ -6,6 +6,7 @@
 use std::path::PathBuf;
 
 use build_helper::exit;
+use build_helper::git::get_git_untracked_files;
 use clap_complete::{Generator, shells};
 
 use crate::core::build_steps::dist::distdir;
@@ -14,7 +15,7 @@ use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, To
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
-use crate::core::config::flags::get_completion;
+use crate::core::config::flags::{get_completion, top_level_help};
 use crate::utils::exec::command;
 use crate::{Mode, t};
 
@@ -36,7 +37,9 @@ impl Step for BuildManifest {
     fn run(self, builder: &Builder<'_>) {
         // This gets called by `promote-release`
         // (https://github.com/rust-lang/promote-release).
-        let mut cmd = builder.tool_cmd(Tool::BuildManifest);
+        let mut cmd = command(
+            builder.ensure(tool::BuildManifest::new(builder, builder.config.host_target)).tool_path,
+        );
         let sign = builder.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.sign-folder` in `bootstrap.toml`\n\n")
         });
@@ -208,6 +211,16 @@ impl Step for CollectLicenseMetadata {
 
         let dest = builder.src.join("license-metadata.json");
 
+        if !builder.config.dry_run() {
+            builder.require_and_update_all_submodules();
+            if let Ok(Some(untracked)) = get_git_untracked_files(None) {
+                eprintln!(
+                    "Warning: {} untracked files may cause the license report to be incorrect.",
+                    untracked.len()
+                );
+            }
+        }
+
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
         cmd.env("DEST", &dest);
@@ -262,6 +275,8 @@ impl Step for GenerateCopyright {
             });
             cache_dir
         };
+
+        let _guard = builder.group("generate-copyright");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("CARGO_MANIFESTS", &cargo_manifests);
@@ -430,12 +445,14 @@ pub struct CoverageDump;
 
 impl Step for CoverageDump {
     type Output = ();
-
-    const DEFAULT: bool = false;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/coverage-dump")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -499,5 +516,32 @@ impl Step for Rustfmt {
         rustfmt.args(builder.config.args());
 
         rustfmt.into_cmd().run(builder);
+    }
+}
+
+/// Return the path of x.py's help.
+pub fn get_help_path(builder: &Builder<'_>) -> PathBuf {
+    builder.src.join("src/etc/xhelp")
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GenerateHelp;
+
+impl Step for GenerateHelp {
+    type Output = ();
+
+    fn run(self, builder: &Builder<'_>) {
+        let help = top_level_help();
+        let path = get_help_path(builder);
+        std::fs::write(&path, help)
+            .unwrap_or_else(|e| panic!("writing help into {} failed: {e:?}", path.display()));
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("generate-help")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(GenerateHelp)
     }
 }

@@ -15,7 +15,7 @@ fn cast(ptr: *const E) {
     }
 }
 
-pub fn main() {
+fn main() {
     let v = u32::MAX;
     cast(&v as *const u32 as *const E);
 }

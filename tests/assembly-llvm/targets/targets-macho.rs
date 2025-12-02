@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: aarch64_apple_darwin

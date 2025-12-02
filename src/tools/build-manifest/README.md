@@ -2,7 +2,13 @@
 
 This tool generates the manifests uploaded to static.rust-lang.org and used by rustup.
 You can see a full list of all manifests at <https://static.rust-lang.org/manifests.txt>.
-This listing is updated by <https://github.com/rust-lang/generate-manifest-list> every 7 days.
+
+We auto-generate the host targets (those with full compiler toolchains) and
+target targets (a superset of hosts, some of which only support std) through
+`build.rs`, which internally uses a stage 1 rustc to produce the target list
+and uses the `TargetMetadata` to determine whether host tools are expected and
+whether artifacts are expected. This list is not currently verified against the
+actually produced artifacts by CI, though that may change in the future.
 
 This gets called by `promote-release` <https://github.com/rust-lang/promote-release>. `promote-release` downloads a pre-built binary of `build-manifest` which is generated in the dist-x86_64-linux builder and uploaded to s3.
 

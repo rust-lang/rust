@@ -21,7 +21,7 @@ fn main() {
 }
 
 #[inline(never)]
-pub fn take(h: Handler, f: Box<dyn Fn()>) -> Box<dyn Fn()> {
+fn take(h: Handler, f: Box<dyn Fn()>) -> Box<dyn Fn()> {
     unsafe {
         match h {
             Handler::Custom(ptr) => *Box::from_raw(ptr),

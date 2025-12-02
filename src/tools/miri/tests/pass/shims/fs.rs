@@ -13,6 +13,7 @@ use std::path::Path;
 
 #[path = "../../utils/mod.rs"]
 mod utils;
+use utils::check_nondet;
 
 fn main() {
     test_path_conversion();
@@ -81,25 +82,25 @@ fn test_file() {
 }
 
 fn test_file_partial_reads_writes() {
-    let path = utils::prepare_with_content("miri_test_fs_file.txt", b"abcdefg");
+    let path1 = utils::prepare_with_content("miri_test_fs_file1.txt", b"abcdefg");
+    let path2 = utils::prepare_with_content("miri_test_fs_file2.txt", b"abcdefg");
 
     // Ensure we sometimes do incomplete writes.
-    let got_short_write = (0..16).any(|_| {
-        let _ = remove_file(&path); // FIXME(win, issue #4483): errors if the file already exists
-        let mut file = File::create(&path).unwrap();
-        file.write(&[0; 4]).unwrap() != 4
+    check_nondet(|| {
+        let _ = remove_file(&path1); // FIXME(win, issue #4483): errors if the file already exists
+        let mut file = File::create(&path1).unwrap();
+        file.write(&[0; 4]).unwrap() == 4
     });
-    assert!(got_short_write);
     // Ensure we sometimes do incomplete reads.
-    let got_short_read = (0..16).any(|_| {
-        let mut file = File::open(&path).unwrap();
+    check_nondet(|| {
+        let mut file = File::open(&path2).unwrap();
         let mut buf = [0; 4];
-        file.read(&mut buf).unwrap() != 4
+        file.read(&mut buf).unwrap() == 4
     });
-    assert!(got_short_read);
 
     // Clean up
-    remove_file(&path).unwrap();
+    remove_file(&path1).unwrap();
+    remove_file(&path2).unwrap();
 }
 
 fn test_file_clone() {

@@ -5,9 +5,13 @@ LL |     x[0i32];
    |       ^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[{integer}]>` is not implemented for `i32`
-   = help: the following other types implement trait `SliceIndex<T>`:
-             `usize` implements `SliceIndex<ByteStr>`
-             `usize` implements `SliceIndex<[T]>`
+help: the following other types implement trait `SliceIndex<T>`
+  --> $SRC_DIR/core/src/slice/index.rs:LL:COL
+   |
+   = note: `usize` implements `SliceIndex<[T]>`
+  --> $SRC_DIR/core/src/bstr/traits.rs:LL:COL
+   |
+   = note: `usize` implements `SliceIndex<ByteStr>`
    = note: required for `Vec<{integer}>` to implement `Index<i32>`
 
 error: aborting due to 1 previous error

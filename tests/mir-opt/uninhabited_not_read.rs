@@ -1,7 +1,7 @@
 // skip-filecheck
 
 //@ edition: 2021
-// In ed 2021 and below, we don't fallback `!` to `()`.
+// In ed 2021 and below, we fallback `!` to `()`.
 // This would introduce a `! -> ()` coercion which would
 // be UB if we didn't disallow this explicitly.
 

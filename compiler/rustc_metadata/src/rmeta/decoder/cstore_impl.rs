@@ -240,6 +240,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    trivial_const => { table }
     closure_saved_names_of_captured_variables => { table }
     mir_coroutine_witnesses => { table }
     promoted_mir => { table }
@@ -402,6 +403,7 @@ provide! { tcx, def_id, other, cdata,
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
     }
     anon_const_kind => { table }
+    const_of_item => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -691,8 +693,8 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             .get(&stable_crate_id)
             .unwrap_or_else(|| bug!("uninterned StableCrateId: {stable_crate_id:?}"));
         assert_ne!(cnum, LOCAL_CRATE);
-        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash);
-        DefId { krate: cnum, index: def_index }
+        let def_index = cstore.get_crate_data(cnum).def_path_hash_to_def_index(hash)?;
+        Some(DefId { krate: cnum, index: def_index })
     };
 
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {

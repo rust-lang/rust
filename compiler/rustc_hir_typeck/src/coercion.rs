@@ -35,13 +35,13 @@
 //! // and are then unable to coerce `&7i32` to `&mut i32`.
 //! ```
 
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
-use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
@@ -56,6 +56,8 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
+use rustc_trait_selection::solve::{Certainty, Goal, NoSolution};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, ImplSource, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
@@ -140,7 +142,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
-                    if ocx.select_where_possible().is_empty() {
+                    if ocx.try_evaluate_obligations().is_empty() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -639,11 +641,44 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Adjust::Pointer(PointerCoercion::Unsize),
         )?;
 
-        let mut selcx = traits::SelectionContext::new(self);
-
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+        let pred = ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
+        let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
 
+        if self.next_trait_solver() {
+            coercion.obligations.push(obligation);
+
+            if self
+                .infcx
+                .visit_proof_tree(
+                    Goal::new(self.tcx, self.param_env, pred),
+                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span },
+                )
+                .is_break()
+            {
+                return Err(TypeError::Mismatch);
+            }
+        } else {
+            self.coerce_unsized_old_solver(
+                obligation,
+                &mut coercion,
+                coerce_unsized_did,
+                unsize_did,
+            )?;
+        }
+
+        Ok(coercion)
+    }
+
+    fn coerce_unsized_old_solver(
+        &self,
+        obligation: Obligation<'tcx, ty::Predicate<'tcx>>,
+        coercion: &mut InferOk<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>,
+        coerce_unsized_did: DefId,
+        unsize_did: DefId,
+    ) -> Result<(), TypeError<'tcx>> {
+        let mut selcx = traits::SelectionContext::new(self);
         // Use a FIFO queue for this custom fulfillment procedure.
         //
         // A Vec (or SmallVec) is not a natural choice for a queue. However,
@@ -651,12 +686,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and almost never more than 3. By using a SmallVec we avoid an
         // allocation, at the (very small) cost of (occasionally) having to
         // shift subsequent elements down when removing the front element.
-        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![Obligation::new(
-            self.tcx,
-            cause,
-            self.fcx.param_env,
-            ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target])
-        )];
+        let mut queue: SmallVec<[PredicateObligation<'tcx>; 4]> = smallvec![obligation];
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -677,7 +707,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Some(ty::PredicateKind::AliasRelate(..)) => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligation(obligation);
-                    if !ocx.select_where_possible().is_empty() {
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
                     coercion.obligations.extend(ocx.into_pending_obligations());
@@ -749,7 +779,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
                 }
-
                 Ok(Some(ImplSource::UserDefined(impl_source))) => {
                     queue.extend(impl_source.nested);
                     // Certain incoherent `CoerceUnsized` implementations may cause ICEs,
@@ -767,7 +796,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        Ok(coercion)
+        Ok(())
     }
 
     /// Applies reborrowing for `Pin`
@@ -1099,7 +1128,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             };
             ocx.register_obligations(ok.obligations);
-            ocx.select_where_possible().is_empty()
+            ocx.try_evaluate_obligations().is_empty()
         })
     }
 
@@ -1203,7 +1232,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if self.next_trait_solver() {
                                 let ocx = ObligationCtxt::new(self);
                                 let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                                if ocx.select_where_possible().is_empty() {
+                                if ocx.try_evaluate_obligations().is_empty() {
                                     Ok(InferOk {
                                         value,
                                         obligations: ocx.into_pending_obligations(),
@@ -1262,14 +1291,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(a_sig.safety()))
                 }
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
+                ty::FnDef(def_id, ..) => {
+                    // Intrinsics are not coercible to function pointers
+                    if self.tcx.intrinsic(def_id).is_some() {
+                        return Err(TypeError::IntrinsicCast);
+                    }
+                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
+                }
                 _ => span_bug!(cause.span, "should not try to coerce a {prev_ty} to a fn pointer"),
             };
             let next_adjustment = match new_ty.kind() {
                 ty::Closure(..) => {
                     Adjust::Pointer(PointerCoercion::ClosureFnPointer(b_sig.safety()))
                 }
-                ty::FnDef(..) => Adjust::Pointer(PointerCoercion::ReifyFnPointer),
+                ty::FnDef(def_id, ..) => {
+                    // Intrinsics are not coercible to function pointers
+                    if self.tcx.intrinsic(def_id).is_some() {
+                        return Err(TypeError::IntrinsicCast);
+                    }
+                    Adjust::Pointer(PointerCoercion::ReifyFnPointer)
+                }
                 _ => span_bug!(new.span, "should not try to coerce a {new_ty} to a fn pointer"),
             };
             for expr in exprs.iter().map(|e| e.as_coercion_site()) {
@@ -1818,7 +1859,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         ))
                     }),
                 );
-                ocx.select_where_possible().is_empty()
+                ocx.try_evaluate_obligations().is_empty()
             })
         };
 
@@ -2003,5 +2044,71 @@ impl AsCoercionSite for ! {
 impl AsCoercionSite for hir::Arm<'_> {
     fn as_coercion_site(&self) -> &hir::Expr<'_> {
         self.body
+    }
+}
+
+/// Recursively visit goals to decide whether an unsizing is possible.
+/// `Break`s when it isn't, and an error should be raised.
+/// `Continue`s when an unsizing ok based on an implementation of the `Unsize` trait / lang item.
+struct CoerceVisitor<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    span: Span,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for CoerceVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, goal: &inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        let Some(pred) = goal.goal().predicate.as_trait_clause() else {
+            return ControlFlow::Continue(());
+        };
+
+        // Make sure this predicate is referring to either an `Unsize` or `CoerceUnsized` trait,
+        // Otherwise there's nothing to do.
+        if !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+            && !self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::CoerceUnsized)
+        {
+            return ControlFlow::Continue(());
+        }
+
+        match goal.result() {
+            // If we prove the `Unsize` or `CoerceUnsized` goal, continue recursing.
+            Ok(Certainty::Yes) => ControlFlow::Continue(()),
+            Err(NoSolution) => {
+                // Even if we find no solution, continue recursing if we find a single candidate
+                // for which we're shallowly certain it holds to get the right error source.
+                if let [only_candidate] = &goal.candidates()[..]
+                    && only_candidate.shallow_certainty() == Certainty::Yes
+                {
+                    only_candidate.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+            Ok(Certainty::Maybe { .. }) => {
+                // FIXME: structurally normalize?
+                if self.fcx.tcx.is_lang_item(pred.def_id(), LangItem::Unsize)
+                    && let ty::Dynamic(..) = pred.skip_binder().trait_ref.args.type_at(1).kind()
+                    && let ty::Infer(ty::TyVar(vid)) = *pred.self_ty().skip_binder().kind()
+                    && self.fcx.type_var_is_sized(vid)
+                {
+                    // We get here when trying to unsize a type variable to a `dyn Trait`,
+                    // knowing that that variable is sized. Unsizing definitely has to happen in that case.
+                    // If the variable weren't sized, we may not need an unsizing coercion.
+                    // In general, we don't want to add coercions too eagerly since it makes error messages much worse.
+                    ControlFlow::Continue(())
+                } else if let Some(cand) = goal.unique_applicable_candidate()
+                    && cand.shallow_certainty() == Certainty::Yes
+                {
+                    cand.visit_nested_no_probe(self)
+                } else {
+                    ControlFlow::Break(())
+                }
+            }
+        }
     }
 }

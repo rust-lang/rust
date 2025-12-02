@@ -137,7 +137,7 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "1.91.0")]
     pub const fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
@@ -1215,6 +1215,8 @@ impl OsStr {
 
     /// Checks if all characters in this string are within the ASCII range.
     ///
+    /// An empty string returns `true`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1283,8 +1285,7 @@ impl From<&OsStr> for Box<OsStr> {
     /// Copies the string into a newly allocated <code>[Box]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Box<OsStr> {
-        let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
-        unsafe { Box::from_raw(rw) }
+        Box::clone_from_ref(s)
     }
 }
 

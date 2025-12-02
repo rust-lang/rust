@@ -1,6 +1,6 @@
 #![feature(core_intrinsics)]
 
-pub fn main() {
+fn main() {
     unsafe {
         use std::intrinsics::*;
 

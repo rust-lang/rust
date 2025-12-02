@@ -2,8 +2,7 @@
 
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait Trait {
+const trait Trait {
   type Out;
 }
 

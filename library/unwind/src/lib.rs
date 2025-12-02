@@ -7,7 +7,7 @@
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
 #![cfg_attr(
     all(target_family = "wasm", any(not(target_os = "emscripten"), emscripten_wasm_eh)),
-    feature(simd_wasm64, wasm_exception_handling_intrinsics)
+    feature(link_llvm_intrinsics, simd_wasm64)
 )]
 #![allow(internal_features)]
 #![deny(unsafe_op_in_unsafe_fn)]

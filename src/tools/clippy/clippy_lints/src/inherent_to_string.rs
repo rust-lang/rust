@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{implements_trait, is_type_lang_item};
+use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::implements_trait;
 use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_abi::ExternAbi;
 use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
@@ -104,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             && impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
             && !impl_item.span.from_expansion()
             // Check if return type is String
-            && is_type_lang_item(cx, return_ty(cx, impl_item.owner_id), LangItem::String)
+            && return_ty(cx, impl_item.owner_id).is_lang_item(cx, LangItem::String)
             // Filters instances of to_string which are required by a trait
             && trait_ref_of_method(cx, impl_item.owner_id).is_none()
         {

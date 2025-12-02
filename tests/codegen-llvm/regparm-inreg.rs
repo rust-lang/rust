@@ -2,7 +2,7 @@
 // marks function arguments as "inreg" like the C/C++ compilers for the platforms.
 // x86 only.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3 -Ctarget-feature=+avx
 //@ needs-llvm-components: x86
 

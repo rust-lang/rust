@@ -1,5 +1,4 @@
 #![deny(clippy::fallible_impl_from)]
-#![allow(clippy::uninlined_format_args)]
 
 // docs example
 struct Foo(i32);
@@ -62,7 +61,7 @@ impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
 
     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
         if s.parse::<u32>().ok().unwrap() != 42 {
-            panic!("{:?}", s);
+            panic!("{s:?}");
         }
         Invalid
     }

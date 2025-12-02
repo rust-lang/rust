@@ -6,7 +6,7 @@
 use crate::fmt;
 
 /// Equivalent to Objective-C’s `struct objc_class` type.
-#[cfg_attr(not(doc), repr(u8))] // An implementation detail we don't want to show up in rustdoc
+#[repr(u8)]
 pub enum objc_class {
     #[unstable(
         feature = "objc_class_variant",
@@ -31,7 +31,7 @@ impl fmt::Debug for objc_class {
 }
 
 /// Equivalent to Objective-C’s `struct objc_selector` type.
-#[cfg_attr(not(doc), repr(u8))] // An implementation detail we don't want to show up in rustdoc
+#[repr(u8)]
 pub enum objc_selector {
     #[unstable(
         feature = "objc_selector_variant",

@@ -48,9 +48,7 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(.., delim, tts), TokenTree::Delimited(.., delim2, tts2)) => {
-                delim == delim2
-                    && tts.len() == tts2.len()
-                    && tts.iter().zip(tts2.iter()).all(|(a, b)| a.eq_unspanned(b))
+                delim == delim2 && tts.iter().eq_by(tts2.iter(), |a, b| a.eq_unspanned(b))
             }
             _ => false,
         }

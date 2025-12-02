@@ -69,6 +69,12 @@ LL |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static ->
 LL |     })
 LL | }
    | - `a` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:13:8
+   |
+LL |     F: for<'x> FnOnce(Cell<&'a u32>, Cell<&'x u32>),
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -1,7 +1,7 @@
 //! This module is responsible for resolving paths within rules.
 
 use hir::AsAssocItem;
-use ide_db::{FxHashMap, base_db::salsa};
+use ide_db::FxHashMap;
 use parsing::Placeholder;
 use syntax::{
     SmolStr, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -48,7 +48,7 @@ impl<'db> ResolvedRule<'db> {
         resolution_scope: &ResolutionScope<'db>,
         index: usize,
     ) -> Result<ResolvedRule<'db>, SsrError> {
-        salsa::attach(resolution_scope.scope.db, || {
+        hir::attach_db(resolution_scope.scope.db, || {
             let resolver = Resolver {
                 resolution_scope,
                 placeholders_by_stand_in: rule.placeholders_by_stand_in,
@@ -228,12 +228,10 @@ impl<'db> ResolutionScope<'db> {
         let resolved_qualifier = self.scope.speculative_resolve(&path.qualifier()?)?;
         if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
             let name = path.segment()?.name_ref()?;
-            let module = self.scope.module();
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 &self.scope,
                 &self.scope.visible_traits().0,
-                Some(module),
                 None,
                 |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;

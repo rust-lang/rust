@@ -285,7 +285,7 @@ fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     match node.kind() {
-        SyntaxKind::PATH_EXPR | SyntaxKind::LOOP_EXPR => None,
+        SyntaxKind::PATH_EXPR | SyntaxKind::LOOP_EXPR | SyntaxKind::LET_EXPR => None,
         SyntaxKind::BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::BLOCK_EXPR => {
@@ -1404,6 +1404,25 @@ fn main() {
     }
 
     #[test]
+    fn extract_var_let_expr() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    if $0let$0 Some(x) = Some(2+2) {}
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = Some(2+2);
+    if let Some(x) = var_name {}
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
     fn extract_var_for_cast() {
         check_assist_by_label(
             extract_variable,
@@ -1736,6 +1755,14 @@ fn main() {
     #[test]
     fn extract_var_for_break_not_applicable() {
         check_assist_not_applicable(extract_variable, "fn main() { loop { $0break$0; }; }");
+    }
+
+    #[test]
+    fn extract_var_for_let_expr_not_applicable() {
+        check_assist_not_applicable(
+            extract_variable,
+            "fn main() { if $0let Some(x) = Some(2+2) {} }",
+        );
     }
 
     #[test]
@@ -2162,7 +2189,7 @@ fn foo(s: &S) {
 //- minicore: index
 struct X;
 
-impl std::ops::Index<usize> for X {
+impl core::ops::Index<usize> for X {
     type Output = i32;
     fn index(&self) -> &Self::Output { 0 }
 }
@@ -2177,7 +2204,7 @@ fn foo(s: &S) {
             r#"
 struct X;
 
-impl std::ops::Index<usize> for X {
+impl core::ops::Index<usize> for X {
     type Output = i32;
     fn index(&self) -> &Self::Output { 0 }
 }
@@ -2187,8 +2214,8 @@ struct S {
 }
 
 fn foo(s: &S) {
-    let $0sub = &s.sub;
-    sub[0];
+    let $0x = &s.sub;
+    x[0];
 }"#,
             "Extract into variable",
         );

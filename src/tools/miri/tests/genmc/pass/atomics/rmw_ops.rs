@@ -21,11 +21,8 @@ fn assert_eq<T: Eq>(x: T, y: T) {
 
 macro_rules! test_rmw_edge_cases {
     ($int:ty, $atomic:ty) => {{
-        let x = <$atomic>::new(123);
-        // FIXME(genmc,HACK): remove this initializing write once Miri-GenMC supports mixed atomic-non-atomic accesses.
-        x.store(123, ORD);
-
         // MAX, ADD
+        let x = <$atomic>::new(123);
         assert_eq(123, x.fetch_max(0, ORD)); // `max` keeps existing value
         assert_eq(123, x.fetch_max(<$int>::MAX, ORD)); // `max` stores the new value
         assert_eq(<$int>::MAX, x.fetch_add(10, ORD)); // `fetch_add` should be wrapping
@@ -70,7 +67,7 @@ macro_rules! test_rmw_edge_cases {
         x.store(10, ORD);
         assert_eq(10, x.fetch_add(<$int>::MAX, ORD)); // definitely overflows, so new value of x is smaller than 10
         assert_eq(<$int>::MAX.wrapping_add(10), x.fetch_max(10, ORD)); // new value of x should be 10
-        // assert_eq(10, x.load(ORD)); // FIXME(genmc,#4572): enable this check once GenMC correctly handles min/max truncation.
+        assert_eq(10, x.load(ORD));
     }};
 }
 

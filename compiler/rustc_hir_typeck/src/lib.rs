@@ -5,7 +5,9 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(iter_order_by)]
 #![feature(never_type)]
+#![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -35,7 +37,6 @@ mod op;
 mod opaque_types;
 mod pat;
 mod place_op;
-mod rvalue_scopes;
 mod typeck_root_ctxt;
 mod upvar;
 mod writeback;
@@ -218,6 +219,12 @@ fn typeck_with_inspect<'tcx>(
     // the future.
     fcx.check_repeat_exprs();
 
+    // We need to handle opaque types before emitting ambiguity errors as applying
+    // defining uses may guide type inference.
+    if fcx.next_trait_solver() {
+        fcx.try_handle_opaque_type_uses_next();
+    }
+
     fcx.type_inference_fallback();
 
     // Even though coercion casts provide type hints, we check casts after fallback for
@@ -229,9 +236,6 @@ fn typeck_with_inspect<'tcx>(
     // because they don't constrain other type variables.
     fcx.closure_analyze(body);
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-    // Before the coroutine analysis, temporary scopes shall be marked to provide more
-    // precise information on types to be captured.
-    fcx.resolve_rvalue_scopes(def_id.to_def_id());
 
     for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
         let ty = fcx.normalize(span, ty);
@@ -242,18 +246,15 @@ fn typeck_with_inspect<'tcx>(
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
-    // This must be the last thing before `report_ambiguity_errors`.
-    fcx.resolve_coroutine_interiors();
-
-    debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
-
     // We need to handle opaque types before emitting ambiguity errors as applying
     // defining uses may guide type inference.
     if fcx.next_trait_solver() {
         fcx.handle_opaque_type_uses_next();
     }
 
-    fcx.select_obligations_where_possible(|_| {});
+    // This must be the last thing before `report_ambiguity_errors` below except `select_obligations_where_possible`.
+    // So don't put anything after this.
+    fcx.drain_stalled_coroutine_obligations();
     if fcx.infcx.tainted_by_errors().is_none() {
         fcx.report_ambiguity_errors();
     }
@@ -281,7 +282,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
+            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
             let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                 tcx,
                 impl_def_id,
@@ -295,11 +296,6 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     } else if let Node::AnonConst(_) = node {
         let id = tcx.local_def_id_to_hir_id(def_id);
         match tcx.parent_hir_node(id) {
-            Node::Ty(&hir::Ty { kind: hir::TyKind::Typeof(anon_const), span, .. })
-                if anon_const.hir_id == id =>
-            {
-                Some(fcx.next_ty_var(span))
-            }
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
             | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm { asm, .. }, span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {

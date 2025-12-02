@@ -75,4 +75,4 @@ the ast that searches for unsafe blocks, functions and implementations, as well
 as certain unsafe attributes.
 
 [Unsafe traits]: https://doc.rust-lang.org/reference/items/traits.html#unsafe-traits
-[coherence]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_hir_analysis/src/coherence/unsafety.rs
+[coherence]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir_analysis/src/coherence/unsafety.rs

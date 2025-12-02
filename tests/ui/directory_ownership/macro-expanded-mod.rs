@@ -1,8 +1,8 @@
-// Test that macro-expanded non-inline modules behave correctly
+// Test that macro-expanded file modules behave correctly
 
 macro_rules! mod_decl {
     ($i:ident) => {
-        mod $i; //~ ERROR cannot declare a non-inline module inside a block
+        mod $i; //~ ERROR cannot declare a file module inside a block unless it has a path attribute
     };
 }
 

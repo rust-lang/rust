@@ -16,8 +16,6 @@ help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique function-ent
    |
 LL |     x.do_bad();
    |     ^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/stacked_borrows/fnentry_invalidation.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

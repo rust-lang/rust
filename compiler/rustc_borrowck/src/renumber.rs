@@ -21,10 +21,10 @@ pub(crate) fn renumber_mir<'tcx>(
     let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
-        renumberer.visit_body(body);
+        renumberer.visit_body_preserves_cfg(body);
     }
 
-    renumberer.visit_body(body);
+    renumberer.visit_body_preserves_cfg(body);
 }
 
 // The fields are used only for debugging output in `sccs_info`.

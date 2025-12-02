@@ -1,83 +1,83 @@
 error[E0570]: "ptx-kernel" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:8
+  --> $DIR/unsupported.rs:37:8
    |
 LL | extern "ptx-kernel" fn ptx() {}
    |        ^^^^^^^^^^^^
 
 error[E0570]: "ptx-kernel" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:38:22
+  --> $DIR/unsupported.rs:39:22
    |
 LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
    |                      ^^^^^^^^^^^^
 
 error[E0570]: "ptx-kernel" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:42:8
+  --> $DIR/unsupported.rs:43:8
    |
 LL | extern "ptx-kernel" {}
    |        ^^^^^^^^^^^^
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:44:8
+  --> $DIR/unsupported.rs:45:8
    |
 LL | extern "gpu-kernel" fn gpu() {}
    |        ^^^^^^^^^^^^
 
 error[E0570]: "aapcs" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:47:8
+  --> $DIR/unsupported.rs:48:8
    |
 LL | extern "aapcs" fn aapcs() {}
    |        ^^^^^^^
 
 error[E0570]: "aapcs" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:49:24
+  --> $DIR/unsupported.rs:50:24
    |
 LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
    |                        ^^^^^^^
 
 error[E0570]: "aapcs" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:53:8
+  --> $DIR/unsupported.rs:54:8
    |
 LL | extern "aapcs" {}
    |        ^^^^^^^
 
 error[E0570]: "msp430-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:56:8
+  --> $DIR/unsupported.rs:57:8
    |
 LL | extern "msp430-interrupt" {}
    |        ^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "avr-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:59:8
+  --> $DIR/unsupported.rs:60:8
    |
 LL | extern "avr-interrupt" {}
    |        ^^^^^^^^^^^^^^^
 
 error[E0570]: "x86-interrupt" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:65:8
+  --> $DIR/unsupported.rs:66:8
    |
 LL | extern "x86-interrupt" {}
    |        ^^^^^^^^^^^^^^^
 
 error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:68:8
+  --> $DIR/unsupported.rs:69:8
    |
 LL | extern "thiscall" fn thiscall() {}
    |        ^^^^^^^^^^
 
 error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:70:27
+  --> $DIR/unsupported.rs:71:27
    |
 LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
    |                           ^^^^^^^^^^
 
 error[E0570]: "thiscall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:74:8
+  --> $DIR/unsupported.rs:75:8
    |
 LL | extern "thiscall" {}
    |        ^^^^^^^^^^
 
 error[E0570]: "stdcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:77:8
+  --> $DIR/unsupported.rs:78:8
    |
 LL | extern "stdcall" fn stdcall() {}
    |        ^^^^^^^^^
@@ -85,7 +85,7 @@ LL | extern "stdcall" fn stdcall() {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 error[E0570]: "stdcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:81:26
+  --> $DIR/unsupported.rs:82:26
    |
 LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    |                          ^^^^^^^^^
@@ -93,7 +93,7 @@ LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 error[E0570]: "stdcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:87:8
+  --> $DIR/unsupported.rs:88:8
    |
 LL | extern "stdcall" {}
    |        ^^^^^^^^^
@@ -101,7 +101,7 @@ LL | extern "stdcall" {}
    = help: if you need `extern "stdcall"` on win32 and `extern "C"` everywhere else, use `extern "system"`
 
 error[E0570]: "stdcall-unwind" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:91:8
+  --> $DIR/unsupported.rs:92:8
    |
 LL | extern "stdcall-unwind" {}
    |        ^^^^^^^^^^^^^^^^
@@ -109,49 +109,49 @@ LL | extern "stdcall-unwind" {}
    = help: if you need `extern "stdcall-unwind"` on win32 and `extern "C-unwind"` everywhere else, use `extern "system-unwind"`
 
 error[E0570]: "vectorcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:111:8
+  --> $DIR/unsupported.rs:112:8
    |
 LL | extern "vectorcall" fn vectorcall() {}
    |        ^^^^^^^^^^^^
 
 error[E0570]: "vectorcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:113:29
+  --> $DIR/unsupported.rs:114:29
    |
 LL | fn vectorcall_ptr(f: extern "vectorcall" fn()) {
    |                             ^^^^^^^^^^^^
 
 error[E0570]: "vectorcall" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:117:8
+  --> $DIR/unsupported.rs:118:8
    |
 LL | extern "vectorcall" {}
    |        ^^^^^^^^^^^^
 
 error[E0570]: "cmse-nonsecure-call" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:120:28
+  --> $DIR/unsupported.rs:121:28
    |
 LL | fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
    |                            ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:125:8
+  --> $DIR/unsupported.rs:126:8
    |
 LL | extern "cmse-nonsecure-entry" fn cmse_entry() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:127:29
+  --> $DIR/unsupported.rs:128:29
    |
 LL | fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
    |                             ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "cmse-nonsecure-entry" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:131:8
+  --> $DIR/unsupported.rs:132:8
    |
 LL | extern "cmse-nonsecure-entry" {}
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: "cdecl" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:99:17
+  --> $DIR/unsupported.rs:100:17
    |
 LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ LL | fn cdecl_ptr(f: extern "cdecl" fn()) {
    = note: `#[warn(unsupported_calling_conventions)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: "cdecl" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:104:1
+  --> $DIR/unsupported.rs:105:1
    |
 LL | extern "cdecl" {}
    | ^^^^^^^^^^^^^^^^^
@@ -172,7 +172,7 @@ LL | extern "cdecl" {}
    = help: use `extern "C"` instead
 
 warning: "cdecl-unwind" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:107:1
+  --> $DIR/unsupported.rs:108:1
    |
 LL | extern "cdecl-unwind" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -182,7 +182,7 @@ LL | extern "cdecl-unwind" {}
    = help: use `extern "C-unwind"` instead
 
 warning: "cdecl" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:96:1
+  --> $DIR/unsupported.rs:97:1
    |
 LL | extern "cdecl" fn cdecl() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^

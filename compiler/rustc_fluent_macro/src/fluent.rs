@@ -265,7 +265,7 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 Level::Error,
                 format!("referenced message `{mref}` does not exist (in message `{name}`)"),
             )
-            .help(&format!("you may have meant to use a variable reference (`{{${mref}}}`)"))
+            .help(format!("you may have meant to use a variable reference (`{{${mref}}}`)"))
             .emit();
         }
     }

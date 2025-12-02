@@ -173,12 +173,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb7: {
         StorageDead(_15);
-        StorageDead(_21);
-        StorageDead(_12);
-        StorageDead(_19);
-        StorageDead(_18);
-        StorageDead(_11);
-        StorageDead(_10);
         goto -> bb10;
     }
 
@@ -188,16 +182,16 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb9: {
+        goto -> bb10;
+    }
+
+    bb10: {
         StorageDead(_21);
         StorageDead(_12);
         StorageDead(_19);
         StorageDead(_18);
         StorageDead(_11);
         StorageDead(_10);
-        goto -> bb10;
-    }
-
-    bb10: {
         StorageDead(_22);
         drop(_2) -> [return: bb11, unwind unreachable];
     }

@@ -27,7 +27,11 @@ help: the trait `Trait` is not implemented for `S`
    |
 LL | struct S;
    | ^^^^^^^^
-   = help: the trait `Trait` is implemented for `&mut S`
+help: the trait `Trait` is implemented for `&mut S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:7:1
+   |
+LL | impl Trait for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
 help: you likely meant to call the associated function `foo` for type `&mut S`, but the code as written calls associated function `foo` on type `S`
    |
 LL |     let _ = <&mut S>::foo();
@@ -44,7 +48,11 @@ help: the trait `Trait` is not implemented for `S`
    |
 LL | struct S;
    | ^^^^^^^^
-   = help: the trait `Trait` is implemented for `&mut S`
+help: the trait `Trait` is implemented for `&mut S`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:7:1
+   |
+LL | impl Trait for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^
 help: you likely meant to call the associated function `foo` for type `&S`, but the code as written calls associated function `foo` on type `S`
    |
 LL -     let _ = &S::foo();
@@ -73,9 +81,13 @@ help: the trait `Trait2` is not implemented for `S`
    |
 LL | struct S;
    | ^^^^^^^^
-   = help: the following other types implement trait `Trait2`:
-             &S
-             &mut S
+help: the following other types implement trait `Trait2`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:11:1
+   |
+LL | impl Trait2 for &S {}
+   | ^^^^^^^^^^^^^^^^^^ `&S`
+LL | impl Trait2 for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ `&mut S`
 help: you likely meant to call the associated function `bar` for type `&mut S`, but the code as written calls associated function `bar` on type `S`
    |
 LL |     let _ = <&mut S>::bar();
@@ -92,9 +104,13 @@ help: the trait `Trait2` is not implemented for `S`
    |
 LL | struct S;
    | ^^^^^^^^
-   = help: the following other types implement trait `Trait2`:
-             &S
-             &mut S
+help: the following other types implement trait `Trait2`
+  --> $DIR/dont-suggest-borrowing-existing-borrow.rs:11:1
+   |
+LL | impl Trait2 for &S {}
+   | ^^^^^^^^^^^^^^^^^^ `&S`
+LL | impl Trait2 for &mut S {}
+   | ^^^^^^^^^^^^^^^^^^^^^^ `&mut S`
 help: you likely meant to call the associated function `bar` for type `&S`, but the code as written calls associated function `bar` on type `S`
    |
 LL |     let _ = <&S>::bar();

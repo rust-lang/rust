@@ -22,7 +22,7 @@ use std::path::Path;
 
 use regex::Regex;
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk, walk_many};
 
 const ERROR_CODES_PATH: &str = "compiler/rustc_error_codes/src/lib.rs";
@@ -36,8 +36,8 @@ const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E07
 const IGNORE_UI_TEST_CHECK: &[&str] =
     &["E0461", "E0465", "E0514", "E0554", "E0640", "E0717", "E0729"];
 
-pub fn check(root_path: &Path, search_paths: &[&Path], ci_info: &crate::CiInfo, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check("error_codes");
+pub fn check(root_path: &Path, search_paths: &[&Path], ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("error_codes");
 
     // Check that no error code explanation was removed.
     check_removed_error_code_explanation(ci_info, &mut check);

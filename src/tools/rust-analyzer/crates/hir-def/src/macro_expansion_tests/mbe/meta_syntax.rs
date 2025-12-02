@@ -98,7 +98,7 @@ macro_rules! m2 { () => ( ${invalid()} ) }
 
 #[test]
 fn test_rustc_issue_57597() {
-    // <https://github.com/rust-lang/rust/blob/master/tests/ui/issues/issue-57597.rs>
+    // <https://github.com/rust-lang/rust/blob/ec2cc76/tests/ui/macros/issue-57597.rs>
     check(
         r#"
 macro_rules! m0 { ($($($i:ident)?)+) => {}; }

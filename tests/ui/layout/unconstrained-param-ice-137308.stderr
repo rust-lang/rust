@@ -4,12 +4,19 @@ error[E0207]: the type parameter `C` is not constrained by the impl trait, self 
 LL | impl<C: ?Sized> A for u8 {
    |      ^ unconstrained type parameter
 
+error[E0282]: type annotations needed
+  --> $DIR/unconstrained-param-ice-137308.rs:18:16
+   |
+LL | struct S([u8; <u8 as A>::B]);
+   |                ^^ cannot infer type for type parameter `C`
+
 error: the type has an unknown layout
   --> $DIR/unconstrained-param-ice-137308.rs:18:1
    |
 LL | struct S([u8; <u8 as A>::B]);
    | ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0207`.
+Some errors have detailed explanations: E0207, E0282.
+For more information about an error, try `rustc --explain E0207`.

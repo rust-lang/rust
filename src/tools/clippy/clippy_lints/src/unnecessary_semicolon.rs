@@ -88,7 +88,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessarySemicolon {
             )
             && cx.typeck_results().expr_ty(expr).is_unit()
             // if a stmt has attrs, then turning it into an expr will break the code, since attrs aren't allowed on exprs
-            && cx.tcx.hir_attrs(stmt.hir_id).is_empty()
+            // -- unless the corresponding feature is enabled
+            && (cx.tcx.hir_attrs(stmt.hir_id).is_empty() || cx.tcx.features().stmt_expr_attributes())
         {
             if let Some(block_is_unit) = self.is_last_in_block(stmt) {
                 if cx.tcx.sess.edition() <= Edition2021 && leaks_droppable_temporary_with_limited_lifetime(cx, expr) {

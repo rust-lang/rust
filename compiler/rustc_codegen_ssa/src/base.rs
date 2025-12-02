@@ -5,18 +5,19 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
-use rustc_ast as ast;
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{
+    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorTy,
+};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::attrs::OptimizeAttr;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::attrs::{AttributeKind, DebuggerVisualizerType, OptimizeAttr};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ItemId, Target};
+use rustc_hir::{ItemId, Target, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
-use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
@@ -29,8 +30,9 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
-use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_span::{DUMMY_SP, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_target::spec::{Arch, Os};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -139,7 +141,7 @@ pub fn validate_trivial_unsize<'tcx>(
                 ) else {
                     return false;
                 };
-                if !ocx.select_all_or_error().is_empty() {
+                if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                     return false;
                 }
                 infcx.leak_check(universe, None).is_ok()
@@ -226,6 +228,7 @@ pub(crate) fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     debug!("unsize_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (src_ty.kind(), dst_ty.kind()) {
+        (&ty::Pat(a, _), &ty::Pat(b, _)) => unsize_ptr(bx, src, a, b, old_info),
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
         | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
@@ -362,7 +365,7 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
     sess.target.is_like_wasm
-        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
+        && (sess.target.os != Os::Emscripten || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.
@@ -496,7 +499,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`, or
         // `usize efi_main(void *handle, void *system_table)` depending on the target.
-        let llfty = if cx.sess().target.os.contains("uefi") {
+        let llfty = if cx.sess().target.os == Os::Uefi {
             cx.type_func(&[cx.type_ptr(), cx.type_ptr()], cx.type_isize())
         } else if cx.sess().target.main_needs_argc_argv {
             cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
@@ -558,7 +561,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
-        if cx.sess().target.os.contains("uefi") {
+        if cx.sess().target.os == Os::Uefi {
             bx.ret(result);
         } else {
             let cast = bx.intcast(result, cx.type_int(), true);
@@ -572,7 +575,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// Obtain the `argc` and `argv` values to pass to the rust start function
 /// (i.e., the "start" lang item).
 fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(bx: &mut Bx) -> (Bx::Value, Bx::Value) {
-    if bx.cx().sess().target.os.contains("uefi") {
+    if bx.cx().sess().target.os == Os::Uefi {
         // Params for UEFI
         let param_handle = bx.get_param(0);
         let param_system_table = bx.get_param(1);
@@ -655,22 +658,32 @@ pub(crate) fn needs_allocator_shim_for_linking(
     !any_dynamic_crate
 }
 
+pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<AllocatorMethod> {
+    let mut methods = Vec::new();
+
+    if kind == AllocatorKind::Default {
+        methods.extend(ALLOCATOR_METHODS.into_iter().copied());
+    }
+
+    // If the return value of allocator_kind_for_codegen is Some then
+    // alloc_error_handler_kind must also be Some.
+    if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
+        methods.push(AllocatorMethod {
+            name: ALLOC_ERROR_HANDLER,
+            special: None,
+            inputs: &[],
+            output: AllocatorTy::Never,
+        });
+    }
+
+    methods
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
 ) -> OngoingCodegen<B> {
-    // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, None);
-
-        ongoing_codegen.codegen_finished(tcx);
-
-        ongoing_codegen.check_for_errors(tcx.sess);
-
-        return ongoing_codegen;
-    }
-
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(errors::CpuRequired);
@@ -699,14 +712,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
 
         tcx.sess.time("write_allocator_module", || {
-            let module = backend.codegen_allocator(
-                tcx,
-                &llmod_id,
-                kind,
-                // If allocator_kind is Some then alloc_error_handler_kind must
-                // also be Some.
-                tcx.alloc_error_handler_kind(()).unwrap(),
-            );
+            let module =
+                backend.codegen_allocator(tcx, &llmod_id, &allocator_shim_contents(tcx, kind));
             Some(ModuleCodegen::new_allocator(llmod_id, module))
         })
     } else {
@@ -888,15 +895,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
-        let subsystem =
-            ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
-        let windows_subsystem = subsystem.map(|subsystem| {
-            if subsystem != sym::windows && subsystem != sym::console {
-                tcx.dcx().emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
-            }
-            subsystem.to_string()
-        });
+        let windows_subsystem = find_attr!(tcx.get_all_attrs(CRATE_DEF_ID), AttributeKind::WindowsSubsystem(kind, _) => *kind);
 
         // This list is used when generating the command line to pass through to
         // system linker. The linker expects undefined symbols on the left of the
@@ -975,9 +974,9 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let add_prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => |name: String, _: SymbolExportKind| format!("_{name}"),
-                (true, "arm64ec") => {
+            let add_prefix = match (target.is_like_windows, &target.arch) {
+                (true, Arch::X86) => |name: String, _: SymbolExportKind| format!("_{name}"),
+                (true, Arch::Arm64EC) => {
                     // Only functions are decorated for arm64ec.
                     |name: String, export_kind: SymbolExportKind| match export_kind {
                         SymbolExportKind::Text => format!("#{name}"),

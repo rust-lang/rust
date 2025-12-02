@@ -9,7 +9,11 @@ help: the trait `bounds_check::LeakTr` is not implemented for `NonLeakS`
    |
 LL | struct NonLeakS;
    | ^^^^^^^^^^^^^^^
-   = help: the trait `bounds_check::LeakTr` is implemented for `LeakS`
+help: the trait `bounds_check::LeakTr` is implemented for `LeakS`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:62:5
+   |
+LL |     impl LeakTr for LeakS {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
    = note: required for the cast from `&NonLeakS` to `&dyn bounds_check::LeakTr + Leak`
 
 error[E0038]: the trait `DynCompatCheck2` is not dyn compatible

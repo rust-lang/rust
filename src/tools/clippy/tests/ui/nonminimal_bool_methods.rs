@@ -1,4 +1,4 @@
-#![allow(unused, clippy::diverging_sub_expression, clippy::needless_if)]
+#![allow(unused, clippy::diverging_sub_expression, clippy::needless_ifs)]
 #![warn(clippy::nonminimal_bool)]
 
 fn methods_with_negation() {
@@ -240,6 +240,11 @@ fn issue_13436() {
         let opt = Some(500);
         _ = !opt.is_some_and(|x| x < 1000);
     }
+}
+
+fn issue16014() {
+    !(vec![1, 2, 3] <= vec![1, 2, 3, 3]);
+    //~^ nonminimal_bool
 }
 
 fn main() {}

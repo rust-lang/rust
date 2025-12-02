@@ -154,7 +154,7 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true },
+            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             force_collect,
         )? {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(Box::new(item)))
@@ -867,7 +867,7 @@ impl<'a> Parser<'a> {
         if let_else || !if_let {
             err.span_suggestion_verbose(
                 block_span.shrink_to_lo(),
-                format!("{alternatively}you might have meant to use `let else`"),
+                format!("{alternatively}you might have meant to use `let...else`"),
                 "else ".to_string(),
                 if let_else {
                     Applicability::MachineApplicable

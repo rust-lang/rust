@@ -1,3 +1,4 @@
+//@aux-build:proc_macros.rs
 #![warn(clippy::explicit_deref_methods)]
 #![allow(unused_variables, unused_must_use)]
 #![allow(
@@ -13,6 +14,8 @@
 )]
 
 use std::ops::{Deref, DerefMut};
+
+extern crate proc_macros;
 
 fn concat(deref_str: &str) -> String {
     format!("{}bar", deref_str)
@@ -121,6 +124,18 @@ fn main() {
     let b: &str = expr_deref!(a.deref());
     //~^ explicit_deref_methods
 
+    proc_macros::external! {
+        let a: &mut String = &mut String::from("foo");
+        let b: &str = a.deref();
+    }
+
+    // Issue #15168
+    proc_macros::with_span! {
+        span
+        let a: &mut String = &mut String::from("foo");
+        let b: &str = a.deref();
+    }
+
     // The struct does not implement Deref trait
     #[derive(Copy, Clone)]
     struct NoLint(u32);
@@ -140,4 +155,117 @@ fn main() {
     let mut x = String::new();
     let _ = &DerefMut::deref_mut(&mut x); //~ explicit_deref_methods
     let _ = &DerefMut::deref_mut((&mut &mut x).deref_mut()); //~ explicit_deref_methods
+}
+
+mod issue_15392 {
+    use std::ops::{Deref, DerefMut};
+
+    struct Wrapper(String);
+
+    impl Deref for Wrapper {
+        type Target = str;
+        fn deref(&self) -> &Self::Target {
+            // forwarding is ok
+            let res = Deref::deref(&self.0);
+            // we let `deref_mut` pass as well
+            let _ = DerefMut::deref_mut(&mut String::new());
+            res
+        }
+    }
+
+    impl DerefMut for Wrapper {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            // forwarding is ok
+            let res = DerefMut::deref_mut(&mut self.0);
+            // we let `deref` pass as well
+            let _ = Deref::deref(&String::new());
+            res
+        }
+    }
+
+    struct A(String);
+    struct AA(String);
+    struct AB(String);
+
+    impl Deref for A {
+        type Target = str;
+
+        fn deref(&self) -> &Self::Target {
+            // in a top-level `Deref` impl, ok
+            let _ = self.0.deref();
+            // in a top-level `Deref` impl, acceptable
+            let _ = String::new().deref_mut();
+
+            #[allow(non_local_definitions)]
+            impl Deref for AA {
+                type Target = str;
+                fn deref(&self) -> &Self::Target {
+                    // in a nested `Deref` impl, acceptable
+                    let _ = String::new().deref_mut();
+                    // in a nested `Deref` impl, ok
+                    self.0.deref()
+                }
+            }
+
+            // still in a top-level `Deref` impl, ok
+            let _ = self.0.deref();
+            // still in a top-level `Deref` impl, acceptable
+            let _ = String::new().deref_mut();
+
+            #[allow(non_local_definitions)]
+            impl DerefMut for AA {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    // in a top-level `DerefMut` impl, acceptable
+                    let _ = self.0.deref();
+                    // in a top-level `DerefMut` impl, ok
+                    self.0.deref_mut()
+                }
+            }
+
+            // still in a top-level `Deref` impl, acceptable
+            let _ = String::new().deref_mut();
+            // still in a top-level `Deref` impl, ok
+            self.0.deref()
+        }
+    }
+
+    impl DerefMut for A {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            // in a top-level `DerefMut` impl, acceptable
+            let _ = self.0.deref();
+            // in a top-level `DerefMut` impl, ok
+            let _ = self.0.deref_mut();
+
+            #[allow(non_local_definitions)]
+            impl Deref for AB {
+                type Target = str;
+                fn deref(&self) -> &Self::Target {
+                    // in a nested `Deref` impl, acceptable
+                    let _ = String::new().deref_mut();
+                    // in a nested `Deref` impl, ok
+                    Deref::deref(&self.0)
+                }
+            }
+
+            // still in a top-level `DerefMut` impl, acceptable
+            let _ = self.0.deref();
+            // still in a top-level `DerefMut` impl, ok
+            let _ = self.0.deref_mut();
+
+            #[allow(non_local_definitions)]
+            impl DerefMut for AB {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    // in a nested `DerefMut` impl, acceptable
+                    self.0.deref();
+                    // in a nested `DerefMut` impl, ok
+                    self.0.deref_mut()
+                }
+            }
+
+            // still in a top-level `DerefMut` impl, acceptable
+            let _ = self.0.deref();
+            // still in a top-level `DerefMut` impl, ok
+            self.0.deref_mut()
+        }
+    }
 }

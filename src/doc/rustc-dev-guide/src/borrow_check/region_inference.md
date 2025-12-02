@@ -81,7 +81,7 @@ For each region we maintain a set storing what elements are present in its value
 efficient, we give each kind of element an index, the `RegionElementIndex`, and
 use sparse bitsets).
 
-[ri]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_borrowck/src/region_infer
+[ri]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_borrowck/src/region_infer
 
 The kinds of region elements are as follows:
 

@@ -109,7 +109,7 @@ fn reparse_block(
         return None;
     }
 
-    let tree_traversal = reparser.parse(&parser_input, edition);
+    let tree_traversal = reparser.parse(&parser_input);
 
     let (green, new_parser_errors, _eof) = build_tree(lexed, tree_traversal);
 

@@ -12,18 +12,18 @@ use tracing::debug;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
-        normalize_canonicalized_projection_ty,
+        normalize_canonicalized_projection,
         normalize_canonicalized_free_alias,
-        normalize_canonicalized_inherent_projection_ty,
+        normalize_canonicalized_inherent_projection,
         ..*p
     };
 }
 
-fn normalize_canonicalized_projection_ty<'tcx>(
+fn normalize_canonicalized_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalAliasGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
-    debug!("normalize_canonicalized_projection_ty(goal={:#?})", goal);
+    debug!("normalize_canonicalized_projection(goal={:#?})", goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
@@ -32,7 +32,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = PredicateObligations::new();
-            let answer = traits::normalize_projection_term(
+            let normalized_term = traits::normalize_projection_term(
                 selcx,
                 param_env,
                 goal.into(),
@@ -45,7 +45,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             // are recursive (given some generic parameters of the opaque's type variables).
             // In that case, we may only realize a cycle error when calling
             // `normalize_erasing_regions` in mono.
-            let errors = ocx.select_where_possible();
+            let errors = ocx.try_evaluate_obligations();
             if !errors.is_empty() {
                 // Rustdoc may attempt to normalize type alias types which are not
                 // well-formed. Rustdoc also normalizes types that are just not
@@ -61,10 +61,7 @@ fn normalize_canonicalized_projection_ty<'tcx>(
                 return Err(NoSolution);
             }
 
-            // FIXME(associated_const_equality): All users of normalize_canonicalized_projection_ty
-            // expected a type, but there is the possibility it could've been a const now.
-            // Maybe change it to a Term later?
-            Ok(NormalizationResult { normalized_ty: answer.expect_type() })
+            Ok(NormalizationResult { normalized_term })
         },
     )
 }
@@ -89,17 +86,21 @@ fn normalize_canonicalized_free_alias<'tcx>(
                 },
             );
             ocx.register_obligations(obligations);
-            let normalized_ty = tcx.type_of(goal.def_id).instantiate(tcx, goal.args);
-            Ok(NormalizationResult { normalized_ty })
+            let normalized_term = if goal.kind(tcx).is_type() {
+                tcx.type_of(goal.def_id).instantiate(tcx, goal.args).into()
+            } else {
+                tcx.const_of_item(goal.def_id).instantiate(tcx, goal.args).into()
+            };
+            Ok(NormalizationResult { normalized_term })
         },
     )
 }
 
-fn normalize_canonicalized_inherent_projection_ty<'tcx>(
+fn normalize_canonicalized_inherent_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalAliasGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
-    debug!("normalize_canonicalized_inherent_projection_ty(goal={:#?})", goal);
+    debug!("normalize_canonicalized_inherent_projection(goal={:#?})", goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
@@ -107,7 +108,7 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
             let mut obligations = PredicateObligations::new();
-            let answer = traits::normalize_inherent_projection(
+            let normalized_term = traits::normalize_inherent_projection(
                 selcx,
                 param_env,
                 goal.into(),
@@ -117,7 +118,7 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
             );
             ocx.register_obligations(obligations);
 
-            Ok(NormalizationResult { normalized_ty: answer.expect_type() })
+            Ok(NormalizationResult { normalized_term })
         },
     )
 }

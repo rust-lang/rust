@@ -4,6 +4,7 @@
 #![allow(unused_variables)]
 //@ needs-threads
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender};

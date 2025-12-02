@@ -57,7 +57,7 @@ fn test_multiple_reads() {
     assert_eq!(var, 10);
 }
 
-pub fn test_rmw_no_block() {
+fn test_rmw_no_block() {
     static SYNC: AtomicUsize = AtomicUsize::new(0);
 
     let mut a = 0u32;
@@ -89,7 +89,7 @@ pub fn test_rmw_no_block() {
     }
 }
 
-pub fn test_simple_release() {
+fn test_simple_release() {
     static SYNC: AtomicUsize = AtomicUsize::new(0);
 
     let mut a = 0u32;
@@ -214,7 +214,7 @@ fn failing_rmw_is_read() {
     });
 }
 
-pub fn main() {
+fn main() {
     test_fence_sync();
     test_multiple_reads();
     test_rmw_no_block();

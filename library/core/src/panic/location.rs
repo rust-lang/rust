@@ -194,8 +194,8 @@ impl<'a> Location<'a> {
     /// `std::source_location::file_name`, both of which return a nul-terminated `const char*`.
     #[must_use]
     #[inline]
-    #[stable(feature = "file_with_nul", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "file_with_nul", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_with_nul", since = "1.92.0")]
+    #[rustc_const_stable(feature = "file_with_nul", since = "1.92.0")]
     pub const fn file_as_c_str(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 

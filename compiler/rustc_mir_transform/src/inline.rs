@@ -20,8 +20,7 @@ use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::{CostChecker, is_call_like};
-use crate::deref_separator::deref_finder;
-use crate::simplify::simplify_cfg;
+use crate::simplify::{UsedInStmtLocals, simplify_cfg};
 use crate::validate::validate_types;
 use crate::{check_inline, util};
 
@@ -64,7 +63,6 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
         if inline::<NormalInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
-            deref_finder(tcx, body);
         }
     }
 
@@ -100,7 +98,6 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
         if inline::<ForceInliner<'tcx>>(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
             simplify_cfg(tcx, body);
-            deref_finder(tcx, body);
         }
     }
 }
@@ -248,7 +245,7 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
     fn on_inline_failure(&self, callsite: &CallSite<'tcx>, reason: &'static str) {
         let tcx = self.tcx();
         let InlineAttr::Force { attr_span, reason: justification } =
-            tcx.codegen_fn_attrs(callsite.callee.def_id()).inline
+            tcx.codegen_instance_attrs(callsite.callee.def).inline
         else {
             bug!("called on item without required inlining");
         };
@@ -606,7 +603,8 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let tcx = inliner.tcx();
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
 
-    let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
+    let callee_attrs = tcx.codegen_instance_attrs(callsite.callee.def);
+    let callee_attrs = callee_attrs.as_ref();
     check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
     check_codegen_attributes(inliner, callsite, callee_attrs)?;
     inliner.check_codegen_attributes_extra(callee_attrs)?;
@@ -637,7 +635,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
 
     // Normally, this shouldn't be required, but trait normalization failure can create a
     // validation ICE.
-    if !validate_types(tcx, inliner.typing_env(), &callee_body, &caller_body).is_empty() {
+    if !validate_types(tcx, inliner.typing_env(), &callee_body, caller_body).is_empty() {
         debug!("failed to validate callee body");
         return Err("implementation limitation -- callee body failed validation");
     }
@@ -820,7 +818,7 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     }
 
     let codegen_fn_attrs = tcx.codegen_fn_attrs(inliner.caller_def_id());
-    if callee_attrs.no_sanitize != codegen_fn_attrs.no_sanitize {
+    if callee_attrs.sanitizers != codegen_fn_attrs.sanitizers {
         return Err("incompatible sanitizer set");
     }
 
@@ -935,7 +933,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         in_cleanup_block: false,
         return_block,
         tcx,
-        always_live_locals: DenseBitSet::new_filled(callee_body.local_decls.len()),
+        always_live_locals: UsedInStmtLocals::new(&callee_body).locals,
     };
 
     // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -995,6 +993,10 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         // people working on rust can build with or without debuginfo while
         // still getting consistent results from the mir-opt tests.
         caller_body.var_debug_info.append(&mut callee_body.var_debug_info);
+    } else {
+        for bb in callee_body.basic_blocks_mut() {
+            bb.drop_debuginfo();
+        }
     }
     caller_body.basic_blocks_mut().append(callee_body.basic_blocks_mut());
 

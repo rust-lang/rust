@@ -65,8 +65,8 @@ impl fmt::Debug for Barrier {
 impl Barrier {
     /// Creates a new barrier that can block a given number of threads.
     ///
-    /// A barrier will block `n`-1 threads which call [`wait()`] and then wake
-    /// up all threads at once when the `n`th thread calls [`wait()`].
+    /// A barrier will block all threads which call [`wait()`] until the `n`th thread calls [`wait()`],
+    /// and then wake up all threads at once.
     ///
     /// [`wait()`]: Barrier::wait
     ///
@@ -125,7 +125,7 @@ impl Barrier {
         let local_gen = lock.generation_id;
         lock.count += 1;
         if lock.count < self.num_threads {
-            let _guard = self.cvar.wait_while(lock, |state| local_gen == state.generation_id);
+            self.cvar.wait_while(&mut lock, |state| local_gen == state.generation_id);
             BarrierWaitResult(false)
         } else {
             lock.count = 0;

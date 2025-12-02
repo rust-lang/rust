@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 

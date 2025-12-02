@@ -137,11 +137,11 @@ and `Encodable`.
 
 [`MetadataDecodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.MetadataDecodable.html
 [`MetadataEncodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_macros/derive.MetadataEncodable.html
-[`rustc_macros`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_macros
+[`rustc_macros`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_macros
 [`rustc_metadata::rmeta::`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/index.html
 [`rustc_metadata::rmeta::decoder::DecodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/decoder/struct.DecodeContext.html
 [`rustc_metadata::rmeta::encoder::EncodeContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_metadata/rmeta/encoder/struct.EncodeContext.html
-[`rustc_middle`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_middle
+[`rustc_middle`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_middle
 
 ## Shorthands
 

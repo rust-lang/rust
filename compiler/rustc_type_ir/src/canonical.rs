@@ -230,13 +230,13 @@ impl<I: Interner> CanonicalVarValues<I> {
     pub fn is_identity(&self) -> bool {
         self.var_values.iter().enumerate().all(|(bv, arg)| match arg.kind() {
             ty::GenericArgKind::Lifetime(r) => {
-                matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if br.var().as_usize() == bv)
+                matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if br.var().as_usize() == bv)
             }
             ty::GenericArgKind::Type(ty) => {
-                matches!(ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var().as_usize() == bv)
+                matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if bt.var().as_usize() == bv)
             }
             ty::GenericArgKind::Const(ct) => {
-                matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if bc.var().as_usize() == bv)
+                matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if bc.var().as_usize() == bv)
             }
         })
     }
@@ -246,21 +246,23 @@ impl<I: Interner> CanonicalVarValues<I> {
         for arg in self.var_values.iter() {
             match arg.kind() {
                 ty::GenericArgKind::Lifetime(r) => {
-                    if matches!(r.kind(), ty::ReBound(ty::INNERMOST, br) if var == br.var()) {
+                    if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if var == br.var())
+                    {
                         var = var + 1;
                     } else {
                         // It's ok if this region var isn't an identity variable
                     }
                 }
                 ty::GenericArgKind::Type(ty) => {
-                    if matches!(ty.kind(), ty::Bound(ty::INNERMOST, bt) if var == bt.var()) {
+                    if matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if var == bt.var())
+                    {
                         var = var + 1;
                     } else {
                         return false;
                     }
                 }
                 ty::GenericArgKind::Const(ct) => {
-                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::INNERMOST, bc) if var == bc.var())
+                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if var == bc.var())
                     {
                         var = var + 1;
                     } else {
@@ -284,16 +286,13 @@ impl<I: Interner> CanonicalVarValues<I> {
                         | CanonicalVarKind::Int
                         | CanonicalVarKind::Float
                         | CanonicalVarKind::PlaceholderTy(_) => {
-                            Ty::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
-                                .into()
+                            Ty::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
                         }
                         CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => {
-                            Region::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
-                                .into()
+                            Region::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
                         }
                         CanonicalVarKind::Const(_) | CanonicalVarKind::PlaceholderConst(_) => {
-                            Const::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
-                                .into()
+                            Const::new_canonical_bound(cx, ty::BoundVar::from_usize(i)).into()
                         }
                     }
                 },

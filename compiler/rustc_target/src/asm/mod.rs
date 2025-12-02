@@ -1,12 +1,11 @@
 use std::fmt;
-use std::str::FromStr;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 
-use crate::spec::{RelocModel, Target};
+use crate::spec::{Arch, RelocModel, Target};
 
 pub struct ModifierInfo {
     pub modifier: char,
@@ -245,38 +244,36 @@ pub enum InlineAsmArch {
     CSKY,
 }
 
-impl FromStr for InlineAsmArch {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<InlineAsmArch, ()> {
-        match s {
-            "x86" => Ok(Self::X86),
-            "x86_64" => Ok(Self::X86_64),
-            "arm" => Ok(Self::Arm),
-            "aarch64" => Ok(Self::AArch64),
-            "arm64ec" => Ok(Self::Arm64EC),
-            "riscv32" => Ok(Self::RiscV32),
-            "riscv64" => Ok(Self::RiscV64),
-            "nvptx64" => Ok(Self::Nvptx64),
-            "powerpc" => Ok(Self::PowerPC),
-            "powerpc64" => Ok(Self::PowerPC64),
-            "hexagon" => Ok(Self::Hexagon),
-            "loongarch32" => Ok(Self::LoongArch32),
-            "loongarch64" => Ok(Self::LoongArch64),
-            "mips" | "mips32r6" => Ok(Self::Mips),
-            "mips64" | "mips64r6" => Ok(Self::Mips64),
-            "s390x" => Ok(Self::S390x),
-            "sparc" => Ok(Self::Sparc),
-            "sparc64" => Ok(Self::Sparc64),
-            "spirv" => Ok(Self::SpirV),
-            "wasm32" => Ok(Self::Wasm32),
-            "wasm64" => Ok(Self::Wasm64),
-            "bpf" => Ok(Self::Bpf),
-            "avr" => Ok(Self::Avr),
-            "msp430" => Ok(Self::Msp430),
-            "m68k" => Ok(Self::M68k),
-            "csky" => Ok(Self::CSKY),
-            _ => Err(()),
+impl InlineAsmArch {
+    pub fn from_arch(arch: &Arch) -> Option<Self> {
+        match arch {
+            Arch::X86 => Some(Self::X86),
+            Arch::X86_64 => Some(Self::X86_64),
+            Arch::Arm => Some(Self::Arm),
+            Arch::Arm64EC => Some(Self::Arm64EC),
+            Arch::AArch64 => Some(Self::AArch64),
+            Arch::RiscV32 => Some(Self::RiscV32),
+            Arch::RiscV64 => Some(Self::RiscV64),
+            Arch::Nvptx64 => Some(Self::Nvptx64),
+            Arch::Hexagon => Some(Self::Hexagon),
+            Arch::LoongArch32 => Some(Self::LoongArch32),
+            Arch::LoongArch64 => Some(Self::LoongArch64),
+            Arch::Mips | Arch::Mips32r6 => Some(Self::Mips),
+            Arch::Mips64 | Arch::Mips64r6 => Some(Self::Mips64),
+            Arch::PowerPC => Some(Self::PowerPC),
+            Arch::PowerPC64 | Arch::PowerPC64LE => Some(Self::PowerPC64),
+            Arch::S390x => Some(Self::S390x),
+            Arch::Sparc => Some(Self::Sparc),
+            Arch::Sparc64 => Some(Self::Sparc64),
+            Arch::SpirV => Some(Self::SpirV),
+            Arch::Wasm32 => Some(Self::Wasm32),
+            Arch::Wasm64 => Some(Self::Wasm64),
+            Arch::Bpf => Some(Self::Bpf),
+            Arch::Avr => Some(Self::Avr),
+            Arch::Msp430 => Some(Self::Msp430),
+            Arch::M68k => Some(Self::M68k),
+            Arch::CSky => Some(Self::CSKY),
+            Arch::AmdGpu | Arch::Xtensa | Arch::Other(_) => None,
         }
     }
 }
@@ -1251,9 +1248,17 @@ impl InlineAsmClobberAbi {
                     r3, r4, r5, r6, r7,
                     r8, r9, r10, r11, r12,
 
-                    // f0-f13
+                    // f0-f13 and their vsx overlays.
                     f0, f1, f2, f3, f4, f5, f6, f7,
                     f8, f9, f10, f11, f12, f13,
+                    vs0, vs1, vs2, vs3, vs4, vs5, vs6, vs7,
+                    vs8, vs9, vs10, vs11, vs12, vs13,
+
+                    // vs14-31, the fpr portion is saved, but the rest of the register is volatile.
+                    // We can't express that here, so mark the entire vsx register as volatile.
+                    vs14, vs15, vs16, vs17, vs18, vs19, vs20,
+                    vs21, vs22, vs23, vs24, vs25, vs26, vs27,
+                    vs28, vs29, vs30, vs31,
 
                     // v0-v19
                     v0, v1, v2, v3, v4, v5, v6, v7,

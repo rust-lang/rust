@@ -1,0 +1,4 @@
+; Check that array TypeTree metadata is correctly generated  
+; Should show Float@double at each array element offset (0, 8, 16, 24, 32 bytes)
+
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@double}"{{.*}}@test_array{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@double}"

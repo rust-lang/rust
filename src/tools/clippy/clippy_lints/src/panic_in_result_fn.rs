@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use clippy_utils::{is_inside_always_const_context, return_ty};
 use core::ops::ControlFlow;
@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicInResultFn {
             return;
         }
         let owner = cx.tcx.local_def_id_to_hir_id(def_id).expect_owner();
-        if is_type_diagnostic_item(cx, return_ty(cx, owner), sym::Result) {
+        if return_ty(cx, owner).is_diag_item(cx, sym::Result) {
             lint_impl_body(cx, span, body);
         }
     }

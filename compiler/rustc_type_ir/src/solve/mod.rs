@@ -78,8 +78,6 @@ pub enum GoalSource {
     ImplWhereBound,
     /// Const conditions that need to hold for `[const]` alias bounds to hold.
     AliasBoundConstCondition,
-    /// Instantiating a higher-ranked goal and re-proving it.
-    InstantiateHigherRanked,
     /// Predicate required for an alias projection to be well-formed.
     /// This is used in three places:
     /// 1. projecting to an opaque whose hidden type is already registered in
@@ -109,18 +107,29 @@ pub struct QueryInput<I: Interner, P> {
 
 impl<I: Interner, P: Eq> Eq for QueryInput<I, P> {}
 
-/// Opaques that are defined in the inference context before a query is called.
-#[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-pub struct PredefinedOpaquesData<I: Interner> {
-    pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+/// Which trait candidates should be preferred over other candidates? By default, prefer where
+/// bounds over alias bounds. For marker traits, prefer alias bounds over where bounds.
+#[derive(Clone, Copy, Debug)]
+pub enum CandidatePreferenceMode {
+    /// Prefers where bounds over alias bounds
+    Default,
+    /// Prefers alias bounds over where bounds
+    Marker,
 }
 
-impl<I: Interner> Eq for PredefinedOpaquesData<I> {}
+impl CandidatePreferenceMode {
+    /// Given `trait_def_id`, which candidate preference mode should be used?
+    pub fn compute<I: Interner>(cx: I, trait_id: I::TraitId) -> CandidatePreferenceMode {
+        let is_sizedness_or_auto_or_default_goal = cx.is_sizedness_trait(trait_id)
+            || cx.trait_is_auto(trait_id)
+            || cx.is_default_trait(trait_id);
+        if is_sizedness_or_auto_or_default_goal {
+            CandidatePreferenceMode::Marker
+        } else {
+            CandidatePreferenceMode::Default
+        }
+    }
+}
 
 /// Possible ways the given goal can be proven.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
@@ -178,7 +187,7 @@ pub enum CandidateSource<I: Interner> {
     ///     let _y = x.clone();
     /// }
     /// ```
-    AliasBound,
+    AliasBound(AliasBoundKind),
     /// A candidate that is registered only during coherence to represent some
     /// yet-unknown impl that could be produced downstream without violating orphan
     /// rules.
@@ -194,6 +203,15 @@ pub enum ParamEnvSource {
     NonGlobal,
     // Not considered unless there are non-global param-env candidates too.
     Global,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+pub enum AliasBoundKind {
+    /// Alias bound from the self type of a projection
+    SelfBounds,
+    // Alias bound having recursed on the self type of a projection
+    NonSelfBounds,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]

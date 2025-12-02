@@ -27,7 +27,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Block { hir_id, stmts, expr, rules, span: self.lower_span(b.span), targeted_by_break }
     }
 
-    fn lower_stmts(
+    pub(super) fn lower_stmts(
         &mut self,
         mut ast_stmts: &[Stmt],
     ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {

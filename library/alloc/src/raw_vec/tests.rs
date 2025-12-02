@@ -85,7 +85,7 @@ struct ZST;
 fn zst_sanity<T>(v: &RawVec<T>) {
     assert_eq!(v.capacity(), usize::MAX);
     assert_eq!(v.ptr(), core::ptr::Unique::<T>::dangling().as_ptr());
-    assert_eq!(v.inner.current_memory(T::LAYOUT), None);
+    assert_eq!(unsafe { v.inner.current_memory(T::LAYOUT) }, None);
 }
 
 #[test]
@@ -126,12 +126,12 @@ fn zst() {
     assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT), cap_err);
-    assert_eq!(v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT), cap_err);
+    assert_eq!(unsafe { v.inner.grow_amortized(100, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
+    assert_eq!(unsafe { v.inner.grow_amortized(101, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT), cap_err);
-    assert_eq!(v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT), cap_err);
+    assert_eq!(unsafe { v.inner.grow_exact(100, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
+    assert_eq!(unsafe { v.inner.grow_exact(101, usize::MAX - 100, ZST::LAYOUT) }, cap_err);
     zst_sanity(&v);
 }
 

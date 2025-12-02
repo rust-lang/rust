@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+    Arch, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -22,7 +22,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-linux-musl".into(),
         metadata: TargetMetadata {
-            description: Some("64-bit Linux with musl 1.2.3".into()),
+            description: Some("64-bit Linux with musl 1.2.5".into()),
             tier: Some(2),
             host_tools: Some(true),
             std: Some(true),
@@ -30,7 +30,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: "x86_64".into(),
+        arch: Arch::X86_64,
         options: base,
     }
 }

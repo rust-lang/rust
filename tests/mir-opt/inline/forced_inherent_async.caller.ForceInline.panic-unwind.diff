@@ -1,0 +1,12 @@
+- // MIR for `caller` before ForceInline
++ // MIR for `caller` after ForceInline
+  
+  fn caller() -> {async fn body of caller()} {
+      let mut _0: {async fn body of caller()};
+  
+      bb0: {
+          _0 = {coroutine@$DIR/forced_inherent_async.rs:14:19: 18:2 (#0)};
+          return;
+      }
+  }
+  

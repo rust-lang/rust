@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -7,6 +8,7 @@ use arrayvec::ArrayVec;
 use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -24,7 +26,6 @@ use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Loc};
-use thin_vec::ThinVec;
 use tracing::{debug, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -40,6 +41,7 @@ use crate::clean::utils::{is_literal_expr, print_evaluated_const};
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
+use crate::html::format::HrefInfo;
 use crate::html::render::Context;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
@@ -467,7 +469,7 @@ impl Item {
             name,
             kind,
             Attributes::from_hir(hir_attrs),
-            extract_cfg_from_attrs(hir_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            None,
         )
     }
 
@@ -519,16 +521,24 @@ impl Item {
             .iter()
             .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
-                if let Ok((mut href, ..)) = href(*id, cx) {
-                    debug!(?href);
-                    if let Some(ref fragment) = *fragment {
-                        fragment.render(&mut href, cx.tcx())
+                if let Ok(HrefInfo { mut url, .. }) = href(*id, cx) {
+                    debug!(?url);
+                    match fragment {
+                        Some(UrlFragment::Item(def_id)) => {
+                            write!(url, "{}", crate::html::format::fragment(*def_id, cx.tcx()))
+                                .unwrap();
+                        }
+                        Some(UrlFragment::UserWritten(raw)) => {
+                            url.push('#');
+                            url.push_str(raw);
+                        }
+                        None => {}
                     }
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
                         tooltip: link_tooltip(*id, fragment, cx).to_string(),
-                        href,
+                        href: url,
                     })
                 } else {
                     None
@@ -794,50 +804,6 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    /// Get a list of attributes excluding `#[repr]` to display.
-    ///
-    /// Only used by the HTML output-format.
-    fn attributes_without_repr(&self) -> Vec<String> {
-        self.attrs
-            .other_attrs
-            .iter()
-            .filter_map(|attr| match attr {
-                hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                    Some(format!("#[unsafe(link_section = \"{name}\")]"))
-                }
-                hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
-                    Some("#[unsafe(no_mangle)]".to_string())
-                }
-                hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                    Some(format!("#[unsafe(export_name = \"{name}\")]"))
-                }
-                hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
-                    Some("#[non_exhaustive]".to_string())
-                }
-                _ => None,
-            })
-            .collect()
-    }
-
-    /// Get a list of attributes to display on this item.
-    ///
-    /// Only used by the HTML output-format.
-    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache) -> Vec<String> {
-        let mut attrs = self.attributes_without_repr();
-
-        if let Some(repr_attr) = self.repr(tcx, cache) {
-            attrs.push(repr_attr);
-        }
-        attrs
-    }
-
-    /// Returns a stringified `#[repr(...)]` attribute.
-    ///
-    /// Only used by the HTML output-format.
-    pub(crate) fn repr(&self, tcx: TyCtxt<'_>, cache: &Cache) -> Option<String> {
-        repr_attributes(tcx, cache, self.def_id()?, self.type_())
-    }
-
     pub fn is_doc_hidden(&self) -> bool {
         self.attrs.is_doc_hidden()
     }
@@ -845,74 +811,6 @@ impl Item {
     pub fn def_id(&self) -> Option<DefId> {
         self.item_id.as_def_id()
     }
-}
-
-/// Return a string representing the `#[repr]` attribute if present.
-///
-/// Only used by the HTML output-format.
-pub(crate) fn repr_attributes(
-    tcx: TyCtxt<'_>,
-    cache: &Cache,
-    def_id: DefId,
-    item_type: ItemType,
-) -> Option<String> {
-    use rustc_abi::IntegerType;
-
-    if !matches!(item_type, ItemType::Struct | ItemType::Enum | ItemType::Union) {
-        return None;
-    }
-    let adt = tcx.adt_def(def_id);
-    let repr = adt.repr();
-    let mut out = Vec::new();
-    if repr.c() {
-        out.push("C");
-    }
-    if repr.transparent() {
-        // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
-        // field is public in case all fields are 1-ZST fields.
-        let render_transparent = cache.document_private
-            || adt
-                .all_fields()
-                .find(|field| {
-                    let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                    tcx.layout_of(ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty))
-                        .is_ok_and(|layout| !layout.is_1zst())
-                })
-                .map_or_else(
-                    || adt.all_fields().any(|field| field.vis.is_public()),
-                    |field| field.vis.is_public(),
-                );
-
-        if render_transparent {
-            out.push("transparent");
-        }
-    }
-    if repr.simd() {
-        out.push("simd");
-    }
-    let pack_s;
-    if let Some(pack) = repr.pack {
-        pack_s = format!("packed({})", pack.bytes());
-        out.push(&pack_s);
-    }
-    let align_s;
-    if let Some(align) = repr.align {
-        align_s = format!("align({})", align.bytes());
-        out.push(&align_s);
-    }
-    let int_s;
-    if let Some(int) = repr.int {
-        int_s = match int {
-            IntegerType::Pointer(is_signed) => {
-                format!("{}size", if is_signed { 'i' } else { 'u' })
-            }
-            IntegerType::Fixed(size, is_signed) => {
-                format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
-            }
-        };
-        out.push(&int_s);
-    }
-    if !out.is_empty() { Some(format!("#[repr({})]", out.join(", "))) } else { None }
 }
 
 #[derive(Clone, Debug)]
@@ -1014,30 +912,6 @@ impl ItemKind {
             | AttributeItem => [].iter(),
         }
     }
-
-    /// Returns `true` if this item does not appear inside an impl block.
-    pub(crate) fn is_non_assoc(&self) -> bool {
-        matches!(
-            self,
-            StructItem(_)
-                | UnionItem(_)
-                | EnumItem(_)
-                | TraitItem(_)
-                | ModuleItem(_)
-                | ExternCrateItem { .. }
-                | FunctionItem(_)
-                | TypeAliasItem(_)
-                | StaticItem(_)
-                | ConstantItem(_)
-                | TraitAliasItem(_)
-                | ForeignFunctionItem(_, _)
-                | ForeignStaticItem(_, _)
-                | ForeignTypeItem
-                | MacroItem(_)
-                | ProcMacroItem(_)
-                | PrimitiveItem(_)
-        )
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -1055,75 +929,6 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
         .filter(move |attr| attr.has_name(name))
         .filter_map(ast::attr::AttributeExt::meta_item_list)
         .flatten()
-}
-
-pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
-    attrs: I,
-    tcx: TyCtxt<'_>,
-    hidden_cfg: &FxHashSet<Cfg>,
-) -> Option<Arc<Cfg>> {
-    let doc_cfg_active = tcx.features().doc_cfg();
-    let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
-
-    fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
-        let mut iter = it.into_iter();
-        let item = iter.next()?;
-        if iter.next().is_some() {
-            return None;
-        }
-        Some(item)
-    }
-
-    let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
-        let mut doc_cfg = attrs
-            .clone()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
-            .filter(|attr| attr.has_name(sym::cfg))
-            .peekable();
-        if doc_cfg.peek().is_some() && doc_cfg_active {
-            let sess = tcx.sess;
-
-            doc_cfg.fold(Cfg::True, |mut cfg, item| {
-                if let Some(cfg_mi) =
-                    item.meta_item().and_then(|item| rustc_expand::config::parse_cfg(item, sess))
-                {
-                    match Cfg::parse(cfg_mi) {
-                        Ok(new_cfg) => cfg &= new_cfg,
-                        Err(e) => {
-                            sess.dcx().span_err(e.span, e.msg);
-                        }
-                    }
-                }
-                cfg
-            })
-        } else if doc_auto_cfg_active {
-            // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
-            // `doc(cfg())` overrides `cfg()`).
-            attrs
-                .clone()
-                .filter(|attr| attr.has_name(sym::cfg_trace))
-                .filter_map(|attr| single(attr.meta_item_list()?))
-                .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
-                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-        } else {
-            Cfg::True
-        }
-    } else {
-        Cfg::True
-    };
-
-    // treat #[target_feature(enable = "feat")] attributes as if they were
-    // #[doc(cfg(target_feature = "feat"))] attributes as well
-    if let Some(features) =
-        find_attr!(attrs, AttributeKind::TargetFeature { features, .. } => features)
-    {
-        for (feature, _) in features {
-            cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
-        }
-    }
-
-    if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
 }
 
 pub(crate) trait NestedAttributesExt {
@@ -1622,7 +1427,7 @@ impl Type {
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
-                a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.is_doc_subtype_of(b, cache))
+                a.iter().eq_by(b, |a, b| a.is_doc_subtype_of(b, cache))
             }
             (Type::Slice(a), Type::Slice(b)) => a.is_doc_subtype_of(b, cache),
             (Type::Array(a, al), Type::Array(b, bl)) => al == bl && a.is_doc_subtype_of(b, cache),

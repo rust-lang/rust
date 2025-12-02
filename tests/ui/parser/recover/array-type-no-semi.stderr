@@ -4,7 +4,6 @@ error: expected `;` or `]`, found `,`
 LL |     let b: [i32, 5];
    |                ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
 LL -     let b: [i32, 5];
@@ -19,8 +18,6 @@ LL |     let a: [i32, ];
    |          |
    |          while parsing the type for `a`
    |          help: use `=` if you meant to assign
-   |
-   = note: you might have meant to write a slice or array type
 
 error: expected `;` or `]`, found `,`
   --> $DIR/array-type-no-semi.rs:12:16
@@ -28,7 +25,6 @@ error: expected `;` or `]`, found `,`
 LL |     let c: [i32, x];
    |                ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
 LL -     let c: [i32, x];
@@ -41,11 +37,22 @@ error: expected `;` or `]`, found `5`
 LL |     let e: [i32 5];
    |                 ^ expected `;` or `]`
    |
-   = note: you might have meant to write a slice or array type
 help: you might have meant to use `;` as the separator
    |
-LL |     let e: [i32 ;5];
-   |                 +
+LL |     let e: [i32; 5];
+   |                +
+
+error: expected `;` or `]`, found `:`
+  --> $DIR/array-type-no-semi.rs:17:16
+   |
+LL |     let f: [i32: 1 - 1];
+   |                ^ expected `;` or `]`
+   |
+help: you might have meant to use `;` as the separator
+   |
+LL -     let f: [i32: 1 - 1];
+LL +     let f: [i32; 1 - 1];
+   |
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/array-type-no-semi.rs:12:18
@@ -65,7 +72,7 @@ error[E0423]: expected value, found builtin type `i32`
 LL |     let a: [i32, ];
    |             ^^^ not a value
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0423, E0435.
 For more information about an error, try `rustc --explain E0423`.

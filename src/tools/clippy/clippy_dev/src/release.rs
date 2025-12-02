@@ -23,7 +23,7 @@ pub fn bump_version(mut version: Version) {
                 dst.push_str(&src[..package.version_range.start]);
                 write!(dst, "\"{}\"", version.toml_display()).unwrap();
                 dst.push_str(&src[package.version_range.end..]);
-                UpdateStatus::from_changed(src.get(package.version_range.clone()) != dst.get(package.version_range))
+                UpdateStatus::from_changed(src.get(package.version_range) != dst.get(package.version_range))
             }
         });
     }

@@ -10,5 +10,5 @@ These use a NodeJS-based tool called [`browser-UI-test`] that uses [puppeteer] t
 [Rustdoc test suites]: ../tests/compiletest.md#rustdoc-test-suites
 [`browser-UI-test`]: https://github.com/GuillaumeGomez/browser-UI-test/
 [puppeteer]: https://pptr.dev/
-[rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/master/tests/rustdoc-gui/README.md
-[goml-script]: https://github.com/GuillaumeGomez/browser-UI-test/blob/master/goml-script.md
+[rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/HEAD/tests/rustdoc-gui/README.md
+[goml-script]: https://github.com/GuillaumeGomez/browser-UI-test/blob/main/goml-script.md

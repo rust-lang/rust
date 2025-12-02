@@ -193,11 +193,19 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
-    .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
-    .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
+lint_const_item_interior_mutations =
+    mutation of an interior mutable `const` item with call to `{$method_name}`
+    .label = `{$const_name}` is a interior mutable `const` item of type `{$const_ty}`
+    .temporary = each usage of a `const` item creates a new temporary
+    .never_original = only the temporaries and never the original `const {$const_name}` will be modified
+    .suggestion_static = for a shared instance of `{$const_name}`, consider making it a `static` item instead
+    .help = for more details on interior mutability see <https://doc.rust-lang.org/reference/interior-mutability.html>
+
+lint_dangling_pointers_from_locals = {$fn_kind} returns a dangling pointer to dropped local variable `{$local_var_name}`
+    .ret_ty = return type is `{$ret_ty}`
+    .local_var = local variable `{$local_var_name}` is dropped at the end of the {$fn_kind}
     .created_at = dangling pointer created here
-    .note = pointers do not have a lifetime; after returning, the `{$local_var_ty}` will be deallocated at the end of the {$fn_kind} because nothing is referencing it as far as the type system is concerned
+    .note = a dangling pointer is safe, but dereferencing one is undefined behavior
 
 lint_dangling_pointers_from_temporaries = a dangling pointer will be produced because the temporary `{$ty}` will be dropped
     .label_ptr = this pointer will immediately be invalid
@@ -249,9 +257,6 @@ lint_expectation = this lint expectation is unfulfilled
     .note = the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message
     .rationale = {$rationale}
 
-lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
-    .suggestion = convert it to a `use`
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -264,6 +269,9 @@ lint_forgetting_copy_types = calls to `std::mem::forget` with a value that imple
 
 lint_forgetting_references = calls to `std::mem::forget` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
+
+lint_function_casts_as_integer = direct cast of function item into an integer
+    .cast_as_fn = first cast to a pointer `as *const ()`
 
 lint_hidden_glob_reexport = private item shadows public glob re-export
     .note_glob_reexport = the name `{$name}` in the {$namespace} namespace is supposed to be publicly re-exported here
@@ -324,6 +332,9 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
+
+lint_implicit_sysroot_crate_import = dangerous use of `extern crate {$name}` which is not guaranteed to exist exactly once in the sysroot
+    .help = try using a cargo dependency or using a re-export of the dependency provided by a rustc_* crate
 
 lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dereference of a raw pointer
     .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements
@@ -392,6 +403,14 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
+lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
+    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
+    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
+    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
+    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
+    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
+    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
+
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
     .help = start numbering with `2` instead
@@ -439,23 +458,12 @@ lint_invalid_reference_casting_note_book = for more information, visit <https://
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
 
-lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
-    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
-    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
-    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
-    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
-    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
-    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
-
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
 lint_macro_expr_fragment_specifier_2024_migration =
     the `expr` fragment specifier will accept more expressions in the 2024 edition
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
-lint_macro_is_private = macro `{$ident}` is private
-
-lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 lint_malformed_attribute = malformed lint attribute input
 
@@ -634,10 +642,6 @@ lint_opaque_hidden_inferred_bound = opaque type `{$ty}` does not satisfy its ass
 
 lint_opaque_hidden_inferred_bound_sugg = add this bound
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
-    .label = not found from {$location}
-    .help = import `macro_rules` with `use` to make it callable above its definition
-
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
     .negative_note = the literal `{$lit}` (decimal `{$dec}`) does not fit into the type `{$ty}`
     .negative_becomes_note = and the value `-{$lit}` will become `{$actually}{$ty}`
@@ -673,9 +677,6 @@ lint_pattern_in_bodiless = patterns aren't allowed in functions without bodies
 lint_pattern_in_foreign = patterns aren't allowed in foreign function declarations
     .label = pattern not allowed in foreign function
 
-lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
-    .suggestion = consider making the `extern crate` item publicly accessible
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -700,10 +701,6 @@ lint_redundant_import = the item `{$ident}` is imported redundantly
     .label_defined_here = the item `{$ident}` is already defined here
     .label_imported_prelude = the item `{$ident}` is already imported by the extern prelude
     .label_defined_prelude = the item `{$ident}` is already defined by the extern prelude
-
-lint_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
-    .note = the most public imported item is `{$max_vis}`
-    .help = reduce the glob import's visibility or increase visibility of imported items
 
 lint_redundant_semicolons =
     unnecessary trailing {$multiple ->
@@ -864,9 +861,6 @@ lint_unicode_text_flow = unicode codepoint changing visible direction of text pr
 lint_unit_bindings = binding has unit type `()`
     .label = this pattern is inferred to be the unit type `()`
 
-lint_unknown_diagnostic_attribute = unknown diagnostic attribute
-lint_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
-
 lint_unknown_gated_lint =
     unknown lint: `{$name}`
     .note = the `{$name}` lint is unstable
@@ -947,8 +941,6 @@ lint_unused_imports = {$num_snippets ->
 
 lint_unused_lifetime = lifetime parameter `{$ident}` never used
     .suggestion = elide the unused lifetime
-
-lint_unused_macro_definition = unused macro definition: `{$name}`
 
 lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value

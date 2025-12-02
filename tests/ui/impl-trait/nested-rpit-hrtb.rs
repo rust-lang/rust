@@ -48,7 +48,6 @@ fn one_hrtb_mention_fn_trait_param_uses<'b>() -> impl for<'a> Bar<'a, Assoc = im
 // This should resolve.
 fn one_hrtb_mention_fn_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'b> {}
 //~^ ERROR implementation of `Bar` is not general enough
-//~| ERROR lifetime may not live long enough
 
 // This should resolve.
 fn two_htrb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Qux<'b>> {}

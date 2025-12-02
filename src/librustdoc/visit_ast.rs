@@ -9,7 +9,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
-use rustc_hir::{CRATE_HIR_ID, Node, find_attr};
+use rustc_hir::{Node, find_attr};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -17,7 +17,6 @@ use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
-use crate::clean::cfg::Cfg;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
 use crate::clean::{NestedAttributesExt, hir_attr_lists, reexport_chain};
 use crate::core;
@@ -178,32 +177,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
         }
 
-        self.cx.cache.hidden_cfg = self
-            .cx
-            .tcx
-            .hir_attrs(CRATE_HIR_ID)
-            .iter()
-            .filter(|attr| attr.has_name(sym::doc))
-            .flat_map(|attr| attr.meta_item_list().into_iter().flatten())
-            .filter(|attr| attr.has_name(sym::cfg_hide))
-            .flat_map(|attr| {
-                attr.meta_item_list()
-                    .unwrap_or(&[])
-                    .iter()
-                    .filter_map(|attr| {
-                        Cfg::parse(attr)
-                            .map_err(|e| self.cx.sess().dcx().span_err(e.span, e.msg))
-                            .ok()
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .chain([
-                Cfg::Cfg(sym::test, None),
-                Cfg::Cfg(sym::doc, None),
-                Cfg::Cfg(sym::doctest, None),
-            ])
-            .collect();
-
         self.cx.cache.exact_paths = self.exact_paths;
         top_level_module
     }
@@ -270,7 +243,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false;
         };
 
-        let document_hidden = self.cx.render_options.document_hidden;
+        let document_hidden = self.cx.document_hidden();
         let use_attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
@@ -378,7 +351,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_def_id: LocalDefId,
         target_def_id: LocalDefId,
     ) -> bool {
-        if self.cx.render_options.document_hidden {
+        if self.cx.document_hidden() {
             return true;
         }
         let tcx = self.cx.tcx;

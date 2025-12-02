@@ -30,8 +30,6 @@ help: the conflicting tag <TAG> later transitioned to Frozen due to a foreign re
 LL |     let _val = unsafe { *xraw }; // invalidate xref for writing
    |                         ^^^^^
    = help: this transition corresponds to a loss of write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/return_invalid_mut.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -114,8 +114,7 @@ fn assoc_item_of_trait(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir::FilePosition;
-    use hir::Semantics;
+    use hir::{EditionedFileId, FilePosition, Semantics};
     use span::Edition;
     use syntax::ast::{self, AstNode};
     use test_fixture::ChangeFixture;
@@ -127,10 +126,11 @@ mod tests {
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (RootDatabase, FilePosition) {
         let mut database = RootDatabase::default();
-        let change_fixture = ChangeFixture::parse(&database, ra_fixture);
+        let change_fixture = ChangeFixture::parse(ra_fixture);
         database.apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ($0)");
+        let file_id = EditionedFileId::from_span_guess_origin(&database, file_id);
         let offset = range_or_offset.expect_offset();
         (database, FilePosition { file_id, offset })
     }

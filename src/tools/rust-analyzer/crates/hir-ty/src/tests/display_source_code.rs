@@ -67,11 +67,11 @@ trait B: A {}
 
 fn test<'a>(
     _: &(dyn A<Assoc = ()> + Send),
-  //^ &(dyn A<Assoc = ()> + Send)
+  //^ &(dyn A<Assoc = ()> + Send + 'static)
     _: &'a (dyn Send + A<Assoc = ()>),
-  //^ &'a (dyn A<Assoc = ()> + Send)
+  //^ &'a (dyn A<Assoc = ()> + Send + 'static)
     _: &dyn B<Assoc = ()>,
-  //^ &(dyn B<Assoc = ()>)
+  //^ &(dyn B<Assoc = ()> + 'static)
 ) {}
         "#,
     );
@@ -85,7 +85,7 @@ fn render_dyn_for_ty() {
 trait Foo<'a> {}
 
 fn foo(foo: &dyn for<'a> Foo<'a>) {}
-    // ^^^ &dyn Foo<'?>
+    // ^^^ &(dyn Foo<'?> + 'static)
 "#,
     );
 }
@@ -242,6 +242,25 @@ fn test() {
       //^ fn(i8) -> S<i8>
     let f = E::A;
       //^ fn(usize) -> E
+}
+"#,
+    );
+}
+
+#[test]
+fn type_placeholder_type() {
+    check_types_source_code(
+        r#"
+struct S<T>(T);
+fn test() {
+    let f: S<_> = S(3);
+           //^ i32
+    let f: [_; _] = [4_u32, 5, 6];
+          //^ u32
+    let f: (_, _, _) = (1_u32, 1_i32, false);
+          //^ u32
+             //^ i32
+                //^ bool
 }
 "#,
     );

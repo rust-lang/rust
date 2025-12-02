@@ -748,7 +748,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
             StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
-            | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
             }
@@ -1047,18 +1046,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, span), [ty]);
-
-                self.prove_trait_ref(
-                    trait_ref,
-                    location.to_locations(),
-                    ConstraintCategory::SizedBound,
-                );
-            }
-            &Rvalue::NullaryOp(NullOp::ContractChecks, _) => {}
-            &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
+            &Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => {}
 
             Rvalue::ShallowInitBox(_operand, ty) => {
                 let trait_ref =
@@ -1558,6 +1546,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
+                    CastKind::Subtype => {
+                        bug!("CastKind::Subtype shouldn't exist in borrowck")
+                    }
                 }
             }
 
@@ -1642,8 +1633,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(..)
             | Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
+            | Rvalue::Discriminant(..) => {}
         }
     }
 
@@ -1881,9 +1871,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 )
                 .unwrap();
-            }
-            ProjectionElem::Subtype(_) => {
-                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
         }
     }
@@ -2411,9 +2398,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::Subslice { .. }
                 | ProjectionElem::UnwrapUnsafeBinder(_) => {
                     // other field access
-                }
-                ProjectionElem::Subtype(_) => {
-                    bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
                 }
             }
         }

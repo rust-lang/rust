@@ -91,7 +91,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.ninja=false \
       --set rust.debug-assertions=false \
       --set rust.jemalloc \
-      --set rust.use-lld=true \
+      --set rust.bootstrap-override-lld=true \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 

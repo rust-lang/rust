@@ -1,4 +1,4 @@
-use hir::{AsAssocItem, AssocItemContainer, FileRange, HasCrate, HasSource};
+use hir::{AsAssocItem, AssocItemContainer, FileRange, HasSource};
 use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
     SyntaxKind,
@@ -70,7 +70,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let ty = impl_.self_ty(db);
     // If there exists another associated item with the same name, skip the assist.
     if ty
-        .iterate_assoc_items(db, ty.krate(db), |assoc| {
+        .iterate_assoc_items(db, |assoc| {
             // Type aliases wouldn't conflict due to different namespaces, but we're only checking
             // the items in inherent impls, so we assume `assoc` is never type alias for the sake
             // of brevity (inherent associated types exist in nightly Rust, but it's *very*

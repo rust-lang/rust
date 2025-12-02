@@ -1,5 +1,3 @@
-// FIXME: run-rustfix waiting on multi-span suggestions
-
 #![warn(clippy::needless_borrow)]
 #![allow(clippy::needless_borrowed_reference, clippy::explicit_auto_deref)]
 

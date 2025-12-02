@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: z10 z13_no_vector z13_soft_float
 //@ build-fail
 //@[z10] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z10
@@ -8,9 +8,11 @@
 // FIXME: +soft-float itself doesn't set -vector
 //@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
 //@[z13_soft_float] needs-llvm-components: systemz
+//@ ignore-backends: gcc
 //[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
+//[z13_soft_float]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`
 
-#![feature(no_core, repr_simd, s390x_target_feature)]
+#![feature(no_core, repr_simd)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]

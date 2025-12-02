@@ -10,19 +10,19 @@ use rustc_hir::{Block, Expr, ExprKind, LetStmt, MatchSource, Pat, PatKind, Path,
 use rustc_lint::LateContext;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_block: &'tcx Block<'_>) {
-    let (init, let_info) = match (loop_block.stmts, loop_block.expr) {
+    let (init, let_info, els) = match (loop_block.stmts, loop_block.expr) {
         ([stmt, ..], _) => match stmt.kind {
             StmtKind::Let(LetStmt {
                 init: Some(e),
-                els: None,
+                els,
                 pat,
                 ty,
                 ..
-            }) => (*e, Some((*pat, *ty))),
-            StmtKind::Semi(e) | StmtKind::Expr(e) => (e, None),
+            }) => (*e, Some((*pat, *ty)), *els),
+            StmtKind::Semi(e) | StmtKind::Expr(e) => (e, None, None),
             _ => return,
         },
-        ([], Some(e)) => (e, None),
+        ([], Some(e)) => (e, None, None),
         _ => return,
     };
     let has_trailing_exprs = loop_block.stmts.len() + usize::from(loop_block.expr.is_some()) > 1;
@@ -38,14 +38,26 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
             if_let.let_expr,
             has_trailing_exprs,
             let_info,
-            if_let.if_then,
+            Some(if_let.if_then),
         );
+    } else if els.and_then(|x| x.expr).is_some_and(is_simple_break_expr)
+        && let Some((pat, _)) = let_info
+    {
+        could_be_while_let(cx, expr, pat, init, has_trailing_exprs, let_info, None);
     } else if let ExprKind::Match(scrutinee, [arm1, arm2], MatchSource::Normal) = init.kind
         && arm1.guard.is_none()
         && arm2.guard.is_none()
         && is_simple_break_expr(arm2.body)
     {
-        could_be_while_let(cx, expr, arm1.pat, scrutinee, has_trailing_exprs, let_info, arm1.body);
+        could_be_while_let(
+            cx,
+            expr,
+            arm1.pat,
+            scrutinee,
+            has_trailing_exprs,
+            let_info,
+            Some(arm1.body),
+        );
     }
 }
 
@@ -70,7 +82,7 @@ fn could_be_while_let<'tcx>(
     let_expr: &'tcx Expr<'_>,
     has_trailing_exprs: bool,
     let_info: Option<(&Pat<'_>, Option<&Ty<'_>>)>,
-    inner_expr: &Expr<'_>,
+    inner_expr: Option<&Expr<'_>>,
 ) {
     if has_trailing_exprs
         && (needs_ordered_drop(cx, cx.typeck_results().expr_ty(let_expr))
@@ -85,7 +97,7 @@ fn could_be_while_let<'tcx>(
     // 1) it was ugly with big bodies;
     // 2) it was not indented properly;
     // 3) it wasn’t very smart (see #675).
-    let inner_content = if let Some((pat, ty)) = let_info
+    let inner_content = if let Some(((pat, ty), inner_expr)) = let_info.zip(inner_expr)
         // Prevent trivial reassignments such as `let x = x;` or `let _ = …;`, but
         // keep them if the type has been explicitly specified.
         && (!is_trivial_assignment(pat, peel_blocks(inner_expr)) || ty.is_some())

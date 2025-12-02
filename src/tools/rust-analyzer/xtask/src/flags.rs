@@ -42,12 +42,19 @@ xflags::xflags! {
             optional --mimalloc
             /// Use jemalloc allocator for server.
             optional --jemalloc
+            // Enable memory profiling support.
+            //
+            // **Warning:** This will produce a slower build of rust-analyzer, use only for profiling.
+            optional --enable-profiling
 
             /// Install the proc-macro server.
             optional --proc-macro-server
 
             /// build in release with debug info set to 2.
             optional --dev-rel
+
+            /// Make `never!()`, `always!()` etc. panic instead of just logging an error.
+            optional --force-always-assert
 
             /// Apply PGO optimizations
             optional --pgo pgo: PgoTrainingCrate
@@ -64,6 +71,10 @@ xflags::xflags! {
             optional --mimalloc
             /// Use jemalloc allocator for server
             optional --jemalloc
+            // Enable memory profiling support.
+            //
+            // **Warning:** This will produce a slower build of rust-analyzer, use only for profiling.
+            optional --enable-profiling
             optional --client-patch-version version: String
             /// Use cargo-zigbuild
             optional --zig
@@ -122,8 +133,10 @@ pub struct Install {
     pub server: bool,
     pub mimalloc: bool,
     pub jemalloc: bool,
+    pub enable_profiling: bool,
     pub proc_macro_server: bool,
     pub dev_rel: bool,
+    pub force_always_assert: bool,
     pub pgo: Option<PgoTrainingCrate>,
 }
 
@@ -139,6 +152,7 @@ pub struct Release {
 pub struct Dist {
     pub mimalloc: bool,
     pub jemalloc: bool,
+    pub enable_profiling: bool,
     pub client_patch_version: Option<String>,
     pub zig: bool,
     pub pgo: Option<PgoTrainingCrate>,
@@ -276,6 +290,7 @@ pub(crate) enum Malloc {
     System,
     Mimalloc,
     Jemalloc,
+    Dhat,
 }
 
 impl Malloc {
@@ -284,6 +299,7 @@ impl Malloc {
             Malloc::System => &[][..],
             Malloc::Mimalloc => &["--features", "mimalloc"],
             Malloc::Jemalloc => &["--features", "jemalloc"],
+            Malloc::Dhat => &["--features", "dhat"],
         }
     }
 }
@@ -297,10 +313,18 @@ impl Install {
             Malloc::Mimalloc
         } else if self.jemalloc {
             Malloc::Jemalloc
+        } else if self.enable_profiling {
+            Malloc::Dhat
         } else {
             Malloc::System
         };
-        Some(ServerOpt { malloc, dev_rel: self.dev_rel, pgo: self.pgo.clone() })
+        Some(ServerOpt {
+            malloc,
+            // Profiling requires debug information.
+            dev_rel: self.dev_rel || self.enable_profiling,
+            pgo: self.pgo.clone(),
+            force_always_assert: self.force_always_assert,
+        })
     }
     pub(crate) fn proc_macro_server(&self) -> Option<ProcMacroServerOpt> {
         if !self.proc_macro_server {
@@ -322,6 +346,8 @@ impl Dist {
             Malloc::Mimalloc
         } else if self.jemalloc {
             Malloc::Jemalloc
+        } else if self.enable_profiling {
+            Malloc::Dhat
         } else {
             Malloc::System
         }

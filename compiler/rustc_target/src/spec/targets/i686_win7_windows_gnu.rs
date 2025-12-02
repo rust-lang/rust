@@ -1,13 +1,18 @@
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, RustcAbi, Target, TargetMetadata, base};
+use crate::spec::{
+    Arch, Cc, FramePointer, LinkerFlavor, Lld, RustcAbi, Target, TargetMetadata, TargetOptions,
+    base,
+};
 
 pub(crate) fn target() -> Target {
-    let mut base = base::windows_gnu::opts();
-    base.vendor = "win7".into();
-    base.rustc_abi = Some(RustcAbi::X86Sse2);
-    base.cpu = "pentium4".into();
-    base.max_atomic_width = Some(64);
-    base.frame_pointer = FramePointer::Always; // Required for backtraces
-    base.linker = Some("i686-w64-mingw32-gcc".into());
+    let mut base = TargetOptions {
+        vendor: "win7".into(),
+        rustc_abi: Some(RustcAbi::X86Sse2),
+        cpu: "pentium4".into(),
+        max_atomic_width: Some(64),
+        frame_pointer: FramePointer::Always, // Required for backtraces
+        linker: Some("i686-w64-mingw32-gcc".into()),
+        ..base::windows_gnu::opts()
+    };
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
@@ -29,7 +34,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-\
             i64:64-i128:128-f80:32-n8:16:32-a:0:32-S32"
             .into(),
-        arch: "x86".into(),
+        arch: Arch::X86,
         options: base,
     }
 }

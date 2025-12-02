@@ -148,7 +148,7 @@ macro_rules! saturating_integer_sum_product {
         saturating_integer_sum_product!(@impls Saturating(0), Saturating(1),
                 "The short-circuiting behavior of this implementation is unspecified. If you care about \
                 short-circuiting, use [`Iterator::fold`] directly.",
-                #[stable(feature = "saturating_iter_arith", since = "CURRENT_RUSTC_VERSION")],
+                #[stable(feature = "saturating_iter_arith", since = "1.91.0")],
                 $(Saturating<$a>)*);
     );
 }

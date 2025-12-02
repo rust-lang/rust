@@ -4,11 +4,11 @@ In the near future, `std::autodiff` should become available in nightly builds fo
 
 ## Build instructions
 
-First you need to clone and configure the Rust repository:
+First you need to clone and configure the Rust repository. Based on your preferences, you might also want to `--enable-clang` or `--enable-lld`.
 ```bash
 git clone git@github.com:rust-lang/rust
 cd rust
-./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+./configure --release-channel=nightly --enable-llvm-enzyme --enable-llvm-link-shared --enable-llvm-assertions --enable-ninja --enable-option-checking --disable-docs --set llvm.download-ci-llvm=false
 ```
 
 Afterwards you can build rustc using:
@@ -47,7 +47,7 @@ Then build rustc in a slightly altered way:
 ```bash
 git clone https://github.com/rust-lang/rust
 cd rust
-./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+./configure --release-channel=nightly --enable-llvm-enzyme --enable-llvm-link-shared --enable-llvm-assertions --enable-ninja --enable-option-checking --disable-docs --set llvm.download-ci-llvm=false
 ./x dist
 ```
 We then copy the tarball to our host. The dockerid is the newest entry under `docker ps -a`.
@@ -84,5 +84,5 @@ cd build
 cmake .. -G Ninja -DLLVM_DIR=<YourLocalPath>/llvm-project/build/lib/cmake/llvm/ -DLLVM_EXTERNAL_LIT=<YourLocalPath>/llvm-project/llvm/utils/lit/lit.py -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=YES -DBUILD_SHARED_LIBS=ON
 ninja
 ```
-This will build Enzyme, and you can find it in `Enzyme/enzyme/build/lib/<LLD/Clang/LLVM>Enzyme.so`. (Endings might differ based on your OS).
+This will build Enzyme, and you can find it in `Enzyme/enzyme/build/lib/<LLD/Clang/LLVM/lib>Enzyme.so`. (Endings might differ based on your OS).
 

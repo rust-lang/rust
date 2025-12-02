@@ -310,13 +310,13 @@ impl<'tcx> CValue<'tcx> {
                 fx.bcx.ins().iconst(clif_ty, raw_val as i64)
             }
             ty::Float(FloatTy::F16) => {
-                fx.bcx.ins().f16const(Ieee16::with_bits(u16::try_from(const_val).unwrap()))
+                fx.bcx.ins().f16const(Ieee16::with_bits(u16::from(const_val)))
             }
             ty::Float(FloatTy::F32) => {
-                fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
+                fx.bcx.ins().f32const(Ieee32::with_bits(u32::from(const_val)))
             }
             ty::Float(FloatTy::F64) => {
-                fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(const_val).unwrap()))
+                fx.bcx.ins().f64const(Ieee64::with_bits(u64::from(const_val)))
             }
             ty::Float(FloatTy::F128) => {
                 let value = fx
@@ -324,7 +324,7 @@ impl<'tcx> CValue<'tcx> {
                     .func
                     .dfg
                     .constants
-                    .insert(Ieee128::with_bits(u128::try_from(const_val).unwrap()).into());
+                    .insert(Ieee128::with_bits(u128::from(const_val)).into());
                 fx.bcx.ins().f128const(value)
             }
             _ => panic!(
@@ -340,6 +340,14 @@ impl<'tcx> CValue<'tcx> {
         assert!(matches!(self.layout().ty.kind(), ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
         assert!(matches!(layout.ty.kind(), ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..)));
         assert_eq!(self.layout().backend_repr, layout.backend_repr);
+        CValue(self.0, layout)
+    }
+
+    pub(crate) fn cast_pat_ty_to_base(self, layout: TyAndLayout<'tcx>) -> Self {
+        let ty::Pat(base, _) = *self.layout().ty.kind() else {
+            panic!("not a pattern type: {:#?}", self.layout())
+        };
+        assert_eq!(layout.ty, base);
         CValue(self.0, layout)
     }
 }
@@ -383,7 +391,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.create_stack_slot(
             u32::try_from(layout.size.bytes()).unwrap(),
-            u32::try_from(layout.align.abi.bytes()).unwrap(),
+            u32::try_from(layout.align.bytes()).unwrap(),
         );
         CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
@@ -393,9 +401,7 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-        fx.bcx.declare_var(var, fx.clif_type(layout.ty).unwrap());
+        let var = fx.bcx.declare_var(fx.clif_type(layout.ty).unwrap());
         CPlace { inner: CPlaceInner::Var(local, var), layout }
     }
 
@@ -404,14 +410,9 @@ impl<'tcx> CPlace<'tcx> {
         local: Local,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        let var1 = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-        let var2 = Variable::from_u32(fx.next_ssa_var);
-        fx.next_ssa_var += 1;
-
         let (ty1, ty2) = fx.clif_pair_type(layout.ty).unwrap();
-        fx.bcx.declare_var(var1, ty1);
-        fx.bcx.declare_var(var2, ty2);
+        let var1 = fx.bcx.declare_var(ty1);
+        let var2 = fx.bcx.declare_var(ty2);
         CPlace { inner: CPlaceInner::VarPair(local, var1, var2), layout }
     }
 
@@ -641,8 +642,8 @@ impl<'tcx> CPlace<'tcx> {
                         let size = dst_layout.size.bytes();
                         // `emit_small_memory_copy` uses `u8` for alignments, just use the maximum
                         // alignment that fits in a `u8` if the actual alignment is larger.
-                        let src_align = src_layout.align.abi.bytes().try_into().unwrap_or(128);
-                        let dst_align = dst_layout.align.abi.bytes().try_into().unwrap_or(128);
+                        let src_align = src_layout.align.bytes().try_into().unwrap_or(128);
+                        let dst_align = dst_layout.align.bytes().try_into().unwrap_or(128);
                         fx.bcx.emit_small_memory_copy(
                             fx.target_config,
                             to_addr,
@@ -660,7 +661,7 @@ impl<'tcx> CPlace<'tcx> {
         }
     }
 
-    /// Used for `ProjectionElem::Subtype`, `ty` has to be monomorphized before
+    /// Used for `ProjectionElem::UnwrapUnsafeBinder`, `ty` has to be monomorphized before
     /// passed on.
     pub(crate) fn place_transmute_type(
         self,

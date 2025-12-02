@@ -1,7 +1,7 @@
 // Test that the `reserve-x18` target feature is (not) emitted when
 // the `-Zfixed-x18` flag is (not) set.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: unset set
 //@ needs-llvm-components: aarch64
 //@ compile-flags: --target aarch64-unknown-none

@@ -25,6 +25,7 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
+use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use rustc_ast::node_id::NodeMap;
 pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
@@ -36,7 +37,6 @@ use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir::attrs::{AttributeKind, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
-use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
@@ -58,11 +58,11 @@ pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 )]
 use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::solve::SizedTraitKind;
+pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind};
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -74,11 +74,10 @@ pub use self::closure::{
 };
 pub use self::consts::{
     AnonConstKind, AtomicOrdering, Const, ConstInt, ConstKind, ConstToValTreeResult, Expr,
-    ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind, Value,
+    ExprKind, ScalarInt, SimdAlign, UnevaluatedConst, ValTree, ValTreeKind, Value,
 };
 pub use self::context::{
-    CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
-    TyCtxtFeed, tls,
+    CtxtInterners, CurrentGcx, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed, tls,
 };
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, UnusedGenericParams};
@@ -98,7 +97,6 @@ pub use self::region::{
     BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
     RegionKind, RegionVid,
 };
-pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig,
     CoroutineArgsExt, EarlyBinder, FnSig, InlineConstArgs, InlineConstArgsParts, ParamConst,
@@ -131,6 +129,7 @@ pub mod fast_reject;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
+pub mod offload_meta;
 pub mod pattern;
 pub mod print;
 pub mod relate;
@@ -157,7 +156,6 @@ mod list;
 mod opaque_types;
 mod predicate;
 mod region;
-mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
@@ -211,8 +209,6 @@ pub struct ResolverAstLowering {
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
 
-    pub disambiguator: DisambiguatorState,
-
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
@@ -255,9 +251,10 @@ pub struct ImplTraitHeader<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable, Debug)]
-#[derive(TypeFoldable, TypeVisitable)]
+#[derive(TypeFoldable, TypeVisitable, Default)]
 pub enum Asyncness {
     Yes,
+    #[default]
     No,
 }
 
@@ -728,7 +725,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
-pub struct OpaqueHiddenType<'tcx> {
+pub struct ProvisionalHiddenType<'tcx> {
     /// The span of this particular definition of the opaque type. So
     /// for example:
     ///
@@ -770,9 +767,9 @@ pub enum DefiningScopeKind {
     MirBorrowck,
 }
 
-impl<'tcx> OpaqueHiddenType<'tcx> {
-    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> OpaqueHiddenType<'tcx> {
-        OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
+impl<'tcx> ProvisionalHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> ProvisionalHiddenType<'tcx> {
+        ProvisionalHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
     }
 
     pub fn build_mismatch_error(
@@ -801,7 +798,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
         defining_scope_kind: DefiningScopeKind,
-    ) -> Self {
+    ) -> DefinitionSiteHiddenType<'tcx> {
         let OpaqueTypeKey { def_id, args } = opaque_type_key;
 
         // Use args to build up a reverse map from regions to their
@@ -824,15 +821,68 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         //
         // We erase regions when doing this during HIR typeck. We manually use `fold_regions`
         // here as we do not want to anonymize bound variables.
-        let this = match defining_scope_kind {
-            DefiningScopeKind::HirTypeck => fold_regions(tcx, self, |_, _| tcx.lifetimes.re_erased),
-            DefiningScopeKind::MirBorrowck => self,
+        let ty = match defining_scope_kind {
+            DefiningScopeKind::HirTypeck => {
+                fold_regions(tcx, self.ty, |_, _| tcx.lifetimes.re_erased)
+            }
+            DefiningScopeKind::MirBorrowck => self.ty,
         };
-        let result = this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
+        let result_ty = ty.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
         if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
-            assert_eq!(result.ty, fold_regions(tcx, result.ty, |_, _| tcx.lifetimes.re_erased));
+            assert_eq!(result_ty, fold_regions(tcx, result_ty, |_, _| tcx.lifetimes.re_erased));
         }
-        result
+        DefinitionSiteHiddenType { span: self.span, ty: ty::EarlyBinder::bind(result_ty) }
+    }
+}
+
+#[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct DefinitionSiteHiddenType<'tcx> {
+    /// The span of the definition of the opaque type. So for example:
+    ///
+    /// ```ignore (incomplete snippet)
+    /// type Foo = impl Baz;
+    /// fn bar() -> Foo {
+    /// //          ^^^ This is the span we are looking for!
+    /// }
+    /// ```
+    ///
+    /// In cases where the fn returns `(impl Trait, impl Trait)` or
+    /// other such combinations, the result is currently
+    /// over-approximated, but better than nothing.
+    pub span: Span,
+
+    /// The final type of the opaque.
+    pub ty: ty::EarlyBinder<'tcx, Ty<'tcx>>,
+}
+
+impl<'tcx> DefinitionSiteHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> DefinitionSiteHiddenType<'tcx> {
+        DefinitionSiteHiddenType {
+            span: DUMMY_SP,
+            ty: ty::EarlyBinder::bind(Ty::new_error(tcx, guar)),
+        }
+    }
+
+    pub fn build_mismatch_error(
+        &self,
+        other: &Self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
+        let self_ty = self.ty.instantiate_identity();
+        let other_ty = other.ty.instantiate_identity();
+        (self_ty, other_ty).error_reported()?;
+        // Found different concrete types for the opaque type.
+        let sub_diag = if self.span == other.span {
+            TypeMismatchReason::ConflictType { span: self.span }
+        } else {
+            TypeMismatchReason::PreviousUse { span: self.span }
+        };
+        Ok(tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
+            self_ty,
+            other_ty,
+            other_span: other.span,
+            sub: sub_diag,
+        }))
     }
 }
 
@@ -1462,9 +1512,8 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        if let Some(reprs) =
-            find_attr!(self.get_all_attrs(did), AttributeKind::Repr { reprs, .. } => reprs)
-        {
+        let attributes = self.get_all_attrs(did);
+        if let Some(reprs) = find_attr!(attributes, AttributeKind::Repr { reprs, .. } => reprs) {
             for (r, _) in reprs {
                 flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
@@ -1521,6 +1570,11 @@ impl<'tcx> TyCtxt<'tcx> {
         // This is here instead of layout because the choice must make it into metadata.
         if is_box {
             flags.insert(ReprFlags::IS_LINEAR);
+        }
+
+        // See `TyAndLayout::pass_indirectly_in_non_rustic_abis` for details.
+        if find_attr!(attributes, AttributeKind::RustcPassIndirectlyInNonRusticAbis(..)) {
+            flags.insert(ReprFlags::PASS_INDIRECTLY_IN_NON_RUSTIC_ABIS);
         }
 
         ReprOptions { int: size, align: max_align, pack: min_pack, flags, field_shuffle_seed }
@@ -1613,8 +1667,8 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id1: DefId,
         def_id2: DefId,
     ) -> Option<ImplOverlapKind> {
-        let impl1 = self.impl_trait_header(def_id1).unwrap();
-        let impl2 = self.impl_trait_header(def_id2).unwrap();
+        let impl1 = self.impl_trait_header(def_id1);
+        let impl2 = self.impl_trait_header(def_id2);
 
         let trait_ref1 = impl1.trait_ref.skip_binder();
         let trait_ref2 = impl2.trait_ref.skip_binder();
@@ -1912,12 +1966,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
-    /// If it implements no trait, returns `None`.
-    pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
-        self.impl_trait_ref(def_id).map(|tr| tr.skip_binder().def_id)
-    }
-
     /// If the given `DefId` is an associated item, returns the `DefId` and `DefKind` of the parent trait or impl.
     pub fn assoc_parent(self, def_id: DefId) -> Option<(DefId, DefKind)> {
         if !self.def_kind(def_id).is_assoc() {
@@ -1940,6 +1988,14 @@ impl<'tcx> TyCtxt<'tcx> {
             Some((id, DefKind::Trait)) => Some(id),
             _ => None,
         }
+    }
+
+    pub fn impl_is_of_trait(self, def_id: impl IntoQueryParam<DefId>) -> bool {
+        let def_id = def_id.into_query_param();
+        let DefKind::Impl { of_trait } = self.def_kind(def_id) else {
+            panic!("expected Impl for {def_id:?}");
+        };
+        of_trait
     }
 
     /// If the given `DefId` is an associated item of an impl,
@@ -1967,6 +2023,40 @@ impl<'tcx> TyCtxt<'tcx> {
             Some((id, DefKind::Impl { of_trait: true })) => Some(id),
             _ => None,
         }
+    }
+
+    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
+        self.impl_trait_header(def_id).polarity
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    pub fn impl_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
+        self.impl_trait_header(def_id).trait_ref
+    }
+
+    /// Given an `impl_id`, return the trait it implements.
+    /// Returns `None` if it is an inherent impl.
+    pub fn impl_opt_trait_ref(
+        self,
+        def_id: impl IntoQueryParam<DefId>,
+    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
+        let def_id = def_id.into_query_param();
+        self.impl_is_of_trait(def_id).then(|| self.impl_trait_ref(def_id))
+    }
+
+    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
+    pub fn impl_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> DefId {
+        self.impl_trait_ref(def_id).skip_binder().def_id
+    }
+
+    /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.
+    /// Returns `None` if it is an inherent impl.
+    pub fn impl_opt_trait_id(self, def_id: impl IntoQueryParam<DefId>) -> Option<DefId> {
+        let def_id = def_id.into_query_param();
+        self.impl_is_of_trait(def_id).then(|| self.impl_trait_id(def_id))
     }
 
     pub fn is_exportable(self, def_id: DefId) -> bool {
@@ -2061,14 +2151,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id: DefId = def_id.into();
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
-                let header = self.impl_trait_header(def_id).unwrap();
+                let header = self.impl_trait_header(def_id);
                 header.constness == hir::Constness::Const
                     && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
+            DefKind::Impl { of_trait: false } => self.constness(def_id) == hir::Constness::Const,
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
-            DefKind::Trait => self.is_const_trait(def_id),
+            DefKind::TraitAlias | DefKind::Trait => self.is_const_trait(def_id),
             DefKind::AssocTy => {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
@@ -2103,7 +2194,6 @@ impl<'tcx> TyCtxt<'tcx> {
                 false
             }
             DefKind::Ctor(_, CtorKind::Const)
-            | DefKind::Impl { of_trait: false }
             | DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -2111,7 +2201,6 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Variant
             | DefKind::TyAlias
             | DefKind::ForeignTy
-            | DefKind::TraitAlias
             | DefKind::TyParam
             | DefKind::Const
             | DefKind::ConstParam
@@ -2215,4 +2304,226 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
+}
+
+/// Generate TypeTree information for autodiff.
+/// This function creates TypeTree metadata that describes the memory layout
+/// of function parameters and return types for Enzyme autodiff.
+pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
+    // Check if TypeTrees are disabled via NoTT flag
+    if tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::NoTT) {
+        return FncTree { args: vec![], ret: TypeTree::new() };
+    }
+
+    // Check if this is actually a function type
+    if !fn_ty.is_fn() {
+        return FncTree { args: vec![], ret: TypeTree::new() };
+    }
+
+    // Get the function signature
+    let fn_sig = fn_ty.fn_sig(tcx);
+    let sig = tcx.instantiate_bound_regions_with_erased(fn_sig);
+
+    // Create TypeTrees for each input parameter
+    let mut args = vec![];
+    for ty in sig.inputs().iter() {
+        let type_tree = typetree_from_ty(tcx, *ty);
+        args.push(type_tree);
+    }
+
+    // Create TypeTree for return type
+    let ret = typetree_from_ty(tcx, sig.output());
+
+    FncTree { args, ret }
+}
+
+/// Generate TypeTree for a specific type.
+/// This function analyzes a Rust type and creates appropriate TypeTree metadata.
+pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
+    let mut visited = Vec::new();
+    typetree_from_ty_inner(tcx, ty, 0, &mut visited)
+}
+
+/// Maximum recursion depth for TypeTree generation to prevent stack overflow
+/// from pathological deeply nested types. Combined with cycle detection.
+const MAX_TYPETREE_DEPTH: usize = 6;
+
+/// Internal recursive function for TypeTree generation with cycle detection and depth limiting.
+fn typetree_from_ty_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    depth: usize,
+    visited: &mut Vec<Ty<'tcx>>,
+) -> TypeTree {
+    if depth >= MAX_TYPETREE_DEPTH {
+        trace!("typetree depth limit {} reached for type: {}", MAX_TYPETREE_DEPTH, ty);
+        return TypeTree::new();
+    }
+
+    if visited.contains(&ty) {
+        return TypeTree::new();
+    }
+
+    visited.push(ty);
+    let result = typetree_from_ty_impl(tcx, ty, depth, visited);
+    visited.pop();
+    result
+}
+
+/// Implementation of TypeTree generation logic.
+fn typetree_from_ty_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    depth: usize,
+    visited: &mut Vec<Ty<'tcx>>,
+) -> TypeTree {
+    typetree_from_ty_impl_inner(tcx, ty, depth, visited, false)
+}
+
+/// Internal implementation with context about whether this is for a reference target.
+fn typetree_from_ty_impl_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    depth: usize,
+    visited: &mut Vec<Ty<'tcx>>,
+    is_reference_target: bool,
+) -> TypeTree {
+    if ty.is_scalar() {
+        let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
+            (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
+        } else if ty.is_floating_point() {
+            match ty {
+                x if x == tcx.types.f16 => (Kind::Half, 2),
+                x if x == tcx.types.f32 => (Kind::Float, 4),
+                x if x == tcx.types.f64 => (Kind::Double, 8),
+                x if x == tcx.types.f128 => (Kind::F128, 16),
+                _ => (Kind::Integer, 0),
+            }
+        } else {
+            (Kind::Integer, 0)
+        };
+
+        // Use offset 0 for scalars that are direct targets of references (like &f64)
+        // Use offset -1 for scalars used directly (like function return types)
+        let offset = if is_reference_target && !ty.is_array() { 0 } else { -1 };
+        return TypeTree(vec![Type { offset, size, kind, child: TypeTree::new() }]);
+    }
+
+    if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
+        let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
+            inner
+        } else {
+            return TypeTree::new();
+        };
+
+        let child = typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true);
+        return TypeTree(vec![Type {
+            offset: -1,
+            size: tcx.data_layout.pointer_size().bytes_usize(),
+            kind: Kind::Pointer,
+            child,
+        }]);
+    }
+
+    if ty.is_array() {
+        if let ty::Array(element_ty, len_const) = ty.kind() {
+            let len = len_const.try_to_target_usize(tcx).unwrap_or(0);
+            if len == 0 {
+                return TypeTree::new();
+            }
+            let element_tree =
+                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
+            let mut types = Vec::new();
+            for elem_type in &element_tree.0 {
+                types.push(Type {
+                    offset: -1,
+                    size: elem_type.size,
+                    kind: elem_type.kind,
+                    child: elem_type.child.clone(),
+                });
+            }
+
+            return TypeTree(types);
+        }
+    }
+
+    if ty.is_slice() {
+        if let ty::Slice(element_ty) = ty.kind() {
+            let element_tree =
+                typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false);
+            return element_tree;
+        }
+    }
+
+    if let ty::Tuple(tuple_types) = ty.kind() {
+        if tuple_types.is_empty() {
+            return TypeTree::new();
+        }
+
+        let mut types = Vec::new();
+        let mut current_offset = 0;
+
+        for tuple_ty in tuple_types.iter() {
+            let element_tree =
+                typetree_from_ty_impl_inner(tcx, tuple_ty, depth + 1, visited, false);
+
+            let element_layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
+                .ok()
+                .map(|layout| layout.size.bytes_usize())
+                .unwrap_or(0);
+
+            for elem_type in &element_tree.0 {
+                types.push(Type {
+                    offset: if elem_type.offset == -1 {
+                        current_offset as isize
+                    } else {
+                        current_offset as isize + elem_type.offset
+                    },
+                    size: elem_type.size,
+                    kind: elem_type.kind,
+                    child: elem_type.child.clone(),
+                });
+            }
+
+            current_offset += element_layout;
+        }
+
+        return TypeTree(types);
+    }
+
+    if let ty::Adt(adt_def, args) = ty.kind() {
+        if adt_def.is_struct() {
+            let struct_layout =
+                tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
+            if let Ok(layout) = struct_layout {
+                let mut types = Vec::new();
+
+                for (field_idx, field_def) in adt_def.all_fields().enumerate() {
+                    let field_ty = field_def.ty(tcx, args);
+                    let field_tree =
+                        typetree_from_ty_impl_inner(tcx, field_ty, depth + 1, visited, false);
+
+                    let field_offset = layout.fields.offset(field_idx).bytes_usize();
+
+                    for elem_type in &field_tree.0 {
+                        types.push(Type {
+                            offset: if elem_type.offset == -1 {
+                                field_offset as isize
+                            } else {
+                                field_offset as isize + elem_type.offset
+                            },
+                            size: elem_type.size,
+                            kind: elem_type.kind,
+                            child: elem_type.child.clone(),
+                        });
+                    }
+                }
+
+                return TypeTree(types);
+            }
+        }
+    }
+
+    TypeTree::new()
 }

@@ -1,11 +1,11 @@
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:16:8
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:17:8
    |
 LL | extern "gpu-kernel" fn f1(_: ()) {}
    |        ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:16:8
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:17:8
    |
 LL | extern "gpu-kernel" fn f1(_: ()) {}
    |        ^^^^^^^^^^^^
@@ -15,13 +15,13 @@ LL | extern "gpu-kernel" fn f1(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:21:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:22:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ());
    |            ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:21:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:22:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ());
    |            ^^^^^^^^^^^^
@@ -31,13 +31,13 @@ LL |     extern "gpu-kernel" fn m1(_: ());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:24:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:25:12
    |
 LL |     extern "gpu-kernel" fn dm1(_: ()) {}
    |            ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:24:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:25:12
    |
 LL |     extern "gpu-kernel" fn dm1(_: ()) {}
    |            ^^^^^^^^^^^^
@@ -47,13 +47,13 @@ LL |     extern "gpu-kernel" fn dm1(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:32:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:33:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ()) {}
    |            ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:32:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:33:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ()) {}
    |            ^^^^^^^^^^^^
@@ -63,13 +63,13 @@ LL |     extern "gpu-kernel" fn m1(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:38:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:39:12
    |
 LL |     extern "gpu-kernel" fn im1(_: ()) {}
    |            ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:38:12
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:39:12
    |
 LL |     extern "gpu-kernel" fn im1(_: ()) {}
    |            ^^^^^^^^^^^^
@@ -79,13 +79,13 @@ LL |     extern "gpu-kernel" fn im1(_: ()) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:43:18
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:44:18
    |
 LL | type A1 = extern "gpu-kernel" fn(_: ());
    |                  ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:43:18
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:44:18
    |
 LL | type A1 = extern "gpu-kernel" fn(_: ());
    |                  ^^^^^^^^^^^^
@@ -95,13 +95,13 @@ LL | type A1 = extern "gpu-kernel" fn(_: ());
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0570]: "gpu-kernel" is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:47:8
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:48:8
    |
 LL | extern "gpu-kernel" {}
    |        ^^^^^^^^^^^^
 
 error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:47:8
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:48:8
    |
 LL | extern "gpu-kernel" {}
    |        ^^^^^^^^^^^^

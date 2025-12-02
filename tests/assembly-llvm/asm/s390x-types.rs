@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: s390x s390x_vector
 //@ assembly-output: emit-asm
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu

@@ -5,6 +5,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use self::helpers::bool_to_simd_element;
 use crate::*;
@@ -12,6 +13,7 @@ use crate::*;
 mod aesni;
 mod avx;
 mod avx2;
+mod avx512;
 mod bmi;
 mod gfni;
 mod sha;
@@ -41,7 +43,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarry-u32-addcarry-u64.html
             // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/subborrow-u32-subborrow-u64.html
             "addcarry.32" | "addcarry.64" | "subborrow.32" | "subborrow.64" => {
-                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != "x86_64" {
+                if unprefixed_name.ends_with("64") && this.tcx.sess.target.arch != Arch::X86_64 {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
@@ -56,28 +58,6 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let (sum, cb_out) = carrying_add(this, cb_in, a, b, op)?;
                 this.write_scalar(cb_out, &this.project_field(dest, FieldIdx::ZERO)?)?;
                 this.write_immediate(*sum, &this.project_field(dest, FieldIdx::ONE)?)?;
-            }
-
-            // Used to implement the `_addcarryx_u{32, 64}` functions. They are semantically identical with the `_addcarry_u{32, 64}` functions,
-            // except for a slightly different type signature and the requirement for the "adx" target feature.
-            // https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/addcarryx-u32-addcarryx-u64.html
-            "addcarryx.u32" | "addcarryx.u64" => {
-                this.expect_target_feature_for_intrinsic(link_name, "adx")?;
-
-                let is_u64 = unprefixed_name.ends_with("64");
-                if is_u64 && this.tcx.sess.target.arch != "x86_64" {
-                    return interp_ok(EmulateItemResult::NotSupported);
-                }
-                let [c_in, a, b, out] =
-                    this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let out = this.deref_pointer_as(
-                    out,
-                    if is_u64 { this.machine.layouts.u64 } else { this.machine.layouts.u32 },
-                )?;
-
-                let (sum, c_out) = carrying_add(this, c_in, a, b, mir::BinOp::AddWithOverflow)?;
-                this.write_scalar(c_out, dest)?;
-                this.write_immediate(*sum, &out)?;
             }
 
             // Used to implement the `_mm_pause` function.
@@ -170,6 +150,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             name if name.starts_with("avx2.") => {
                 return avx2::EvalContextExt::emulate_x86_avx2_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("avx512.") => {
+                return avx512::EvalContextExt::emulate_x86_avx512_intrinsic(
                     this, link_name, abi, args, dest,
                 );
             }
@@ -533,61 +518,6 @@ fn shift_simd_by_scalar<'tcx>(
     interp_ok(())
 }
 
-/// Shifts each element of `left` by the corresponding element of `right`.
-///
-/// For logic shifts, when right is larger than BITS - 1, zero is produced.
-/// For arithmetic right-shifts, when right is larger than BITS - 1, the sign
-/// bit is copied to all bits.
-fn shift_simd_by_simd<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    left: &OpTy<'tcx>,
-    right: &OpTy<'tcx>,
-    which: ShiftOp,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (left, left_len) = ecx.project_to_simd(left)?;
-    let (right, right_len) = ecx.project_to_simd(right)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(dest_len, left_len);
-    assert_eq!(dest_len, right_len);
-
-    for i in 0..dest_len {
-        let left = ecx.read_scalar(&ecx.project_index(&left, i)?)?;
-        let right = ecx.read_scalar(&ecx.project_index(&right, i)?)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        // It is ok to saturate the value to u32::MAX because any value
-        // above BITS - 1 will produce the same result.
-        let shift = u32::try_from(right.to_uint(dest.layout.size)?).unwrap_or(u32::MAX);
-
-        let res = match which {
-            ShiftOp::Left => {
-                let left = left.to_uint(dest.layout.size)?;
-                let res = left.checked_shl(shift).unwrap_or(0);
-                // `truncate` is needed as left-shift can make the absolute value larger.
-                Scalar::from_uint(dest.layout.size.truncate(res), dest.layout.size)
-            }
-            ShiftOp::RightLogic => {
-                let left = left.to_uint(dest.layout.size)?;
-                let res = left.checked_shr(shift).unwrap_or(0);
-                // No `truncate` needed as right-shift can only make the absolute value smaller.
-                Scalar::from_uint(res, dest.layout.size)
-            }
-            ShiftOp::RightArith => {
-                let left = left.to_int(dest.layout.size)?;
-                // On overflow, copy the sign bit to the remaining bits
-                let res = left.checked_shr(shift).unwrap_or(left >> 127);
-                // No `truncate` needed as right-shift can only make the absolute value smaller.
-                Scalar::from_int(res, dest.layout.size)
-            }
-        };
-        ecx.write_scalar(res, &dest)?;
-    }
-
-    interp_ok(())
-}
-
 /// Takes a 128-bit vector, transmutes it to `[u64; 2]` and extracts
 /// the first value.
 fn extract_first_u64<'tcx>(
@@ -713,36 +643,6 @@ fn convert_float_to_int<'tcx>(
     for i in op_len..dest_len {
         let dest = ecx.project_index(&dest, i)?;
         ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-    }
-
-    interp_ok(())
-}
-
-/// Calculates absolute value of integers in `op` and stores the result in `dest`.
-///
-/// In case of overflow (when the operand is the minimum value), the operation
-/// will wrap around.
-fn int_abs<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    op: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = ecx.project_to_simd(op)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(op_len, dest_len);
-
-    let zero = ImmTy::from_int(0, op.layout.field(ecx, 0));
-
-    for i in 0..dest_len {
-        let op = ecx.read_immediate(&ecx.project_index(&op, i)?)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        let lt_zero = ecx.binary_op(mir::BinOp::Lt, &op, &zero)?;
-        let res =
-            if lt_zero.to_scalar().to_bool()? { ecx.unary_op(mir::UnOp::Neg, &op)? } else { op };
-
-        ecx.write_immediate(*res, &dest)?;
     }
 
     interp_ok(())
@@ -957,73 +857,6 @@ fn test_high_bits_masked<'tcx>(
     interp_ok((direct, negated))
 }
 
-/// Conditionally loads from `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_load<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx>,
-    mask: &OpTy<'tcx>,
-    dest: &MPlaceTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = ecx.project_to_simd(mask)?;
-    let (dest, dest_len) = ecx.project_to_simd(dest)?;
-
-    assert_eq!(dest_len, mask_len);
-
-    let mask_item_size = mask.layout.field(ecx, 0).size;
-    let high_bit_offset = mask_item_size.bits().strict_sub(1);
-
-    let ptr = ecx.read_pointer(ptr)?;
-    for i in 0..dest_len {
-        let mask = ecx.project_index(&mask, i)?;
-        let dest = ecx.project_index(&dest, i)?;
-
-        if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            let ptr = ptr.wrapping_offset(dest.layout.size * i, &ecx.tcx);
-            // Unaligned copy, which is what we want.
-            ecx.mem_copy(ptr, dest.ptr(), dest.layout.size, /*nonoverlapping*/ true)?;
-        } else {
-            ecx.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-        }
-    }
-
-    interp_ok(())
-}
-
-/// Conditionally stores into `ptr` according the high bit of each
-/// element of `mask`. `ptr` does not need to be aligned.
-fn mask_store<'tcx>(
-    ecx: &mut crate::MiriInterpCx<'tcx>,
-    ptr: &OpTy<'tcx>,
-    mask: &OpTy<'tcx>,
-    value: &OpTy<'tcx>,
-) -> InterpResult<'tcx, ()> {
-    let (mask, mask_len) = ecx.project_to_simd(mask)?;
-    let (value, value_len) = ecx.project_to_simd(value)?;
-
-    assert_eq!(value_len, mask_len);
-
-    let mask_item_size = mask.layout.field(ecx, 0).size;
-    let high_bit_offset = mask_item_size.bits().strict_sub(1);
-
-    let ptr = ecx.read_pointer(ptr)?;
-    for i in 0..value_len {
-        let mask = ecx.project_index(&mask, i)?;
-        let value = ecx.project_index(&value, i)?;
-
-        if ecx.read_scalar(&mask)?.to_uint(mask_item_size)? >> high_bit_offset != 0 {
-            // *Non-inbounds* pointer arithmetic to compute the destination.
-            // (That's why we can't use a place projection.)
-            let ptr = ptr.wrapping_offset(value.layout.size * i, &ecx.tcx);
-            // Deref the pointer *unaligned*, and do the copy.
-            let dest = ecx.ptr_to_mplace_unaligned(ptr, value.layout);
-            ecx.copy_op(&value, &dest)?;
-        }
-    }
-
-    interp_ok(())
-}
-
 /// Compute the sum of absolute differences of quadruplets of unsigned
 /// 8-bit integers in `left` and `right`, and store the 16-bit results
 /// in `right`. Quadruplets are selected from `left` and `right` with
@@ -1078,6 +911,138 @@ fn mpsadbw<'tcx>(
             }
             ecx.write_scalar(Scalar::from_u16(res), &ecx.project_index(&dest, j)?)?;
         }
+    }
+
+    interp_ok(())
+}
+
+/// Compute the absolute differences of packed unsigned 8-bit integers
+/// in `left` and `right`, then horizontally sum each consecutive 8
+/// differences to produce unsigned 16-bit integers, and pack
+/// these unsigned 16-bit integers in the low 16 bits of 64-bit elements
+/// in `dest`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_sad_epu8>
+fn psadbw<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn psadbw(a: u8x16, b: u8x16) -> u64x2;
+    // fn psadbw(a: u8x32, b: u8x32) -> u64x4;
+    // fn vpsadbw(a: u8x64, b: u8x64) -> u64x8;
+    assert_eq!(left_len, right_len);
+    assert_eq!(left_len, left.layout.layout.size().bytes());
+    assert_eq!(dest_len, left_len.strict_div(8));
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+
+        let mut acc: u16 = 0;
+        for j in 0..8 {
+            let src_index = i.strict_mul(8).strict_add(j);
+
+            let left = ecx.project_index(&left, src_index)?;
+            let left = ecx.read_scalar(&left)?.to_u8()?;
+
+            let right = ecx.project_index(&right, src_index)?;
+            let right = ecx.read_scalar(&right)?.to_u8()?;
+
+            acc = acc.strict_add(left.abs_diff(right).into());
+        }
+
+        ecx.write_scalar(Scalar::from_u64(acc.into()), &dest)?;
+    }
+
+    interp_ok(())
+}
+
+/// Multiplies packed 8-bit unsigned integers from `left` and packed
+/// signed 8-bit integers from `right` into 16-bit signed integers. Then,
+/// the saturating sum of the products with indices `2*i` and `2*i+1`
+/// produces the output at index `i`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_maddubs_epi16>
+fn pmaddbw<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn pmaddubsw128(a: u8x16, b: i8x16) -> i16x8;
+    // fn pmaddubsw(   a: u8x32, b: i8x32) -> i16x16;
+    // fn vpmaddubsw(  a: u8x64, b: i8x64) -> i16x32;
+    assert_eq!(left_len, right_len);
+    assert_eq!(dest_len.strict_mul(2), left_len);
+
+    for i in 0..dest_len {
+        let j1 = i.strict_mul(2);
+        let left1 = ecx.read_scalar(&ecx.project_index(&left, j1)?)?.to_u8()?;
+        let right1 = ecx.read_scalar(&ecx.project_index(&right, j1)?)?.to_i8()?;
+
+        let j2 = j1.strict_add(1);
+        let left2 = ecx.read_scalar(&ecx.project_index(&left, j2)?)?.to_u8()?;
+        let right2 = ecx.read_scalar(&ecx.project_index(&right, j2)?)?.to_i8()?;
+
+        let dest = ecx.project_index(&dest, i)?;
+
+        // Multiplication of a u8 and an i8 into an i16 cannot overflow.
+        let mul1 = i16::from(left1).strict_mul(right1.into());
+        let mul2 = i16::from(left2).strict_mul(right2.into());
+        let res = mul1.saturating_add(mul2);
+
+        ecx.write_scalar(Scalar::from_i16(res), &dest)?;
+    }
+
+    interp_ok(())
+}
+
+/// Shuffle 32-bit integers in `values` across lanes using the corresponding
+/// index in `indices`, and store the results in dst.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_ps>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutexvar_epi32>
+fn permute<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    values: &OpTy<'tcx>,
+    indices: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (values, values_len) = ecx.project_to_simd(values)?;
+    let (indices, indices_len) = ecx.project_to_simd(indices)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    // fn permd(a: u32x8, b: u32x8) -> u32x8;
+    // fn permps(a: __m256, b: i32x8) -> __m256;
+    // fn vpermd(a: i32x16, idx: i32x16) -> i32x16;
+    assert_eq!(dest_len, values_len);
+    assert_eq!(dest_len, indices_len);
+
+    // Only use the lower 3 bits to index into a vector with 8 lanes,
+    // or the lower 4 bits when indexing into a 16-lane vector.
+    assert!(dest_len.is_power_of_two());
+    let mask = u32::try_from(dest_len).unwrap().strict_sub(1);
+
+    for i in 0..dest_len {
+        let dest = ecx.project_index(&dest, i)?;
+        let index = ecx.read_scalar(&ecx.project_index(&indices, i)?)?.to_u32()?;
+        let element = ecx.project_index(&values, (index & mask).into())?;
+
+        ecx.copy_op(&element, &dest)?;
     }
 
     interp_ok(())

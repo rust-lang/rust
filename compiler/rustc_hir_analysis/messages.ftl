@@ -72,19 +72,16 @@ hir_analysis_cannot_capture_late_bound_ty =
 hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are forbidden when `for<...>` is present
     .label = `for<...>` is here
 
-hir_analysis_cmse_call_generic =
-    function pointers with the `"cmse-nonsecure-call"` ABI cannot contain generics in their type
+hir_analysis_cmse_generic =
+    generics are not allowed in `extern {$abi}` signatures
 
-hir_analysis_cmse_entry_generic =
-    functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
+hir_analysis_cmse_impl_trait =
+    `impl Trait` is not allowed in `extern {$abi}` signatures
 
 hir_analysis_cmse_inputs_stack_spill =
     arguments for `{$abi}` function too large to pass via registers
-    .label = {$plural ->
-        [false] this argument doesn't
-        *[true] these arguments don't
-    } fit in the available registers
-    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .label = does not fit in the available registers
+    .note = functions with the `{$abi}` ABI must pass all their arguments via the 4 32-bit argument registers
 
 hir_analysis_cmse_output_stack_spill =
     return value of `{$abi}` function too large to pass via registers
@@ -105,6 +102,8 @@ hir_analysis_coerce_pointee_not_concrete_ty = `derive(CoercePointee)` is only ap
 hir_analysis_coerce_pointee_not_struct = `derive(CoercePointee)` is only applicable to `struct`, instead of `{$kind}`
 
 hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
+
+hir_analysis_coerce_same_pat_kind = only pattern types with the same pattern can be coerced between each other
 
 hir_analysis_coerce_unsized_field_validity = for `{$ty}` to have a valid implementation of `{$trait_name}`, it must be possible to coerce the field of type `{$field_ty}`
     .label = `{$field_ty}` must be a pointer, reference, or smart pointer that is allowed to be unsized
@@ -552,11 +551,6 @@ hir_analysis_ty_param_some = type parameter `{$param}` must be used as the type 
     .only_note = only traits defined in the current crate can be implemented for a type parameter
 
 hir_analysis_type_of = {$ty}
-
-hir_analysis_typeof_reserved_keyword_used =
-    `typeof` is a reserved keyword but unimplemented
-    .suggestion = consider replacing `typeof(...)` with an actual type
-    .label = reserved keyword
 
 hir_analysis_unconstrained_generic_parameter = the {$param_def_kind} `{$param_name}` is not constrained by the impl trait, self type, or predicates
     .label = unconstrained {$param_def_kind}

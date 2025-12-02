@@ -13,7 +13,7 @@
         loc: DeclarationLocation {
             hir_file_id: FileId(
                 EditionedFileId(
-                    Id(2001),
+                    Id(3001),
                 ),
             ),
             ptr: SyntaxNodePtr {
@@ -47,7 +47,7 @@
         loc: DeclarationLocation {
             hir_file_id: FileId(
                 EditionedFileId(
-                    Id(2000),
+                    Id(3000),
                 ),
             ),
             ptr: SyntaxNodePtr {

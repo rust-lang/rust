@@ -4,7 +4,7 @@ error: `#[target_feature]` attribute cannot be used on closures
 LL |             #[target_feature(enable = "")]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can be applied to methods and functions
+   = help: `#[target_feature]` can be applied to functions and methods
 
 error[E0658]: `#[track_caller]` on closures is currently unstable
   --> $DIR/issue-68060.rs:6:13

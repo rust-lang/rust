@@ -5,9 +5,10 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{snippet, str_literal_to_char_literal};
+use clippy_utils::sym;
 use clippy_utils::visitors::{Descend, for_each_expr};
-use clippy_utils::{path_to_local_id, sym};
 use itertools::Itertools;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
@@ -146,12 +147,12 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
         if for_each_expr(cx, body.value, |sub_expr| -> ControlFlow<(), Descend> {
             match sub_expr.kind {
                 ExprKind::Binary(op, left, right) if op.node == BinOpKind::Eq => {
-                    if path_to_local_id(left, binding)
+                    if left.res_local_id() == Some(binding)
                         && let Some(span) = get_char_span(cx, right)
                     {
                         set_char_spans.push(span);
                         ControlFlow::Continue(Descend::No)
-                    } else if path_to_local_id(right, binding)
+                    } else if right.res_local_id() == Some(binding)
                         && let Some(span) = get_char_span(cx, left)
                     {
                         set_char_spans.push(span);
@@ -164,7 +165,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                 ExprKind::Match(match_value, [arm, _], _) => {
                     if matching_root_macro_call(cx, sub_expr.span, sym::matches_macro).is_none()
                         || arm.guard.is_some()
-                        || !path_to_local_id(match_value, binding)
+                        || match_value.res_local_id() != Some(binding)
                     {
                         return ControlFlow::Break(());
                     }

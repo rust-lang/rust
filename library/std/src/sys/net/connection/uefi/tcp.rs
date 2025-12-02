@@ -1,5 +1,5 @@
 use super::tcp4;
-use crate::io;
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::SocketAddr;
 use crate::ptr::NonNull;
 use crate::sys::{helpers, unsupported};
@@ -28,9 +28,29 @@ impl Tcp {
         }
     }
 
+    pub(crate) fn write_vectored(
+        &self,
+        buf: &[IoSlice<'_>],
+        timeout: Option<Duration>,
+    ) -> io::Result<usize> {
+        match self {
+            Self::V4(client) => client.write_vectored(buf, timeout),
+        }
+    }
+
     pub(crate) fn read(&self, buf: &mut [u8], timeout: Option<Duration>) -> io::Result<usize> {
         match self {
             Self::V4(client) => client.read(buf, timeout),
+        }
+    }
+
+    pub(crate) fn read_vectored(
+        &self,
+        buf: &mut [IoSliceMut<'_>],
+        timeout: Option<Duration>,
+    ) -> io::Result<usize> {
+        match self {
+            Self::V4(client) => client.read_vectored(buf, timeout),
         }
     }
 

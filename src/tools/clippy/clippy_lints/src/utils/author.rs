@@ -1,4 +1,5 @@
-use clippy_utils::{MaybePath, get_attr, higher, path_def_id, sym};
+use clippy_utils::res::MaybeQPath;
+use clippy_utils::{get_builtin_attr, higher, sym};
 use itertools::Itertools;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -205,7 +206,6 @@ struct PrintVisitor<'a, 'tcx> {
     first: Cell<bool>,
 }
 
-#[allow(clippy::unused_self)]
 impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
@@ -269,16 +269,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         chain!(self, "{symbol}.as_str() == {:?}", symbol.value.as_str());
     }
 
-    fn qpath<'p>(&self, qpath: &Binding<&QPath<'_>>, has_hir_id: &Binding<&impl MaybePath<'p>>) {
-        if let QPath::LangItem(lang_item, ..) = *qpath.value {
-            chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else if let Some(def_id) = self.cx.qpath_res(qpath.value, has_hir_id.value.hir_id()).opt_def_id()
+    fn qpath(&self, qpath: &Binding<&QPath<'_>>, hir_id_binding: &str, hir_id: HirId) {
+        if let Some(def_id) = self.cx.qpath_res(qpath.value, hir_id).opt_def_id()
             && !def_id.is_local()
         {
             bind!(self, def_id);
             chain!(
                 self,
-                "let Some({def_id}) = cx.qpath_res({qpath}, {has_hir_id}.hir_id).opt_def_id()"
+                "let Some({def_id}) = cx.qpath_res({qpath}, {hir_id_binding}.hir_id).opt_def_id()"
             );
             if let Some(name) = self.cx.tcx.get_diagnostic_name(def_id.value) {
                 chain!(self, "cx.tcx.is_diagnostic_item(sym::{name}, {def_id})");
@@ -292,14 +290,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         }
     }
 
-    fn maybe_path<'p>(&self, path: &Binding<&impl MaybePath<'p>>) {
-        if let Some(id) = path_def_id(self.cx, path.value)
+    fn maybe_path<'p>(&self, path: &Binding<impl MaybeQPath<'p>>) {
+        if let Some(id) = path.value.res(self.cx).opt_def_id()
             && !id.is_local()
         {
             if let Some(lang) = self.cx.tcx.lang_items().from_def_id(id) {
-                chain!(self, "is_path_lang_item(cx, {path}, LangItem::{}", lang.name());
+                chain!(self, "{path}.res(cx).is_lang_item(cx, LangItem::{}", lang.name());
             } else if let Some(name) = self.cx.tcx.get_diagnostic_name(id) {
-                chain!(self, "is_path_diagnostic_item(cx, {path}, sym::{name})");
+                chain!(self, "{path}.res(cx).is_diag_item(cx, sym::{name})");
             } else {
                 chain!(
                     self,
@@ -322,6 +320,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.body(field!(anon_const.body));
             },
             ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
+            ConstArgKind::Error(..) => chain!(self, "let ConstArgKind::Error(..) = {const_arg}.kind"),
         }
     }
 
@@ -410,7 +409,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         self.expr(field!(arm.body));
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
         if let Some(higher::While { condition, body, .. }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
@@ -672,7 +671,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
                 });
                 kind!("Struct({qpath}, {fields}, {base})");
-                self.qpath(qpath, expr);
+                self.qpath(qpath, &expr.name, expr.value.hir_id);
                 self.slice(fields, |field| {
                     self.ident(field!(field.ident));
                     self.expr(field!(field.expr));
@@ -745,10 +744,14 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let ann = match ann {
                     BindingMode::NONE => "NONE",
                     BindingMode::REF => "REF",
+                    BindingMode::REF_PIN => "REF_PIN",
                     BindingMode::MUT => "MUT",
                     BindingMode::REF_MUT => "REF_MUT",
+                    BindingMode::REF_PIN_MUT => "REF_PIN_MUT",
                     BindingMode::MUT_REF => "MUT_REF",
+                    BindingMode::MUT_REF_PIN => "MUT_REF_PIN",
                     BindingMode::MUT_REF_MUT => "MUT_REF_MUT",
+                    BindingMode::MUT_REF_PIN_MUT => "MUT_REF_PIN_MUT",
                 };
                 kind!("Binding(BindingMode::{ann}, _, {name}, {sub})");
                 self.ident(name);
@@ -758,7 +761,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 let ignore = etc.is_some();
                 bind!(self, qpath, fields);
                 kind!("Struct(ref {qpath}, {fields}, {ignore})");
-                self.qpath(qpath, pat);
+                self.qpath(qpath, &pat.name, pat.value.hir_id);
                 self.slice(fields, |field| {
                     self.ident(field!(field.ident));
                     self.pat(field!(field.pat));
@@ -772,7 +775,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, fields, skip_pos) => {
                 bind!(self, qpath, fields);
                 kind!("TupleStruct(ref {qpath}, {fields}, {skip_pos:?})");
-                self.qpath(qpath, pat);
+                self.qpath(qpath, &pat.name, pat.value.hir_id);
                 self.slice(fields, |pat| self.pat(pat));
             },
             PatKind::Tuple(fields, skip_pos) => {
@@ -790,9 +793,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Deref({pat})");
                 self.pat(pat);
             },
-            PatKind::Ref(pat, muta) => {
+            PatKind::Ref(pat, pinn, muta) => {
                 bind!(self, pat);
-                kind!("Ref({pat}, Mutability::{muta:?})");
+                kind!("Ref({pat}, Pinning::{pinn:?}, Mutability::{muta:?})");
                 self.pat(pat);
             },
             PatKind::Guard(pat, cond) => {
@@ -856,5 +859,5 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let attrs = cx.tcx.hir_attrs(hir_id);
-    get_attr(cx.sess(), attrs, sym::author).count() > 0
+    get_builtin_attr(cx.sess(), attrs, sym::author).count() > 0
 }

@@ -3,7 +3,7 @@ use std::iter;
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
-use crate::spec::{HasTargetSpec, Target};
+use crate::spec::{Abi, HasTargetSpec, Target};
 
 /// Indicates the variant of the AArch64 ABI we are compiling for.
 /// Used to accommodate Apple and Microsoft's deviations from the usual AAPCS ABI.
@@ -33,7 +33,7 @@ where
             RegKind::Integer => false,
             // The softfloat ABI treats floats like integers, so they
             // do not get homogeneous aggregate treatment.
-            RegKind::Float => cx.target_spec().abi != "softfloat",
+            RegKind::Float => cx.target_spec().abi != Abi::SoftFloat,
             RegKind::Vector => size.bits() == 64 || size.bits() == 128,
         };
 
@@ -42,7 +42,7 @@ where
 }
 
 fn softfloat_float_abi<Ty>(target: &Target, arg: &mut ArgAbi<'_, Ty>) {
-    if target.abi != "softfloat" {
+    if target.abi != Abi::SoftFloat {
         return;
     }
     // Do *not* use the float registers for passing arguments, as that would make LLVM pick the ABI
@@ -112,6 +112,10 @@ where
 {
     if !arg.layout.is_sized() {
         // Not touching this...
+        return;
+    }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
         return;
     }
     if !arg.layout.is_aggregate() {

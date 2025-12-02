@@ -383,6 +383,7 @@ Register-ArgumentCompleter -Native -CommandName 'x.py' -ScriptBlock {
             [CompletionResult]::new('--only-modified', '--only-modified', [CompletionResultType]::ParameterName, 'only run tests that result has been changed')
             [CompletionResult]::new('--rustfix-coverage', '--rustfix-coverage', [CompletionResultType]::ParameterName, 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`')
             [CompletionResult]::new('--no-capture', '--no-capture', [CompletionResultType]::ParameterName, 'don''t capture stdout/stderr of tests')
+            [CompletionResult]::new('--bypass-ignore-backends', '--bypass-ignore-backends', [CompletionResultType]::ParameterName, 'Ignore `//@ ignore-backends` directives')
             [CompletionResult]::new('-v', '-v', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('--verbose', '--verbose', [CompletionResultType]::ParameterName, 'use verbose output (-vv for very verbose)')
             [CompletionResult]::new('-i', '-i', [CompletionResultType]::ParameterName, 'use incremental compilation')

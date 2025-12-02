@@ -73,8 +73,8 @@ LL |         let _ = nested::DeprecatedStruct {
 error: use of deprecated unit struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
   --> $DIR/deprecation-lint.rs:48:25
    |
-LL |         let _ = nested::DeprecatedUnitStruct;
-   |                         ^^^^^^^^^^^^^^^^^^^^
+LL | ...   let _ = nested::DeprecatedUnitStruct;
+   |                       ^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated unit variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
   --> $DIR/deprecation-lint.rs:50:31
@@ -97,8 +97,8 @@ LL |         macro_test_arg!(deprecated_text());
 error: use of deprecated function `deprecation_lint::deprecated_text`: text
   --> $DIR/deprecation-lint.rs:60:41
    |
-LL |         macro_test_arg!(macro_test_arg!(deprecated_text()));
-   |                                         ^^^^^^^^^^^^^^^
+LL | ...   macro_test_arg!(macro_test_arg!(deprecated_text()));
+   |                                       ^^^^^^^^^^^^^^^
 
 error: use of deprecated method `deprecation_lint::Trait::trait_deprecated`: text
   --> $DIR/deprecation-lint.rs:65:16
@@ -211,8 +211,8 @@ LL |         Trait::trait_deprecated_text(&foo);
 error: use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:261:25
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo);
-   |                         ^^^^^^^^^^^^^^^^^^^^^
+LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
+   |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::deprecated_future`: text
   --> $DIR/deprecation-lint.rs:264:9
@@ -295,8 +295,8 @@ LL |         Trait::trait_deprecated_text(&foo);
 error: use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:299:25
    |
-LL |         <Foo as Trait>::trait_deprecated_text(&foo);
-   |                         ^^^^^^^^^^^^^^^^^^^^^
+LL | ...   <Foo as Trait>::trait_deprecated_text(&foo);
+   |                       ^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated function `this_crate::test_fn_closure_body::{closure#0}::bar`
   --> $DIR/deprecation-lint.rs:317:13
@@ -391,8 +391,8 @@ LL |         foo.method_deprecated_text();
 error: use of deprecated method `deprecation_lint::MethodTester::method_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:27:14
    |
-LL |         Foo::method_deprecated_text(&foo);
-   |              ^^^^^^^^^^^^^^^^^^^^^^
+LL | ...   Foo::method_deprecated_text(&foo);
+   |            ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated method `deprecation_lint::MethodTester::method_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:28:16
@@ -589,8 +589,8 @@ LL |         Foo::method_deprecated_text(&foo);
 error: use of deprecated method `this_crate::MethodTester::method_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:257:16
    |
-LL |         <Foo>::method_deprecated_text(&foo);
-   |                ^^^^^^^^^^^^^^^^^^^^^^
+LL | ...   <Foo>::method_deprecated_text(&foo);
+   |              ^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of deprecated method `this_crate::Trait::trait_deprecated_text`: text
   --> $DIR/deprecation-lint.rs:258:13

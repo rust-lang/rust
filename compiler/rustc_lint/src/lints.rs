@@ -15,7 +15,6 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
 
@@ -784,6 +783,39 @@ pub(crate) enum InvalidFromUtf8Diag {
     },
 }
 
+// interior_mutable_consts.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_const_item_interior_mutations)]
+#[note(lint_temporary)]
+#[note(lint_never_original)]
+#[help]
+pub(crate) struct ConstItemInteriorMutationsDiag<'tcx> {
+    pub method_name: Ident,
+    pub const_name: Ident,
+    pub const_ty: Ty<'tcx>,
+    #[label]
+    pub receiver_span: Span,
+    #[subdiagnostic]
+    pub sugg_static: Option<ConstItemInteriorMutationsSuggestionStatic>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ConstItemInteriorMutationsSuggestionStatic {
+    #[suggestion(
+        lint_suggestion_static,
+        code = "{before}static ",
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    Spanful {
+        #[primary_span]
+        const_: Span,
+        before: &'static str,
+    },
+    #[help(lint_suggestion_static)]
+    Spanless,
+}
+
 // reference_casting.rs
 #[derive(LintDiagnostic)]
 pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
@@ -924,6 +956,13 @@ pub(crate) struct UntranslatableDiag;
 #[diag(lint_bad_opt_access)]
 pub(crate) struct BadOptAccessDiag<'a> {
     pub msg: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_implicit_sysroot_crate_import)]
+#[help]
+pub(crate) struct ImplicitSysrootCrateImportDiag<'a> {
+    pub name: &'a str,
 }
 
 // let_underscore.rs
@@ -2536,43 +2575,6 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_private_extern_crate_reexport, code = E0365)]
-pub(crate) struct PrivateExternCrateReexport {
-    pub ident: Ident,
-    #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
-    pub sugg: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_is_private)]
-pub(crate) struct MacroIsPrivate {
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_macro_definition)]
-pub(crate) struct UnusedMacroDefinition {
-    pub name: Symbol,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_rule_never_used)]
-pub(crate) struct MacroRuleNeverUsed {
-    pub n: usize,
-    pub name: Symbol,
-}
-
-pub(crate) struct UnstableFeature {
-    pub msg: DiagMessage,
-}
-
-impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
-        diag.primary_message(self.msg);
-    }
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
 #[help]
 pub(crate) struct UnusedCrateDependency {
@@ -2589,26 +2591,6 @@ pub(crate) struct IllFormedAttributeInput {
     #[note]
     pub has_docs: bool,
     pub docs: &'static str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unknown_diagnostic_attribute)]
-pub(crate) struct UnknownDiagnosticAttribute {
-    #[subdiagnostic]
-    pub typo: Option<UnknownDiagnosticAttributeTypoSugg>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    lint_unknown_diagnostic_attribute_typo_sugg,
-    style = "verbose",
-    code = "{typo_name}",
-    applicability = "machine-applicable"
-)]
-pub(crate) struct UnknownDiagnosticAttributeTypoSugg {
-    #[primary_span]
-    pub span: Span,
-    pub typo_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]
@@ -2854,27 +2836,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_extern_crate_not_idiomatic)]
-pub(crate) struct ExternCrateNotIdiomatic {
-    #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]
-    pub span: Span,
-
-    pub code: &'static str,
-}
-
-// FIXME: make this translatable
-pub(crate) struct AmbiguousGlobImports {
-    pub ambiguity: AmbiguityErrorDiag,
-}
-
-impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for AmbiguousGlobImports {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
-        diag.primary_message(self.ambiguity.msg.clone());
-        rustc_errors::report_ambiguity_error(diag, self.ambiguity);
-    }
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_ambiguous_glob_reexport)]
 pub(crate) struct AmbiguousGlobReexports {
     #[label(lint_label_first_reexport)]
@@ -2920,18 +2881,6 @@ pub(crate) struct AssociatedConstElidedLifetime {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_redundant_import_visibility)]
-pub(crate) struct RedundantImportVisibility {
-    #[note]
-    pub span: Span,
-    #[help]
-    pub help: (),
-
-    pub import_vis: String,
-    pub max_vis: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unsafe_attr_outside_unsafe)]
 pub(crate) struct UnsafeAttrOutsideUnsafe {
     #[label]
@@ -2950,16 +2899,6 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_out_of_scope_macro_calls)]
-#[help]
-pub(crate) struct OutOfScopeMacroCalls {
-    #[label]
-    pub span: Span,
-    pub path: String,
-    pub location: String,
 }
 
 #[derive(LintDiagnostic)]
@@ -3010,6 +2949,26 @@ pub(crate) struct ReservedString {
 pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_function_casts_as_integer)]
+pub(crate) struct FunctionCastsAsIntegerDiag<'tcx> {
+    #[subdiagnostic]
+    pub(crate) sugg: FunctionCastsAsIntegerSugg<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    lint_cast_as_fn,
+    code = " as *const ()",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct FunctionCastsAsIntegerSugg<'tcx> {
+    #[primary_span]
+    pub suggestion: Span,
+    pub cast_to_ty: Ty<'tcx>,
 }
 
 #[derive(Debug)]

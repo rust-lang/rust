@@ -4,7 +4,7 @@ use std::path::Path;
 
 use fluent_syntax::ast::{Entry, Message, PatternElement};
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[rustfmt::skip]
@@ -53,8 +53,8 @@ fn check_lowercase(filename: &str, contents: &str, check: &mut RunningCheck) {
     }
 }
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("fluent_lowercase").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("fluent_lowercase").path(path));
     walk(
         path,
         |path, is_dir| filter_dirs(path) || (!is_dir && filter_fluent(path)),

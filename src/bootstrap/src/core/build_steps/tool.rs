@@ -228,9 +228,8 @@ pub fn prepare_tool_cargo(
     // own copy
     cargo.env("LZMA_API_STATIC", "1");
 
-    // Note that `miri` always uses jemalloc. As such, there is no checking of the jemalloc build flag.
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {
@@ -380,7 +379,6 @@ macro_rules! bootstrap_tool {
     ($(
         $name:ident, $path:expr, $tool_name:expr
         $(,is_external_tool = $external:expr)*
-        $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
         $(,submodules = $submodules:expr)?
         $(,artifact_kind = $artifact_kind:expr)?
@@ -438,19 +436,11 @@ macro_rules! bootstrap_tool {
                     }
                 )*
 
-                let is_unstable = false $(|| $unstable)*;
-                let compiletest_wants_stage0 = $tool_name == "compiletest" && builder.config.compiletest_use_stage0_libtest;
-
                 builder.ensure(ToolBuild {
                     build_compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: if is_unstable && !compiletest_wants_stage0 {
-                        // use in-tree libraries for unstable features
-                        Mode::ToolStd
-                    } else {
-                        Mode::ToolBootstrap
-                    },
+                    mode: Mode::ToolBootstrap,
                     path: $path,
                     source_type: if false $(|| $external)* {
                         SourceType::Submodule
@@ -483,8 +473,6 @@ macro_rules! bootstrap_tool {
     }
 }
 
-pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "internal_output_capture";
-
 bootstrap_tool!(
     // This is marked as an external tool because it includes dependencies
     // from submodules. Trying to keep the lints in sync between all the repos
@@ -495,8 +483,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
-    BuildManifest, "src/tools/build-manifest", "build-manifest";
+    Compiletest, "src/tools/compiletest", "compiletest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
@@ -509,8 +496,7 @@ bootstrap_tool!(
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata";
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
-    // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
-    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
+    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test";
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
@@ -694,11 +680,14 @@ impl Step for Rustdoc {
     /// Path to the built rustdoc binary.
     type Output = PathBuf;
 
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustdoc").path("src/librustdoc")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -816,12 +805,14 @@ impl Cargo {
 
 impl Step for Cargo {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.tool_enabled("cargo"))
+        run.path("src/tools/cargo")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("cargo")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1033,17 +1024,19 @@ impl RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site";
+    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site,new_zeroed_alloc";
 }
 
 impl Step for RustAnalyzer {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
-        run.path("src/tools/rust-analyzer").default_condition(builder.tool_enabled("rust-analyzer"))
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1090,19 +1083,17 @@ impl RustAnalyzerProcMacroSrv {
 
 impl Step for RustAnalyzerProcMacroSrv {
     type Output = ToolBuildResult;
-
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
-            .default_condition(
-                builder.tool_enabled("rust-analyzer")
-                    || builder.tool_enabled("rust-analyzer-proc-macro-srv"),
-            )
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("rust-analyzer")
+            || builder.tool_enabled("rust-analyzer-proc-macro-srv")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1181,13 +1172,14 @@ impl LlvmBitcodeLinker {
 
 impl Step for LlvmBitcodeLinker {
     type Output = ToolBuildResult;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let builder = run.builder;
         run.path("src/tools/llvm-bitcode-linker")
-            .default_condition(builder.tool_enabled("llvm-bitcode-linker"))
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.tool_enabled("llvm-bitcode-linker")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1231,11 +1223,14 @@ pub enum LibcxxVersion {
 
 impl Step for LibcxxVersionTool {
     type Output = LibcxxVersion;
-    const DEFAULT: bool = false;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
@@ -1277,6 +1272,52 @@ impl Step for LibcxxVersionTool {
         } else {
             panic!("Coudln't recognize the standard library version.");
         }
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct BuildManifest {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl BuildManifest {
+    pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
+        BuildManifest { compiler: builder.compiler(1, builder.config.host_target), target }
+    }
+}
+
+impl Step for BuildManifest {
+    type Output = ToolBuildResult;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/build-manifest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(BuildManifest::new(run.builder, run.target));
+    }
+
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        // Building with the beta compiler will produce a broken build-manifest that doesn't support
+        // recently stabilized targets/hosts.
+        assert!(self.compiler.stage != 0);
+        builder.ensure(ToolBuild {
+            build_compiler: self.compiler,
+            target: self.target,
+            tool: "build-manifest",
+            mode: Mode::ToolStd,
+            path: "src/tools/build-manifest",
+            source_type: SourceType::InTree,
+            extra_features: vec![],
+            allow_features: "",
+            cargo_args: vec![],
+            artifact_kind: ToolArtifactKind::Binary,
+        })
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("build-manifest", self.target).built_by(self.compiler))
     }
 }
 
@@ -1392,14 +1433,19 @@ macro_rules! tool_rustc_extended {
 
         impl Step for $name {
             type Output = ToolBuildResult;
-            const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const IS_HOST: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 should_run_extended_rustc_tool(
                     run,
-                    $tool_name,
                     $path,
+                )
+            }
+
+            fn is_default_step(builder: &Builder<'_>) -> bool {
+                extended_rustc_tool_is_default_step(
+                    builder,
+                    $tool_name,
                     $stable,
                 )
             }
@@ -1433,28 +1479,28 @@ macro_rules! tool_rustc_extended {
     }
 }
 
-fn should_run_extended_rustc_tool<'a>(
-    run: ShouldRun<'a>,
+fn should_run_extended_rustc_tool<'a>(run: ShouldRun<'a>, path: &'static str) -> ShouldRun<'a> {
+    run.path(path)
+}
+
+fn extended_rustc_tool_is_default_step(
+    builder: &Builder<'_>,
     tool_name: &'static str,
-    path: &'static str,
     stable: bool,
-) -> ShouldRun<'a> {
-    let builder = run.builder;
-    run.path(path).default_condition(
-        builder.config.extended
-            && builder.config.tools.as_ref().map_or(
-                // By default, on nightly/dev enable all tools, else only
-                // build stable tools.
-                stable || builder.build.unstable_features(),
-                // If `tools` is set, search list for this tool.
-                |tools| {
-                    tools.iter().any(|tool| match tool.as_ref() {
-                        "clippy" => tool_name == "clippy-driver",
-                        x => tool_name == x,
-                    })
-                },
-            ),
-    )
+) -> bool {
+    builder.config.extended
+        && builder.config.tools.as_ref().map_or(
+            // By default, on nightly/dev enable all tools, else only
+            // build stable tools.
+            stable || builder.build.unstable_features(),
+            // If `tools` is set, search list for this tool.
+            |tools| {
+                tools.iter().any(|tool| match tool.as_ref() {
+                    "clippy" => tool_name == "clippy-driver",
+                    x => tool_name == x,
+                })
+            },
+        )
 }
 
 fn build_extended_rustc_tool(
@@ -1534,6 +1580,11 @@ tool_rustc_extended!(Miri {
     tool_name: "miri",
     stable: false,
     add_bins_to_sysroot: ["miri"],
+    add_features: |builder, target, features| {
+        if builder.config.jemalloc(target) {
+            features.push("jemalloc".to_string());
+        }
+    },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
     cargo_args: &["--all-targets"],
 });

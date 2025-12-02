@@ -62,8 +62,8 @@ impl LineEndings {
 
         // Account for removed `\r`.
         // After `set_len`, `buf` is guaranteed to contain utf-8 again.
+        let new_len = buf.len() - gap_len;
         let src = unsafe {
-            let new_len = buf.len() - gap_len;
             buf.set_len(new_len);
             String::from_utf8_unchecked(buf)
         };

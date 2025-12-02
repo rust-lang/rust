@@ -43,7 +43,7 @@ impl flags::Release {
             .unwrap_or_default();
 
         let tags = cmd!(sh, "git tag --list").read()?;
-        let prev_tag = tags.lines().filter(|line| is_release_tag(line)).next_back().unwrap();
+        let prev_tag = tags.lines().rfind(|line| is_release_tag(line)).unwrap();
 
         let contents = changelog::get_changelog(sh, changelog_n, &commit, prev_tag, &today)?;
         let path = changelog_dir.join(format!("{today}-changelog-{changelog_n}.adoc"));

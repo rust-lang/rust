@@ -812,11 +812,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.get_normal_item();
+                    let safety = attr_item.unsafety;
                     if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    match expander.expand(self.cx, span, inner_tokens, tokens) {
+                    match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
                                 tok_result,
@@ -840,6 +841,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
                     }
                 } else if let SyntaxExtensionKind::LegacyAttr(expander) = ext {
+                    // `LegacyAttr` is only used for builtin attribute macros, which have their
+                    // safety checked by `check_builtin_meta_item`, so we don't need to check
+                    // `unsafety` here.
                     match validate_attr::parse_meta(&self.cx.sess.psess, &attr) {
                         Ok(meta) => {
                             let item_clone = macro_stats.then(|| item.clone());
@@ -971,7 +975,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             });
                         }
                     },
-                    SyntaxExtensionKind::LegacyBang(..) => {
+                    SyntaxExtensionKind::Bang(..) => {
                         let msg = "expanded a dummy glob delegation";
                         let guar = self.cx.dcx().span_delayed_bug(span, msg);
                         return ExpandResult::Ready(fragment_kind.dummy(span, guar));
@@ -1043,7 +1047,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            fluent_generated::expand_non_inline_modules_in_proc_macro_input_are_unstable,
+                            fluent_generated::expand_file_modules_in_proc_macro_input_are_unstable,
                         )
                         .emit();
                     }
@@ -1145,12 +1149,12 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_guard(
+        AstFragmentKind::Pat => AstFragment::Pat(Box::new(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
             CommaRecoveryMode::LikelyTuple,
-        )?),
+        )?)),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms
         | AstFragmentKind::ExprFields
@@ -2382,10 +2386,10 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[Box<ast::AssocItem>; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
-            AssocCtxt::Impl { of_trait: false } => {
+            AssocCtxt::Impl { of_trait: false, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
             }
-            AssocCtxt::Impl { of_trait: true } => {
+            AssocCtxt::Impl { of_trait: true, .. } => {
                 self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
             }
         }

@@ -33,8 +33,20 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_lto)]
+pub(crate) struct AutoDiffWithoutLto;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_without_enable)]
 pub(crate) struct AutoDiffWithoutEnable;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_without_enable)]
+pub(crate) struct OffloadWithoutEnable;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_offload_without_fat_lto)]
+pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]

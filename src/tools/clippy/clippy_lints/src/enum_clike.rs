@@ -43,12 +43,8 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                 if let Some(anon_const) = &var.disr_expr {
                     let def_id = cx.tcx.hir_body_owner_def_id(anon_const.body);
                     let mut ty = cx.tcx.type_of(def_id.to_def_id()).instantiate_identity();
-                    let constant = cx
-                        .tcx
-                        .const_eval_poly(def_id.to_def_id())
-                        .ok()
-                        .map(|val| rustc_middle::mir::Const::from_value(val, ty));
-                    if let Some(Constant::Int(val)) = constant.and_then(|c| mir_to_const(cx.tcx, c)) {
+                    let constant = cx.tcx.const_eval_poly(def_id.to_def_id()).ok();
+                    if let Some(Constant::Int(val)) = constant.and_then(|c| mir_to_const(cx.tcx, c, ty)) {
                         if let ty::Adt(adt, _) = ty.kind()
                             && adt.is_enum()
                         {

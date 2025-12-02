@@ -211,19 +211,6 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for &'a MetadataBlob {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a MetadataBlob, &'tcx Session) {
-    #[inline]
-    fn blob(self) -> &'a MetadataBlob {
-        self.0
-    }
-
-    #[inline]
-    fn sess(self) -> Option<&'tcx Session> {
-        let (_, sess) = self;
-        Some(sess)
-    }
-}
-
 impl<'a, 'tcx> Metadata<'a, 'tcx> for CrateMetadataRef<'a> {
     #[inline]
     fn blob(self) -> &'a MetadataBlob {
@@ -1187,7 +1174,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_safety(self, id: DefIndex) -> Safety {
-        self.root.tables.safety.get(self, id).unwrap_or_else(|| self.missing("safety", id))
+        self.root.tables.safety.get(self, id)
     }
 
     fn get_default_field(self, id: DefIndex) -> Option<DefId> {
@@ -1555,12 +1542,11 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     #[inline]
-    fn def_path_hash_to_def_index(self, hash: DefPathHash) -> DefIndex {
+    fn def_path_hash_to_def_index(self, hash: DefPathHash) -> Option<DefIndex> {
         self.def_path_hash_map.def_path_hash_to_def_index(&hash)
     }
 
     fn expn_hash_to_expn_id(self, sess: &Session, index_guess: u32, hash: ExpnHash) -> ExpnId {
-        debug_assert_eq!(ExpnId::from_hash(hash), None);
         let index_guess = ExpnIndex::from_u32(index_guess);
         let old_hash = self.root.expn_hashes.get(self, index_guess).map(|lazy| lazy.decode(self));
 
@@ -1745,7 +1731,8 @@ impl<'a> CrateMetadataRef<'a> {
                     src_hash,
                     checksum_hash,
                     start_pos: original_start_pos,
-                    source_len,
+                    normalized_source_len,
+                    unnormalized_source_len,
                     lines,
                     multibyte_chars,
                     normalized_pos,
@@ -1805,7 +1792,8 @@ impl<'a> CrateMetadataRef<'a> {
                     src_hash,
                     checksum_hash,
                     stable_id,
-                    source_len.to_u32(),
+                    normalized_source_len.to_u32(),
+                    unnormalized_source_len,
                     self.cnum,
                     lines,
                     multibyte_chars,
@@ -1818,9 +1806,9 @@ impl<'a> CrateMetadataRef<'a> {
                          translated (start_pos {:?} source_len {:?})",
                     local_version.name,
                     original_start_pos,
-                    source_len,
+                    normalized_source_len,
                     local_version.start_pos,
-                    local_version.source_len
+                    local_version.normalized_source_len
                 );
 
                 ImportedSourceFile {
@@ -1861,7 +1849,6 @@ impl<'a> CrateMetadataRef<'a> {
 
 impl CrateMetadata {
     pub(crate) fn new(
-        sess: &Session,
         cstore: &CStore,
         blob: MetadataBlob,
         root: CrateRoot,
@@ -1875,7 +1862,7 @@ impl CrateMetadata {
     ) -> CrateMetadata {
         let trait_impls = root
             .impls
-            .decode((&blob, sess))
+            .decode(&blob)
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
         let alloc_decoding_state =

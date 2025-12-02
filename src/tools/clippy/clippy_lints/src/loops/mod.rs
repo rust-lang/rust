@@ -861,6 +861,7 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
+        // (also matches on `let {} else break`)
         if let ExprKind::Loop(block, label, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
@@ -870,17 +871,29 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
 
         while_let_on_iterator::check(cx, expr);
 
-        if let Some(higher::While { condition, body, span }) = higher::While::hir(expr) {
+        if let Some(higher::While {
+            condition, body, span, ..
+        }) = higher::While::hir(expr)
+        {
             while_immutable_condition::check(cx, condition, body);
             while_float::check(cx, condition);
             missing_spin_loop::check(cx, condition, body);
             manual_while_let_some::check(cx, condition, body, span);
         }
+
+        if let ExprKind::MethodCall(path, recv, [arg], _) = expr.kind
+            && matches!(
+                path.ident.name,
+                sym::all | sym::any | sym::filter_map | sym::find_map | sym::flat_map | sym::for_each | sym::map
+            )
+        {
+            unused_enumerate_index::check_method(cx, expr, recv, arg);
+        }
     }
 }
 
 impl Loops {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn check_for_loop<'tcx>(
         &self,
         cx: &LateContext<'tcx>,
@@ -904,7 +917,7 @@ impl Loops {
         same_item_push::check(cx, pat, arg, body, expr, self.msrv);
         manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
-        unused_enumerate_index::check(cx, pat, arg, body);
+        unused_enumerate_index::check(cx, arg, pat, None, body);
         char_indices_as_byte_indices::check(cx, pat, arg, body);
     }
 

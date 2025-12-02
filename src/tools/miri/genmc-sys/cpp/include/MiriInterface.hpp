@@ -12,7 +12,6 @@
 
 // GenMC headers:
 #include "ExecutionGraph/EventLabel.hpp"
-#include "Static/ModuleID.hpp"
 #include "Support/MemOrdering.hpp"
 #include "Support/RMWOps.hpp"
 #include "Verification/Config.hpp"
@@ -36,6 +35,7 @@ struct LoadResult;
 struct StoreResult;
 struct ReadModifyWriteResult;
 struct CompareExchangeResult;
+struct MutexLockResult;
 
 // GenMC uses `int` for its thread IDs.
 using ThreadId = int;
@@ -125,14 +125,27 @@ struct MiriGenmcShim : private GenMCDriver {
     void handle_fence(ThreadId thread_id, MemOrdering ord);
 
     /**** Memory (de)allocation ****/
+
     auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> uint64_t;
-    void handle_free(ThreadId thread_id, uint64_t address);
+
+    /** Returns null on success, or an error string if an error occurs. */
+    auto handle_free(ThreadId thread_id, uint64_t address) -> std::unique_ptr<std::string>;
 
     /**** Thread management ****/
     void handle_thread_create(ThreadId thread_id, ThreadId parent_id);
     void handle_thread_join(ThreadId thread_id, ThreadId child_id);
     void handle_thread_finish(ThreadId thread_id, uint64_t ret_val);
     void handle_thread_kill(ThreadId thread_id);
+
+    /**** Blocking instructions ****/
+    /// Inform GenMC that the thread should be blocked.
+    void handle_assume_block(ThreadId thread_id, AssumeType assume_type);
+
+    /**** Mutex handling ****/
+    auto handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size) -> MutexLockResult;
+    auto handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
+        -> MutexLockResult;
+    auto handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size) -> StoreResult;
 
     /***** Exploration related functionality *****/
 
@@ -207,9 +220,11 @@ struct MiriGenmcShim : private GenMCDriver {
      * Automatically calls `inc_pos` and `dec_pos` where needed for the given thread.
      */
     template <EventLabel::EventLabelKind k, typename... Ts>
-    auto handle_load_reset_if_none(ThreadId tid, Ts&&... params) -> HandleResult<SVal> {
+    auto handle_load_reset_if_none(ThreadId tid, std::optional<SVal> old_val, Ts&&... params)
+        -> HandleResult<SVal> {
         const auto pos = inc_pos(tid);
-        const auto ret = GenMCDriver::handleLoad<k>(pos, std::forward<Ts>(params)...);
+        const auto ret =
+            GenMCDriver::handleLoad<k>(nullptr, pos, old_val, std::forward<Ts>(params)...);
         // If we didn't get a value, we have to reset the index of the current thread.
         if (!std::holds_alternative<SVal>(ret)) {
             dec_pos(tid);
@@ -250,6 +265,7 @@ namespace GenmcScalarExt {
 inline GenmcScalar uninit() {
     return GenmcScalar {
         .value = 0,
+        .provenance = 0,
         .is_init = false,
     };
 }
@@ -257,13 +273,20 @@ inline GenmcScalar uninit() {
 inline GenmcScalar from_sval(SVal sval) {
     return GenmcScalar {
         .value = sval.get(),
+        .provenance = sval.getProvenance(),
         .is_init = true,
     };
 }
 
 inline SVal to_sval(GenmcScalar scalar) {
     ERROR_ON(!scalar.is_init, "Cannot convert an uninitialized `GenmcScalar` into an `SVal`\n");
-    return SVal(scalar.value);
+    return SVal(scalar.value, scalar.provenance);
+}
+
+inline std::optional<SVal> try_to_sval(GenmcScalar scalar) {
+    if (scalar.is_init)
+        return { SVal(scalar.value, scalar.provenance) };
+    return std::nullopt;
 }
 } // namespace GenmcScalarExt
 
@@ -341,5 +364,23 @@ inline CompareExchangeResult from_error(std::unique_ptr<std::string> error) {
                                    .is_coherence_order_maximal_write = false };
 }
 } // namespace CompareExchangeResultExt
+
+namespace MutexLockResultExt {
+inline MutexLockResult ok(bool is_lock_acquired) {
+    return MutexLockResult { /* error: */ nullptr, /* is_reset: */ false, is_lock_acquired };
+}
+
+inline MutexLockResult reset() {
+    return MutexLockResult { /* error: */ nullptr,
+                             /* is_reset: */ true,
+                             /* is_lock_acquired: */ false };
+}
+
+inline MutexLockResult from_error(std::unique_ptr<std::string> error) {
+    return MutexLockResult { /* error: */ std::move(error),
+                             /* is_reset: */ false,
+                             /* is_lock_acquired: */ false };
+}
+} // namespace MutexLockResultExt
 
 #endif /* GENMC_MIRI_INTERFACE_HPP */

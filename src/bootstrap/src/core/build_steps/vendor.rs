@@ -53,11 +53,14 @@ pub(crate) struct Vendor {
 
 impl Step for Vendor {
     type Output = VendorOutput;
-    const DEFAULT: bool = true;
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias("placeholder").default_condition(true)
+        run.alias("placeholder")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -74,7 +77,7 @@ impl Step for Vendor {
     /// This function runs `cargo vendor` and ensures all required submodules
     /// are initialized before vendoring begins.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        builder.info(&format!("Vendoring sources to {:?}", self.root_dir));
+        let _guard = builder.group(&format!("Vendoring sources to {:?}", self.root_dir));
 
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");

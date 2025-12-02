@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: by_flag by_feature1 by_feature2 by_feature3
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=lib
 //@ needs-llvm-components: x86
@@ -12,6 +12,7 @@
 //@ [by_feature1]build-pass
 //@ [by_feature2]build-pass
 //@ [by_feature3]build-pass
+//@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]
 extern crate minicore;

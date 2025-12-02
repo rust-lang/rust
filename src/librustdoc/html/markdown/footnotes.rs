@@ -4,8 +4,8 @@ use std::fmt::Write as _;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Weak};
 
-use pulldown_cmark::{CowStr, Event, Tag, TagEnd, html};
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_resolve::rustdoc::pulldown_cmark::{CowStr, Event, Tag, TagEnd, html};
 
 use super::SpannedEvent;
 

@@ -403,7 +403,7 @@
 
 use crate::cmp::Ordering;
 use crate::intrinsics::const_eval_select;
-use crate::marker::{FnPtr, PointeeSized};
+use crate::marker::{Destruct, FnPtr, PointeeSized};
 use crate::mem::{self, MaybeUninit, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
@@ -801,7 +801,11 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 #[rustc_diagnostic_item = "ptr_drop_in_place"]
-pub unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T) {
+#[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+pub const unsafe fn drop_in_place<T: PointeeSized>(to_drop: *mut T)
+where
+    T: [const] Destruct,
+{
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
 
@@ -975,7 +979,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "const_exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
@@ -1016,7 +1020,7 @@ pub const fn with_exposed_provenance<T>(addr: usize) -> *const T {
 #[must_use]
 #[inline(always)]
 #[stable(feature = "exposed_provenance", since = "1.84.0")]
-#[rustc_const_stable(feature = "const_exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_exposed_provenance", since = "1.91.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub const fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
@@ -1348,40 +1352,6 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// assert_eq!(x, [7, 8, 3, 4]);
 /// assert_eq!(y, [1, 2, 9]);
 /// ```
-///
-/// # Const evaluation limitations
-///
-/// If this function is invoked during const-evaluation, the current implementation has a small (and
-/// rarely relevant) limitation: if `count` is at least 2 and the data pointed to by `x` or `y`
-/// contains a pointer that crosses the boundary of two `T`-sized chunks of memory, the function may
-/// fail to evaluate (similar to a panic during const-evaluation). This behavior may change in the
-/// future.
-///
-/// The limitation is illustrated by the following example:
-///
-/// ```
-/// use std::mem::size_of;
-/// use std::ptr;
-///
-/// const { unsafe {
-///     const PTR_SIZE: usize = size_of::<*const i32>();
-///     let mut data1 = [0u8; PTR_SIZE];
-///     let mut data2 = [0u8; PTR_SIZE];
-///     // Store a pointer in `data1`.
-///     data1.as_mut_ptr().cast::<*const i32>().write_unaligned(&42);
-///     // Swap the contents of `data1` and `data2` by swapping `PTR_SIZE` many `u8`-sized chunks.
-///     // This call will fail, because the pointer in `data1` crosses the boundary
-///     // between several of the 1-byte chunks that are being swapped here.
-///     //ptr::swap_nonoverlapping(data1.as_mut_ptr(), data2.as_mut_ptr(), PTR_SIZE);
-///     // Swap the contents of `data1` and `data2` by swapping a single chunk of size
-///     // `[u8; PTR_SIZE]`. That works, as there is no pointer crossing the boundary between
-///     // two chunks.
-///     ptr::swap_nonoverlapping(&mut data1, &mut data2, 1);
-///     // Read the pointer from `data2` and dereference it.
-///     let ptr = data2.as_ptr().cast::<*const i32>().read_unaligned();
-///     assert!(*ptr == 42);
-/// } }
-/// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 #[rustc_const_stable(feature = "const_swap_nonoverlapping", since = "1.88.0")]
@@ -1410,9 +1380,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     const_eval_select!(
         @capture[T] { x: *mut T, y: *mut T, count: usize }:
         if const {
-            // At compile-time we want to always copy this in chunks of `T`, to ensure that if there
-            // are pointers inside `T` we will copy them in one go rather than trying to copy a part
-            // of a pointer (which would not work).
+            // At compile-time we don't need all the special code below.
             // SAFETY: Same preconditions as this function
             unsafe { swap_nonoverlapping_const(x, y, count) }
         } else {
@@ -2552,6 +2520,10 @@ pub fn hash<T: PointeeSized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
 }
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> PartialEq for F {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -2559,9 +2531,17 @@ impl<F: FnPtr> PartialEq for F {
     }
 }
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> Eq for F {}
 
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> PartialOrd for F {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -2569,6 +2549,10 @@ impl<F: FnPtr> PartialOrd for F {
     }
 }
 #[stable(feature = "fnptr_impls", since = "1.4.0")]
+#[diagnostic::on_const(
+    message = "pointers cannot be reliably compared during const eval",
+    note = "see issue #53020 <https://github.com/rust-lang/rust/issues/53020> for more information"
+)]
 impl<F: FnPtr> Ord for F {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {

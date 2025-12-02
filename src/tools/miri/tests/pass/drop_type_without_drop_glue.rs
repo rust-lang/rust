@@ -15,7 +15,7 @@ fn drop_in_place_with_terminator(ptr: *mut i32) {
     }
 }
 
-pub fn main() {
+fn main() {
     drop_in_place_with_terminator(std::ptr::without_provenance_mut(0));
     drop_in_place_with_terminator(std::ptr::without_provenance_mut(1));
 }

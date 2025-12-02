@@ -20,7 +20,7 @@ LL |         #[allow_internal_unstable()]
 LL | foo!();
    | ------ in this macro invocation
    |
-   = help: `#[allow_internal_unstable]` can be applied to macro defs and functions
+   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

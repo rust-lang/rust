@@ -213,7 +213,11 @@ fn cargo_extra_flags() -> Vec<String> {
 
 pub fn get_cargo_metadata() -> Metadata {
     // This will honor the `CARGO` env var the same way our `cargo()` does.
-    MetadataCommand::new().no_deps().other_options(cargo_extra_flags()).exec().unwrap()
+    MetadataCommand::new()
+        .no_deps()
+        .other_options(cargo_extra_flags())
+        .exec()
+        .unwrap_or_else(|err| show_error!("{}", err))
 }
 
 /// Pulls all the crates in this workspace from the cargo metadata.

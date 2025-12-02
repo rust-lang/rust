@@ -2,12 +2,14 @@
 
 use std::mem;
 
+use cargo_metadata::PackageId;
 use cfg::{CfgAtom, CfgExpr};
 use hir::sym;
 use ide::{Cancellable, Crate, FileId, RunnableKind, TestId};
 use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
+use triomphe::Arc;
 use vfs::AbsPathBuf;
 
 use crate::global_state::GlobalStateSnapshot;
@@ -52,6 +54,7 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) workspace_root: AbsPathBuf,
     pub(crate) cargo_toml: ManifestPath,
     pub(crate) package: String,
+    pub(crate) package_id: Arc<PackageId>,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
     pub(crate) crate_id: Crate,

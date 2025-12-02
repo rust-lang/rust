@@ -35,3 +35,6 @@ declare_constant!(DW_OP_plus_uconst: u64);
 /// Double-checked by a static assertion in `RustWrapper.cpp`.
 #[allow(non_upper_case_globals)]
 pub(crate) const DW_OP_LLVM_fragment: u64 = 0x1000;
+// It describes the actual value of a source variable which might not exist in registers or in memory.
+#[allow(non_upper_case_globals)]
+pub(crate) const DW_OP_stack_value: u64 = 0x9f;

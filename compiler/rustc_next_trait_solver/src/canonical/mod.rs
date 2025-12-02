@@ -25,7 +25,7 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, Goal,
-    NestedNormalizationGoals, PredefinedOpaquesData, QueryInput, Response, inspect,
+    NestedNormalizationGoals, QueryInput, Response, inspect,
 };
 
 pub mod canonicalizer;
@@ -53,7 +53,7 @@ impl<I: Interner, T> ResponseT<I> for inspect::State<I, T> {
 pub(super) fn canonicalize_goal<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
-    opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
 ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>)
 where
     D: SolverDelegate<Interner = I>,
@@ -65,9 +65,7 @@ where
         &mut orig_values,
         QueryInput {
             goal,
-            predefined_opaques_in_body: delegate
-                .cx()
-                .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
+            predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
     let query_input = ty::CanonicalQueryInput { canonical, typing_mode: delegate.typing_mode() };
@@ -167,25 +165,25 @@ where
                 // and only use it for placeholders. We need to handle the
                 // `sub_root` of type inference variables which would make this
                 // more involved. They are also a lot rarer than region variables.
-                if let ty::Bound(debruijn, b) = t.kind()
+                if let ty::Bound(index_kind, b) = t.kind()
                     && !matches!(
                         response.variables.get(b.var().as_usize()).unwrap(),
                         CanonicalVarKind::Ty { .. }
                     )
                 {
-                    assert_eq!(debruijn, ty::INNERMOST);
+                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                     opt_values[b.var()] = Some(*original_value);
                 }
             }
             ty::GenericArgKind::Lifetime(r) => {
-                if let ty::ReBound(debruijn, br) = r.kind() {
-                    assert_eq!(debruijn, ty::INNERMOST);
+                if let ty::ReBound(index_kind, br) = r.kind() {
+                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                     opt_values[br.var()] = Some(*original_value);
                 }
             }
             ty::GenericArgKind::Const(c) => {
-                if let ty::ConstKind::Bound(debruijn, bv) = c.kind() {
-                    assert_eq!(debruijn, ty::INNERMOST);
+                if let ty::ConstKind::Bound(index_kind, bv) = c.kind() {
+                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
                     opt_values[bv.var()] = Some(*original_value);
                 }
             }

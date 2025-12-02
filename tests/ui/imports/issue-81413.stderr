@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `doesnt_exist`
-  --> $DIR/issue-81413.rs:7:9
+  --> $DIR/issue-81413.rs:8:9
    |
 LL | pub use doesnt_exist::*;
    |         ^^^^^^^^^^^^ use of unresolved module or unlinked crate `doesnt_exist`

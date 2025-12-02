@@ -38,6 +38,7 @@
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
+#include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
@@ -224,6 +225,31 @@ static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
   report_fatal_error("Bad FloatABI.");
 }
 
+// Must match the layout of `rustc_codegen_llvm::llvm::ffi::CompressionKind`.
+enum class LLVMRustCompressionKind {
+  None = 0,
+  Zlib = 1,
+  Zstd = 2,
+};
+
+static llvm::DebugCompressionType fromRust(LLVMRustCompressionKind Kind) {
+  switch (Kind) {
+  case LLVMRustCompressionKind::None:
+    return llvm::DebugCompressionType::None;
+  case LLVMRustCompressionKind::Zlib:
+    if (!llvm::compression::zlib::isAvailable()) {
+      report_fatal_error("LLVMRustCompressionKind::Zlib not available");
+    }
+    return llvm::DebugCompressionType::Zlib;
+  case LLVMRustCompressionKind::Zstd:
+    if (!llvm::compression::zstd::isAvailable()) {
+      report_fatal_error("LLVMRustCompressionKind::Zstd not available");
+    }
+    return llvm::DebugCompressionType::Zstd;
+  }
+  report_fatal_error("bad LLVMRustCompressionKind");
+}
+
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM,
                                         RustStringRef OutStr) {
   ArrayRef<SubtargetSubTypeKV> CPUTable =
@@ -271,8 +297,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
     const char *SplitDwarfFile, const char *OutputObjFile,
-    const char *DebugInfoCompression, bool UseEmulatedTls, const char *Argv0,
-    size_t Argv0Len, const char *CommandLineArgs, size_t CommandLineArgsLen,
+    LLVMRustCompressionKind DebugInfoCompression, bool UseEmulatedTls,
     bool UseWasmEH) {
 
   auto OptLevel = fromRust(RustOptLevel);
@@ -283,7 +308,11 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   std::string Error;
   auto Trip = Triple(Triple::normalize(TripleStr));
   const llvm::Target *TheTarget =
+#if LLVM_VERSION_GE(21, 0)
+      TargetRegistry::lookupTarget(Trip, Error);
+#else
       TargetRegistry::lookupTarget(Trip.getTriple(), Error);
+#endif
   if (TheTarget == nullptr) {
     LLVMRustSetLastError(Error.c_str());
     return nullptr;
@@ -305,16 +334,10 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (OutputObjFile) {
     Options.ObjectFilenameForDebug = OutputObjFile;
   }
-  if (!strcmp("zlib", DebugInfoCompression) &&
-      llvm::compression::zlib::isAvailable()) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zlib;
-  } else if (!strcmp("zstd", DebugInfoCompression) &&
-             llvm::compression::zstd::isAvailable()) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::Zstd;
-  } else if (!strcmp("none", DebugInfoCompression)) {
-    Options.MCOptions.CompressDebugSections = DebugCompressionType::None;
-  }
-
+  // To avoid fatal errors, make sure the Rust-side code only passes a
+  // compression kind that is known to be supported by this build of LLVM, via
+  // `LLVMRustLLVMHasZlibCompression` and `LLVMRustLLVMHasZstdCompression`.
+  Options.MCOptions.CompressDebugSections = fromRust(DebugInfoCompression);
   Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
   Options.UseInitArray = UseInitArray;
   Options.EmulatedTLS = UseEmulatedTls;
@@ -344,11 +367,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
-  if (Argv0 != nullptr)
-    Options.MCOptions.Argv0 = {Argv0, Argv0Len};
-  if (CommandLineArgs != nullptr)
-    Options.MCOptions.CommandlineArgs = {CommandLineArgs, CommandLineArgsLen};
-
 #if LLVM_VERSION_GE(21, 0)
   TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
                                                      Options, RM, CM, OptLevel);
@@ -357,10 +375,6 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
       Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
 #endif
   return wrap(TM);
-}
-
-extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
-  delete unwrap(TM);
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to create the
@@ -518,6 +532,7 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeMemory;
   bool SanitizeMemoryRecover;
   int SanitizeMemoryTrackOrigins;
+  bool SanitizerRealtime;
   bool SanitizeThread;
   bool SanitizeHWAddress;
   bool SanitizeHWAddressRecover;
@@ -573,25 +588,43 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   std::optional<PGOOptions> PGOOpt;
+#if LLVM_VERSION_LT(22, 0)
   auto FS = vfs::getRealFileSystem();
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        PGOGenPath, "", "", "", PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#else
         PGOGenPath, "", "", "", FS, PGOOptions::IRInstr, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        PGOUsePath, "", "", "", PGOOptions::IRUse, PGOOptions::NoCSAction,
+#else
         PGOUsePath, "", "", "", FS, PGOOptions::IRUse, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
     PGOOpt =
+#if LLVM_VERSION_GE(22, 0)
+        PGOOptions(PGOSampleUsePath, "", "", "", PGOOptions::SampleUse,
+#else
         PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
+#endif
                    PGOOptions::NoCSAction, PGOOptions::ColdFuncOpt::Default,
                    DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
     PGOOpt = PGOOptions(
+#if LLVM_VERSION_GE(22, 0)
+        "", "", "", "", PGOOptions::NoAction, PGOOptions::NoCSAction,
+#else
         "", "", "", "", FS, PGOOptions::NoAction, PGOOptions::NoCSAction,
+#endif
         PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
@@ -754,6 +787,13 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                 /*DisableOptimization=*/false);
             MPM.addPass(HWAddressSanitizerPass(opts));
           });
+    }
+    if (SanitizerOptions->SanitizerRealtime) {
+      OptimizerLastEPCallbacks.push_back([](ModulePassManager &MPM,
+                                            OptimizationLevel Level,
+                                            ThinOrFullLTOPhase phase) {
+        MPM.addPass(RealtimeSanitizerPass());
+      });
     }
   }
 
@@ -1123,8 +1163,8 @@ struct LLVMRustThinLTOModule {
 
 // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`, not sure what it
 // does.
-static const GlobalValueSummary *
-getFirstDefinitionForLinker(const GlobalValueSummaryList &GVSummaryList) {
+static const GlobalValueSummary *getFirstDefinitionForLinker(
+    ArrayRef<std::unique_ptr<GlobalValueSummary>> GVSummaryList) {
   auto StrongDefForLinker = llvm::find_if(
       GVSummaryList, [](const std::unique_ptr<GlobalValueSummary> &Summary) {
         auto Linkage = Summary->linkage();
@@ -1202,9 +1242,13 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // being lifted from `lib/LTO/LTO.cpp` as well
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-    if (I.second.SummaryList.size() > 1)
-      PrevailingCopy[I.first] =
-          getFirstDefinitionForLinker(I.second.SummaryList);
+#if LLVM_VERSION_GE(22, 0)
+    const auto &SummaryList = I.second.getSummaryList();
+#else
+    const auto &SummaryList = I.second.SummaryList;
+#endif
+    if (SummaryList.size() > 1)
+      PrevailingCopy[I.first] = getFirstDefinitionForLinker(SummaryList);
   }
   auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
     const auto &Prevailing = PrevailingCopy.find(GUID);
@@ -1235,7 +1279,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-    for (auto &GVS : List.second.SummaryList) {
+#if LLVM_VERSION_GE(22, 0)
+    const auto &SummaryList = List.second.getSummaryList();
+#else
+    const auto &SummaryList = List.second.SummaryList;
+#endif
+    for (auto &GVS : SummaryList) {
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();

@@ -20,7 +20,7 @@ use crate::{
     config::Config,
     diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
-    flycheck::{self, ClearDiagnosticsKind, FlycheckMessage},
+    flycheck::{self, ClearDiagnosticsKind, ClearScope, FlycheckMessage},
     global_state::{
         FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
         file_id_to_url, url_to_file_id,
@@ -58,6 +58,14 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
         let thread = GetCurrentThread();
         let thread_priority_above_normal = 1;
         SetThreadPriority(thread, thread_priority_above_normal);
+    }
+
+    #[cfg(feature = "dhat")]
+    {
+        if let Some(dhat_output_file) = config.dhat_output_file() {
+            *crate::DHAT_PROFILER.lock().unwrap() =
+                Some(dhat::Profiler::builder().file_name(&dhat_output_file).build());
+        }
     }
 
     GlobalState::new(connection.sender, config).run(connection.receiver)
@@ -333,20 +341,23 @@ impl GlobalState {
                     self.handle_task(&mut prime_caches_progress, task);
                 }
 
+                let title = "Indexing";
+                let cancel_token = Some("rustAnalyzer/cachePriming".to_owned());
+
+                let mut last_report = None;
                 for progress in prime_caches_progress {
-                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
-                            state = Progress::Begin;
-                            message = None;
-                            fraction = 0.0;
-                            title = "Indexing";
+                            self.report_progress(
+                                title,
+                                Progress::Begin,
+                                None,
+                                Some(0.0),
+                                cancel_token.clone(),
+                            );
                         }
                         PrimeCachesProgress::Report(report) => {
-                            state = Progress::Report;
-                            title = report.work_type;
-
-                            message = match &*report.crates_currently_indexing {
+                            let message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
                                     "{}/{} ({})",
                                     report.crates_done,
@@ -363,38 +374,66 @@ impl GlobalState {
                                 _ => None,
                             };
 
-                            fraction = Progress::fraction(report.crates_done, report.crates_total);
+                            // Don't send too many notifications while batching, sending progress reports
+                            // serializes notifications on the mainthread at the moment which slows us down
+                            last_report = Some((
+                                message,
+                                Progress::fraction(report.crates_done, report.crates_total),
+                                report.work_type,
+                            ));
                         }
                         PrimeCachesProgress::End { cancelled } => {
-                            state = Progress::End;
-                            message = None;
-                            fraction = 1.0;
-                            title = "Indexing";
-
                             self.analysis_host.raw_database_mut().trigger_lru_eviction();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
                                     .request_op("restart after cancellation".to_owned(), ());
                             }
+                            if let Some((message, fraction, title)) = last_report.take() {
+                                self.report_progress(
+                                    title,
+                                    Progress::Report,
+                                    message,
+                                    Some(fraction),
+                                    cancel_token.clone(),
+                                );
+                            }
+                            self.report_progress(
+                                title,
+                                Progress::End,
+                                None,
+                                Some(1.0),
+                                cancel_token.clone(),
+                            );
                         }
                     };
-
+                }
+                if let Some((message, fraction, title)) = last_report.take() {
                     self.report_progress(
                         title,
-                        state,
+                        Progress::Report,
                         message,
                         Some(fraction),
-                        Some("rustAnalyzer/cachePriming".to_owned()),
+                        cancel_token.clone(),
                     );
                 }
             }
             Event::Vfs(message) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/vfs").entered();
-                self.handle_vfs_msg(message);
+                let mut last_progress_report = None;
+                self.handle_vfs_msg(message, &mut last_progress_report);
                 // Coalesce many VFS event into a single loop turn
                 while let Ok(message) = self.loader.receiver.try_recv() {
-                    self.handle_vfs_msg(message);
+                    self.handle_vfs_msg(message, &mut last_progress_report);
+                }
+                if let Some((message, fraction)) = last_progress_report {
+                    self.report_progress(
+                        "Roots Scanned",
+                        Progress::Report,
+                        Some(message),
+                        Some(fraction),
+                        None,
+                    );
                 }
             }
             Event::Flycheck(message) => {
@@ -444,7 +483,11 @@ impl GlobalState {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
-                if self.config.prefill_caches() {
+                // delay initial cache priming until proc macros are loaded, or we will load up a bunch of garbage into salsa
+                let proc_macros_loaded = self.config.prefill_caches()
+                    && (!self.config.expand_proc_macros()
+                        || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false));
+                if proc_macros_loaded {
                     self.prime_caches_queue.request_op("became quiescent".to_owned(), ());
                 }
             }
@@ -838,7 +881,11 @@ impl GlobalState {
         }
     }
 
-    fn handle_vfs_msg(&mut self, message: vfs::loader::Message) {
+    fn handle_vfs_msg(
+        &mut self,
+        message: vfs::loader::Message,
+        last_progress_report: &mut Option<(String, f64)>,
+    ) {
         let _p = tracing::info_span!("GlobalState::handle_vfs_msg").entered();
         let is_changed = matches!(message, vfs::loader::Message::Changed { .. });
         match message {
@@ -847,6 +894,13 @@ impl GlobalState {
                 self.debounce_workspace_fetch();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
+                    if matches!(path.name_and_extension(), Some(("minicore", Some("rs")))) {
+                        // Not a lot of bad can happen from mistakenly identifying `minicore`, so proceed with that.
+                        self.minicore.minicore_text = contents
+                            .as_ref()
+                            .and_then(|contents| String::from_utf8(contents.clone()).ok());
+                    }
+
                     let path = VfsPath::from(path);
                     // if the file is in mem docs, it's managed by the client via notifications
                     // so only set it if its not in there
@@ -888,13 +942,41 @@ impl GlobalState {
                     );
                 }
 
-                self.report_progress(
-                    "Roots Scanned",
-                    state,
-                    Some(message),
-                    Some(Progress::fraction(n_done, n_total)),
-                    None,
-                );
+                match state {
+                    Progress::Begin => self.report_progress(
+                        "Roots Scanned",
+                        state,
+                        Some(message),
+                        Some(Progress::fraction(n_done, n_total)),
+                        None,
+                    ),
+                    // Don't send too many notifications while batching, sending progress reports
+                    // serializes notifications on the mainthread at the moment which slows us down
+                    Progress::Report => {
+                        if last_progress_report.is_none() {
+                            self.report_progress(
+                                "Roots Scanned",
+                                state,
+                                Some(message.clone()),
+                                Some(Progress::fraction(n_done, n_total)),
+                                None,
+                            );
+                        }
+
+                        *last_progress_report =
+                            Some((message, Progress::fraction(n_done, n_total)));
+                    }
+                    Progress::End => {
+                        last_progress_report.take();
+                        self.report_progress(
+                            "Roots Scanned",
+                            state,
+                            Some(message),
+                            Some(Progress::fraction(n_done, n_total)),
+                            None,
+                        )
+                    }
+                }
             }
         }
     }
@@ -1016,9 +1098,9 @@ impl GlobalState {
                 package_id,
             } => {
                 let snap = self.snapshot();
-                let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
+                let diagnostics = crate::diagnostics::flycheck_to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
-                    &diagnostic,
+                    diagnostic,
                     &workspace_root,
                     &snap,
                 );
@@ -1042,17 +1124,22 @@ impl GlobalState {
                     };
                 }
             }
-            FlycheckMessage::ClearDiagnostics { id, kind: ClearDiagnosticsKind::All } => {
-                self.diagnostics.clear_check(id)
-            }
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::OlderThan(generation),
+                kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+            } => self.diagnostics.clear_check(id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::All(ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_for_package(id, package_id),
+            FlycheckMessage::ClearDiagnostics {
+                id,
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Workspace),
             } => self.diagnostics.clear_check_older_than(id, generation),
             FlycheckMessage::ClearDiagnostics {
                 id,
-                kind: ClearDiagnosticsKind::Package(package_id),
-            } => self.diagnostics.clear_check_for_package(id, package_id),
+                kind: ClearDiagnosticsKind::OlderThan(generation, ClearScope::Package(package_id)),
+            } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),

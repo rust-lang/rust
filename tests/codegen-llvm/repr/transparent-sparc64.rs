@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --target sparc64-unknown-linux-gnu
 //@ needs-llvm-components: sparc
 

@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor, Lld, SplitDebuginfo,
-    TargetOptions, add_link_args, crt_objects, cvs,
+    BinaryFormat, Cc, DebuginfoKind, Env, LinkSelfContainedDefault, LinkerFlavor, Lld, Os,
+    SplitDebuginfo, TargetOptions, add_link_args, crt_objects, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -77,8 +77,8 @@ pub(crate) fn opts() -> TargetOptions {
     );
 
     TargetOptions {
-        os: "windows".into(),
-        env: "gnu".into(),
+        os: Os::Windows,
+        env: Env::Gnu,
         vendor: "pc".into(),
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
@@ -93,10 +93,7 @@ pub(crate) fn opts() -> TargetOptions {
         binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
-        pre_link_objects: crt_objects::pre_mingw(),
-        post_link_objects: crt_objects::post_mingw(),
         pre_link_objects_self_contained: crt_objects::pre_mingw_self_contained(),
-        post_link_objects_self_contained: crt_objects::post_mingw_self_contained(),
         link_self_contained: LinkSelfContainedDefault::InferredForMingw,
         late_link_args,
         late_link_args_dynamic,

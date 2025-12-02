@@ -1,20 +1,20 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::MaybeDef;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, eager_or_lazy, expr_requires_coercion, higher, is_else_clause,
-    is_in_const_context, is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
+    is_in_const_context, is_none_pattern, peel_blocks, peel_hir_expr_while,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
-    Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatExpr, PatExprKind, PatKind, Path,
-    QPath, UnOp,
+    Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -312,11 +312,14 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
 }
 
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
-    if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind {
-        let res = cx.qpath_res(qpath, pat.hir_id);
-        if is_res_lang_ctor(cx, res, OptionSome) {
+    if let PatKind::TupleStruct(ref qpath, [inner_pat], ..) = pat.kind
+        && let res = cx.qpath_res(qpath, pat.hir_id)
+        && let Some(did) = res.ctor_parent(cx).opt_def_id()
+    {
+        let lang_items = cx.tcx.lang_items();
+        if Some(did) == lang_items.option_some_variant() {
             return Some((inner_pat, false));
-        } else if is_res_lang_ctor(cx, res, ResultOk) {
+        } else if Some(did) == lang_items.result_ok_variant() {
             return Some((inner_pat, true));
         }
     }
@@ -375,13 +378,11 @@ fn try_convert_match<'tcx>(
 
 fn is_none_or_err_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     match arm.pat.kind {
-        PatKind::Expr(PatExpr {
-            kind: PatExprKind::Path(qpath),
-            hir_id,
-            ..
-        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
+        _ if is_none_pattern(cx, arm.pat) => true,
         PatKind::TupleStruct(ref qpath, [first_pat], _) => {
-            is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)
+            cx.qpath_res(qpath, arm.pat.hir_id)
+                .ctor_parent(cx)
+                .is_lang_item(cx, ResultErr)
                 && matches!(first_pat.kind, PatKind::Wild)
         },
         PatKind::Wild => true,

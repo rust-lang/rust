@@ -14,10 +14,8 @@ fn check_log_base() {
     //~^ suboptimal_flops
     let _ = x.ln();
     //~^ suboptimal_flops
-    let _ = x.log2();
-    //~^ suboptimal_flops
-    let _ = x.ln();
-    //~^ suboptimal_flops
+    let _ = x.log(TWO);
+    let _ = x.log(E);
     let _ = (x as f32).log2();
     //~^ suboptimal_flops
 

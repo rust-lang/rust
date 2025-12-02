@@ -139,9 +139,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // whether or not the right-hand side is a place expression
             if let LocalInfo::User(BindingForm::Var(VarBindingForm {
                 opt_match_place: Some((opt_match_place, match_span)),
-                binding_mode: _,
-                opt_ty_info: _,
-                pat_span: _,
+                ..
             })) = *local_decl.local_info()
             {
                 let stmt_source_info = self.body.source_info(location);
@@ -869,11 +867,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         for (binding_span, opt_ref_pat) in finder.ref_pat_for_binding {
             if let Some(ref_pat) = opt_ref_pat
                 && !finder.cannot_remove.contains(&ref_pat.hir_id)
-                && let hir::PatKind::Ref(subpat, mutbl) = ref_pat.kind
+                && let hir::PatKind::Ref(subpat, pinned, mutbl) = ref_pat.kind
                 && let Some(ref_span) = ref_pat.span.trim_end(subpat.span)
             {
+                let pinned_str = if pinned.is_pinned() { "pinned " } else { "" };
                 let mutable_str = if mutbl.is_mut() { "mutable " } else { "" };
-                let msg = format!("consider removing the {mutable_str}borrow");
+                let msg = format!("consider removing the {pinned_str}{mutable_str}borrow");
                 suggestions.push((ref_span, msg, "".to_string()));
             } else {
                 let msg = "consider borrowing the pattern binding".to_string();

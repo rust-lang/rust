@@ -37,7 +37,7 @@ use serde_derive::Deserialize;
 pub use target_selection::TargetSelection;
 pub use toml::BUILDER_CONFIG_FILENAME;
 pub use toml::change_id::ChangeId;
-pub use toml::rust::LldMode;
+pub use toml::rust::BootstrapOverrideLld;
 pub use toml::target::Target;
 
 use crate::Display;
@@ -47,11 +47,17 @@ use crate::str::FromStr;
 #[macro_export]
 macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
-        $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
+        $(
+            $(#[$field_attr:meta])*
+            $field:ident: Option<$field_ty:ty> = $field_key:literal,
+        )*
     }) => {
         $(#[$attr])*
         pub struct $name {
-            $(pub $field: Option<$field_ty>,)*
+            $(
+                $(#[$field_attr])*
+                pub $field: Option<$field_ty>,
+            )*
         }
 
         impl Merge for $name {

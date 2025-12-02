@@ -19077,12 +19077,8 @@ pub fn _mm_maskz_expand_pd(k: __mmask8, a: __m128d) -> __m128d {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_rol_epi32<const IMM8: i32>(a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprold(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_rolv_epi32(a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19094,12 +19090,8 @@ pub fn _mm512_rol_epi32<const IMM8: i32>(a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_rol_epi32<const IMM8: i32>(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprold(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x16()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_mask_rolv_epi32(src, k, a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19111,12 +19103,8 @@ pub fn _mm512_mask_rol_epi32<const IMM8: i32>(src: __m512i, k: __mmask16, a: __m
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_rol_epi32<const IMM8: i32>(k: __mmask16, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprold(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x16::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_maskz_rolv_epi32(k, a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst.
@@ -19128,12 +19116,8 @@ pub fn _mm512_maskz_rol_epi32<const IMM8: i32>(k: __mmask16, a: __m512i) -> __m5
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_rol_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprold256(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_rolv_epi32(a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19145,12 +19129,8 @@ pub fn _mm256_rol_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_rol_epi32<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprold256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x8()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_mask_rolv_epi32(src, k, a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19162,12 +19142,8 @@ pub fn _mm256_mask_rol_epi32<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m2
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_rol_epi32<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprold256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x8::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_maskz_rolv_epi32(k, a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst.
@@ -19179,12 +19155,8 @@ pub fn _mm256_maskz_rol_epi32<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m25
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_rol_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprold128(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_rolv_epi32(a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19196,12 +19168,8 @@ pub fn _mm_rol_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_rol_epi32<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprold128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x4()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_mask_rolv_epi32(src, k, a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19213,12 +19181,8 @@ pub fn _mm_mask_rol_epi32<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_rol_epi32<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprold128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x4::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_maskz_rolv_epi32(k, a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19230,12 +19194,8 @@ pub fn _mm_maskz_rol_epi32<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i 
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_ror_epi32<const IMM8: i32>(a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprord(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_rorv_epi32(a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19247,12 +19207,8 @@ pub fn _mm512_ror_epi32<const IMM8: i32>(a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_ror_epi32<const IMM8: i32>(src: __m512i, k: __mmask16, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprord(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x16()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_mask_rorv_epi32(src, k, a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19264,12 +19220,8 @@ pub fn _mm512_mask_ror_epi32<const IMM8: i32>(src: __m512i, k: __mmask16, a: __m
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_ror_epi32<const IMM8: i32>(k: __mmask16, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x16();
-        let r = vprord(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x16::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_maskz_rorv_epi32(k, a, _mm512_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19281,12 +19233,8 @@ pub fn _mm512_maskz_ror_epi32<const IMM8: i32>(k: __mmask16, a: __m512i) -> __m5
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_ror_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprord256(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_rorv_epi32(a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19298,12 +19246,8 @@ pub fn _mm256_ror_epi32<const IMM8: i32>(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_ror_epi32<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprord256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x8()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_mask_rorv_epi32(src, k, a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19315,12 +19259,8 @@ pub fn _mm256_mask_ror_epi32<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m2
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_ror_epi32<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x8();
-        let r = vprord256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x8::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_maskz_rorv_epi32(k, a, _mm256_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19332,12 +19272,8 @@ pub fn _mm256_maskz_ror_epi32<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m25
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_ror_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprord128(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_rorv_epi32(a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19349,12 +19285,8 @@ pub fn _mm_ror_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_ror_epi32<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprord128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i32x4()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_mask_rorv_epi32(src, k, a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19366,12 +19298,8 @@ pub fn _mm_mask_ror_epi32<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i
 #[cfg_attr(test, assert_instr(vprold, IMM8 = 123))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_ror_epi32<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i32x4();
-        let r = vprord128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i32x4::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_maskz_rorv_epi32(k, a, _mm_set1_epi32(IMM8))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst.
@@ -19383,12 +19311,8 @@ pub fn _mm_maskz_ror_epi32<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i 
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_rol_epi64<const IMM8: i32>(a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprolq(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_rolv_epi64(a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19400,12 +19324,8 @@ pub fn _mm512_rol_epi64<const IMM8: i32>(a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_rol_epi64<const IMM8: i32>(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprolq(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x8()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_mask_rolv_epi64(src, k, a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19417,12 +19337,8 @@ pub fn _mm512_mask_rol_epi64<const IMM8: i32>(src: __m512i, k: __mmask8, a: __m5
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprolq(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x8::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_maskz_rolv_epi64(k, a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst.
@@ -19434,12 +19350,8 @@ pub fn _mm512_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m512i) -> __m51
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_rol_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprolq256(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_rolv_epi64(a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19451,12 +19363,8 @@ pub fn _mm256_rol_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_rol_epi64<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprolq256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x4()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_mask_rolv_epi64(src, k, a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19468,12 +19376,8 @@ pub fn _mm256_mask_rol_epi64<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m2
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprolq256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x4::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_maskz_rolv_epi64(k, a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst.
@@ -19485,12 +19389,8 @@ pub fn _mm256_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m25
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_rol_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprolq128(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_rolv_epi64(a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19502,12 +19402,8 @@ pub fn _mm_rol_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_rol_epi64<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprolq128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x2()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_mask_rolv_epi64(src, k, a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19519,12 +19415,8 @@ pub fn _mm_mask_rol_epi64<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 1))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprolq128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x2::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_maskz_rolv_epi64(k, a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19536,12 +19428,8 @@ pub fn _mm_maskz_rol_epi64<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i 
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm512_ror_epi64<const IMM8: i32>(a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprorq(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_rorv_epi64(a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19553,12 +19441,8 @@ pub fn _mm512_ror_epi64<const IMM8: i32>(a: __m512i) -> __m512i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm512_mask_ror_epi64<const IMM8: i32>(src: __m512i, k: __mmask8, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprorq(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x8()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_mask_rorv_epi64(src, k, a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19570,12 +19454,8 @@ pub fn _mm512_mask_ror_epi64<const IMM8: i32>(src: __m512i, k: __mmask8, a: __m5
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm512_maskz_ror_epi64<const IMM8: i32>(k: __mmask8, a: __m512i) -> __m512i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x8();
-        let r = vprorq(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x8::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm512_maskz_rorv_epi64(k, a, _mm512_set1_epi64(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19587,12 +19467,8 @@ pub fn _mm512_maskz_ror_epi64<const IMM8: i32>(k: __mmask8, a: __m512i) -> __m51
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_ror_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprorq256(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_rorv_epi64(a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19604,12 +19480,8 @@ pub fn _mm256_ror_epi64<const IMM8: i32>(a: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm256_mask_ror_epi64<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprorq256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x4()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_mask_rorv_epi64(src, k, a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19621,12 +19493,8 @@ pub fn _mm256_mask_ror_epi64<const IMM8: i32>(src: __m256i, k: __mmask8, a: __m2
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm256_maskz_ror_epi64<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m256i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x4();
-        let r = vprorq256(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x4::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm256_maskz_rorv_epi64(k, a, _mm256_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst.
@@ -19638,12 +19506,8 @@ pub fn _mm256_maskz_ror_epi64<const IMM8: i32>(k: __mmask8, a: __m256i) -> __m25
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_ror_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprorq128(a, IMM8);
-        transmute(r)
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_rorv_epi64(a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -19655,12 +19519,8 @@ pub fn _mm_ror_epi64<const IMM8: i32>(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(3)]
 pub fn _mm_mask_ror_epi64<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprorq128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, src.as_i64x2()))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_mask_rorv_epi64(src, k, a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in imm8, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
@@ -19672,12 +19532,8 @@ pub fn _mm_mask_ror_epi64<const IMM8: i32>(src: __m128i, k: __mmask8, a: __m128i
 #[cfg_attr(test, assert_instr(vprolq, IMM8 = 15))]
 #[rustc_legacy_const_generics(2)]
 pub fn _mm_maskz_ror_epi64<const IMM8: i32>(k: __mmask8, a: __m128i) -> __m128i {
-    unsafe {
-        static_assert_uimm_bits!(IMM8, 8);
-        let a = a.as_i64x2();
-        let r = vprorq128(a, IMM8);
-        transmute(simd_select_bitmask(k, r, i64x2::ZERO))
-    }
+    static_assert_uimm_bits!(IMM8, 8);
+    _mm_maskz_rorv_epi64(k, a, _mm_set1_epi64x(IMM8 as i64))
 }
 
 /// Shift packed 32-bit integers in a left by imm8 while shifting in zeros, and store the results in dst.
@@ -21084,7 +20940,12 @@ pub fn _mm_maskz_srai_epi64<const IMM8: u32>(k: __mmask8, a: __m128i) -> __m128i
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravd))]
 pub fn _mm512_srav_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsravd(a.as_i32x16(), count.as_i32x16())) }
+    unsafe {
+        let count = count.as_u32x16();
+        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
+        let count = simd_select(no_overflow, transmute(count), i32x16::splat(31));
+        simd_shr(a.as_i32x16(), count).as_m512i()
+    }
 }
 
 /// Shift packed 32-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21179,7 +21040,12 @@ pub fn _mm_maskz_srav_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
 pub fn _mm512_srav_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsravq(a.as_i64x8(), count.as_i64x8())) }
+    unsafe {
+        let count = count.as_u64x8();
+        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
+        let count = simd_select(no_overflow, transmute(count), i64x8::splat(63));
+        simd_shr(a.as_i64x8(), count).as_m512i()
+    }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21218,7 +21084,12 @@ pub fn _mm512_maskz_srav_epi64(k: __mmask8, a: __m512i, count: __m512i) -> __m51
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
 pub fn _mm256_srav_epi64(a: __m256i, count: __m256i) -> __m256i {
-    unsafe { transmute(vpsravq256(a.as_i64x4(), count.as_i64x4())) }
+    unsafe {
+        let count = count.as_u64x4();
+        let no_overflow: u64x4 = simd_lt(count, u64x4::splat(u64::BITS as u64));
+        let count = simd_select(no_overflow, transmute(count), i64x4::splat(63));
+        simd_shr(a.as_i64x4(), count).as_m256i()
+    }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21257,7 +21128,12 @@ pub fn _mm256_maskz_srav_epi64(k: __mmask8, a: __m256i, count: __m256i) -> __m25
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsravq))]
 pub fn _mm_srav_epi64(a: __m128i, count: __m128i) -> __m128i {
-    unsafe { transmute(vpsravq128(a.as_i64x2(), count.as_i64x2())) }
+    unsafe {
+        let count = count.as_u64x2();
+        let no_overflow: u64x2 = simd_lt(count, u64x2::splat(u64::BITS as u64));
+        let count = simd_select(no_overflow, transmute(count), i64x2::splat(63));
+        simd_shr(a.as_i64x2(), count).as_m128i()
+    }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in sign bits, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21296,7 +21172,13 @@ pub fn _mm_maskz_srav_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm512_rolv_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vprolvd(a.as_i32x16(), b.as_i32x16())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x16(),
+            a.as_u32x16(),
+            simd_and(b.as_u32x16(), u32x16::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21335,7 +21217,13 @@ pub fn _mm512_maskz_rolv_epi32(k: __mmask16, a: __m512i, b: __m512i) -> __m512i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm256_rolv_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(vprolvd256(a.as_i32x8(), b.as_i32x8())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x8(),
+            a.as_u32x8(),
+            simd_and(b.as_u32x8(), u32x8::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21374,7 +21262,13 @@ pub fn _mm256_maskz_rolv_epi32(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvd))]
 pub fn _mm_rolv_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(vprolvd128(a.as_i32x4(), b.as_i32x4())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            simd_and(b.as_u32x4(), u32x4::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21413,7 +21307,13 @@ pub fn _mm_maskz_rolv_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm512_rorv_epi32(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vprorvd(a.as_i32x16(), b.as_i32x16())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x16(),
+            a.as_u32x16(),
+            simd_and(b.as_u32x16(), u32x16::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21452,7 +21352,13 @@ pub fn _mm512_maskz_rorv_epi32(k: __mmask16, a: __m512i, b: __m512i) -> __m512i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm256_rorv_epi32(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(vprorvd256(a.as_i32x8(), b.as_i32x8())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x8(),
+            a.as_u32x8(),
+            simd_and(b.as_u32x8(), u32x8::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21491,7 +21397,13 @@ pub fn _mm256_maskz_rorv_epi32(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvd))]
 pub fn _mm_rorv_epi32(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(vprorvd128(a.as_i32x4(), b.as_i32x4())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u32x4(),
+            a.as_u32x4(),
+            simd_and(b.as_u32x4(), u32x4::splat(31)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 32-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21530,7 +21442,13 @@ pub fn _mm_maskz_rorv_epi32(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm512_rolv_epi64(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vprolvq(a.as_i64x8(), b.as_i64x8())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x8(),
+            a.as_u64x8(),
+            simd_and(b.as_u64x8(), u64x8::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21569,7 +21487,13 @@ pub fn _mm512_maskz_rolv_epi64(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm256_rolv_epi64(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(vprolvq256(a.as_i64x4(), b.as_i64x4())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x4(),
+            a.as_u64x4(),
+            simd_and(b.as_u64x4(), u64x4::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21608,7 +21532,13 @@ pub fn _mm256_maskz_rolv_epi64(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprolvq))]
 pub fn _mm_rolv_epi64(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(vprolvq128(a.as_i64x2(), b.as_i64x2())) }
+    unsafe {
+        transmute(simd_funnel_shl(
+            a.as_u64x2(),
+            a.as_u64x2(),
+            simd_and(b.as_u64x2(), u64x2::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the left by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21647,7 +21577,13 @@ pub fn _mm_maskz_rolv_epi64(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm512_rorv_epi64(a: __m512i, b: __m512i) -> __m512i {
-    unsafe { transmute(vprorvq(a.as_i64x8(), b.as_i64x8())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x8(),
+            a.as_u64x8(),
+            simd_and(b.as_u64x8(), u64x8::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21686,7 +21622,13 @@ pub fn _mm512_maskz_rorv_epi64(k: __mmask8, a: __m512i, b: __m512i) -> __m512i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm256_rorv_epi64(a: __m256i, b: __m256i) -> __m256i {
-    unsafe { transmute(vprorvq256(a.as_i64x4(), b.as_i64x4())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x4(),
+            a.as_u64x4(),
+            simd_and(b.as_u64x4(), u64x4::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21725,7 +21667,13 @@ pub fn _mm256_maskz_rorv_epi64(k: __mmask8, a: __m256i, b: __m256i) -> __m256i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vprorvq))]
 pub fn _mm_rorv_epi64(a: __m128i, b: __m128i) -> __m128i {
-    unsafe { transmute(vprorvq128(a.as_i64x2(), b.as_i64x2())) }
+    unsafe {
+        transmute(simd_funnel_shr(
+            a.as_u64x2(),
+            a.as_u64x2(),
+            simd_and(b.as_u64x2(), u64x2::splat(63)),
+        ))
+    }
 }
 
 /// Rotate the bits in each packed 64-bit integer in a to the right by the number of bits specified in the corresponding element of b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21764,7 +21712,12 @@ pub fn _mm_maskz_rorv_epi64(k: __mmask8, a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvd))]
 pub fn _mm512_sllv_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsllvd(a.as_i32x16(), count.as_i32x16())) }
+    unsafe {
+        let count = count.as_u32x16();
+        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
+        let count = simd_select(no_overflow, count, u32x16::ZERO);
+        simd_select(no_overflow, simd_shl(a.as_u32x16(), count), u32x16::ZERO).as_m512i()
+    }
 }
 
 /// Shift packed 32-bit integers in a left by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21859,7 +21812,12 @@ pub fn _mm_maskz_sllv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvd))]
 pub fn _mm512_srlv_epi32(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsrlvd(a.as_i32x16(), count.as_i32x16())) }
+    unsafe {
+        let count = count.as_u32x16();
+        let no_overflow: u32x16 = simd_lt(count, u32x16::splat(u32::BITS));
+        let count = simd_select(no_overflow, count, u32x16::ZERO);
+        simd_select(no_overflow, simd_shr(a.as_u32x16(), count), u32x16::ZERO).as_m512i()
+    }
 }
 
 /// Shift packed 32-bit integers in a right by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -21954,7 +21912,12 @@ pub fn _mm_maskz_srlv_epi32(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsllvq))]
 pub fn _mm512_sllv_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsllvq(a.as_i64x8(), count.as_i64x8())) }
+    unsafe {
+        let count = count.as_u64x8();
+        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
+        let count = simd_select(no_overflow, count, u64x8::ZERO);
+        simd_select(no_overflow, simd_shl(a.as_u64x8(), count), u64x8::ZERO).as_m512i()
+    }
 }
 
 /// Shift packed 64-bit integers in a left by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22049,7 +22012,12 @@ pub fn _mm_maskz_sllv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> __m128i 
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 #[cfg_attr(test, assert_instr(vpsrlvq))]
 pub fn _mm512_srlv_epi64(a: __m512i, count: __m512i) -> __m512i {
-    unsafe { transmute(vpsrlvq(a.as_i64x8(), count.as_i64x8())) }
+    unsafe {
+        let count = count.as_u64x8();
+        let no_overflow: u64x8 = simd_lt(count, u64x8::splat(u64::BITS as u64));
+        let count = simd_select(no_overflow, count, u64x8::ZERO);
+        simd_select(no_overflow, simd_shr(a.as_u64x8(), count), u64x8::ZERO).as_m512i()
+    }
 }
 
 /// Shift packed 64-bit integers in a right by the amount specified by the corresponding element in count while shifting in zeros, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -29234,7 +29202,7 @@ pub fn _kortestz_mask16_u8(a: __mmask16, b: __mmask16) -> u8 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftli_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
-    a << COUNT
+    a.unbounded_shl(COUNT)
 }
 
 /// Shift 16-bit mask a right by count bits while shifting in zeros, and store the result in dst.
@@ -29245,7 +29213,7 @@ pub fn _kshiftli_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub fn _kshiftri_mask16<const COUNT: u32>(a: __mmask16) -> __mmask16 {
-    a >> COUNT
+    a.unbounded_shr(COUNT)
 }
 
 /// Load 16-bit mask from memory
@@ -29665,6 +29633,7 @@ pub fn _mm_mask_testn_epi64_mask(k: __mmask8, a: __m128i, b: __m128i) -> __mmask
 #[cfg_attr(test, assert_instr(vmovntps))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntps", ",{a}"),
         p = in(reg) mem_addr,
@@ -29691,6 +29660,7 @@ pub unsafe fn _mm512_stream_ps(mem_addr: *mut f32, a: __m512) {
 #[cfg_attr(test, assert_instr(vmovntpd))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntpd", ",{a}"),
         p = in(reg) mem_addr,
@@ -29717,6 +29687,7 @@ pub unsafe fn _mm512_stream_pd(mem_addr: *mut f64, a: __m512d) {
 #[cfg_attr(test, assert_instr(vmovntdq))]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm512_stream_si512(mem_addr: *mut __m512i, a: __m512i) {
+    // see #1541, we should use inline asm to be sure, because LangRef isn't clear enough
     crate::arch::asm!(
         vps!("vmovntdq", ",{a}"),
         p = in(reg) mem_addr,
@@ -34784,7 +34755,8 @@ pub unsafe fn _mm512_store_pd(mem_addr: *mut f64, a: __m512d) {
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_epi32(src: __m512i, k: __mmask16, mem_addr: *const i32) -> __m512i {
-    transmute(loaddqu32_512(mem_addr, src.as_i32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x16()).as_m512i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -34810,7 +34782,8 @@ pub unsafe fn _mm512_maskz_loadu_epi32(k: __mmask16, mem_addr: *const i32) -> __
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_epi64(src: __m512i, k: __mmask8, mem_addr: *const i64) -> __m512i {
-    transmute(loaddqu64_512(mem_addr, src.as_i64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x8()).as_m512i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -34836,7 +34809,8 @@ pub unsafe fn _mm512_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_ps(src: __m512, k: __mmask16, mem_addr: *const f32) -> __m512 {
-    transmute(loadups_512(mem_addr, src.as_f32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x16()).as_m512()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -34862,7 +34836,8 @@ pub unsafe fn _mm512_maskz_loadu_ps(k: __mmask16, mem_addr: *const f32) -> __m51
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_loadu_pd(src: __m512d, k: __mmask8, mem_addr: *const f64) -> __m512d {
-    transmute(loadupd_512(mem_addr, src.as_f64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x8()).as_m512d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -34888,7 +34863,8 @@ pub unsafe fn _mm512_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m512
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_epi32(src: __m256i, k: __mmask8, mem_addr: *const i32) -> __m256i {
-    transmute(loaddqu32_256(mem_addr, src.as_i32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x8()).as_m256i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -34914,7 +34890,8 @@ pub unsafe fn _mm256_maskz_loadu_epi32(k: __mmask8, mem_addr: *const i32) -> __m
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_epi64(src: __m256i, k: __mmask8, mem_addr: *const i64) -> __m256i {
-    transmute(loaddqu64_256(mem_addr, src.as_i64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x4()).as_m256i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -34940,7 +34917,8 @@ pub unsafe fn _mm256_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_ps(src: __m256, k: __mmask8, mem_addr: *const f32) -> __m256 {
-    transmute(loadups_256(mem_addr, src.as_f32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x8()).as_m256()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -34966,7 +34944,8 @@ pub unsafe fn _mm256_maskz_loadu_ps(k: __mmask8, mem_addr: *const f32) -> __m256
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_loadu_pd(src: __m256d, k: __mmask8, mem_addr: *const f64) -> __m256d {
-    transmute(loadupd_256(mem_addr, src.as_f64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x4()).as_m256d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -34992,7 +34971,8 @@ pub unsafe fn _mm256_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m256
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_epi32(src: __m128i, k: __mmask8, mem_addr: *const i32) -> __m128i {
-    transmute(loaddqu32_128(mem_addr, src.as_i32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i32x4()).as_m128i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35018,7 +34998,8 @@ pub unsafe fn _mm_maskz_loadu_epi32(k: __mmask8, mem_addr: *const i32) -> __m128
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_epi64(src: __m128i, k: __mmask8, mem_addr: *const i64) -> __m128i {
-    transmute(loaddqu64_128(mem_addr, src.as_i64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_i64x2()).as_m128i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35044,7 +35025,8 @@ pub unsafe fn _mm_maskz_loadu_epi64(k: __mmask8, mem_addr: *const i64) -> __m128
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_ps(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
-    transmute(loadups_128(mem_addr, src.as_f32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f32x4()).as_m128()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35070,7 +35052,8 @@ pub unsafe fn _mm_maskz_loadu_ps(k: __mmask8, mem_addr: *const f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_loadu_pd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
-    transmute(loadupd_128(mem_addr, src.as_f64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Unaligned, mask, mem_addr, src.as_f64x2()).as_m128d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35096,7 +35079,8 @@ pub unsafe fn _mm_maskz_loadu_pd(k: __mmask8, mem_addr: *const f64) -> __m128d {
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_epi32(src: __m512i, k: __mmask16, mem_addr: *const i32) -> __m512i {
-    transmute(loaddqa32_512(mem_addr, src.as_i32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x16()).as_m512i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35122,7 +35106,8 @@ pub unsafe fn _mm512_maskz_load_epi32(k: __mmask16, mem_addr: *const i32) -> __m
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_epi64(src: __m512i, k: __mmask8, mem_addr: *const i64) -> __m512i {
-    transmute(loaddqa64_512(mem_addr, src.as_i64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x8()).as_m512i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35148,7 +35133,8 @@ pub unsafe fn _mm512_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m5
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_ps(src: __m512, k: __mmask16, mem_addr: *const f32) -> __m512 {
-    transmute(loadaps_512(mem_addr, src.as_f32x16(), k))
+    let mask = simd_select_bitmask(k, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x16()).as_m512()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35174,7 +35160,8 @@ pub unsafe fn _mm512_maskz_load_ps(k: __mmask16, mem_addr: *const f32) -> __m512
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_load_pd(src: __m512d, k: __mmask8, mem_addr: *const f64) -> __m512d {
-    transmute(loadapd_512(mem_addr, src.as_f64x8(), k))
+    let mask = simd_select_bitmask(k, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x8()).as_m512d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35200,7 +35187,8 @@ pub unsafe fn _mm512_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m512d
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_epi32(src: __m256i, k: __mmask8, mem_addr: *const i32) -> __m256i {
-    transmute(loaddqa32_256(mem_addr, src.as_i32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x8()).as_m256i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35226,7 +35214,8 @@ pub unsafe fn _mm256_maskz_load_epi32(k: __mmask8, mem_addr: *const i32) -> __m2
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_epi64(src: __m256i, k: __mmask8, mem_addr: *const i64) -> __m256i {
-    transmute(loaddqa64_256(mem_addr, src.as_i64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x4()).as_m256i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35252,7 +35241,8 @@ pub unsafe fn _mm256_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m2
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_ps(src: __m256, k: __mmask8, mem_addr: *const f32) -> __m256 {
-    transmute(loadaps_256(mem_addr, src.as_f32x8(), k))
+    let mask = simd_select_bitmask(k, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x8()).as_m256()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35278,7 +35268,8 @@ pub unsafe fn _mm256_maskz_load_ps(k: __mmask8, mem_addr: *const f32) -> __m256 
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_load_pd(src: __m256d, k: __mmask8, mem_addr: *const f64) -> __m256d {
-    transmute(loadapd_256(mem_addr, src.as_f64x4(), k))
+    let mask = simd_select_bitmask(k, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x4()).as_m256d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35304,7 +35295,8 @@ pub unsafe fn _mm256_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m256d
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_epi32(src: __m128i, k: __mmask8, mem_addr: *const i32) -> __m128i {
-    transmute(loaddqa32_128(mem_addr, src.as_i32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i32x4()).as_m128i()
 }
 
 /// Load packed 32-bit integers from memory into dst using zeromask k
@@ -35330,7 +35322,8 @@ pub unsafe fn _mm_maskz_load_epi32(k: __mmask8, mem_addr: *const i32) -> __m128i
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_epi64(src: __m128i, k: __mmask8, mem_addr: *const i64) -> __m128i {
-    transmute(loaddqa64_128(mem_addr, src.as_i64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_i64x2()).as_m128i()
 }
 
 /// Load packed 64-bit integers from memory into dst using zeromask k
@@ -35356,7 +35349,8 @@ pub unsafe fn _mm_maskz_load_epi64(k: __mmask8, mem_addr: *const i64) -> __m128i
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_ps(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
-    transmute(loadaps_128(mem_addr, src.as_f32x4(), k))
+    let mask = simd_select_bitmask(k, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f32x4()).as_m128()
 }
 
 /// Load packed single-precision (32-bit) floating-point elements from memory into dst using zeromask k
@@ -35382,7 +35376,8 @@ pub unsafe fn _mm_maskz_load_ps(k: __mmask8, mem_addr: *const f32) -> __m128 {
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_load_pd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
-    transmute(loadapd_128(mem_addr, src.as_f64x2(), k))
+    let mask = simd_select_bitmask(k, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_load!(SimdAlign::Vector, mask, mem_addr, src.as_f64x2()).as_m128d()
 }
 
 /// Load packed double-precision (64-bit) floating-point elements from memory into dst using zeromask k
@@ -35495,7 +35490,8 @@ pub unsafe fn _mm_maskz_load_sd(k: __mmask8, mem_addr: *const f64) -> __m128d {
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask16, a: __m512i) {
-    storedqu32_512(mem_addr, a.as_i32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x16());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35507,7 +35503,8 @@ pub unsafe fn _mm512_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask16, a: _
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m512i) {
-    storedqu64_512(mem_addr, a.as_i64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x8());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35519,7 +35516,8 @@ pub unsafe fn _mm512_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask16, a: __m512) {
-    storeups_512(mem_addr, a.as_f32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x16());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35531,7 +35529,8 @@ pub unsafe fn _mm512_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask16, a: __m5
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512d) {
-    storeupd_512(mem_addr, a.as_f64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x8());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35543,7 +35542,8 @@ pub unsafe fn _mm512_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m51
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m256i) {
-    storedqu32_256(mem_addr, a.as_i32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x8());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35555,7 +35555,8 @@ pub unsafe fn _mm256_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m256i) {
-    storedqu64_256(mem_addr, a.as_i64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x4());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35567,7 +35568,8 @@ pub unsafe fn _mm256_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256) {
-    storeups_256(mem_addr, a.as_f32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x8());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35579,7 +35581,8 @@ pub unsafe fn _mm256_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m25
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256d) {
-    storeupd_256(mem_addr, a.as_f64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x4());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35591,7 +35594,8 @@ pub unsafe fn _mm256_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m25
 #[cfg_attr(test, assert_instr(vmovdqu32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128i) {
-    storedqu32_128(mem_addr, a.as_i32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i32x4());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35603,7 +35607,8 @@ pub unsafe fn _mm_mask_storeu_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m12
 #[cfg_attr(test, assert_instr(vmovdqu64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128i) {
-    storedqu64_128(mem_addr, a.as_i64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_i64x2());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35615,7 +35620,8 @@ pub unsafe fn _mm_mask_storeu_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m12
 #[cfg_attr(test, assert_instr(vmovups))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
-    storeups_128(mem_addr, a.as_f32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f32x4());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35627,7 +35633,8 @@ pub unsafe fn _mm_mask_storeu_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) 
 #[cfg_attr(test, assert_instr(vmovupd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) {
-    storeupd_128(mem_addr, a.as_f64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Unaligned, mask, mem_addr, a.as_f64x2());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35639,7 +35646,8 @@ pub unsafe fn _mm_mask_storeu_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d)
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_epi32(mem_addr: *mut i32, mask: __mmask16, a: __m512i) {
-    storedqa32_512(mem_addr, a.as_i32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x16());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35651,7 +35659,8 @@ pub unsafe fn _mm512_mask_store_epi32(mem_addr: *mut i32, mask: __mmask16, a: __
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m512i) {
-    storedqa64_512(mem_addr, a.as_i64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x8());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35663,7 +35672,8 @@ pub unsafe fn _mm512_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_ps(mem_addr: *mut f32, mask: __mmask16, a: __m512) {
-    storeaps_512(mem_addr, a.as_f32x16(), mask)
+    let mask = simd_select_bitmask(mask, i32x16::splat(!0), i32x16::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x16());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35675,7 +35685,8 @@ pub unsafe fn _mm512_mask_store_ps(mem_addr: *mut f32, mask: __mmask16, a: __m51
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm512_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512d) {
-    storeapd_512(mem_addr, a.as_f64x8(), mask)
+    let mask = simd_select_bitmask(mask, i64x8::splat(!0), i64x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x8());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35687,7 +35698,8 @@ pub unsafe fn _mm512_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m512
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m256i) {
-    storedqa32_256(mem_addr, a.as_i32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x8());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35699,7 +35711,8 @@ pub unsafe fn _mm256_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m256i) {
-    storedqa64_256(mem_addr, a.as_i64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x4());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35711,7 +35724,8 @@ pub unsafe fn _mm256_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256) {
-    storeaps_256(mem_addr, a.as_f32x8(), mask)
+    let mask = simd_select_bitmask(mask, i32x8::splat(!0), i32x8::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x8());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35723,7 +35737,8 @@ pub unsafe fn _mm256_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m256
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm256_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256d) {
-    storeapd_256(mem_addr, a.as_f64x4(), mask)
+    let mask = simd_select_bitmask(mask, i64x4::splat(!0), i64x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x4());
 }
 
 /// Store packed 32-bit integers from a into memory using writemask k.
@@ -35735,7 +35750,8 @@ pub unsafe fn _mm256_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m256
 #[cfg_attr(test, assert_instr(vmovdqa32))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128i) {
-    storedqa32_128(mem_addr, a.as_i32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i32x4());
 }
 
 /// Store packed 64-bit integers from a into memory using writemask k.
@@ -35747,7 +35763,8 @@ pub unsafe fn _mm_mask_store_epi32(mem_addr: *mut i32, mask: __mmask8, a: __m128
 #[cfg_attr(test, assert_instr(vmovdqa64))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128i) {
-    storedqa64_128(mem_addr, a.as_i64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_i64x2());
 }
 
 /// Store packed single-precision (32-bit) floating-point elements from a into memory using writemask k.
@@ -35759,7 +35776,8 @@ pub unsafe fn _mm_mask_store_epi64(mem_addr: *mut i64, mask: __mmask8, a: __m128
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
-    storeaps_128(mem_addr, a.as_f32x4(), mask)
+    let mask = simd_select_bitmask(mask, i32x4::splat(!0), i32x4::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f32x4());
 }
 
 /// Store packed double-precision (64-bit) floating-point elements from a into memory using writemask k.
@@ -35771,7 +35789,8 @@ pub unsafe fn _mm_mask_store_ps(mem_addr: *mut f32, mask: __mmask8, a: __m128) {
 #[cfg_attr(test, assert_instr(vmovapd))]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
 pub unsafe fn _mm_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) {
-    storeapd_128(mem_addr, a.as_f64x2(), mask)
+    let mask = simd_select_bitmask(mask, i64x2::splat(!0), i64x2::ZERO);
+    simd_masked_store!(SimdAlign::Vector, mask, mem_addr, a.as_f64x2());
 }
 
 /// Store a single-precision (32-bit) floating-point element from a into memory using writemask k. mem_addr
@@ -42902,71 +42921,6 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512.mask.cmp.pd.128"]
     fn vcmppd128(a: f64x2, b: f64x2, op: i32, m: i8) -> i8;
 
-    #[link_name = "llvm.x86.avx512.mask.prol.d.512"]
-    fn vprold(a: i32x16, i8: i32) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.prol.d.256"]
-    fn vprold256(a: i32x8, i8: i32) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.prol.d.128"]
-    fn vprold128(a: i32x4, i8: i32) -> i32x4;
-
-    #[link_name = "llvm.x86.avx512.mask.pror.d.512"]
-    fn vprord(a: i32x16, i8: i32) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.pror.d.256"]
-    fn vprord256(a: i32x8, i8: i32) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.pror.d.128"]
-    fn vprord128(a: i32x4, i8: i32) -> i32x4;
-
-    #[link_name = "llvm.x86.avx512.mask.prol.q.512"]
-    fn vprolq(a: i64x8, i8: i32) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.prol.q.256"]
-    fn vprolq256(a: i64x4, i8: i32) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.prol.q.128"]
-    fn vprolq128(a: i64x2, i8: i32) -> i64x2;
-
-    #[link_name = "llvm.x86.avx512.mask.pror.q.512"]
-    fn vprorq(a: i64x8, i8: i32) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.pror.q.256"]
-    fn vprorq256(a: i64x4, i8: i32) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.pror.q.128"]
-    fn vprorq128(a: i64x2, i8: i32) -> i64x2;
-
-    #[link_name = "llvm.x86.avx512.mask.prolv.d.512"]
-    fn vprolvd(a: i32x16, b: i32x16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.prolv.d.256"]
-    fn vprolvd256(a: i32x8, b: i32x8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.prolv.d.128"]
-    fn vprolvd128(a: i32x4, b: i32x4) -> i32x4;
-
-    #[link_name = "llvm.x86.avx512.mask.prorv.d.512"]
-    fn vprorvd(a: i32x16, b: i32x16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.prorv.d.256"]
-    fn vprorvd256(a: i32x8, b: i32x8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.prorv.d.128"]
-    fn vprorvd128(a: i32x4, b: i32x4) -> i32x4;
-
-    #[link_name = "llvm.x86.avx512.mask.prolv.q.512"]
-    fn vprolvq(a: i64x8, b: i64x8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.prolv.q.256"]
-    fn vprolvq256(a: i64x4, b: i64x4) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.prolv.q.128"]
-    fn vprolvq128(a: i64x2, b: i64x2) -> i64x2;
-
-    #[link_name = "llvm.x86.avx512.mask.prorv.q.512"]
-    fn vprorvq(a: i64x8, b: i64x8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.prorv.q.256"]
-    fn vprorvq256(a: i64x4, b: i64x4) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.prorv.q.128"]
-    fn vprorvq128(a: i64x2, b: i64x2) -> i64x2;
-
-    #[link_name = "llvm.x86.avx512.psllv.d.512"]
-    fn vpsllvd(a: i32x16, b: i32x16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.psrlv.d.512"]
-    fn vpsrlvd(a: i32x16, b: i32x16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.psllv.q.512"]
-    fn vpsllvq(a: i64x8, b: i64x8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.psrlv.q.512"]
-    fn vpsrlvq(a: i64x8, b: i64x8) -> i64x8;
-
     #[link_name = "llvm.x86.avx512.psll.d.512"]
     fn vpslld(a: i32x16, count: i32x4) -> i32x16;
     #[link_name = "llvm.x86.avx512.psrl.d.512"]
@@ -42985,16 +42939,6 @@ unsafe extern "C" {
     fn vpsraq256(a: i64x4, count: i64x2) -> i64x4;
     #[link_name = "llvm.x86.avx512.psra.q.128"]
     fn vpsraq128(a: i64x2, count: i64x2) -> i64x2;
-
-    #[link_name = "llvm.x86.avx512.psrav.d.512"]
-    fn vpsravd(a: i32x16, count: i32x16) -> i32x16;
-
-    #[link_name = "llvm.x86.avx512.psrav.q.512"]
-    fn vpsravq(a: i64x8, count: i64x8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.psrav.q.256"]
-    fn vpsravq256(a: i64x4, count: i64x4) -> i64x4;
-    #[link_name = "llvm.x86.avx512.psrav.q.128"]
-    fn vpsravq128(a: i64x2, count: i64x2) -> i64x2;
 
     #[link_name = "llvm.x86.avx512.vpermilvar.ps.512"]
     fn vpermilps(a: f32x16, b: i32x16) -> f32x16;
@@ -43233,106 +43177,6 @@ unsafe extern "C" {
     fn vcomiss(a: f32x4, b: f32x4, imm8: i32, sae: i32) -> i32;
     #[link_name = "llvm.x86.avx512.vcomi.sd"]
     fn vcomisd(a: f64x2, b: f64x2, imm8: i32, sae: i32) -> i32;
-
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.128"]
-    fn loaddqu32_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.128"]
-    fn loaddqu64_128(mem_addr: *const i64, a: i64x2, mask: u8) -> i64x2;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.128"]
-    fn loadups_128(mem_addr: *const f32, a: f32x4, mask: u8) -> f32x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.128"]
-    fn loadupd_128(mem_addr: *const f64, a: f64x2, mask: u8) -> f64x2;
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.256"]
-    fn loaddqu32_256(mem_addr: *const i32, a: i32x8, mask: u8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.256"]
-    fn loaddqu64_256(mem_addr: *const i64, a: i64x4, mask: u8) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.256"]
-    fn loadups_256(mem_addr: *const f32, a: f32x8, mask: u8) -> f32x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.256"]
-    fn loadupd_256(mem_addr: *const f64, a: f64x4, mask: u8) -> f64x4;
-    #[link_name = "llvm.x86.avx512.mask.loadu.d.512"]
-    fn loaddqu32_512(mem_addr: *const i32, a: i32x16, mask: u16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.loadu.q.512"]
-    fn loaddqu64_512(mem_addr: *const i64, a: i64x8, mask: u8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.loadu.ps.512"]
-    fn loadups_512(mem_addr: *const f32, a: f32x16, mask: u16) -> f32x16;
-    #[link_name = "llvm.x86.avx512.mask.loadu.pd.512"]
-    fn loadupd_512(mem_addr: *const f64, a: f64x8, mask: u8) -> f64x8;
-
-    #[link_name = "llvm.x86.avx512.mask.load.d.128"]
-    fn loaddqa32_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
-    #[link_name = "llvm.x86.avx512.mask.load.q.128"]
-    fn loaddqa64_128(mem_addr: *const i64, a: i64x2, mask: u8) -> i64x2;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.128"]
-    fn loadaps_128(mem_addr: *const f32, a: f32x4, mask: u8) -> f32x4;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.128"]
-    fn loadapd_128(mem_addr: *const f64, a: f64x2, mask: u8) -> f64x2;
-    #[link_name = "llvm.x86.avx512.mask.load.d.256"]
-    fn loaddqa32_256(mem_addr: *const i32, a: i32x8, mask: u8) -> i32x8;
-    #[link_name = "llvm.x86.avx512.mask.load.q.256"]
-    fn loaddqa64_256(mem_addr: *const i64, a: i64x4, mask: u8) -> i64x4;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.256"]
-    fn loadaps_256(mem_addr: *const f32, a: f32x8, mask: u8) -> f32x8;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.256"]
-    fn loadapd_256(mem_addr: *const f64, a: f64x4, mask: u8) -> f64x4;
-    #[link_name = "llvm.x86.avx512.mask.load.d.512"]
-    fn loaddqa32_512(mem_addr: *const i32, a: i32x16, mask: u16) -> i32x16;
-    #[link_name = "llvm.x86.avx512.mask.load.q.512"]
-    fn loaddqa64_512(mem_addr: *const i64, a: i64x8, mask: u8) -> i64x8;
-    #[link_name = "llvm.x86.avx512.mask.load.ps.512"]
-    fn loadaps_512(mem_addr: *const f32, a: f32x16, mask: u16) -> f32x16;
-    #[link_name = "llvm.x86.avx512.mask.load.pd.512"]
-    fn loadapd_512(mem_addr: *const f64, a: f64x8, mask: u8) -> f64x8;
-
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.128"]
-    fn storedqu32_128(mem_addr: *mut i32, a: i32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.128"]
-    fn storedqu64_128(mem_addr: *mut i64, a: i64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.128"]
-    fn storeups_128(mem_addr: *mut f32, a: f32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.128"]
-    fn storeupd_128(mem_addr: *mut f64, a: f64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.256"]
-    fn storedqu32_256(mem_addr: *mut i32, a: i32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.256"]
-    fn storedqu64_256(mem_addr: *mut i64, a: i64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.256"]
-    fn storeups_256(mem_addr: *mut f32, a: f32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.256"]
-    fn storeupd_256(mem_addr: *mut f64, a: f64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.d.512"]
-    fn storedqu32_512(mem_addr: *mut i32, a: i32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.storeu.q.512"]
-    fn storedqu64_512(mem_addr: *mut i64, a: i64x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.storeu.ps.512"]
-    fn storeups_512(mem_addr: *mut f32, a: f32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.storeu.pd.512"]
-    fn storeupd_512(mem_addr: *mut f64, a: f64x8, mask: u8);
-
-    #[link_name = "llvm.x86.avx512.mask.store.d.128"]
-    fn storedqa32_128(mem_addr: *mut i32, a: i32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.q.128"]
-    fn storedqa64_128(mem_addr: *mut i64, a: i64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.128"]
-    fn storeaps_128(mem_addr: *mut f32, a: f32x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.128"]
-    fn storeapd_128(mem_addr: *mut f64, a: f64x2, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.d.256"]
-    fn storedqa32_256(mem_addr: *mut i32, a: i32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.q.256"]
-    fn storedqa64_256(mem_addr: *mut i64, a: i64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.256"]
-    fn storeaps_256(mem_addr: *mut f32, a: f32x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.256"]
-    fn storeapd_256(mem_addr: *mut f64, a: f64x4, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.d.512"]
-    fn storedqa32_512(mem_addr: *mut i32, a: i32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.store.q.512"]
-    fn storedqa64_512(mem_addr: *mut i64, a: i64x8, mask: u8);
-    #[link_name = "llvm.x86.avx512.mask.store.ps.512"]
-    fn storeaps_512(mem_addr: *mut f32, a: f32x16, mask: u16);
-    #[link_name = "llvm.x86.avx512.mask.store.pd.512"]
-    fn storeapd_512(mem_addr: *mut f64, a: f64x8, mask: u8);
 
     #[link_name = "llvm.x86.avx512.mask.expand.load.d.128"]
     fn expandloadd_128(mem_addr: *const i32, a: i32x4, mask: u8) -> i32x4;
@@ -46365,11 +46209,25 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_ternarylogic_epi32() {
-        let a = _mm512_set1_epi32(1 << 2);
-        let b = _mm512_set1_epi32(1 << 1);
-        let c = _mm512_set1_epi32(1 << 0);
-        let r = _mm512_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm512_set1_epi32(0);
+        use core::intrinsics::simd::simd_xor;
+
+        let a = _mm512_set4_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm512_set4_epi32(0b010, 0b011, 0b001, 0b110);
+        let c = _mm512_set4_epi32(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm512_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m512i(r, a);
+
+        // Bitwise xor.
+        let r = _mm512_ternarylogic_epi32::<0b10010110>(a, b, c);
+        let e = _mm512_set4_epi32(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m512i(r, e);
+        assert_eq_m512i(r, simd_xor(simd_xor(a, b), c));
+
+        // Majority (2 or more bits set).
+        let r = _mm512_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm512_set4_epi32(0b000, 0b010, 0b001, 0b111);
         assert_eq_m512i(r, e);
     }
 
@@ -46399,11 +46257,27 @@ mod tests {
 
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_ternarylogic_epi32() {
-        let a = _mm256_set1_epi32(1 << 2);
-        let b = _mm256_set1_epi32(1 << 1);
-        let c = _mm256_set1_epi32(1 << 0);
-        let r = _mm256_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm256_set1_epi32(0);
+        use core::intrinsics::simd::simd_xor;
+
+        let _mm256_set4_epi32 = |a, b, c, d| _mm256_setr_epi32(a, b, c, d, a, b, c, d);
+
+        let a = _mm256_set4_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm256_set4_epi32(0b010, 0b011, 0b001, 0b110);
+        let c = _mm256_set4_epi32(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm256_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m256i(r, a);
+
+        // Bitwise xor.
+        let r = _mm256_ternarylogic_epi32::<0b10010110>(a, b, c);
+        let e = _mm256_set4_epi32(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m256i(r, e);
+        assert_eq_m256i(r, simd_xor(simd_xor(a, b), c));
+
+        // Majority (2 or more bits set).
+        let r = _mm256_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm256_set4_epi32(0b000, 0b010, 0b001, 0b111);
         assert_eq_m256i(r, e);
     }
 
@@ -46433,11 +46307,25 @@ mod tests {
 
     #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_ternarylogic_epi32() {
-        let a = _mm_set1_epi32(1 << 2);
-        let b = _mm_set1_epi32(1 << 1);
-        let c = _mm_set1_epi32(1 << 0);
-        let r = _mm_ternarylogic_epi32::<8>(a, b, c);
-        let e = _mm_set1_epi32(0);
+        use core::intrinsics::simd::simd_xor;
+
+        let a = _mm_setr_epi32(0b100, 0b110, 0b001, 0b101);
+        let b = _mm_setr_epi32(0b010, 0b011, 0b001, 0b110);
+        let c = _mm_setr_epi32(0b001, 0b000, 0b001, 0b111);
+
+        // Identity of A.
+        let r = _mm_ternarylogic_epi32::<0b1111_0000>(a, b, c);
+        assert_eq_m128i(r, a);
+
+        // Bitwise xor.
+        let r = _mm_ternarylogic_epi32::<0b10010110>(a, b, c);
+        let e = _mm_setr_epi32(0b111, 0b101, 0b001, 0b100);
+        assert_eq_m128i(r, e);
+        assert_eq_m128i(r, simd_xor(simd_xor(a, b), c));
+
+        // Majority (2 or more bits set).
+        let r = _mm_ternarylogic_epi32::<0b1110_1000>(a, b, c);
+        let e = _mm_setr_epi32(0b000, 0b010, 0b001, 0b111);
         assert_eq_m128i(r, e);
     }
 
@@ -56188,7 +56076,7 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortest_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56198,7 +56086,7 @@ mod tests {
         assert_eq!(all_ones, 1);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortestc_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56206,7 +56094,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kortestz_mask16_u8() {
         let a: __mmask16 = 0b0110100101101001;
         let b: __mmask16 = 0b1011011010110110;
@@ -56214,19 +56102,43 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kshiftli_mask16() {
         let a: __mmask16 = 0b1001011011000011;
         let r = _kshiftli_mask16::<3>(a);
         let e: __mmask16 = 0b1011011000011000;
         assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<15>(a);
+        let e: __mmask16 = 0b1000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<16>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftli_mask16::<17>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "avx512dq")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_kshiftri_mask16() {
-        let a: __mmask16 = 0b0110100100111100;
+        let a: __mmask16 = 0b1010100100111100;
         let r = _kshiftri_mask16::<3>(a);
-        let e: __mmask16 = 0b0000110100100111;
+        let e: __mmask16 = 0b0001010100100111;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<15>(a);
+        let e: __mmask16 = 0b0000000000000001;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<16>(a);
+        let e: __mmask16 = 0b0000000000000000;
+        assert_eq!(r, e);
+
+        let r = _kshiftri_mask16::<17>(a);
+        let e: __mmask16 = 0b0000000000000000;
         assert_eq!(r, e);
     }
 
@@ -56432,6 +56344,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 16] };
 
         _mm512_stream_ps(&mut mem.data[0] as *mut f32, a);
+        _mm_sfence();
         for i in 0..16 {
             assert_eq!(mem.data[i], get_m512(a, i));
         }
@@ -56448,6 +56361,7 @@ mod tests {
         let mut mem = Memory { data: [-1.0; 8] };
 
         _mm512_stream_pd(&mut mem.data[0] as *mut f64, a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m512d(a, i));
         }
@@ -56464,6 +56378,7 @@ mod tests {
         let mut mem = Memory { data: [-1; 8] };
 
         _mm512_stream_si512(mem.data.as_mut_ptr().cast(), a);
+        _mm_sfence();
         for i in 0..8 {
             assert_eq!(mem.data[i], get_m512i(a, i));
         }
@@ -57468,7 +57383,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm256_maskz_set1_epi32() {
         let a: i32 = 11;
         let r = _mm256_maskz_set1_epi32(0, a);
@@ -57489,7 +57404,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm_maskz_set1_epi32() {
         let a: i32 = 11;
         let r = _mm_maskz_set1_epi32(0, a);

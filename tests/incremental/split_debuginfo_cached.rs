@@ -8,6 +8,7 @@
 
 //@ [rpass1]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
 //@ [rpass2]compile-flags: -g -Zquery-dep-graph -Csplit-debuginfo=packed -Zsplit-dwarf-kind=split
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 // For `rpass2`, nothing has changed so everything should re-used.

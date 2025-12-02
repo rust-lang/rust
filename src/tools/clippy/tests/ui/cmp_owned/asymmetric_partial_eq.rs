@@ -1,6 +1,6 @@
 #![allow(
     unused,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::redundant_clone,
     clippy::derive_partial_eq_without_eq
 )] // See #5700

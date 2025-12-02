@@ -759,8 +759,7 @@ for some users. Adding a configuration is done in the following steps:
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here ([`is_type_diagnostic_item`], [`implements_trait`],
-  [`snippet`], etc)
+  is already in here ([`implements_trait`], [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
 * [Let chains][let-chains]
 * [`from_expansion`][from_expansion] and
@@ -790,7 +789,6 @@ get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
 [utils]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/index.html
-[`is_type_diagnostic_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.is_type_diagnostic_item.html
 [`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
 [`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
 [let-chains]: https://github.com/rust-lang/rust/pull/94927

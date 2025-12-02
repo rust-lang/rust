@@ -12,18 +12,12 @@
 //! This API is still completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::usage_of_ty_tykind)]
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
-    test(attr(allow(unused_variables), deny(warnings)))
-)]
-#![doc(rust_logo)]
-#![feature(rustdoc_internals)]
+#![doc(test(attr(allow(unused_variables), deny(warnings), allow(internal_features))))]
 #![feature(sized_hierarchy)]
+#![feature(trait_alias)]
 // tidy-alphabetical-end
 
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Index;
@@ -45,11 +39,8 @@ pub mod context;
 #[deprecated(note = "please use `rustc_public::rustc_internal` instead")]
 pub mod rustc_internal {}
 
-/// A container which is used for TLS.
-pub struct Container<'tcx, B: Bridge> {
-    pub tables: RefCell<Tables<'tcx, B>>,
-    pub cx: RefCell<CompilerCtxt<'tcx, B>>,
-}
+/// Trait alias for types that can be cached in [`Tables`].
+pub trait Cacheable = Copy + Debug + PartialEq + IndexedVal;
 
 pub struct Tables<'tcx, B: Bridge> {
     pub def_ids: IndexMap<DefId, B::DefId>,
@@ -213,14 +204,14 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
 /// A trait defining types that are used to emulate rustc_public components, which is really
 /// useful when programming in rustc_public-agnostic settings.
 pub trait Bridge: Sized {
-    type DefId: Copy + Debug + PartialEq + IndexedVal;
-    type AllocId: Copy + Debug + PartialEq + IndexedVal;
-    type Span: Copy + Debug + PartialEq + IndexedVal;
-    type Ty: Copy + Debug + PartialEq + IndexedVal;
-    type InstanceDef: Copy + Debug + PartialEq + IndexedVal;
-    type TyConstId: Copy + Debug + PartialEq + IndexedVal;
-    type MirConstId: Copy + Debug + PartialEq + IndexedVal;
-    type Layout: Copy + Debug + PartialEq + IndexedVal;
+    type DefId: Cacheable;
+    type AllocId: Cacheable;
+    type Span: Cacheable;
+    type Ty: Cacheable;
+    type InstanceDef: Cacheable;
+    type TyConstId: Cacheable;
+    type MirConstId: Cacheable;
+    type Layout: Cacheable;
 
     type Error: Error;
     type CrateItem: CrateItem<Self>;
@@ -266,7 +257,7 @@ impl<K, V> Default for IndexMap<K, V> {
     }
 }
 
-impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
+impl<K: PartialEq + Hash + Eq, V: Cacheable> IndexMap<K, V> {
     pub fn create_or_fetch(&mut self, key: K) -> V {
         let len = self.index_map.len();
         let v = self.index_map.entry(key).or_insert(V::to_val(len));
@@ -274,9 +265,7 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMa
     }
 }
 
-impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
-    for IndexMap<K, V>
-{
+impl<K: PartialEq + Hash + Eq, V: Cacheable> Index<V> for IndexMap<K, V> {
     type Output = K;
 
     fn index(&self, index: V) -> &Self::Output {

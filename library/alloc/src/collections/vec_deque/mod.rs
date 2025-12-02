@@ -7,6 +7,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
+use core::clone::TrivialClone;
 use core::cmp::{self, Ordering};
 use core::hash::{Hash, Hasher};
 use core::iter::{ByRefSized, repeat_n, repeat_with};
@@ -32,6 +34,11 @@ pub use self::drain::Drain;
 
 mod drain;
 
+#[unstable(feature = "vec_deque_extract_if", issue = "147750")]
+pub use self::extract_if::ExtractIf;
+
+mod extract_if;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::iter_mut::IterMut;
 
@@ -47,7 +54,7 @@ pub use self::iter::Iter;
 
 mod iter;
 
-use self::spec_extend::SpecExtend;
+use self::spec_extend::{SpecExtend, SpecExtendFront};
 
 mod spec_extend;
 
@@ -103,7 +110,6 @@ pub struct VecDeque<
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
-    #[track_caller]
     fn clone(&self) -> Self {
         let mut deq = Self::with_capacity_in(self.len(), self.allocator().clone());
         deq.extend(self.iter().cloned());
@@ -114,7 +120,6 @@ impl<T: Clone, A: Allocator + Clone> Clone for VecDeque<T, A> {
     ///
     /// This method is preferred over simply assigning `source.clone()` to `self`,
     /// as it avoids reallocation if possible.
-    #[track_caller]
     fn clone_from(&mut self, source: &Self) {
         self.clear();
         self.extend(source.iter().cloned());
@@ -176,6 +181,21 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.len += 1;
     }
 
+    /// Prepends an element to the buffer.
+    ///
+    /// # Safety
+    ///
+    /// May only be called if `deque.len() < deque.capacity()`
+    #[inline]
+    unsafe fn push_front_unchecked(&mut self, element: T) {
+        self.head = self.wrap_sub(self.head, 1);
+        // SAFETY: Because of the precondition, it's guaranteed that there is space
+        // in the logical array before the first element (where self.head is now).
+        unsafe { self.buffer_write(self.head, element) };
+        // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
+        self.len += 1;
+    }
+
     /// Moves an element out of the buffer
     #[inline]
     unsafe fn buffer_read(&mut self, off: usize) -> T {
@@ -227,6 +247,78 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     fn wrap_sub(&self, idx: usize, subtrahend: usize) -> usize {
         wrap_index(idx.wrapping_sub(subtrahend).wrapping_add(self.capacity()), self.capacity())
+    }
+
+    /// Get source, destination and count (like the arguments to [`ptr::copy_nonoverlapping`])
+    /// for copying `count` values from index `src` to index `dst`.
+    /// One of the ranges can wrap around the physical buffer, for this reason 2 triples are returned.
+    ///
+    /// Use of the word "ranges" specifically refers to `src..src + count` and `dst..dst + count`.
+    ///
+    /// # Safety
+    ///
+    /// - Ranges must not overlap: `src.abs_diff(dst) >= count`.
+    /// - Ranges must be in bounds of the logical buffer: `src + count <= self.capacity()` and `dst + count <= self.capacity()`.
+    /// - `head` must be in bounds: `head < self.capacity()`.
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn nonoverlapping_ranges(
+        &mut self,
+        src: usize,
+        dst: usize,
+        count: usize,
+        head: usize,
+    ) -> [(*const T, *mut T, usize); 2] {
+        // "`src` and `dst` must be at least as far apart as `count`"
+        debug_assert!(
+            src.abs_diff(dst) >= count,
+            "`src` and `dst` must not overlap. src={src} dst={dst} count={count}",
+        );
+        debug_assert!(
+            src.max(dst) + count <= self.capacity(),
+            "ranges must be in bounds. src={src} dst={dst} count={count} cap={}",
+            self.capacity(),
+        );
+
+        let wrapped_src = self.wrap_add(head, src);
+        let wrapped_dst = self.wrap_add(head, dst);
+
+        let room_after_src = self.capacity() - wrapped_src;
+        let room_after_dst = self.capacity() - wrapped_dst;
+
+        let src_wraps = room_after_src < count;
+        let dst_wraps = room_after_dst < count;
+
+        // Wrapping occurs if `capacity` is contained within `wrapped_src..wrapped_src + count` or `wrapped_dst..wrapped_dst + count`.
+        // Since these two ranges must not overlap as per the safety invariants of this function, only one range can wrap.
+        debug_assert!(
+            !(src_wraps && dst_wraps),
+            "BUG: at most one of src and dst can wrap. src={src} dst={dst} count={count} cap={}",
+            self.capacity(),
+        );
+
+        unsafe {
+            let ptr = self.ptr();
+            let src_ptr = ptr.add(wrapped_src);
+            let dst_ptr = ptr.add(wrapped_dst);
+
+            if src_wraps {
+                [
+                    (src_ptr, dst_ptr, room_after_src),
+                    (ptr, dst_ptr.add(room_after_src), count - room_after_src),
+                ]
+            } else if dst_wraps {
+                [
+                    (src_ptr, dst_ptr, room_after_dst),
+                    (src_ptr.add(room_after_dst), ptr, count - room_after_dst),
+                ]
+            } else {
+                [
+                    (src_ptr, dst_ptr, count),
+                    // null pointers are fine as long as the count is 0
+                    (ptr::null(), ptr::null_mut(), 0),
+                ]
+            }
+        }
     }
 
     /// Copies a contiguous block of memory len long from src to dst
@@ -430,6 +522,35 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Copies all values from `src` to `dst` in reversed order, wrapping around if needed.
+    /// Assumes capacity is sufficient.
+    /// Equivalent to calling [`VecDeque::copy_slice`] with a [reversed](https://doc.rust-lang.org/std/primitive.slice.html#method.reverse) slice.
+    #[inline]
+    unsafe fn copy_slice_reversed(&mut self, dst: usize, src: &[T]) {
+        /// # Safety
+        ///
+        /// See [`ptr::copy_nonoverlapping`].
+        unsafe fn copy_nonoverlapping_reversed<T>(src: *const T, dst: *mut T, count: usize) {
+            for i in 0..count {
+                unsafe { ptr::copy_nonoverlapping(src.add(count - 1 - i), dst.add(i), 1) };
+            }
+        }
+
+        debug_assert!(src.len() <= self.capacity());
+        let head_room = self.capacity() - dst;
+        if src.len() <= head_room {
+            unsafe {
+                copy_nonoverlapping_reversed(src.as_ptr(), self.ptr().add(dst), src.len());
+            }
+        } else {
+            let (left, right) = src.split_at(src.len() - head_room);
+            unsafe {
+                copy_nonoverlapping_reversed(right.as_ptr(), self.ptr().add(dst), right.len());
+                copy_nonoverlapping_reversed(left.as_ptr(), self.ptr(), left.len());
+            }
+        }
+    }
+
     /// Writes all values from `iter` to `dst`.
     ///
     /// # Safety
@@ -544,6 +665,96 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
         debug_assert!(self.head < self.capacity() || self.capacity() == 0);
     }
+
+    /// Creates an iterator which uses a closure to determine if an element in the range should be removed.
+    ///
+    /// If the closure returns `true`, the element is removed from the deque and yielded. If the closure
+    /// returns `false`, or panics, the element remains in the deque and will not be yielded.
+    ///
+    /// Only elements that fall in the provided range are considered for extraction, but any elements
+    /// after the range will still have to be moved if any element has been extracted.
+    ///
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use `extract_if().for_each(drop)` if you do not need the returned iterator,
+    /// or [`retain_mut`] with a negated predicate if you also do not need to restrict the range.
+    ///
+    /// [`retain_mut`]: VecDeque::retain_mut
+    ///
+    /// Using this method is equivalent to the following code:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// # use std::collections::VecDeque;
+    /// # let some_predicate = |x: &mut i32| { *x % 2 == 1 };
+    /// # let mut deq: VecDeque<_> = (0..10).collect();
+    /// # let mut deq2 = deq.clone();
+    /// # let range = 1..5;
+    /// let mut i = range.start;
+    /// let end_items = deq.len() - range.end;
+    /// # let mut extracted = vec![];
+    ///
+    /// while i < deq.len() - end_items {
+    ///     if some_predicate(&mut deq[i]) {
+    ///         let val = deq.remove(i).unwrap();
+    ///         // your code here
+    /// #         extracted.push(val);
+    ///     } else {
+    ///         i += 1;
+    ///     }
+    /// }
+    ///
+    /// # let extracted2: Vec<_> = deq2.extract_if(range, some_predicate).collect();
+    /// # assert_eq!(deq, deq2);
+    /// # assert_eq!(extracted, extracted2);
+    /// ```
+    ///
+    /// But `extract_if` is easier to use. `extract_if` is also more efficient,
+    /// because it can backshift the elements of the array in bulk.
+    ///
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
+    ///
+    /// # Panics
+    ///
+    /// If `range` is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// Splitting a deque into even and odd values, reusing the original deque:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut numbers = VecDeque::from([1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15]);
+    ///
+    /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<VecDeque<_>>();
+    /// let odds = numbers;
+    ///
+    /// assert_eq!(evens, VecDeque::from([2, 4, 6, 8, 14]));
+    /// assert_eq!(odds, VecDeque::from([1, 3, 5, 9, 11, 13, 15]));
+    /// ```
+    ///
+    /// Using the range argument to only process a part of the deque:
+    ///
+    /// ```
+    /// #![feature(vec_deque_extract_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut items = VecDeque::from([0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2]);
+    /// let ones = items.extract_if(7.., |x| *x == 1).collect::<VecDeque<_>>();
+    /// assert_eq!(items, VecDeque::from([0, 0, 0, 0, 0, 0, 0, 2, 2, 2]));
+    /// assert_eq!(ones.len(), 3);
+    /// ```
+    #[unstable(feature = "vec_deque_extract_if", issue = "147750")]
+    pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
+    where
+        F: FnMut(&mut T) -> bool,
+        R: RangeBounds<usize>,
+    {
+        ExtractIf::new(self, filter, range)
+    }
 }
 
 impl<T> VecDeque<T> {
@@ -577,7 +788,6 @@ impl<T> VecDeque<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[track_caller]
     pub fn with_capacity(capacity: usize) -> VecDeque<T> {
         Self::with_capacity_in(capacity, Global)
     }
@@ -633,7 +843,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// let deque: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[track_caller]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> VecDeque<T, A> {
         VecDeque { head: 0, len: 0, buf: RawVec::with_capacity_in(capacity, alloc) }
     }
@@ -799,7 +1008,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// [`reserve`]: VecDeque::reserve
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn reserve_exact(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
@@ -830,7 +1038,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
-    #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
@@ -962,7 +1169,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    #[track_caller]
     pub fn shrink_to_fit(&mut self) {
         self.shrink_to(0);
     }
@@ -988,7 +1194,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 4);
     /// ```
     #[stable(feature = "shrink_to", since = "1.56.0")]
-    #[track_caller]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         let target_cap = min_capacity.max(self.len);
 
@@ -1839,7 +2044,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -1849,7 +2053,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [1, 2, 3, 4]);
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
@@ -1862,7 +2066,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -1872,10 +2075,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [0, 1, 2, 3]);
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
-        let first = self.back_mut()?;
-        if predicate(first) { self.pop_back() } else { None }
+        let last = self.back_mut()?;
+        if predicate(last) { self.pop_back() } else { None }
     }
 
     /// Prepends an element to the deque.
@@ -1891,7 +2094,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[track_caller]
     pub fn push_front(&mut self, value: T) {
         let _ = self.push_front_mut(value);
     }
@@ -1910,7 +2112,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.front(), Some(&7));
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_front` instead"]
     pub fn push_front_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -1937,7 +2138,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("push", "put", "append")]
-    #[track_caller]
     pub fn push_back(&mut self, value: T) {
         let _ = self.push_back_mut(value);
     }
@@ -1956,7 +2156,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(d.back(), Some(&10));
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::push_back` instead"]
     pub fn push_back_mut(&mut self, value: T) -> &mut T {
         if self.is_full() {
@@ -1966,6 +2165,73 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let len = self.len;
         self.len += 1;
         unsafe { self.buffer_write(self.to_physical_idx(len), value) }
+    }
+
+    /// Prepends all contents of the iterator to the front of the deque.
+    /// The order of the contents is preserved.
+    ///
+    /// To get behavior like [`append`][VecDeque::append] where elements are moved
+    /// from the other collection to this one, use `self.prepend(other.drain(..))`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// deque.prepend([1, 2, 3]);
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Move values between collections like [`append`][VecDeque::append] does but prepend to the front:
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque1 = VecDeque::from([4, 5, 6]);
+    /// let mut deque2 = VecDeque::from([1, 2, 3]);
+    /// deque1.prepend(deque2.drain(..));
+    /// assert_eq!(deque1, [1, 2, 3, 4, 5, 6]);
+    /// assert!(deque2.is_empty());
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    #[track_caller]
+    pub fn prepend<I: IntoIterator<Item = T, IntoIter: DoubleEndedIterator>>(&mut self, other: I) {
+        self.extend_front(other.into_iter().rev())
+    }
+
+    /// Prepends all contents of the iterator to the front of the deque,
+    /// as if [`push_front`][VecDeque::push_front] was called repeatedly with
+    /// the values yielded by the iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// deque.extend_front([3, 2, 1]);
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// This behaves like [`push_front`][VecDeque::push_front] was called repeatedly:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque = VecDeque::from([4, 5, 6]);
+    /// for v in [3, 2, 1] {
+    ///     deque.push_front(v);
+    /// }
+    /// assert_eq!(deque, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    #[track_caller]
+    pub fn extend_front<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        <Self as SpecExtendFront<T, I::IntoIter>>::spec_extend_front(self, iter.into_iter());
     }
 
     #[inline]
@@ -2071,7 +2337,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    #[track_caller]
     pub fn insert(&mut self, index: usize, value: T) {
         let _ = self.insert_mut(index, value);
     }
@@ -2099,7 +2364,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(vec_deque, &[1, 12, 2, 3]);
     /// ```
     #[unstable(feature = "push_mut", issue = "135974")]
-    #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `VecDeque::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, value: T) -> &mut T {
         assert!(index <= self.len(), "index out of bounds");
@@ -2205,7 +2469,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]
     #[stable(feature = "split_off", since = "1.4.0")]
-    #[track_caller]
     pub fn split_off(&mut self, at: usize) -> Self
     where
         A: Clone,
@@ -2216,11 +2479,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let other_len = len - at;
         let mut other = VecDeque::with_capacity_in(other_len, self.allocator().clone());
 
-        unsafe {
-            let (first_half, second_half) = self.as_slices();
+        let (first_half, second_half) = self.as_slices();
+        let first_len = first_half.len();
+        let second_len = second_half.len();
 
-            let first_len = first_half.len();
-            let second_len = second_half.len();
+        unsafe {
             if at < first_len {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
@@ -2272,7 +2535,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
-    #[track_caller]
     pub fn append(&mut self, other: &mut Self) {
         if T::IS_ZST {
             self.len = self.len.checked_add(other.len).expect("capacity overflow");
@@ -2395,7 +2657,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     // be called in cold paths.
     // This may panic or abort
     #[inline(never)]
-    #[track_caller]
     fn grow(&mut self) {
         // Extend or possibly remove this assertion when valid use-cases for growing the
         // buffer without it being full emerge
@@ -2434,7 +2695,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 101, 102, 103]);
     /// ```
     #[stable(feature = "vec_resize_with", since = "1.33.0")]
-    #[track_caller]
     pub fn resize_with(&mut self, new_len: usize, generator: impl FnMut() -> T) {
         let len = self.len;
 
@@ -2981,7 +3241,6 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [5, 10, 20, 20, 20]);
     /// ```
     #[stable(feature = "deque_extras", since = "1.16.0")]
-    #[track_caller]
     pub fn resize(&mut self, new_len: usize, value: T) {
         if new_len > self.len() {
             let extra = new_len - self.len();
@@ -2989,6 +3248,222 @@ impl<T: Clone, A: Allocator> VecDeque<T, A> {
         } else {
             self.truncate(new_len);
         }
+    }
+
+    /// Clones the elements at the range `src` and appends them to the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting index is greater than the end index
+    /// or if either index is greater than the length of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut characters = VecDeque::from(['a', 'b', 'c', 'd', 'e']);
+    /// characters.extend_from_within(2..);
+    /// assert_eq!(characters, ['a', 'b', 'c', 'd', 'e', 'c', 'd', 'e']);
+    ///
+    /// let mut numbers = VecDeque::from([0, 1, 2, 3, 4]);
+    /// numbers.extend_from_within(..2);
+    /// assert_eq!(numbers, [0, 1, 2, 3, 4, 0, 1]);
+    ///
+    /// let mut strings = VecDeque::from([String::from("hello"), String::from("world"), String::from("!")]);
+    /// strings.extend_from_within(1..=2);
+    /// assert_eq!(strings, ["hello", "world", "!", "world", "!"]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn extend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let range = slice::range(src, ..self.len());
+        self.reserve(range.len());
+
+        // SAFETY:
+        // - `slice::range` guarantees that the given range is valid for indexing self
+        // - at least `range.len()` additional space is available
+        unsafe {
+            self.spec_extend_from_within(range);
+        }
+    }
+
+    /// Clones the elements at the range `src` and prepends them to the front.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting index is greater than the end index
+    /// or if either index is greater than the length of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(deque_extend_front)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut characters = VecDeque::from(['a', 'b', 'c', 'd', 'e']);
+    /// characters.prepend_from_within(2..);
+    /// assert_eq!(characters, ['c', 'd', 'e', 'a', 'b', 'c', 'd', 'e']);
+    ///
+    /// let mut numbers = VecDeque::from([0, 1, 2, 3, 4]);
+    /// numbers.prepend_from_within(..2);
+    /// assert_eq!(numbers, [0, 1, 0, 1, 2, 3, 4]);
+    ///
+    /// let mut strings = VecDeque::from([String::from("hello"), String::from("world"), String::from("!")]);
+    /// strings.prepend_from_within(1..=2);
+    /// assert_eq!(strings, ["world", "!", "hello", "world", "!"]);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "deque_extend_front", issue = "146975")]
+    pub fn prepend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        let range = slice::range(src, ..self.len());
+        self.reserve(range.len());
+
+        // SAFETY:
+        // - `slice::range` guarantees that the given range is valid for indexing self
+        // - at least `range.len()` additional space is available
+        unsafe {
+            self.spec_prepend_from_within(range);
+        }
+    }
+}
+
+/// Associated functions have the following preconditions:
+///
+/// - `src` needs to be a valid range: `src.start <= src.end <= self.len()`.
+/// - The buffer must have enough spare capacity: `self.capacity() - self.len() >= src.len()`.
+#[cfg(not(no_global_oom_handling))]
+trait SpecExtendFromWithin {
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>);
+
+    unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>);
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: Clone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+    default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let dst = self.len();
+        let count = src.end - src.start;
+        let src = src.start;
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, self.head);
+
+            // `len` is updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            for (src, dst, count) in ranges {
+                for offset in 0..count {
+                    dst.add(offset).write((*src.add(offset)).clone());
+                    self.len += 1;
+                }
+            }
+        }
+    }
+
+    default unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
+        let dst = 0;
+        let count = src.end - src.start;
+        let src = src.start + count;
+
+        let new_head = self.wrap_sub(self.head, count);
+        let cap = self.capacity();
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, new_head);
+
+            // Cloning is done in reverse because we prepend to the front of the deque,
+            // we can't get holes in the *logical* buffer.
+            // `head` and `len` are updated after every clone to prevent leaking and
+            // leave the deque in the right state when a clone implementation panics
+
+            // Clone the first range
+            let (src, dst, count) = ranges[1];
+            for offset in (0..count).rev() {
+                dst.add(offset).write((*src.add(offset)).clone());
+                self.head -= 1;
+                self.len += 1;
+            }
+
+            // Clone the second range
+            let (src, dst, count) = ranges[0];
+            let mut iter = (0..count).rev();
+            if let Some(offset) = iter.next() {
+                dst.add(offset).write((*src.add(offset)).clone());
+                // After the first clone of the second range, wrap `head` around
+                if self.head == 0 {
+                    self.head = cap;
+                }
+                self.head -= 1;
+                self.len += 1;
+
+                // Continue like normal
+                for offset in iter {
+                    dst.add(offset).write((*src.add(offset)).clone());
+                    self.head -= 1;
+                    self.len += 1;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: TrivialClone, A: Allocator> SpecExtendFromWithin for VecDeque<T, A> {
+    unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
+        let dst = self.len();
+        let count = src.end - src.start;
+        let src = src.start;
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, self.head);
+            for (src, dst, count) in ranges {
+                ptr::copy_nonoverlapping(src, dst, count);
+            }
+        }
+
+        // SAFETY:
+        // - The elements were just initialized by `copy_nonoverlapping`
+        self.len += count;
+    }
+
+    unsafe fn spec_prepend_from_within(&mut self, src: Range<usize>) {
+        let dst = 0;
+        let count = src.end - src.start;
+        let src = src.start + count;
+
+        let new_head = self.wrap_sub(self.head, count);
+
+        unsafe {
+            // SAFETY:
+            // - Ranges do not overlap: src entirely spans initialized values, dst entirely spans uninitialized values.
+            // - Ranges are in bounds: guaranteed by the caller.
+            let ranges = self.nonoverlapping_ranges(src, dst, count, new_head);
+            for (src, dst, count) in ranges {
+                ptr::copy_nonoverlapping(src, dst, count);
+            }
+        }
+
+        // SAFETY:
+        // - The elements were just initialized by `copy_nonoverlapping`
+        self.head = new_head;
+        self.len += count;
     }
 }
 
@@ -3101,7 +3576,6 @@ impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for VecDeque<T> {
-    #[track_caller]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> VecDeque<T> {
         SpecFromIter::spec_from_iter(iter.into_iter())
     }
@@ -3141,19 +3615,16 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
-    #[track_caller]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, elem: T) {
         self.push_back(elem);
     }
 
     #[inline]
-    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3169,19 +3640,16 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
-    #[track_caller]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.spec_extend(iter.into_iter());
     }
 
     #[inline]
-    #[track_caller]
     fn extend_one(&mut self, &elem: &'a T) {
         self.push_back(elem);
     }
 
     #[inline]
-    #[track_caller]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
@@ -3279,7 +3747,6 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
     /// let deq2: VecDeque<_> = [1, 2, 3, 4].into();
     /// assert_eq!(deq1, deq2);
     /// ```
-    #[track_caller]
     fn from(arr: [T; N]) -> Self {
         let mut deq = VecDeque::with_capacity(N);
         let arr = ManuallyDrop::new(arr);

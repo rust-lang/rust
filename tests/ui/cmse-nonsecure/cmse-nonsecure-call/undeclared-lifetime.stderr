@@ -1,0 +1,19 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/undeclared-lifetime.rs:15:43
+   |
+LL |     id::<extern "cmse-nonsecure-call" fn(&'a ())>(PhantomData);
+   |                                           ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the type lifetime-generic with a new `'a` lifetime
+   |
+LL |     id::<for<'a> extern "cmse-nonsecure-call" fn(&'a ())>(PhantomData);
+   |          +++++++
+help: consider introducing lifetime `'a` here
+   |
+LL | fn foo<'a>() {
+   |       ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0261`.

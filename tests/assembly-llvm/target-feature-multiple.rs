@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: x86
 //@ revisions: TWOFLAGS SINGLEFLAG

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target wasm32-unknown-unknown
 //@ needs-llvm-components: webassembly

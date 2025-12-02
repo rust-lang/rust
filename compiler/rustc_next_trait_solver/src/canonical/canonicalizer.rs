@@ -74,12 +74,10 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
     /// we set the `sub_root` of the second variable to the position of the first.
     /// Otherwise the `sub_root` of each type variable is just its own position.
     sub_root_lookup_table: HashMap<ty::TyVid, usize>,
-    binder_index: ty::DebruijnIndex,
 
-    /// We only use the debruijn index during lookup. We don't need to
-    /// track the `variables` as each generic arg only results in a single
-    /// bound variable regardless of how many times it is encountered.
-    cache: HashMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
+    /// We can simply cache based on the ty itself, because we use
+    /// `ty::BoundVarIndexKind::Canonical`.
+    cache: HashMap<I::Ty, I::Ty>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
@@ -97,7 +95,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             variable_lookup_table: Default::default(),
             sub_root_lookup_table: Default::default(),
             var_kinds: Vec::new(),
-            binder_index: ty::INNERMOST,
 
             cache: Default::default(),
         };
@@ -141,12 +138,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         variable_lookup_table: Default::default(),
                         sub_root_lookup_table: Default::default(),
                         var_kinds: Vec::new(),
-                        binder_index: ty::INNERMOST,
 
                         cache: Default::default(),
                     };
                     let param_env = param_env.fold_with(&mut env_canonicalizer);
-                    debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
                     debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
                     CanonicalParamEnvCacheEntry {
                         param_env,
@@ -175,12 +170,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 variable_lookup_table: Default::default(),
                 sub_root_lookup_table: Default::default(),
                 var_kinds: Vec::new(),
-                binder_index: ty::INNERMOST,
 
                 cache: Default::default(),
             };
             let param_env = param_env.fold_with(&mut env_canonicalizer);
-            debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
             debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
             (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
         }
@@ -212,7 +205,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             variable_lookup_table,
             sub_root_lookup_table: Default::default(),
             var_kinds,
-            binder_index: ty::INNERMOST,
 
             // We do not reuse the cache as it may contain entries whose canonicalized
             // value contains `'static`. While we could alternatively handle this by
@@ -409,23 +401,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         let var = self.get_or_insert_bound_var(t, kind);
 
-        Ty::new_anon_bound(self.cx(), self.binder_index, var)
+        Ty::new_canonical_bound(self.cx(), var)
     }
 }
 
 impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicalizer<'_, D, I> {
     fn cx(&self) -> I {
         self.delegate.cx()
-    }
-
-    fn fold_binder<T>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T>
-    where
-        T: TypeFoldable<I>,
-    {
-        self.binder_index.shift_in(1);
-        let t = t.super_fold_with(self);
-        self.binder_index.shift_out(1);
-        t
     }
 
     fn fold_region(&mut self, r: I::Region) -> I::Region {
@@ -491,15 +473,15 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
         let var = self.get_or_insert_bound_var(r, kind);
 
-        Region::new_anon_bound(self.cx(), self.binder_index, var)
+        Region::new_canonical_bound(self.cx(), var)
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
-        if let Some(&ty) = self.cache.get(&(self.binder_index, t)) {
+        if let Some(&ty) = self.cache.get(&t) {
             ty
         } else {
             let res = self.inner_fold_ty(t);
-            let old = self.cache.insert((self.binder_index, t), res);
+            let old = self.cache.insert(t, res);
             assert_eq!(old, None);
             res
         }
@@ -552,7 +534,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
         let var = self.get_or_insert_bound_var(c, kind);
 
-        Const::new_anon_bound(self.cx(), self.binder_index, var)
+        Const::new_canonical_bound(self.cx(), var)
     }
 
     fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {

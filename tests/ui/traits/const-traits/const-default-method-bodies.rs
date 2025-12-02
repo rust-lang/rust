@@ -1,8 +1,7 @@
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
 
-#[const_trait]
-trait ConstDefaultFn: Sized {
+const trait ConstDefaultFn: Sized {
     fn b(self);
 
     fn a(self) {

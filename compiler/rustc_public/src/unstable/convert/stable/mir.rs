@@ -149,9 +149,6 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                     variant_index: variant_index.stable(tables, cx),
                 }
             }
-            mir::StatementKind::Deinit(place) => {
-                crate::mir::StatementKind::Deinit(place.stable(tables, cx))
-            }
 
             mir::StatementKind::StorageLive(place) => {
                 crate::mir::StatementKind::StorageLive(place.stable(tables, cx))
@@ -235,9 +232,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                     )
                 }
             }
-            NullaryOp(null_op, ty) => {
-                crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx), ty.stable(tables, cx))
-            }
+            NullaryOp(null_op) => crate::mir::Rvalue::NullaryOp(null_op.stable(tables, cx)),
             UnaryOp(un_op, op) => {
                 crate::mir::Rvalue::UnaryOp(un_op.stable(tables, cx), op.stable(tables, cx))
             }
@@ -317,22 +312,21 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::NullOp {
     type T = crate::mir::NullOp;
     fn stable<'cx>(
         &self,
-        tables: &mut Tables<'cx, BridgeTys>,
-        cx: &CompilerCtxt<'cx, BridgeTys>,
+        _: &mut Tables<'cx, BridgeTys>,
+        _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::mir::NullOp::*;
+        use rustc_middle::mir::RuntimeChecks::*;
         match self {
-            SizeOf => crate::mir::NullOp::SizeOf,
-            AlignOf => crate::mir::NullOp::AlignOf,
-            OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
-                indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
-            ),
-            UbChecks => crate::mir::NullOp::UbChecks,
-            ContractChecks => crate::mir::NullOp::ContractChecks,
+            RuntimeChecks(op) => crate::mir::NullOp::RuntimeChecks(match op {
+                UbChecks => crate::mir::RuntimeChecks::UbChecks,
+                ContractChecks => crate::mir::RuntimeChecks::ContractChecks,
+                OverflowChecks => crate::mir::RuntimeChecks::OverflowChecks,
+            }),
         }
     }
 }
@@ -356,6 +350,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            Subtype => crate::mir::CastKind::Subtype,
         }
     }
 }
@@ -453,7 +448,6 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => crate::mir::ProjectionElem::Downcast(idx.stable(tables, cx)),
             OpaqueCast(ty) => crate::mir::ProjectionElem::OpaqueCast(ty.stable(tables, cx)),
-            Subtype(ty) => crate::mir::ProjectionElem::Subtype(ty.stable(tables, cx)),
             UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }

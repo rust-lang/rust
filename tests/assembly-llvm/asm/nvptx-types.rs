@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx

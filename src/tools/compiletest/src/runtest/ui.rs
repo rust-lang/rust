@@ -207,8 +207,12 @@ impl TestCx<'_> {
 
         debug!(
             "run_ui_test: explicit={:?} config.compare_mode={:?} \
-               proc_res.status={:?} props.error_patterns={:?}",
-            explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
+               proc_res.status={:?} props.error_patterns={:?} output_to_check={:?}",
+            explicit,
+            self.config.compare_mode,
+            proc_res.status,
+            self.props.error_patterns,
+            output_to_check,
         );
 
         // Compiler diagnostics (expected errors) are always tied to the compile-time ProcRes.
@@ -249,7 +253,7 @@ impl TestCx<'_> {
                 rustc.arg(crate_name);
             }
 
-            let res = self.compose_and_run_compiler(rustc, None, self.testpaths);
+            let res = self.compose_and_run_compiler(rustc, None);
             if !res.status.success() {
                 self.fatal_proc_rec("failed to compile fixed code", &res);
             }

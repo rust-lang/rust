@@ -2,11 +2,11 @@
 
 use std::pin::Pin;
 
+#[pin_v2] //~ ERROR the `#[pin_v2]` attribute is an experimental feature
 struct Foo;
 
 impl Foo {
-    fn foo(self: Pin<&mut Self>) {
-    }
+    fn foo(self: Pin<&mut Self>) {}
     fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
     fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
 }
@@ -47,15 +47,26 @@ fn borrows() {
     foo_const(x);
 }
 
+fn patterns<'a>(
+    &pin mut x: &pin mut i32,
+    //~^ ERROR pinned reference syntax is experimental
+    //~| ERROR pinned reference syntax is experimental
+    &pin const y: &'a pin const i32,
+    //~^ ERROR pinned reference syntax is experimental
+    //~| ERROR pinned reference syntax is experimental
+    ref pin mut z: i32, //~ ERROR pinned reference syntax is experimental
+    ref pin const w: i32, //~ ERROR pinned reference syntax is experimental
+) {}
+
 #[cfg(any())]
 mod not_compiled {
     use std::pin::Pin;
 
+    #[pin_v2]
     struct Foo;
 
     impl Foo {
-        fn foo(self: Pin<&mut Self>) {
-        }
+        fn foo(self: Pin<&mut Self>) {}
         fn foo_sugar(&pin mut self) {} //~ ERROR pinned reference syntax is experimental
         fn foo_sugar_const(&pin const self) {} //~ ERROR pinned reference syntax is experimental
     }
@@ -91,6 +102,17 @@ mod not_compiled {
         foo_const(x);
         foo_const(x);
     }
+
+    fn patterns<'a>(
+        &pin mut x: &pin mut i32,
+        //~^ ERROR pinned reference syntax is experimental
+        //~| ERROR pinned reference syntax is experimental
+        &pin const y: &'a pin const i32,
+        //~^ ERROR pinned reference syntax is experimental
+        //~| ERROR pinned reference syntax is experimental
+        ref pin mut z: i32, //~ ERROR pinned reference syntax is experimental
+        ref pin const w: i32, //~ ERROR pinned reference syntax is experimental
+    ) {}
 }
 
 fn main() {}

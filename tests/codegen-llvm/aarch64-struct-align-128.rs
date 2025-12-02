@@ -1,6 +1,6 @@
 // Test that structs aligned to 128 bits are passed with the correct ABI on aarch64.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: linux darwin win
 //@[linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[darwin] compile-flags: --target aarch64-apple-darwin

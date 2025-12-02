@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: ropi rwpi
 
 //@ [ropi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=ropi
@@ -6,6 +6,7 @@
 //@ [ropi] needs-llvm-components: arm
 //@ [rwpi] needs-llvm-components: arm
 //@ [ropi] build-pass
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

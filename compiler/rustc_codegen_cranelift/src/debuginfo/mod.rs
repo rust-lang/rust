@@ -1,6 +1,7 @@
 //! Handling of everything related to debuginfo.
 
 mod emit;
+mod gcc_except_table;
 mod line_info;
 mod object;
 mod types;
@@ -19,12 +20,13 @@ use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
+use rustc_session::config::DebugInfo;
 use rustc_span::{FileNameDisplayPreference, SourceFileHash, StableSourceFileId};
 use rustc_target::callconv::FnAbi;
 
 pub(crate) use self::emit::{DebugReloc, DebugRelocName};
 pub(crate) use self::types::TypeDebugContext;
-pub(crate) use self::unwind::UnwindContext;
+pub(crate) use self::unwind::{EXCEPTION_HANDLER_CATCH, EXCEPTION_HANDLER_CLEANUP, UnwindContext};
 use crate::debuginfo::emit::{address_for_data, address_for_func};
 use crate::prelude::*;
 
@@ -43,6 +45,7 @@ pub(crate) struct DebugContext {
     array_size_type: UnitEntryId,
 
     filename_display_preference: FileNameDisplayPreference,
+    embed_source: bool,
 }
 
 pub(crate) struct FunctionDebugContext {
@@ -52,21 +55,36 @@ pub(crate) struct FunctionDebugContext {
 }
 
 impl DebugContext {
-    pub(crate) fn new(tcx: TyCtxt<'_>, isa: &dyn TargetIsa, cgu_name: &str) -> Self {
+    pub(crate) fn new(
+        tcx: TyCtxt<'_>,
+        isa: &dyn TargetIsa,
+        force_disable_debuginfo: bool,
+        cgu_name: &str,
+    ) -> Option<Self> {
+        if tcx.sess.opts.debuginfo == DebugInfo::None
+            || force_disable_debuginfo
+            || tcx.sess.target.options.is_like_windows
+        {
+            return None;
+        }
+
+        let mut requested_dwarf_version = tcx.sess.dwarf_version();
+        if tcx.sess.target.is_like_darwin && requested_dwarf_version > 4 {
+            // Apple’s shipped debuggers still expect DWARF <= 4 by default.
+            // Stay on v4 unless the user explicitly opts into a feature that
+            // only works with v5 (e.g. -Zembed-source).
+            if !tcx.sess.opts.unstable_opts.embed_source {
+                requested_dwarf_version = 4;
+            }
+        }
+
         let encoding = Encoding {
             format: Format::Dwarf32,
-            // FIXME this should be configurable
-            // macOS doesn't seem to support DWARF > 3
-            // 5 version is required for md5 file hash
-            version: if tcx.sess.target.is_like_darwin {
-                3
-            } else {
-                // FIXME change to version 5 once the gdb and lldb shipping with the latest debian
-                // support it.
-                4
-            },
+            version: requested_dwarf_version as u16,
             address_size: isa.frontend_config().pointer_bytes(),
         };
+
+        let embed_source = tcx.sess.opts.unstable_opts.embed_source && encoding.version >= 5;
 
         let endian = match isa.endianness() {
             Endianness::Little => RunTimeEndian::Little,
@@ -106,10 +124,14 @@ impl DebugContext {
             encoding,
             LineEncoding::default(),
             LineString::new(comp_dir.as_bytes(), encoding, &mut dwarf.line_strings),
+            None,
             LineString::new(name.as_bytes(), encoding, &mut dwarf.line_strings),
             file_info,
         );
         line_program.file_has_md5 = file_has_md5;
+        if embed_source {
+            line_program.file_has_source = true;
+        }
 
         dwarf.unit.line_program = line_program;
 
@@ -145,7 +167,7 @@ impl DebugContext {
             AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
         );
 
-        DebugContext {
+        Some(DebugContext {
             endian,
             dwarf,
             unit_range_list: RangeList(Vec::new()),
@@ -154,7 +176,8 @@ impl DebugContext {
             namespace_map: DefIdMap::default(),
             array_size_type,
             filename_display_preference,
-        }
+            embed_source,
+        })
     }
 
     fn item_namespace(&mut self, tcx: TyCtxt<'_>, def_id: DefId) -> UnitEntryId {
@@ -304,7 +327,7 @@ impl DebugContext {
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
 
-        entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(static_layout.align.abi.bytes()));
+        entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(static_layout.align.bytes()));
 
         let mut expr = Expression::new();
         expr.op_addr(address_for_data(data_id));

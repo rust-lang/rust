@@ -367,11 +367,30 @@ LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...",
    |
    = and 1 other candidate
 
-error: `cfg` predicate key must be an identifier
-  --> $DIR/link-attr-validation-late.rs:25:26
+error[E0539]: malformed `link` attribute input
+  --> $DIR/link-attr-validation-late.rs:25:1
    |
 LL | #[link(name = "...", cfg("literal"))]
-   |                          ^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^
+   |                          |
+   |                          expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(name = "...", cfg("literal"))]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `link` attribute input
   --> $DIR/link-attr-validation-late.rs:26:1

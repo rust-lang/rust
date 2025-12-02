@@ -107,3 +107,14 @@ $ cargo +nightly build -Zbuild-std=panic_abort,std --target wasm32-unknown-unkno
 Which not only rebuilds `std`, `core` and `alloc` (which is somewhat costly and annoying) but more importantly requires the use of nightly Rust toolchains (for the `-Zbuild-std` flag). This is very undesirable for the target audience, which consists of people targeting WebAssembly implementations that prioritize stability, simplicity and/or security over feature support.
 
 This `wasm32v1-none` target exists as an alternative option that works on stable Rust toolchains, without rebuilding the stdlib.
+
+## Unwinding
+
+This target is compiled with `-Cpanic=abort` by default. Using `-Cpanic=unwind`
+would require using the WebAssembly exception-handling proposal stabilized
+mid-2025, and if that's desired then you most likely don't want to use this
+target and instead want to use `wasm32-unknown-unknown` instead. It's unlikely
+that this target will ever support unwinding with the precompiled artifacts
+shipped through rustup. For documentation about using `-Zbuild-std` to enable
+using `-Cpanic=unwind` see the [documentation of
+`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md#unwinding).

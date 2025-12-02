@@ -92,7 +92,8 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         } else {
             false
         };
-        !must_override && self.tcx.is_mir_available(def_id)
+        // FIXME: A good reason to make is_mir_available or mir_keys change behavior
+        !must_override && self.tcx.is_mir_available(def_id) && !self.tcx.is_trivial_const(def_id)
     }
 
     fn filter_fn_def(&self, def_id: DefId) -> Option<DefId> {
@@ -189,7 +190,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     pub fn trait_impl(&self, impl_def: DefId) -> EarlyBinder<'tcx, TraitRef<'tcx>> {
-        self.tcx.impl_trait_ref(impl_def).unwrap()
+        self.tcx.impl_trait_ref(impl_def)
     }
 
     pub fn generics_of(&self, def_id: DefId) -> &'tcx ty::Generics {
@@ -265,6 +266,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         } else {
             with_no_trimmed_paths!(self.tcx.def_path_str(def_id))
         }
+    }
+
+    /// Returns the parent of the given `DefId`.
+    pub fn def_parent(&self, def_id: DefId) -> Option<DefId> {
+        self.tcx.opt_parent(def_id)
     }
 
     /// Return registered tool attributes with the given attribute name.

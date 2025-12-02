@@ -1,8 +1,10 @@
 // Detect and reject escaping late-bound generic params in
 // the type of assoc consts used in an equality bound.
-#![feature(associated_const_equality)]
+#![feature(associated_const_equality, min_generic_const_args, unsized_const_params)]
+#![allow(incomplete_features)]
 
 trait Trait<'a> {
+    #[type_const]
     const K: &'a ();
 }
 

@@ -11,9 +11,9 @@ resolve_added_macro_use =
 resolve_ancestor_only =
     visibilities can only be restricted to ancestor modules
 
-resolve_anonymous_lifetime_non_gat_report_error =
-    in the trait associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
+resolve_anonymous_lifetime_non_gat_report_error = missing lifetime in associated type
     .label = this lifetime must come from the implemented type
+    .note = in the trait the associated type is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
 
 resolve_arguments_macro_use_not_allowed = arguments to `macro_use` are not allowed here
 
@@ -93,9 +93,6 @@ resolve_consider_adding_a_derive =
 resolve_consider_adding_macro_export =
     consider adding a `#[macro_export]` to the macro in the imported module
 
-resolve_consider_marking_as_pub_crate =
-    in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
-
 resolve_consider_declaring_with_pub =
     consider declaring type or module `{$ident}` with `pub`
 
@@ -107,6 +104,9 @@ resolve_consider_making_the_field_public =
 
 resolve_consider_marking_as_pub =
     consider marking `{$ident}` as `pub` in the imported module
+
+resolve_consider_marking_as_pub_crate =
+    in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
 
 resolve_consider_move_macro_position =
     consider moving the definition of `{$ident}` before this call
@@ -146,6 +146,9 @@ resolve_explicit_unsafe_traits =
 resolve_extern_crate_loading_macro_not_at_crate_root =
     an `extern crate` loading macros must be at the crate root
 
+resolve_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
+    .suggestion = convert it to a `use`
+
 resolve_extern_crate_self_requires_renaming =
     `extern crate self;` requires renaming
     .suggestion = rename the `self` crate to be able to import it
@@ -175,10 +178,16 @@ resolve_generic_params_from_outer_item =
     } from outer item
     .refer_to_type_directly = refer to the type directly here instead
     .suggestion = try introducing a local generic parameter here
+    .note = nested items are independent from their parent item for everything except for privacy and name resolution
 
 resolve_generic_params_from_outer_item_const = a `const` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_const_param = const parameter from outer item
+
+resolve_generic_params_from_outer_item_inner_item = {$is_self ->
+        [true] `Self`
+        *[false] generic parameter
+    } used in this inner {$descr}
 
 resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
 
@@ -248,14 +257,14 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
-resolve_macro_cannot_use_as_fn_like =
-    `{$ident}` exists, but has no rules for function-like invocation
-
 resolve_macro_cannot_use_as_attr =
     `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
      `{$ident}` exists, but has no `derive` rules
+
+resolve_macro_cannot_use_as_fn_like =
+    `{$ident}` exists, but has no rules for function-like invocation
 
 resolve_macro_defined_later =
     a macro with the same name exists, but it appears later
@@ -273,6 +282,10 @@ resolve_macro_expected_found =
 resolve_macro_extern_deprecated =
     `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
     .help = try an outer attribute: `#[macro_use]`
+
+resolve_macro_is_private = macro `{$ident}` is private
+
+resolve_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
 resolve_macro_use_deprecated =
     applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
@@ -329,6 +342,10 @@ resolve_note_and_refers_to_the_item_defined_here =
         }
     }
 
+resolve_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
+    .label = not found from {$location}
+    .help = import `macro_rules` with `use` to make it callable above its definition
+
 resolve_outer_ident_is_not_publicly_reexported =
     {$outer_ident_descr} `{$outer_ident}` is not publicly re-exported
 
@@ -349,11 +366,18 @@ resolve_param_in_ty_of_const_param =
 
 resolve_pattern_doesnt_bind_name = pattern doesn't bind `{$name}`
 
+resolve_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
+    .suggestion = consider making the `extern crate` item publicly accessible
+
 resolve_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
 
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
+
+resolve_redundant_import_visibility = glob import doesn't reexport anything with visibility `{$import_vis}` because no imported item is public enough
+    .note = the most public imported item is `{$max_vis}`
+    .help = reduce the glob import's visibility or increase visibility of imported items
 
 resolve_reexport_of_crate_public =
     re-export of crate public `{$ident}`
@@ -460,6 +484,9 @@ resolve_unexpected_res_change_ty_to_const_param_sugg =
 resolve_unexpected_res_use_at_op_in_slice_pat_with_range_sugg =
     if you meant to collect the rest of the slice in `{$ident}`, use the at operator
 
+resolve_unknown_diagnostic_attribute = unknown diagnostic attribute
+resolve_unknown_diagnostic_attribute_typo_sugg = an attribute with a similar name exists
+
 resolve_unnamed_crate_root_import =
     crate root imports need to be explicitly named: `use crate as name;`
 
@@ -486,6 +513,8 @@ resolve_unused_extern_crate = unused extern crate
     .suggestion = remove the unused `extern crate`
 
 resolve_unused_label = unused label
+
+resolve_unused_macro_definition = unused macro definition: `{$name}`
 
 resolve_unused_macro_use = unused `#[macro_use]` import
 

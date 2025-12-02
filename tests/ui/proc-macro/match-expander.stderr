@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/match-expander.rs:8:5
+  --> $DIR/match-expander.rs:9:5
    |
 LL |     match_expander::matcher!();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `S`, found `bool`

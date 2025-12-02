@@ -10,7 +10,7 @@ use hir::{
     Adjust, Adjustment, AutoBorrow, DisplayTarget, HirDisplay, Mutability, OverloadedDeref,
     PointerCast, Safety,
 };
-use ide_db::{base_db::salsa, famous_defs::FamousDefs};
+use ide_db::famous_defs::FamousDefs;
 
 use ide_db::text_edit::TextEditBuilder;
 use syntax::ast::{self, AstNode, prec::ExprPrecedence};
@@ -23,7 +23,7 @@ use crate::{
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     display_target: DisplayTarget,
     expr: &ast::Expr,
 ) -> Option<()> {
@@ -216,7 +216,7 @@ pub(super) fn hints(
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
             tooltip: Some(config.lazy_tooltip(|| {
-                salsa::attach(sema.db, || {
+                hir::attach_db(sema.db, || {
                     InlayTooltip::Markdown(format!(
                         "`{}` → `{}`\n\n**{}**\n\n{}",
                         source.display(sema.db, display_target),
@@ -352,7 +352,7 @@ mod tests {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
-//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn, builtin_impls
 fn main() {
     let _: u32         = loop {};
                        //^^^^^^^<never-to-any>
@@ -466,9 +466,8 @@ impl core::ops::IndexMut for Struct {}
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn
+//- minicore: coerce_unsized, fn, eq, index, dispatch_from_dyn, builtin_impls
 fn main() {
-
     Struct.consume();
     Struct.by_ref();
   //^^^^^^.&

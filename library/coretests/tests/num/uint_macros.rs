@@ -127,6 +127,52 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: _1.swap_bytes(), _1);
             }
 
+            fn test_gather_bits() {
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0000_0011), 0b_0001);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0000_0110), 0b_0010);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0000_1100), 0b_0001);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0001_1000), 0b_0000);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0011_0000), 0b_0010);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b0110_0000), 0b_0001);
+                assert_eq_const_safe!($T: $T::gather_bits(0b1010_0101, 0b1100_0000), 0b_0010);
+
+                assert_eq_const_safe!($T: A.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: B.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: C.gather_bits(_0), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(A), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(B), 0);
+                assert_eq_const_safe!($T: _0.gather_bits(C), 0);
+
+                assert_eq_const_safe!($T: A.gather_bits(_1), A);
+                assert_eq_const_safe!($T: B.gather_bits(_1), B);
+                assert_eq_const_safe!($T: C.gather_bits(_1), C);
+                assert_eq_const_safe!($T: _1.gather_bits(0b0010_0001), 0b0000_0011);
+                assert_eq_const_safe!($T: _1.gather_bits(0b0010_1100), 0b0000_0111);
+                assert_eq_const_safe!($T: _1.gather_bits(0b0111_1001), 0b0001_1111);
+            }
+
+            fn test_scatter_bits() {
+                assert_eq_const_safe!($T: $T::scatter_bits(0b1111, 0b1001_0110), 0b1001_0110);
+                assert_eq_const_safe!($T: $T::scatter_bits(0b0001, 0b1001_0110), 0b0000_0010);
+                assert_eq_const_safe!($T: $T::scatter_bits(0b0010, 0b1001_0110), 0b0000_0100);
+                assert_eq_const_safe!($T: $T::scatter_bits(0b0100, 0b1001_0110), 0b0001_0000);
+                assert_eq_const_safe!($T: $T::scatter_bits(0b1000, 0b1001_0110), 0b1000_0000);
+
+                assert_eq_const_safe!($T: A.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: B.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: C.scatter_bits(_0), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(A), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(B), 0);
+                assert_eq_const_safe!($T: _0.scatter_bits(C), 0);
+
+                assert_eq_const_safe!($T: A.scatter_bits(_1), A);
+                assert_eq_const_safe!($T: B.scatter_bits(_1), B);
+                assert_eq_const_safe!($T: C.scatter_bits(_1), C);
+                assert_eq_const_safe!($T: _1.scatter_bits(A), A);
+                assert_eq_const_safe!($T: _1.scatter_bits(B), B);
+                assert_eq_const_safe!($T: _1.scatter_bits(C), C);
+            }
+
             fn test_reverse_bits() {
                 assert_eq_const_safe!($T: A.reverse_bits().reverse_bits(), A);
                 assert_eq_const_safe!($T: B.reverse_bits().reverse_bits(), B);
@@ -595,26 +641,27 @@ macro_rules! uint_module {
             }
         }
 
-        const EXACT_DIV_SUCCESS_DIVIDEND1: $T = 42;
-        const EXACT_DIV_SUCCESS_DIVISOR1: $T = 6;
-        const EXACT_DIV_SUCCESS_QUOTIENT1: $T = 7;
-        const EXACT_DIV_SUCCESS_DIVIDEND2: $T = 18;
-        const EXACT_DIV_SUCCESS_DIVISOR2: $T = 3;
-        const EXACT_DIV_SUCCESS_QUOTIENT2: $T = 6;
+        const DIV_EXACT_SUCCESS_DIVIDEND1: $T = 42;
+        const DIV_EXACT_SUCCESS_DIVISOR1: $T = 6;
+        const DIV_EXACT_SUCCESS_QUOTIENT1: $T = 7;
+        const DIV_EXACT_SUCCESS_DIVIDEND2: $T = 18;
+        const DIV_EXACT_SUCCESS_DIVISOR2: $T = 3;
+        const DIV_EXACT_SUCCESS_QUOTIENT2: $T = 6;
 
         test_runtime_and_compiletime! {
-            fn test_exact_div() {
+            fn test_div_exact() {
                 // 42 / 6
-                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), Some(EXACT_DIV_SUCCESS_QUOTIENT1));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND1, EXACT_DIV_SUCCESS_DIVISOR1), EXACT_DIV_SUCCESS_QUOTIENT1);
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(DIV_EXACT_SUCCESS_DIVIDEND1, DIV_EXACT_SUCCESS_DIVISOR1), Some(DIV_EXACT_SUCCESS_QUOTIENT1));
+                assert_eq_const_safe!(Option<$T>: <$T>::div_exact(DIV_EXACT_SUCCESS_DIVIDEND1, DIV_EXACT_SUCCESS_DIVISOR1), Some(DIV_EXACT_SUCCESS_QUOTIENT1));
 
                 // 18 / 3
-                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), Some(EXACT_DIV_SUCCESS_QUOTIENT2));
-                assert_eq_const_safe!($T: <$T>::exact_div(EXACT_DIV_SUCCESS_DIVIDEND2, EXACT_DIV_SUCCESS_DIVISOR2), EXACT_DIV_SUCCESS_QUOTIENT2);
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(DIV_EXACT_SUCCESS_DIVIDEND2, DIV_EXACT_SUCCESS_DIVISOR2), Some(DIV_EXACT_SUCCESS_QUOTIENT2));
+                assert_eq_const_safe!(Option<$T>: <$T>::div_exact(DIV_EXACT_SUCCESS_DIVIDEND2, DIV_EXACT_SUCCESS_DIVISOR2), Some(DIV_EXACT_SUCCESS_QUOTIENT2));
 
                 // failures
-                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(1, 2), None);
-                assert_eq_const_safe!(Option<$T>: <$T>::checked_exact_div(0, 0), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(1, 2), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::div_exact(1, 2), None);
+                assert_eq_const_safe!(Option<$T>: <$T>::checked_div_exact(0, 0), None);
             }
         }
     };

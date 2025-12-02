@@ -13,7 +13,7 @@ fn foo() -> impl Default + Copy {
         // Make a tuple `(?x, ?y)` and equate it with `(impl Default, u32)`.
         // For us to try and prove a `Subtype(impl Default, u32)` obligation,
         // we have to instantiate both `?x` and `?y` without any
-        // `select_where_possible` calls inbetween.
+        // `try_evaluate_obligations` calls inbetween.
         let mut tup = &mut (x, y);
         let assign_tup = &mut (foo(), 1u32);
         tup = assign_tup;

@@ -59,7 +59,10 @@
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
 # Set this to `true` to download if CI llvm available otherwise it builds
-# from `src/llvm-project`.
+# from `src/llvm-project`. If you set it to `true`, it's safe and time-saving to run
+# `git submodule deinit src/llvm-project` to avoid git updating the llvm-project submodule
+# when building compiler locally.
+#
 #
 # Set this to `"if-unchanged"` to download only if the llvm-project has not
 # been modified. You can also use this if you are unsure whether you're on a
@@ -217,6 +220,11 @@
 # which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
 # supplementary build information, like distro-specific package versions.
 #
+# IMPORTANT: Changing this value changes crate IDs and symbol name mangling, making
+# compiled artifacts incompatible. PGO profiles cannot be reused across different
+# descriptions, and incremental compilation caches are invalidated. Keep this value
+# consistent when reusing build artifacts.
+#
 # The Rust compiler will differentiate between versions of itself, including
 # based on this string, which means that if you wish to be compatible with
 # upstream Rust you need to set this to "". However, note that if you set this to "" but
@@ -312,15 +320,15 @@
 # target when running tests, otherwise this can be omitted.
 #build.nodejs = "node"
 
-# The npm executable to use. Note that this is used for rustdoc-gui tests,
-# otherwise this can be omitted.
+# The yarn executable to use. Note that this is used for rustdoc-gui tests and
+# tidy js extra-checks, otherwise this can be omitted.
 #
-# Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
+# Under Windows this should be `yarn.cmd` or path to it (verified on nodejs v18.06), or
 # error will be emitted.
-#build.npm = "npm"
+#build.yarn = "yarn"
 
 # Python interpreter to use for various tasks throughout the build, notably
-# rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
+# rustdoc tests, and some dist bits and pieces.
 #
 # Defaults to the Python interpreter used to execute x.py.
 #build.python = "python"
@@ -475,9 +483,6 @@
 # suites to be run against the stage 0 rustc. This is only intended to be used
 # when the stage 0 compiler is actually built from in-tree sources.
 #build.compiletest-allow-stage0 = false
-
-# Whether to use the precompiled stage0 libtest with compiletest.
-#build.compiletest-use-stage0-libtest = true
 
 # Default value for the `--extra-checks` flag of tidy.
 #
@@ -708,6 +713,12 @@
 # desired in distributions, for example.
 #rust.rpath = true
 
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags but not over per target rustflags nor env. vars. like RUSTFLAGS.
+# Applies to all stages and targets.
+#
+#rust.rustflags = []
+
 # Indicates whether symbols should be stripped using `-Cstrip=symbols`.
 #rust.strip = false
 
@@ -761,15 +772,10 @@
 # Currently, the only standard options supported here are `"llvm"`, `"cranelift"` and `"gcc"`.
 #rust.codegen-backends = ["llvm"]
 
-# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute, and
-# whether to set it as rustc's default linker on `x86_64-unknown-linux-gnu`. This will also only be
-# when *not* building an external LLVM (so only when using `download-ci-llvm` or building LLVM from
-# the in-tree source): setting `llvm-config` in the `[target.x86_64-unknown-linux-gnu]` section will
-# make this default to false.
-#rust.lld = false in all cases, except on `x86_64-unknown-linux-gnu` as described above, where it is true
+# Indicates whether LLD will be compiled and made available in the sysroot for rustc to execute,
+#rust.lld = false, except for targets that opt into LLD (see `target.default-linker-linux-override`)
 
-# Indicates whether LLD will be used to link Rust crates during bootstrap on
-# supported platforms.
+# Indicates if we should override the linker used to link Rust crates during bootstrap to be LLD.
 # If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
 # will be used.
 # If set to `"self-contained"`, rust-lld from the snapshot compiler will be used.
@@ -777,7 +783,7 @@
 # On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
-#rust.use-lld = false
+#rust.bootstrap-override-lld = false
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
@@ -835,6 +841,11 @@
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #rust.new-symbol-mangling = true|false (see comment)
+
+# Size limit in bytes for move/copy annotations (-Zannotate-moves). Only types
+# at or above this size will be annotated. If not specified, uses the default
+# limit (65 bytes).
+#rust.annotate-moves-size-limit = 65
 
 # Select LTO mode that will be used for compiling rustc. By default, thin local LTO
 # (LTO within a single crate) is used (like for any Rust crate). You can also select
@@ -950,7 +961,7 @@
 # Linker to be used to bootstrap Rust code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# Setting this will override the `use-lld` option for Rust code when targeting MSVC.
+# Setting this will override the `bootstrap-override-lld` option for Rust code when targeting MSVC.
 #linker = "cc" (path)
 
 # Should rustc and the standard library be built with split debuginfo? Default
@@ -1013,6 +1024,12 @@
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
 
+# Additional flags to pass to `rustc`.
+# Takes precedence over bootstrap's own flags and `rust.rustflags` but not over env. vars. like RUSTFLAGS.
+# Applies to all stages.
+#
+#rustflags = rust.rustflags
+
 # Force static or dynamic linkage of the standard library for this target. If
 # this target is a host for rustc, this will also affect the linkage of the
 # compiler itself. This is useful for building rustc on targets that normally
@@ -1071,3 +1088,17 @@
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This overrides the global `rust.jemalloc` option. See that option for more info.
 #jemalloc = rust.jemalloc (bool)
+
+# The linker configuration that will *override* the default linker used for Linux
+# targets in the built compiler.
+#
+# The following values are supported:
+# - `off` => do not apply any override and use the default linker. This can be used to opt out of
+#   linker overrides set by bootstrap for specific targets (see below).
+# - `self-contained-lld-cc` => override the default linker to be self-contained LLD (`rust-lld`)
+#   that is invoked through `cc`.
+#
+# Currently, the following targets automatically opt into the self-contained LLD linker, unless you
+# pass `off`:
+# - x86_64-unknown-linux-gnu
+#default-linker-linux-override = "off" (for most targets)

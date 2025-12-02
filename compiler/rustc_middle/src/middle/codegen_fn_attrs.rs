@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr, RtsanSetting};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -13,6 +13,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         instance_kind: InstanceKind<'_>,
     ) -> Cow<'tcx, CodegenFnAttrs> {
+        // NOTE: we try to not clone the `CodegenFnAttrs` when that is not needed.
+        // The `to_mut` method used below clones the inner value.
         let mut attrs = Cow::Borrowed(self.codegen_fn_attrs(instance_kind.def_id()));
 
         // Drop the `#[naked]` attribute on non-item `InstanceKind`s, like the shims that
@@ -20,6 +22,28 @@ impl<'tcx> TyCtxt<'tcx> {
         if !matches!(instance_kind, InstanceKind::Item(_)) {
             if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                 attrs.to_mut().flags.remove(CodegenFnAttrFlags::NAKED);
+            }
+        }
+
+        // A shim created by `#[track_caller]` should not inherit any attributes
+        // that modify the symbol name. Failing to remove these attributes from
+        // the shim leads to errors like `symbol `foo` is already defined`.
+        //
+        // A `ClosureOnceShim` with the track_caller attribute does not have a symbol,
+        // and therefore can be skipped here.
+        if let InstanceKind::ReifyShim(_, _) = instance_kind
+            && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+        {
+            if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NO_MANGLE);
+            }
+
+            if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+                attrs.to_mut().flags.remove(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
+            }
+
+            if attrs.symbol_name.is_some() {
+                attrs.to_mut().symbol_name = None;
             }
         }
 
@@ -56,9 +80,9 @@ pub struct CodegenFnAttrs {
     /// The `#[link_section = "..."]` attribute, or what executable section this
     /// should be placed in.
     pub link_section: Option<Symbol>,
-    /// The `#[sanitize(xyz = "off")]` attribute. Indicates sanitizers for which
-    /// instrumentation should be disabled inside the function.
-    pub no_sanitize: SanitizerSet,
+    /// The `#[sanitize(xyz = "off")]` attribute. Indicates the settings for each
+    /// sanitizer for this function.
+    pub sanitizers: SanitizerFnAttrs,
     /// The `#[instruction_set(set)]` attribute. Indicates if the generated code should
     /// be generated against a specific instruction set. Only usable on architectures which allow
     /// switching between multiple instruction sets.
@@ -166,6 +190,8 @@ bitflags::bitflags! {
         const NO_BUILTINS               = 1 << 15;
         /// Marks foreign items, to make `contains_extern_indicator` cheaper.
         const FOREIGN_ITEM              = 1 << 16;
+        /// `#[rustc_offload_kernel]`: indicates that this is an offload kernel, an extra ptr arg will be added.
+        const OFFLOAD_KERNEL = 1 << 17;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
@@ -185,7 +211,7 @@ impl CodegenFnAttrs {
             linkage: None,
             import_linkage: None,
             link_section: None,
-            no_sanitize: SanitizerSet::empty(),
+            sanitizers: SanitizerFnAttrs::default(),
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
@@ -215,5 +241,17 @@ impl CodegenFnAttrs {
                 None | Some(Linkage::Internal) => false,
                 Some(_) => true,
             }
+    }
+}
+
+#[derive(Clone, Copy, Debug, HashStable, TyEncodable, TyDecodable, Eq, PartialEq)]
+pub struct SanitizerFnAttrs {
+    pub disabled: SanitizerSet,
+    pub rtsan_setting: RtsanSetting,
+}
+
+impl const Default for SanitizerFnAttrs {
+    fn default() -> Self {
+        Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }
 }

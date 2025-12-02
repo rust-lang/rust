@@ -2,18 +2,14 @@
 //@ compile-flags: --target=riscv32e-unknown-none-elf --crate-type=lib
 //@ needs-llvm-components: riscv
 //@ check-pass
-#![feature(no_core, lang_items)]
+//@ ignore-backends: gcc
+//@ add-minicore
+#![feature(no_core)]
 #![no_core]
 #![allow(unexpected_cfgs)]
 
-#[lang = "pointee_sized"]
-pub trait PointeeSized {}
-
-#[lang = "meta_sized"]
-pub trait MetaSized: PointeeSized {}
-
-#[lang = "sized"]
-pub trait Sized: MetaSized {}
+extern crate minicore;
+use minicore::*;
 
 // The compile_error macro does not exist, so if the `cfg` evaluates to `true` this
 // complains about the missing macro rather than showing the error... but that's good enough.

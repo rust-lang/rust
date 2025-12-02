@@ -7,11 +7,11 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_target::spec::{Abi, Arch};
 
 use crate::builder::Builder;
-use crate::type_::Type;
+use crate::llvm::{Type, Value};
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 fn round_up_to_alignment<'ll>(
     bx: &mut Builder<'_, 'll, '_>,
@@ -193,7 +193,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     // the offset again.
 
     bx.switch_to_block(maybe_reg);
-    if gr_type && layout.align.abi.bytes() > 8 {
+    if gr_type && layout.align.bytes() > 8 {
         reg_off_v = bx.add(reg_off_v, bx.const_i32(15));
         reg_off_v = bx.and(reg_off_v, bx.const_i32(-16));
     }
@@ -270,7 +270,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
     // Rust does not currently support any powerpc softfloat targets.
     let target = &bx.cx.tcx.sess.target;
-    let is_soft_float_abi = target.abi == "softfloat";
+    let is_soft_float_abi = target.abi == Abi::SoftFloat;
     assert!(!is_soft_float_abi);
 
     // All instances of VaArgSafe are passed directly.
@@ -291,7 +291,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         bx.inbounds_ptradd(va_list_addr, bx.const_usize(1)) // fpr
     };
 
-    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align.abi);
+    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align);
 
     // "Align" the register count when the type is passed as `i64`.
     if is_i64 || (is_f64 && is_soft_float_abi) {
@@ -329,7 +329,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         // Increase the used-register count.
         let reg_incr = if is_i64 || (is_f64 && is_soft_float_abi) { 2 } else { 1 };
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
-        bx.store(new_num_regs, num_regs_addr, dl.i8_align.abi);
+        bx.store(new_num_regs, num_regs_addr, dl.i8_align);
 
         bx.br(end);
 
@@ -339,7 +339,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let mem_addr = {
         bx.switch_to_block(in_mem);
 
-        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align.abi);
+        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align);
 
         // Everything in the overflow area is rounded up to a size of at least 4.
         let overflow_area_align = Align::from_bytes(4).unwrap();
@@ -738,6 +738,7 @@ fn copy_to_temporary_if_more_aligned<'ll, 'tcx>(
             src_align,
             bx.const_u32(layout.layout.size().bytes() as u32),
             MemFlags::empty(),
+            None,
         );
         tmp
     } else {
@@ -760,7 +761,7 @@ fn x86_64_sysv64_va_arg_from_memory<'ll, 'tcx>(
     // byte boundary if alignment needed by type exceeds 8 byte boundary.
     // It isn't stated explicitly in the standard, but in practice we use
     // alignment greater than 16 where necessary.
-    if layout.layout.align.abi.bytes() > 8 {
+    if layout.layout.align.bytes() > 8 {
         unreachable!("all instances of VaArgSafe have an alignment <= 8");
     }
 
@@ -813,7 +814,7 @@ fn emit_xtensa_va_arg<'ll, 'tcx>(
     let va_ndx_offset = va_reg_offset + 4;
     let offset_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(va_ndx_offset));
 
-    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align.abi);
+    let offset = bx.load(bx.type_i32(), offset_ptr, bx.tcx().data_layout.i32_align);
     let offset = round_up_to_alignment(bx, offset, layout.align.abi);
 
     let slot_size = layout.size.align_to(Align::from_bytes(4).unwrap()).bytes() as i32;
@@ -886,8 +887,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
     // is lacking in some instances, so we should only use it as a fallback.
     let target = &bx.cx.tcx.sess.target;
 
-    match &*target.arch {
-        "x86" => emit_ptr_va_arg(
+    match target.arch {
+        Arch::X86 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
@@ -896,7 +897,7 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             if target.is_like_windows { AllowHigherAlign::No } else { AllowHigherAlign::Yes },
             ForceRightAdjust::No,
         ),
-        "aarch64" | "arm64ec" if target.is_like_windows || target.is_like_darwin => {
+        Arch::AArch64 | Arch::Arm64EC if target.is_like_windows || target.is_like_darwin => {
             emit_ptr_va_arg(
                 bx,
                 addr,
@@ -907,8 +908,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 ForceRightAdjust::No,
             )
         }
-        "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
-        "arm" => {
+        Arch::AArch64 => emit_aapcs_va_arg(bx, addr, target_ty),
+        Arch::Arm => {
             // Types wider than 16 bytes are not currently supported. Clang has special logic for
             // such types, but `VaArgSafe` is not implemented for any type that is this large.
             assert!(bx.cx.size_of(target_ty).bytes() <= 16);
@@ -923,22 +924,28 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
                 ForceRightAdjust::No,
             )
         }
-        "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
-        "powerpc" => emit_powerpc_va_arg(bx, addr, target_ty),
-        "powerpc64" | "powerpc64le" => emit_ptr_va_arg(
+        Arch::S390x => emit_s390x_va_arg(bx, addr, target_ty),
+        Arch::PowerPC => emit_powerpc_va_arg(bx, addr, target_ty),
+        Arch::PowerPC64 => emit_ptr_va_arg(
             bx,
             addr,
             target_ty,
             PassMode::Direct,
             SlotSize::Bytes8,
             AllowHigherAlign::Yes,
-            match &*target.arch {
-                "powerpc64" => ForceRightAdjust::Yes,
-                _ => ForceRightAdjust::No,
-            },
+            ForceRightAdjust::Yes,
+        ),
+        Arch::PowerPC64LE => emit_ptr_va_arg(
+            bx,
+            addr,
+            target_ty,
+            PassMode::Direct,
+            SlotSize::Bytes8,
+            AllowHigherAlign::Yes,
+            ForceRightAdjust::No,
         ),
         // Windows x86_64
-        "x86_64" if target.is_like_windows => {
+        Arch::X86_64 if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             emit_ptr_va_arg(
                 bx,
@@ -955,8 +962,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             )
         }
         // This includes `target.is_like_darwin`, which on x86_64 targets is like sysv64.
-        "x86_64" => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
-        "xtensa" => emit_xtensa_va_arg(bx, addr, target_ty),
+        Arch::X86_64 => emit_x86_64_sysv64_va_arg(bx, addr, target_ty),
+        Arch::Xtensa => emit_xtensa_va_arg(bx, addr, target_ty),
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction

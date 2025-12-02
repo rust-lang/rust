@@ -6,8 +6,10 @@ LL | fn bar() -> Bar {
 LL |     42_i32
    |     ------ return type was inferred to be `i32` here
    |
-   = help: the trait `PartialEq<Foo>` is not implemented for `i32`
-           but trait `PartialEq<i32>` is implemented for it
+help: the trait `PartialEq<Foo>` is not implemented for `i32`
+      but trait `PartialEq<i32>` is implemented for it
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

@@ -10,8 +10,7 @@ use super::SUSPICIOUS_SPLITN;
 pub(super) fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &Expr<'_>, self_arg: &Expr<'_>, count: u128) {
     if count <= 1
         && let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_assoc(call_id)
-        && cx.tcx.impl_trait_ref(impl_id).is_none()
+        && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(call_id)
         && let self_ty = cx.tcx.type_of(impl_id).instantiate_identity()
         && (self_ty.is_slice() || self_ty.is_str())
     {

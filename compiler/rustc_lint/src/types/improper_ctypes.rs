@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
+use rustc_target::spec::Os;
 use tracing::debug;
 
 use super::repr_nullable_ptr;
@@ -177,7 +178,7 @@ fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
 /// the Power alignment Rule (see the `check_struct_for_power_alignment` function).
 fn check_arg_for_power_alignment<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     let tcx = cx.tcx;
-    assert!(tcx.sess.target.os == "aix");
+    assert!(tcx.sess.target.os == Os::Aix);
     // Structs (under repr(C)) follow the power alignment rule if:
     //   - the first field of the struct is a floating-point type that
     //     is greater than 4-bytes, or
@@ -220,21 +221,21 @@ fn check_struct_for_power_alignment<'tcx>(
     adt_def: AdtDef<'tcx>,
 ) {
     let tcx = cx.tcx;
-    // repr(C) structs also with packed or aligned representation
-    // should be ignored.
-    if adt_def.repr().c()
-        && !adt_def.repr().packed()
-        && adt_def.repr().align.is_none()
-        && tcx.sess.target.os == "aix"
-        && !adt_def.all_fields().next().is_none()
-    {
+
+    // Only consider structs (not enums or unions) on AIX.
+    if tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
+        return;
+    }
+
+    // The struct must be repr(C), but ignore it if it explicitly specifies its alignment with
+    // either `align(N)` or `packed(N)`.
+    if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none() {
         let struct_variant_data = item.expect_struct().2;
         for field_def in struct_variant_data.fields().iter().skip(1) {
             // Struct fields (after the first field) are checked for the
             // power alignment rule, as fields after the first are likely
             // to be the fields that are misaligned.
-            let def_id = field_def.def_id;
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(field_def.def_id).instantiate_identity();
             if check_arg_for_power_alignment(cx, ty) {
                 cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
             }

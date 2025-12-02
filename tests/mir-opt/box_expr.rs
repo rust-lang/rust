@@ -6,7 +6,10 @@
 // EMIT_MIR box_expr.main.ElaborateDrops.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK:   [[box:_.*]] = ShallowInitBox(
+    // CHECK:   [[ptr:_.*]] = move {{_.*}} as *const S (Transmute);
+    // CHECK:   [[nonnull:_.*]] = NonNull::<S> { pointer: move [[ptr]] };
+    // CHECK:   [[unique:_.*]] = Unique::<S> { pointer: move [[nonnull]], _marker: const PhantomData::<S> };
+    // CHECK:   [[box:_.*]] = Box::<S>(move [[unique]], const std::alloc::Global);
     // CHECK:   [[ptr:_.*]] = copy (([[box]].0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
     // CHECK:   (*[[ptr]]) = S::new() -> [return: [[ret:bb.*]], unwind: [[unwind:bb.*]]];
     // CHECK: [[ret]]: {

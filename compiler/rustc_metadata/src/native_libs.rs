@@ -15,7 +15,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, Nati
 use rustc_session::search_paths::PathKind;
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
+use rustc_target::spec::{Abi, Arch, BinaryFormat, Env, LinkSelfContainedComponents, Os};
 
 use crate::errors;
 
@@ -67,11 +67,11 @@ pub fn walk_native_lib_search_dirs<R>(
     // FIXME: On AIX this also has the side-effect of making the list of library search paths
     // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
     // defined, as the search path instead of appending the default search paths.
-    if sess.target.vendor == "fortanix"
-        || sess.target.os == "linux"
-        || sess.target.os == "fuchsia"
+    if sess.target.abi == Abi::Fortanix
+        || sess.target.os == Os::Linux
+        || sess.target.os == Os::Fuchsia
         || sess.target.is_like_aix
-        || sess.target.is_like_darwin && !sess.opts.unstable_opts.sanitizer.is_empty()
+        || sess.target.is_like_darwin && !sess.sanitizers().is_empty()
     {
         f(&sess.target_tlib_path.dir, false)?;
     }
@@ -79,7 +79,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.env == "macabi"
+        && sess.target.env == Env::MacAbi
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
@@ -189,7 +189,7 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
         Some(ref cfg) => {
-            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, ShouldEmit::ErrorsAndLints).as_bool()
         }
         None => true,
     }
@@ -218,7 +218,7 @@ impl<'tcx> Collector<'tcx> {
                 .flatten()
         {
             let dll_imports = match attr.kind {
-                NativeLibKind::RawDylib => foreign_items
+                NativeLibKind::RawDylib { .. } => foreign_items
                     .iter()
                     .map(|&child_item| {
                         self.build_dll_import(
@@ -393,7 +393,7 @@ impl<'tcx> Collector<'tcx> {
         // This logic is similar to `AbiMap::canonize_abi` (in rustc_target/src/spec/abi_map.rs) but
         // we need more detail than those adjustments, and we can't support all ABIs that are
         // generally supported.
-        let calling_convention = if self.tcx.sess.target.arch == "x86" {
+        let calling_convention = if self.tcx.sess.target.arch == Arch::X86 {
             match abi {
                 ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
                 ExternAbi::Stdcall { .. } => {

@@ -574,7 +574,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(impl_def_id) = self.tcx.trait_impl_of_assoc(impl_item_def_id.to_def_id()) else {
             return;
         };
-        let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
+        let trait_ref = self.tcx.impl_trait_ref(impl_def_id);
         let trait_args = trait_ref
             .instantiate_identity()
             // Replace the explicit self type with `Self` for better suggestion rendering
@@ -774,20 +774,31 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // instead we suggest `T: 'a + 'b` in that case.
                     let hir_generics = self.tcx.hir_get_generics(scope).unwrap();
                     let sugg_span = match hir_generics.bounds_span_for_suggestions(def_id) {
-                        Some((span, open_paren_sp)) => Some((span, true, open_paren_sp)),
+                        Some((span, open_paren_sp)) => {
+                            Some((span, LifetimeSuggestion::NeedsPlus(open_paren_sp)))
+                        }
                         // If `param` corresponds to `Self`, no usable suggestion span.
                         None if generics.has_self && param.index == 0 => None,
                         None => {
+                            let mut colon_flag = false;
                             let span = if let Some(param) =
                                 hir_generics.params.iter().find(|param| param.def_id == def_id)
                                 && let ParamName::Plain(ident) = param.name
                             {
-                                ident.span.shrink_to_hi()
+                                if let Some(sp) = param.colon_span {
+                                    colon_flag = true;
+                                    sp.shrink_to_hi()
+                                } else {
+                                    ident.span.shrink_to_hi()
+                                }
                             } else {
                                 let span = self.tcx.def_span(def_id);
                                 span.shrink_to_hi()
                             };
-                            Some((span, false, None))
+                            match colon_flag {
+                                true => Some((span, LifetimeSuggestion::HasColon)),
+                                false => Some((span, LifetimeSuggestion::NeedsColon)),
+                            }
                         }
                     };
                     (scope, sugg_span)
@@ -811,17 +822,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let mut suggs = vec![];
             let lt_name = self.suggest_name_region(generic_param_scope, sub, &mut suggs);
 
-            if let Some((sp, has_lifetimes, open_paren_sp)) = type_param_sugg_span
+            if let Some((sp, suggestion_type)) = type_param_sugg_span
                 && suggestion_scope == type_scope
             {
-                let suggestion =
-                    if has_lifetimes { format!(" + {lt_name}") } else { format!(": {lt_name}") };
-
-                if let Some(open_paren_sp) = open_paren_sp {
-                    suggs.push((open_paren_sp, "(".to_string()));
-                    suggs.push((sp, format!("){suggestion}")));
-                } else {
-                    suggs.push((sp, suggestion))
+                match suggestion_type {
+                    LifetimeSuggestion::NeedsPlus(open_paren_sp) => {
+                        let suggestion = format!(" + {lt_name}");
+                        if let Some(open_paren_sp) = open_paren_sp {
+                            suggs.push((open_paren_sp, "(".to_string()));
+                            suggs.push((sp, format!("){suggestion}")));
+                        } else {
+                            suggs.push((sp, suggestion));
+                        }
+                    }
+                    LifetimeSuggestion::NeedsColon => suggs.push((sp, format!(": {lt_name}"))),
+                    LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
                 }
             } else if let GenericKind::Alias(ref p) = bound_kind
                 && let ty::Projection = p.kind(self.tcx)
@@ -847,6 +862,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             }
+        }
+
+        if sub.kind() == ty::ReStatic
+            && let Some(node) = self.tcx.hir_get_if_local(generic_param_scope.into())
+            && let hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { sig, body, has_body: true, .. },
+                ..
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)),
+                ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Fn(sig, body), ..
+            }) = node
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(body.hir_id)
+            && let hir::ExprKind::Block(block, _) = expr.kind
+            && let Some(tail) = block.expr
+            && tail.span == span
+            && let hir::FnRetTy::Return(ty) = sig.decl.output
+            && let hir::TyKind::Path(path) = ty.kind
+            && let hir::QPath::Resolved(None, path) = path
+            && let hir::def::Res::Def(_, def_id) = path.res
+            && Some(def_id) == self.tcx.lang_items().owned_box()
+            && let [segment] = path.segments
+            && let Some(args) = segment.args
+            && let [hir::GenericArg::Type(ty)] = args.args
+            && let hir::TyKind::TraitObject(_, tagged_ref) = ty.kind
+            && let hir::LifetimeKind::ImplicitObjectLifetimeDefault = tagged_ref.pointer().kind
+        {
+            // Explicitly look for `-> Box<dyn Trait>` to point at it as the *likely* source of
+            // the `'static` lifetime requirement.
+            err.span_label(
+                ty.span,
+                format!("this `dyn Trait` has an implicit `'static` lifetime bound"),
+            );
         }
 
         err
@@ -1054,6 +1105,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             var_description
         )
     }
+}
+
+enum LifetimeSuggestion {
+    NeedsPlus(Option<Span>),
+    NeedsColon,
+    HasColon,
 }
 
 pub(super) fn note_and_explain_region<'tcx>(

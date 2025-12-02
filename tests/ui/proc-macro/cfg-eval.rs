@@ -19,7 +19,7 @@ struct S1 {
     field_false: u8,
     #[cfg(all(/*true*/))]
     #[cfg_attr(FALSE, unknown_attr)]
-    #[cfg_attr(all(/*true*/), allow())]
+    #[cfg_attr(all(/*true*/), allow())] //~ WARN unused attribute
     field_true: u8,
 }
 

@@ -32,11 +32,11 @@ impl AttributeKind {
             ConstContinue(..) => No,
             ConstStability { .. } => Yes,
             ConstStabilityIndirect => No,
-            ConstTrait(..) => No,
             Coroutine(..) => No,
             Coverage(..) => No,
             CrateName { .. } => No,
             CustomMir(_, _, _) => Yes,
+            DebuggerVisualizer(..) => No,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
@@ -76,6 +76,7 @@ impl AttributeKind {
             PassByValue(..) => Yes,
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
+            PinV2(..) => Yes,
             Pointee(..) => No,
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
@@ -87,7 +88,11 @@ impl AttributeKind {
             RustcCoherenceIsCore(..) => No,
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
+            RustcMain => No,
             RustcObjectLifetimeDefault => No,
+            RustcPassIndirectlyInNonRusticAbis(..) => No,
+            RustcShouldNotBeCalledOnConstItems(..) => Yes,
+            RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,
@@ -101,6 +106,7 @@ impl AttributeKind {
             UnsafeSpecializationMarker(..) => No,
             UnstableFeatureBound(..) => No,
             Used { .. } => No,
+            WindowsSubsystem(..) => No,
             // tidy-alphabetical-end
         }
     }

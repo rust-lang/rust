@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/method-resolution5-deref-no-constrain.rs:20:5
+   |
+LL | fn via_deref() -> impl Deref<Target = Foo> {
+   |                                       --- expected `&Foo` because of return type
+...
+LL |     Box::new(Foo)
+   |     ^^^^^^^^^^^^^ expected `&Foo`, found `Box<Foo>`
+   |
+   = note: expected reference `&Foo`
+                 found struct `Box<Foo>`
+help: consider borrowing here
+   |
+LL |     &Box::new(Foo)
+   |     +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

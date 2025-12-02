@@ -31,7 +31,7 @@ interface ProjectJson {
     /// It should point to the directory where std,
     /// core, and friends can be found:
     ///
-    /// https://github.com/rust-lang/rust/tree/master/library.
+    /// https://github.com/rust-lang/rust/tree/HEAD/library.
     ///
     /// If provided, rust-analyzer automatically adds
     /// dependencies on sysroot crates. Conversely,

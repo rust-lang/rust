@@ -155,4 +155,56 @@ fn test(x: Foo<(i32, bool)>) {
 "#,
         );
     }
+
+    #[test]
+    fn uninhabited_variants() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+enum Infallible {}
+
+trait Foo {
+    type Bar;
+}
+
+struct Wrapper<T> {
+    error: T,
+}
+
+struct FooWrapper<T: Foo> {
+    error: T::Bar,
+}
+
+fn foo<T: Foo<Bar = Infallible>>(result: Result<T, T::Bar>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+
+fn bar<T: Foo<Bar = Infallible>>(result: Result<T, (T::Bar,)>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+
+fn baz<T: Foo<Bar = Infallible>>(result: Result<T, Wrapper<T::Bar>>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+
+fn qux<T: Foo<Bar = Infallible>>(result: Result<T, FooWrapper<T>>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+
+fn quux<T: Foo<Bar = Infallible>>(result: Result<T, [T::Bar; 1]>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+
+fn corge<T: Foo<Bar = Infallible>>(result: Result<T, (i32, T::Bar)>) -> T {
+    let Ok(ok) = result;
+    ok
+}
+"#,
+        );
+    }
 }

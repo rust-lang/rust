@@ -3,10 +3,9 @@ use std::iter::once;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{ExprFnSig, expr_sig, ty_sig};
-use clippy_utils::{get_expr_use_or_unification_node, is_res_lang_ctor, path_res, std_or_core, sym};
+use clippy_utils::{as_some_expr, get_expr_use_or_unification_node, is_none_expr, std_or_core, sym};
 
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
@@ -67,8 +66,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
     let item = match recv.kind {
         ExprKind::Array([]) => None,
         ExprKind::Array([e]) => Some(e),
-        ExprKind::Path(ref p) if is_res_lang_ctor(cx, cx.qpath_res(p, recv.hir_id), OptionNone) => None,
-        ExprKind::Call(f, [arg]) if is_res_lang_ctor(cx, path_res(cx, f), OptionSome) => Some(arg),
+        _ if is_none_expr(cx, recv) => None,
+        _ if let Some(arg) = as_some_expr(cx, recv) => Some(arg),
         _ => return,
     };
     let iter_type = match method_name {

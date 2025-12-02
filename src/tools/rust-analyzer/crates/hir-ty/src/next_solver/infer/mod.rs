@@ -6,53 +6,48 @@ use std::ops::Range;
 use std::sync::Arc;
 
 pub use BoundRegionConversionTime::*;
-pub use at::DefineOpaqueTypes;
-use ena::undo_log::UndoLogs;
 use ena::unify as ut;
 use hir_def::GenericParamId;
-use intern::Symbol;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
-use region_constraints::{
-    GenericKind, RegionConstraintCollector, RegionConstraintStorage, UndoLog, VarInfos, VerifyBound,
-};
-pub use relate::StructurallyRelateAliases;
-pub use relate::combine::PredicateEmittingRelation;
-use rustc_hash::{FxHashMap, FxHashSet};
+use region_constraints::{RegionConstraintCollector, RegionConstraintStorage};
+use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
 use rustc_pattern_analysis::Captures;
-use rustc_type_ir::error::{ExpectedFound, TypeError};
-use rustc_type_ir::inherent::{
-    Const as _, GenericArg as _, GenericArgs as _, IntoKind, ParamEnv as _, SliceLike, Term as _,
-    Ty as _,
-};
 use rustc_type_ir::{
-    BoundVar, ClosureKind, ConstVid, FloatTy, FloatVarValue, FloatVid, GenericArgKind, InferConst,
-    InferTy, IntTy, IntVarValue, IntVid, OutlivesPredicate, RegionVid, TyVid, UniverseIndex,
+    ClosureKind, ConstVid, FloatVarValue, FloatVid, GenericArgKind, InferConst, InferTy,
+    IntVarValue, IntVid, OutlivesPredicate, RegionVid, TermKind, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    error::{ExpectedFound, TypeError},
+    inherent::{
+        Const as _, GenericArg as _, GenericArgs as _, IntoKind, SliceLike, Term as _, Ty as _,
+    },
 };
-use rustc_type_ir::{TermKind, TypeVisitableExt};
-use rustc_type_ir::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use traits::{ObligationCause, PredicateObligations};
 use type_variable::TypeVariableOrigin;
 use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
-use crate::next_solver::fold::BoundVarReplacerDelegate;
-use crate::next_solver::infer::opaque_types::table::OpaqueTypeStorageEntries;
-use crate::next_solver::{BoundConst, BoundRegion, BoundTy, BoundVarKind};
+use crate::next_solver::{
+    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
+    SolverContext,
+    fold::BoundVarReplacerDelegate,
+    infer::{at::ToTrace, select::EvaluationResult, traits::PredicateObligation},
+    obligation_ctxt::ObligationCtxt,
+};
 
-use super::generics::GenericParamDef;
 use super::{
-    AliasTerm, Binder, BoundRegionKind, CanonicalQueryInput, CanonicalVarValues, Const, ConstKind,
-    DbInterner, ErrorGuaranteed, FxIndexMap, GenericArg, GenericArgs, OpaqueTypeKey, ParamEnv,
-    PlaceholderRegion, PolyCoercePredicate, PolyExistentialProjection, PolyExistentialTraitRef,
-    PolyFnSig, PolyRegionOutlivesPredicate, PolySubtypePredicate, Predicate, Region, SolverDefId,
-    SubtypePredicate, Term, TraitPredicate, TraitRef, Ty, TyKind, TypingMode,
+    AliasTerm, Binder, CanonicalQueryInput, CanonicalVarValues, Const, ConstKind, DbInterner,
+    ErrorGuaranteed, GenericArg, GenericArgs, OpaqueTypeKey, ParamEnv, PolyCoercePredicate,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyRegionOutlivesPredicate,
+    PolySubtypePredicate, Region, SolverDefId, SubtypePredicate, Term, TraitRef, Ty, TyKind,
+    TypingMode,
 };
 
 pub mod at;
 pub mod canonical;
 mod context;
-mod opaque_types;
+pub mod opaque_types;
+mod outlives;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
@@ -62,7 +57,7 @@ pub(crate) mod traits;
 mod type_variable;
 mod unify_key;
 
-/// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
+/// `InferOk<'db, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations`, but it has one important property:
 /// because `InferOk` is marked with `#[must_use]`, if you have a method
 /// `InferCtxt::f` that returns `InferResult<()>` and you call it with
@@ -76,8 +71,6 @@ pub struct InferOk<'db, T> {
     pub obligations: PredicateObligations<'db>,
 }
 pub type InferResult<'db, T> = Result<InferOk<'db, T>, TypeError<DbInterner<'db>>>;
-
-pub(crate) type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub(crate) type UnificationTable<'a, 'db, T> = ut::UnificationTable<
     ut::InPlace<T, &'a mut ut::UnificationStorage<T>, &'a mut InferCtxtUndoLogs<'db>>,
@@ -149,7 +142,14 @@ pub struct InferCtxtInner<'db> {
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
-    pub(crate) region_obligations: Vec<RegionObligation<'db>>,
+    pub(crate) region_obligations: Vec<TypeOutlivesConstraint<'db>>,
+
+    /// The outlives bounds that we assume must hold about placeholders that
+    /// come from instantiating the binder of coroutine-witnesses. These bounds
+    /// are deduced from the well-formedness of the witness's types, and are
+    /// necessary because of the way we anonymize the regions in a coroutine,
+    /// which may cause types to no longer be considered well-formed.
+    region_assumptions: Vec<ArgOutlivesPredicate<'db>>,
 
     /// Caches for opaque type inference.
     pub(crate) opaque_type_storage: OpaqueTypeStorage<'db>,
@@ -166,12 +166,13 @@ impl<'db> InferCtxtInner<'db> {
             float_unification_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
             region_obligations: vec![],
+            region_assumptions: Default::default(),
             opaque_type_storage: Default::default(),
         }
     }
 
     #[inline]
-    pub fn region_obligations(&self) -> &[RegionObligation<'db>] {
+    pub fn region_obligations(&self) -> &[TypeOutlivesConstraint<'db>] {
         &self.region_obligations
     }
 
@@ -326,7 +327,7 @@ impl fmt::Display for FixupError {
 
 /// See the `region_obligations` field for more information.
 #[derive(Clone, Debug)]
-pub struct RegionObligation<'db> {
+pub struct TypeOutlivesConstraint<'db> {
     pub sub_region: Region<'db>,
     pub sup_type: Ty<'db>,
 }
@@ -393,6 +394,162 @@ impl<'db> InferCtxt<'db> {
     #[inline(always)]
     pub fn typing_mode_unchecked(&self) -> TypingMode<'db> {
         self.typing_mode
+    }
+
+    /// Evaluates whether the predicate can be satisfied (by any means)
+    /// in the given `ParamEnv`.
+    pub fn predicate_may_hold(&self, obligation: &PredicateObligation<'db>) -> bool {
+        self.evaluate_obligation(obligation).may_apply()
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    pub fn predicate_may_hold_opaque_types_jank(
+        &self,
+        obligation: &PredicateObligation<'db>,
+    ) -> bool {
+        <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(Goal::new(
+            self.interner,
+            obligation.param_env,
+            obligation.predicate,
+        ))
+    }
+
+    pub(crate) fn insert_type_vars<T>(&self, ty: T) -> T
+    where
+        T: TypeFoldable<DbInterner<'db>>,
+    {
+        struct Folder<'a, 'db> {
+            infcx: &'a InferCtxt<'db>,
+        }
+        impl<'db> TypeFolder<DbInterner<'db>> for Folder<'_, 'db> {
+            fn cx(&self) -> DbInterner<'db> {
+                self.infcx.interner
+            }
+
+            fn fold_ty(&mut self, ty: Ty<'db>) -> Ty<'db> {
+                if !ty.references_error() {
+                    return ty;
+                }
+
+                if ty.is_ty_error() { self.infcx.next_ty_var() } else { ty.super_fold_with(self) }
+            }
+
+            fn fold_const(&mut self, ct: Const<'db>) -> Const<'db> {
+                if !ct.references_error() {
+                    return ct;
+                }
+
+                if ct.is_ct_error() {
+                    self.infcx.next_const_var()
+                } else {
+                    ct.super_fold_with(self)
+                }
+            }
+
+            fn fold_region(&mut self, r: Region<'db>) -> Region<'db> {
+                if r.is_error() { self.infcx.next_region_var() } else { r }
+            }
+        }
+
+        ty.fold_with(&mut Folder { infcx: self })
+    }
+
+    /// Evaluates whether the predicate can be satisfied in the given
+    /// `ParamEnv`, and returns `false` if not certain. However, this is
+    /// not entirely accurate if inference variables are involved.
+    ///
+    /// This version may conservatively fail when outlives obligations
+    /// are required. Therefore, this version should only be used for
+    /// optimizations or diagnostics and be treated as if it can always
+    /// return `false`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![allow(dead_code)]
+    /// trait Trait {}
+    ///
+    /// fn check<T: Trait>() {}
+    ///
+    /// fn foo<T: 'static>()
+    /// where
+    ///     &'static T: Trait,
+    /// {
+    ///     // Evaluating `&'?0 T: Trait` adds a `'?0: 'static` outlives obligation,
+    ///     // which means that `predicate_must_hold_considering_regions` will return
+    ///     // `false`.
+    ///     check::<&'_ T>();
+    /// }
+    /// ```
+    #[expect(dead_code, reason = "this is used in rustc")]
+    fn predicate_must_hold_considering_regions(
+        &self,
+        obligation: &PredicateObligation<'db>,
+    ) -> bool {
+        self.evaluate_obligation(obligation).must_apply_considering_regions()
+    }
+
+    /// Evaluates whether the predicate can be satisfied in the given
+    /// `ParamEnv`, and returns `false` if not certain. However, this is
+    /// not entirely accurate if inference variables are involved.
+    ///
+    /// This version ignores all outlives constraints.
+    #[expect(dead_code, reason = "this is used in rustc")]
+    fn predicate_must_hold_modulo_regions(&self, obligation: &PredicateObligation<'db>) -> bool {
+        self.evaluate_obligation(obligation).must_apply_modulo_regions()
+    }
+
+    /// Evaluate a given predicate, capturing overflow and propagating it back.
+    fn evaluate_obligation(&self, obligation: &PredicateObligation<'db>) -> EvaluationResult {
+        self.probe(|snapshot| {
+            let mut ocx = ObligationCtxt::new(self);
+            ocx.register_obligation(obligation.clone());
+            let mut result = EvaluationResult::EvaluatedToOk;
+            for error in ocx.evaluate_obligations_error_on_ambiguity() {
+                if error.is_true_error() {
+                    return EvaluationResult::EvaluatedToErr;
+                } else {
+                    result = result.max(EvaluationResult::EvaluatedToAmbig);
+                }
+            }
+            if self.opaque_types_added_in_snapshot(snapshot) {
+                result = result.max(EvaluationResult::EvaluatedToOkModuloOpaqueTypes);
+            } else if self.region_constraints_added_in_snapshot(snapshot) {
+                result = result.max(EvaluationResult::EvaluatedToOkModuloRegions);
+            }
+            result
+        })
+    }
+
+    pub fn can_eq<T: ToTrace<'db>>(&self, param_env: ParamEnv<'db>, a: T, b: T) -> bool {
+        self.probe(|_| {
+            let mut ocx = ObligationCtxt::new(self);
+            let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, a, b) else {
+                return false;
+            };
+            ocx.try_evaluate_obligations().is_empty()
+        })
+    }
+
+    /// See the comment on [OpaqueTypesJank](crate::solve::OpaqueTypesJank)
+    /// for more details.
+    pub fn goal_may_hold_opaque_types_jank(&self, goal: Goal<'db, Predicate<'db>>) -> bool {
+        <&SolverContext<'db>>::from(self).root_goal_may_hold_opaque_types_jank(goal)
+    }
+
+    pub fn type_is_copy_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+
+        let Some(copy_def_id) = self.interner.lang_items().Copy else {
+            return false;
+        };
+
+        // This can get called from typeck (by euv), and `moves_by_default`
+        // rightly refuses to work with inference variables, but
+        // moves_by_default has a cache, which we want to use in other
+        // cases.
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
     pub fn unresolved_variables(&self) -> Vec<Ty<'db>> {
@@ -482,16 +639,16 @@ impl<'db> InferCtxt<'db> {
 
         self.enter_forall(predicate, |SubtypePredicate { a_is_expected, a, b }| {
             if a_is_expected {
-                Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
+                Ok(self.at(cause, param_env).sub(a, b))
             } else {
-                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+                Ok(self.at(cause, param_env).sup(b, a))
             }
         })
     }
 
     pub fn region_outlives_predicate(
         &self,
-        cause: &traits::ObligationCause,
+        _cause: &traits::ObligationCause,
         predicate: PolyRegionOutlivesPredicate<'db>,
     ) {
         self.enter_forall(predicate, |OutlivesPredicate(r_a, r_b)| {
@@ -502,6 +659,14 @@ impl<'db> InferCtxt<'db> {
     /// Number of type variables created so far.
     pub fn num_ty_vars(&self) -> usize {
         self.inner.borrow_mut().type_variables().num_vars()
+    }
+
+    pub fn next_var_for_param(&self, id: GenericParamId) -> GenericArg<'db> {
+        match id {
+            GenericParamId::TypeParamId(_) => self.next_ty_var().into(),
+            GenericParamId::ConstParamId(_) => self.next_const_var().into(),
+            GenericParamId::LifetimeParamId(_) => self.next_region_var().into(),
+        }
     }
 
     pub fn next_ty_var(&self) -> Ty<'db> {
@@ -531,7 +696,7 @@ impl<'db> InferCtxt<'db> {
     }
 
     pub fn next_const_var(&self) -> Const<'db> {
-        self.next_const_var_with_origin(ConstVariableOrigin { param_def_id: None })
+        self.next_const_var_with_origin(ConstVariableOrigin {})
     }
 
     pub fn next_const_vid(&self) -> ConstVid {
@@ -539,7 +704,7 @@ impl<'db> InferCtxt<'db> {
             .borrow_mut()
             .const_unification_table()
             .new_key(ConstVariableValue::Unknown {
-                origin: ConstVariableOrigin { param_def_id: None },
+                origin: ConstVariableOrigin {},
                 universe: self.universe(),
             })
             .vid
@@ -556,7 +721,7 @@ impl<'db> InferCtxt<'db> {
     }
 
     pub fn next_const_var_in_universe(&self, universe: UniverseIndex) -> Const<'db> {
-        let origin = ConstVariableOrigin { param_def_id: None };
+        let origin = ConstVariableOrigin {};
         let vid = self
             .inner
             .borrow_mut()
@@ -637,7 +802,7 @@ impl<'db> InferCtxt<'db> {
         self.next_region_var_in_universe(universe)
     }
 
-    fn var_for_def(&self, id: GenericParamId, name: &Symbol) -> GenericArg<'db> {
+    fn var_for_def(&self, id: GenericParamId) -> GenericArg<'db> {
         match id {
             GenericParamId::LifetimeParamId(_) => {
                 // Create a region inference variable for the given
@@ -662,7 +827,7 @@ impl<'db> InferCtxt<'db> {
                 Ty::new_var(self.interner, ty_var_id).into()
             }
             GenericParamId::ConstParamId(_) => {
-                let origin = ConstVariableOrigin { param_def_id: None };
+                let origin = ConstVariableOrigin {};
                 let const_var_id = self
                     .inner
                     .borrow_mut()
@@ -677,8 +842,17 @@ impl<'db> InferCtxt<'db> {
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
     /// each type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, def_id: SolverDefId) -> GenericArgs<'db> {
-        GenericArgs::for_item(self.interner, def_id, |name, index, kind, _| {
-            self.var_for_def(kind, name)
+        GenericArgs::for_item(self.interner, def_id, |_index, kind, _| self.var_for_def(kind))
+    }
+
+    /// Like `fresh_args_for_item()`, but first uses the args from `first`.
+    pub fn fill_rest_fresh_args(
+        &self,
+        def_id: SolverDefId,
+        first: impl IntoIterator<Item = GenericArg<'db>>,
+    ) -> GenericArgs<'db> {
+        GenericArgs::fill_rest(self.interner, def_id, first, |_index, kind, _| {
+            self.var_for_def(kind)
         })
     }
 
@@ -709,6 +883,22 @@ impl<'db> InferCtxt<'db> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
+    pub fn has_opaques_with_sub_unified_hidden_type(&self, ty_vid: TyVid) -> bool {
+        let ty_sub_vid = self.sub_unification_table_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        inner.opaque_type_storage.iter_opaque_types().any(|(_, hidden_ty)| {
+            if let TyKind::Infer(InferTy::TyVar(hidden_vid)) = hidden_ty.ty.kind() {
+                let opaque_sub_vid = type_variables.sub_unification_table_root_var(hidden_vid);
+                if opaque_sub_vid == ty_sub_vid {
+                    return true;
+                }
+            }
+
+            false
+        })
+    }
+
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<SolverDefId>) -> bool {
         match self.typing_mode_unchecked() {
@@ -716,8 +906,8 @@ impl<'db> InferCtxt<'db> {
                 defining_opaque_types_and_generators.contains(&id.into())
             }
             TypingMode::Coherence | TypingMode::PostAnalysis => false,
-            TypingMode::Borrowck { defining_opaque_types } => unimplemented!(),
-            TypingMode::PostBorrowckAnalysis { defined_opaque_types } => unimplemented!(),
+            TypingMode::Borrowck { defining_opaque_types: _ } => unimplemented!(),
+            TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => unimplemented!(),
         }
     }
 
@@ -886,7 +1076,7 @@ impl<'db> InferCtxt<'db> {
     // use [`InferCtxt::enter_forall`] instead.
     pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
-        lbrct: BoundRegionConversionTime,
+        _lbrct: BoundRegionConversionTime,
         value: Binder<'db, T>,
     ) -> T
     where
@@ -902,7 +1092,7 @@ impl<'db> InferCtxt<'db> {
         for bound_var_kind in bound_vars {
             let arg: GenericArg<'db> = match bound_var_kind {
                 BoundVarKind::Ty(_) => self.next_ty_var().into(),
-                BoundVarKind::Region(br) => self.next_region_var().into(),
+                BoundVarKind::Region(_) => self.next_region_var().into(),
                 BoundVarKind::Const => self.next_const_var().into(),
             };
             args.push(arg);
@@ -958,7 +1148,7 @@ impl<'db> InferCtxt<'db> {
     #[inline]
     pub fn is_ty_infer_var_definitely_unchanged<'a>(
         &'a self,
-    ) -> (impl Fn(TyOrConstInferVar) -> bool + Captures<'db> + 'a) {
+    ) -> impl Fn(TyOrConstInferVar) -> bool + Captures<'db> + 'a {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 

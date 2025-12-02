@@ -13,6 +13,12 @@ const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 export interface RustAnalyzerExtensionApi {
     // FIXME: this should be non-optional
     readonly client?: lc.LanguageClient;
+
+    // Allows adding a configuration override from another extension.
+    // `extensionId` is used to only merge configuration override from present
+    // extensions. `configuration` is map of rust-analyzer-specific setting
+    // overrides, e.g., `{"cargo.cfgs": ["foo", "bar"]}`.
+    addConfiguration(extensionId: string, configuration: Record<string, unknown>): Promise<void>;
 }
 
 export async function deactivate() {

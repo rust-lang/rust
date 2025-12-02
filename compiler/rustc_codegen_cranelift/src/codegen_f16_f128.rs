@@ -1,8 +1,11 @@
+use rustc_target::spec::Arch;
+
+use crate::compiler_builtins::CMP_RESULT_TY;
 use crate::prelude::*;
 
 pub(crate) fn f16_to_f32(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     let (value, arg_ty) =
-        if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == "x86_64" {
+        if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
             (
                 fx.bcx.ins().bitcast(types::I16, MemFlags::new(), value),
                 lib_call_arg_param(fx.tcx, types::I16, false),
@@ -19,7 +22,7 @@ fn f16_to_f64(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
 }
 
 pub(crate) fn f32_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let ret_ty = if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == "x86_64" {
+    let ret_ty = if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
         types::I16
     } else {
         types::F16
@@ -34,7 +37,7 @@ pub(crate) fn f32_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value
 }
 
 fn f64_to_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let ret_ty = if fx.tcx.sess.target.vendor == "apple" && fx.tcx.sess.target.arch == "x86_64" {
+    let ret_ty = if fx.tcx.sess.target.is_like_darwin && fx.tcx.sess.target.arch == Arch::X86_64 {
         types::I16
     } else {
         types::F16
@@ -70,15 +73,11 @@ pub(crate) fn fcmp(fx: &mut FunctionCx<'_, '_, '_>, cc: FloatCC, lhs: Value, rhs
             let res = fx.lib_call(
                 name,
                 vec![AbiParam::new(types::F128), AbiParam::new(types::F128)],
-                // FIXME(rust-lang/compiler-builtins#919): This should be `I64` on non-AArch64
-                // architectures, but switching it before compiler-builtins is fixed causes test
-                // failures.
-                vec![AbiParam::new(types::I32)],
+                vec![AbiParam::new(CMP_RESULT_TY)],
                 &[lhs, rhs],
             )[0];
-            let zero = fx.bcx.ins().iconst(types::I32, 0);
-            let res = fx.bcx.ins().icmp(int_cc, res, zero);
-            res
+            let zero = fx.bcx.ins().iconst(CMP_RESULT_TY, 0);
+            fx.bcx.ins().icmp(int_cc, res, zero)
         }
         _ => unreachable!("{ty:?}"),
     }

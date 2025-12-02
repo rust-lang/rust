@@ -185,7 +185,7 @@ impl SourceCollector<'_, '_> {
         };
 
         // Remove the utf-8 BOM if any
-        let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
+        let contents = contents.trim_prefix('\u{feff}');
 
         let shared = &self.cx.shared;
         // Create the intermediate directories
@@ -348,7 +348,12 @@ pub(crate) fn print_src(
         highlight::write_code(
             fmt,
             s,
-            Some(highlight::HrefContext { context, file_span, root_path, current_href }),
+            Some(highlight::HrefContext {
+                context,
+                file_span: file_span.into(),
+                root_path,
+                current_href,
+            }),
             Some(decoration_info),
             Some(line_info),
         );

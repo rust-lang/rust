@@ -618,11 +618,11 @@ impl<'tcx> Instance<'tcx> {
                         // be directly reified because it's closure-like. The reify can handle the
                         // unresolved instance.
                         resolved = Instance { def: InstanceKind::ReifyShim(def_id, reason), args }
-                    // Reify `Trait::method` implementations
-                    // FIXME(maurer) only reify it if it is a vtable-safe function
+                    // Reify `Trait::method` implementations if the trait is dyn-compatible.
                     } else if let Some(assoc) = tcx.opt_associated_item(def_id)
                         && let AssocContainer::Trait | AssocContainer::TraitImpl(Ok(_)) =
                             assoc.container
+                        && tcx.is_dyn_compatible(assoc.container_id(tcx))
                     {
                         // If this function could also go in a vtable, we need to `ReifyShim` it with
                         // KCFI because it can only attach one type per function.

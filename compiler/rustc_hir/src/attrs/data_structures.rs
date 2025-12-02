@@ -146,12 +146,13 @@ impl Deprecation {
 }
 
 /// There are three valid forms of the attribute:
-/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
+/// `#[used]`, which is equivalent to `#[used(linker)]` on targets that support it, but `#[used(compiler)]` if not.
 /// `#[used(compiler)]`
 /// `#[used(linker)]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum UsedBy {
+    Default,
     Compiler,
     Linker,
 }
@@ -191,6 +192,18 @@ pub enum CfgEntry {
     Bool(bool, Span),
     NameValue { name: Symbol, name_span: Span, value: Option<(Symbol, Span)>, span: Span },
     Version(Option<RustcVersion>, Span),
+}
+
+impl CfgEntry {
+    pub fn span(&self) -> Span {
+        let (CfgEntry::All(_, span)
+        | CfgEntry::Any(_, span)
+        | CfgEntry::Not(_, span)
+        | CfgEntry::Bool(_, span)
+        | CfgEntry::NameValue { span, .. }
+        | CfgEntry::Version(_, span)) = self;
+        *span
+    }
 }
 
 /// Possible values for the `#[linkage]` attribute, allowing to specify the
@@ -308,7 +321,10 @@ pub enum NativeLibKind {
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     /// On Linux, it refers to a generated shared library stub.
-    RawDylib,
+    RawDylib {
+        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
+        as_needed: Option<bool>,
+    },
     /// A macOS-specific kind of dynamic libraries.
     Framework {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
@@ -331,11 +347,10 @@ impl NativeLibKind {
             NativeLibKind::Static { bundle, whole_archive } => {
                 bundle.is_some() || whole_archive.is_some()
             }
-            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
-                as_needed.is_some()
-            }
-            NativeLibKind::RawDylib
-            | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { as_needed }
+            | NativeLibKind::Framework { as_needed }
+            | NativeLibKind::RawDylib { as_needed } => as_needed.is_some(),
+            NativeLibKind::Unspecified
             | NativeLibKind::LinkArg
             | NativeLibKind::WasmImportModule => false,
         }
@@ -348,7 +363,9 @@ impl NativeLibKind {
     pub fn is_dllimport(&self) -> bool {
         matches!(
             self,
-            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { .. }
+                | NativeLibKind::RawDylib { .. }
+                | NativeLibKind::Unspecified
         )
     }
 }
@@ -361,6 +378,46 @@ pub struct LinkEntry {
     pub cfg: Option<CfgEntry>,
     pub verbatim: Option<bool>,
     pub import_name_type: Option<(PeImportNameType, Span)>,
+}
+
+#[derive(HashStable_Generic, PrintAttribute)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
+pub enum DebuggerVisualizerType {
+    Natvis,
+    GdbPrettyPrinter,
+}
+
+#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
+pub struct DebugVisualizer {
+    pub span: Span,
+    pub visualizer_type: DebuggerVisualizerType,
+    pub path: Symbol,
+}
+
+#[derive(Clone, Copy, Debug, Decodable, Encodable, Eq, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+#[derive_const(Default)]
+pub enum RtsanSetting {
+    Nonblocking,
+    Blocking,
+    #[default]
+    Caller,
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Encodable, Decodable, HashStable_Generic, PrintAttribute)]
+pub enum WindowsSubsystemKind {
+    Console,
+    Windows,
+}
+
+impl WindowsSubsystemKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            WindowsSubsystemKind::Console => "console",
+            WindowsSubsystemKind::Windows => "windows",
+        }
+    }
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -470,9 +527,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable_indirect]`.
     ConstStabilityIndirect,
 
-    /// Represents `#[const_trait]`.
-    ConstTrait(Span),
-
     /// Represents `#[coroutine]`.
     Coroutine(Span),
 
@@ -480,12 +534,15 @@ pub enum AttributeKind {
     Coverage(Span, CoverageAttrKind),
 
     /// Represents `#[crate_name = ...]`
-    CrateName { name: Symbol, name_span: Span, attr_span: Span, style: AttrStyle },
+    CrateName { name: Symbol, name_span: Span, attr_span: Span },
 
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 
-    ///Represents `#[rustc_deny_explicit_impl]`.
+    /// Represents `#[debugger_visualizer]`.
+    DebuggerVisualizer(ThinVec<DebugVisualizer>),
+
+    /// Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
@@ -494,7 +551,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_do_not_implement_via_object]`.
     DoNotImplementViaObject(Span),
 
-    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// Represents [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
@@ -615,6 +672,9 @@ pub enum AttributeKind {
     /// Represents `#[pattern_complexity_limit]`
     PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
+    /// Represents `#[pin_v2]`
+    PinV2(Span),
+
     /// Represents `#[pointee]`
     Pointee(Span),
 
@@ -648,14 +708,32 @@ pub enum AttributeKind {
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
+    /// Represents `#[rustc_main]`.
+    RustcMain,
+
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
+
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
+    RustcPassIndirectlyInNonRusticAbis(Span),
+
+    /// Represents `#[rustc_should_not_be_called_on_const_items]`
+    RustcShouldNotBeCalledOnConstItems(Span),
+
+    /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
+    RustcSimdMonomorphizeLaneLimit(Limit),
 
     /// Represents `#[sanitize]`
     ///
     /// the on set and off set are distjoint since there's a third option: unset.
     /// a node may not set the sanitizer setting in which case it inherits from parents.
-    Sanitize { on_set: SanitizerSet, off_set: SanitizerSet, span: Span },
+    /// rtsan is unset if None
+    Sanitize {
+        on_set: SanitizerSet,
+        off_set: SanitizerSet,
+        rtsan: Option<RtsanSetting>,
+        span: Span,
+    },
 
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },
@@ -697,5 +775,8 @@ pub enum AttributeKind {
 
     /// Represents `#[used]`
     Used { used_by: UsedBy, span: Span },
+
+    /// Represents `#[windows_subsystem]`.
+    WindowsSubsystem(WindowsSubsystemKind, Span),
     // tidy-alphabetical-end
 }

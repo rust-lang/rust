@@ -3,7 +3,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def, intravisit};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, DefiningScopeKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, DefiningScopeKind, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 use rustc_trait_selection::opaque_types::report_item_does_not_constrain_error;
 use tracing::{debug, instrument, trace};
 
@@ -16,7 +16,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     opaque_types_from: DefiningScopeKind,
-) -> Ty<'_> {
+) -> EarlyBinder<'_, Ty<'_>> {
     let mut parent_def_id = def_id;
     while tcx.def_kind(parent_def_id) == def::DefKind::OpaqueTy {
         // Account for `type Alias = impl Trait<Foo = impl Trait>;` (#116031)
@@ -49,7 +49,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
             name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "impl",
         });
-        Ty::new_error(tcx, guar)
+        EarlyBinder::bind(Ty::new_error(tcx, guar))
     }
 }
 
@@ -76,7 +76,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     opaque_types_from: DefiningScopeKind,
-) -> Ty<'_> {
+) -> EarlyBinder<'_, Ty<'_>> {
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, opaque_types_from };
 
     tcx.hir_walk_toplevel_module(&mut locator);
@@ -94,7 +94,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(
             name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "crate",
         });
-        Ty::new_error(tcx, guar)
+        EarlyBinder::bind(Ty::new_error(tcx, guar))
     }
 }
 
@@ -109,18 +109,18 @@ struct TaitConstraintLocator<'tcx> {
     /// with the first type that we find, and then later types are
     /// checked against it (we also carry the span of that first
     /// type).
-    found: Option<ty::OpaqueHiddenType<'tcx>>,
+    found: Option<ty::DefinitionSiteHiddenType<'tcx>>,
 
     opaque_types_from: DefiningScopeKind,
 }
 
 impl<'tcx> TaitConstraintLocator<'tcx> {
-    fn insert_found(&mut self, hidden_ty: ty::OpaqueHiddenType<'tcx>) {
+    fn insert_found(&mut self, hidden_ty: ty::DefinitionSiteHiddenType<'tcx>) {
         if let Some(prev) = &mut self.found {
             if hidden_ty.ty != prev.ty {
                 let (Ok(guar) | Err(guar)) =
                     prev.build_mismatch_error(&hidden_ty, self.tcx).map(|d| d.emit());
-                prev.ty = Ty::new_error(self.tcx, guar);
+                *prev = ty::DefinitionSiteHiddenType::new_error(self.tcx, guar);
             }
         } else {
             self.found = Some(hidden_ty);
@@ -133,7 +133,7 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
         // with the new solver.
         assert!(!self.tcx.next_trait_solver_globally());
         let guar = report_item_does_not_constrain_error(self.tcx, item_def_id, self.def_id, None);
-        self.insert_found(ty::OpaqueHiddenType::new_error(self.tcx, guar));
+        self.insert_found(ty::DefinitionSiteHiddenType::new_error(self.tcx, guar));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -168,7 +168,7 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
                 hir_sig.decl.output.span(),
                 "inferring return types and opaque types do not mix well",
             );
-            self.found = Some(ty::OpaqueHiddenType::new_error(tcx, guar));
+            self.found = Some(ty::DefinitionSiteHiddenType::new_error(tcx, guar));
             return;
         }
 
@@ -176,25 +176,23 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
             DefiningScopeKind::HirTypeck => {
                 let tables = tcx.typeck(item_def_id);
                 if let Some(guar) = tables.tainted_by_errors {
-                    self.insert_found(ty::OpaqueHiddenType::new_error(tcx, guar));
-                } else if let Some(&hidden_type) = tables.concrete_opaque_types.get(&self.def_id) {
+                    self.insert_found(ty::DefinitionSiteHiddenType::new_error(tcx, guar));
+                } else if let Some(&hidden_type) = tables.hidden_types.get(&self.def_id) {
                     self.insert_found(hidden_type);
                 } else {
                     self.non_defining_use_in_defining_scope(item_def_id);
                 }
             }
             DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(item_def_id) {
-                Err(guar) => self.insert_found(ty::OpaqueHiddenType::new_error(tcx, guar)),
-                Ok(concrete_opaque_types) => {
-                    if let Some(&hidden_type) = concrete_opaque_types.0.get(&self.def_id) {
+                Err(guar) => self.insert_found(ty::DefinitionSiteHiddenType::new_error(tcx, guar)),
+                Ok(hidden_types) => {
+                    if let Some(&hidden_type) = hidden_types.get(&self.def_id) {
                         debug!(?hidden_type, "found constraint");
                         self.insert_found(hidden_type);
-                    } else if let Err(guar) = tcx
-                        .type_of_opaque_hir_typeck(self.def_id)
-                        .instantiate_identity()
-                        .error_reported()
+                    } else if let Err(guar) =
+                        tcx.type_of_opaque_hir_typeck(self.def_id).skip_binder().error_reported()
                     {
-                        self.insert_found(ty::OpaqueHiddenType::new_error(tcx, guar));
+                        self.insert_found(ty::DefinitionSiteHiddenType::new_error(tcx, guar));
                     } else {
                         self.non_defining_use_in_defining_scope(item_def_id);
                     }
@@ -241,13 +239,23 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
     def_id: LocalDefId,
     owner_def_id: LocalDefId,
     opaque_types_from: DefiningScopeKind,
-) -> Ty<'tcx> {
+) -> EarlyBinder<'tcx, Ty<'tcx>> {
+    // When an opaque type is stranded, its hidden type cannot be inferred
+    // so we should not continue.
+    if !tcx.opaque_types_defined_by(owner_def_id).contains(&def_id) {
+        let opaque_type_span = tcx.def_span(def_id);
+        let guar = tcx
+            .dcx()
+            .span_delayed_bug(opaque_type_span, "cannot infer type for stranded opaque type");
+        return EarlyBinder::bind(Ty::new_error(tcx, guar));
+    }
+
     match opaque_types_from {
         DefiningScopeKind::HirTypeck => {
             let tables = tcx.typeck(owner_def_id);
             if let Some(guar) = tables.tainted_by_errors {
-                Ty::new_error(tcx, guar)
-            } else if let Some(hidden_ty) = tables.concrete_opaque_types.get(&def_id) {
+                EarlyBinder::bind(Ty::new_error(tcx, guar))
+            } else if let Some(hidden_ty) = tables.hidden_types.get(&def_id) {
                 hidden_ty.ty
             } else {
                 assert!(!tcx.next_trait_solver_globally());
@@ -257,24 +265,24 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                 // so we can just make the hidden type be `!`.
                 // For backwards compatibility reasons, we fall back to
                 // `()` until we the diverging default is changed.
-                Ty::new_diverging_default(tcx)
+                EarlyBinder::bind(tcx.types.unit)
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {
-            Ok(concrete_opaque_types) => {
-                if let Some(hidden_ty) = concrete_opaque_types.0.get(&def_id) {
+            Ok(hidden_types) => {
+                if let Some(hidden_ty) = hidden_types.get(&def_id) {
                     hidden_ty.ty
                 } else {
-                    let hir_ty = tcx.type_of_opaque_hir_typeck(def_id).instantiate_identity();
-                    if let Err(guar) = hir_ty.error_reported() {
-                        Ty::new_error(tcx, guar)
+                    let hir_ty = tcx.type_of_opaque_hir_typeck(def_id);
+                    if let Err(guar) = hir_ty.skip_binder().error_reported() {
+                        EarlyBinder::bind(Ty::new_error(tcx, guar))
                     } else {
                         assert!(!tcx.next_trait_solver_globally());
                         hir_ty
                     }
                 }
             }
-            Err(guar) => Ty::new_error(tcx, guar),
+            Err(guar) => EarlyBinder::bind(Ty::new_error(tcx, guar)),
         },
     }
 }

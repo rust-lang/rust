@@ -18,8 +18,8 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, UserArgs,
+    self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -172,7 +172,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
-        let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
+        let Some((mut target, n)) = autoderef.nth(pick.autoderefs) else {
             return Ty::new_error_with_message(
                 self.tcx,
                 DUMMY_SP,
@@ -182,8 +182,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         let mut adjustments = self.adjust_steps(&autoderef);
-        let mut target = self.structurally_resolve_type(autoderef.span(), ty);
-
         match pick.autoref_or_ptr_adjustment {
             Some(probe::AutorefOrPtrAdjustment::Autoref { mutbl, unsize }) => {
                 let region = self.next_region_var(RegionVariableOrigin::Autoref(self.span));
@@ -274,7 +272,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             probe::InherentImplPick => {
                 let impl_def_id = pick.item.container_id(self.tcx);
                 assert!(
-                    self.tcx.impl_trait_ref(impl_def_id).is_none(),
+                    matches!(pick.item.container, AssocContainer::InherentImpl),
                     "impl {impl_def_id:?} is not an inherent impl"
                 );
                 self.fresh_args_for_item(self.span, impl_def_id)

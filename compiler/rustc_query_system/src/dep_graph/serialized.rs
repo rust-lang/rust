@@ -59,7 +59,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use tracing::{debug, instrument};
 
-use super::graph::{CurrentDepGraph, DepNodeColor, DepNodeColorMap};
+use super::graph::{CurrentDepGraph, DepNodeColorMap};
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex, Deps};
 use crate::dep_graph::edges::EdgesVec;
@@ -566,7 +566,7 @@ impl<D: Deps> EncoderState<D> {
                     edge_count: 0,
                     node_count: 0,
                     encoder: MemEncoder::new(),
-                    kind_stats: iter::repeat(0).take(D::DEP_KIND_MAX as usize + 1).collect(),
+                    kind_stats: iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect(),
                 })
             }),
             marker: PhantomData,
@@ -735,7 +735,7 @@ impl<D: Deps> EncoderState<D> {
 
         let mut encoder = self.file.lock().take().unwrap();
 
-        let mut kind_stats: Vec<u32> = iter::repeat(0).take(D::DEP_KIND_MAX as usize + 1).collect();
+        let mut kind_stats: Vec<u32> = iter::repeat_n(0, D::DEP_KIND_MAX as usize + 1).collect();
 
         let mut node_max = 0;
         let mut node_count = 0;
@@ -906,7 +906,7 @@ impl<D: Deps> GraphEncoder<D> {
                 Err(dep_node_index) => return dep_node_index,
             }
         } else {
-            colors.insert(prev_index, DepNodeColor::Red);
+            colors.insert_red(prev_index);
         }
 
         self.status.bump_index(&mut *local);
@@ -914,8 +914,9 @@ impl<D: Deps> GraphEncoder<D> {
         index
     }
 
-    /// Encodes a node that was promoted from the previous graph. It reads the information directly from
-    /// the previous dep graph and expects all edges to already have a new dep node index assigned.
+    /// Encodes a node that was promoted from the previous graph. It reads the information directly
+    /// from the previous dep graph and expects all edges to already have a new dep node index
+    /// assigned.
     ///
     /// This will also ensure the dep node is marked green.
     #[inline]

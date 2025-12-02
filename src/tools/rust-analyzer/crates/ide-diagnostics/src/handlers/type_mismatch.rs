@@ -1170,7 +1170,7 @@ trait B {}
 
 fn test(a: &dyn A) -> &dyn B {
     a
-  //^ error: expected &dyn B, found &dyn A
+  //^ error: expected &(dyn B + 'static), found &(dyn A + 'static)
 }
 "#,
         );

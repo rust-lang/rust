@@ -16,7 +16,7 @@ env:
   RUSTFLAGS: "-D warnings -W unreachable-pub"
   RUSTUP_MAX_RETRIES: 10
   FETCH_DEPTH: 0 # pull in the tags for the version string
-  MACOSX_DEPLOYMENT_TARGET: 13.0
+  MACOSX_DEPLOYMENT_TARGET: 14.0
   ZIG_VERSION: 0.13.0
   ZIGBUILD_VERSION: 0.19.8
 
@@ -52,7 +52,7 @@ jobs:
             target: arm-unknown-linux-gnueabihf
             zig_target: arm-unknown-linux-gnueabihf.2.28
             code-target: linux-armhf
-          - os: macos-13
+          - os: macos-14
             target: x86_64-apple-darwin
             code-target: darwin-x64
             pgo: clap-rs/clap@v4.5.36
@@ -140,7 +140,7 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         env:
           RUSTC_BOOTSTRAP: 1
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
+        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

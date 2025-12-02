@@ -430,6 +430,11 @@ fn postfix_expr(
             // }
             T!['('] if allow_calls => call_expr(p, lhs),
             T!['['] if allow_calls => index_expr(p, lhs),
+            // test_err postfix_dot_expr_ambiguity
+            // fn foo() {
+            //     x.
+            //     ()
+            // }
             T![.] => match postfix_dot_expr::<false>(p, lhs) {
                 Ok(it) => it,
                 Err(it) => {
@@ -458,6 +463,7 @@ fn postfix_dot_expr<const FLOAT_RECOVERY: bool>(
 
     if PATH_NAME_REF_KINDS.contains(p.nth(nth1))
         && (p.nth(nth2) == T!['('] || p.nth_at(nth2, T![::]))
+        || p.nth(nth1) == T!['(']
     {
         return Ok(method_call_expr::<FLOAT_RECOVERY>(p, lhs));
     }
@@ -526,19 +532,26 @@ fn method_call_expr<const FLOAT_RECOVERY: bool>(
     lhs: CompletedMarker,
 ) -> CompletedMarker {
     if FLOAT_RECOVERY {
-        assert!(p.at_ts(PATH_NAME_REF_KINDS) && (p.nth(1) == T!['('] || p.nth_at(1, T![::])));
-    } else {
         assert!(
-            p.at(T![.])
-                && PATH_NAME_REF_KINDS.contains(p.nth(1))
-                && (p.nth(2) == T!['('] || p.nth_at(2, T![::]))
+            p.at_ts(PATH_NAME_REF_KINDS) && (p.nth(1) == T!['('] || p.nth_at(1, T![::]))
+                || p.current() == T!['(']
+        );
+    } else {
+        assert!(p.at(T![.]));
+        assert!(
+            PATH_NAME_REF_KINDS.contains(p.nth(1)) && (p.nth(2) == T!['('] || p.nth_at(2, T![::]))
+                || p.nth(1) == T!['(']
         );
     }
     let m = lhs.precede(p);
     if !FLOAT_RECOVERY {
         p.bump(T![.]);
     }
-    name_ref_mod_path(p);
+    if p.at_ts(PATH_NAME_REF_KINDS) {
+        name_ref_mod_path(p);
+    } else {
+        p.error("expected method name, field name or number");
+    }
     generic_args::opt_generic_arg_list_expr(p);
     if p.at(T!['(']) {
         arg_list(p);

@@ -4,10 +4,10 @@ error[E0600]: cannot apply unary operator `-` to type `String`
 LL |     -"foo".to_string();
    |     ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
-note: the foreign item type `String` doesn't implement `Neg`
+note: `String` does not implement `Neg`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-   = note: not implement `Neg`
+   = note: `String` is defined in another crate
 
 error: aborting due to 1 previous error
 

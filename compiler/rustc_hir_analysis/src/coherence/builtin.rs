@@ -243,6 +243,18 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
     match (source.kind(), target.kind()) {
+        (&ty::Pat(_, pat_a), &ty::Pat(_, pat_b)) => {
+            if pat_a != pat_b {
+                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                    span,
+                    trait_name,
+                    pat_a: pat_a.to_string(),
+                    pat_b: pat_b.to_string(),
+                }));
+            }
+            Ok(())
+        }
+
         (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
             if r_a == *r_b && mutbl_a == *mutbl_b =>
         {
@@ -333,7 +345,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                     param_env,
                     ty::TraitRef::new(tcx, trait_ref.def_id, [ty_a, ty_b]),
                 ));
-                let errors = ocx.select_all_or_error();
+                let errors = ocx.evaluate_obligations_error_on_ambiguity();
                 if !errors.is_empty() {
                     if is_from_coerce_pointee_derive(tcx, span) {
                         return Err(tcx.dcx().emit_err(errors::CoerceFieldValidity {
@@ -377,7 +389,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
     let source = tcx.type_of(impl_did).instantiate_identity();
-    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity();
 
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
@@ -408,6 +420,18 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         (mt_a.ty, mt_b.ty, unsize_trait, None, span)
     };
     let (source, target, trait_def_id, kind, field_span) = match (source.kind(), target.kind()) {
+        (&ty::Pat(ty_a, pat_a), &ty::Pat(ty_b, pat_b)) => {
+            if pat_a != pat_b {
+                return Err(tcx.dcx().emit_err(errors::CoerceSamePatKind {
+                    span,
+                    trait_name,
+                    pat_a: pat_a.to_string(),
+                    pat_b: pat_b.to_string(),
+                }));
+            }
+            (ty_a, ty_b, coerce_unsized_trait, None, span)
+        }
+
         (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
             infcx.sub_regions(SubregionOrigin::RelateObjectBound(span), r_b, r_a);
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
@@ -558,7 +582,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
 
     if !errors.is_empty() {
         if is_from_coerce_pointee_derive(tcx, span) {
@@ -707,7 +731,7 @@ fn visit_implementation_of_coerce_pointee_validity(
     checker: &Checker<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).unwrap().instantiate_identity().self_ty();
+    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).instantiate_identity().self_ty();
     let span = tcx.def_span(checker.impl_def_id);
     if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));

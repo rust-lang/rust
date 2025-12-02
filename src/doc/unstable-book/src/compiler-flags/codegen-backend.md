@@ -14,7 +14,7 @@ named `__rustc_codegen_backend` with a signature of `fn() -> Box<dyn rustc_codeg
 ## Example
 See also the [`codegen-backend/hotplug`] test for a working example.
 
-[`codegen-backend/hotplug`]: https://github.com/rust-lang/rust/tree/master/tests/ui-fulldeps/codegen-backend/hotplug.rs
+[`codegen-backend/hotplug`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui-fulldeps/codegen-backend/hotplug.rs
 
 ```rust,ignore (partial-example)
 use rustc_codegen_ssa::traits::CodegenBackend;

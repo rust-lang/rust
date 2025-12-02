@@ -64,14 +64,7 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
-#![doc(cfg_hide(
-    not(test),
-    no_global_oom_handling,
-    not(no_global_oom_handling),
-    not(no_rc),
-    not(no_sync),
-    target_has_atomic = "ptr"
-))]
+#![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![no_std]
@@ -92,6 +85,7 @@
 //
 // Library features:
 // tidy-alphabetical-start
+#![cfg_attr(not(no_global_oom_handling), feature(string_replace_in_place))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
@@ -103,14 +97,15 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
+#![feature(cell_get_cloned)]
 #![feature(char_internals)]
-#![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
 #![feature(const_convert)]
 #![feature(const_default)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]
+#![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
@@ -120,6 +115,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extend_one_unchecked)]
+#![feature(fmt_arguments_from_str)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
@@ -131,7 +127,6 @@
 #![feature(layout_for_ptr)]
 #![feature(legacy_receiver_trait)]
 #![feature(local_waker)]
-#![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(panic_internals)]
 #![feature(pattern)]
@@ -139,6 +134,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(rev_into_inner)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
@@ -149,10 +145,14 @@
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(temporary_niche_types)]
+#![feature(transmutability)]
+#![feature(trivial_clone)]
 #![feature(trusted_fused)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
+#![feature(try_blocks)]
 #![feature(try_trait_v2)]
+#![feature(try_trait_v2_residual)]
 #![feature(try_with_capacity)]
 #![feature(tuple_trait)]
 #![feature(ub_checks)]
@@ -195,7 +195,6 @@
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
-#![feature(doc_cfg_hide)]
 // Technically, this is a bug in rustdoc: rustdoc sees the documentation on `#[lang = slice_alloc]`
 // blocks is for `&[T]`, which also has documentation using this feature in `core`, and gets mad
 // that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs

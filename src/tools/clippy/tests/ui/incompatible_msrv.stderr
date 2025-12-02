@@ -110,5 +110,17 @@ error: current MSRV (Minimum Supported Rust Version) is `1.86.0` but this item i
 LL |     let _ = const { std::io::ErrorKind::InvalidFilename };
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: current MSRV (Minimum Supported Rust Version) is `1.38.0` but this item is stable in a `const` context since `1.39.0`
+  --> tests/ui/incompatible_msrv.rs:175:13
+   |
+LL |     let _ = x("");
+   |             ^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.38.0` but this item is stable in a `const` context since `1.39.0`
+  --> tests/ui/incompatible_msrv.rs:177:16
+   |
+LL |     let _ = "".len();
+   |                ^^^^^
+
+error: aborting due to 19 previous errors
 

@@ -1,6 +1,6 @@
 pub mod ambiguity;
 pub mod call_kind;
-mod fulfillment_errors;
+pub mod fulfillment_errors;
 pub mod on_unimplemented;
 pub mod on_unimplemented_condition;
 pub mod on_unimplemented_format;
@@ -10,8 +10,9 @@ pub mod suggestions;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_infer::traits::solve::Goal;
@@ -20,8 +21,9 @@ use rustc_infer::traits::{
     PredicateObligation, SelectionError,
 };
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{ErrorGuaranteed, ExpnKind, Span};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_session::cstore::{ExternCrate, ExternCrateSource};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -154,9 +156,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             })
             .collect();
 
-        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last.
+        // Ensure `T: Sized`, `T: MetaSized`, `T: PointeeSized` and `T: WF` obligations come last,
+        // and `Subtype` obligations from `FormatLiteral` desugarings come first.
         // This lets us display diagnostics with more relevant type information and hide redundant
         // E0282 errors.
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+        enum ErrorSortKey {
+            SubtypeFormat(usize, usize),
+            OtherKind,
+            SizedTrait,
+            MetaSizedTrait,
+            PointeeSizedTrait,
+            Coerce,
+            WellFormed,
+        }
         errors.sort_by_key(|e| {
             let maybe_sizedness_did = match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => Some(pred.def_id()),
@@ -165,12 +178,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             match e.obligation.predicate.kind().skip_binder() {
-                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => 1,
-                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => 2,
-                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => 3,
-                ty::PredicateKind::Coerce(_) => 4,
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 5,
-                _ => 0,
+                ty::PredicateKind::Subtype(_)
+                    if matches!(
+                        e.obligation.cause.span.desugaring_kind(),
+                        Some(DesugaringKind::FormatLiteral { .. })
+                    ) =>
+                {
+                    let (_, row, col, ..) =
+                        self.tcx.sess.source_map().span_to_location_info(e.obligation.cause.span);
+                    ErrorSortKey::SubtypeFormat(row, col)
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().sized_trait() => {
+                    ErrorSortKey::SizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().meta_sized_trait() => {
+                    ErrorSortKey::MetaSizedTrait
+                }
+                _ if maybe_sizedness_did == self.tcx.lang_items().pointee_sized_trait() => {
+                    ErrorSortKey::PointeeSizedTrait
+                }
+                ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                    ErrorSortKey::WellFormed
+                }
+                _ => ErrorSortKey::OtherKind,
             }
         });
 
@@ -221,26 +252,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         let mut reported = None;
-
         for from_expansion in [false, true] {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
-                    let guar = self.report_fulfillment_error(error);
-                    self.infcx.set_tainted_by_errors(guar);
-                    reported = Some(guar);
-                    // We want to ignore desugarings here: spans are equivalent even
-                    // if one is the result of a desugaring and the other is not.
-                    let mut span = error.obligation.cause.span;
-                    let expn_data = span.ctxt().outer_expn_data();
-                    if let ExpnKind::Desugaring(_) = expn_data.kind {
-                        span = expn_data.call_site;
+                    if !error.references_error() {
+                        let guar = self.report_fulfillment_error(error);
+                        self.infcx.set_tainted_by_errors(guar);
+                        reported = Some(guar);
+                        // We want to ignore desugarings here: spans are equivalent even
+                        // if one is the result of a desugaring and the other is not.
+                        let mut span = error.obligation.cause.span;
+                        let expn_data = span.ctxt().outer_expn_data();
+                        if let ExpnKind::Desugaring(_) = expn_data.kind {
+                            span = expn_data.call_site;
+                        }
+                        self.reported_trait_errors
+                            .borrow_mut()
+                            .entry(span)
+                            .or_insert_with(|| (vec![], guar))
+                            .0
+                            .push(error.obligation.as_goal());
                     }
-                    self.reported_trait_errors
-                        .borrow_mut()
-                        .entry(span)
-                        .or_insert_with(|| (vec![], guar))
-                        .0
-                        .push(error.obligation.as_goal());
+                    if let Some(guar) = self.dcx().has_errors() {
+                        self.infcx.set_tainted_by_errors(guar);
+                    }
                 }
             }
         }
@@ -318,6 +353,100 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             FulfillmentErrorCode::Cycle(ref cycle) => self.report_overflow_obligation_cycle(cycle),
         }
     }
+
+    /// If the crates of `expected_def_id` and `trait_def_id` are imported as extern crate
+    /// under the same name (`extern crate foo as a` and `extern crate bar as a`) returns true,
+    /// otherwise returns false.
+    fn extern_crates_with_the_same_name(
+        &self,
+        expected_def_id: DefId,
+        trait_def_id: DefId,
+    ) -> bool {
+        if expected_def_id.is_local() || trait_def_id.is_local() {
+            return false;
+        }
+        // We only compare direct dependencies of the current crate, so it avoids unnecessary
+        // processing and excludes indirect dependencies, like `std` or `core`. In such a case
+        // both would be imported under the same name `std`.
+        match (
+            self.tcx.extern_crate(expected_def_id.krate),
+            self.tcx.extern_crate(trait_def_id.krate),
+        ) {
+            (
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(expected_def_id),
+                    dependency_of: LOCAL_CRATE,
+                    ..
+                }),
+                Some(ExternCrate {
+                    src: ExternCrateSource::Extern(trait_def_id),
+                    dependency_of: LOCAL_CRATE,
+                    ..
+                }),
+            ) => self.tcx.item_name(expected_def_id) == self.tcx.item_name(trait_def_id),
+            _ => false,
+        }
+    }
+
+    pub fn check_same_definition_different_crate<F>(
+        &self,
+        err: &mut Diag<'_>,
+        expected_did: DefId,
+        found_dids: impl Iterator<Item = DefId>,
+        get_impls: F,
+        ty: &str,
+    ) -> bool
+    where
+        F: Fn(DefId) -> Vec<Span>,
+    {
+        let krate = self.tcx.crate_name(expected_did.krate);
+        let name = self.tcx.item_name(expected_did);
+        let definitions_with_same_path: UnordSet<_> = found_dids
+            .filter(|def_id| {
+                def_id.krate != expected_did.krate
+                    && (self.extern_crates_with_the_same_name(expected_did, *def_id)
+                        || self.tcx.crate_name(def_id.krate) == krate)
+                    && self.tcx.item_name(def_id) == name
+            })
+            .map(|def_id| (self.tcx.def_path_str(def_id), def_id))
+            .collect();
+
+        let definitions_with_same_path =
+            definitions_with_same_path.into_items().into_sorted_stable_ord_by_key(|(p, _)| p);
+        let mut suggested = false;
+        let mut trait_is_impl = false;
+
+        if !definitions_with_same_path.is_empty() {
+            let mut span: MultiSpan = self.tcx.def_span(expected_did).into();
+            span.push_span_label(
+                self.tcx.def_span(expected_did),
+                format!("this is the expected {ty}"),
+            );
+            suggested = true;
+            for (_, definition_with_same_path) in &definitions_with_same_path {
+                let definitions_impls = get_impls(*definition_with_same_path);
+                if definitions_impls.is_empty() {
+                    continue;
+                }
+
+                for candidate_span in definitions_impls {
+                    span.push_span_label(candidate_span, format!("this is the found {ty}"));
+                    trait_is_impl = true;
+                }
+            }
+            if !trait_is_impl {
+                for (_, def_id) in definitions_with_same_path {
+                    span.push_span_label(
+                        self.tcx.def_span(def_id),
+                        format!("this is the {ty} that was imported"),
+                    );
+                }
+            }
+            self.note_two_crate_versions(expected_did, span, err);
+            err.help("you can use `cargo tree` to explore your dependency tree");
+        }
+        suggested
+    }
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
@@ -325,7 +454,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_trait_ref(impl_def_id)?.instantiate_identity();
+    let trait_ref = tcx.impl_opt_trait_ref(impl_def_id)?.instantiate_identity();
     let mut w = "impl".to_owned();
 
     #[derive(Debug, Default)]
@@ -447,9 +576,8 @@ pub fn report_dyn_incompatibility<'tcx>(
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => match item.kind {
-            hir::ItemKind::Trait(_, _, _, ident, ..) | hir::ItemKind::TraitAlias(ident, _, _) => {
-                Some(ident.span)
-            }
+            hir::ItemKind::Trait(_, _, _, ident, ..)
+            | hir::ItemKind::TraitAlias(_, ident, _, _) => Some(ident.span),
             _ => unreachable!(),
         },
         _ => None,

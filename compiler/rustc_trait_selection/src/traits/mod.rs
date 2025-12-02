@@ -29,6 +29,7 @@ use std::ops::ControlFlow;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 pub use rustc_infer::traits::*;
+use rustc_macros::TypeVisitable;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -42,7 +43,8 @@ use tracing::{debug, instrument};
 
 pub use self::coherence::{
     InCrate, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, OverlapResult, UncoveredTyParams,
-    add_placeholder_note, orphan_check_trait_ref, overlapping_impls,
+    add_placeholder_note, orphan_check_trait_ref, overlapping_inherent_impls,
+    overlapping_trait_impls,
 };
 pub use self::dyn_compatibility::{
     DynCompatibilityViolation, dyn_compatibility_violations_for_assoc_item,
@@ -74,7 +76,7 @@ use crate::infer::{InferCtxt, TyCtxtInferExt};
 use crate::regions::InferCtxtRegionExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 
-#[derive(Debug)]
+#[derive(Debug, TypeVisitable)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -106,7 +108,7 @@ impl<'tcx> FulfillmentError<'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, TypeVisitable)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only
     /// if it is already implemented.
@@ -231,7 +233,7 @@ fn pred_known_to_hold_modulo_regions<'tcx>(
             let ocx = ObligationCtxt::new(infcx);
             ocx.register_obligation(obligation);
 
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             match errors.as_slice() {
                 // Only known to hold if we did no inference.
                 [] => infcx.resolve_vars_if_possible(goal) == goal,
@@ -273,7 +275,7 @@ fn do_normalize_predicates<'tcx>(
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let predicates = ocx.normalize(&cause, elaborated_env, predicates);
 
-    let errors = ocx.select_all_or_error();
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(reported);
@@ -475,6 +477,69 @@ pub fn normalize_param_env_or_error<'tcx>(
     ty::ParamEnv::new(tcx.mk_clauses(&predicates))
 }
 
+/// Deeply normalize the param env using the next solver ignoring
+/// region errors.
+///
+/// FIXME(-Zhigher-ranked-assumptions): this is a hack to work around
+/// the fact that we don't support placeholder assumptions right now
+/// and is necessary for `compare_method_predicate_entailment`, see the
+/// use of this function for more info. We should remove this once we
+/// have proper support for implied bounds on binders.
+#[instrument(level = "debug", skip(tcx))]
+pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    unnormalized_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+) -> ty::ParamEnv<'tcx> {
+    let predicates: Vec<_> =
+        util::elaborate(tcx, unnormalized_env.caller_bounds().into_iter()).collect();
+
+    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
+
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    if !elaborated_env.has_aliases() {
+        return elaborated_env;
+    }
+
+    let span = cause.span;
+    let infcx = tcx
+        .infer_ctxt()
+        .with_next_trait_solver(true)
+        .ignoring_regions()
+        .build(TypingMode::non_body_analysis());
+    let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
+        infcx.at(&cause, elaborated_env),
+        predicates,
+    ) {
+        Ok(predicates) => predicates,
+        Err(errors) => {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+            // An unnormalized env is better than nothing.
+            debug!("normalize_param_env_or_error: errored resolving predicates");
+            return elaborated_env;
+        }
+    };
+
+    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
+    // FIXME(-Zhigher-ranked-assumptions): We're ignoring region errors for now.
+    // There're placeholder constraints `leaking` out.
+    // See the fixme in the enclosing function's docs for more.
+    let _errors = infcx.resolve_regions(cause.body_id, elaborated_env, []);
+
+    let predicates = match infcx.fully_resolve(predicates) {
+        Ok(predicates) => predicates,
+        Err(fixup_err) => {
+            span_bug!(
+                span,
+                "inference variables in normalized parameter environment: {}",
+                fixup_err
+            )
+        }
+    };
+    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+}
+
 #[derive(Debug)]
 pub enum EvaluateConstErr {
     /// The constant being evaluated was either a generic parameter or inference variable, *or*,
@@ -633,9 +698,10 @@ pub fn try_evaluate_const<'tcx>(
                         return Err(EvaluateConstErr::HasGenericsOrInfers);
                     }
 
-                    let typing_env = infcx
-                        .typing_env(tcx.erase_and_anonymize_regions(param_env))
-                        .with_post_analysis_normalized(tcx);
+                    // Since there is no generic parameter, we can just drop the environment
+                    // to prevent query cycle.
+                    let typing_env = infcx.typing_env(ty::ParamEnv::empty());
+
                     (uv.args, typing_env)
                 }
             };
@@ -738,13 +804,13 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
         ocx.register_obligation(obligation);
     }
 
-    // Use `select_where_possible` to only return impossible for true errors,
+    // Use `try_evaluate_obligations` to only return impossible for true errors,
     // and not ambiguities or overflows. Since the new trait solver forces
     // some currently undetected overlap between `dyn Trait: Trait` built-in
     // vs user-written impls to AMBIGUOUS, this may return ambiguity even
     // with no infer vars. There may also be ways to encounter ambiguity due
     // to post-mono overflow.
-    let true_errors = ocx.select_where_possible();
+    let true_errors = ocx.try_evaluate_obligations();
     if !true_errors.is_empty() {
         return true;
     }
@@ -834,10 +900,7 @@ fn is_impossible_associated_item(
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
-    let impl_trait_ref = tcx
-        .impl_trait_ref(impl_def_id)
-        .expect("expected impl to correspond to trait")
-        .instantiate(tcx, fresh_args);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args);
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
@@ -853,7 +916,7 @@ fn is_impossible_associated_item(
 
     let ocx = ObligationCtxt::new(&infcx);
     ocx.register_obligations(predicates_for_trait);
-    !ocx.select_where_possible().is_empty()
+    !ocx.try_evaluate_obligations().is_empty()
 }
 
 pub fn provide(providers: &mut Providers) {

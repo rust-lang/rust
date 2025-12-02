@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86_64_macos
 //@ [x86_64_macos] compile-flags: --target x86_64-apple-darwin
 //@ [x86_64_macos] needs-llvm-components: x86

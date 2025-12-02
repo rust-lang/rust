@@ -480,7 +480,7 @@ fn is_block_closure_forced_inner(expr: &ast::Expr, style_edition: StyleEdition) 
 ///     if true {...} else {...}
 ///      |x| 5
 /// isn't parsed as (if true {...} else {...} | x) | 5
-// From https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/classify.rs.
+// From https://github.com/rust-lang/rust/blob/HEAD/src/libsyntax/parse/classify.rs.
 fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     match e.kind {
         ast::ExprKind::If(..)

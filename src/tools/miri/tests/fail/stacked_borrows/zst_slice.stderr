@@ -11,8 +11,6 @@ help: <TAG> would have been created here, but this is a zero-size retag ([0x0..0
    |
 LL |         assert_eq!(*s.as_ptr().add(1), 2);
    |                     ^^^^^^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at RUSTLIB/core/src/macros/mod.rs:LL:CC
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

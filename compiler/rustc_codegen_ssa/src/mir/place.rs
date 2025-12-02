@@ -347,7 +347,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::OpaqueCast(ty) => {
                     bug!("encountered OpaqueCast({ty}) in codegen")
                 }
-                mir::ProjectionElem::Subtype(ty) => cg_base.project_type(bx, self.monomorphize(ty)),
                 mir::ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     cg_base.project_type(bx, self.monomorphize(ty))
                 }

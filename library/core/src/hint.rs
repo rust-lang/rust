@@ -4,6 +4,7 @@
 //!
 //! Hints may be compile time or runtime.
 
+use crate::marker::Destruct;
 use crate::mem::MaybeUninit;
 use crate::{intrinsics, ub_checks};
 
@@ -270,11 +271,11 @@ pub fn spin_loop() {
     crate::cfg_select! {
         target_arch = "x86" => {
             // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() }
+            crate::arch::x86::_mm_pause()
         }
         target_arch = "x86_64" => {
             // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() }
+            crate::arch::x86_64::_mm_pause()
         }
         target_arch = "riscv32" => crate::arch::riscv32::pause(),
         target_arch = "riscv64" => crate::arch::riscv64::pause(),
@@ -771,7 +772,11 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[stable(feature = "select_unpredictable", since = "1.88.0")]
-pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
+pub const fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.
     let mut true_val = MaybeUninit::new(true_val);

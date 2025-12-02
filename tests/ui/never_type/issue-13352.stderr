@@ -5,11 +5,17 @@ LL |     2_usize + (loop {});
    |             ^ no implementation for `usize + ()`
    |
    = help: the trait `Add<()>` is not implemented for `usize`
-   = help: the following other types implement trait `Add<Rhs>`:
-             `&usize` implements `Add<usize>`
-             `&usize` implements `Add`
-             `usize` implements `Add<&usize>`
-             `usize` implements `Add`
+help: the following other types implement trait `Add<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `&usize` implements `Add<usize>`
+   |
+   = note: `&usize` implements `Add`
+   |
+   = note: `usize` implements `Add<&usize>`
+   |
+   = note: `usize` implements `Add`
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

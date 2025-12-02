@@ -1,9 +1,10 @@
 use clippy_config::Conf;
-use clippy_utils::consts::{ConstEvalCtxt, Constant};
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{is_from_proc_macro, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -138,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // Checking all possible scenarios using a function would be a hopeless task, as we have
             // 16 possible alignments of constants/operands. For now, let's use `partition`.
             && let mut exprs = [lhs_lhs, lhs_rhs, rhs_lhs, rhs_rhs]
-            && exprs.iter_mut().partition_in_place(|i| path_to_local(i).is_some()) == 2
+            && exprs.iter_mut().partition_in_place(|i| i.res_local_id().is_some()) == 2
             && !expr.span.in_external_macro(cx.sess().source_map())
             && (
                 is_not_const(cx.tcx, cx.tcx.hir_enclosing_body_owner(expr.hir_id).into())
@@ -146,13 +147,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             )
             && let [first, second, const_1, const_2] = exprs
             && let ecx = ConstEvalCtxt::new(cx)
-            && let Some(const_1) = ecx.eval(const_1)
-            && let Some(const_2) = ecx.eval(const_2)
-            && path_to_local(first).is_some_and(|f| path_to_local(second).is_some_and(|s| f == s))
+            && let ctxt = expr.span.ctxt()
+            && let Some(const_1) = ecx.eval_local(const_1, ctxt)
+            && let Some(const_2) = ecx.eval_local(const_2, ctxt)
+            && first.res_local_id().is_some_and(|f| second.res_local_id().is_some_and(|s| f == s))
             // The actual infinity check, we also allow `NEG_INFINITY` before` INFINITY` just in
             // case somebody does that for some reason
-            && (is_infinity(&const_1) && is_neg_infinity(&const_2)
-                || is_neg_infinity(&const_1) && is_infinity(&const_2))
+            && (const_1.is_pos_infinity() && const_2.is_neg_infinity()
+                || const_1.is_neg_infinity() && const_2.is_pos_infinity())
             && let Some(local_snippet) = first.span.get_source_text(cx)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
@@ -199,23 +201,5 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                 }
             });
         }
-    }
-}
-
-fn is_infinity(constant: &Constant<'_>) -> bool {
-    match constant {
-        // FIXME(f16_f128): add f16 and f128 when constants are available
-        Constant::F32(float) => *float == f32::INFINITY,
-        Constant::F64(float) => *float == f64::INFINITY,
-        _ => false,
-    }
-}
-
-fn is_neg_infinity(constant: &Constant<'_>) -> bool {
-    match constant {
-        // FIXME(f16_f128): add f16 and f128 when constants are available
-        Constant::F32(float) => *float == f32::NEG_INFINITY,
-        Constant::F64(float) => *float == f64::NEG_INFINITY,
-        _ => false,
     }
 }

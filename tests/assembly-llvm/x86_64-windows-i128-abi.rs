@@ -1,5 +1,5 @@
 //@ assembly-output: emit-asm
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: msvc softfloat
 //@ compile-flags: -Copt-level=3
 //@[msvc] compile-flags: --target x86_64-pc-windows-msvc

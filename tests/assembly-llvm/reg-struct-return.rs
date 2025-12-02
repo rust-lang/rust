@@ -5,7 +5,7 @@
 //!   `-Zreg-struct-return` is activated
 //! * Caller side, verifying callers do receive returned structs in registers when
 //!   `-Zreg-struct-return` is activated
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static
 //@ revisions: WITH WITHOUT

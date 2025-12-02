@@ -766,8 +766,7 @@ impl From<&CStr> for Box<CStr> {
     /// Converts a `&CStr` into a `Box<CStr>`,
     /// by copying the contents into a newly allocated [`Box`].
     fn from(s: &CStr) -> Box<CStr> {
-        let boxed: Box<[u8]> = Box::from(s.to_bytes_with_nul());
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+        Box::clone_from_ref(s)
     }
 }
 
@@ -970,17 +969,14 @@ impl Default for Rc<CStr> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        let rc = Rc::<[u8]>::from(*b"\0");
-        // `[u8]` has the same layout as `CStr`, and it is `NUL` terminated.
-        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
+        Rc::from(c"")
     }
 }
 
 #[stable(feature = "default_box_extra", since = "1.17.0")]
 impl Default for Box<CStr> {
     fn default() -> Box<CStr> {
-        let boxed: Box<[u8]> = Box::from([0]);
-        unsafe { Box::from_raw(Box::into_raw(boxed) as *mut CStr) }
+        Box::from(c"")
     }
 }
 

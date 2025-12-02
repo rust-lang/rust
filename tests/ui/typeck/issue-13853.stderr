@@ -17,6 +17,12 @@ error[E0599]: no method named `iter` found for reference `&G` in the current sco
 LL |     for node in graph.iter() {
    |                       ^^^^ method not found in `&G`
 
+error[E0282]: type annotations needed
+  --> $DIR/issue-13853.rs:28:9
+   |
+LL |         node.zomg();
+   |         ^^^^ cannot infer type
+
 error[E0308]: mismatched types
   --> $DIR/issue-13853.rs:37:13
    |
@@ -37,7 +43,7 @@ help: consider borrowing here
 LL |     iterate(&graph);
    |             +
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0308, E0599.
-For more information about an error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0282, E0308, E0599.
+For more information about an error, try `rustc --explain E0282`.

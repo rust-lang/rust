@@ -2470,4 +2470,71 @@ impl b::Checker for MyChecker {
 }"#,
         );
     }
+
+    #[test]
+    fn test_parameter_names_matching_macros_not_qualified() {
+        // Parameter names that match macro names should not be qualified
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- /lib.rs crate:dep
+#[macro_export]
+macro_rules! my_macro {
+    () => {}
+}
+
+pub trait Foo {
+    fn foo(&self, my_macro: usize);
+}
+
+//- /main.rs crate:main deps:dep
+struct Bar;
+
+impl dep::Foo for Bar {$0}
+"#,
+            r#"
+struct Bar;
+
+impl dep::Foo for Bar {
+    fn foo(&self, my_macro: usize) {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_test_for_when_impl_for_unit() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+trait Test {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy;
+}
+impl Test for () {
+    $0
+}
+"#,
+            r#"
+trait Test {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy;
+}
+impl Test for () {
+    fn f<B>()
+    where
+        B: IntoIterator,
+        <B as IntoIterator>::Item: Copy {
+        ${0:todo!()}
+    }
+}
+"#,
+        );
+    }
 }

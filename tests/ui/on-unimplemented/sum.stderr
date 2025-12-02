@@ -7,9 +7,12 @@ LL |     vec![(), ()].iter().sum::<i32>();
    |                         required by a bound introduced by this call
    |
    = help: the trait `Sum<&()>` is not implemented for `i32`
-   = help: the following other types implement trait `Sum<A>`:
-             `i32` implements `Sum<&i32>`
-             `i32` implements `Sum`
+help: the following other types implement trait `Sum<A>`
+  --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Sum<&i32>`
+   |
+   = note: `i32` implements `Sum`
 note: the method call chain might not have had the expected associated types
   --> $DIR/sum.rs:4:18
    |
@@ -19,6 +22,7 @@ LL |     vec![(), ()].iter().sum::<i32>();
    |     this expression has type `Vec<()>`
 note: required by a bound in `std::iter::Iterator::sum`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   = note: this error originates in the macro `integer_sum_product` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: a value of type `i32` cannot be made by multiplying all elements of type `&()` from an iterator
   --> $DIR/sum.rs:7:35
@@ -29,9 +33,12 @@ LL |     vec![(), ()].iter().product::<i32>();
    |                         required by a bound introduced by this call
    |
    = help: the trait `Product<&()>` is not implemented for `i32`
-   = help: the following other types implement trait `Product<A>`:
-             `i32` implements `Product<&i32>`
-             `i32` implements `Product`
+help: the following other types implement trait `Product<A>`
+  --> $SRC_DIR/core/src/iter/traits/accum.rs:LL:COL
+   |
+   = note: `i32` implements `Product<&i32>`
+   |
+   = note: `i32` implements `Product`
 note: the method call chain might not have had the expected associated types
   --> $DIR/sum.rs:7:18
    |
@@ -41,6 +48,7 @@ LL |     vec![(), ()].iter().product::<i32>();
    |     this expression has type `Vec<()>`
 note: required by a bound in `std::iter::Iterator::product`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   = note: this error originates in the macro `integer_sum_product` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

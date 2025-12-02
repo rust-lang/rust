@@ -39,12 +39,12 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 
 There's a couple of preliminary steps before core Bootstrap code is reached:
 
-1. Shell script or `make`: [`./x`](https://github.com/rust-lang/rust/blob/master/x) or [`./x.ps1`](https://github.com/rust-lang/rust/blob/master/x.ps1) or `make`
-2. Convenience wrapper script: [`x.py`](https://github.com/rust-lang/rust/blob/master/x.py)
-3. [`src/bootstrap/bootstrap.py`](https://github.com/rust-lang/rust/blob/master/src/bootstrap/bootstrap.py)
-4. [`src/bootstrap/src/bin/main.rs`](https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/bin/main.rs)
+1. Shell script or `make`: [`./x`](https://github.com/rust-lang/rust/blob/HEAD/x) or [`./x.ps1`](https://github.com/rust-lang/rust/blob/HEAD/x.ps1) or `make`
+2. Convenience wrapper script: [`x.py`](https://github.com/rust-lang/rust/blob/HEAD/x.py)
+3. [`src/bootstrap/bootstrap.py`](https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/bootstrap.py)
+4. [`src/bootstrap/src/bin/main.rs`](https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/src/bin/main.rs)
 
-See [src/bootstrap/README.md](https://github.com/rust-lang/rust/blob/master/src/bootstrap/README.md)
+See [src/bootstrap/README.md](https://github.com/rust-lang/rust/blob/HEAD/src/bootstrap/README.md)
 for a more specific description of the implementation details.
 
 [`Step`]: https://doc.rust-lang.org/nightly/nightly-rustc/bootstrap/core/builder/trait.Step.html

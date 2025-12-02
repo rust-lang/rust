@@ -13,7 +13,7 @@ Vim](./other_editors.md#coc-rust-analyzer) provide `rust-analyzer` specific conf
 UIs. Others may require you to know a bit more about the interaction
 with `rust-analyzer`.
 
-For the later category, it might help to know that the initial
+For the latter category, it might help to know that the initial
 configuration is specified as a value of the `initializationOptions`
 field of the [`InitializeParams` message, in the LSP
 protocol](https://microsoft.github.io/language-server-protocol/specifications/specification-current/#initialize).
@@ -26,16 +26,18 @@ value.
 For example, a very common configuration is to enable proc-macro
 support, can be achieved by sending this JSON:
 
-    {
-      "cargo": {
-        "buildScripts": {
-          "enable": true,
-        },
-      },
-      "procMacro": {
-        "enable": true,
-      }
-    }
+```json
+{
+  "cargo": {
+    "buildScripts": {
+      "enable": true,
+    },
+  },
+  "procMacro": {
+    "enable": true,
+  }
+}
+```
 
 Please consult your editor’s documentation to learn more about how to
 configure [LSP
@@ -45,6 +47,11 @@ To verify which configuration is actually used by `rust-analyzer`, set
 `RA_LOG` environment variable to `rust_analyzer=info` and look for
 config-related messages. Logs should show both the JSON that
 `rust-analyzer` sees as well as the updated config.
+
+(Work in progress:) It is also possible to place configuration in a
+`rust-analyzer.toml` file. It should be located in the project root or in your
+user configuration directory (e.g. `~/.config/rust-analyzer/`). This is a work in
+progress, many configuration options aren't supported yet.
 
 This is the list of config options `rust-analyzer` supports:
 

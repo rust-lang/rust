@@ -15,7 +15,7 @@ const NUM_RET_GPRS: u64 = 4;
 const MAX_ARG_IN_REGS_SIZE: u64 = NUM_ARG_GPRS * 32;
 const MAX_RET_IN_REGS_SIZE: u64 = NUM_RET_GPRS * 32;
 
-fn classify_ret_ty<'a, Ty, C>(arg: &mut ArgAbi<'_, Ty>)
+fn classify_ret_ty<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
@@ -26,7 +26,7 @@ where
     // The rules for return and argument types are the same,
     // so defer to `classify_arg_ty`.
     let mut arg_gprs_left = NUM_RET_GPRS;
-    classify_arg_ty(arg, &mut arg_gprs_left, MAX_RET_IN_REGS_SIZE);
+    classify_arg_ty(cx, arg, &mut arg_gprs_left, true);
     // Ret args cannot be passed via stack, we lower to indirect and let the backend handle the invisible reference
     match arg.mode {
         super::PassMode::Indirect { attrs: _, meta_attrs: _, ref mut on_stack } => {
@@ -36,11 +36,23 @@ where
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(arg: &mut ArgAbi<'_, Ty>, arg_gprs_left: &mut u64, max_size: u64)
-where
+fn classify_arg_ty<'a, Ty, C>(
+    cx: &C,
+    arg: &mut ArgAbi<'a, Ty>,
+    arg_gprs_left: &mut u64,
+    is_ret: bool,
+) where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     assert!(*arg_gprs_left <= NUM_ARG_GPRS, "Arg GPR tracking underflow");
+
+    let max_size = if is_ret { MAX_RET_IN_REGS_SIZE } else { MAX_ARG_IN_REGS_SIZE };
+
+    if !is_ret && arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        *arg_gprs_left = arg_gprs_left.saturating_sub(1);
+        arg.make_indirect();
+        return;
+    }
 
     // Ignore empty structs/unions.
     if arg.layout.is_zst() {
@@ -48,7 +60,7 @@ where
     }
 
     let size = arg.layout.size.bits();
-    let needed_align = arg.layout.align.abi.bits();
+    let needed_align = arg.layout.align.bits();
     let mut must_use_stack = false;
 
     // Determine the number of GPRs needed to pass the current argument
@@ -95,13 +107,13 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<'a, Ty, C>(_cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret_ty(&mut fn_abi.ret);
+        classify_ret_ty(cx, &mut fn_abi.ret);
     }
 
     let mut arg_gprs_left = NUM_ARG_GPRS;
@@ -110,7 +122,7 @@ where
         if arg.is_ignore() {
             continue;
         }
-        classify_arg_ty(arg, &mut arg_gprs_left, MAX_ARG_IN_REGS_SIZE);
+        classify_arg_ty(cx, arg, &mut arg_gprs_left, false);
     }
 }
 

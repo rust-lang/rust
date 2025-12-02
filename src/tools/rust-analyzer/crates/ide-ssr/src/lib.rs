@@ -80,7 +80,7 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
-use ide_db::symbol_index::SymbolsDatabase;
+use ide_db::symbol_index::LocalRoots;
 use ide_db::text_edit::TextEdit;
 use ide_db::{EditionedFileId, FileId, FxHashMap, RootDatabase, base_db::SourceDatabase};
 use resolving::ResolvedRule;
@@ -125,9 +125,7 @@ impl<'db> MatchFinder<'db> {
     ) -> Result<MatchFinder<'db>, SsrError> {
         restrict_ranges.retain(|range| !range.range.is_empty());
         let sema = Semantics::new(db);
-        let file_id = sema
-            .attach_first_edition(lookup_context.file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition(db, lookup_context.file_id));
+        let file_id = sema.attach_first_edition(lookup_context.file_id);
         let resolution_scope = resolving::ResolutionScope::new(
             &sema,
             hir::FilePosition { file_id, offset: lookup_context.offset },
@@ -138,8 +136,8 @@ impl<'db> MatchFinder<'db> {
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
     pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
-        if let Some(first_file_id) = db
-            .local_roots()
+        if let Some(first_file_id) = LocalRoots::get(db)
+            .roots(db)
             .iter()
             .next()
             .and_then(|root| db.source_root(*root).source_root(db).iter().next())

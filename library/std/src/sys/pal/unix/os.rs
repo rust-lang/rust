@@ -16,7 +16,7 @@ use crate::{fmt, io, iter, mem, ptr, slice, str};
 
 const TMPBUF_SZ: usize = 128;
 
-const PATH_SEPARATOR: u8 = if cfg!(target_os = "redox") { b';' } else { b':' };
+const PATH_SEPARATOR: u8 = b':';
 
 unsafe extern "C" {
     #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]

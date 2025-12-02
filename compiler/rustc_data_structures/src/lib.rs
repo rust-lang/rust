@@ -11,8 +11,6 @@
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
 #![deny(unsafe_op_in_unsafe_fn)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(ascii_char)]
@@ -30,7 +28,6 @@
 #![feature(never_type)]
 #![feature(ptr_alignment_type)]
 #![feature(rustc_attrs)]
-#![feature(rustdoc_internals)]
 #![feature(sized_hierarchy)]
 #![feature(test)]
 #![feature(thread_id_value)]
@@ -44,6 +41,8 @@ use std::fmt;
 pub use atomic_ref::AtomicRef;
 pub use ena::{snapshot_vec, undo_log, unify};
 pub use rustc_index::static_assert_size;
+// Re-export some data-structure crates which are part of our public API.
+pub use {either, indexmap, smallvec, thin_vec};
 
 pub mod aligned;
 pub mod base_n;

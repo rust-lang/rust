@@ -487,7 +487,23 @@ impl<'tcx> Ty<'tcx> {
         {
             ty
         } else {
-            Ty::new(tcx, Bound(index, bound_ty))
+            Ty::new(tcx, Bound(ty::BoundVarIndexKind::Bound(index), bound_ty))
+        }
+    }
+
+    #[inline]
+    pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: BoundVar) -> Ty<'tcx> {
+        // Use a pre-interned one when possible.
+        if let Some(ty) = tcx.types.anon_canonical_bound_tys.get(var.as_usize()).copied() {
+            ty
+        } else {
+            Ty::new(
+                tcx,
+                Bound(
+                    ty::BoundVarIndexKind::Canonical,
+                    ty::BoundTy { var, kind: ty::BoundTyKind::Anon },
+                ),
+            )
         }
     }
 
@@ -862,11 +878,6 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, tcx.types.str_)
     }
 
-    #[inline]
-    pub fn new_diverging_default(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        if tcx.features().never_type_fallback() { tcx.types.never } else { tcx.types.unit }
-    }
-
     // lang and diagnostic tys
 
     fn new_generic_adt(tcx: TyCtxt<'tcx>, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
@@ -900,6 +911,12 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_box(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::OwnedBox, DUMMY_SP);
+        Ty::new_generic_adt(tcx, def_id, ty)
+    }
+
+    #[inline]
+    pub fn new_option(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::Option, DUMMY_SP);
         Ty::new_generic_adt(tcx, def_id, ty)
     }
 
@@ -950,6 +967,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Ty::new_bound(tcx, debruijn, ty::BoundTy { var, kind: ty::BoundTyKind::Anon })
+    }
+
+    fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: ty::BoundVar) -> Self {
+        Ty::new_canonical_bound(tcx, var)
     }
 
     fn new_alias(
@@ -1319,6 +1340,36 @@ impl<'tcx> Ty<'tcx> {
     pub fn boxed_ty(self) -> Option<Ty<'tcx>> {
         match self.kind() {
             Adt(def, args) if def.is_box() => Some(args.type_at(0)),
+            _ => None,
+        }
+    }
+
+    pub fn pinned_ty(self) -> Option<Ty<'tcx>> {
+        match self.kind() {
+            Adt(def, args) if def.is_pin() => Some(args.type_at(0)),
+            _ => None,
+        }
+    }
+
+    pub fn pinned_ref(self) -> Option<(Ty<'tcx>, ty::Mutability)> {
+        if let Adt(def, args) = self.kind()
+            && def.is_pin()
+            && let &ty::Ref(_, ty, mutbl) = args.type_at(0).kind()
+        {
+            return Some((ty, mutbl));
+        }
+        None
+    }
+
+    pub fn maybe_pinned_ref(self) -> Option<(Ty<'tcx>, ty::Pinnedness, ty::Mutability)> {
+        match *self.kind() {
+            Adt(def, args)
+                if def.is_pin()
+                    && let ty::Ref(_, ty, mutbl) = *args.type_at(0).kind() =>
+            {
+                Some((ty, ty::Pinnedness::Pinned, mutbl))
+            }
+            ty::Ref(_, ty, mutbl) => Some((ty, ty::Pinnedness::Not, mutbl)),
             _ => None,
         }
     }

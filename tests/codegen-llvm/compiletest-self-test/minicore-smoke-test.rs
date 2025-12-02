@@ -1,6 +1,6 @@
 //! Basic smoke test for `minicore` test auxiliary.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target=x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
 

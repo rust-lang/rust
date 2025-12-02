@@ -1,7 +1,7 @@
 # Adding new tests
 
 **In general, we expect every PR that fixes a bug in rustc to come accompanied
-by a regression test of some kind.** This test should fail in master but pass
+by a regression test of some kind.** This test should fail in `main` but pass
 after the PR. These tests are really useful for preventing us from repeating the
 mistakes of the past.
 
@@ -39,7 +39,7 @@ to work with that stand the test of time (i.e. if a test fails or need to be
 modified several years later, how can we make it easier for them?).
 
 [compiletest]: compiletest.md
-[`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui/
+[`tests/ui`]: https://github.com/rust-lang/rust/tree/HEAD/tests/ui/
 
 ## UI test walkthrough
 

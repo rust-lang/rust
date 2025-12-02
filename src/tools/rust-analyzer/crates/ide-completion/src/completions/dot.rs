@@ -25,9 +25,7 @@ pub(crate) fn complete_dot(
         _ => return,
     };
 
-    let is_field_access = matches!(dot_access.kind, DotAccessKind::Field { .. });
-    let is_method_access_with_parens =
-        matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+    let has_parens = matches!(dot_access.kind, DotAccessKind::Method);
     let traits_in_scope = ctx.traits_in_scope();
 
     // Suggest .await syntax for types that implement Future trait
@@ -48,7 +46,7 @@ pub(crate) fn complete_dot(
                 DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
                     DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
                 }
-                it @ DotAccessKind::Method { .. } => *it,
+                it @ DotAccessKind::Method => *it,
             };
             let dot_access = DotAccess {
                 receiver: dot_access.receiver.clone(),
@@ -67,8 +65,7 @@ pub(crate) fn complete_dot(
                     acc.add_field(ctx, &dot_access, Some(await_str.clone()), field, &ty)
                 },
                 |acc, field, ty| acc.add_tuple_field(ctx, Some(await_str.clone()), field, &ty),
-                is_field_access,
-                is_method_access_with_parens,
+                has_parens,
             );
             complete_methods(ctx, &future_output, &traits_in_scope, |func| {
                 acc.add_method(ctx, &dot_access, func, Some(await_str.clone()), None)
@@ -82,8 +79,7 @@ pub(crate) fn complete_dot(
         receiver_ty,
         |acc, field, ty| acc.add_field(ctx, dot_access, None, field, &ty),
         |acc, field, ty| acc.add_tuple_field(ctx, None, field, &ty),
-        is_field_access,
-        is_method_access_with_parens,
+        has_parens,
     );
     complete_methods(ctx, receiver_ty, &traits_in_scope, |func| {
         acc.add_method(ctx, dot_access, func, None, None)
@@ -95,9 +91,9 @@ pub(crate) fn complete_dot(
         // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
         // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
         let iter = receiver_ty
-            .strip_references()
-            .add_reference(hir::Mutability::Shared)
-            .into_iterator_iter(ctx.db)
+            .autoderef(ctx.db)
+            .map(|ty| ty.strip_references().add_reference(hir::Mutability::Shared))
+            .find_map(|ty| ty.into_iterator_iter(ctx.db))
             .map(|ty| (ty, SmolStr::new_static("iter()")));
         // Does <receiver_ty as IntoIterator>::IntoIter` exist?
         let into_iter = || {
@@ -112,7 +108,7 @@ pub(crate) fn complete_dot(
                 DotAccessKind::Field { receiver_is_ambiguous_float_literal: _ } => {
                     DotAccessKind::Field { receiver_is_ambiguous_float_literal: false }
                 }
-                it @ DotAccessKind::Method { .. } => *it,
+                it @ DotAccessKind::Method => *it,
             };
             let dot_access = DotAccess {
                 receiver: dot_access.receiver.clone(),
@@ -173,7 +169,6 @@ pub(crate) fn complete_undotted_self(
             )
         },
         |acc, field, ty| acc.add_tuple_field(ctx, Some(SmolStr::new_static("self")), field, &ty),
-        true,
         false,
     );
     complete_methods(ctx, &ty, &ctx.traits_in_scope(), |func| {
@@ -182,7 +177,7 @@ pub(crate) fn complete_undotted_self(
             &DotAccess {
                 receiver: None,
                 receiver_ty: None,
-                kind: DotAccessKind::Method { has_parens: false },
+                kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
                 ctx: DotAccessExprCtx {
                     in_block_expr: expr_ctx.in_block_expr,
                     in_breakable: expr_ctx.in_breakable,
@@ -201,15 +196,13 @@ fn complete_fields(
     receiver: &hir::Type<'_>,
     mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type<'_>),
     mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type<'_>),
-    is_field_access: bool,
-    is_method_access_with_parens: bool,
+    has_parens: bool,
 ) {
     let mut seen_names = FxHashSet::default();
     for receiver in receiver.autoderef(ctx.db) {
         for (field, ty) in receiver.fields(ctx.db) {
             if seen_names.insert(field.name(ctx.db))
-                && (is_field_access
-                    || (is_method_access_with_parens && (ty.is_fn() || ty.is_closure())))
+                && (!has_parens || ty.is_fn() || ty.is_closure())
             {
                 named_field(acc, field, ty);
             }
@@ -218,8 +211,7 @@ fn complete_fields(
             // Tuples are always the last type in a deref chain, so just check if the name is
             // already seen without inserting into the hashset.
             if !seen_names.contains(&hir::Name::new_tuple_field(i))
-                && (is_field_access
-                    || (is_method_access_with_parens && (ty.is_fn() || ty.is_closure())))
+                && (!has_parens || ty.is_fn() || ty.is_closure())
             {
                 // Tuple fields are always public (tuple struct fields are handled above).
                 tuple_index(acc, i, ty);
@@ -278,7 +270,6 @@ fn complete_methods(
         ctx.db,
         &ctx.scope,
         traits_in_scope,
-        Some(ctx.module),
         None,
         Callback { ctx, f, seen_methods: FxHashSet::default() },
     );
@@ -605,7 +596,6 @@ fn foo(a: A) {
 }
 "#,
             expect![[r#"
-                me local_method()      fn(&self)
                 me pub_module_method() fn(&self)
             "#]],
         );
@@ -794,8 +784,7 @@ struct T(S);
 
 impl T {
     fn foo(&self) {
-        // FIXME: This doesn't work without the trailing `a` as `0.` is a float
-        self.0.a$0
+        self.0.$0
     }
 }
 "#,
@@ -1365,17 +1354,70 @@ fn foo() {
             r#"
 struct Foo { baz: fn() }
 impl Foo {
-    fn bar<T>(self, t: T): T { t }
+    fn bar<T>(self, t: T) -> T { t }
 }
 
 fn baz() {
     let foo = Foo{ baz: || {} };
-    foo.ba$0::<>;
+    foo.ba$0;
 }
 "#,
             expect![[r#"
-                me bar(…) fn(self, T)
+                fd baz                fn()
+                me bar(…) fn(self, T) -> T
             "#]],
+        );
+
+        check_edit(
+            "baz",
+            r#"
+struct Foo { baz: fn() }
+impl Foo {
+    fn bar<T>(self, t: T) -> T { t }
+}
+
+fn baz() {
+    let foo = Foo{ baz: || {} };
+    foo.ba$0;
+}
+"#,
+            r#"
+struct Foo { baz: fn() }
+impl Foo {
+    fn bar<T>(self, t: T) -> T { t }
+}
+
+fn baz() {
+    let foo = Foo{ baz: || {} };
+    (foo.baz)();
+}
+"#,
+        );
+
+        check_edit(
+            "bar",
+            r#"
+struct Foo { baz: fn() }
+impl Foo {
+    fn bar<T>(self, t: T) -> T { t }
+}
+
+fn baz() {
+    let foo = Foo{ baz: || {} };
+    foo.ba$0;
+}
+"#,
+            r#"
+struct Foo { baz: fn() }
+impl Foo {
+    fn bar<T>(self, t: T) -> T { t }
+}
+
+fn baz() {
+    let foo = Foo{ baz: || {} };
+    foo.bar(${1:t})$0;
+}
+"#,
         );
     }
 
@@ -1422,6 +1464,40 @@ fn foo() {
                 me into_iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
                 me into_iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
                 me into_iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
+            "#]],
+        );
+        check_no_kw(
+            r#"
+//- minicore: iterator, deref
+struct Foo;
+impl Foo { fn iter(&self) -> Iter { Iter } }
+impl IntoIterator for &Foo {
+    type Item = ();
+    type IntoIter = Iter;
+    fn into_iter(self) -> Self::IntoIter { Iter }
+}
+struct Ref;
+impl core::ops::Deref for Ref {
+    type Target = Foo;
+    fn deref(&self) -> &Self::Target { &Foo }
+}
+struct Iter;
+impl Iterator for Iter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+fn foo() {
+    Ref.$0
+}
+"#,
+            expect![[r#"
+                me deref() (use core::ops::Deref)                 fn(&self) -> &<Self as Deref>::Target
+                me into_iter() (as IntoIterator)           fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter()                                                             fn(&self) -> Iter
+                me iter().by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
+                me iter().into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
+                me iter().next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
+                me iter().nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
             "#]],
         );
     }
@@ -1482,6 +1558,8 @@ async fn bar() {
         check_no_kw(
             r#"
 //- minicore: receiver
+#![feature(arbitrary_self_types)]
+
 use core::ops::Receiver;
 
 struct Foo;

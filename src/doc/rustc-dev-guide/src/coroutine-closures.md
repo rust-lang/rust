@@ -167,7 +167,7 @@ We introduce a `AsyncFnKindHelper` trait which allows us to defer the question o
 
 This seems a bit roundabout and complex, and I admit that it is. But let's think of the "do nothing" alternative -- we could instead mark all `AsyncFn*` goals as ambiguous until upvar analysis, at which point we would know exactly what to put into the upvars of the coroutine we return. However, this is actually *very* detrimental to inference in the program, since it means that programs like this would not be valid:
 
-```rust!
+```rust,ignore
 let c = async || -> String { .. };
 let s = c().await;
 // ^^^ If we can't project `<{c} as AsyncFn>::call()` to a coroutine, then the `IntoFuture::into_future` call inside of the `.await` stalls, and the type of `s` is left unconstrained as an infer var.

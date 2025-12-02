@@ -154,14 +154,7 @@ fn edit_struct_references(
                 ast::TupleStructPat(tuple_struct_pat) => {
                     Some(make.record_pat_with_fields(
                         tuple_struct_pat.path()?,
-                        ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
-                            |(pat, name)| {
-                                ast::make::record_pat_field(
-                                    ast::make::name_ref(&name.to_string()),
-                                    pat,
-                                )
-                            },
-                        ), None),
+                        generate_record_pat_list(&tuple_struct_pat, names),
                     ).syntax().clone())
                 },
                 // for tuple struct creations like Foo(42)
@@ -284,6 +277,24 @@ fn generate_names(fields: impl Iterator<Item = ast::TupleField>) -> Vec<ast::Nam
         .collect()
 }
 
+fn generate_record_pat_list(
+    pat: &ast::TupleStructPat,
+    names: &[ast::Name],
+) -> ast::RecordPatFieldList {
+    let pure_fields = pat.fields().filter(|p| !matches!(p, ast::Pat::RestPat(_)));
+    let rest_len = names.len().saturating_sub(pure_fields.clone().count());
+    let rest_pat = pat.fields().find_map(|p| ast::RestPat::cast(p.syntax().clone()));
+    let rest_idx =
+        pat.fields().position(|p| ast::RestPat::can_cast(p.syntax().kind())).unwrap_or(names.len());
+    let before_rest = pat.fields().zip(names).take(rest_idx);
+    let after_rest = pure_fields.zip(names.iter().skip(rest_len)).skip(rest_idx);
+
+    let fields = before_rest
+        .chain(after_rest)
+        .map(|(pat, name)| ast::make::record_pat_field(ast::make::name_ref(&name.text()), pat));
+    ast::make::record_pat_field_list(fields, rest_pat)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
@@ -355,6 +366,43 @@ impl A {
         self.field1
     }
 }"#,
+        );
+    }
+
+    #[test]
+    fn convert_struct_and_rest_pat() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct Inner;
+struct A$0(Inner);
+fn foo(A(..): A) {}
+"#,
+            r#"
+struct Inner;
+struct A { field1: Inner }
+fn foo(A { .. }: A) {}
+"#,
+        );
+
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct A;
+struct B;
+struct C;
+struct D;
+struct X$0(A, B, C, D);
+fn foo(X(a, .., d): X) {}
+"#,
+            r#"
+struct A;
+struct B;
+struct C;
+struct D;
+struct X { field1: A, field2: B, field3: C, field4: D }
+fn foo(X { field1: a, field4: d, .. }: X) {}
+"#,
         );
     }
 
@@ -1147,6 +1195,59 @@ fn foo() {
     foo!(a, Test::A { field1: 0 });
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn regression_issue_21020() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+pub struct S$0(pub ());
+
+trait T {
+    fn id(&self) -> usize;
+}
+
+trait T2 {
+    fn foo(&self) -> usize;
+}
+
+impl T for S {
+    fn id(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl T2 for S {
+    fn foo(&self) -> usize {
+        self.0.len()
+    }
+}
+            "#,
+            r#"
+pub struct S { pub field1: () }
+
+trait T {
+    fn id(&self) -> usize;
+}
+
+trait T2 {
+    fn foo(&self) -> usize;
+}
+
+impl T for S {
+    fn id(&self) -> usize {
+        self.field1.len()
+    }
+}
+
+impl T2 for S {
+    fn foo(&self) -> usize {
+        self.field1.len()
+    }
+}
+            "#,
         );
     }
 }

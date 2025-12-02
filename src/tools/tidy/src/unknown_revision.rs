@@ -12,12 +12,12 @@ use std::sync::OnceLock;
 use ignore::DirEntry;
 use regex::Regex;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::iter_header::{HeaderLine, iter_header};
 use crate::walk::{filter_dirs, filter_not_rust, walk};
 
-pub fn check(tests_path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("unknown_revision").path(tests_path));
+pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("unknown_revision").path(tests_path));
     walk(
         tests_path,
         |path, is_dir| {

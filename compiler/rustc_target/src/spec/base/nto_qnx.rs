@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, LinkArgs, LinkerFlavor, Lld, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
+    Cc, LinkArgs, LinkerFlavor, Lld, Os, RelroLevel, Target, TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -11,7 +11,10 @@ pub(crate) fn opts() -> TargetOptions {
         has_rpath: true,
         has_thread_local: false,
         linker: Some("qcc".into()),
-        os: "nto".into(),
+        os: Os::Nto,
+        // We want backtraces to work by default and they rely on unwind tables
+        // (regardless of `-C panic` strategy).
+        default_uwtable: true,
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,
@@ -38,7 +41,7 @@ pub(crate) fn aarch64() -> Target {
         // n32:64    = 32 and 64 are native integer widths; Elements of this set are considered to support most general arithmetic operations efficiently.
         // S128      = 128 bits are the natural alignment of the stack in bits.
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32".into(),
-        arch: "aarch64".into(),
+        arch: crate::spec::Arch::AArch64,
         options: TargetOptions {
             features: "+v8a".into(),
             max_atomic_width: Some(128),
@@ -54,7 +57,7 @@ pub(crate) fn x86_64() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: "x86_64".into(),
+        arch: crate::spec::Arch::X86_64,
         options: TargetOptions {
             cpu: "x86-64".into(),
             plt_by_default: false,

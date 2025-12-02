@@ -1,7 +1,12 @@
 #![warn(clippy::precedence)]
-#![allow(unused_must_use, clippy::no_effect, clippy::unnecessary_operation)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::eq_op)]
+#![allow(
+    unused_must_use,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::clone_on_copy,
+    clippy::identity_op,
+    clippy::eq_op
+)]
 
 macro_rules! trip {
     ($a:expr) => {
@@ -34,4 +39,25 @@ fn main() {
 
     let b = 3;
     trip!(b * 8);
+}
+
+struct W(u8);
+impl Clone for W {
+    fn clone(&self) -> Self {
+        W(1)
+    }
+}
+
+fn closure_method_call() {
+    // Do not lint when the method call is applied to the block, both inside the closure
+    let f = |x: W| { x }.clone();
+    assert!(matches!(f(W(0)), W(1)));
+
+    let f = |x: W| -> _ { x }.clone();
+    assert!(matches!(f(W(0)), W(0)));
+    //~^^ precedence
+
+    let f = move |x: W| -> _ { x }.clone();
+    assert!(matches!(f(W(0)), W(0)));
+    //~^^ precedence
 }

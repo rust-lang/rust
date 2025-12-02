@@ -48,7 +48,7 @@ no_llvm_build
 /llvm/
 /mingw-build/
 /build
-/build-rust-analyzer/
+/build-rust-analyzer
 /dist/
 /unicode-downloads
 /target
@@ -89,6 +89,10 @@ node_modules
 
 ## Rustdoc GUI tests
 tests/rustdoc-gui/src/**.lock
+
+## Test dashboard
+.citool-cache/
+test-dashboard/
 
 ## direnv
 /.envrc

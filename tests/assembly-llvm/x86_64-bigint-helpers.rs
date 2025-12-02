@@ -44,7 +44,7 @@ pub unsafe extern "sysv64" fn bigint_chain_borrowing_sub(
     n: usize,
     mut carry: bool,
 ) -> bool {
-    // CHECK: mov [[TEMP:r..]], qword ptr [rsi + 8*[[IND:r..]] + 8]
+    // CHECK: mov [[TEMP:r.+]], qword ptr [rsi + 8*[[IND:r.+]] + 8]
     // CHECK: sbb [[TEMP]], qword ptr [rdx + 8*[[IND]] + 8]
     // CHECK: mov qword ptr [rdi + 8*[[IND]] + 8], [[TEMP]]
     // CHECK: mov [[TEMP]], qword ptr [rsi + 8*[[IND]] + 16]

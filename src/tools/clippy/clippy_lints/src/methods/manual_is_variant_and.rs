@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -30,8 +30,8 @@ pub(super) fn check(
     }
 
     // 2. the caller of `map()` is neither `Option` nor `Result`
-    let is_option = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(map_recv), sym::Option);
-    let is_result = is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(map_recv), sym::Result);
+    let is_option = cx.typeck_results().expr_ty(map_recv).is_diag_item(cx, sym::Option);
+    let is_result = cx.typeck_results().expr_ty(map_recv).is_diag_item(cx, sym::Result);
     if !is_option && !is_result {
         return;
     }
@@ -208,7 +208,7 @@ pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>) {
                     && cx.tcx.is_diagnostic_item(flavor.symbol(), adt.did())
                     && args.type_at(0).is_bool()
                     && let ExprKind::MethodCall(_, recv, [map_expr], _) = expr2.kind
-                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), flavor.symbol())
+                    && cx.typeck_results().expr_ty(recv).is_diag_item(cx, flavor.symbol())
                     && let Ok(map_func) = MapFunc::try_from(map_expr)
                 {
                     return emit_lint(cx, parent_expr.span, op, flavor, bool_cst, map_func, recv);

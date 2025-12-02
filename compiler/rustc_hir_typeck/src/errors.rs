@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::Label;
+use rustc_ast::{AssignOpKind, Label};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic,
@@ -14,9 +14,10 @@ use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
+use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, Symbol};
 
-use crate::fluent_generated as fluent;
+use crate::{FnCtxt, fluent_generated as fluent};
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_base_expression_double_dot, code = E0797)]
@@ -978,6 +979,15 @@ pub(crate) struct SelfCtorFromOuterItem {
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
+    #[subdiagnostic]
+    pub item: Option<InnerItem>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_typeck_self_ctor_from_outer_item_inner_item)]
+pub(crate) struct InnerItem {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -987,6 +997,8 @@ pub(crate) struct SelfCtorFromOuterItemLint {
     pub impl_span: Span,
     #[subdiagnostic]
     pub sugg: Option<ReplaceWithName>,
+    #[subdiagnostic]
+    pub item: Option<InnerItem>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1133,6 +1145,42 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for NakedFunctionsAsmBlock {
     }
 }
 
+pub(crate) fn maybe_emit_plus_equals_diagnostic<'a>(
+    fnctxt: &FnCtxt<'a, '_>,
+    assign_op: Spanned<AssignOpKind>,
+    lhs_expr: &hir::Expr<'_>,
+) -> Result<(), Diag<'a>> {
+    if assign_op.node == hir::AssignOpKind::AddAssign
+        && let hir::ExprKind::Binary(bin_op, left, right) = &lhs_expr.kind
+        && bin_op.node == hir::BinOpKind::And
+        && crate::op::contains_let_in_chain(left)
+        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &right.kind
+        && matches!(path.res, hir::def::Res::Local(_))
+    {
+        let mut err = fnctxt.dcx().struct_span_err(
+            assign_op.span,
+            "binary assignment operation `+=` cannot be used in a let chain",
+        );
+
+        err.span_label(
+            lhs_expr.span,
+            "you are add-assigning the right-hand side expression to the result of this let-chain",
+        );
+
+        err.span_label(assign_op.span, "cannot use `+=` in a let chain");
+
+        err.span_suggestion(
+            assign_op.span,
+            "you might have meant to compare with `==` instead of assigning with `+=`",
+            "==",
+            Applicability::MaybeIncorrect,
+        );
+
+        return Err(err);
+    }
+    Ok(())
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_typeck_naked_functions_must_naked_asm, code = E0787)]
 pub(crate) struct NakedFunctionsMustNakedAsm {
@@ -1155,4 +1203,15 @@ pub(crate) struct AbiCannotBeCalled {
 pub(crate) struct ConstContinueBadLabel {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_project_on_non_pin_project_type)]
+pub(crate) struct ProjectOnNonPinProjectType {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub def_span: Option<Span>,
+    #[suggestion(code = "#[pin_v2]\n", applicability = "machine-applicable")]
+    pub sugg_span: Option<Span>,
 }

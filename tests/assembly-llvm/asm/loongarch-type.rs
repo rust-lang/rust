@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: loongarch32 loongarch64
 
 //@ assembly-output: emit-asm

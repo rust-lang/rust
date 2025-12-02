@@ -14,6 +14,7 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 extern crate rustc_lexer;
 
 mod expander;
+mod macro_call_style;
 mod parser;
 
 #[cfg(test)]
@@ -29,6 +30,7 @@ use tt::iter::TtIter;
 use std::fmt;
 use std::sync::Arc;
 
+pub use crate::macro_call_style::{MacroCallStyle, MacroCallStyles};
 use crate::parser::{MetaTemplate, MetaVarKind, Op};
 
 pub use tt::{Delimiter, DelimiterKind, Punct};
@@ -137,6 +139,8 @@ pub struct DeclarativeMacro {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Rule {
+    /// Is this a normal fn-like rule, an `attr()` rule, or a `derive()` rule?
+    style: MacroCallStyle,
     lhs: MetaTemplate,
     rhs: MetaTemplate,
 }
@@ -195,13 +199,18 @@ impl DeclarativeMacro {
         let mut err = None;
 
         if let Some(args) = args {
+            // The presence of an argument list means that this macro uses the
+            // "simple" syntax, where the body is the RHS of a single rule.
             cov_mark::hit!(parse_macro_def_simple);
 
             let rule = (|| {
                 let lhs = MetaTemplate::parse_pattern(ctx_edition, args.iter())?;
                 let rhs = MetaTemplate::parse_template(ctx_edition, body.iter())?;
 
-                Ok(crate::Rule { lhs, rhs })
+                // In the "simple" syntax, there is apparently no way to specify
+                // that the single rule is an attribute or derive rule, so it
+                // must be a function-like rule.
+                Ok(crate::Rule { style: MacroCallStyle::FnLike, lhs, rhs })
             })();
 
             match rule {
@@ -209,6 +218,8 @@ impl DeclarativeMacro {
                 Err(e) => err = Some(Box::new(e)),
             }
         } else {
+            // There was no top-level argument list, so this macro uses the
+            // list-of-rules syntax, similar to `macro_rules!`.
             cov_mark::hit!(parse_macro_def_rules);
             let mut src = body.iter();
             while !src.is_empty() {
@@ -249,14 +260,28 @@ impl DeclarativeMacro {
         self.rules.len()
     }
 
+    pub fn rule_styles(&self) -> MacroCallStyles {
+        if self.rules.is_empty() {
+            // No rules could be parsed, so fall back to assuming that this
+            // is intended to be a function-like macro.
+            MacroCallStyles::FN_LIKE
+        } else {
+            self.rules
+                .iter()
+                .map(|rule| MacroCallStyles::from(rule.style))
+                .fold(MacroCallStyles::empty(), |a, b| a | b)
+        }
+    }
+
     pub fn expand(
         &self,
+        db: &dyn salsa::Database,
         tt: &tt::TopSubtree<Span>,
         marker: impl Fn(&mut Span) + Copy,
+        call_style: MacroCallStyle,
         call_site: Span,
-        def_site_edition: Edition,
     ) -> ExpandResult<(tt::TopSubtree<Span>, MatchedArmIndex)> {
-        expander::expand_rules(&self.rules, tt, marker, call_site, def_site_edition)
+        expander::expand_rules(db, &self.rules, tt, marker, call_style, call_site)
     }
 }
 
@@ -265,6 +290,9 @@ impl Rule {
         edition: impl Copy + Fn(SyntaxContext) -> Edition,
         src: &mut TtIter<'_, Span>,
     ) -> Result<Self, ParseError> {
+        // Parse an optional `attr()` or `derive()` prefix before the LHS pattern.
+        let style = parser::parse_rule_style(src)?;
+
         let (_, lhs) =
             src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
@@ -275,7 +303,7 @@ impl Rule {
         let lhs = MetaTemplate::parse_pattern(edition, lhs)?;
         let rhs = MetaTemplate::parse_template(edition, rhs)?;
 
-        Ok(crate::Rule { lhs, rhs })
+        Ok(crate::Rule { style, lhs, rhs })
     }
 }
 
@@ -362,16 +390,15 @@ impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
 }
 
 pub fn expect_fragment<'t>(
+    db: &dyn salsa::Database,
     tt_iter: &mut TtIter<'t, Span>,
     entry_point: ::parser::PrefixEntryPoint,
-    edition: ::parser::Edition,
     delim_span: DelimSpan<Span>,
 ) -> ExpandResult<tt::TokenTreesView<'t, Span>> {
     use ::parser;
     let buffer = tt_iter.remaining();
-    // FIXME: Pass the correct edition per token. Due to the split between mbe and hir-expand it's complicated.
-    let parser_input = to_parser_input(buffer, &mut |_ctx| edition);
-    let tree_traversal = entry_point.parse(&parser_input, edition);
+    let parser_input = to_parser_input(buffer, &mut |ctx| ctx.edition(db));
+    let tree_traversal = entry_point.parse(&parser_input);
     let mut cursor = buffer.cursor();
     let mut error = false;
     for step in tree_traversal.iter() {

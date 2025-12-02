@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
 use chrono_tz::Tz;
+use rustc_target::spec::Os;
 
 use crate::*;
 
@@ -31,8 +32,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         // Some further platform-specific names we support.
-        match this.tcx.sess.target.os.as_ref() {
-            "linux" | "freebsd" | "android" => {
+        match &this.tcx.sess.target.os {
+            Os::Linux | Os::FreeBsd | Os::Android => {
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we treat it like normal
                 // clocks.
@@ -42,7 +43,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return Some(TimeoutClock::Monotonic);
                 }
             }
-            "macos" => {
+            Os::MacOs => {
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.
                 // We need to support it because std uses it.
@@ -176,7 +177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // solaris/illumos system tm struct does not have
         // the additional tm_zone/tm_gmtoff fields.
         // https://docs.oracle.com/cd/E36784_01/html/E36874/localtime-r-3c.html
-        if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
+        if !matches!(&this.tcx.sess.target.os, Os::Solaris | Os::Illumos) {
             // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
             // This may not be consistent with libc::localtime_r's result.
 
@@ -215,7 +216,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("windows", shim_name);
+        this.assert_target_os(Os::Windows, shim_name);
         this.check_no_isolation(shim_name)?;
 
         let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
@@ -237,7 +238,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("windows", "QueryPerformanceCounter");
+        this.assert_target_os(Os::Windows, "QueryPerformanceCounter");
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
@@ -260,7 +261,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("windows", "QueryPerformanceFrequency");
+        this.assert_target_os(Os::Windows, "QueryPerformanceFrequency");
 
         // Retrieves the frequency of the hardware performance counter.
         // The frequency of the performance counter is fixed at system boot and
@@ -301,7 +302,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_ref();
 
-        this.assert_target_os("macos", "mach_absolute_time");
+        this.assert_target_os(Os::MacOs, "mach_absolute_time");
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
@@ -316,7 +317,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("macos", "mach_timebase_info");
+        this.assert_target_os(Os::MacOs, "mach_timebase_info");
 
         let info = this.deref_pointer_as(info_op, this.libc_ty_layout("mach_timebase_info"))?;
 
@@ -418,7 +419,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn Sleep(&mut self, timeout: &OpTy<'tcx>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("windows", "Sleep");
+        this.assert_target_os(Os::Windows, "Sleep");
 
         let timeout_ms = this.read_scalar(timeout)?.to_u32()?;
 

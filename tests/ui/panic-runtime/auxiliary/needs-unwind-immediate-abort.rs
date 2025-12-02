@@ -1,6 +1,6 @@
 //@ compile-flags:-C panic=unwind
 //@ no-prefer-dynamic
-//@ add-core-stubs
+//@ add-minicore
 
 #![crate_type = "rlib"]
 #![feature(no_core)]

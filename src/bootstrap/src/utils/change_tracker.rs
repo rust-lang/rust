@@ -556,4 +556,49 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.windows-rc` that will override which resource compiler on Windows will be used to compile Rust.",
     },
+    ChangeInfo {
+        change_id: 147046,
+        severity: ChangeSeverity::Warning,
+        summary: "The `rust.use-lld` option has been renamed to `rust.bootstrap-override-lld`. Note that it only serves for overriding the linker used when building Rust code in bootstrap to be LLD.",
+    },
+    ChangeInfo {
+        change_id: 146929,
+        severity: ChangeSeverity::Info,
+        summary: "`compiletest` is now always built with the stage 0 compiler, so `build.compiletest-use-stage0-libtest` has no effect.",
+    },
+    ChangeInfo {
+        change_id: 147157,
+        severity: ChangeSeverity::Warning,
+        summary: "`rust.lld = true` no longer automatically causes the `x86_64-unknown-linux-gnu` target to default into using the self-contained LLD linker. This target now uses the LLD linker by default. To opt out, set `target.x86_64-unknown-linux-gnu.default-linker-linux-override = 'off'`.",
+    },
+    ChangeInfo {
+        change_id: 147888,
+        severity: ChangeSeverity::Info,
+        summary: "`llvm.enzyme` now works with `download-ci-llvm=true`.",
+    },
+    ChangeInfo {
+        change_id: 148636,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.python` option is now respected on macOS (previously ignored and forced to be /usr/bin/python3).",
+    },
+    ChangeInfo {
+        change_id: 148911,
+        severity: ChangeSeverity::Warning,
+        summary: "Flags from `*FLAGS*` (such as `RUSTFLAGS`) env. vars. now have precedence over rustflags set by bootstrap. Before, it was the other way around.",
+    },
+    ChangeInfo {
+        change_id: 148763,
+        severity: ChangeSeverity::Info,
+        summary: "`yarn` is now used instead of `npm` to install dependencies for some extra tidy checks. Use `build.yarn` to manually specify the path to `yarn` (`build.npm` is no longer used).",
+    },
+    ChangeInfo {
+        change_id: 148803,
+        severity: ChangeSeverity::Info,
+        summary: "The `-Zannotate-moves` option is now always enabled when building rustc, sysroot and tools.",
+    },
+    ChangeInfo {
+        change_id: 148795,
+        severity: ChangeSeverity::Info,
+        summary: "New options `rust.rustflags` for all targets and per-target `rustflags` that will pass specified flags to rustc for all stages. Target-specific flags override global `rust.rustflags` ones.",
+    },
 ];

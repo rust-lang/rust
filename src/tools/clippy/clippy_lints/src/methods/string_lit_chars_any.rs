@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{is_from_proc_macro, is_trait_method, path_to_local};
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -19,14 +20,14 @@ pub(super) fn check<'tcx>(
     body: &Expr<'_>,
     msrv: Msrv,
 ) {
-    if is_trait_method(cx, expr, sym::Iterator)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let PatKind::Binding(_, arg, _, _) = param.pat.kind
         && let ExprKind::Lit(lit_kind) = recv.kind
         && let LitKind::Str(val, _) = lit_kind.node
         && let ExprKind::Binary(kind, lhs, rhs) = body.kind
         && let BinOpKind::Eq = kind.node
-        && let Some(lhs_path) = path_to_local(lhs)
-        && let Some(rhs_path) = path_to_local(rhs)
+        && let Some(lhs_path) = lhs.res_local_id()
+        && let Some(rhs_path) = rhs.res_local_id()
         && let scrutinee = match (lhs_path == arg, rhs_path == arg) {
             (true, false) => rhs,
             (false, true) => lhs,

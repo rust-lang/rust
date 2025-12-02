@@ -7,6 +7,7 @@
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
 //@ check-pass
+//@ ignore-backends: gcc
 
 // This checks how the expr fragment specifier works.
 macro_rules_edition_pm::make_edition_macro!{}

@@ -8,7 +8,6 @@ use tracing::debug;
 
 use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
-use crate::common::Config;
 use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
 
 impl TestCx<'_> {
@@ -21,18 +20,6 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_cdb_test(&self) {
-        let config = Config {
-            target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
-            host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            ..self.config.clone()
-        };
-
-        let test_cx = TestCx { config: &config, ..*self };
-
-        test_cx.run_debuginfo_cdb_test_no_opt();
-    }
-
-    fn run_debuginfo_cdb_test_no_opt(&self) {
         let exe_file = self.make_exe_name();
 
         // Existing PDB files are update in-place. When changing the debuginfo
@@ -59,7 +46,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "cdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
@@ -118,19 +105,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        let config = Config {
-            target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
-            host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            ..self.config.clone()
-        };
-
-        let test_cx = TestCx { config: &config, ..*self };
-
-        test_cx.run_debuginfo_gdb_test_no_opt();
-    }
-
-    fn run_debuginfo_gdb_test_no_opt(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "gdb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb")
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
@@ -351,22 +326,10 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_lldb_test(&self) {
-        if self.config.lldb_python_dir.is_none() {
-            self.fatal("Can't run LLDB test because LLDB's python path is not set.");
-        }
-
-        let config = Config {
-            target_rustcflags: self.cleanup_debug_info_options(&self.config.target_rustcflags),
-            host_rustcflags: self.cleanup_debug_info_options(&self.config.host_rustcflags),
-            ..self.config.clone()
+        let Some(ref lldb) = self.config.lldb else {
+            self.fatal("Can't run LLDB test because LLDB's path is not set.");
         };
 
-        let test_cx = TestCx { config: &config, ..*self };
-
-        test_cx.run_debuginfo_lldb_test_no_opt();
-    }
-
-    fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the directive)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, Emit::None);
@@ -397,7 +360,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "lldb")
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
@@ -471,7 +434,7 @@ impl TestCx<'_> {
         let debugger_script = self.make_out_name("debugger.script");
 
         // Let LLDB execute the script via lldb_batchmode.py
-        let debugger_run_result = self.run_lldb(&exe_file, &debugger_script);
+        let debugger_run_result = self.run_lldb(lldb, &exe_file, &debugger_script);
 
         if !debugger_run_result.status.success() {
             self.fatal_proc_rec("Error while running LLDB", &debugger_run_result);
@@ -482,30 +445,23 @@ impl TestCx<'_> {
         }
     }
 
-    fn run_lldb(&self, test_executable: &Utf8Path, debugger_script: &Utf8Path) -> ProcRes {
-        // Prepare the lldb_batchmode which executes the debugger script
-        let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
+    fn run_lldb(
+        &self,
+        lldb: &Utf8Path,
+        test_executable: &Utf8Path,
+        debugger_script: &Utf8Path,
+    ) -> ProcRes {
+        // Path containing `lldb_batchmode.py`, so that the `script` command can import it.
+        let pythonpath = self.config.src_root.join("src/etc");
 
-        // FIXME: `PYTHONPATH` takes precedence over the flag...?
-        let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
-            format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
-        } else {
-            self.config.lldb_python_dir.clone().unwrap()
-        };
-        self.run_command_to_procres(
-            Command::new(&self.config.python)
-                .arg(&lldb_script_path)
-                .arg(test_executable)
-                .arg(debugger_script)
-                .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
-                .env("PYTHONPATH", pythonpath),
-        )
-    }
+        let mut cmd = Command::new(lldb);
+        cmd.arg("--one-line")
+            .arg("script --language python -- import lldb_batchmode; lldb_batchmode.main()")
+            .env("LLDB_BATCHMODE_TARGET_PATH", test_executable)
+            .env("LLDB_BATCHMODE_SCRIPT_PATH", debugger_script)
+            .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
+            .env("PYTHONPATH", pythonpath);
 
-    fn cleanup_debug_info_options(&self, options: &Vec<String>) -> Vec<String> {
-        // Remove options that are either unwanted (-O) or may lead to duplicates due to RUSTFLAGS.
-        let options_to_remove = ["-O".to_owned(), "-g".to_owned(), "--debuginfo".to_owned()];
-
-        options.iter().filter(|x| !options_to_remove.contains(x)).cloned().collect()
+        self.run_command_to_procres(&mut cmd)
     }
 }

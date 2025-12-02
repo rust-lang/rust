@@ -15,6 +15,7 @@ use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
     helpers::is_editable_crate,
 };
+use itertools::Either;
 use syntax::{
     AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
@@ -52,6 +53,7 @@ pub(crate) struct QualifierCtx {
     pub(crate) unsafe_tok: Option<SyntaxToken>,
     pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
+    pub(crate) abi_node: Option<ast::Abi>,
 }
 
 impl QualifierCtx {
@@ -60,6 +62,7 @@ impl QualifierCtx {
             && self.unsafe_tok.is_none()
             && self.safe_tok.is_none()
             && self.vis_node.is_none()
+            && self.abi_node.is_none()
     }
 }
 
@@ -142,8 +145,9 @@ pub(crate) struct AttrCtx {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct PathExprCtx<'db> {
     pub(crate) in_block_expr: bool,
-    pub(crate) in_breakable: BreakableKind,
+    pub(crate) in_breakable: Option<BreakableKind>,
     pub(crate) after_if_expr: bool,
+    pub(crate) before_else_kw: bool,
     /// Whether this expression is the direct condition of an if or while expression
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
@@ -155,6 +159,7 @@ pub(crate) struct PathExprCtx<'db> {
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
     pub(crate) innermost_ret_ty: Option<hir::Type<'db>>,
+    pub(crate) innermost_breakable_ty: Option<hir::Type<'db>>,
     pub(crate) impl_: Option<ast::Impl>,
     /// Whether this expression occurs in match arm guard position: before the
     /// fat arrow token
@@ -276,12 +281,13 @@ pub(crate) struct PatternContext {
     pub(crate) param_ctx: Option<ParamContext>,
     pub(crate) has_type_ascription: bool,
     pub(crate) should_suggest_name: bool,
+    pub(crate) after_if_expr: bool,
     pub(crate) parent_pat: Option<ast::Pat>,
     pub(crate) ref_token: Option<SyntaxToken>,
     pub(crate) mut_token: Option<SyntaxToken>,
     /// The record pattern this name or ref is a field of
     pub(crate) record_pat: Option<ast::RecordPat>,
-    pub(crate) impl_: Option<ast::Impl>,
+    pub(crate) impl_or_trait: Option<Either<ast::Impl, ast::Trait>>,
     /// List of missing variants in a match expr
     pub(crate) missing_variants: Vec<hir::Variant>,
 }
@@ -402,20 +408,17 @@ pub(crate) enum DotAccessKind {
         /// like `0.$0`
         receiver_is_ambiguous_float_literal: bool,
     },
-    Method {
-        has_parens: bool,
-    },
+    Method,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DotAccessExprCtx {
     pub(crate) in_block_expr: bool,
-    pub(crate) in_breakable: BreakableKind,
+    pub(crate) in_breakable: Option<BreakableKind>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum BreakableKind {
-    None,
     Loop,
     For,
     While,
@@ -438,6 +441,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
+    pub(crate) trigger_character: Option<char>,
     /// The token before the cursor, in the original file.
     pub(crate) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -555,7 +559,7 @@ impl CompletionContext<'_> {
         I: hir::HasAttrs + Copy,
     {
         let attrs = item.attrs(self.db);
-        attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+        attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
     }
 
     /// Check if an item is `#[doc(hidden)]`.
@@ -569,7 +573,7 @@ impl CompletionContext<'_> {
     }
 
     /// Checks whether this item should be listed in regards to stability. Returns `true` if we should.
-    pub(crate) fn check_stability(&self, attrs: Option<&hir::Attrs>) -> bool {
+    pub(crate) fn check_stability(&self, attrs: Option<&hir::AttrsWithOwner>) -> bool {
         let Some(attrs) = attrs else {
             return true;
         };
@@ -587,15 +591,15 @@ impl CompletionContext<'_> {
 
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
-        match trait_.attrs(self.db).lang() {
-            Some(lang) => OP_TRAIT_LANG_NAMES.contains(&lang.as_str()),
+        match trait_.attrs(self.db).lang(self.db) {
+            Some(lang) => OP_TRAIT_LANG.contains(&lang),
             None => false,
         }
     }
 
     /// Whether the given trait has `#[doc(notable_trait)]`
     pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
-        trait_.attrs(self.db).has_doc_notable_trait()
+        trait_.attrs(self.db).is_doc_notable_trait()
     }
 
     /// Returns the traits in scope, with the [`Drop`] trait removed.
@@ -613,21 +617,14 @@ impl CompletionContext<'_> {
         mut cb: impl FnMut(hir::AssocItem),
     ) {
         let mut seen = FxHashSet::default();
-        ty.iterate_path_candidates(
-            self.db,
-            &self.scope,
-            &self.traits_in_scope(),
-            Some(self.module),
-            None,
-            |item| {
-                // We might iterate candidates of a trait multiple times here, so deduplicate
-                // them.
-                if seen.insert(item) {
-                    cb(item)
-                }
-                None::<()>
-            },
-        );
+        ty.iterate_path_candidates(self.db, &self.scope, &self.traits_in_scope(), None, |item| {
+            // We might iterate candidates of a trait multiple times here, so deduplicate
+            // them.
+            if seen.insert(item) {
+                cb(item)
+            }
+            None::<()>
+        });
     }
 
     /// A version of [`SemanticsScope::process_all_names`] that filters out `#[doc(hidden)]` items and
@@ -659,7 +656,7 @@ impl CompletionContext<'_> {
     fn is_visible_impl(
         &self,
         vis: &hir::Visibility,
-        attrs: &hir::Attrs,
+        attrs: &hir::AttrsWithOwner,
         defining_crate: hir::Crate,
     ) -> Visible {
         if !self.check_stability(Some(attrs)) {
@@ -681,14 +678,18 @@ impl CompletionContext<'_> {
         if self.is_doc_hidden(attrs, defining_crate) { Visible::No } else { Visible::Yes }
     }
 
-    pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+    pub(crate) fn is_doc_hidden(
+        &self,
+        attrs: &hir::AttrsWithOwner,
+        defining_crate: hir::Crate,
+    ) -> bool {
         // `doc(hidden)` items are only completed within the defining crate.
-        self.krate != defining_crate && attrs.has_doc_hidden()
+        self.krate != defining_crate && attrs.is_doc_hidden()
     }
 
     pub(crate) fn doc_aliases_in_scope(&self, scope_def: ScopeDef) -> Vec<SmolStr> {
         if let Some(attrs) = scope_def.attrs(self.db) {
-            attrs.doc_aliases().map(|it| it.as_str().into()).collect()
+            attrs.doc_aliases(self.db).iter().map(|it| it.as_str().into()).collect()
         } else {
             vec![]
         }
@@ -701,11 +702,12 @@ impl<'db> CompletionContext<'db> {
         db: &'db RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
         config: &'db CompletionConfig<'db>,
+        trigger_character: Option<char>,
     ) -> Option<(CompletionContext<'db>, CompletionAnalysis<'db>)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
-        let editioned_file_id = sema.attach_first_edition(file_id)?;
+        let editioned_file_id = sema.attach_first_edition(file_id);
         let original_file = sema.parse(editioned_file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
@@ -869,6 +871,7 @@ impl<'db> CompletionContext<'db> {
             db,
             config,
             position,
+            trigger_character,
             original_token,
             token,
             krate,
@@ -890,35 +893,35 @@ impl<'db> CompletionContext<'db> {
     }
 }
 
-const OP_TRAIT_LANG_NAMES: &[&str] = &[
-    "add_assign",
-    "add",
-    "bitand_assign",
-    "bitand",
-    "bitor_assign",
-    "bitor",
-    "bitxor_assign",
-    "bitxor",
-    "deref_mut",
-    "deref",
-    "div_assign",
-    "div",
-    "eq",
-    "fn_mut",
-    "fn_once",
-    "fn",
-    "index_mut",
-    "index",
-    "mul_assign",
-    "mul",
-    "neg",
-    "not",
-    "partial_ord",
-    "rem_assign",
-    "rem",
-    "shl_assign",
-    "shl",
-    "shr_assign",
-    "shr",
-    "sub",
+const OP_TRAIT_LANG: &[hir::LangItem] = &[
+    hir::LangItem::AddAssign,
+    hir::LangItem::Add,
+    hir::LangItem::BitAndAssign,
+    hir::LangItem::BitAnd,
+    hir::LangItem::BitOrAssign,
+    hir::LangItem::BitOr,
+    hir::LangItem::BitXorAssign,
+    hir::LangItem::BitXor,
+    hir::LangItem::DerefMut,
+    hir::LangItem::Deref,
+    hir::LangItem::DivAssign,
+    hir::LangItem::Div,
+    hir::LangItem::PartialEq,
+    hir::LangItem::FnMut,
+    hir::LangItem::FnOnce,
+    hir::LangItem::Fn,
+    hir::LangItem::IndexMut,
+    hir::LangItem::Index,
+    hir::LangItem::MulAssign,
+    hir::LangItem::Mul,
+    hir::LangItem::Neg,
+    hir::LangItem::Not,
+    hir::LangItem::PartialOrd,
+    hir::LangItem::RemAssign,
+    hir::LangItem::Rem,
+    hir::LangItem::ShlAssign,
+    hir::LangItem::Shl,
+    hir::LangItem::ShrAssign,
+    hir::LangItem::Shr,
+    hir::LangItem::Sub,
 ];

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ revisions: avr msp430
 //
@@ -6,7 +6,8 @@
 //@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
-#![feature(no_core, lang_items, intrinsics, staged_api, rustc_attrs)]
+//@ ignore-backends: gcc
+#![feature(no_core, intrinsics, staged_api, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 #![stable(feature = "intrinsics_for_test", since = "3.3.3")]

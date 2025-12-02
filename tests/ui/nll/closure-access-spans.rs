@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // check that accesses due to a closure capture give a special note
 
 fn closure_imm_capture_conflict(mut x: i32) {

@@ -1,18 +1,18 @@
 use base_db::target::TargetData;
-use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
 use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
+use rustc_type_ir::inherent::GenericArgs as _;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
-    Interner, Substitution,
+    InferenceResult,
     db::HirDatabase,
     layout::{Layout, LayoutError},
-    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    next_solver::{DbInterner, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
@@ -80,18 +80,18 @@ fn eval_goal(
             Some(adt_or_type_alias_id)
         })
         .unwrap();
-    let goal_ty = match adt_or_type_alias_id {
-        Either::Left(adt_id) => {
-            TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner)
-        }
-        Either::Right(ty_id) => {
-            db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
-        }
-    };
-    salsa::attach(&db, || {
-        let interner = DbInterner::new_with(&db, None, None);
+    crate::attach_db(&db, || {
+        let interner = DbInterner::new_no_crate(&db);
+        let goal_ty = match adt_or_type_alias_id {
+            Either::Left(adt_id) => crate::next_solver::Ty::new_adt(
+                interner,
+                adt_id,
+                GenericArgs::identity_for_item(interner, adt_id.into()),
+            ),
+            Either::Right(ty_id) => db.ty(ty_id.into()).instantiate_identity(),
+        };
         db.layout_of_ty(
-            goal_ty.to_nextsolver(interner),
+            goal_ty,
             db.trait_environment(match adt_or_type_alias_id {
                 Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
                 Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
@@ -113,31 +113,33 @@ fn eval_expr(
     );
 
     let (db, file_id) = TestDB::with_single_file(&ra_fixture);
-    let module_id = db.module_for_file(file_id.file_id(&db));
-    let def_map = module_id.def_map(&db);
-    let scope = &def_map[module_id.local_id].scope;
-    let function_id = scope
-        .declarations()
-        .find_map(|x| match x {
-            hir_def::ModuleDefId::FunctionId(x) => {
-                let name =
-                    db.function_signature(x).name.display_no_db(file_id.edition(&db)).to_smolstr();
-                (name == "main").then_some(x)
-            }
-            _ => None,
-        })
-        .unwrap();
-    let hir_body = db.body(function_id.into());
-    let b = hir_body
-        .bindings()
-        .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
-        .unwrap()
-        .0;
-    let infer = db.infer(function_id.into());
-    let goal_ty = infer.type_of_binding[b].clone();
-    salsa::attach(&db, || {
-        let interner = DbInterner::new_with(&db, None, None);
-        db.layout_of_ty(goal_ty.to_nextsolver(interner), db.trait_environment(function_id.into()))
+    crate::attach_db(&db, || {
+        let module_id = db.module_for_file(file_id.file_id(&db));
+        let def_map = module_id.def_map(&db);
+        let scope = &def_map[module_id.local_id].scope;
+        let function_id = scope
+            .declarations()
+            .find_map(|x| match x {
+                hir_def::ModuleDefId::FunctionId(x) => {
+                    let name = db
+                        .function_signature(x)
+                        .name
+                        .display_no_db(file_id.edition(&db))
+                        .to_smolstr();
+                    (name == "main").then_some(x)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let hir_body = db.body(function_id.into());
+        let b = hir_body
+            .bindings()
+            .find(|x| x.1.name.display_no_db(file_id.edition(&db)).to_smolstr() == "goal")
+            .unwrap()
+            .0;
+        let infer = InferenceResult::for_body(&db, function_id.into());
+        let goal_ty = infer.type_of_binding[b];
+        db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
     })
 }
 
@@ -150,7 +152,7 @@ fn check_size_and_align(
 ) {
     let l = eval_goal(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]
@@ -162,7 +164,7 @@ fn check_size_and_align_expr(
 ) {
     let l = eval_expr(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size, "size mismatch");
-    assert_eq!(l.align.abi.bytes(), align, "align mismatch");
+    assert_eq!(l.align.bytes(), align, "align mismatch");
 }
 
 #[track_caller]

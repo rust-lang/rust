@@ -1,11 +1,12 @@
 ((rustic-mode
   .((eglot-workspace-configuration
      . (:rust-analyzer
-        ( :check ( :invocationLocation "root"
-                                       :invocationStrategy "once"
+        ( :check ( :invocationStrategy "once"
                                        :overrideCommand ["python3"
                                                          "x.py"
                                                          "check"
+                                                         "--build-dir"
+                                                         "build-rust-analyzer"
                                                          "--json-output"])
                  :linkedProjects ["Cargo.toml"
                                   "compiler/rustc_codegen_cranelift/Cargo.toml"
@@ -13,9 +14,9 @@
                                   "library/Cargo.toml"
                                   "src/bootstrap/Cargo.toml"
                                   "src/tools/rust-analyzer/Cargo.toml"]
-                 :rustfmt ( :overrideCommand ["build/host/rustfmt/bin/rustfmt"
+                 :rustfmt ( :overrideCommand ["build-rust-analyzer/host/rustfmt/bin/rustfmt"
                                               "--edition=2024"])
-                 :procMacro ( :server "build/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+                 :procMacro ( :server "build-rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
                                       :enable t)
                  :cargo ( :buildScripts ( :enable t
                                                   :invocationLocation "root"
@@ -23,8 +24,10 @@
                                                   :overrideCommand ["python3"
                                                                     "x.py"
                                                                     "check"
+                                                                    "--build-dir"
+                                                                    "build-rust-analyzer"
                                                                     "--json-output"
-                                                                    "--compile-time-deps"])]
+                                                                    "--compile-time-deps"])
                                         :sysrootSrc "./library"
                                         :extraEnv (:RUSTC_BOOTSTRAP "1"))
                  :rustc ( :source "./Cargo.toml" )))))))

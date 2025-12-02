@@ -1,0 +1,21 @@
+error: reached the recursion limit while instantiating `ToChain::<'_, '_>::perm_pairs::<{async closure@$DIR/post-mono-higher-ranked-hang.rs:47:45: 47:67}>`
+  --> $DIR/post-mono-higher-ranked-hang.rs:47:21
+   |
+LL | /                     self.perm_pairs(l, &mut async move |left_pair| {
+LL | |
+LL | |                         self.perm_pairs(r, yield_chain).await
+LL | |                     })
+   | |______________________^
+   |
+note: `ToChain::<'env, 'db>::perm_pairs` defined here
+  --> $DIR/post-mono-higher-ranked-hang.rs:38:5
+   |
+LL | /     fn perm_pairs<'l>(
+LL | |         &'l self,
+LL | |         perm: &'l SymPerm<'db>,
+LL | |         yield_chain: &'l mut impl AsyncFnMut(&SymPerm<'db>),
+LL | |     ) -> Pin<Box<dyn std::future::Future<Output = ()> + 'l>> {
+   | |____________________________________________________________^
+
+error: aborting due to 1 previous error
+

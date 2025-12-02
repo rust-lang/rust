@@ -535,6 +535,14 @@ pub(crate) enum EnvNotDefined<'a> {
         var_expr: &'a rustc_ast::Expr,
     },
     #[diag(builtin_macros_env_not_defined)]
+    #[help(builtin_macros_cargo_typo)]
+    CargoEnvVarTypo {
+        #[primary_span]
+        span: Span,
+        var: Symbol,
+        suggested_var: Symbol,
+    },
+    #[diag(builtin_macros_env_not_defined)]
     #[help(builtin_macros_custom)]
     CustomEnvVar {
         #[primary_span]
@@ -952,7 +960,7 @@ pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_source_uitls_expected_item)]
+#[diag(builtin_macros_source_utils_expected_item)]
 pub(crate) struct ExpectedItem<'a> {
     #[primary_span]
     pub span: Span,

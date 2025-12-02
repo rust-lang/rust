@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
         },
         pointer_width: 32,
         data_layout: "E-m:e-p:32:32-i64:64-i128:128-f128:64-n32-S64".into(),
-        arch: "sparc".into(),
+        arch: Arch::Sparc,
         options: TargetOptions {
             features: "+v8plus".into(),
             cpu: "v9".into(),

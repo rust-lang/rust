@@ -1,11 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/call_method_unknown_pointee.rs:10:41
+  --> $DIR/call_method_unknown_pointee.rs:10:23
    |
 LL |         let _a: i32 = (ptr as *const _).read();
-   |                                         ^^^^
-   |                                         |
-   |                                         cannot infer type
-   |                                         cannot call a method on a raw pointer with an unknown pointee type
+   |                       ^^^^^^^^^^^^^^^^^ ---- cannot call a method on a raw pointer with an unknown pointee type
+   |                       |
+   |                       cannot infer type
 
 error[E0282]: type annotations needed for `*const _`
   --> $DIR/call_method_unknown_pointee.rs:12:13
@@ -22,13 +21,12 @@ LL |         let b: *const _ = ptr as *const _;
    |              ++++++++++
 
 error[E0282]: type annotations needed
-  --> $DIR/call_method_unknown_pointee.rs:21:39
+  --> $DIR/call_method_unknown_pointee.rs:21:23
    |
 LL |         let _a: i32 = (ptr as *mut _).read();
-   |                                       ^^^^
-   |                                       |
-   |                                       cannot infer type
-   |                                       cannot call a method on a raw pointer with an unknown pointee type
+   |                       ^^^^^^^^^^^^^^^ ---- cannot call a method on a raw pointer with an unknown pointee type
+   |                       |
+   |                       cannot infer type
 
 error[E0282]: type annotations needed for `*mut _`
   --> $DIR/call_method_unknown_pointee.rs:23:13

@@ -4,7 +4,7 @@
 #![allow(
     clippy::if_same_then_else,
     clippy::let_unit_value,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::needless_else
 )]
 

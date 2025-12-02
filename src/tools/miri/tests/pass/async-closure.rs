@@ -6,7 +6,7 @@ use std::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 use std::pin::pin;
 use std::task::*;
 
-pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
+fn block_on<T>(fut: impl Future<Output = T>) -> T {
     let mut fut = pin!(fut);
     let ctx = &mut Context::from_waker(Waker::noop());
 
@@ -38,7 +38,7 @@ async fn call_normal_mut<F: Future<Output = ()>>(f: &mut impl FnMut(i32) -> F) {
     f(1).await;
 }
 
-pub fn main() {
+fn main() {
     block_on(async {
         let b = 2i32;
         let mut async_closure = async move |a: i32| {

@@ -118,9 +118,14 @@
 //!
 //! # Representation
 //!
-//! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`. In some
-//! of these cases, Rust further guarantees the following:
+//! Rust guarantees to optimize the following types `T` such that [`Option<T>`]
+//! has the same size, alignment, and [function call ABI] as `T`. It is
+//! therefore sound, when `T` is one of these types, to transmute a value `t` of
+//! type `T` to type `Option<T>` (producing the value `Some(t)`) and to
+//! transmute a value `Some(t)` of type `Option<T>` to type `T` (producing the
+//! value `t`).
+//!
+//! In some of these cases, Rust further guarantees the following:
 //! - `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and produces
 //!   `Option::<T>::None`
 //! - `transmute::<_, [u8; size_of::<T>()]>(Option::<T>::None)` is sound and produces
@@ -576,6 +581,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::clone::TrivialClone;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
@@ -2209,6 +2215,11 @@ where
 
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {}
+
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+unsafe impl<T> const TrivialClone for Option<T> where T: [const] TrivialClone + [const] Destruct {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::expr_or_init;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::{expr_or_init, is_trait_method};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -58,7 +59,7 @@ fn check<'tcx>(
     message: &'static str,
     note: &'static str,
 ) {
-    if is_trait_method(cx, expr, sym::Iterator)
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let Some(len) = get_iterator_length(cx, recv)
         && let Some(skipped) = expr_as_u128(cx, arg)
         && skipped > len

@@ -1,4 +1,5 @@
 //@ revisions:rpass1 rpass2
+//@ ignore-backends: gcc
 
 // This test case makes sure re-order the methods in a vtable will
 // trigger recompilation of codegen units that instantiate it.

@@ -2,7 +2,7 @@
 use std::ops::Range;
 
 use rustc_data_structures::fx::FxHashSet;
-use tracing::trace;
+use rustc_log::tracing::trace;
 
 use crate::borrow_tracker::stacked_borrows::{Item, Permission};
 use crate::borrow_tracker::{AccessKind, BorTag};
@@ -153,7 +153,7 @@ impl<'tcx> Stack {
     /// Panics if any of the caching mechanisms have broken,
     /// - The StackCache indices don't refer to the parallel items,
     /// - There are no Unique items outside of first_unique..last_unique
-    #[cfg(feature = "stack-cache-consistency-check")]
+    #[cfg(feature = "expensive-consistency-checks")]
     fn verify_cache_consistency(&self) {
         // Only a full cache needs to be valid. Also see the comments in find_granting_cache
         // and set_unknown_bottom.
@@ -197,7 +197,7 @@ impl<'tcx> Stack {
         tag: ProvenanceExtra,
         exposed_tags: &FxHashSet<BorTag>,
     ) -> Result<Option<usize>, ()> {
-        #[cfg(feature = "stack-cache-consistency-check")]
+        #[cfg(feature = "expensive-consistency-checks")]
         self.verify_cache_consistency();
 
         let ProvenanceExtra::Concrete(tag) = tag else {
@@ -334,7 +334,7 @@ impl<'tcx> Stack {
         // This primes the cache for the next access, which is almost always the just-added tag.
         self.cache.add(new_idx, new);
 
-        #[cfg(feature = "stack-cache-consistency-check")]
+        #[cfg(feature = "expensive-consistency-checks")]
         self.verify_cache_consistency();
     }
 
@@ -417,7 +417,7 @@ impl<'tcx> Stack {
             self.unique_range.end = self.unique_range.end.min(disable_start);
         }
 
-        #[cfg(feature = "stack-cache-consistency-check")]
+        #[cfg(feature = "expensive-consistency-checks")]
         self.verify_cache_consistency();
 
         interp_ok(())
@@ -472,7 +472,7 @@ impl<'tcx> Stack {
             self.unique_range = 0..0;
         }
 
-        #[cfg(feature = "stack-cache-consistency-check")]
+        #[cfg(feature = "expensive-consistency-checks")]
         self.verify_cache_consistency();
         interp_ok(())
     }

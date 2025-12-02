@@ -1,7 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
 #![crate_type = "lib"]
 

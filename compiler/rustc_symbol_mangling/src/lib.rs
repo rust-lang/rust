@@ -88,11 +88,7 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;
@@ -228,7 +224,7 @@ fn compute_symbol_name<'tcx>(
         // However, we don't have the wasm import module map there yet.
         tcx.is_foreign_item(def_id)
             && tcx.sess.target.is_like_wasm
-            && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
+            && tcx.wasm_import_module_map(def_id.krate).contains_key(&def_id.into())
     };
 
     if !wasm_import_module_exception_force_mangling {
@@ -291,7 +287,31 @@ fn compute_symbol_name<'tcx>(
             export::compute_hash_of_export_fn(tcx, instance)
         ),
         false => match mangling_version {
-            SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
+            SymbolManglingVersion::Legacy => {
+                let mangled_name = legacy::mangle(tcx, instance, instantiating_crate);
+
+                let mangled_name_too_long = {
+                    // The PDB debug info format cannot store mangled symbol names for which its
+                    // internal record exceeds u16::MAX bytes, a limit multiple Rust projects have been
+                    // hitting due to the verbosity of legacy name mangling. Depending on the linker version
+                    // in use, such symbol names can lead to linker crashes or incomprehensible linker error
+                    // about a limit being hit.
+                    // Mangle those symbols with v0 mangling instead, which gives us more room to breathe
+                    // as v0 mangling is more compact.
+                    // Empirical testing has shown the limit for the symbol name to be 65521 bytes; use
+                    // 65000 bytes to leave some room for prefixes / suffixes as well as unknown scenarios
+                    // with a different limit.
+                    const MAX_SYMBOL_LENGTH: usize = 65000;
+
+                    tcx.sess.target.uses_pdb_debuginfo() && mangled_name.len() > MAX_SYMBOL_LENGTH
+                };
+
+                if mangled_name_too_long {
+                    v0::mangle(tcx, instance, instantiating_crate, false)
+                } else {
+                    mangled_name
+                }
+            }
             SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
             SymbolManglingVersion::Hashed => {
                 hashed::mangle(tcx, instance, instantiating_crate, || {

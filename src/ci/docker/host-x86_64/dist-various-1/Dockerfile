@@ -111,12 +111,12 @@ ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imafc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64gc-unknown-none-elf
-ENV TARGETS=$TARGETS,armebv7r-none-eabi
-ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
+ENV TARGETS=$TARGETS,armv8r-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 ENV TARGETS=$TARGETS,armv7a-none-eabi
+ENV TARGETS=$TARGETS,armv7a-none-eabihf
 
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
@@ -130,7 +130,9 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CC_armv7a_none_eabi=arm-none-eabi-gcc \
     CC_armv7a_none_eabihf=arm-none-eabi-gcc \
     CFLAGS_armv7a_none_eabi=-march=armv7-a \
-    CFLAGS_armv7a_none_eabihf=-march=armv7-a+vfpv3 \
+    CFLAGS_armv7a_none_eabihf=-march=armv7-a+fp \
+    CC_armv8r_none_eabihf=arm-none-eabi-gcc \
+    CFLAGS_armv8r_none_eabihf="-march=armv8-r+fp.sp -mfpu=fp-armv8" \
     CC_aarch64_unknown_none_softfloat=aarch64-none-elf-gcc \
     CFLAGS_aarch64_unknown_none_softfloat=-mstrict-align -march=armv8-a+nofp+nosimd \
     CC_aarch64_unknown_none=aarch64-none-elf-gcc \

@@ -1,7 +1,8 @@
+use either::Either;
 use ide_db::syntax_helpers::suggest_name;
 use syntax::ast::{self, AstNode, syntax_factory::SyntaxFactory};
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::cover_let_chain};
 
 // Assist: replace_is_some_with_if_let_some
 //
@@ -24,9 +25,10 @@ pub(crate) fn replace_is_method_with_if_let_method(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
-    let if_expr = ctx.find_node_at_offset::<ast::IfExpr>()?;
+    let has_cond = ctx.find_node_at_offset::<Either<ast::IfExpr, ast::WhileExpr>>()?;
 
-    let cond = if_expr.condition()?;
+    let cond = either::for_both!(&has_cond, it => it.condition())?;
+    let cond = cover_let_chain(cond, ctx.selection_trimmed())?;
     let call_expr = match cond {
         ast::Expr::MethodCallExpr(call) => call,
         _ => return None,
@@ -38,7 +40,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
             let receiver = call_expr.receiver()?;
 
             let mut name_generator = suggest_name::NameGenerator::new_from_scope_locals(
-                ctx.sema.scope(if_expr.syntax()),
+                ctx.sema.scope(has_cond.syntax()),
             );
             let var_name = if let ast::Expr::PathExpr(path_expr) = receiver.clone() {
                 name_generator.suggest_name(&path_expr.path()?.to_string())
@@ -47,9 +49,9 @@ pub(crate) fn replace_is_method_with_if_let_method(
             };
 
             let (assist_id, message, text) = if name_ref.text() == "is_some" {
-                ("replace_is_some_with_if_let_some", "Replace `is_some` with `if let Some`", "Some")
+                ("replace_is_some_with_if_let_some", "Replace `is_some` with `let Some`", "Some")
             } else {
-                ("replace_is_ok_with_if_let_ok", "Replace `is_ok` with `if let Ok`", "Ok")
+                ("replace_is_ok_with_if_let_ok", "Replace `is_ok` with `let Ok`", "Ok")
             };
 
             acc.add(
@@ -187,6 +189,97 @@ fn main() {
 fn main() {
     let x = Ok(1);
     if x.is_e$0rr() {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_is_some_with_if_let_some_in_let_chain() {
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && x.is_som$0e() {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && let Some(${0:x1}) = x {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if x.is_som$0e() && cond {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if let Some(${0:x1}) = x && cond {}
+}
+"#,
+        );
+
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && x.is_som$0e() && cond {}
+}
+"#,
+            r#"
+fn main() {
+    let x = Some(1);
+    let cond = true;
+    if cond && let Some(${0:x1}) = x && cond {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_is_some_with_while_let_some() {
+        check_assist(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let mut x = Some(1);
+    while x.is_som$0e() { x = None }
+}
+"#,
+            r#"
+fn main() {
+    let mut x = Some(1);
+    while let Some(${0:x1}) = x { x = None }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn replace_is_some_with_if_let_some_not_applicable_after_l_curly() {
+        check_assist_not_applicable(
+            replace_is_method_with_if_let_method,
+            r#"
+fn main() {
+    let x = Some(1);
+    if x.is_some() {
+        ()$0
+    }
 }
 "#,
         );

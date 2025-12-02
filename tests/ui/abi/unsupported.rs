@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x64 x64_win i686 aarch64 arm riscv32 riscv64
 //
 //@ [x64] needs-llvm-components: x86
@@ -15,6 +15,7 @@
 //@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf --crate-type=rlib
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(
     no_core,

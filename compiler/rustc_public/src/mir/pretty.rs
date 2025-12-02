@@ -102,7 +102,6 @@ fn pretty_statement<W: Write>(writer: &mut W, statement: &StatementKind) -> io::
         StatementKind::SetDiscriminant { place, variant_index } => {
             writeln!(writer, "{INDENT}discriminant({place:?}) = {};", variant_index.to_index())
         }
-        StatementKind::Deinit(place) => writeln!(writer, "Deinit({place:?};"),
         StatementKind::StorageLive(local) => {
             writeln!(writer, "{INDENT}StorageLive(_{local});")
         }
@@ -387,8 +386,8 @@ fn pretty_rvalue<W: Write>(writer: &mut W, rval: &Rvalue) -> io::Result<()> {
         Rvalue::ThreadLocalRef(item) => {
             write!(writer, "thread_local_ref{item:?}")
         }
-        Rvalue::NullaryOp(nul, ty) => {
-            write!(writer, "{nul:?}::<{ty}>() \" \"")
+        Rvalue::NullaryOp(nul) => {
+            write!(writer, "{nul:?}() \" \"")
         }
         Rvalue::UnaryOp(un, op) => {
             write!(writer, "{:?}({})", un, pretty_operand(op))

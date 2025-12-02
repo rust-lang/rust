@@ -1,14 +1,19 @@
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:11:5
+  --> tests/ui/let_unit.rs:16:5
    |
 LL |     let _x = println!("x");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `println!("x");`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::let-unit-value` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
+help: omit the `let` binding
+   |
+LL -     let _x = println!("x");
+LL +     println!("x");
+   |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:60:5
+  --> tests/ui/let_unit.rs:65:5
    |
 LL | /     let _ = v
 LL | |
@@ -21,18 +26,12 @@ LL | |         .unwrap();
    |
 help: omit the `let` binding
    |
-LL ~     v
-LL +
-LL +         .into_iter()
-LL +         .map(|i| i * 2)
-LL +         .filter(|i| i.is_multiple_of(2))
-LL +         .map(|_| ())
-LL +         .next()
-LL +         .unwrap();
+LL -     let _ = v
+LL +     v
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:110:5
+  --> tests/ui/let_unit.rs:115:5
    |
 LL | /     let x = match Some(0) {
 LL | |
@@ -45,17 +44,12 @@ LL | |     };
    |
 help: omit the `let` binding
    |
-LL ~     match Some(0) {
-LL +
-LL +         None => f2(1),
-LL +         Some(0) => f(),
-LL +         Some(1) => f2(3),
-LL +         Some(_) => (),
-LL +     };
+LL -     let x = match Some(0) {
+LL +     match Some(0) {
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:192:9
+  --> tests/ui/let_unit.rs:195:9
    |
 LL |         let res = returns_unit();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -69,18 +63,70 @@ LL ~         returns_result(()).unwrap();
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:206:5
+  --> tests/ui/let_unit.rs:208:5
    |
-LL |     let res = return_unit();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let res = returns_unit();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: replace variable usages with `()`
    |
 LL ~     let res = ();
-LL ~     return_unit();
+LL ~     returns_unit();
 LL |
-LL ~     do_something(());
+LL ~     takes_unit(());
    |
 
-error: aborting due to 5 previous errors
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:216:14
+   |
+LL |         _ => _ = returns_unit(),
+   |              ^^^^^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding
+   |
+LL -         _ => _ = returns_unit(),
+LL +         _ => returns_unit(),
+   |
+
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:220:5
+   |
+LL |     _ = if true {}
+   |     ^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding
+   |
+LL -     _ = if true {}
+LL +     if true {}
+   |
+
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:225:5
+   |
+LL |     let res = eprintln!("I return unit");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace variable usages with `()`
+   |
+LL ~     let res = ();
+LL ~     eprintln!("I return unit");
+LL |
+LL ~     takes_unit(());
+   |
+
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:235:5
+   |
+LL |     let value = println!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: omit the `let` binding and replace variable usages with `()`
+   |
+LL ~     println!();
+LL |
+LL |
+LL ~     Foo { value: () };
+   |
+
+error: aborting due to 9 previous errors
 

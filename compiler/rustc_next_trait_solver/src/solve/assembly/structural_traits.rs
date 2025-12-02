@@ -664,7 +664,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     cx: I,
     self_ty: I::Ty,
-) -> Result<(ty::Binder<I, (I::FnInputTys, I::Ty)>, I::FunctionId, I::GenericArgs), NoSolution> {
+) -> Result<(ty::Binder<I, (I::Ty, I::Ty)>, I::FunctionId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
             let sig = cx.fn_sig(def_id);
@@ -673,7 +673,8 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
                 && cx.fn_is_const(def_id)
             {
                 Ok((
-                    sig.instantiate(cx, args).map_bound(|sig| (sig.inputs(), sig.output())),
+                    sig.instantiate(cx, args)
+                        .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                     def_id,
                     args,
                 ))
@@ -869,7 +870,7 @@ where
 
     // FIXME(associated_const_equality): Also add associated consts to
     // the requirements here.
-    for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id.into()) {
+    for associated_type_def_id in cx.associated_type_def_ids(trait_ref.def_id) {
         // associated types that require `Self: Sized` do not show up in the built-in
         // implementation of `Trait for dyn Trait`, and can be dropped here.
         if cx.generics_require_sized_self(associated_type_def_id) {

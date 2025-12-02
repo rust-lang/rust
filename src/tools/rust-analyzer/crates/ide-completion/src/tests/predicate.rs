@@ -22,6 +22,10 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -95,6 +99,10 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );
@@ -120,6 +128,10 @@ impl Record {
             un Union                  Union
             bt u32                      u32
             kw crate::
+            kw dyn
+            kw fn
+            kw for
+            kw impl
             kw self::
         "#]],
     );

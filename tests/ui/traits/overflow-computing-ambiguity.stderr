@@ -5,9 +5,14 @@ LL |     hello();
    |     ^^^^^ cannot infer type of the type parameter `T` declared on the function `hello`
    |
    = note: cannot satisfy `_: Hello`
-   = help: the following types implement trait `Hello`:
-             Foo<'a, &'a T>
-             Foo<'static, i32>
+help: the following types implement trait `Hello`
+  --> $DIR/overflow-computing-ambiguity.rs:8:1
+   |
+LL | impl<'a, T> Hello for Foo<'a, &'a T> where Foo<'a, T>: Hello {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<'a, &'a T>`
+LL |
+LL | impl Hello for Foo<'static, i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<'static, i32>`
 note: required by a bound in `hello`
   --> $DIR/overflow-computing-ambiguity.rs:12:13
    |

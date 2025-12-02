@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ build-pass
 //@ revisions: arm
 //@[arm] compile-flags: --target arm-unknown-linux-gnueabi
@@ -6,6 +6,7 @@
 //@ revisions: aarch64
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 #![feature(
     no_core, lang_items, link_llvm_intrinsics,
     abi_unadjusted, repr_simd, arm_target_feature,

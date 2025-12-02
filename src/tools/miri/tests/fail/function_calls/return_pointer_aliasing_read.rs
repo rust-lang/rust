@@ -7,7 +7,7 @@
 use std::intrinsics::mir::*;
 
 #[custom_mir(dialect = "runtime", phase = "optimized")]
-pub fn main() {
+fn main() {
     mir! {
         {
             let _x = 0;

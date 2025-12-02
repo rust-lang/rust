@@ -1,4 +1,8 @@
-use super::{Builder, JoinInner, Result, Thread, current_or_unnamed};
+use super::Result;
+use super::builder::Builder;
+use super::current::current_or_unnamed;
+use super::lifecycle::{JoinInner, spawn_unchecked};
+use super::thread::Thread;
 use crate::marker::PhantomData;
 use crate::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use crate::sync::Arc;
@@ -181,9 +185,8 @@ impl<'scope, 'env> Scope<'scope, 'env> {
     /// end of the scope. In that case, if the spawned thread panics, [`scope`] will
     /// panic after all threads are joined.
     ///
-    /// This call will create a thread using default parameters of [`Builder`].
-    /// If you want to specify the stack size or the name of the thread, use
-    /// [`Builder::spawn_scoped`] instead.
+    /// This function creates a thread with the default parameters of [`Builder`].
+    /// To specify the new thread's stack size or the name, use [`Builder::spawn_scoped`].
     ///
     /// # Panics
     ///
@@ -258,7 +261,10 @@ impl Builder {
         F: FnOnce() -> T + Send + 'scope,
         T: Send + 'scope,
     {
-        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(scope.data.clone())) }?))
+        let Builder { name, stack_size, no_hooks } = self;
+        Ok(ScopedJoinHandle(unsafe {
+            spawn_unchecked(name, stack_size, no_hooks, Some(scope.data.clone()), f)
+        }?))
     }
 }
 
@@ -280,7 +286,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     #[must_use]
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn thread(&self) -> &Thread {
-        &self.0.thread
+        self.0.thread()
     }
 
     /// Waits for the associated thread to finish.
@@ -326,7 +332,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     /// to return quickly, without blocking for any significant amount of time.
     #[stable(feature = "scoped_threads", since = "1.63.0")]
     pub fn is_finished(&self) -> bool {
-        Arc::strong_count(&self.0.packet) == 1
+        self.0.is_finished()
     }
 }
 

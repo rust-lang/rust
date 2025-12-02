@@ -1,4 +1,5 @@
 use crate::macros::root_macro_call_first_node;
+use crate::res::MaybeResPath;
 use crate::visitors::{Descend, Visitable, for_each_expr, for_each_expr_without_closures};
 use crate::{self as utils, get_enclosing_loop_or_multi_call_closure};
 use core::ops::ControlFlow;
@@ -196,7 +197,7 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
 
 pub fn local_used_in<'tcx>(cx: &LateContext<'tcx>, local_id: HirId, v: impl Visitable<'tcx>) -> bool {
     for_each_expr(cx, v, |e| {
-        if utils::path_to_local_id(e, local_id) {
+        if e.res_local_id() == Some(local_id) {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
@@ -222,7 +223,7 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
     let mut past_expr = false;
     for_each_expr(cx, block, |e| {
         if past_expr {
-            if utils::path_to_local_id(e, local_id) {
+            if e.res_local_id() == Some(local_id) {
                 ControlFlow::Break(())
             } else {
                 ControlFlow::Continue(Descend::Yes)

@@ -9,7 +9,7 @@
     clippy::no_effect,
     clippy::unnecessary_operation,
     clippy::never_loop,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::collapsible_if,
     clippy::blocks_in_conditions,
     clippy::single_match,

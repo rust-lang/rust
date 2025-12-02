@@ -1,5 +1,7 @@
+use rustc_abi::TyAbiInterface;
+
 use crate::callconv::{ArgAbi, FnAbi};
-use crate::spec::HasTargetSpec;
+use crate::spec::{Env, HasTargetSpec, Os};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() {
@@ -9,25 +11,31 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<Ty>(cx: &impl HasTargetSpec, arg: &mut ArgAbi<'_, Ty>) {
+fn classify_arg<'a, Ty, C: HasTargetSpec>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if arg.is_ignore() {
         // powerpc-unknown-linux-{gnu,musl,uclibc} doesn't ignore ZSTs.
-        if cx.target_spec().os == "linux"
-            && matches!(&*cx.target_spec().env, "gnu" | "musl" | "uclibc")
+        if cx.target_spec().os == Os::Linux
+            && matches!(cx.target_spec().env, Env::Gnu | Env::Musl | Env::Uclibc)
             && arg.layout.is_zst()
         {
             arg.make_indirect_from_ignore();
         }
         return;
     }
-    if arg.layout.is_aggregate() {
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) || arg.layout.is_aggregate() {
         arg.make_indirect();
     } else {
         arg.extend_integer_width_to(32);
     }
 }
 
-pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<'a, Ty, C: HasTargetSpec>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }

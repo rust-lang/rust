@@ -20,7 +20,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     self as hir, AmbigArg, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node,
-    expr_needs_parens, is_range_literal,
+    expr_needs_parens,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_middle::middle::privacy::Level;
@@ -364,7 +364,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
@@ -444,7 +444,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
                         | hir::ItemKind::Const(_, generics, _, _)
-                        | hir::ItemKind::TraitAlias(_, generics, _),
+                        | hir::ItemKind::TraitAlias(_, _, generics, _),
                     ..
                 }) if finder.can_suggest_bound(generics) => {
                     // Missing generic type parameter bound.
@@ -668,12 +668,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         );
                     }
                     let derefs = "*".repeat(steps);
-                    let needs_parens = steps > 0
-                        && match expr.kind {
-                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                            _ if is_range_literal(expr) => true,
-                            _ => false,
-                        };
+                    let needs_parens = steps > 0 && expr_needs_parens(expr);
                     let mut suggestion = if needs_parens {
                         vec![
                             (
@@ -942,6 +937,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
+        // FIXME expr and stmt have the same span if expr comes from expansion
+        // cc: https://github.com/rust-lang/rust/pull/147416#discussion_r2499407523
+        if stmt.span.from_expansion() {
+            return;
+        }
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else {
             return;
         };
@@ -3476,6 +3476,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // can do about it. As far as they are concerned, `?` is compiler magic.
                     return;
                 }
+                if tcx.is_diagnostic_item(sym::PinDerefMutHelper, parent_def_id) {
+                    let parent_predicate =
+                        self.resolve_vars_if_possible(data.derived.parent_trait_pred);
+
+                    // Skip PinDerefMutHelper in suggestions, but still show downstream suggestions.
+                    ensure_sufficient_stack(|| {
+                        self.note_obligation_cause_code(
+                            body_id,
+                            err,
+                            parent_predicate,
+                            param_env,
+                            &data.derived.parent_code,
+                            obligated_types,
+                            seen_requirements,
+                        )
+                    });
+                    return;
+                }
                 let self_ty_str =
                     tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
                 let trait_name = tcx.short_string(
@@ -4572,7 +4590,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 param_env,
                 projection,
             ));
-            if ocx.select_where_possible().is_empty()
+            if ocx.try_evaluate_obligations().is_empty()
                 && let ty = self.resolve_vars_if_possible(ty)
                 && !ty.is_ty_var()
             {
@@ -4719,7 +4737,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         pred,
                     ));
                 });
-                if !ocx.select_where_possible().is_empty() {
+                if !ocx.try_evaluate_obligations().is_empty() {
                     // encountered errors.
                     return;
                 }

@@ -11,6 +11,10 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
+    target_os = "motor" => {
+        mod motor;
+        use motor as imp;
+    }
     _ => {
         mod unsupported;
         use unsupported as imp;
@@ -38,6 +42,7 @@ pub use imp::{
         ))
     ),
     target_os = "windows",
+    target_os = "motor"
 ))]
 pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
     use crate::sys::pipe::read2;
@@ -77,5 +82,6 @@ pub fn output(cmd: &mut Command) -> crate::io::Result<(ExitStatus, Vec<u8>, Vec<
         ))
     ),
     target_os = "windows",
+    target_os = "motor"
 )))]
 pub use imp::output;

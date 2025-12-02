@@ -1,6 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
+//@ ignore-backends: gcc
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 

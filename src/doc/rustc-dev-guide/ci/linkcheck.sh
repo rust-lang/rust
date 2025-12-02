@@ -32,7 +32,7 @@ elif [ "$GITHUB_EVENT_NAME" = "pull_request" ] ; then # running in PR CI build
 
   echo "Checking files changed since $BASE_SHA: $CHANGED_FILES"
 else # running locally
-  COMMIT_RANGE=master...
+  COMMIT_RANGE=main...
   CHANGED_FILES=$(git diff --name-only $COMMIT_RANGE | sed 's#^src/##' | tr '\n' ' ')
   FLAGS="-f $CHANGED_FILES"
 

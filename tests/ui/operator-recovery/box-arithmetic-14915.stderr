@@ -6,11 +6,11 @@ LL |     println!("{}", x + 1);
    |                    |
    |                    Box<isize>
    |
-note: the foreign item type `Box<isize>` doesn't implement `Add<{integer}>`
+note: `Box<isize>` does not implement `Add<{integer}>`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
   ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
-   = note: not implement `Add<{integer}>`
+   = note: `Box<isize>` is defined in another crate
 
 error: aborting due to 1 previous error
 

@@ -14,7 +14,6 @@ use std::io::{BufWriter, Write, stdout};
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -120,58 +119,6 @@ impl<'tcx> JsonRenderer<'tcx> {
             try_err!(writer.flush(), path);
             Ok(())
         })
-    }
-}
-
-fn target(sess: &rustc_session::Session) -> types::Target {
-    // Build a set of which features are enabled on this target
-    let globally_enabled_features: FxHashSet<&str> =
-        sess.unstable_target_features.iter().map(|name| name.as_str()).collect();
-
-    // Build a map of target feature stability by feature name
-    use rustc_target::target_features::Stability;
-    let feature_stability: FxHashMap<&str, Stability> = sess
-        .target
-        .rust_target_features()
-        .iter()
-        .copied()
-        .map(|(name, stability, _)| (name, stability))
-        .collect();
-
-    types::Target {
-        triple: sess.opts.target_triple.tuple().into(),
-        target_features: sess
-            .target
-            .rust_target_features()
-            .iter()
-            .copied()
-            .filter(|(_, stability, _)| {
-                // Describe only target features which the user can toggle
-                stability.toggle_allowed().is_ok()
-            })
-            .map(|(name, stability, implied_features)| {
-                types::TargetFeature {
-                    name: name.into(),
-                    unstable_feature_gate: match stability {
-                        Stability::Unstable(feature_gate) => Some(feature_gate.as_str().into()),
-                        _ => None,
-                    },
-                    implies_features: implied_features
-                        .iter()
-                        .copied()
-                        .filter(|name| {
-                            // Imply only target features which the user can toggle
-                            feature_stability
-                                .get(name)
-                                .map(|stability| stability.toggle_allowed().is_ok())
-                                .unwrap_or(false)
-                        })
-                        .map(String::from)
-                        .collect(),
-                    globally_enabled: globally_enabled_features.contains(name),
-                }
-            })
-            .collect(),
     }
 }
 
@@ -317,7 +264,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         // multiple targets: https://github.com/rust-lang/rust/pull/137632
         //
         // We want to describe a single target, so pass tcx.sess rather than tcx.
-        let target = target(self.tcx.sess);
+        let target = conversions::target(self.tcx.sess);
 
         debug!("Constructing Output");
         let output_crate = types::Crate {
@@ -355,6 +302,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,
                             },
+                            path: self
+                                .tcx
+                                .used_crate_source(*crate_num)
+                                .paths()
+                                .next()
+                                .expect("crate should have at least 1 path")
+                                .clone(),
                         },
                     )
                 })
@@ -392,15 +346,12 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItemConstraint, 112);
     static_assert_size!(Crate, 184);
-    static_assert_size!(ExternalCrate, 48);
     static_assert_size!(FunctionPointer, 168);
     static_assert_size!(GenericArg, 80);
     static_assert_size!(GenericArgs, 104);
     static_assert_size!(GenericBound, 72);
     static_assert_size!(GenericParamDef, 136);
     static_assert_size!(Impl, 304);
-    // `Item` contains a `PathBuf`, which is different sizes on different OSes.
-    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
     static_assert_size!(ItemSummary, 32);
     static_assert_size!(PolyTrait, 64);
     static_assert_size!(PreciseCapturingArg, 32);
@@ -408,4 +359,8 @@ mod size_asserts {
     static_assert_size!(Type, 80);
     static_assert_size!(WherePredicate, 160);
     // tidy-alphabetical-end
+
+    // These contains a `PathBuf`, which is different sizes on different OSes.
+    static_assert_size!(Item, 528 + size_of::<std::path::PathBuf>());
+    static_assert_size!(ExternalCrate, 48 + size_of::<std::path::PathBuf>());
 }

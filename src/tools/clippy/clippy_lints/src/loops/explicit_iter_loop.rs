@@ -1,10 +1,11 @@
 use super::EXPLICIT_ITER_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sym;
 use clippy_utils::ty::{
-    implements_trait, implements_trait_with_env, is_copy, is_type_lang_item, make_normalized_projection,
+    implements_trait, implements_trait_with_env, is_copy, make_normalized_projection,
     make_normalized_projection_with_regions, normalize_with_regions,
 };
 use rustc_errors::Applicability;
@@ -127,8 +128,7 @@ fn is_ref_iterable<'tcx>(
         let self_ty = typeck.expr_ty(self_arg);
         let self_is_copy = is_copy(cx, self_ty);
 
-        if is_type_lang_item(cx, self_ty.peel_refs(), rustc_hir::LangItem::OwnedBox)
-            && !msrv.meets(cx, msrvs::BOX_INTO_ITER)
+        if self_ty.peel_refs().is_lang_item(cx, rustc_hir::LangItem::OwnedBox) && !msrv.meets(cx, msrvs::BOX_INTO_ITER)
         {
             return None;
         }

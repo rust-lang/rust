@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: x86_64 arm
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64] check-pass
@@ -7,7 +7,7 @@
 //@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
 //@[arm] build-fail
 //@[arm] needs-llvm-components: arm
-//@ needs-asm-support
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![crate_type = "rlib"]

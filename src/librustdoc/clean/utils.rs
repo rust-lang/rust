@@ -5,13 +5,13 @@ use std::{ascii, mem};
 
 use rustc_ast::join_path_idents;
 use rustc_ast::tokenstream::TokenTree;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::{Symbol, kw, sym};
-use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, warn};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -26,6 +26,7 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 use crate::display::Joined as _;
+use crate::formats::item_type::ItemType;
 
 #[cfg(test)]
 mod tests;
@@ -253,7 +254,6 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
         hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
     join_path_idents(segments.iter().map(|seg| seg.ident))
@@ -304,7 +304,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
+        PatKind::Box(p) | PatKind::Ref(p, _, _) | PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::TupleStruct(p, ..) | PatKind::Expr(PatExpr { kind: PatExprKind::Path(p), .. }) => {
             qpath_to_string(p)
         }
@@ -497,7 +497,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
 
     let (kind, did) = match res {
         Res::Def(
-            kind @ (AssocTy
+            AssocTy
             | AssocFn
             | AssocConst
             | Variant
@@ -512,9 +512,9 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Const
             | Static { .. }
             | Macro(..)
-            | TraitAlias),
+            | TraitAlias,
             did,
-        ) => (kind.into(), did),
+        ) => (ItemType::from_def_id(did, cx.tcx), did),
 
         _ => panic!("register_res: unexpected {res:?}"),
     };

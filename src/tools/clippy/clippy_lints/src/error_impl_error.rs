@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
-use clippy_utils::path_res;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{Item, ItemKind};
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                 if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_ref.trait_def_id())
                     && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
                     && error_def_id == trait_def_id
-                    && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
+                    && let Some(def_id) = imp.self_ty.basic_res().opt_def_id().and_then(DefId::as_local)
                     && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
                     && ident.name == sym::Error
                     && is_visible_outside_module(cx, def_id) =>

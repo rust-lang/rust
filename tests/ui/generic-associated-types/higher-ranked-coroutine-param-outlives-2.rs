@@ -1,8 +1,7 @@
+//@ check-pass
 //@ edition: 2021
 //@ revisions: assumptions no_assumptions
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
-//@[assumptions] check-pass
-//@[no_assumptions] known-bug: #110338
 
 pub trait FutureIterator {
     type Future<'s, 'cx>: Send

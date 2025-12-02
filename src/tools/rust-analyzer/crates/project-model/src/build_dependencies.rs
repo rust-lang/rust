@@ -9,7 +9,7 @@
 use std::{cell::RefCell, io, mem, process::Command};
 
 use base_db::Env;
-use cargo_metadata::{Message, camino::Utf8Path};
+use cargo_metadata::{Message, PackageId, camino::Utf8Path};
 use cfg::CfgAtom;
 use itertools::Itertools;
 use la_arena::ArenaMap;
@@ -18,6 +18,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize as _;
 use stdx::never;
 use toolchain::Tool;
+use triomphe::Arc;
 
 use crate::{
     CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath, Package, Sysroot,
@@ -85,6 +86,7 @@ impl WorkspaceBuildScripts {
             config,
             &allowed_features,
             workspace.manifest_path(),
+            workspace.target_directory().as_ref(),
             current_dir,
             sysroot,
             toolchain,
@@ -105,8 +107,9 @@ impl WorkspaceBuildScripts {
         let (_guard, cmd) = Self::build_command(
             config,
             &Default::default(),
-            // This is not gonna be used anyways, so just construct a dummy here
+            // These are not gonna be used anyways, so just construct a dummy here
             &ManifestPath::try_from(working_directory.clone()).unwrap(),
+            working_directory.as_ref(),
             working_directory,
             &Sysroot::empty(),
             None,
@@ -141,7 +144,7 @@ impl WorkspaceBuildScripts {
                 if let Some(&(package, workspace)) = by_id.get(package) {
                     cb(&workspaces[workspace][package].name, &mut res[workspace].outputs[package]);
                 } else {
-                    never!("Received compiler message for unknown package: {}", package);
+                    tracing::error!("Received compiler message for unknown package: {}", package);
                 }
             },
             progress,
@@ -284,7 +287,7 @@ impl WorkspaceBuildScripts {
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
-        let mut by_id: FxHashMap<String, Package> = FxHashMap::default();
+        let mut by_id: FxHashMap<Arc<PackageId>, Package> = FxHashMap::default();
         for package in workspace.packages() {
             outputs.insert(package, BuildScriptOutput::default());
             by_id.insert(workspace[package].id.clone(), package);
@@ -323,7 +326,7 @@ impl WorkspaceBuildScripts {
         // ideally this would be something like:
         // with_output_for: impl FnMut(&str, dyn FnOnce(&mut BuildScriptOutput)),
         // but owned trait objects aren't a thing
-        mut with_output_for: impl FnMut(&str, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
+        mut with_output_for: impl FnMut(&PackageId, &mut dyn FnMut(&str, &mut BuildScriptOutput)),
         progress: &dyn Fn(String),
     ) -> io::Result<Option<String>> {
         let errors = RefCell::new(String::new());
@@ -346,7 +349,7 @@ impl WorkspaceBuildScripts {
 
                 match message {
                     Message::BuildScriptExecuted(mut message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                        with_output_for(&message.package_id, &mut |name, data| {
                             progress(format!("build script {name} run"));
                             let cfgs = {
                                 let mut acc = Vec::new();
@@ -377,7 +380,7 @@ impl WorkspaceBuildScripts {
                         });
                     }
                     Message::CompilerArtifact(message) => {
-                        with_output_for(&message.package_id.repr, &mut |name, data| {
+                        with_output_for(&message.package_id, &mut |name, data| {
                             progress(format!("proc-macro {name} built"));
                             if data.proc_macro_dylib_path == ProcMacroDylibPath::NotBuilt {
                                 data.proc_macro_dylib_path = ProcMacroDylibPath::NotProcMacro;
@@ -429,6 +432,7 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
         manifest_path: &ManifestPath,
+        target_dir: &Utf8Path,
         current_dir: &AbsPath,
         sysroot: &Sysroot,
         toolchain: Option<&semver::Version>,
@@ -449,8 +453,9 @@ impl WorkspaceBuildScripts {
                 cmd.arg("--manifest-path");
                 cmd.arg(manifest_path);
 
-                if let Some(target_dir) = &config.target_dir {
-                    cmd.arg("--target-dir").arg(target_dir);
+                if let Some(target_dir) = config.target_dir_config.target_dir(Some(target_dir)) {
+                    cmd.arg("--target-dir");
+                    cmd.arg(target_dir.as_ref());
                 }
 
                 if let Some(target) = &config.target {

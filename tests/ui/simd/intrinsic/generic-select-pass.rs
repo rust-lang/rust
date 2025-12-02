@@ -2,9 +2,10 @@
 #![allow(non_camel_case_types)]
 //@ ignore-emscripten
 //@ ignore-endian-big behavior of simd_select_bitmask is endian-specific
+//@ compile-flags: --cfg minisimd_const
 
 // Test that the simd_select intrinsics produces correct results.
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -14,7 +15,7 @@ use std::intrinsics::simd::{simd_select, simd_select_bitmask};
 
 type b8x4 = i8x4;
 
-fn main() {
+const fn select() {
     let m0 = b8x4::from_array([!0, !0, !0, !0]);
     let m1 = b8x4::from_array([0, 0, 0, 0]);
     let m2 = b8x4::from_array([!0, !0, 0, 0]);
@@ -172,4 +173,9 @@ fn main() {
         let e = u32x4::from_array([4, 5, 2, 3]);
         assert_eq!(r, e);
     }
+}
+
+fn main() {
+    const { select() };
+    select();
 }

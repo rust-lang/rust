@@ -34,7 +34,7 @@ fn main() {
         println!("{}", i);
     }
 
-    for i in (0..10).rev().map(|x| x * 2) {
+    for i in ((0..10).rev()).map(|x| x * 2) {
         //~^ reversed_empty_ranges
         println!("{}", i);
     }

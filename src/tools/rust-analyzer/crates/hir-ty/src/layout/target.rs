@@ -39,7 +39,7 @@ pub fn target_data_layout_query(
                         target,
                     } => format!(r#"inconsistent target specification: "data-layout" claims pointers are {pointer_size}-bit, while "target-pointer-width" is `{target}`"#),
                     TargetDataLayoutErrors::InvalidBitsSize { err } => err,
-                    TargetDataLayoutErrors::UnknownPointerSpecification { err } => format!(r#"use of unknown pointer specifer in "data-layout": {err}"#),
+                    TargetDataLayoutErrors::UnknownPointerSpecification { err } => format!(r#"use of unknown pointer specifier in "data-layout": {err}"#),
                 }.into())
             }
         },

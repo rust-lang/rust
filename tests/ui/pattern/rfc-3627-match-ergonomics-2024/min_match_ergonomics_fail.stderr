@@ -99,123 +99,123 @@ LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
 LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
    |
 
-error: reference patterns may only be written when the default binding mode is `move`
+error: cannot explicitly dereference within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:24:20
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                    ^ reference pattern not allowed under `ref` default binding mode
+   |                    ^ reference pattern not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:24:19
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                   ^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+   |                   ^^^^^ this non-reference pattern matches on a reference type `&_`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL | test_pat_on_type![&(&x,): &(&T,)];
    |                   +
 
-error: reference patterns may only be written when the default binding mode is `move`
+error: cannot explicitly dereference within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:27:20
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                    ^^^^ reference pattern not allowed under `ref` default binding mode
+   |                    ^^^^ reference pattern not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:27:19
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                   ^^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+   |                   ^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
    |                   +
 
-error: reference patterns may only be written when the default binding mode is `move`
+error: cannot explicitly dereference within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:31:28
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                            ^ reference pattern not allowed under `ref` default binding mode
+   |                            ^ reference pattern not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:31:19
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                   ^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+   |                   ^^^^^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&_`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
    |                   +
 
-error: binding modifiers may only be written when the default binding mode is `move`
+error: cannot mutably bind by value within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:32:20
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                    ^^^ binding modifier not allowed under `ref` default binding mode
+   |                    ^^^ `mut` binding modifier not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:32:19
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                   ^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+   |                   ^^^^^^^^ this non-reference pattern matches on a reference type `&_`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL | test_pat_on_type![&(mut x,): &(T,)];
    |                   +
 
-error: binding modifiers may only be written when the default binding mode is `move`
+error: cannot explicitly borrow within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:33:20
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                    ^^^ binding modifier not allowed under `ref` default binding mode
+   |                    ^^^ explicit `ref` binding modifier not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:33:19
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                   ^^^^^^^^ this matches on type `&_`
+   |                   ^^^^^^^^ this non-reference pattern matches on a reference type `&_`
 help: remove the unnecessary binding modifier
    |
 LL - test_pat_on_type![(ref x,): &(T,)];
 LL + test_pat_on_type![(x,): &(T,)];
    |
 
-error: binding modifiers may only be written when the default binding mode is `move`
+error: cannot explicitly borrow within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:34:20
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                    ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
+   |                    ^^^^^^^ explicit `ref` binding modifier not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:34:19
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                   ^^^^^^^^^^^^ this matches on type `&mut _`
+   |                   ^^^^^^^^^^^^ this non-reference pattern matches on a reference type `&mut _`
 help: remove the unnecessary binding modifier
    |
 LL - test_pat_on_type![(ref mut x,): &mut (T,)];
 LL + test_pat_on_type![(x,): &mut (T,)];
    |
 
-error: reference patterns may only be written when the default binding mode is `move`
+error: cannot explicitly dereference within an implicitly-borrowing pattern
   --> $DIR/min_match_ergonomics_fail.rs:43:10
    |
 LL |         (&x,) => x,
-   |          ^ reference pattern not allowed under `ref` default binding mode
+   |          ^ reference pattern not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-note: matching on a reference type with a non-reference pattern changes the default binding mode
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+note: matching on a reference type with a non-reference pattern implicitly borrows the contents
   --> $DIR/min_match_ergonomics_fail.rs:43:9
    |
 LL |         (&x,) => x,
-   |         ^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+   |         ^^^^^ this non-reference pattern matches on a reference type `&_`
+help: match on the reference with a reference pattern to avoid implicitly borrowing
    |
 LL |         &(&x,) => x,
    |         +

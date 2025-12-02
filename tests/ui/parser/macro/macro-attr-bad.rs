@@ -13,6 +13,12 @@ macro_rules! attr_incomplete_3 { attr() {} }
 macro_rules! attr_incomplete_4 { attr() {} => }
 //~^ ERROR macro definition ended unexpectedly
 
+macro_rules! attr_incomplete_5 { unsafe }
+//~^ ERROR macro definition ended unexpectedly
+
+macro_rules! attr_incomplete_6 { unsafe attr }
+//~^ ERROR macro definition ended unexpectedly
+
 macro_rules! attr_noparens_1 { attr{} {} => {} }
 //~^ ERROR `attr` rule argument matchers require parentheses
 

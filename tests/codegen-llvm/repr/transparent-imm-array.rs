@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 

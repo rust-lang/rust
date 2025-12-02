@@ -52,6 +52,16 @@ const UNALIGNED_PTR: () = unsafe {
     //[with_flag]~^ ERROR: invalid value
 };
 
+// A function pointer offset to be maybe-null.
+const MAYBE_NULL_FN_PTR: () = unsafe {
+    let _x: fn() = transmute({
+    //[with_flag]~^ ERROR: invalid value
+        fn fun() {}
+        let ptr = fun as fn();
+        (ptr as *const u8).wrapping_add(10)
+    });
+};
+
 const UNINHABITED_VARIANT: () = unsafe {
     let data = [1u8];
     // Not using transmute, we want to hit the ImmTy code path.

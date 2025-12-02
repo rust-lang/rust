@@ -263,15 +263,15 @@ mod spurious_read {
             match xy_rel {
                 RelPosXY::MutuallyForeign =>
                     match self {
-                        PtrSelector::X => (This, CousinAccess),
-                        PtrSelector::Y => (CousinAccess, This),
-                        PtrSelector::Other => (CousinAccess, CousinAccess),
+                        PtrSelector::X => (LocalAccess, ForeignAccess),
+                        PtrSelector::Y => (ForeignAccess, LocalAccess),
+                        PtrSelector::Other => (ForeignAccess, ForeignAccess),
                     },
                 RelPosXY::XChildY =>
                     match self {
-                        PtrSelector::X => (This, StrictChildAccess),
-                        PtrSelector::Y => (AncestorAccess, This),
-                        PtrSelector::Other => (CousinAccess, CousinAccess),
+                        PtrSelector::X => (LocalAccess, LocalAccess),
+                        PtrSelector::Y => (ForeignAccess, LocalAccess),
+                        PtrSelector::Other => (ForeignAccess, ForeignAccess),
                     },
             }
         }

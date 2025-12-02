@@ -21,7 +21,9 @@ ENV PATH=$PATH:/x-tools/loongarch64-unknown-linux-musl/bin
 
 ENV CC_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-gcc \
     AR_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-ar \
-    CXX_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-g++
+    CXX_loongarch64_unknown_linux_musl=loongarch64-unknown-linux-musl-g++ \
+    CFLAGS_loongarch64_unknown_linux_musl="-mcmodel=medium" \
+    CXXFLAGS_loongarch64_unknown_linux_musl="-mcmodel=medium"
 
 ENV HOSTS=loongarch64-unknown-linux-musl
 

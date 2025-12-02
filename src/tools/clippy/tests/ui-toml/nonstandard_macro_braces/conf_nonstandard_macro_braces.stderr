@@ -54,5 +54,11 @@ error: use of irregular braces for `eprint!` macro
 LL |     eprint!("test if user config overrides defaults");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `eprint!["test if user config overrides defaults"]`
 
-error: aborting due to 8 previous errors
+error: use of irregular braces for `println!` macro
+  --> tests/ui-toml/nonstandard_macro_braces/conf_nonstandard_macro_braces.rs:74:5
+   |
+LL |     println! {"hello world"}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `println!("hello world");`
+
+error: aborting due to 9 previous errors
 

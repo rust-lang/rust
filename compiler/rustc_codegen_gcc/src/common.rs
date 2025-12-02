@@ -5,7 +5,7 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::mir::Mutability;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
 use crate::context::CodegenCx;
@@ -247,8 +247,8 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            assert_eq!(offset.bytes(), 0);
-                            let val = self.const_usize(alloc.inner().align.bytes());
+                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
+                            let val = self.const_usize(self.tcx.truncate_to_target_usize(val));
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 self.context.new_cast(None, val, ty)
                             } else {

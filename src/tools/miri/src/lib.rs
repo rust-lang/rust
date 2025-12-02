@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(strict_overflow_ops))]
 #![feature(abort_unwind)]
 #![feature(cfg_select)]
 #![feature(rustc_private)]
@@ -18,7 +17,7 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 #![feature(iter_advance_by)]
-#![cfg_attr(not(bootstrap), feature(duration_from_nanos_u128))]
+#![cfg_attr(bootstrap, feature(duration_from_nanos_u128))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -50,19 +49,18 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
-// Some "regular" crates we want to share with rustc
-extern crate either;
-extern crate tracing;
-
 // The rustc crates we need
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
+extern crate rustc_codegen_ssa;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
+extern crate rustc_hash;
 extern crate rustc_hir;
 extern crate rustc_index;
+extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -96,8 +94,8 @@ pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
 pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
+use rustc_log::tracing::{self, info, trace};
 use rustc_middle::{bug, span_bug};
-use tracing::{info, trace};
 
 #[cfg(all(unix, feature = "native-lib"))]
 pub mod native_lib {
@@ -110,6 +108,7 @@ pub type StrictPointer = interpret::Pointer<machine::Provenance>;
 pub type Scalar = interpret::Scalar<machine::Provenance>;
 pub type ImmTy<'tcx> = interpret::ImmTy<'tcx, machine::Provenance>;
 pub type OpTy<'tcx> = interpret::OpTy<'tcx, machine::Provenance>;
+pub type FnArg<'tcx> = interpret::FnArg<'tcx, machine::Provenance>;
 pub type PlaceTy<'tcx> = interpret::PlaceTy<'tcx, machine::Provenance>;
 pub type MPlaceTy<'tcx> = interpret::MPlaceTy<'tcx, machine::Provenance>;
 
@@ -120,7 +119,7 @@ pub use crate::borrow_tracker::stacked_borrows::{
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{
-    BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields, TreeBorrowsParams,
+    BorTag, BorrowTrackerMethod, EvalContextExt as _, TreeBorrowsParams,
 };
 pub use crate::clock::{Instant, MonotonicClock};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
@@ -137,10 +136,10 @@ pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;
 pub use crate::data_structures::mono_hash_map::MonoHashMap;
 pub use crate::diagnostics::{
-    EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_error,
+    EvalContextExt as _, NonHaltingDiagnostic, TerminationInfo, report_result,
 };
 pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
-pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
+pub use crate::helpers::{EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
     AlignmentCheck, AllocExtra, BacktraceStyle, DynMachineCallback, FloatRoundingErrorMode,

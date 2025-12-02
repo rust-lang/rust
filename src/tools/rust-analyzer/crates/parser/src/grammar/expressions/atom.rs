@@ -283,7 +283,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         if p.eat(T![,]) {
             while !p.at(EOF) && !p.at(T![')']) {
                 let m = p.start();
-                if p.at(IDENT) && p.nth_at(1, T![=]) {
+                if p.at(IDENT) && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
                     name(p);
                     p.bump(T![=]);
                 }
@@ -588,6 +588,12 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
     }
     params::param_list_closure(p);
     if opt_ret_type(p) {
+        // test_err closure_ret_recovery
+        // fn foo() { || -> A> { let x = 1; } }
+        while p.at(T![>]) {
+            // recover from unbalanced return type brackets
+            p.err_and_bump("expected a curly brace");
+        }
         // test lambda_ret_block
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);

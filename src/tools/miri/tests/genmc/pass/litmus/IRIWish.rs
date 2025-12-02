@@ -28,10 +28,6 @@ static Y: AtomicU64 = AtomicU64::new(0);
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    X.store(0, Relaxed);
-    Y.store(0, Relaxed);
-
     unsafe {
         let mut results = [1234; 5];
         let ids = [
@@ -57,7 +53,7 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
         join_pthreads(ids);
 
         // Print the values to check that we get all of them:
-        writeln!(MiriStderr, "{results:?}").unwrap_or_else(|_| std::process::abort());
+        writeln!(MiriStderr, "{results:?}").ok();
 
         0
     }

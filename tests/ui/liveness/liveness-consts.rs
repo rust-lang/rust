@@ -4,16 +4,18 @@
 
 pub static A: i32 = {
     let mut i = 0;
-    let mut a = 0; //~ WARN variable `a` is assigned to, but never used
+    let mut a = 0;
+    //~^ WARN variable `a` is assigned to, but never used
     while i < 10 {
         i += 1;
         a += 1;
+        //~^ WARN value assigned to `a` is never read
     }
     i
 };
 
 pub const B: u32 = {
-    let mut b = 1;
+    let mut b = 1; //~ WARN value assigned to `b` is never read
     b += 1; //~ WARN value assigned to `b` is never read
     b = 42;
     b

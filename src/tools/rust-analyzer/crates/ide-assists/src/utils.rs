@@ -57,6 +57,14 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
             });
         non_trivial_children.next().is_some()
     };
+    if stmt_list
+        .syntax()
+        .children_with_tokens()
+        .filter_map(NodeOrToken::into_token)
+        .any(|token| token.kind() == syntax::SyntaxKind::COMMENT)
+    {
+        return None;
+    }
 
     if let Some(expr) = stmt_list.tail_expr() {
         if has_anything_else(expr.syntax()) {
@@ -93,16 +101,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
 }
 
 pub fn has_test_related_attribute(attrs: &hir::AttrsWithOwner) -> bool {
-    attrs.iter().any(|attr| {
-        let path = attr.path();
-        (|| {
-            Some(
-                path.segments().first()?.as_str().starts_with("test")
-                    || path.segments().last()?.as_str().ends_with("test"),
-            )
-        })()
-        .unwrap_or_default()
-    })
+    attrs.is_test()
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -128,7 +127,7 @@ pub fn filter_assoc_items(
         .copied()
         .filter(|assoc_item| {
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
-                && assoc_item.attrs(sema.db).has_doc_hidden()
+                && assoc_item.attrs(sema.db).is_doc_hidden()
             {
                 if let hir::AssocItem::Function(f) = assoc_item
                     && !f.has_body(sema.db)
@@ -1057,6 +1056,33 @@ fn test_string_suffix() {
     assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
+/// Calculate the string literal prefix length
+pub(crate) fn string_prefix(s: &str) -> Option<&str> {
+    s.split_once(['"', '\'', '#']).map(|(prefix, _)| prefix)
+}
+#[test]
+fn test_string_prefix() {
+    assert_eq!(Some(""), string_prefix(r#""abc""#));
+    assert_eq!(Some(""), string_prefix(r#""""#));
+    assert_eq!(Some(""), string_prefix(r#"""suffix"#));
+    assert_eq!(Some("c"), string_prefix(r#"c"""#));
+    assert_eq!(Some("r"), string_prefix(r#"r"""#));
+    assert_eq!(Some("cr"), string_prefix(r#"cr"""#));
+    assert_eq!(Some("r"), string_prefix(r##"r#""#"##));
+}
+
+pub(crate) fn add_group_separators(s: &str, group_size: usize) -> String {
+    let mut chars = Vec::new();
+    for (i, ch) in s.chars().filter(|&ch| ch != '_').rev().enumerate() {
+        if i > 0 && i % group_size == 0 && ch != '-' {
+            chars.push('_');
+        }
+        chars.push(ch);
+    }
+
+    chars.into_iter().rev().collect()
+}
+
 /// Replaces the record expression, handling field shorthands including inside macros.
 pub(crate) fn replace_record_field_expr(
     ctx: &AssistContext<'_>,
@@ -1118,6 +1144,37 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
     tt_stack.pop().expect("parent token tree was closed before it was completed").1
 }
 
+pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<ast::Expr> {
+    if !expr.syntax().text_range().contains_range(range) {
+        return None;
+    }
+    loop {
+        let (chain_expr, rest) = if let ast::Expr::BinExpr(bin_expr) = &expr
+            && bin_expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
+        {
+            (bin_expr.rhs(), bin_expr.lhs())
+        } else {
+            (Some(expr), None)
+        };
+
+        if let Some(chain_expr) = chain_expr
+            && chain_expr.syntax().text_range().contains_range(range)
+        {
+            break Some(chain_expr);
+        }
+        expr = rest?;
+    }
+}
+
+pub(crate) fn is_selected(
+    it: &impl AstNode,
+    selection: syntax::TextRange,
+    allow_empty: bool,
+) -> bool {
+    selection.intersect(it.syntax().text_range()).is_some_and(|it| !it.is_empty())
+        || allow_empty && it.syntax().text_range().contains_range(selection)
+}
+
 pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
     let mut is_const = true;
     preorder_expr(expr, &mut |ev| {
@@ -1149,4 +1206,20 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         !is_const
     });
     is_const
+}
+
+// FIXME: #20460 When hir-ty can analyze the `never` statement at the end of block, remove it
+pub(crate) fn is_never_block(
+    sema: &Semantics<'_, RootDatabase>,
+    block_expr: &ast::BlockExpr,
+) -> bool {
+    if let Some(tail_expr) = block_expr.tail_expr() {
+        sema.type_of_expr(&tail_expr).is_some_and(|ty| ty.original.is_never())
+    } else if let Some(ast::Stmt::ExprStmt(expr_stmt)) = block_expr.statements().last()
+        && let Some(expr) = expr_stmt.expr()
+    {
+        sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never())
+    } else {
+        false
+    }
 }

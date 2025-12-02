@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target aarch64-unknown-none-softfloat -Zmerge-functions=disabled
 //@ needs-llvm-components: aarch64
 #![crate_type = "lib"]

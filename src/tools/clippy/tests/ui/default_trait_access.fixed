@@ -1,7 +1,6 @@
 //@aux-build: proc_macros.rs
 #![deny(clippy::default_trait_access)]
 #![allow(dead_code, unused_imports)]
-#![allow(clippy::uninlined_format_args)]
 
 extern crate proc_macros;
 
@@ -63,6 +62,7 @@ fn main() {
 
     let _s21: String = with_span!(s Default::default());
 
+    #[expect(clippy::uninlined_format_args)]
     println!(
         "[{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}] [{:?}]",
         s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20,

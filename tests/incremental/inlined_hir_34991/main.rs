@@ -5,6 +5,7 @@
 // libstd), and we can't hash a HIR node from std.
 
 //@ revisions:rpass1 rpass2
+//@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 

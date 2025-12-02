@@ -14,7 +14,11 @@ error[E0277]: the trait bound `(): Bug` is not satisfied
 LL |     const FUN: fn() -> Self::Item = || ();
    |                                        ^^ the trait `Bug` is not implemented for `()`
    |
-   = help: the trait `Bug` is implemented for `&()`
+help: the trait `Bug` is implemented for `&()`
+  --> $DIR/issue-60371.rs:7:1
+   |
+LL | impl Bug for &() {
+   | ^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -11,7 +11,11 @@ help: the trait `for<'de> Foo<'_>` is not implemented for `EmptyBis<'de>`
    |
 LL | pub struct EmptyBis<'a>(&'a [u8]);
    | ^^^^^^^^^^^^^^^^^^^^^^^
-   = help: the trait `Foo<'de>` is implemented for `Baz<T>`
+help: the trait `Foo<'de>` is implemented for `Baz<T>`
+  --> $DIR/issue-96223.rs:16:1
+   |
+LL | impl<'de, T> Foo<'de> for Baz<T> where T: Foo<'de> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required for `Baz<EmptyBis<'de>>` to implement `for<'de> Foo<'de>`
   --> $DIR/issue-96223.rs:16:14
    |

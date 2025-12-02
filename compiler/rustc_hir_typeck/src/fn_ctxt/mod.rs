@@ -104,8 +104,8 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
-    /// If one of the function arguments is a never pattern, this counts as diverging code. This
-    /// affect typechecking of the function body.
+    /// If one of the function arguments is a never pattern, this counts as diverging code.
+    /// This affect typechecking of the function body.
     pub(super) function_diverges_because_of_empty_arguments: Cell<Diverges>,
 
     /// Whether the currently checked node is the whole body of the function.
@@ -115,7 +115,9 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 
     pub(super) root_ctxt: &'a TypeckRootCtxt<'tcx>,
 
-    pub(super) fallback_has_occurred: Cell<bool>,
+    /// True if a divirging inference variable has been set to `()`/`!` because
+    /// of never type fallback. This is only used for diagnostics.
+    pub(super) diverging_fallback_has_occurred: Cell<bool>,
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
     pub(super) diverging_block_behavior: DivergingBlockBehavior,
@@ -153,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 by_id: Default::default(),
             }),
             root_ctxt,
-            fallback_has_occurred: Cell::new(false),
+            diverging_fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
             trait_ascriptions: Default::default(),
@@ -190,7 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         TypeErrCtxt {
             infcx: &self.infcx,
             typeck_results: Some(self.typeck_results.borrow()),
-            fallback_has_occurred: self.fallback_has_occurred.get(),
+            diverging_fallback_has_occurred: self.diverging_fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {
                 if fn_sig.has_escaping_bound_vars() {
                     return fn_sig;
@@ -199,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ocx = ObligationCtxt::new(self);
                     let normalized_fn_sig =
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
-                    if ocx.select_all_or_error().is_empty() {
+                    if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
                         let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
                         if !normalized_fn_sig.has_infer() {
                             return normalized_fn_sig;
@@ -347,7 +349,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             );
             ocx.register_obligations(impl_obligations);
 
-            let mut errors = ocx.select_where_possible();
+            let mut errors = ocx.try_evaluate_obligations();
             if !errors.is_empty() {
                 fulfillment_errors.append(&mut errors);
                 return false;
@@ -505,11 +507,6 @@ fn default_fallback(tcx: TyCtxt<'_>) -> DivergingFallbackBehavior {
         return DivergingFallbackBehavior::ToNever;
     }
 
-    // `feature(never_type_fallback)`: fallback to `!` or `()` trying to not break stuff
-    if tcx.features().never_type_fallback() {
-        return DivergingFallbackBehavior::ContextDependent;
-    }
-
     // Otherwise: fallback to `()`
     DivergingFallbackBehavior::ToUnit
 }
@@ -536,7 +533,6 @@ fn parse_never_type_options_attr(
             let mode = item.value_str().unwrap();
             match mode {
                 sym::unit => fallback = Some(DivergingFallbackBehavior::ToUnit),
-                sym::niko => fallback = Some(DivergingFallbackBehavior::ContextDependent),
                 sym::never => fallback = Some(DivergingFallbackBehavior::ToNever),
                 sym::no => fallback = Some(DivergingFallbackBehavior::NoFallback),
                 _ => {

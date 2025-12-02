@@ -66,7 +66,7 @@ struct Crate {
 impl Crate {
     /// Run `cargo clippy` on the `Crate` and collect and return all the lint warnings that clippy
     /// issued
-    #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn run_clippy_lints(
         &self,
         clippy_driver_path: &Path,
@@ -314,7 +314,7 @@ fn main() {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn lintcheck(config: LintcheckConfig) {
     let clippy_ver = build_clippy(config.perf);
     let clippy_driver_path = fs::canonicalize(format!(

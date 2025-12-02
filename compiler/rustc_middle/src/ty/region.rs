@@ -31,7 +31,7 @@ impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
 
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
         match self.kind() {
-            ty::ReBound(debruijn, _) => debruijn.shifted_in(1),
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn.shifted_in(1),
             _ => ty::INNERMOST,
         }
     }
@@ -59,7 +59,20 @@ impl<'tcx> Region<'tcx> {
         {
             re
         } else {
-            tcx.intern_region(ty::ReBound(debruijn, bound_region))
+            tcx.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
+        }
+    }
+
+    #[inline]
+    pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: ty::BoundVar) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let Some(re) = tcx.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
+            re
+        } else {
+            tcx.intern_region(ty::ReBound(
+                ty::BoundVarIndexKind::Canonical,
+                ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+            ))
         }
     }
 
@@ -122,7 +135,12 @@ impl<'tcx> Region<'tcx> {
     pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
             ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
-            ty::ReBound(debruijn, region) => Region::new_bound(tcx, debruijn, region),
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), region) => {
+                Region::new_bound(tcx, debruijn, region)
+            }
+            ty::ReBound(ty::BoundVarIndexKind::Canonical, region) => {
+                Region::new_canonical_bound(tcx, region.var)
+            }
             ty::ReLateParam(ty::LateParamRegion { scope, kind }) => {
                 Region::new_late_param(tcx, scope, kind)
             }
@@ -146,6 +164,10 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
 
     fn new_anon_bound(tcx: TyCtxt<'tcx>, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
+    }
+
+    fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: rustc_type_ir::BoundVar) -> Self {
+        Region::new_canonical_bound(tcx, var)
     }
 
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Self {
@@ -223,7 +245,7 @@ impl<'tcx> Region<'tcx> {
     #[inline]
     pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
         match self.kind() {
-            ty::ReBound(debruijn, _) => debruijn >= index,
+            ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
             _ => false,
         }
     }
@@ -254,7 +276,11 @@ impl<'tcx> Region<'tcx> {
             ty::ReStatic => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
-            ty::ReBound(..) => {
+            ty::ReBound(ty::BoundVarIndexKind::Canonical, _) => {
+                flags = flags | TypeFlags::HAS_RE_BOUND;
+                flags = flags | TypeFlags::HAS_CANONICAL_BOUND;
+            }
+            ty::ReBound(ty::BoundVarIndexKind::Bound(..), _) => {
                 flags = flags | TypeFlags::HAS_RE_BOUND;
             }
             ty::ReErased => {

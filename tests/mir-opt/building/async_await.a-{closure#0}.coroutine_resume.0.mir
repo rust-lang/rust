@@ -14,9 +14,11 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
     let mut _0: std::task::Poll<()>;
     let mut _3: ();
     let mut _4: u32;
+    let mut _5: &mut {async fn body of a()};
 
     bb0: {
-        _4 = discriminant((*(_1.0: &mut {async fn body of a()})));
+        _5 = copy (_1.0: &mut {async fn body of a()});
+        _4 = discriminant((*_5));
         switchInt(move _4) -> [0: bb1, 1: bb4, otherwise: bb5];
     }
 
@@ -27,7 +29,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
 
     bb2: {
         _0 = Poll::<()>::Ready(move _3);
-        discriminant((*(_1.0: &mut {async fn body of a()}))) = 1;
+        discriminant((*_5)) = 1;
         return;
     }
 

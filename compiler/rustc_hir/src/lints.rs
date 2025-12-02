@@ -17,20 +17,26 @@ pub struct DelayedLints {
 /// and then there's a gap where no lints can be emitted until HIR is done.
 /// The variants in this enum represent lints that are temporarily stashed during
 /// AST lowering to be emitted once HIR is built.
-#[derive(Clone, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum DelayedLint {
     AttributeParsing(AttributeLint<HirId>),
 }
 
-#[derive(Clone, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub struct AttributeLint<Id> {
     pub id: Id,
     pub span: Span,
     pub kind: AttributeLintKind,
 }
 
-#[derive(Clone, Debug, HashStable_Generic)]
+#[derive(Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
+    /// Copy of `IllFormedAttributeInput`
+    /// specifically for the `invalid_macro_export_arguments` lint until that is removed,
+    /// see <https://github.com/rust-lang/rust/pull/143857#issuecomment-3079175663>
+    InvalidMacroExportArguments {
+        suggestions: Vec<String>,
+    },
     UnusedDuplicate {
         this: Span,
         other: Span,
@@ -41,13 +47,8 @@ pub enum AttributeLintKind {
     },
     EmptyAttribute {
         first_span: Span,
-    },
-
-    /// Copy of `IllFormedAttributeInput`
-    /// specifically for the `invalid_macro_export_arguments` lint until that is removed,
-    /// see <https://github.com/rust-lang/rust/pull/143857#issuecomment-3079175663>
-    InvalidMacroExportArguments {
-        suggestions: Vec<String>,
+        attr_path: AttrPath,
+        valid_without_list: bool,
     },
     InvalidTarget {
         name: AttrPath,

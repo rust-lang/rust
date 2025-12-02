@@ -20,13 +20,12 @@ features! {
     @CFG: any(target_arch = "x86", target_arch = "x86_64");
     @MACRO_NAME: is_x86_feature_detected;
     @MACRO_ATTRS:
-    /// A macro to test at *runtime* whether a CPU feature is available on
-    /// x86/x86-64 platforms.
+    /// Check for the presence of a CPU feature at runtime.
     ///
-    /// This macro is provided in the standard library and will detect at runtime
-    /// whether the specified CPU feature is detected. This does **not** resolve at
-    /// compile time unless the specified feature is already enabled for the entire
-    /// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
+    /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
+    /// the macro expands to `true`.
+    ///
+    /// Runtime detection currently relies mostly on the `cpuid` instruction.
     ///
     /// This macro only takes one argument which is a string literal of the feature
     /// being tested for. The feature names supported are the lowercase versions of
@@ -93,7 +92,6 @@ features! {
     /// * `"amx-fp8"`
     /// * `"amx-movrs"`
     /// * `"amx-tf32"`
-    /// * `"amx-transpose"`
     /// * `"f16c"`
     /// * `"fma"`
     /// * `"bmi1"`
@@ -231,8 +229,6 @@ features! {
     /// AMX-MOVRS (Matrix MOVERS operations)
     @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_tf32: "amx-tf32";
     /// AMX-TF32 (TensorFloat32 Operations)
-    @FEATURE: #[unstable(feature = "x86_amx_intrinsics", issue = "126622")] amx_transpose: "amx-transpose";
-    /// AMX-TRANSPOSE (Matrix Transpose Operations)
     @FEATURE: #[unstable(feature = "apx_target_feature", issue = "139284")] apxf: "apxf";
     /// APX-F (Advanced Performance Extensions - Foundation)
     @FEATURE: #[unstable(feature = "avx10_target_feature", issue = "138843")] avx10_1: "avx10.1";

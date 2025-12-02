@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ run-rustfix
 
 // See https://github.com/rust-lang/rust/issues/87955

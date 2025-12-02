@@ -184,7 +184,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::borrow::{Borrow, BorrowMut};
-#[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::cmp::Ordering;
 use core::error::{self, Error};
@@ -192,11 +191,15 @@ use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::marker::{Tuple, Unsize};
+#[cfg(not(no_global_oom_handling))]
+use core::mem::MaybeUninit;
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
     DerefPure, DispatchFromDyn, LegacyReceiver,
 };
+#[cfg(not(no_global_oom_handling))]
+use core::ops::{Residual, Try};
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
@@ -237,6 +240,7 @@ pub struct Box<
 /// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
 ///
 /// This is the surface syntax for `box <expr>` expressions.
+#[doc(hidden)]
 #[rustc_intrinsic]
 #[unstable(feature = "liballoc_internals", issue = "none")]
 pub fn box_new<T>(x: T) -> Box<T>;
@@ -299,7 +303,7 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
@@ -384,6 +388,82 @@ impl<T> Box<T> {
     #[inline]
     pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_zeroed_in(Global)
+    }
+
+    /// Maps the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and the result is returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::map(b, f)` instead of `b.map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::map(b, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U> {
+        if size_of::<T>() == size_of::<U>() && align_of::<T>() == align_of::<U>() {
+            let (value, allocation) = Box::take(this);
+            Box::write(
+                unsafe { mem::transmute::<Box<MaybeUninit<T>>, Box<MaybeUninit<U>>>(allocation) },
+                f(value),
+            )
+        } else {
+            Box::new(f(*this))
+        }
+    }
+
+    /// Attempts to map the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and if the operation succeeds, the result is
+    /// returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::try_map(b, f)` instead of `b.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::try_map(b, u32::try_from).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(T) -> R,
+    ) -> <R::Residual as Residual<Box<R::Output>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<Box<R::Output>>,
+    {
+        if size_of::<T>() == size_of::<R::Output>() && align_of::<T>() == align_of::<R::Output>() {
+            let (value, allocation) = Box::take(this);
+            try {
+                Box::write(
+                    unsafe {
+                        mem::transmute::<Box<MaybeUninit<T>>, Box<MaybeUninit<R::Output>>>(
+                            allocation,
+                        )
+                    },
+                    f(value)?,
+                )
+            }
+        } else {
+            try { Box::new(f(*this)?) }
+        }
     }
 }
 
@@ -619,6 +699,159 @@ impl<T, A: Allocator> Box<T, A> {
     pub fn into_inner(boxed: Self) -> T {
         *boxed
     }
+
+    /// Consumes the `Box` without consuming its allocation, returning the wrapped value and a `Box`
+    /// to the uninitialized memory where the wrapped value used to live.
+    ///
+    /// This can be used together with [`write`](Box::write) to reuse the allocation for multiple
+    /// boxed values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(box_take)]
+    ///
+    /// let c = Box::new(5);
+    ///
+    /// // take the value out of the box
+    /// let (value, uninit) = Box::take(c);
+    /// assert_eq!(value, 5);
+    ///
+    /// // reuse the box for a second value
+    /// let c = Box::write(uninit, 6);
+    /// assert_eq!(*c, 6);
+    /// ```
+    #[unstable(feature = "box_take", issue = "147212")]
+    pub fn take(boxed: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
+        unsafe {
+            let (raw, alloc) = Box::into_non_null_with_allocator(boxed);
+            let value = raw.read();
+            let uninit = Box::from_non_null_in(raw.cast_uninit(), alloc);
+            (value, uninit)
+        }
+    }
+}
+
+impl<T: ?Sized + CloneToUninit> Box<T> {
+    /// Allocates memory on the heap then clones `src` into it.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    ///
+    /// let hello: Box<str> = Box::clone_from_ref("hello");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    #[must_use]
+    #[inline]
+    pub fn clone_from_ref(src: &T) -> Box<T> {
+        Box::clone_from_ref_in(src, Global)
+    }
+
+    /// Allocates memory on the heap then clones `src` into it, returning an error if allocation fails.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// let hello: Box<str> = Box::try_clone_from_ref("hello")?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn try_clone_from_ref(src: &T) -> Result<Box<T>, AllocError> {
+        Box::try_clone_from_ref_in(src, Global)
+    }
+}
+
+impl<T: ?Sized + CloneToUninit, A: Allocator> Box<T, A> {
+    /// Allocates memory in the given allocator then clones `src` into it.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let hello: Box<str, System> = Box::clone_from_ref_in("hello", System);
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn clone_from_ref_in(src: &T, alloc: A) -> Box<T, A> {
+        let layout = Layout::for_value::<T>(src);
+        match Box::try_clone_from_ref_in(src, alloc) {
+            Ok(bx) => bx,
+            Err(_) => handle_alloc_error(layout),
+        }
+    }
+
+    /// Allocates memory in the given allocator then clones `src` into it, returning an error if allocation fails.
+    ///
+    /// This doesn't actually allocate if `src` is zero-sized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clone_from_ref)]
+    /// #![feature(allocator_api)]
+    ///
+    /// use std::alloc::System;
+    ///
+    /// let hello: Box<str, System> = Box::try_clone_from_ref_in("hello", System)?;
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "clone_from_ref", issue = "149075")]
+    //#[unstable(feature = "allocator_api", issue = "32838")]
+    #[must_use]
+    #[inline]
+    pub fn try_clone_from_ref_in(src: &T, alloc: A) -> Result<Box<T, A>, AllocError> {
+        struct DeallocDropGuard<'a, A: Allocator>(Layout, &'a A, NonNull<u8>);
+        impl<'a, A: Allocator> Drop for DeallocDropGuard<'a, A> {
+            fn drop(&mut self) {
+                let &mut DeallocDropGuard(layout, alloc, ptr) = self;
+                // Safety: `ptr` was allocated by `*alloc` with layout `layout`
+                unsafe {
+                    alloc.deallocate(ptr, layout);
+                }
+            }
+        }
+        let layout = Layout::for_value::<T>(src);
+        let (ptr, guard) = if layout.size() == 0 {
+            (layout.dangling(), None)
+        } else {
+            // Safety: layout is non-zero-sized
+            let ptr = alloc.allocate(layout)?.cast();
+            (ptr, Some(DeallocDropGuard(layout, &alloc, ptr)))
+        };
+        let ptr = ptr.as_ptr();
+        // Safety: `*ptr` is newly allocated, correctly aligned to `align_of_val(src)`,
+        // and is valid for writes for `size_of_val(src)`.
+        // If this panics, then `guard` will deallocate for us (if allocation occuured)
+        unsafe {
+            <T as CloneToUninit>::clone_to_uninit(src, ptr);
+        }
+        // Defuse the deallocate guard
+        core::mem::forget(guard);
+        // Safety: We just initialized `*ptr` as a clone of `src`
+        Ok(unsafe { Box::from_raw_in(ptr.with_metadata_of(src), alloc) })
+    }
 }
 
 impl<T> Box<[T]> {
@@ -660,7 +893,7 @@ impl<T> Box<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
@@ -738,7 +971,7 @@ impl<T> Box<[T]> {
     /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
     #[inline]
     #[must_use]
     pub fn into_array<const N: usize>(self) -> Option<Box<[T; N]>> {
@@ -1706,7 +1939,7 @@ impl Default for Box<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "pin_default_impls", since = "1.91.0")]
 impl<T> Default for Pin<Box<T>>
 where
     T: ?Sized,
@@ -2127,5 +2360,57 @@ impl<E: Error> Error for Box<E> {
 
     fn provide<'b>(&'b self, request: &mut error::Request<'b>) {
         Error::provide(&**self, request);
+    }
+}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
+    #[inline]
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate(layout)
+    }
+
+    #[inline]
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        (**self).allocate_zeroed(layout)
+    }
+
+    #[inline]
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).deallocate(ptr, layout) }
+    }
+
+    #[inline]
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).grow_zeroed(ptr, old_layout, new_layout) }
+    }
+
+    #[inline]
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // SAFETY: the safety contract must be upheld by the caller
+        unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }

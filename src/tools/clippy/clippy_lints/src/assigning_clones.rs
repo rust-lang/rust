@@ -2,8 +2,9 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local, sym};
+use clippy_utils::{is_in_test, last_path_segment, local_is_initialized, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -68,15 +69,15 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Assign(lhs, rhs, _) = e.kind
             && let typeck = cx.typeck_results()
-            && let (call_kind, fn_name, fn_id, fn_arg, fn_gen_args) = match rhs.kind {
+            && let (call_kind, fn_name, fn_def, fn_arg, fn_gen_args) = match rhs.kind {
                 ExprKind::Call(f, [arg])
                     if let ExprKind::Path(fn_path) = &f.kind
-                        && let Some(id) = typeck.qpath_res(fn_path, f.hir_id).opt_def_id() =>
+                        && let Some(def) = typeck.qpath_res(fn_path, f.hir_id).opt_def(cx) =>
                 {
-                    (CallKind::Ufcs, last_path_segment(fn_path).ident.name, id, arg, typeck.node_args(f.hir_id))
+                    (CallKind::Ufcs, last_path_segment(fn_path).ident.name, def, arg, typeck.node_args(f.hir_id))
                 },
-                ExprKind::MethodCall(name, recv, [], _) if let Some(id) = typeck.type_dependent_def_id(rhs.hir_id) => {
-                    (CallKind::Method, name.ident.name, id, recv, typeck.node_args(rhs.hir_id))
+                ExprKind::MethodCall(name, recv, [], _) if let Some(def) = typeck.type_dependent_def(rhs.hir_id) => {
+                    (CallKind::Method, name.ident.name, def, recv, typeck.node_args(rhs.hir_id))
                 },
                 _ => return,
             }
@@ -84,20 +85,20 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             // Don't lint in macros.
             && ctxt.is_root()
             && let which_trait = match fn_name {
-                sym::clone if is_diag_trait_item(cx, fn_id, sym::Clone) => CloneTrait::Clone,
+                sym::clone if fn_def.assoc_fn_parent(cx).is_diag_item(cx, sym::Clone) => CloneTrait::Clone,
                 sym::to_owned
-                    if is_diag_trait_item(cx, fn_id, sym::ToOwned)
+                    if fn_def.assoc_fn_parent(cx).is_diag_item(cx, sym::ToOwned)
                         && self.msrv.meets(cx, msrvs::CLONE_INTO) =>
                 {
                     CloneTrait::ToOwned
                 },
                 _ => return,
             }
-            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.typing_env(), fn_id, fn_gen_args)
+            && let Ok(Some(resolved_fn)) = Instance::try_resolve(cx.tcx, cx.typing_env(), fn_def.1, fn_gen_args)
             // TODO: This check currently bails if the local variable has no initializer.
             // That is overly conservative - the lint should fire even if there was no initializer,
             // but the variable has been initialized before `lhs` was evaluated.
-            && path_to_local(lhs).is_none_or(|lhs| local_is_initialized(cx, lhs))
+            && lhs.res_local_id().is_none_or(|lhs| local_is_initialized(cx, lhs))
             && let Some(resolved_impl) = cx.tcx.impl_of_assoc(resolved_fn.def_id())
             // Derived forms don't implement `clone_from`/`clone_into`.
             // See https://github.com/rust-lang/rust/pull/98445#issuecomment-1190681305

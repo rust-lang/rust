@@ -28,12 +28,12 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
                 }
             })
             .collect();
+
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
         for index in indices {
-            insert_counter(
-                body.basic_blocks_mut()
-                    .get_mut(index)
-                    .expect("basic_blocks index {index} should exist"),
-            );
+            let bbdata = &mut basic_blocks[index];
+            let source_info = bbdata.terminator().source_info;
+            bbdata.statements.push(Statement::new(source_info, StatementKind::ConstEvalCounter));
         }
     }
 
@@ -52,11 +52,4 @@ fn has_back_edge(
     }
     // Check if any of the dominators of the node are also the node's successor.
     node_data.terminator().successors().any(|succ| doms.dominates(succ, node))
-}
-
-fn insert_counter(basic_block_data: &mut BasicBlockData<'_>) {
-    basic_block_data.statements.push(Statement::new(
-        basic_block_data.terminator().source_info,
-        StatementKind::ConstEvalCounter,
-    ));
 }

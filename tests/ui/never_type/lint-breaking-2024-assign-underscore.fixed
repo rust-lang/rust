@@ -1,7 +1,5 @@
 //@ run-rustfix
-
 #![allow(unused)]
-#![deny(dependency_on_unit_never_type_fallback)]
 
 fn foo<T: Default>() -> Result<T, ()> {
     Err(())

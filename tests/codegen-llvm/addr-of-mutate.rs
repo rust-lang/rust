@@ -24,7 +24,7 @@ pub unsafe fn second(a_ptr_and_b: (*mut (i32, bool), (i64, bool))) -> bool {
 }
 
 // If going through a deref (and there are no other mutating accesses), then `readonly` is fine.
-// CHECK: i1 @third(ptr{{( dead_on_return)?}} noalias noundef readonly align {{[0-9]+}}{{( captures\(address\))?}} dereferenceable({{[0-9]+}}) %a_ptr_and_b)
+// CHECK: i1 @third(ptr{{( dead_on_return)?}} noalias noundef readonly align {{[0-9]+}}{{( captures\(none\))?}} dereferenceable({{[0-9]+}}) %a_ptr_and_b)
 #[no_mangle]
 pub unsafe fn third(a_ptr_and_b: (*mut (i32, bool), (i64, bool))) -> bool {
     let b_bool_ptr = core::ptr::addr_of!((*a_ptr_and_b.0).1).cast_mut();

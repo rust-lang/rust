@@ -113,35 +113,18 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             // since this would only require removing a `use` import (which is already linted).
             && !is_numeric_const_path_canonical(path, [*mod_name, *name])
         {
-            (
-                vec![(expr.span, format!("{mod_name}::{name}"))],
-                "usage of a legacy numeric constant",
-            )
+            (format!("{mod_name}::{name}"), "usage of a legacy numeric constant")
         // `<integer>::xxx_value` check
         } else if let ExprKind::Call(func, []) = &expr.kind
             && let ExprKind::Path(qpath) = &func.kind
             && let QPath::TypeRelative(ty, last_segment) = qpath
             && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
             && is_integer_method(cx, def_id)
+            && let Some(mod_name) = ty.span.get_source_text(cx)
+            && ty.span.eq_ctxt(last_segment.ident.span)
         {
-            let mut sugg = vec![
-                // Replace the function name up to the end by the constant name
-                (
-                    last_segment.ident.span.to(expr.span.shrink_to_hi()),
-                    last_segment.ident.name.as_str()[..=2].to_ascii_uppercase(),
-                ),
-            ];
-            let before_span = expr.span.shrink_to_lo().until(ty.span);
-            if !before_span.is_empty() {
-                // Remove everything before the type name
-                sugg.push((before_span, String::new()));
-            }
-            // Use `::` between the type name and the constant
-            let between_span = ty.span.shrink_to_hi().until(last_segment.ident.span);
-            if !between_span.check_source_text(cx, |s| s == "::") {
-                sugg.push((between_span, String::from("::")));
-            }
-            (sugg, "usage of a legacy numeric method")
+            let name = last_segment.ident.name.as_str()[..=2].to_ascii_uppercase();
+            (format!("{mod_name}::{name}"), "usage of a legacy numeric method")
         } else {
             return;
         };
@@ -151,7 +134,8 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.span, msg, |diag| {
-                diag.multipart_suggestion_verbose(
+                diag.span_suggestion_verbose(
+                    expr.span,
                     "use the associated constant instead",
                     sugg,
                     Applicability::MaybeIncorrect,

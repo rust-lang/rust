@@ -32,11 +32,10 @@ fn bar() ({
     ((::alloc::__export::must_use as
             fn(String) -> String {must_use::<String>})(({
             ((::alloc::fmt::format as
-                    for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::new_const
+                    for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::from_str
                         as
-                        fn(&[&'static str; 1]) -> Arguments<'_> {core::fmt::rt::<impl Arguments<'_>>::new_const::<1>})((&([("test"
-                                    as &str)] as [&str; 1]) as &[&str; 1])) as Arguments<'_>))
-                as String)
+                        fn(&'static str) -> Arguments<'_> {Arguments::<'_>::from_str})(("test"
+                        as &str)) as Arguments<'_>)) as String)
         } as String)) as String);
 } as ())
 type Foo = [i32; (3 as usize)];

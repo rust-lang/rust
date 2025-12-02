@@ -1,11 +1,17 @@
 //! proc-macro server backend based on [`proc_macro_api::msg::SpanId`] as the backing span.
 //! This backend is rather inflexible, used by RustRover and older rust-analyzer versions.
-use std::ops::{Bound, Range};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::{Bound, Range},
+};
 
 use intern::Symbol;
-use proc_macro::bridge::{self, server};
+use proc_macro::bridge::server;
 
-use crate::server_impl::{from_token_tree, literal_from_str, token_stream::TokenStreamBuilder};
+use crate::{
+    bridge::{Diagnostic, ExpnGlobals, Literal, TokenTree},
+    server_impl::literal_from_str,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SpanId(pub u32);
@@ -17,11 +23,14 @@ impl std::fmt::Debug for SpanId {
 }
 
 type Span = SpanId;
-type TokenStream = crate::server_impl::TokenStream<Span>;
 
 pub struct FreeFunctions;
 
 pub struct SpanIdServer {
+    // FIXME: Report this back to the caller to track as dependencies
+    pub tracked_env_vars: HashMap<Box<str>, Option<Box<str>>>,
+    // FIXME: Report this back to the caller to track as dependencies
+    pub tracked_paths: HashSet<Box<str>>,
     pub call_site: Span,
     pub def_site: Span,
     pub mixed_site: Span,
@@ -29,7 +38,7 @@ pub struct SpanIdServer {
 
 impl server::Types for SpanIdServer {
     type FreeFunctions = FreeFunctions;
-    type TokenStream = TokenStream;
+    type TokenStream = crate::token_stream::TokenStream<Span>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -38,16 +47,18 @@ impl server::FreeFunctions for SpanIdServer {
     fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
         None
     }
-    fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {}
-    fn track_path(&mut self, _path: &str) {}
-    fn literal_from_str(
-        &mut self,
-        s: &str,
-    ) -> Result<bridge::Literal<Self::Span, Self::Symbol>, ()> {
+    fn track_env_var(&mut self, var: &str, value: Option<&str>) {
+        self.tracked_env_vars.insert(var.into(), value.map(Into::into));
+    }
+    fn track_path(&mut self, path: &str) {
+        self.tracked_paths.insert(path.into());
+    }
+
+    fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span>, ()> {
         literal_from_str(s, self.call_site)
     }
 
-    fn emit_diagnostic(&mut self, _: bridge::Diagnostic<Self::Span>) {}
+    fn emit_diagnostic(&mut self, _: Diagnostic<Self::Span>) {}
 }
 
 impl server::TokenStream for SpanIdServer {
@@ -66,11 +77,8 @@ impl server::TokenStream for SpanIdServer {
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
     }
-    fn from_token_tree(
-        &mut self,
-        tree: bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>,
-    ) -> Self::TokenStream {
-        from_token_tree(tree)
+    fn from_token_tree(&mut self, tree: TokenTree<Self::Span>) -> Self::TokenStream {
+        Self::TokenStream::new(vec![tree])
     }
 
     fn expand_expr(&mut self, self_: &Self::TokenStream) -> Result<Self::TokenStream, ()> {
@@ -80,16 +88,17 @@ impl server::TokenStream for SpanIdServer {
     fn concat_trees(
         &mut self,
         base: Option<Self::TokenStream>,
-        trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
+        trees: Vec<TokenTree<Self::Span>>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::default();
-        if let Some(base) = base {
-            builder.push(base);
+        match base {
+            Some(mut base) => {
+                for tt in trees {
+                    base.push_tree(tt);
+                }
+                base
+            }
+            None => Self::TokenStream::new(trees),
         }
-        for tree in trees {
-            builder.push(self.from_token_tree(tree));
-        }
-        builder.build()
     }
 
     fn concat_streams(
@@ -97,22 +106,15 @@ impl server::TokenStream for SpanIdServer {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::default();
-        if let Some(base) = base {
-            builder.push(base);
+        let mut stream = base.unwrap_or_default();
+        for s in streams {
+            stream.push_stream(s);
         }
-        for stream in streams {
-            builder.push(stream);
-        }
-        builder.build()
+        stream
     }
 
-    fn into_trees(
-        &mut self,
-        stream: Self::TokenStream,
-    ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        // Can't join with `SpanId`.
-        stream.into_bridge(&mut |first, _second| first)
+    fn into_trees(&mut self, stream: Self::TokenStream) -> Vec<TokenTree<Self::Span>> {
+        (*stream.0).clone()
     }
 }
 
@@ -191,8 +193,8 @@ impl server::Symbol for SpanIdServer {
 }
 
 impl server::Server for SpanIdServer {
-    fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
-        bridge::ExpnGlobals {
+    fn globals(&mut self) -> ExpnGlobals<Self::Span> {
+        ExpnGlobals {
             def_site: self.def_site,
             call_site: self.call_site,
             mixed_site: self.mixed_site,
@@ -205,75 +207,5 @@ impl server::Server for SpanIdServer {
 
     fn with_symbol_string(symbol: &Self::Symbol, f: impl FnOnce(&str)) {
         f(symbol.as_str())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_ra_server_to_string() {
-        let s = TokenStream {
-            token_trees: vec![
-                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("struct"),
-                    span: SpanId(0),
-                    is_raw: tt::IdentIsRaw::No,
-                })),
-                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("T"),
-                    span: SpanId(0),
-                    is_raw: tt::IdentIsRaw::No,
-                })),
-                tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter {
-                        open: SpanId(0),
-                        close: SpanId(0),
-                        kind: tt::DelimiterKind::Brace,
-                    },
-                    len: 0,
-                }),
-            ],
-        };
-
-        assert_eq!(s.to_string(), "struct T {}");
-    }
-
-    #[test]
-    fn test_ra_server_from_str() {
-        let subtree_paren_a = vec![
-            tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: SpanId(0),
-                    close: SpanId(0),
-                    kind: tt::DelimiterKind::Parenthesis,
-                },
-                len: 1,
-            }),
-            tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                is_raw: tt::IdentIsRaw::No,
-                sym: Symbol::intern("a"),
-                span: SpanId(0),
-            })),
-        ];
-
-        let t1 = TokenStream::from_str("(a)", SpanId(0)).unwrap();
-        assert_eq!(t1.token_trees.len(), 2);
-        assert!(t1.token_trees[0..2] == subtree_paren_a);
-
-        let t2 = TokenStream::from_str("(a);", SpanId(0)).unwrap();
-        assert_eq!(t2.token_trees.len(), 3);
-        assert!(t2.token_trees[0..2] == subtree_paren_a);
-
-        let underscore = TokenStream::from_str("_", SpanId(0)).unwrap();
-        assert!(
-            underscore.token_trees[0]
-                == tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                    sym: Symbol::intern("_"),
-                    span: SpanId(0),
-                    is_raw: tt::IdentIsRaw::No,
-                }))
-        );
     }
 }

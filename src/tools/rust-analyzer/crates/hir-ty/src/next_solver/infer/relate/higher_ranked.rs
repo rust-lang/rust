@@ -2,13 +2,10 @@
 //! the end of the file for details.
 
 use rustc_type_ir::TypeFoldable;
-use rustc_type_ir::{BoundVar, UniverseIndex};
 use tracing::{debug, instrument};
 
-use super::RelateResult;
 use crate::next_solver::fold::FnMutDelegate;
 use crate::next_solver::infer::InferCtxt;
-use crate::next_solver::infer::snapshot::CombinedSnapshot;
 use crate::next_solver::{
     Binder, BoundConst, BoundRegion, BoundTy, Const, DbInterner, PlaceholderConst,
     PlaceholderRegion, PlaceholderTy, Region, Ty,

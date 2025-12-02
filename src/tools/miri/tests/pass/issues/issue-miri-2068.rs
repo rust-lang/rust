@@ -2,7 +2,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
-pub fn fuzzing_block_on<O, F: Future<Output = O>>(fut: F) -> O {
+fn fuzzing_block_on<O, F: Future<Output = O>>(fut: F) -> O {
     let mut fut = std::pin::pin!(fut);
     let mut context = Context::from_waker(Waker::noop());
     loop {

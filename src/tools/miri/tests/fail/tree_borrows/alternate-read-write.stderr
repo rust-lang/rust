@@ -24,8 +24,6 @@ help: the accessed tag <TAG> later transitioned to Frozen due to a foreign read 
 LL |     let _val = *x;
    |                ^^
    = help: this transition corresponds to a loss of write permissions
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/alternate-read-write.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

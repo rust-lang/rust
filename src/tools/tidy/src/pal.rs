@@ -32,7 +32,7 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 // Paths that may contain platform-specific code.
@@ -59,23 +59,26 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/os",  // Platform-specific public interfaces
     // Temporary `std` exceptions
     // FIXME: platform-specific code should be moved to `sys`
-    "library/std/src/io/copy.rs",
     "library/std/src/io/stdio.rs",
     "library/std/src/lib.rs", // for miniz_oxide leaking docs, which itself workaround
     "library/std/src/path.rs",
-    "library/std/src/sys_common", // Should only contain abstractions over platforms
-    "library/std/src/net/test.rs", // Utility helpers for tests
     "library/std/src/io/error.rs", // Repr unpacked needed for UEFI
 ];
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("pal").path(path));
+pub fn check(library_path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("pal").path(library_path));
+
+    let root_path = library_path.parent().unwrap();
+    // Let's double-check that this is the root path by making sure it has `x.py`.
+    assert!(root_path.join("x.py").is_file());
 
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
+    walk(library_path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = entry.path();
+        // We don't want the absolute path to matter, so make it relative.
+        let file = file.strip_prefix(root_path).unwrap();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {
             return;

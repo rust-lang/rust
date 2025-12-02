@@ -1,7 +1,7 @@
 use std::any::Any;
 use std::hash::Hash;
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
@@ -10,7 +10,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{self, OutputFilenames, PrintRequest};
+use rustc_session::config::{self, CrateType, OutputFilenames, PrintRequest};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
@@ -41,6 +41,8 @@ pub trait CodegenBackend {
     /// Called before `init` so that all other functions are able to emit translatable diagnostics.
     fn locale_resource(&self) -> &'static str;
 
+    fn name(&self) -> &'static str;
+
     fn init(&self, _sess: &Session) {}
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
@@ -58,6 +60,18 @@ pub trait CodegenBackend {
             has_reliable_f128: true,
             has_reliable_f128_math: true,
         }
+    }
+
+    fn supported_crate_types(&self, _sess: &Session) -> Vec<CrateType> {
+        vec![
+            CrateType::Executable,
+            CrateType::Dylib,
+            CrateType::Rlib,
+            CrateType::Staticlib,
+            CrateType::Cdylib,
+            CrateType::ProcMacro,
+            CrateType::Sdylib,
+        ]
     }
 
     fn print_passes(&self) {}
@@ -96,7 +110,14 @@ pub trait CodegenBackend {
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
-        link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, metadata, outputs);
+        link_binary(
+            sess,
+            &ArArchiveBuilderBuilder,
+            codegen_results,
+            metadata,
+            outputs,
+            self.name(),
+        );
     }
 }
 
@@ -107,8 +128,7 @@ pub trait ExtraBackendMethods:
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        kind: AllocatorKind,
-        alloc_error_handler_kind: AllocatorKind,
+        methods: &[AllocatorMethod],
     ) -> Self::Module;
 
     /// This generates the codegen unit and returns it along with

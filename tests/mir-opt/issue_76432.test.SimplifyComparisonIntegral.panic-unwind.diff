@@ -33,15 +33,9 @@
       }
   
       bb2: {
-          StorageLive(_5);
-          _5 = &(*_2)[0 of 3];
-          StorageLive(_6);
-          _6 = &(*_2)[1 of 3];
-          StorageLive(_7);
-          _7 = &(*_2)[2 of 3];
-          StorageDead(_7);
-          StorageDead(_6);
-          StorageDead(_5);
+          // DBG: _5 = &(*_2)[0 of 3];
+          // DBG: _6 = &(*_2)[1 of 3];
+          // DBG: _7 = &(*_2)[2 of 3];
           StorageDead(_4);
           return;
       }

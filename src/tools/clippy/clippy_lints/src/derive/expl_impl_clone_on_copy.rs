@@ -1,13 +1,20 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::fulfill_or_allowed;
 use clippy_utils::ty::{implements_trait, is_copy};
-use rustc_hir::{self as hir, Item};
+use rustc_hir::{self as hir, HirId, Item};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 
 use super::EXPL_IMPL_CLONE_ON_COPY;
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &Item<'_>,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+    adt_hir_id: HirId,
+) {
     let clone_id = match cx.tcx.lang_items().clone_trait() {
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
@@ -54,12 +61,16 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         return;
     }
 
-    span_lint_and_note(
+    if fulfill_or_allowed(cx, EXPL_IMPL_CLONE_ON_COPY, [adt_hir_id]) {
+        return;
+    }
+
+    span_lint_and_help(
         cx,
         EXPL_IMPL_CLONE_ON_COPY,
         item.span,
         "you are implementing `Clone` explicitly on a `Copy` type",
-        Some(item.span),
+        None,
         "consider deriving `Clone` or removing `Copy`",
     );
 }

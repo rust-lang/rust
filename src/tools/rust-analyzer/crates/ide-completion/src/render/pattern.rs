@@ -108,7 +108,7 @@ fn build_completion(
     label: SmolStr,
     lookup: SmolStr,
     pat: String,
-    def: impl HasDocs + Copy,
+    def: impl HasDocs,
     adt_ty: hir::Type<'_>,
     // Missing in context of match statement completions
     is_variant_missing: bool,
@@ -163,6 +163,7 @@ fn render_pat(
         PatternContext {
             param_ctx: Some(ParamContext { kind: ParamKind::Function(_), .. }),
             has_type_ascription: false,
+            parent_pat: None,
             ..
         }
     );

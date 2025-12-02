@@ -1,9 +1,9 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelroLevel, TargetOptions, cvs};
+use crate::spec::{Cc, Env, LinkerFlavor, Lld, Os, RelroLevel, TargetOptions, cvs};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
-        os: "redox".into(),
-        env: "relibc".into(),
+        os: Os::Redox,
+        env: Env::Relibc,
         dynamic_linking: true,
         families: cvs!["unix"],
         has_rpath: true,
@@ -12,7 +12,7 @@ pub(crate) fn opts() -> TargetOptions {
         has_thread_local: true,
         crt_static_default: true,
         crt_static_respected: true,
-        crt_static_allows_dylibs: true,
+        crt_static_allows_dylibs: false,
         late_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-lgcc"]),
         ..Default::default()
     }

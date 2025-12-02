@@ -35,7 +35,7 @@ use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
+use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
@@ -327,8 +327,8 @@ pub enum Mode {
     ToolTarget,
 
     /// Build a tool which uses the locally built std, placing output in the
-    /// "stageN-tools" directory. Its usage is quite rare, mainly used by
-    /// compiletest which needs libtest.
+    /// "stageN-tools" directory. Its usage is quite rare; historically it was
+    /// needed by compiletest, but now it is mainly used by `test-float-parse`.
     ToolStd,
 
     /// Build a tool which uses the `rustc_private` mechanism, and thus
@@ -415,7 +415,7 @@ macro_rules! forward {
 }
 
 forward! {
-    verbose(f: impl Fn()),
+    do_if_verbose(f: impl Fn()),
     is_verbose() -> bool,
     create(path: &Path, s: &str),
     remove(f: &Path),
@@ -601,11 +601,11 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(|| println!("auto-detected local-rebuild {local_release}"));
+            build.do_if_verbose(|| println!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
-        build.verbose(|| println!("finding compilers"));
+        build.do_if_verbose(|| println!("finding compilers"));
         utils::cc_detect::fill_compilers(&mut build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
@@ -613,7 +613,7 @@ impl Build {
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose(|| println!("running sanity check"));
+            build.do_if_verbose(|| println!("running sanity check"));
             crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
@@ -631,7 +631,7 @@ impl Build {
             // Now, update all existing submodules.
             build.update_existing_submodules();
 
-            build.verbose(|| println!("learning about cargo"));
+            build.do_if_verbose(|| println!("learning about cargo"));
             crate::core::metadata::build(&mut build);
         }
 
@@ -846,6 +846,10 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
+        if self.config.llvm_enzyme {
+            features.insert("llvm_enzyme");
+        }
+
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -868,6 +872,9 @@ impl Build {
         }
         if self.config.llvm_enzyme {
             features.push("llvm_enzyme");
+        }
+        if self.config.llvm_offload {
+            features.push("llvm_offload");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
         if self.config.rust_randomize_layout && check("rustc_randomized_layouts") {
@@ -1085,18 +1092,6 @@ impl Build {
                 .to_owned()
                 .into()
         })
-    }
-
-    /// Check if verbosity is greater than the `level`
-    pub fn is_verbose_than(&self, level: usize) -> bool {
-        self.verbosity > level
-    }
-
-    /// Runs a function if verbosity is greater than `level`.
-    fn verbose_than(&self, level: usize, f: impl Fn()) {
-        if self.is_verbose_than(level) {
-            f()
-        }
     }
 
     fn info(&self, msg: &str) {
@@ -1370,14 +1365,14 @@ impl Build {
             && !target.is_msvc()
         {
             Some(self.cc(target))
-        } else if self.config.lld_mode.is_used()
+        } else if self.config.bootstrap_override_lld.is_used()
             && self.is_lld_direct_linker(target)
             && self.host_target == target
         {
-            match self.config.lld_mode {
-                LldMode::SelfContained => Some(self.initial_lld.clone()),
-                LldMode::External => Some("lld".into()),
-                LldMode::Unused => None,
+            match self.config.bootstrap_override_lld {
+                BootstrapOverrideLld::SelfContained => Some(self.initial_lld.clone()),
+                BootstrapOverrideLld::External => Some("lld".into()),
+                BootstrapOverrideLld::None => None,
             }
         } else {
             None
@@ -1534,21 +1529,6 @@ impl Build {
         self.config.target_config.get(&target).and_then(|t| t.qemu_rootfs.as_ref()).map(|p| &**p)
     }
 
-    /// Path to the python interpreter to use
-    fn python(&self) -> &Path {
-        if self.config.host_target.ends_with("apple-darwin") {
-            // Force /usr/bin/python3 on macOS for LLDB tests because we're loading the
-            // LLDB plugin's compiled module which only works with the system python
-            // (namely not Homebrew-installed python)
-            Path::new("/usr/bin/python3")
-        } else {
-            self.config
-                .python
-                .as_ref()
-                .expect("python is required for running LLDB or rustdoc tests")
-        }
-    }
-
     /// Temporary directory that extended error information is emitted to.
     fn extended_error_dir(&self) -> PathBuf {
         self.out.join("tmp/extended-error-metadata")
@@ -1623,7 +1603,7 @@ impl Build {
         // If available, we read the beta revision from that file.
         // This only happens when building from a source tarball when Git should not be used.
         let count = extract_beta_rev_from_file(self.src.join("version")).unwrap_or_else(|| {
-            // Figure out how many merge commits happened since we branched off master.
+            // Figure out how many merge commits happened since we branched off main.
             // That's our beta number!
             // (Note that we use a `..` range, not the `...` symmetric difference.)
             helpers::git(Some(&self.src))
@@ -1816,7 +1796,6 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
-        self.verbose_than(1, || println!("Copy/Link {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1933,7 +1912,10 @@ impl Build {
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("install", ?src, ?dst);
+
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());

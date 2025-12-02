@@ -177,7 +177,7 @@ LL | #[deprecated = "hello"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, foreign statics, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, and crates
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
    = note: `#[deny(useless_deprecated)]` on by default
 
 error: aborting due to 10 previous errors

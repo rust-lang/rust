@@ -1,0 +1,10 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", wasm_import_module = "...")]`
+  --> $DIR/link-dl.rs:14:1
+   |
+LL | #[link="dl"]
+   | ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+

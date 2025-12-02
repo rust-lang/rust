@@ -67,7 +67,7 @@ pub(crate) fn complete_type_path(
             });
 
             // Iterate assoc types separately
-            ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
+            ty.iterate_assoc_items(ctx.db, |item| {
                 if let hir::AssocItem::TypeAlias(ty) = item {
                     acc.add_type_alias(ctx, ty)
                 }
@@ -110,7 +110,7 @@ pub(crate) fn complete_type_path(
                     });
 
                     // Iterate assoc types separately
-                    ty.iterate_assoc_items(ctx.db, ctx.krate, |item| {
+                    ty.iterate_assoc_items(ctx.db, |item| {
                         if let hir::AssocItem::TypeAlias(ty) = item {
                             acc.add_type_alias(ctx, ty)
                         }
@@ -205,6 +205,7 @@ pub(crate) fn complete_type_path(
             };
 
             acc.add_nameref_keywords_with_colon(ctx);
+            acc.add_type_keywords(ctx);
             ctx.process_all_names(&mut |name, def, doc_aliases| {
                 if scope_def_applicable(def) {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases);

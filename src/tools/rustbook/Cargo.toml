@@ -10,9 +10,7 @@ edition = "2021"
 [dependencies]
 clap = "4.0.32"
 env_logger = "0.11"
-# FIXME: Remove this pin once this rustix issue is resolved
-# https://github.com/bytecodealliance/rustix/issues/1496
-libc = "=0.2.174"
+libc = "0.2"
 mdbook-trpl = { path = "../../doc/book/packages/mdbook-trpl" }
 mdbook-i18n-helpers = "0.3.3"
 mdbook-spec = { path = "../../doc/reference/mdbook-spec" }

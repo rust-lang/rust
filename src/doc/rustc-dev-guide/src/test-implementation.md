@@ -157,7 +157,7 @@ $ rustc my_mod.rs -Z unpretty=hir
 [`TestDesc`]: https://doc.rust-lang.org/test/struct.TestDesc.html
 [ast]: ./ast-validation.md
 [Ident]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Ident.html
-[rustc_ast]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_ast
+[rustc_ast]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_ast
 [Symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [test]: https://doc.rust-lang.org/test/index.html
 [tdaf]: https://doc.rust-lang.org/test/struct.TestDescAndFn.html

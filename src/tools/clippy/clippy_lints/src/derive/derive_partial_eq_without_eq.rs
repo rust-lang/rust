@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::has_non_exhaustive_attr;
 use clippy_utils::ty::implements_trait_with_env;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast};
 use rustc_span::{Span, sym};
@@ -11,7 +11,13 @@ use rustc_span::{Span, sym};
 use super::DERIVE_PARTIAL_EQ_WITHOUT_EQ;
 
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    span: Span,
+    trait_ref: &hir::TraitRef<'_>,
+    ty: Ty<'tcx>,
+    adt_hir_id: HirId,
+) {
     if let ty::Adt(adt, args) = ty.kind()
         && cx.tcx.visibility(adt.did()).is_public()
         && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
@@ -20,7 +26,6 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::T
         && !has_non_exhaustive_attr(cx.tcx, *adt)
         && !ty_implements_eq_trait(cx.tcx, ty, eq_trait_def_id)
         && let typing_env = typing_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
-        && let Some(local_def_id) = adt.did().as_local()
         // If all of our fields implement `Eq`, we can implement `Eq` too
         && adt
             .all_fields()
@@ -30,7 +35,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::T
         span_lint_hir_and_then(
             cx,
             DERIVE_PARTIAL_EQ_WITHOUT_EQ,
-            cx.tcx.local_def_id_to_hir_id(local_def_id),
+            adt_hir_id,
             span.ctxt().outer_expn_data().call_site,
             "you are deriving `PartialEq` and can implement `Eq`",
             |diag| {

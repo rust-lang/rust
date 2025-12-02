@@ -170,7 +170,6 @@ macro_rules! make_mir_visitor {
                         self.visit_place(place, PlaceContext::NON_MUTATING, location);
                     }
                     StatementKind::SetDiscriminant { place, .. }
-                    | StatementKind::Deinit(place)
                     | StatementKind::Retag(_, place) => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
@@ -182,7 +181,7 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(projections);
                     }
                     StatementKind::Coverage(coverage) => visit_opaque(coverage),
-                    StatementKind::Intrinsic(intrisic) => match intrisic {
+                    StatementKind::Intrinsic(intrinsic) => match intrinsic {
                         NonDivergingIntrinsic::Assume(operand) => {
                             self.visit_operand(operand, location);
                         }
@@ -283,9 +282,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location)
                     }
                     Rvalue::ThreadLocalRef(_) => {}
-                    Rvalue::NullaryOp(_, ty) => {
-                        self.visit_ty(ty, location);
-                    }
+                    Rvalue::NullaryOp(_) => {}
                     Rvalue::UnaryOp(_, op) | Rvalue::Use(op) => {
                         self.visit_operand(op, location);
                     }
@@ -471,7 +468,6 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-                ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
             }
         }
     };
@@ -512,7 +508,6 @@ macro_rules! visit_place_fns {
                 ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
                 ProjectionElem::Downcast(_idx) => {}
                 ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
-                ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
             }
         }
     };

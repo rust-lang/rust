@@ -1,6 +1,5 @@
 #![warn(clippy::match_single_binding)]
 #![allow(unused_variables)]
-#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     // Lint (additional curly braces needed, see #6572)
@@ -29,7 +28,7 @@ fn main() {
         #[rustfmt::skip]
         Some((first, _second)) => {
             let (a, b) = get_tup();
-            println!("a {:?} and b {:?}", a, b)
+            println!("a {a:?} and b {b:?}")
         },
         None => println!("nothing"),
     }

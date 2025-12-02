@@ -1,6 +1,5 @@
 SOURCE_FILE
-  SHEBANG "#!/use/bin/env rusti"
-  WHITESPACE "\n"
+  SHEBANG "#!/use/bin/env rusti\n"
   ATTR
     POUND "#"
     BANG "!"

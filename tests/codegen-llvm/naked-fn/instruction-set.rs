@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: arm-mode thumb-mode
 //@ [arm-mode] compile-flags: --target armv5te-none-eabi
 //@ [thumb-mode] compile-flags: --target thumbv5te-none-eabi

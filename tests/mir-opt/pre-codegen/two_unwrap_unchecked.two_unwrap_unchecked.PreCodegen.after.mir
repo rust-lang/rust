@@ -1,0 +1,51 @@
+// MIR for `two_unwrap_unchecked` after PreCodegen
+
+fn two_unwrap_unchecked(_1: &Option<i32>) -> i32 {
+    debug v => _1;
+    let mut _0: i32;
+    let mut _2: std::option::Option<i32>;
+    let _4: i32;
+    scope 1 {
+        debug v1 => _4;
+        scope 2 {
+            debug v2 => _4;
+        }
+        scope 8 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
+            scope 9 {
+            }
+            scope 10 (inlined #[track_caller] unreachable_unchecked) {
+                scope 11 (inlined core::ub_checks::check_language_ub) {
+                    scope 12 (inlined core::ub_checks::check_language_ub::runtime) {
+                    }
+                }
+            }
+        }
+    }
+    scope 3 (inlined #[track_caller] Option::<i32>::unwrap_unchecked) {
+        let mut _3: isize;
+        scope 4 {
+        }
+        scope 5 (inlined #[track_caller] unreachable_unchecked) {
+            scope 6 (inlined core::ub_checks::check_language_ub) {
+                scope 7 (inlined core::ub_checks::check_language_ub::runtime) {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        _2 = copy (*_1);
+        _3 = discriminant(_2);
+        switchInt(copy _3) -> [0: bb2, 1: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _4 = copy ((_2 as Some).0: i32);
+        _0 = Add(copy _4, copy _4);
+        return;
+    }
+
+    bb2: {
+        unreachable;
+    }
+}

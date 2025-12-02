@@ -631,6 +631,21 @@ fn test_swap_remove_empty() {
 }
 
 #[test]
+fn test_try_remove() {
+    let mut vec = vec![1, 2, 3];
+    // We are attempting to remove vec[0] which contains 1
+    assert_eq!(vec.try_remove(0), Some(1));
+    // Now `vec` looks like: [2, 3]
+    // We will now try to remove vec[2] which does not exist
+    // This should return `None`
+    assert_eq!(vec.try_remove(2), None);
+
+    // We will try the same thing with an empty vector
+    let mut v: Vec<u8> = vec![];
+    assert!(v.try_remove(0).is_none());
+}
+
+#[test]
 fn test_move_items() {
     let vec = vec![1, 2, 3];
     let mut vec2 = vec![];
@@ -2293,20 +2308,6 @@ fn test_vec_swap() {
     swap(&mut n, &mut a[0]);
     assert_eq!(a[0], 42);
     assert_eq!(n, 0);
-}
-
-#[test]
-fn test_extend_from_within_spec() {
-    #[derive(Copy)]
-    struct CopyOnly;
-
-    impl Clone for CopyOnly {
-        fn clone(&self) -> Self {
-            panic!("extend_from_within must use specialization on copy");
-        }
-    }
-
-    vec![CopyOnly, CopyOnly].extend_from_within(..);
 }
 
 #[test]

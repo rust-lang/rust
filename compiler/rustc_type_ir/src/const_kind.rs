@@ -7,7 +7,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::{self as ty, DebruijnIndex, Interner};
+use crate::{self as ty, BoundVarIndexKind, Interner};
 
 /// Represents a constant in Rust.
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
@@ -23,7 +23,7 @@ pub enum ConstKind<I: Interner> {
     Infer(InferConst),
 
     /// Bound const variable, used only when preparing a trait query.
-    Bound(DebruijnIndex, I::BoundConst),
+    Bound(BoundVarIndexKind, I::BoundConst),
 
     /// A placeholder const - universally quantified higher-ranked const.
     Placeholder(I::PlaceholderConst),
@@ -72,7 +72,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
 pub struct UnevaluatedConst<I: Interner> {
-    pub def: I::DefId,
+    pub def: I::UnevaluatedConstId,
     pub args: I::GenericArgs,
 }
 
@@ -80,7 +80,7 @@ impl<I: Interner> Eq for UnevaluatedConst<I> {}
 
 impl<I: Interner> UnevaluatedConst<I> {
     #[inline]
-    pub fn new(def: I::DefId, args: I::GenericArgs) -> UnevaluatedConst<I> {
+    pub fn new(def: I::UnevaluatedConstId, args: I::GenericArgs) -> UnevaluatedConst<I> {
         UnevaluatedConst { def, args }
     }
 }

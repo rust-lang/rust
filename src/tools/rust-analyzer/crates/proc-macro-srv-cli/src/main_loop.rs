@@ -2,19 +2,20 @@
 use std::io;
 
 use proc_macro_api::{
+    Codec,
     legacy_protocol::{
-        json::{read_json, write_json},
+        json::JsonProtocol,
         msg::{
             self, ExpandMacroData, ExpnGlobals, Message, SpanMode, SpanTransformer,
             deserialize_span_data_index_map, serialize_span_data_index_map,
         },
+        postcard::PostcardProtocol,
     },
     version::CURRENT_API_VERSION,
 };
 use proc_macro_srv::{EnvSnapshot, SpanId};
 
 use crate::ProtocolFormat;
-
 struct SpanTrans;
 
 impl SpanTransformer for SpanTrans {
@@ -36,13 +37,12 @@ impl SpanTransformer for SpanTrans {
 
 pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
     match format {
-        ProtocolFormat::Json => run_json(),
-        #[cfg(feature = "postcard")]
-        ProtocolFormat::Postcard => unimplemented!(),
+        ProtocolFormat::JsonLegacy => run_::<JsonProtocol>(),
+        ProtocolFormat::PostcardLegacy => run_::<PostcardProtocol>(),
     }
 }
 
-fn run_json() -> io::Result<()> {
+fn run_<C: Codec>() -> io::Result<()> {
     fn macro_kind_to_api(kind: proc_macro_srv::ProcMacroKind) -> proc_macro_api::ProcMacroKind {
         match kind {
             proc_macro_srv::ProcMacroKind::CustomDerive => {
@@ -53,9 +53,9 @@ fn run_json() -> io::Result<()> {
         }
     }
 
-    let mut buf = String::new();
-    let mut read_request = || msg::Request::read(read_json, &mut io::stdin().lock(), &mut buf);
-    let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
+    let mut buf = C::Buf::default();
+    let mut read_request = || msg::Request::read::<_, C>(&mut io::stdin().lock(), &mut buf);
+    let write_response = |msg: msg::Response| msg.write::<_, C>(&mut io::stdout().lock());
 
     let env = EnvSnapshot::default();
     let srv = proc_macro_srv::ProcMacroSrv::new(&env);
@@ -90,10 +90,11 @@ fn run_json() -> io::Result<()> {
                         let call_site = SpanId(call_site as u32);
                         let mixed_site = SpanId(mixed_site as u32);
 
-                        let macro_body =
-                            macro_body.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION);
-                        let attributes = attributes
-                            .map(|it| it.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION));
+                        let macro_body = macro_body
+                            .to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION, |_, b| b);
+                        let attributes = attributes.map(|it| {
+                            it.to_tokenstream_unresolved::<SpanTrans>(CURRENT_API_VERSION, |_, b| b)
+                        });
 
                         srv.expand(
                             lib,
@@ -107,8 +108,9 @@ fn run_json() -> io::Result<()> {
                             mixed_site,
                         )
                         .map(|it| {
-                            msg::FlatTree::new_raw::<SpanTrans>(
-                                tt::SubtreeView::new(&it),
+                            msg::FlatTree::from_tokenstream_raw::<SpanTrans>(
+                                it,
+                                call_site,
                                 CURRENT_API_VERSION,
                             )
                         })
@@ -122,10 +124,17 @@ fn run_json() -> io::Result<()> {
                         let call_site = span_data_table[call_site];
                         let mixed_site = span_data_table[mixed_site];
 
-                        let macro_body =
-                            macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table);
+                        let macro_body = macro_body.to_tokenstream_resolved(
+                            CURRENT_API_VERSION,
+                            &span_data_table,
+                            |a, b| srv.join_spans(a, b).unwrap_or(b),
+                        );
                         let attributes = attributes.map(|it| {
-                            it.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table)
+                            it.to_tokenstream_resolved(
+                                CURRENT_API_VERSION,
+                                &span_data_table,
+                                |a, b| srv.join_spans(a, b).unwrap_or(b),
+                            )
                         });
                         srv.expand(
                             lib,
@@ -140,9 +149,10 @@ fn run_json() -> io::Result<()> {
                         )
                         .map(|it| {
                             (
-                                msg::FlatTree::new(
-                                    tt::SubtreeView::new(&it),
+                                msg::FlatTree::from_tokenstream(
+                                    it,
                                     CURRENT_API_VERSION,
+                                    call_site,
                                     &mut span_data_table,
                                 ),
                                 serialize_span_data_index_map(&span_data_table),

@@ -10,8 +10,7 @@
 #![feature(const_trait_impl, effects)]
 //~^ ERROR feature has been removed
 
-#[const_trait]
-trait Main {
+const trait Main {
     fn compute<T: [const] Aux>() -> u32;
 }
 
@@ -22,8 +21,7 @@ impl const Main for () {
     }
 }
 
-#[const_trait]
-trait Aux {}
+const trait Aux {}
 
 impl const Aux for () {}
 

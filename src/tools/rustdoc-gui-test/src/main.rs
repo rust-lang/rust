@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use build_helper::npm;
 use build_helper::util::try_run;
-use compiletest::directives::TestProps;
+use compiletest::rustdoc_gui_test::RustdocGuiTestProps;
 use config::Config;
 
 mod config;
@@ -43,13 +43,7 @@ fn main() -> Result<(), ()> {
                 .current_dir(path);
 
             if let Some(librs) = find_librs(entry.path()) {
-                let compiletest_c = compiletest::common::Config::incomplete_for_rustdoc_gui_test();
-
-                let test_props = TestProps::from_file(
-                    &camino::Utf8PathBuf::try_from(librs).unwrap(),
-                    None,
-                    &compiletest_c,
-                );
+                let test_props = RustdocGuiTestProps::from_file(&librs);
 
                 if !test_props.compile_flags.is_empty() {
                     cargo.env("RUSTDOCFLAGS", test_props.compile_flags.join(" "));
@@ -65,7 +59,7 @@ fn main() -> Result<(), ()> {
         }
     }
 
-    let local_node_modules = npm::install(&config.rust_src, &config.out_dir, &config.npm)
+    let local_node_modules = npm::install(&config.rust_src, &config.out_dir, &config.yarn)
         .expect("unable to install browser-ui-test");
 
     let mut command = Command::new(&config.nodejs);

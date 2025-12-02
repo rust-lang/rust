@@ -120,7 +120,7 @@ impl<'p, 'tcx: 'p> fmt::Debug for RustcPatCtxt<'p, 'tcx> {
 impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
-    /// types, we use the corresponding concrete type if possible.
+    /// types, we use the corresponding hidden type if possible.
     // FIXME(#132279): This will be unnecessary once we have a TypingMode which supports revealing
     // opaque types defined in a body.
     #[inline]
@@ -146,9 +146,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// know it.
     fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
         self.typeck_results
-            .concrete_opaque_types
+            .hidden_types
             .get(&key.def_id)
-            .map(|x| ty::EarlyBinder::bind(x.ty).instantiate(self.tcx, key.args))
+            .map(|x| x.ty.instantiate(self.tcx, key.args))
     }
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
@@ -191,7 +191,18 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         variant.fields.iter().map(move |field| {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
-            let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
+            let ty =
+                self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
+                    self.tcx.dcx().span_delayed_bug(
+                        self.scrut_span,
+                        format!(
+                            "Failed to normalize {:?} in typing_env={:?} while getting variant sub tys for {ty:?}",
+                            e.get_type_for_failure(),
+                            self.typing_env,
+                        ),
+                    );
+                    ty
+                });
             let ty = self.reveal_opaque_ty(ty);
             (field, ty)
         })
@@ -462,8 +473,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Deref { subpattern } => {
                 fields = vec![self.lower_pat(subpattern).at_index(0)];
                 arity = 1;
-                ctor = match ty.kind() {
-                    ty::Ref(..) => Ref,
+                ctor = match ty.pinned_ref() {
+                    None if ty.is_ref() => Ref,
+                    Some((inner_ty, _)) => {
+                        self.internal_state.has_lowered_deref_pat.set(true);
+                        DerefPattern(RevealedTy(inner_ty))
+                    }
                     _ => span_bug!(
                         pat.span,
                         "pattern has unexpected type: pat: {:?}, ty: {:?}",

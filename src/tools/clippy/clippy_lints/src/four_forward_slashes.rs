@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for FourForwardSlashes {
             .tcx
             .hir_attrs(item.hir_id())
             .iter()
-            .filter(|i| i.is_doc_comment())
+            .filter(|i| i.is_doc_comment().is_some())
             .fold(item.span.shrink_to_lo(), |span, attr| span.to(attr.span()));
         let (Some(file), _, _, end_line, _) = sm.span_to_location_info(span) else {
             return;

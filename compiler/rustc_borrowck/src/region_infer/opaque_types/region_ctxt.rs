@@ -11,7 +11,9 @@ use crate::constraints::ConstraintSccIndex;
 use crate::handle_placeholders::{SccAnnotations, region_definitions};
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::RegionValues;
-use crate::region_infer::{ConstraintSccs, RegionDefinition, RegionTracker, Representative};
+use crate::region_infer::{
+    ConstraintSccs, OutlivesConstraintSet, RegionDefinition, RegionTracker, Representative,
+};
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -39,16 +41,36 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         location_map: Rc<DenseLocationMap>,
         constraints: &MirTypeckRegionConstraints<'tcx>,
     ) -> RegionCtxt<'a, 'tcx> {
+        let mut outlives_constraints = constraints.outlives_constraints.clone();
         let universal_regions = &universal_region_relations.universal_regions;
         let (definitions, _has_placeholders) = region_definitions(infcx, universal_regions);
+
+        let compute_sccs =
+            |outlives_constraints: &OutlivesConstraintSet<'tcx>,
+             annotations: &mut SccAnnotations<'_, 'tcx, RegionTracker>| {
+                ConstraintSccs::new_with_annotation(
+                    &outlives_constraints
+                        .graph(definitions.len())
+                        .region_graph(outlives_constraints, universal_regions.fr_static),
+                    annotations,
+                )
+            };
+
         let mut scc_annotations = SccAnnotations::init(&definitions);
-        let constraint_sccs = ConstraintSccs::new_with_annotation(
-            &constraints
-                .outlives_constraints
-                .graph(definitions.len())
-                .region_graph(&constraints.outlives_constraints, universal_regions.fr_static),
-            &mut scc_annotations,
+        let mut constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
+
+        let added_constraints = crate::handle_placeholders::rewrite_placeholder_outlives(
+            &constraint_sccs,
+            &scc_annotations,
+            universal_regions.fr_static,
+            &mut outlives_constraints,
         );
+
+        if added_constraints {
+            scc_annotations = SccAnnotations::init(&definitions);
+            constraint_sccs = compute_sccs(&outlives_constraints, &mut scc_annotations);
+        }
+
         let scc_annotations = scc_annotations.scc_to_annotation;
 
         // Unlike the `RegionInferenceContext`, we only care about free regions

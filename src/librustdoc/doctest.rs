@@ -12,7 +12,7 @@ use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use std::{fmt, panic, str};
+use std::{panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
@@ -60,24 +60,15 @@ impl MergedDoctestTimes {
         self.added_compilation_times += 1;
     }
 
-    fn display_times(&self) {
+    /// Returns `(total_time, compilation_time)`.
+    fn times_in_secs(&self) -> Option<(f64, f64)> {
         // If no merged doctest was compiled, then there is nothing to display since the numbers
         // displayed by `libtest` for standalone tests are already accurate (they include both
         // compilation and runtime).
-        if self.added_compilation_times > 0 {
-            println!("{self}");
+        if self.added_compilation_times == 0 {
+            return None;
         }
-    }
-}
-
-impl fmt::Display for MergedDoctestTimes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "all doctests ran in {:.2}s; merged doctests compilation took {:.2}s",
-            self.total_time.elapsed().as_secs_f64(),
-            self.compilation_time.as_secs_f64(),
-        )
+        Some((self.total_time.elapsed().as_secs_f64(), self.compilation_time.as_secs_f64()))
     }
 }
 
@@ -173,6 +164,9 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),
         remap_path_prefix: options.remap_path_prefix.clone(),
+        unstable_opts: options.unstable_opts.clone(),
+        error_format: options.error_format.clone(),
+        target_modifiers: options.target_modifiers.clone(),
         ..config::Options::default()
     };
 
@@ -198,7 +192,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
         using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
-        expanded_args: options.expanded_args.clone(),
     };
 
     let externs = options.externs.clone();
@@ -334,8 +327,8 @@ pub(crate) fn run_tests(
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
     test_args.extend_from_slice(&rustdoc_options.test_args);
-    if rustdoc_options.nocapture {
-        test_args.push("--nocapture".to_string());
+    if rustdoc_options.no_capture {
+        test_args.push("--no-capture".to_string());
     }
 
     let mut nb_errors = 0;
@@ -400,15 +393,24 @@ pub(crate) fn run_tests(
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
         test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
+            let times = times.times_in_secs();
             // We ensure temp dir destructor is called.
             std::mem::drop(temp_dir.take());
-            times.display_times();
+            if let Some((total_time, compilation_time)) = times {
+                test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+            }
         });
+    } else {
+        // If the first condition branch exited successfully, `test_main_with_exit_callback` will
+        // not exit the process. So to prevent displaying the times twice, we put it behind an
+        // `else` condition.
+        if let Some((total_time, compilation_time)) = times.times_in_secs() {
+            test::print_merged_doctests_times(&test_args, total_time, compilation_time);
+        }
     }
+    // We ensure temp dir destructor is called.
+    std::mem::drop(temp_dir);
     if nb_errors != 0 {
-        // We ensure temp dir destructor is called.
-        std::mem::drop(temp_dir);
-        times.display_times();
         std::process::exit(test::ERROR_EXIT_CODE);
     }
 }
@@ -598,7 +600,7 @@ fn run_test(
     ]);
     if let ErrorOutputType::HumanReadable { kind, color_config } = rustdoc_options.error_format {
         let short = kind.short();
-        let unicode = kind == HumanReadableErrorType::Unicode;
+        let unicode = kind == HumanReadableErrorType::AnnotateSnippet { unicode: true, short };
 
         if short {
             compiler_args.extend_from_slice(&["--error-format".to_owned(), "short".to_owned()]);
@@ -643,8 +645,8 @@ fn run_test(
             // tested as standalone tests.
             return (Duration::default(), Err(TestFailure::CompileError));
         }
-        if !rustdoc_options.nocapture {
-            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+        if !rustdoc_options.no_capture {
+            // If `no_capture` is disabled, then we don't display rustc's output when compiling
             // the merged doctests.
             compiler.stderr(Stdio::null());
         }
@@ -669,7 +671,13 @@ fn run_test(
 
     debug!("compiler invocation for doctest: {compiler:?}");
 
-    let mut child = compiler.spawn().expect("Failed to spawn rustc process");
+    let mut child = match compiler.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            eprintln!("Failed to spawn {:?}: {error:?}", compiler.get_program());
+            return (Duration::default(), Err(TestFailure::CompileError));
+        }
+    };
     let output = if let Some(merged_test_code) = &doctest.merged_test_code {
         // compile-fail tests never get merged, so this should always pass
         let status = child.wait().expect("Failed to wait");
@@ -720,8 +728,8 @@ fn run_test(
             // tested as standalone tests.
             return (instant.elapsed(), Err(TestFailure::CompileError));
         }
-        if !rustdoc_options.nocapture {
-            // If `nocapture` is disabled, then we don't display rustc's output when compiling
+        if !rustdoc_options.no_capture {
+            // If `no_capture` is disabled, then we don't display rustc's output when compiling
             // the merged doctests.
             runner_compiler.stderr(Stdio::null());
         }
@@ -731,7 +739,13 @@ fn run_test(
         let status = if !status.success() {
             status
         } else {
-            let mut child_runner = runner_compiler.spawn().expect("Failed to spawn rustc process");
+            let mut child_runner = match runner_compiler.spawn() {
+                Ok(child) => child,
+                Err(error) => {
+                    eprintln!("Failed to spawn {:?}: {error:?}", runner_compiler.get_program());
+                    return (Duration::default(), Err(TestFailure::CompileError));
+                }
+            };
             child_runner.wait().expect("Failed to wait")
         };
 
@@ -820,7 +834,7 @@ fn run_test(
         cmd.current_dir(run_directory);
     }
 
-    let result = if doctest.is_multiple_tests() || rustdoc_options.nocapture {
+    let result = if doctest.is_multiple_tests() || rustdoc_options.no_capture {
         cmd.status().map(|status| process::Output {
             status,
             stdout: Vec::new(),
@@ -1015,10 +1029,7 @@ impl CreateRunnableDocTests {
             .span(scraped_test.span)
             .build(dcx);
         let is_standalone = !doctest.can_be_merged
-            || scraped_test.langstr.compile_fail
-            || scraped_test.langstr.test_harness
-            || scraped_test.langstr.standalone_crate
-            || self.rustdoc_options.nocapture
+            || self.rustdoc_options.no_capture
             || self.rustdoc_options.test_args.iter().any(|arg| arg == "--show-output");
         if is_standalone {
             let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);

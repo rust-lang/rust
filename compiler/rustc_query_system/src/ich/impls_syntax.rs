@@ -22,7 +22,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
         let filtered: SmallVec<[&hir::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_doc_comment()
+                attr.is_doc_comment().is_none()
                     // FIXME(jdonszelmann) have a better way to handle ignored attrs
                     && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
             })
@@ -54,7 +54,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             checksum_hash: _,
             external_src: _,
             start_pos: _,
-            source_len: _,
+            normalized_source_len: _,
+            unnormalized_source_len: _,
             lines: _,
             ref multibyte_chars,
             ref normalized_pos,

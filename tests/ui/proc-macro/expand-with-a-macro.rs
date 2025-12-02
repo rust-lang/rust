@@ -1,6 +1,7 @@
 //@ run-pass
 //@ needs-unwind
 //@ proc-macro: expand-with-a-macro.rs
+//@ ignore-backends: gcc
 
 
 #![deny(warnings)]

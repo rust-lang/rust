@@ -1,0 +1,22 @@
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks_fixable.rs:10:5
+   |
+LL |     /// SAFETY: Bla
+   |         ------- help: consider changing it to a `# Safety` section: `# Safety`
+LL |     unsafe fn unsafe_doc_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
+
+error: function has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks_fixable.rs:16:5
+   |
+LL |      * SAFETY: Bla
+   |        ------- help: consider changing it to a `# Safety` section: `# Safety`
+LL |      */
+LL |     unsafe fn unsafe_block_doc_comment() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

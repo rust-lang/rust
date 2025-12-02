@@ -197,19 +197,6 @@ fn qpath_certainty(cx: &LateContext<'_>, qpath: &QPath<'_>, resolves_to_type: bo
         QPath::TypeRelative(ty, path_segment) => {
             path_segment_certainty(cx, type_certainty(cx, ty), path_segment, resolves_to_type)
         },
-
-        QPath::LangItem(lang_item, ..) => cx
-            .tcx
-            .lang_items()
-            .get(*lang_item)
-            .map_or(Certainty::Uncertain, |def_id| {
-                let generics = cx.tcx.generics_of(def_id);
-                if generics.is_empty() {
-                    Certainty::Certain(if resolves_to_type { Some(def_id) } else { None })
-                } else {
-                    Certainty::Uncertain
-                }
-            }),
     };
     debug_assert!(resolves_to_type || certainty.to_def_id().is_none());
     certainty
@@ -329,7 +316,7 @@ fn update_res(
     None
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[expect(clippy::cast_possible_truncation)]
 fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let Some(callee_def_id) = (match expr.kind {
         ExprKind::Call(callee, _) => {

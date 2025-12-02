@@ -25,7 +25,7 @@ impl<T, const N: usize> RawSmallVec<T, N> {
     }
 
     const fn as_mut_ptr_inline(&mut self) -> *mut T {
-        (unsafe { &raw mut self.inline }) as *mut T
+        &raw mut self.inline as *mut T
     }
 
     const unsafe fn as_mut_ptr_heap(&mut self) -> *mut T {

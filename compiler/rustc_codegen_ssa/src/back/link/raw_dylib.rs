@@ -11,6 +11,7 @@ use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
 use rustc_session::cstore::DllImport;
 use rustc_span::Symbol;
+use rustc_target::spec::Arch;
 
 use crate::back::archive::ImportLibraryItem;
 use crate::back::link::ArchiveBuilderBuilder;
@@ -31,7 +32,7 @@ fn collate_raw_dylibs_windows<'a>(
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
     for lib in used_libraries {
-        if lib.kind == NativeLibKind::RawDylib {
+        if let NativeLibKind::RawDylib { .. } = lib.kind {
             let ext = if lib.verbatim { "" } else { ".dll" };
             let name = format!("{}{}", lib.name, ext);
             let imports = dylib_table.entry(name.clone()).or_default();
@@ -77,7 +78,7 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
             let items: Vec<ImportLibraryItem> = raw_dylib_imports
                 .iter()
                 .map(|import: &DllImport| {
-                    if sess.target.arch == "x86" {
+                    if sess.target.arch == Arch::X86 {
                         ImportLibraryItem {
                             name: common::i686_decorated_name(
                                 import,
@@ -128,12 +129,12 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
 fn collate_raw_dylibs_elf<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-) -> Vec<(String, Vec<DllImport>)> {
+) -> Vec<(String, Vec<DllImport>, bool)> {
     // Use index maps to preserve original order of imports and libraries.
-    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
+    let mut dylib_table = FxIndexMap::<String, (FxIndexMap<Symbol, &DllImport>, bool)>::default();
 
     for lib in used_libraries {
-        if lib.kind == NativeLibKind::RawDylib {
+        if let NativeLibKind::RawDylib { as_needed } = lib.kind {
             let filename = if lib.verbatim {
                 lib.name.as_str().to_owned()
             } else {
@@ -142,17 +143,19 @@ fn collate_raw_dylibs_elf<'a>(
                 format!("{prefix}{}{ext}", lib.name)
             };
 
-            let imports = dylib_table.entry(filename.clone()).or_default();
+            let (stub_imports, stub_as_needed) =
+                dylib_table.entry(filename.clone()).or_insert((Default::default(), true));
             for import in &lib.dll_imports {
-                imports.insert(import.name, import);
+                stub_imports.insert(import.name, import);
             }
+            *stub_as_needed = *stub_as_needed && as_needed.unwrap_or(true);
         }
     }
     sess.dcx().abort_if_errors();
     dylib_table
         .into_iter()
-        .map(|(name, imports)| {
-            (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
+        .map(|(name, (imports, as_needed))| {
+            (name, imports.into_iter().map(|(_, import)| import.clone()).collect(), as_needed)
         })
         .collect()
 }
@@ -161,10 +164,10 @@ pub(super) fn create_raw_dylib_elf_stub_shared_objects<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
     raw_dylib_so_dir: &Path,
-) -> Vec<String> {
+) -> Vec<(String, bool)> {
     collate_raw_dylibs_elf(sess, used_libraries)
         .into_iter()
-        .map(|(load_filename, raw_dylib_imports)| {
+        .map(|(load_filename, raw_dylib_imports, as_needed)| {
             use std::hash::Hash;
 
             // `load_filename` is the *target/loader* filename that will end up in NEEDED.
@@ -205,7 +208,7 @@ pub(super) fn create_raw_dylib_elf_stub_shared_objects<'a>(
                 });
             };
 
-            temporary_lib_name
+            (temporary_lib_name, as_needed)
         })
         .collect()
 }

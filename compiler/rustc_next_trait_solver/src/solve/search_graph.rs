@@ -74,36 +74,48 @@ where
         }
     }
 
-    fn is_initial_provisional_result(
-        cx: Self::Cx,
-        kind: PathKind,
-        input: CanonicalInput<I>,
-        result: QueryResult<I>,
-    ) -> bool {
-        Self::initial_provisional_result(cx, kind, input) == result
+    fn is_initial_provisional_result(result: QueryResult<I>) -> Option<PathKind> {
+        match result {
+            Ok(response) => {
+                if has_no_inference_or_external_constraints(response) {
+                    if response.value.certainty == Certainty::Yes {
+                        return Some(PathKind::Coinductive);
+                    } else if response.value.certainty == Certainty::overflow(false) {
+                        return Some(PathKind::Unknown);
+                    }
+                }
+
+                None
+            }
+            Err(NoSolution) => Some(PathKind::Inductive),
+        }
     }
 
-    fn on_stack_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn stack_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 
-    fn on_fixpoint_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
+    fn fixpoint_overflow_result(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(false))
     }
 
-    fn is_ambiguous_result(result: QueryResult<I>) -> bool {
-        result.is_ok_and(|response| {
-            has_no_inference_or_external_constraints(response)
+    fn is_ambiguous_result(result: QueryResult<I>) -> Option<Certainty> {
+        result.ok().and_then(|response| {
+            if has_no_inference_or_external_constraints(response)
                 && matches!(response.value.certainty, Certainty::Maybe { .. })
+            {
+                Some(response.value.certainty)
+            } else {
+                None
+            }
         })
     }
 
     fn propagate_ambiguity(
         cx: I,
         for_input: CanonicalInput<I>,
-        from_result: QueryResult<I>,
+        certainty: Certainty,
     ) -> QueryResult<I> {
-        let certainty = from_result.unwrap().value.certainty;
         response_no_constraints(cx, for_input, certainty)
     }
 

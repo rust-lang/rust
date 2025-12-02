@@ -112,7 +112,7 @@ pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
     let stamp = BuildStamp::new(dir);
     let mut cleared = false;
     if mtime(stamp.path()) < mtime(input) {
-        builder.verbose(|| println!("Dirty - {}", dir.display()));
+        builder.do_if_verbose(|| println!("Dirty - {}", dir.display()));
         let _ = fs::remove_dir_all(dir);
         cleared = true;
     } else if stamp.path().exists() {

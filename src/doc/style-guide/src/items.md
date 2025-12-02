@@ -123,7 +123,7 @@ struct Foo {
 Prefer using a unit struct (e.g., `struct Foo;`) to an empty struct (e.g.,
 `struct Foo();` or `struct Foo {}`, these only exist to simplify code
 generation), but if you must use an empty struct, keep it on one line with no
-space between the braces: `struct Foo;` or `struct Foo {}`.
+space between the braces: `struct Foo();` or `struct Foo {}`.
 
 The same guidelines are used for untagged union declarations.
 

@@ -1051,7 +1051,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.base.get_many_mut(ks)
+        self.base.get_disjoint_mut(ks)
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1118,7 +1118,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        unsafe { self.base.get_many_unchecked_mut(ks) }
+        unsafe { self.base.get_disjoint_unchecked_mut(ks) }
     }
 
     /// Returns `true` if the map contains a value for the specified key.
@@ -1685,7 +1685,8 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// let iter = map.extract_if(|_k, v| *v % 2 == 0);
 /// ```
 #[stable(feature = "hash_extract_if", since = "1.88.0")]
-#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[must_use = "iterators are lazy and do nothing unless consumed; \
+    use `retain` to remove and discard elements"]
 pub struct ExtractIf<'a, K, V, F> {
     base: base::ExtractIf<'a, K, V, F>,
 }

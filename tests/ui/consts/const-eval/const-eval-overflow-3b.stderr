@@ -11,11 +11,17 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
    |                    ^ no implementation for `i8 + u8`
    |
    = help: the trait `Add<u8>` is not implemented for `i8`
-   = help: the following other types implement trait `Add<Rhs>`:
-             `&i8` implements `Add<i8>`
-             `&i8` implements `Add`
-             `i8` implements `Add<&i8>`
-             `i8` implements `Add`
+help: the following other types implement trait `Add<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `&i8` implements `Add<i8>`
+   |
+   = note: `&i8` implements `Add`
+   |
+   = note: `i8` implements `Add<&i8>`
+   |
+   = note: `i8` implements `Add`
+   = note: this error originates in the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,130 @@
+Running GenMC Verification...
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/thread/mod.rs:LL:CC
+   |
+LL |                     match COUNTER.compare_exchange_weak(last, id, Ordering::Relaxed, Ordering::Relaxed) {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/thread/current.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/std/src/sys/sync/PLATFORM/futex.rs:LL:CC
+   |
+LL |               || self
+   |  ________________^
+LL | |                 .state
+LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+   | |____________________________________________________________________________________^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside closure
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     let handles: Vec<_> = (0..N).map(|_| std::thread::spawn(thread_func)).collect();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside closure at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+   = note: inside `<std::ops::Range<usize> as std::iter::Iterator>::fold::<(), {closure@std::iter::adapters::map::map_fold<usize, std::thread::JoinHandle<()>, (), {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}, {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>::{closure#0}}>::{closure#0}}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::fold::<(), {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>::{closure#0}}>` at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::for_each::<{closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_extend::SpecExtend<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::spec_extend` at RUSTLIB/alloc/src/vec/spec_extend.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_from_iter_nested::SpecFromIterNested<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::from_iter` at RUSTLIB/alloc/src/vec/spec_from_iter_nested.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_from_iter::SpecFromIter<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::from_iter` at RUSTLIB/alloc/src/vec/spec_from_iter.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::iter::FromIterator<std::thread::JoinHandle<()>>>::from_iter::<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::collect::<std::vec::Vec<std::thread::JoinHandle<()>>>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     let handles: Vec<_> = (0..N).map(|_| std::thread::spawn(thread_func)).collect();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/sys/sync/PLATFORM/futex.rs:LL:CC
+   |
+LL |               || self
+   |  ________________^
+LL | |                 .state
+LL | |                 .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+   | |____________________________________________________________________________________^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/sys/env/PLATFORM.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside closure
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     let handles: Vec<_> = (0..N).map(|_| std::thread::spawn(thread_func)).collect();
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside closure at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+   = note: inside `<std::ops::Range<usize> as std::iter::Iterator>::fold::<(), {closure@std::iter::adapters::map::map_fold<usize, std::thread::JoinHandle<()>, (), {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}, {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>::{closure#0}}>::{closure#0}}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::fold::<(), {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>::{closure#0}}>` at RUSTLIB/core/src/iter/adapters/map.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::for_each::<{closure@std::vec::Vec<std::thread::JoinHandle<()>>::extend_trusted<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>::{closure#0}}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_extend::SpecExtend<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::spec_extend` at RUSTLIB/alloc/src/vec/spec_extend.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_from_iter_nested::SpecFromIterNested<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::from_iter` at RUSTLIB/alloc/src/vec/spec_from_iter_nested.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::vec::spec_from_iter::SpecFromIter<std::thread::JoinHandle<()>, std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>>::from_iter` at RUSTLIB/alloc/src/vec/spec_from_iter.rs:LL:CC
+   = note: inside `<std::vec::Vec<std::thread::JoinHandle<()>> as std::iter::FromIterator<std::thread::JoinHandle<()>>>::from_iter::<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>>` at RUSTLIB/alloc/src/vec/mod.rs:LL:CC
+   = note: inside `<std::iter::Map<std::ops::Range<usize>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}> as std::iter::Iterator>::collect::<std::vec::Vec<std::thread::JoinHandle<()>>>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     let handles: Vec<_> = (0..N).map(|_| std::thread::spawn(thread_func)).collect();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/alloc/src/sync.rs:LL:CC
+   |
+LL |         if this.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+note: inside closure
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     handles.into_iter().for_each(|handle| handle.join().unwrap());
+   |                                           ^^^^^^^^^^^^^
+   = note: inside closure at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+   = note: inside `<std::vec::IntoIter<std::thread::JoinHandle<()>> as std::iter::Iterator>::fold::<(), {closure@std::iter::Iterator::for_each::call<std::thread::JoinHandle<()>, {closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>::{closure#0}}>` at RUSTLIB/alloc/src/vec/into_iter.rs:LL:CC
+   = note: inside `<std::vec::IntoIter<std::thread::JoinHandle<()>> as std::iter::Iterator>::for_each::<{closure@tests/genmc/pass/std/spawn_std_threads.rs:LL:CC}>` at RUSTLIB/core/src/iter/traits/iterator.rs:LL:CC
+note: inside `main`
+  --> tests/genmc/pass/std/spawn_std_threads.rs:LL:CC
+   |
+LL |     handles.into_iter().for_each(|handle| handle.join().unwrap());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/rt.rs:LL:CC
+   |
+LL | /     CLEANUP.call_once(|| unsafe {
+LL | |         // Flush stdout and disable buffering.
+LL | |         crate::io::cleanup();
+...  |
+LL | |     });
+   | |______^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures.
+  --> RUSTLIB/std/src/sync/once.rs:LL:CC
+   |
+LL |         self.inner.call(true, &mut |p| f.take().unwrap()(p));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/sync/once.rs:LL:CC
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+warning: GenMC currently does not model the failure ordering for `compare_exchange`. Due to success ordering 'Acquire', the failure ordering 'Relaxed' is treated like 'Acquire'. Miri with GenMC might miss bugs related to this memory access.
+  --> RUSTLIB/std/src/sys/exit_guard.rs:LL:CC
+   |
+LL |             match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GenMC might miss possible behaviors of this code
+   |
+   = note: BACKTRACE:
+   = note: inside closure at RUSTLIB/std/src/rt.rs:LL:CC
+
+Verification complete with 1 executions. No errors found.

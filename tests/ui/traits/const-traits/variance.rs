@@ -2,8 +2,7 @@
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 
-#[const_trait]
-trait Foo {}
+const trait Foo {}
 
 impl const Foo for () {}
 

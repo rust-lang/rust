@@ -1,5 +1,5 @@
 error[E0539]: malformed `link` attribute input
-  --> $DIR/import-name-type-invalid-format.rs:8:1
+  --> $DIR/import-name-type-invalid-format.rs:9:1
    |
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = 6)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------^^

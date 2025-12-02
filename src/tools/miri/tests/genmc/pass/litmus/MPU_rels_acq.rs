@@ -18,10 +18,6 @@ use crate::genmc::*;
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    X.store(0, Relaxed);
-    Y.store(0, Relaxed);
-
     unsafe {
         spawn_pthread_closure(|| {
             X.store(1, Relaxed);

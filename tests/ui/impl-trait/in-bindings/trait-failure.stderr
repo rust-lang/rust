@@ -4,7 +4,11 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
 LL |     let x: impl Foo = W(());
    |                 ^^^ the trait `Foo` is not implemented for `()`
    |
-   = help: the trait `Foo` is implemented for `W<T>`
+help: the trait `Foo` is implemented for `W<T>`
+  --> $DIR/trait-failure.rs:6:1
+   |
+LL | impl<T> Foo for W<T> where T: Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required for `W<()>` to implement `Foo`
   --> $DIR/trait-failure.rs:6:9
    |
@@ -17,7 +21,11 @@ error[E0277]: the trait bound `(): Foo` is not satisfied
 LL |     let x: W<impl Foo> = W(());
    |                   ^^^ the trait `Foo` is not implemented for `()`
    |
-   = help: the trait `Foo` is implemented for `W<T>`
+help: the trait `Foo` is implemented for `W<T>`
+  --> $DIR/trait-failure.rs:6:1
+   |
+LL | impl<T> Foo for W<T> where T: Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

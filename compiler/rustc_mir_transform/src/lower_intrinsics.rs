@@ -23,24 +23,19 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
-                    sym::ub_checks => {
+                    sym::ub_checks | sym::overflow_checks | sym::contract_checks => {
+                        let op = match intrinsic.name {
+                            sym::ub_checks => RuntimeChecks::UbChecks,
+                            sym::contract_checks => RuntimeChecks::ContractChecks,
+                            sym::overflow_checks => RuntimeChecks::OverflowChecks,
+                            _ => unreachable!(),
+                        };
                         let target = target.unwrap();
                         block.statements.push(Statement::new(
                             terminator.source_info,
                             StatementKind::Assign(Box::new((
                                 *destination,
-                                Rvalue::NullaryOp(NullOp::UbChecks, tcx.types.bool),
-                            ))),
-                        ));
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
-                    sym::contract_checks => {
-                        let target = target.unwrap();
-                        block.statements.push(Statement::new(
-                            terminator.source_info,
-                            StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(NullOp::ContractChecks, tcx.types.bool),
+                                Rvalue::NullaryOp(NullOp::RuntimeChecks(op)),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
@@ -146,23 +141,6 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                             StatementKind::Assign(Box::new((
                                 *destination,
                                 Rvalue::BinaryOp(bin_op, Box::new((lhs.node, rhs.node))),
-                            ))),
-                        ));
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
-                    sym::size_of | sym::align_of => {
-                        let target = target.unwrap();
-                        let tp_ty = generic_args.type_at(0);
-                        let null_op = match intrinsic.name {
-                            sym::size_of => NullOp::SizeOf,
-                            sym::align_of => NullOp::AlignOf,
-                            _ => bug!("unexpected intrinsic"),
-                        };
-                        block.statements.push(Statement::new(
-                            terminator.source_info,
-                            StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(null_op, tp_ty),
                             ))),
                         ));
                         terminator.kind = TerminatorKind::Goto { target };

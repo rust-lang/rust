@@ -10,7 +10,6 @@ pub(super) trait SpecFromElem: Sized {
 }
 
 impl<T: Clone> SpecFromElem for T {
-    #[track_caller]
     default fn from_elem<A: Allocator>(elem: Self, n: usize, alloc: A) -> Vec<Self, A> {
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, elem);
@@ -20,7 +19,6 @@ impl<T: Clone> SpecFromElem for T {
 
 impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
-    #[track_caller]
     default fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
         if elem.is_zero() {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -33,7 +31,6 @@ impl<T: Clone + IsZero> SpecFromElem for T {
 
 impl SpecFromElem for i8 {
     #[inline]
-    #[track_caller]
     fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
@@ -49,7 +46,6 @@ impl SpecFromElem for i8 {
 
 impl SpecFromElem for u8 {
     #[inline]
-    #[track_caller]
     fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
         if elem == 0 {
             return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };

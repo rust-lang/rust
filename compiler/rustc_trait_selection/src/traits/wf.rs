@@ -705,6 +705,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 check(start);
                 check(end);
             }
+            ty::PatternKind::NotNull => {}
             ty::PatternKind::Or(patterns) => {
                 for pat in patterns {
                     self.add_wf_preds_for_pat_ty(base_ty, pat)

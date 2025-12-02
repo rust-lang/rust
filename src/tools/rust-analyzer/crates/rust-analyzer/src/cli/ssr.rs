@@ -50,7 +50,6 @@ impl flags::Search {
     /// for much else.
     pub fn run(self) -> anyhow::Result<()> {
         use ide_db::base_db::SourceDatabase;
-        use ide_db::symbol_index::SymbolsDatabase;
         let cargo_config =
             CargoConfig { all_targets: true, set_test: true, ..CargoConfig::default() };
         let load_cargo_config = LoadCargoConfig {
@@ -69,11 +68,11 @@ impl flags::Search {
             match_finder.add_search_pattern(pattern)?;
         }
         if let Some(debug_snippet) = &self.debug {
-            for &root in db.local_roots().iter() {
+            for &root in ide_db::symbol_index::LocalRoots::get(db).roots(db).iter() {
                 let sr = db.source_root(root).source_root(db);
                 for file_id in sr.iter() {
                     for debug_info in match_finder.debug_where_text_equal(
-                        EditionedFileId::current_edition(db, file_id),
+                        EditionedFileId::current_edition_guess_origin(db, file_id),
                         debug_snippet,
                     ) {
                         println!("{debug_info:#?}");

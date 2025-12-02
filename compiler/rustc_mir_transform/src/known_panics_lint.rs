@@ -605,20 +605,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             Ref(..) | RawPtr(..) => return None,
 
-            NullaryOp(ref null_op, ty) => {
-                let op_layout = self.ecx.layout_of(ty).ok()?;
-                let val = match null_op {
-                    NullOp::SizeOf => op_layout.size.bytes(),
-                    NullOp::AlignOf => op_layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => self
-                        .tcx
-                        .offset_of_subfield(self.typing_env, op_layout, fields.iter())
-                        .bytes(),
-                    NullOp::UbChecks => return None,
-                    NullOp::ContractChecks => return None,
-                };
-                ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
-            }
+            NullaryOp(NullOp::RuntimeChecks(_)) => return None,
 
             ShallowInitBox(..) => return None,
 
@@ -637,7 +624,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
                     res.into()
                 }
-                CastKind::Transmute => {
+                CastKind::Transmute | CastKind::Subtype => {
                     let value = self.eval_operand(value)?;
                     let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
@@ -926,7 +913,6 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
-            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
             | MutatingUse(MutatingUseContext::Store)
             | MutatingUse(MutatingUseContext::SetDiscriminant) => {

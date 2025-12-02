@@ -41,10 +41,12 @@ use crate::core::config::toml::gcc::Gcc;
 use crate::core::config::toml::install::Install;
 use crate::core::config::toml::llvm::Llvm;
 use crate::core::config::toml::rust::{
-    LldMode, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
-    default_lld_opt_in_targets, parse_codegen_backends,
+    BootstrapOverrideLld, Rust, RustOptimize, check_incompatible_options_for_ci_rustc,
+    parse_codegen_backends,
 };
-use crate::core::config::toml::target::Target;
+use crate::core::config::toml::target::{
+    DefaultLinuxLinkerOverride, Target, TomlTarget, default_linux_linker_overrides,
+};
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
     RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
@@ -174,7 +176,7 @@ pub struct Config {
     pub llvm_from_ci: bool,
     pub llvm_build_config: HashMap<String, String>,
 
-    pub lld_mode: LldMode,
+    pub bootstrap_override_lld: BootstrapOverrideLld,
     pub lld_enabled: bool,
     pub llvm_tools_enabled: bool,
     pub llvm_bitcode_linker_enabled: bool,
@@ -215,6 +217,7 @@ pub struct Config {
     pub rust_randomize_layout: bool,
     pub rust_remap_debuginfo: bool,
     pub rust_new_symbol_mangling: Option<bool>,
+    pub rust_annotate_moves_size_limit: Option<u64>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
@@ -222,6 +225,7 @@ pub struct Config {
     pub rust_std_features: BTreeSet<String>,
     pub rust_break_on_ice: bool,
     pub rust_parallel_frontend_threads: Option<u32>,
+    pub rust_rustflags: Vec<String>,
 
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
@@ -269,7 +273,7 @@ pub struct Config {
     pub mandir: Option<PathBuf>,
     pub codegen_tests: bool,
     pub nodejs: Option<PathBuf>,
-    pub npm: Option<PathBuf>,
+    pub yarn: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub lldb: Option<PathBuf>,
     pub python: Option<PathBuf>,
@@ -309,9 +313,6 @@ pub struct Config {
     /// This is only intended to be used when the stage 0 compiler is actually built from in-tree
     /// sources.
     pub compiletest_allow_stage0: bool,
-
-    /// Whether to use the precompiled stage0 libtest with compiletest.
-    pub compiletest_use_stage0_libtest: bool,
 
     /// Default value for `--extra-checks`
     pub tidy_extra_checks: Option<String>,
@@ -414,14 +415,28 @@ impl Config {
         // Set config values based on flags.
         let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
         exec_ctx.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
-        let mut src = {
+
+        let default_src_dir = {
             let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             // Undo `src/bootstrap`
             manifest_dir.parent().unwrap().parent().unwrap().to_owned()
         };
+        let src = if let Some(s) = compute_src_directory(flags_src, &exec_ctx) {
+            s
+        } else {
+            default_src_dir.clone()
+        };
 
-        if let Some(src_) = compute_src_directory(flags_src, &exec_ctx) {
-            src = src_;
+        #[cfg(test)]
+        {
+            if let Some(config_path) = flags_config.as_ref() {
+                assert!(
+                    !config_path.starts_with(&src),
+                    "Path {config_path:?} should not be inside or equal to src dir {src:?}"
+                );
+            } else {
+                panic!("During test the config should be explicitly added");
+            }
         }
 
         // Now load the TOML config, as soon as possible
@@ -449,6 +464,8 @@ impl Config {
             gdb: build_gdb,
             lldb: build_lldb,
             nodejs: build_nodejs,
+
+            yarn: build_yarn,
             npm: build_npm,
             python: build_python,
             windows_rc: build_windows_rc,
@@ -483,7 +500,8 @@ impl Config {
             optimized_compiler_builtins: build_optimized_compiler_builtins,
             jobs: build_jobs,
             compiletest_diff_tool: build_compiletest_diff_tool,
-            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest,
+            // No longer has any effect; kept (for now) to avoid breaking people's configs.
+            compiletest_use_stage0_libtest: _,
             tidy_extra_checks: build_tidy_extra_checks,
             ccache: build_ccache,
             exclude: build_exclude,
@@ -545,6 +563,7 @@ impl Config {
             control_flow_guard: rust_control_flow_guard,
             ehcont_guard: rust_ehcont_guard,
             new_symbol_mangling: rust_new_symbol_mangling,
+            annotate_moves_size_limit: rust_annotate_moves_size_limit,
             profile_generate: rust_profile_generate,
             profile_use: rust_profile_use,
             download_rustc: rust_download_rustc,
@@ -553,9 +572,11 @@ impl Config {
             frame_pointers: rust_frame_pointers,
             stack_protector: rust_stack_protector,
             strip: rust_strip,
-            lld_mode: rust_lld_mode,
+            bootstrap_override_lld: rust_bootstrap_override_lld,
+            bootstrap_override_lld_legacy: rust_bootstrap_override_lld_legacy,
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
+            rustflags: rust_rustflags,
         } = toml.rust.unwrap_or_default();
 
         let Llvm {
@@ -601,6 +622,15 @@ impl Config {
 
         let Gcc { download_ci_gcc: gcc_download_ci_gcc } = toml.gcc.unwrap_or_default();
 
+        if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
+            panic!(
+                "Cannot use both `rust.use-lld` and `rust.bootstrap-override-lld`. Please use only `rust.bootstrap-override-lld`"
+            );
+        }
+
+        let bootstrap_override_lld =
+            rust_bootstrap_override_lld.or(rust_bootstrap_override_lld_legacy).unwrap_or_default();
+
         if rust_optimize.as_ref().is_some_and(|v| matches!(v, RustOptimize::Bool(false))) {
             eprintln!(
                 "WARNING: setting `optimize` to `false` is known to cause errors and \
@@ -630,19 +660,13 @@ impl Config {
         let llvm_assertions = llvm_assertions.unwrap_or(false);
         let mut target_config = HashMap::new();
         let mut channel = "dev".to_string();
-        let out = flags_build_dir.or(build_build_dir.map(PathBuf::from)).unwrap_or_else(|| {
-            if cfg!(test) {
-                // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-                Path::new(
-                    &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
-                )
-                .parent()
-                .unwrap()
-                .to_path_buf()
-            } else {
-                PathBuf::from("build")
-            }
-        });
+
+        let out = flags_build_dir.or_else(|| build_build_dir.map(PathBuf::from));
+        let out = if cfg!(test) {
+            out.expect("--build-dir has to be specified in tests")
+        } else {
+            out.unwrap_or_else(|| PathBuf::from("build"))
+        };
 
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
@@ -653,6 +677,10 @@ impl Config {
             out
         };
 
+        let default_stage0_rustc_path = |dir: &Path| {
+            dir.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+        };
+
         if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
@@ -661,6 +689,22 @@ impl Config {
             // Cargo in their bootstrap.toml.
             build_rustc = build_rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
+
+            // If we are running only `cargo test` (and not `x test bootstrap`), which is useful
+            // e.g. for debugging bootstrap itself, then we won't have RUSTC and CARGO set to the
+            // proper paths.
+            // We thus "guess" that the build directory is located at <src>/build, and try to load
+            // rustc and cargo from there
+            let is_test_outside_x = std::env::var("CARGO_TARGET_DIR").is_err();
+            if is_test_outside_x && build_rustc.is_none() {
+                let stage0_rustc = default_stage0_rustc_path(&default_src_dir.join("build"));
+                assert!(
+                    stage0_rustc.exists(),
+                    "Trying to run cargo test without having a stage0 rustc available in {}",
+                    stage0_rustc.display()
+                );
+                build_rustc = Some(stage0_rustc);
+            }
         }
 
         if !flags_skip_stage0_validation {
@@ -694,7 +738,7 @@ impl Config {
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx, &out);
-            out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
+            default_stage0_rustc_path(&out)
         });
 
         let initial_sysroot = t!(PathBuf::from_str(
@@ -793,11 +837,78 @@ impl Config {
                     .to_owned();
         }
 
+        if build_npm.is_some() {
+            println!(
+                "WARNING: `build.npm` set in bootstrap.toml, this option no longer has any effect. . Use `build.yarn` instead to provide a path to a `yarn` binary."
+            );
+        }
+
+        let mut lld_enabled = rust_lld_enabled.unwrap_or(false);
+
+        // Linux targets for which the user explicitly overrode the used linker
+        let mut targets_with_user_linker_override = HashSet::new();
+
         if let Some(t) = toml.target {
             for (triple, cfg) in t {
+                let TomlTarget {
+                    cc: target_cc,
+                    cxx: target_cxx,
+                    ar: target_ar,
+                    ranlib: target_ranlib,
+                    default_linker: target_default_linker,
+                    default_linker_linux_override: target_default_linker_linux_override,
+                    linker: target_linker,
+                    split_debuginfo: target_split_debuginfo,
+                    llvm_config: target_llvm_config,
+                    llvm_has_rust_patches: target_llvm_has_rust_patches,
+                    llvm_filecheck: target_llvm_filecheck,
+                    llvm_libunwind: target_llvm_libunwind,
+                    sanitizers: target_sanitizers,
+                    profiler: target_profiler,
+                    rpath: target_rpath,
+                    rustflags: target_rustflags,
+                    crt_static: target_crt_static,
+                    musl_root: target_musl_root,
+                    musl_libdir: target_musl_libdir,
+                    wasi_root: target_wasi_root,
+                    qemu_rootfs: target_qemu_rootfs,
+                    no_std: target_no_std,
+                    codegen_backends: target_codegen_backends,
+                    runner: target_runner,
+                    optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    jemalloc: target_jemalloc,
+                } = cfg;
+
                 let mut target = Target::from_triple(&triple);
 
-                if let Some(ref s) = cfg.llvm_config {
+                if target_default_linker_linux_override.is_some() {
+                    targets_with_user_linker_override.insert(triple.clone());
+                }
+
+                let default_linker_linux_override = match target_default_linker_linux_override {
+                    Some(DefaultLinuxLinkerOverride::SelfContainedLldCc) => {
+                        if rust_default_linker.is_some() {
+                            panic!(
+                                "cannot set both `default-linker` and `default-linker-linux` for target `{triple}`"
+                            );
+                        }
+                        if !triple.contains("linux-gnu") {
+                            panic!(
+                                "`default-linker-linux` can only be set for Linux GNU targets, not for `{triple}`"
+                            );
+                        }
+                        if !lld_enabled {
+                            panic!(
+                                "Trying to override the default Linux linker for `{triple}` to be self-contained LLD, but LLD is not being built. Enable it with rust.lld = true."
+                            );
+                        }
+                        DefaultLinuxLinkerOverride::SelfContainedLldCc
+                    }
+                    Some(DefaultLinuxLinkerOverride::Off) => DefaultLinuxLinkerOverride::Off,
+                    None => DefaultLinuxLinkerOverride::default(),
+                };
+
+                if let Some(ref s) = target_llvm_config {
                     if download_rustc_commit.is_some() && triple == *host_target.triple {
                         panic!(
                             "setting llvm_config for the host is incompatible with download-rustc"
@@ -805,46 +916,49 @@ impl Config {
                     }
                     target.llvm_config = Some(src.join(s));
                 }
-                if let Some(patches) = cfg.llvm_has_rust_patches {
+                if let Some(patches) = target_llvm_has_rust_patches {
                     assert!(
-                        build_submodules == Some(false) || cfg.llvm_config.is_some(),
+                        build_submodules == Some(false) || target_llvm_config.is_some(),
                         "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
                 }
-                if let Some(ref s) = cfg.llvm_filecheck {
+                if let Some(ref s) = target_llvm_filecheck {
                     target.llvm_filecheck = Some(src.join(s));
                 }
-                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
+                target.llvm_libunwind = target_llvm_libunwind.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("failed to parse target.{triple}.llvm-libunwind")
                     })
                 });
-                if let Some(s) = cfg.no_std {
+                if let Some(s) = target_no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
-                target.ar = cfg.ar.map(PathBuf::from);
-                target.ranlib = cfg.ranlib.map(PathBuf::from);
-                target.linker = cfg.linker.map(PathBuf::from);
-                target.crt_static = cfg.crt_static;
-                target.musl_root = cfg.musl_root.map(PathBuf::from);
-                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
-                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
-                target.runner = cfg.runner;
-                target.sanitizers = cfg.sanitizers;
-                target.profiler = cfg.profiler;
-                target.rpath = cfg.rpath;
-                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
-                target.jemalloc = cfg.jemalloc;
-                if let Some(backends) = cfg.codegen_backends {
+                target.cc = target_cc.map(PathBuf::from);
+                target.cxx = target_cxx.map(PathBuf::from);
+                target.ar = target_ar.map(PathBuf::from);
+                target.ranlib = target_ranlib.map(PathBuf::from);
+                target.linker = target_linker.map(PathBuf::from);
+                target.crt_static = target_crt_static;
+                target.default_linker = target_default_linker;
+                target.default_linker_linux_override = default_linker_linux_override;
+                target.musl_root = target_musl_root.map(PathBuf::from);
+                target.musl_libdir = target_musl_libdir.map(PathBuf::from);
+                target.wasi_root = target_wasi_root.map(PathBuf::from);
+                target.qemu_rootfs = target_qemu_rootfs.map(PathBuf::from);
+                target.runner = target_runner;
+                target.sanitizers = target_sanitizers;
+                target.profiler = target_profiler;
+                target.rpath = target_rpath;
+                target.rustflags = target_rustflags.unwrap_or_default();
+                target.optimized_compiler_builtins = target_optimized_compiler_builtins;
+                target.jemalloc = target_jemalloc;
+                if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
                 }
 
-                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
+                target.split_debuginfo = target_split_debuginfo.as_ref().map(|v| {
                     v.parse().unwrap_or_else(|_| {
                         panic!("invalid value for target.{triple}.split-debuginfo")
                     })
@@ -861,28 +975,8 @@ impl Config {
             llvm_download_ci_llvm,
             llvm_assertions,
         );
-
-        // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
-        // build our internal lld and use it as the default linker, by setting the `rust.lld` config
-        // to true by default:
-        // - on the `x86_64-unknown-linux-gnu` target
-        // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
-        //   we're also able to build the corresponding lld
-        // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
-        //   lld
-        // - otherwise, we'd be using an external llvm, and lld would not necessarily available and
-        //   thus, disabled
-        // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
-        //   when the config sets `rust.lld = false`
-        let lld_enabled = if default_lld_opt_in_targets().contains(&host_target.triple.to_string())
-            && hosts == [host_target]
-        {
-            let no_llvm_config =
-                target_config.get(&host_target).is_none_or(|config| config.llvm_config.is_none());
-            rust_lld_enabled.unwrap_or(llvm_from_ci || no_llvm_config)
-        } else {
-            rust_lld_enabled.unwrap_or(false)
-        };
+        let is_host_system_llvm =
+            is_system_llvm(&target_config, llvm_from_ci, host_target, host_target);
 
         if llvm_from_ci {
             let warn = |option: &str| {
@@ -930,9 +1024,53 @@ impl Config {
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
+        for (target, linker_override) in default_linux_linker_overrides() {
+            // If the user overrode the default Linux linker, do not apply bootstrap defaults
+            if targets_with_user_linker_override.contains(&target) {
+                continue;
+            }
+
+            // The rust.lld option is global, and not target specific, so if we enable it, it will
+            // be applied to all targets being built.
+            // So we only apply an override if we're building a compiler/host code for the given
+            // override target.
+            // Note: we could also make the LLD config per-target, but that would complicate things
+            if !hosts.contains(&TargetSelection::from_user(&target)) {
+                continue;
+            }
+
+            let default_linux_linker_override = match linker_override {
+                DefaultLinuxLinkerOverride::Off => continue,
+                DefaultLinuxLinkerOverride::SelfContainedLldCc => {
+                    // If we automatically default to the self-contained LLD linker,
+                    // we also need to handle the rust.lld option.
+                    match rust_lld_enabled {
+                        // If LLD was not enabled explicitly, we enable it, unless LLVM config has
+                        // been set
+                        None if !is_host_system_llvm => {
+                            lld_enabled = true;
+                            Some(DefaultLinuxLinkerOverride::SelfContainedLldCc)
+                        }
+                        None => None,
+                        // If it was enabled already, we don't need to do anything
+                        Some(true) => Some(DefaultLinuxLinkerOverride::SelfContainedLldCc),
+                        // If it was explicitly disabled, we do not apply the
+                        // linker override
+                        Some(false) => None,
+                    }
+                }
+            };
+            if let Some(linker_override) = default_linux_linker_override {
+                target_config
+                    .entry(TargetSelection::from_user(&target))
+                    .or_default()
+                    .default_linker_linux_override = linker_override;
+            }
+        }
+
         let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
 
-        if matches!(rust_lld_mode.unwrap_or_default(), LldMode::SelfContained)
+        if matches!(bootstrap_override_lld, BootstrapOverrideLld::SelfContained)
             && !lld_enabled
             && flags_stage.unwrap_or(0) > 0
         {
@@ -941,7 +1079,7 @@ impl Config {
             );
         }
 
-        if lld_enabled && is_system_llvm(&dwn_ctx, &target_config, llvm_from_ci, host_target) {
+        if lld_enabled && is_host_system_llvm {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
@@ -1144,6 +1282,7 @@ impl Config {
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
             bindir: install_bindir.map(PathBuf::from).unwrap_or("bin".into()),
             bootstrap_cache_path: build_bootstrap_cache_path,
+            bootstrap_override_lld,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
             cargo_info,
             cargo_native_static: build_cargo_native_static.unwrap_or(false),
@@ -1158,7 +1297,6 @@ impl Config {
             compiler_docs: build_compiler_docs.unwrap_or(false),
             compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
             compiletest_diff_tool: build_compiletest_diff_tool,
-            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest.unwrap_or(true),
             config: toml_path,
             configure_args: build_configure_args.unwrap_or_default(),
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),
@@ -1210,7 +1348,6 @@ impl Config {
             libdir: install_libdir.map(PathBuf::from),
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
             lld_enabled,
-            lld_mode: rust_lld_mode.unwrap_or_default(),
             lldb: build_lldb.map(PathBuf::from),
             llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
             llvm_assertions,
@@ -1259,7 +1396,6 @@ impl Config {
             musl_root: rust_musl_root.map(PathBuf::from),
             ninja_in_file: llvm_ninja.unwrap_or(true),
             nodejs: build_nodejs.map(PathBuf::from),
-            npm: build_npm.map(PathBuf::from),
             omit_git_hash,
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
@@ -1275,6 +1411,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_annotate_moves_size_limit,
             rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
@@ -1308,6 +1445,7 @@ impl Config {
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
             rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
             rust_rpath: rust_rpath.unwrap_or(true),
+            rust_rustflags: rust_rustflags.unwrap_or_default(),
             rust_stack_protector,
             rust_std_features: rust_std_features
                 .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
@@ -1345,6 +1483,7 @@ impl Config {
             vendor,
             verbose_tests,
             windows_rc: build_windows_rc.map(PathBuf::from),
+            yarn: build_yarn.map(PathBuf::from),
             // tidy-alphabetical-end
         }
     }
@@ -1534,11 +1673,11 @@ impl Config {
                                 println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
                                 println!("HELP: Consider rebasing to a newer commit if available.");
                                 return None;
-                            },
+                            }
                             Err(e) => {
                                 eprintln!("ERROR: Failed to parse CI rustc bootstrap.toml: {e}");
                                 exit!(2);
-                            },
+                            }
                         };
 
                         let current_config_toml = Self::get_toml(config_path).unwrap();
@@ -1571,8 +1710,8 @@ impl Config {
     }
 
     /// Runs a function if verbosity is greater than 0
-    pub fn verbose(&self, f: impl Fn()) {
-        self.exec_ctx.verbose(f);
+    pub fn do_if_verbose(&self, f: impl Fn()) {
+        self.exec_ctx.do_if_verbose(f);
     }
 
     pub fn any_sanitizers_to_build(&self) -> bool {
@@ -1635,7 +1774,7 @@ impl Config {
         // We do not assume that the sources would change during bootstrap's execution,
         // so we can cache the results here.
         // Note that we do not use a static variable for the cache, because it would cause problems
-        // in tests that create separate `Config` instsances.
+        // in tests that create separate `Config` instances.
         self.path_modification_cache
             .lock()
             .unwrap()
@@ -1736,8 +1875,7 @@ impl Config {
     ///
     /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
-        let dwn_ctx = DownloadContext::from(self);
-        is_system_llvm(dwn_ctx, &self.target_config, self.llvm_from_ci, target)
+        is_system_llvm(&self.target_config, self.llvm_from_ci, self.host_target, target)
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.
@@ -2061,7 +2199,7 @@ pub fn download_ci_rustc_commit<'a>(
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let freshness = check_path_modifications_(dwn_ctx, RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
-        dwn_ctx.exec_ctx.verbose(|| {
+        dwn_ctx.exec_ctx.do_if_verbose(|| {
             eprintln!("rustc freshness: {freshness:?}");
         });
         match freshness {
@@ -2104,7 +2242,7 @@ pub fn check_path_modifications_<'a>(
     // We do not assume that the sources would change during bootstrap's execution,
     // so we can cache the results here.
     // Note that we do not use a static variable for the cache, because it would cause problems
-    // in tests that create separate `Config` instsances.
+    // in tests that create separate `Config` instances.
     dwn_ctx
         .path_modification_cache
         .lock()
@@ -2340,16 +2478,15 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
 /// In particular, we expect llvm sources to be available when this is false.
 ///
 /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
-pub fn is_system_llvm<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+pub fn is_system_llvm(
     target_config: &HashMap<TargetSelection, Target>,
     llvm_from_ci: bool,
+    host_target: TargetSelection,
     target: TargetSelection,
 ) -> bool {
-    let dwn_ctx = dwn_ctx.as_ref();
     match target_config.get(&target) {
         Some(Target { llvm_config: Some(_), .. }) => {
-            let ci_llvm = llvm_from_ci && is_host_target(&dwn_ctx.host_target, &target);
+            let ci_llvm = llvm_from_ci && is_host_target(&host_target, &target);
             !ci_llvm
         }
         // We're building from the in-tree src/llvm-project sources.

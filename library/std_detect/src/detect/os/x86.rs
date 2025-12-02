@@ -285,7 +285,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
                             unsafe { __cpuid_count(0x1e_u32, 1) };
 
                         enable(amx_feature_flags_eax, 4, Feature::amx_fp8);
-                        enable(amx_feature_flags_eax, 5, Feature::amx_transpose);
                         enable(amx_feature_flags_eax, 6, Feature::amx_tf32);
                         enable(amx_feature_flags_eax, 7, Feature::amx_avx512);
                         enable(amx_feature_flags_eax, 8, Feature::amx_movrs);

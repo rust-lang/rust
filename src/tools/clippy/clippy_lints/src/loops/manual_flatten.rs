@@ -2,9 +2,10 @@ use super::MANUAL_FLATTEN;
 use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{HasSession, indent_of, reindent_multiline, snippet_with_applicability};
 use clippy_utils::visitors::is_local_used;
-use clippy_utils::{higher, is_refutable, path_to_local_id, peel_blocks_with_stmt, span_contains_comment};
+use clippy_utils::{higher, is_refutable, peel_blocks_with_stmt, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, Pat, PatKind};
@@ -27,7 +28,7 @@ pub(super) fn check<'tcx>(
             = higher::IfLet::hir(cx, inner_expr)
         // Ensure match_expr in `if let` statement is the same as the pat from the for-loop
         && let PatKind::Binding(_, pat_hir_id, _, _) = pat.kind
-        && path_to_local_id(let_expr, pat_hir_id)
+        && let_expr.res_local_id() == Some(pat_hir_id)
         // Ensure the `if let` statement is for the `Some` variant of `Option` or the `Ok` variant of `Result`
         && let PatKind::TupleStruct(ref qpath, [inner_pat], _) = let_pat.kind
         && let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(qpath, let_pat.hir_id)

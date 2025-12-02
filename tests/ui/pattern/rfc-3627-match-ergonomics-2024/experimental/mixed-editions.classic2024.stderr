@@ -58,14 +58,14 @@ LL |     let [&bind_ref_mut!(x)] = &mut [0];
    |          |
    |          help: replace this `&` with `&mut`: `&mut`
 
-error: binding modifiers may only be written when the default binding mode is `move`
+error: cannot explicitly borrow within an implicitly-borrowing pattern
   --> $DIR/mixed-editions.rs:26:21
    |
 LL |     let match_ctor!(ref x) = &[0];
-   |                     ^^^ binding modifier not allowed under `ref` default binding mode
+   |                     ^^^ explicit `ref` binding modifier not allowed when implicitly borrowing
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
-help: make the implied reference pattern explicit
+   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
+help: match on the reference with a reference pattern to avoid implicitly borrowing
   --> $DIR/auxiliary/mixed-editions-macros.rs:11:9
    |
 LL |         &[$p]
@@ -75,19 +75,25 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:61:21
    |
 LL |     let match_ref!([x]) = &&mut [0];
-   |                     ^ cannot borrow as mutable
+   |                     ^     --------- this cannot be borrowed as mutable
+   |                     |
+   |                     cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:65:22
    |
 LL |     let &match_ctor!(y) = &&mut [0];
-   |                      ^ cannot borrow as mutable
+   |                      ^    --------- this cannot be borrowed as mutable
+   |                      |
+   |                      cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/mixed-editions.rs:69:11
    |
 LL |     let &[bind!(z)] = &&mut [0];
-   |           ^^^^^^^^ cannot borrow as mutable
+   |           ^^^^^^^^    --------- this cannot be borrowed as mutable
+   |           |
+   |           cannot borrow as mutable
    |
    = note: this error originates in the macro `bind` (in Nightly builds, run with -Z macro-backtrace for more info)
 

@@ -30,6 +30,9 @@ trait Tr: ?Sized {} //~ ERROR relaxed bounds are not permitted in supertrait bou
 
 // Test that relaxed `Sized` bounds are rejected in trait object types:
 
+type O0 = dyn ?Sized;
+//~^ ERROR relaxed bounds are not permitted in trait object types
+//~| ERROR at least one trait is required for an object type [E0224]
 type O1 = dyn Tr + ?Sized; //~ ERROR relaxed bounds are not permitted in trait object types
 type O2 = dyn ?Sized + ?Sized + Tr;
 //~^ ERROR relaxed bounds are not permitted in trait object types

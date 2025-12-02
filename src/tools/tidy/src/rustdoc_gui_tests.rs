@@ -2,10 +2,10 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx};
+use crate::diagnostics::{CheckId, TidyCtx};
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("rustdoc_gui_tests").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_gui_tests").path(path));
 
     crate::walk::walk(
         &path.join("rustdoc-gui"),

@@ -73,11 +73,11 @@ To use the `@ is` with a `<path>` of `$.index[?(@.docs == "foo")].some.field` an
     it needs to be a JSON string value.
 
 [json output]: https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#json-output
-[jsondocck]: https://github.com/rust-lang/rust/tree/master/src/tools/jsondocck
-[jsondoclint]: https://github.com/rust-lang/rust/tree/master/src/tools/jsondoclint
+[jsondocck]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/jsondocck
+[jsondoclint]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/jsondoclint
 [aux-build]: ../tests/compiletest.md#building-auxiliary-crates
 [`Id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/struct.Id.html
 [document private items]: https://doc.rust-lang.org/nightly/rustdoc/command-line-arguments.html#--document-private-items-show-items-that-are-not-public
-[`directive.rs`]: https://github.com/rust-lang/rust/blob/master/src/tools/jsondocck/src/directive.rs
+[`directive.rs`]: https://github.com/rust-lang/rust/blob/HEAD/src/tools/jsondocck/src/directive.rs
 [shlex]: https://docs.rs/shlex/1.3.0/shlex/index.html
 [JSONPath]: https://www.rfc-editor.org/rfc/rfc9535.html

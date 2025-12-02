@@ -1,5 +1,5 @@
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:35:17
+  --> tests/ui/borrow_interior_mutable_const.rs:36:17
    |
 LL |         let _ = &C;
    |                 ^^
@@ -12,7 +12,7 @@ LL | #![deny(clippy::borrow_interior_mutable_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:37:17
+  --> tests/ui/borrow_interior_mutable_const.rs:38:17
    |
 LL |         let _ = C.get();
    |                 ^
@@ -21,7 +21,7 @@ LL |         let _ = C.get();
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:42:17
+  --> tests/ui/borrow_interior_mutable_const.rs:43:17
    |
 LL |         let _ = &C;
    |                 ^^
@@ -29,7 +29,7 @@ LL |         let _ = &C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:43:17
+  --> tests/ui/borrow_interior_mutable_const.rs:44:17
    |
 LL |         let _ = &mut C;
    |                 ^^^^^^
@@ -37,7 +37,7 @@ LL |         let _ = &mut C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:47:9
+  --> tests/ui/borrow_interior_mutable_const.rs:48:9
    |
 LL |         C.swap(&local)
    |         ^
@@ -46,7 +46,7 @@ LL |         C.swap(&local)
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:52:17
+  --> tests/ui/borrow_interior_mutable_const.rs:53:17
    |
 LL |         let _ = &C;
    |                 ^^
@@ -54,7 +54,7 @@ LL |         let _ = &C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:53:17
+  --> tests/ui/borrow_interior_mutable_const.rs:54:17
    |
 LL |         let _ = &C[0];
    |                 ^^^^^
@@ -62,7 +62,7 @@ LL |         let _ = &C[0];
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:54:17
+  --> tests/ui/borrow_interior_mutable_const.rs:55:17
    |
 LL |         let _ = &C[0].0;
    |                 ^^^^^^^
@@ -70,7 +70,7 @@ LL |         let _ = &C[0].0;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:55:9
+  --> tests/ui/borrow_interior_mutable_const.rs:56:9
    |
 LL |         C[0].0.set(1);
    |         ^^^^^^
@@ -79,7 +79,7 @@ LL |         C[0].0.set(1);
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:70:17
+  --> tests/ui/borrow_interior_mutable_const.rs:71:17
    |
 LL |         let _ = &S::C;
    |                 ^^^^^
@@ -87,7 +87,7 @@ LL |         let _ = &S::C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:71:17
+  --> tests/ui/borrow_interior_mutable_const.rs:72:17
    |
 LL |         let _ = &S::C.0;
    |                 ^^^^^^^
@@ -95,7 +95,7 @@ LL |         let _ = &S::C.0;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:72:9
+  --> tests/ui/borrow_interior_mutable_const.rs:73:9
    |
 LL |         S::C.set(1);
    |         ^^^^
@@ -104,7 +104,7 @@ LL |         S::C.set(1);
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:73:18
+  --> tests/ui/borrow_interior_mutable_const.rs:74:18
    |
 LL |         let _ = &*S::C;
    |                  ^^^^^
@@ -113,7 +113,7 @@ LL |         let _ = &*S::C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:74:9
+  --> tests/ui/borrow_interior_mutable_const.rs:75:9
    |
 LL |         (*S::C).set(1);
    |         ^^^^^^^
@@ -122,7 +122,7 @@ LL |         (*S::C).set(1);
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:85:17
+  --> tests/ui/borrow_interior_mutable_const.rs:86:17
    |
 LL |         let _ = &CELL;
    |                 ^^^^^
@@ -130,7 +130,7 @@ LL |         let _ = &CELL;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:109:25
+  --> tests/ui/borrow_interior_mutable_const.rs:110:25
    |
 LL |                 let _ = &Self::C;
    |                         ^^^^^^^^
@@ -138,7 +138,7 @@ LL |                 let _ = &Self::C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:112:25
+  --> tests/ui/borrow_interior_mutable_const.rs:113:25
    |
 LL |                 let _ = &Self::C.cell;
    |                         ^^^^^^^^^^^^^
@@ -146,7 +146,7 @@ LL |                 let _ = &Self::C.cell;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:113:25
+  --> tests/ui/borrow_interior_mutable_const.rs:114:25
    |
 LL |                 let _ = &Self::C.cell.0;
    |                         ^^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ LL |                 let _ = &Self::C.cell.0;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:114:17
+  --> tests/ui/borrow_interior_mutable_const.rs:115:17
    |
 LL |                 Self::C.cell.0.set(T::DEFAULT);
    |                 ^^^^^^^^^^^^^^
@@ -163,7 +163,7 @@ LL |                 Self::C.cell.0.set(T::DEFAULT);
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:128:17
+  --> tests/ui/borrow_interior_mutable_const.rs:129:17
    |
 LL |         let _ = &u32::VALUE;
    |                 ^^^^^^^^^^^
@@ -171,7 +171,7 @@ LL |         let _ = &u32::VALUE;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:145:21
+  --> tests/ui/borrow_interior_mutable_const.rs:146:21
    |
 LL |             let _ = &<u32 as Trait<T>>::VALUE;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -179,7 +179,7 @@ LL |             let _ = &<u32 as Trait<T>>::VALUE;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:172:17
+  --> tests/ui/borrow_interior_mutable_const.rs:173:17
    |
 LL |         let _ = &C;
    |                 ^^
@@ -187,7 +187,7 @@ LL |         let _ = &C;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:173:18
+  --> tests/ui/borrow_interior_mutable_const.rs:174:18
    |
 LL |         let _ = &C[0];
    |                  ^^^^
@@ -196,7 +196,7 @@ LL |         let _ = &C[0];
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:174:17
+  --> tests/ui/borrow_interior_mutable_const.rs:175:17
    |
 LL |         let _ = &C.0[0];
    |                 ^^^^^^^
@@ -204,7 +204,7 @@ LL |         let _ = &C.0[0];
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:190:17
+  --> tests/ui/borrow_interior_mutable_const.rs:191:17
    |
 LL |         let _ = &C[1];
    |                 ^^^^^
@@ -212,7 +212,7 @@ LL |         let _ = &C[1];
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:194:21
+  --> tests/ui/borrow_interior_mutable_const.rs:195:21
    |
 LL |             let _ = &C[i];
    |                     ^^^^^
@@ -220,7 +220,7 @@ LL |             let _ = &C[i];
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:198:17
+  --> tests/ui/borrow_interior_mutable_const.rs:199:17
    |
 LL |         let _ = &interior_mutable_const::WRAPPED_PRIVATE_UNFROZEN_VARIANT;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -228,7 +228,7 @@ LL |         let _ = &interior_mutable_const::WRAPPED_PRIVATE_UNFROZEN_VARIANT;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:216:17
+  --> tests/ui/borrow_interior_mutable_const.rs:217:17
    |
 LL |         let _ = &S::VALUE;
    |                 ^^^^^^^^^
@@ -236,7 +236,7 @@ LL |         let _ = &S::VALUE;
    = help: this lint can be silenced by assigning the value to a local variable before borrowing
 
 error: borrow of a named constant with interior mutability
-  --> tests/ui/borrow_interior_mutable_const.rs:218:17
+  --> tests/ui/borrow_interior_mutable_const.rs:219:17
    |
 LL |         let _ = &S::VALUE.1;
    |                 ^^^^^^^^^^^

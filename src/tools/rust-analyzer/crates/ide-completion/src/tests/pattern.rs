@@ -133,6 +133,44 @@ fn foo() {
 }
 
 #[test]
+fn refutable_in_record_pat_field() {
+    check(
+        r#"
+enum Bar { Value, Nil }
+struct Foo { x: Bar }
+fn foo(foo: Foo) { match foo { Foo { x: $0 } } }
+"#,
+        expect![[r#"
+            en Bar
+            st Foo
+            bn Foo {…} Foo { x$1 }$0
+            kw mut
+            kw ref
+        "#]],
+    );
+
+    check(
+        r#"
+enum Bar { Value, Nil }
+use Bar::*;
+struct Foo { x: Bar }
+fn foo(foo: Foo) { match foo { Foo { x: $0 } } }
+"#,
+        expect![[r#"
+            en Bar
+            st Foo
+            ev Nil
+            ev Value
+            bn Foo {…} Foo { x$1 }$0
+            bn Nil             Nil$0
+            bn Value         Value$0
+            kw mut
+            kw ref
+        "#]],
+    );
+}
+
+#[test]
 fn irrefutable() {
     check_with_base_items(
         r#"
@@ -399,6 +437,25 @@ fn foo($0) {}
 }
 
 #[test]
+fn completes_in_fn_param_in_nested_pattern() {
+    check(
+        r#"
+struct Foo { num: u32 }
+struct Bar(Foo);
+fn foo(Bar($0)) {}
+"#,
+        expect![[r#"
+            st Bar
+            st Foo
+            bn Bar(…)        Bar($1)$0
+            bn Foo {…} Foo { num$1 }$0
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
 fn completes_in_closure_param() {
     check(
         r#"
@@ -634,6 +691,7 @@ fn f(u: U) {
 
     check(
         r#"
+//- /core.rs crate:core
 #![rustc_coherence_is_core]
 #[lang = "u32"]
 impl u32 {
@@ -759,6 +817,37 @@ fn f(x: EnumAlias<u8>) {
         expect![[r#"
             bn Tuple(…) Tuple($1)$0
             bn Unit          Unit$0
+        "#]],
+    );
+}
+
+#[test]
+fn through_alias_it_self() {
+    check(
+        r#"
+enum Enum<T> {
+    Unit,
+    Tuple(T),
+}
+
+type EnumAlias<T> = Enum<T>;
+
+fn f(x: EnumAlias<u8>) {
+    match x {
+        $0 => (),
+        _ => (),
+    }
+
+}
+
+"#,
+        expect![[r#"
+            en Enum
+            ta EnumAlias
+            bn Enum::Tuple(…) Enum::Tuple($1)$0
+            bn Enum::Unit          Enum::Unit$0
+            kw mut
+            kw ref
         "#]],
     );
 }

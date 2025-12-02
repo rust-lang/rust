@@ -32,6 +32,8 @@ makro = "makro"
 trivias = "trivias"
 thir = "thir"
 jod = "jod"
+tructure = "tructure"
+taits = "taits"
 
 [default.extend-identifiers]
 anc = "anc"

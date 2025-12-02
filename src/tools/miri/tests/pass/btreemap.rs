@@ -25,7 +25,7 @@ fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>
     }
 }
 
-pub fn main() {
+fn main() {
     let mut b = BTreeSet::new();
     b.insert(Foo::A("\'"));
     b.insert(Foo::A("/="));

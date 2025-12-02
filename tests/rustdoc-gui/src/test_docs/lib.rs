@@ -1,3 +1,4 @@
+//@ compile-flags: --enable-index-page -Z unstable-options
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
 #![doc(html_playground_url="https://play.rust-lang.org/")]
@@ -459,10 +460,10 @@ pub fn safe_fn() {}
 
 #[repr(C)]
 pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
-    s: S,
-    t: T,
-    e: E,
-    p: P,
+    pub s: S,
+    pub t: T,
+    pub e: E,
+    pub p: P,
 }
 
 pub struct StructWithPublicUndocumentedFields {
@@ -784,4 +785,14 @@ pub mod tooltips {
     pub fn bar() -> Vec<u8> {
         Vec::new()
     }
+}
+
+pub mod tyalias {
+    pub struct X<T>(pub T);
+
+    impl<T: std::fmt::Debug> X<T> {
+        pub fn blob(&self) {}
+    }
+
+    pub type Y = X<u8>;
 }

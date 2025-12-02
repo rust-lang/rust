@@ -70,7 +70,7 @@ fn make_ok_ptr(x: NonNull<u16>) -> Result<NonNull<u16>, usize> {
 fn make_ok_int(x: usize) -> Result<usize, NonNull<u16>> {
     // CHECK-LABEL: { i64, ptr } @make_ok_int(i64 %x)
     // CHECK-NEXT: start:
-    // CHECK-NEXT: %[[NOPROV:.+]] = getelementptr i8, ptr null, i64 %x
+    // CHECK-NEXT: %[[NOPROV:.+]] = inttoptr i64 %x to ptr
     // CHECK-NEXT: %[[R:.+]] = insertvalue { i64, ptr } { i64 0, ptr poison }, ptr %[[NOPROV]], 1
     // CHECK-NEXT: ret { i64, ptr } %[[R]]
     Ok(x)

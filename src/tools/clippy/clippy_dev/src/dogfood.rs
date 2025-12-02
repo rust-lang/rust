@@ -4,7 +4,7 @@ use itertools::Itertools;
 /// # Panics
 ///
 /// Panics if unable to run the dogfood test
-#[allow(clippy::fn_params_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
 pub fn dogfood(fix: bool, allow_dirty: bool, allow_staged: bool, allow_no_vcs: bool) {
     run_exit_on_err(
         "cargo test",

@@ -24,11 +24,12 @@ mod type_pos;
 mod use_tree;
 mod visibility;
 
-use base_db::{SourceDatabase, salsa};
+use base_db::SourceDatabase;
 use expect_test::Expect;
+use hir::db::HirDatabase;
 use hir::{PrefixKind, setup_tracing};
 use ide_db::{
-    FilePosition, RootDatabase, SnippetCap,
+    FilePosition, MiniCore, RootDatabase, SnippetCap,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use itertools::Itertools;
@@ -89,6 +90,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     exclude_traits: &[],
     enable_auto_await: true,
     enable_auto_iter: true,
+    minicore: MiniCore::default(),
 };
 
 pub(crate) fn completion_list(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
@@ -158,12 +160,12 @@ pub(crate) fn position(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
 ) -> (RootDatabase, FilePosition) {
     let mut database = RootDatabase::default();
-    let change_fixture = ChangeFixture::parse(&database, ra_fixture);
+    let change_fixture = ChangeFixture::parse(ra_fixture);
     database.enable_proc_attr_macros();
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
-    let position = FilePosition { file_id: file_id.file_id(&database), offset };
+    let position = FilePosition { file_id: file_id.file_id(), offset };
     (database, position)
 }
 
@@ -243,12 +245,11 @@ pub(crate) fn check_edit_with_config(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        salsa::attach(&db, || crate::completions(&db, &config, position, None).unwrap());
-    let (completion,) = completions
-        .iter()
-        .filter(|it| it.lookup() == what)
-        .collect_tuple()
-        .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
+        hir::attach_db(&db, || crate::completions(&db, &config, position, None).unwrap());
+    let Some((completion,)) = completions.iter().filter(|it| it.lookup() == what).collect_tuple()
+    else {
+        panic!("can't find {what:?} completion in {completions:#?}")
+    };
     let mut actual = db.file_text(position.file_id).text(&db).to_string();
 
     let mut combined_edit = completion.text_edit.clone();
@@ -306,8 +307,11 @@ pub(crate) fn get_all_items(
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {
     let (db, position) = position(code);
-    let res = salsa::attach(&db, || crate::completions(&db, &config, position, trigger_character))
-        .map_or_else(Vec::default, Into::into);
+    let res = hir::attach_db(&db, || {
+        HirDatabase::zalsa_register_downcaster(&db);
+        crate::completions(&db, &config, position, trigger_character)
+    })
+    .map_or_else(Vec::default, Into::into);
     // validate
     res.iter().for_each(|it| {
         let sr = it.source_range;

@@ -86,7 +86,9 @@ declare_lint_pass! {
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
-        REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        REPR_C_ENUMS_LARGER_THAN_INT,
+        REPR_TRANSPARENT_NON_ZST_FIELDS,
+        RTSAN_NONBLOCKING_ASYNC,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
         RUST_2021_PREFIXES_INCOMPATIBLE_SYNTAX,
@@ -142,6 +144,7 @@ declare_lint_pass! {
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
+        VARARGS_WITHOUT_PATTERN,
         WARNINGS,
         // tidy-alphabetical-end
     ]
@@ -1601,7 +1604,7 @@ declare_lint! {
     "detects patterns whose meaning will change in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/match-ergonomics.html>",
     };
 }
 
@@ -2309,10 +2312,10 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![cfg_attr(not(bootstrap), feature(sanitize))]
+    /// #![feature(sanitize)]
     ///
     /// #[inline(always)]
-    /// #[cfg_attr(not(bootstrap), sanitize(address = "off"))]
+    /// #[sanitize(address = "off")]
     /// fn x() {}
     ///
     /// fn main() {
@@ -2330,6 +2333,37 @@ declare_lint! {
     pub INLINE_NO_SANITIZE,
     Warn,
     r#"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"#,
+}
+
+declare_lint! {
+    /// The `rtsan_nonblocking_async` lint detects incompatible use of
+    /// [`#[sanitize(realtime = "nonblocking")]`][sanitize] on async functions.
+    ///
+    /// [sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,no_run")]
+    /// #![feature(sanitize)]
+    ///
+    /// #[sanitize(realtime = "nonblocking")]
+    /// async fn x() {}
+    ///
+    /// fn main() {
+    ///     x();
+    /// }
+    #[cfg_attr(bootstrap, doc = "```")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The sanitizer only considers the async function body nonblocking. The executor, which runs on
+    /// every `.await` point can run non-realtime code, without the sanitizer catching it.
+    pub RTSAN_NONBLOCKING_ASYNC,
+    Warn,
+    r#"detects incompatible uses of `#[sanitize(realtime = "nonblocking")]` on async functions"#,
 }
 
 declare_lint! {
@@ -3011,10 +3045,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `repr_transparent_external_private_fields` lint
+    /// The `repr_transparent_non_zst_fields` lint
     /// detects types marked `#[repr(transparent)]` that (transitively)
-    /// contain an external ZST type marked `#[non_exhaustive]` or containing
-    /// private fields
+    /// contain a type that is not guaranteed to remain a ZST type under all configurations.
     ///
     /// ### Example
     ///
@@ -3022,8 +3055,13 @@ declare_lint! {
     /// #![deny(repr_transparent_external_private_fields)]
     /// use foo::NonExhaustiveZst;
     ///
+    /// #[repr(C)]
+    /// struct CZst([u8; 0]);
+    ///
     /// #[repr(transparent)]
     /// struct Bar(u32, ([u32; 0], NonExhaustiveZst));
+    /// #[repr(transparent)]
+    /// struct Baz(u32, CZst);
     /// ```
     ///
     /// This will produce:
@@ -3042,26 +3080,39 @@ declare_lint! {
     ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
     ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
-    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+    ///   = note: this field contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.
+    ///
+    /// error: zero-sized fields in repr(transparent) cannot contain `#[repr(C)]` types
+    ///  --> src/main.rs:5:28
+    ///   |
+    /// 5 | struct Baz(u32, CZst);
+    ///   |                 ^^^^
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+    ///   = note: this field contains `CZst`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.
     /// ```
     ///
     /// ### Explanation
     ///
-    /// Previous, Rust accepted fields that contain external private zero-sized types,
-    /// even though it should not be a breaking change to add a non-zero-sized field to
-    /// that private type.
+    /// Previous, Rust accepted fields that contain external private zero-sized types, even though
+    /// those types could gain a non-zero-sized field in a future, semver-compatible update.
+    ///
+    /// Rust also accepted fields that contain `repr(C)` zero-sized types, even though those types
+    /// are not guaranteed to be zero-sized on all targets, and even though those types can
+    /// make a difference for the ABI (and therefore cannot be ignored by `repr(transparent)`).
     ///
     /// This is a [future-incompatible] lint to transition this
     /// to a hard error in the future. See [issue #78586] for more details.
     ///
     /// [issue #78586]: https://github.com/rust-lang/rust/issues/78586
     /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
-    Warn,
+    pub REPR_TRANSPARENT_NON_ZST_FIELDS,
+    Deny,
     "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
+        report_in_deps: true,
     };
 }
 
@@ -4065,7 +4116,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(never_type_fallback_flowing_into_unsafe)]
     /// fn main() {
     ///     if true {
     ///         // return has type `!` which, is some cases, causes never type fallback
@@ -4100,7 +4150,7 @@ declare_lint! {
     /// [`!`]: https://doc.rust-lang.org/core/primitive.never.html
     /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
     pub NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
-    Warn,
+    Deny,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
@@ -4122,7 +4172,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail,edition2021
-    /// #![deny(dependency_on_unit_never_type_fallback)]
+    /// # #![deny(dependency_on_unit_never_type_fallback)]
     /// fn main() {
     ///     if true {
     ///         // return has type `!` which, is some cases, causes never type fallback
@@ -4155,7 +4205,7 @@ declare_lint! {
     ///
     /// See [Tracking Issue for making `!` fall back to `!`](https://github.com/rust-lang/rust/issues/123748).
     pub DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-    Warn,
+    Deny,
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
@@ -4837,16 +4887,13 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
-    #[cfg_attr(bootstrap, doc = "```rust")]
+    /// ```rust,compile_fail
     /// #![doc = in_root!()]
     ///
     /// macro_rules! in_root { () => { "" } }
     ///
     /// fn main() {}
-    #[cfg_attr(not(bootstrap), doc = "```")]
-    #[cfg_attr(bootstrap, doc = "```")]
-    // ^ Needed to avoid tidy warning about odd number of backticks
+    /// ```
     ///
     /// {{produces}}
     ///
@@ -5199,4 +5246,100 @@ declare_lint! {
     pub INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
     Warn,
     r#"detects when a function annotated with `#[inline(always)]` and `#[target_feature(enable = "..")]` is inlined into a caller without the required target feature"#,
+}
+
+declare_lint! {
+    /// The `repr_c_enums_larger_than_int` lint detects `repr(C)` enums with discriminant
+    /// values that do not fit into a C `int` or `unsigned int`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (only errors on 64bit)
+    /// #[repr(C)]
+    /// enum E {
+    ///     V = 9223372036854775807, // i64::MAX
+    /// }
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: `repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`
+    ///   --> $DIR/repr-c-big-discriminant1.rs:16:5
+    ///    |
+    /// LL |     A = 9223372036854775807, // i64::MAX
+    ///    |     ^
+    ///    |
+    ///    = note: `repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C
+    ///    = help: use `repr($int_ty)` instead to explicitly set the size of this enum
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// In C, enums with discriminants that do not all fit into an `int` or all fit into an
+    /// `unsigned int` are a portability hazard: such enums are only permitted since C23, and not
+    /// supported e.g. by MSVC.
+    ///
+    /// Furthermore, Rust interprets the discriminant values of `repr(C)` enums as expressions of
+    /// type `isize`. This makes it impossible to implement the C23 behavior of enums where the enum
+    /// discriminants have no predefined type and instead the enum uses a type large enough to hold
+    /// all discriminants.
+    ///
+    /// Therefore, `repr(C)` enums in Rust require that either all discriminants to fit into a C
+    /// `int` or they all fit into an `unsigned int`.
+    pub REPR_C_ENUMS_LARGER_THAN_INT,
+    Warn,
+    "repr(C) enums with discriminant values that do not fit into a C int",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #124403 <https://github.com/rust-lang/rust/issues/124403>",
+        report_in_deps: false,
+    };
+}
+
+declare_lint! {
+    /// The `varargs_without_pattern` lint detects when `...` is used as an argument to a
+    /// non-foreign function without any pattern being specified.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// // Using `...` in non-foreign function definitions is unstable, however stability is
+    /// // currently only checked after attributes are expanded, so using `#[cfg(false)]` here will
+    /// // allow this to compile on stable Rust.
+    /// #[cfg(false)]
+    /// fn foo(...) {
+    ///
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Patterns are currently required for all non-`...` arguments in function definitions (with
+    /// some exceptions in the 2015 edition). Requiring `...` arguments to have patterns in
+    /// non-foreign function definitions makes the language more consistent, and removes a source of
+    /// confusion for the unstable C variadic feature. `...` arguments without a pattern are already
+    /// stable and widely used in foreign function definitions; this lint only affects non-foreign
+    /// function definitions.
+    ///
+    /// Using `...` (C varargs) in a non-foreign function definition is currently unstable. However,
+    /// stability checking for the `...` syntax in non-foreign function definitions is currently
+    /// implemented after attributes have been expanded, meaning that if the attribute removes the
+    /// use of the unstable syntax (e.g. `#[cfg(false)]`, or a procedural macro), the code will
+    /// compile on stable Rust; this is the only situation where this lint affects code that
+    /// compiles on stable Rust.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub VARARGS_WITHOUT_PATTERN,
+    Warn,
+    "detects usage of `...` arguments without a pattern in non-foreign items",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseError,
+        reference: "issue #145544 <https://github.com/rust-lang/rust/issues/145544>",
+        report_in_deps: false,
+    };
 }

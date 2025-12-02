@@ -69,12 +69,11 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, buf: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        // FIXME: UEFI does support vectored read, so implement that.
-        crate::io::default_read_vectored(|b| self.read(b), buf)
+        self.inner.read_vectored(buf, self.read_timeout()?)
     }
 
     pub fn is_read_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -82,12 +81,11 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, buf: &[IoSlice<'_>]) -> io::Result<usize> {
-        // FIXME: UEFI does support vectored write, so implement that.
-        crate::io::default_write_vectored(|b| self.write(b), buf)
+        self.inner.write_vectored(buf, self.write_timeout()?)
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        false
+        true
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_res_lang_ctor, path_res};
 use rustc_errors::Applicability;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Expr, ExprKind};
@@ -21,14 +20,14 @@ pub(super) fn check<'tcx>(
     let title;
     let or_arg_content: Span;
 
-    if is_type_diagnostic_item(cx, ty, sym::Option) {
+    if ty.is_diag_item(cx, sym::Option) {
         title = "found `.or(Some(…)).unwrap()`";
         if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::OptionSome) {
             or_arg_content = content;
         } else {
             return;
         }
-    } else if is_type_diagnostic_item(cx, ty, sym::Result) {
+    } else if ty.is_diag_item(cx, sym::Result) {
         title = "found `.or(Ok(…)).unwrap()`";
         if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::ResultOk) {
             or_arg_content = content;
@@ -60,7 +59,7 @@ pub(super) fn check<'tcx>(
 
 fn get_content_if_ctor_matches(cx: &LateContext<'_>, expr: &Expr<'_>, item: LangItem) -> Option<Span> {
     if let ExprKind::Call(some_expr, [arg]) = expr.kind
-        && is_res_lang_ctor(cx, path_res(cx, some_expr), item)
+        && some_expr.res(cx).ctor_parent(cx).is_lang_item(cx, item)
     {
         Some(arg.span.source_callsite())
     } else {

@@ -244,7 +244,7 @@ fn missing_items_err(
         let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
-            tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
+            tcx.impl_trait_ref(impl_def_id).instantiate_identity(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
@@ -660,7 +660,7 @@ pub fn check_function_signature<'tcx>(
 
     match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
         Ok(()) => {
-            let errors = ocx.select_all_or_error();
+            let errors = ocx.evaluate_obligations_error_on_ambiguity();
             if !errors.is_empty() {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }

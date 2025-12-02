@@ -1,4 +1,4 @@
-use rustc_abi::{HasDataLayout, Size};
+use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 
@@ -14,17 +14,24 @@ where
     }
 }
 
-fn classify_arg<Ty, C>(cx: &C, arg: &mut ArgAbi<'_, Ty>, offset: &mut Size)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     if !arg.layout.is_sized() {
+        // FIXME: Update offset?
         // Not touching this...
         return;
     }
     let dl = cx.data_layout();
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        *offset += dl.pointer_size();
+        return;
+    }
     let size = arg.layout.size;
-    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align).abi;
+    let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.is_aggregate() {
         let pad_i32 = !offset.is_aligned(align);
@@ -36,8 +43,9 @@ where
     *offset = offset.align_to(align) + size.align_to(align);
 }
 
-pub(crate) fn compute_abi_info<Ty, C>(cx: &C, fn_abi: &mut FnAbi<'_, Ty>)
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
     let mut offset = Size::ZERO;

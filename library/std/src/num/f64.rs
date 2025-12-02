@@ -217,7 +217,8 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn mul_add(self, a: f64, b: f64) -> f64 {
+    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
+    pub const fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
 
@@ -307,6 +308,7 @@ impl f64 {
     /// assert!(abs_difference <= 1e-14);
     ///
     /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
+    /// assert_eq!(f64::powi(0.0, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -332,6 +334,7 @@ impl f64 {
     ///
     /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
     /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
+    /// assert_eq!(f64::powf(0.0, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -826,10 +829,12 @@ impl f64 {
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
     ///
-    /// * `x = 0`, `y = 0`: `0`
-    /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
-    /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
-    /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
+    ///  | `x`     | `y`     | Piecewise Definition | Range         |
+    ///  |---------|---------|----------------------|---------------|
+    ///  | `>= +0` | `>= +0` | `arctan(y/x)`        | `[+0, +pi/2]` |
+    ///  | `>= +0` | `<= -0` | `arctan(y/x)`        | `[-pi/2, -0]` |
+    ///  | `<= -0` | `>= +0` | `arctan(y/x) + pi`   | `[+pi/2, +pi]`|
+    ///  | `<= -0` | `<= -0` | `arctan(y/x) - pi`   | `[-pi, -pi/2]`|
     ///
     /// # Unspecified precision
     ///

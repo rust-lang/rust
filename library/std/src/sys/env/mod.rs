@@ -5,6 +5,7 @@
 #[cfg(any(
     target_family = "unix",
     target_os = "hermit",
+    target_os = "motor",
     all(target_vendor = "fortanix", target_env = "sgx"),
     target_os = "solid_asp3",
     target_os = "uefi",
@@ -25,6 +26,10 @@ cfg_select! {
     target_os = "hermit" => {
         mod hermit;
         pub use hermit::*;
+    }
+    target_os = "motor" => {
+        mod motor;
+        pub use motor::*;
     }
     all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;

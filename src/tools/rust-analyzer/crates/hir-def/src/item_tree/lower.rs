@@ -1,8 +1,9 @@
 //! AST -> `ItemTree` lowering code.
 
-use std::{cell::OnceCell, collections::hash_map::Entry};
+use std::cell::OnceCell;
 
 use base_db::FxIndexSet;
+use cfg::CfgOptions;
 use hir_expand::{
     HirFileId,
     mod_path::PathKind,
@@ -22,18 +23,19 @@ use crate::{
     item_tree::{
         BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
         ImportAlias, Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod,
-        ModItemId, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, SmallModItem,
-        Static, Struct, StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
-        VisibilityExplicitness,
+        ModItemId, ModKind, ModPath, RawVisibility, RawVisibilityId, SmallModItem, Static, Struct,
+        StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, VisibilityExplicitness,
+        attrs::AttrsOrCfg,
     },
 };
 
 pub(super) struct Ctx<'a> {
-    db: &'a dyn DefDatabase,
+    pub(super) db: &'a dyn DefDatabase,
     tree: ItemTree,
     source_ast_id_map: Arc<AstIdMap>,
     span_map: OnceCell<SpanMap>,
     file: HirFileId,
+    cfg_options: OnceCell<&'a CfgOptions>,
     top_level: Vec<ModItemId>,
     visibilities: FxIndexSet<RawVisibility>,
 }
@@ -45,10 +47,16 @@ impl<'a> Ctx<'a> {
             tree: ItemTree::default(),
             source_ast_id_map: db.ast_id_map(file),
             file,
+            cfg_options: OnceCell::new(),
             span_map: OnceCell::new(),
             visibilities: FxIndexSet::default(),
             top_level: Vec::new(),
         }
+    }
+
+    #[inline]
+    pub(super) fn cfg_options(&self) -> &'a CfgOptions {
+        self.cfg_options.get_or_init(|| self.file.krate(self.db).cfg_options(self.db))
     }
 
     pub(super) fn span_map(&self) -> SpanMapRef<'_> {
@@ -98,7 +106,7 @@ impl<'a> Ctx<'a> {
     }
 
     pub(super) fn lower_block(mut self, block: &ast::BlockExpr) -> ItemTree {
-        self.tree.top_attrs = RawAttrs::new(self.db, block, self.span_map());
+        self.tree.top_attrs = self.lower_attrs(block);
         self.top_level = block
             .statements()
             .filter_map(|stmt| match stmt {
@@ -144,22 +152,15 @@ impl<'a> Ctx<'a> {
             // FIXME: Handle `global_asm!()`.
             ast::Item::AsmExpr(_) => return None,
         };
-        let attrs = RawAttrs::new(self.db, item, self.span_map());
+        let attrs = self.lower_attrs(item);
         self.add_attrs(mod_item.ast_id(), attrs);
 
         Some(mod_item)
     }
 
-    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: RawAttrs) {
+    fn add_attrs(&mut self, item: FileAstId<ast::Item>, attrs: AttrsOrCfg) {
         if !attrs.is_empty() {
-            match self.tree.attrs.entry(item) {
-                Entry::Occupied(mut entry) => {
-                    *entry.get_mut() = entry.get().merge(attrs);
-                }
-                Entry::Vacant(entry) => {
-                    entry.insert(attrs);
-                }
-            }
+            self.tree.attrs.insert(item, attrs);
         }
     }
 
@@ -352,7 +353,7 @@ impl<'a> Ctx<'a> {
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(ty)?.into(),
                         ast::ExternItem::MacroCall(call) => self.lower_macro_call(call)?.into(),
                     };
-                    let attrs = RawAttrs::new(self.db, &item, self.span_map());
+                    let attrs = self.lower_attrs(&item);
                     self.add_attrs(mod_item.ast_id(), attrs);
                     Some(mod_item)
                 })
@@ -370,18 +371,13 @@ impl<'a> Ctx<'a> {
         });
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path, explicitness) if path.segments().is_empty() => {
-                match (path.kind, explicitness) {
-                    (PathKind::SELF, VisibilityExplicitness::Explicit) => {
-                        RawVisibilityId::PRIV_EXPLICIT
-                    }
-                    (PathKind::SELF, VisibilityExplicitness::Implicit) => {
-                        RawVisibilityId::PRIV_IMPLICIT
-                    }
-                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
-                    _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
-                }
+            RawVisibility::PubSelf(VisibilityExplicitness::Explicit) => {
+                RawVisibilityId::PRIV_EXPLICIT
             }
+            RawVisibility::PubSelf(VisibilityExplicitness::Implicit) => {
+                RawVisibilityId::PRIV_IMPLICIT
+            }
+            RawVisibility::PubCrate => RawVisibilityId::PUB_CRATE,
             _ => RawVisibilityId(self.visibilities.insert_full(vis).0 as u32),
         }
     }
@@ -466,10 +462,7 @@ pub(crate) fn lower_use_tree(
 }
 
 fn private_vis() -> RawVisibility {
-    RawVisibility::Module(
-        Interned::new(ModPath::from_kind(PathKind::SELF)),
-        VisibilityExplicitness::Implicit,
-    )
+    RawVisibility::PubSelf(VisibilityExplicitness::Implicit)
 }
 
 pub(crate) fn visibility_from_ast(
@@ -486,9 +479,11 @@ pub(crate) fn visibility_from_ast(
                 Some(path) => path,
             }
         }
-        ast::VisibilityKind::PubCrate => ModPath::from_kind(PathKind::Crate),
+        ast::VisibilityKind::PubCrate => return RawVisibility::PubCrate,
         ast::VisibilityKind::PubSuper => ModPath::from_kind(PathKind::Super(1)),
-        ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::SELF),
+        ast::VisibilityKind::PubSelf => {
+            return RawVisibility::PubSelf(VisibilityExplicitness::Explicit);
+        }
         ast::VisibilityKind::Pub => return RawVisibility::Public,
     };
     RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)

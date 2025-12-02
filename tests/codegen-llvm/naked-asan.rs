@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu -Zsanitizer=address -Ctarget-feature=-crt-static
 

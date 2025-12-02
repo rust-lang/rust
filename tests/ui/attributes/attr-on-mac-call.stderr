@@ -55,7 +55,7 @@ LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, foreign statics, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, and crates
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
 
 warning: `#[inline]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:24:5
@@ -82,7 +82,7 @@ LL |     #[link_section = "x"]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics and functions
+   = help: `#[link_section]` can be applied to functions and statics
 
 warning: `#[link_ordinal]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:33:5
@@ -136,7 +136,7 @@ LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, foreign statics, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, and crates
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, unions, and use statements
 
 warning: `#[automatically_derived]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:51:5
@@ -154,7 +154,7 @@ LL |     #[macro_use]
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
+   = help: `#[macro_use]` can be applied to crates, extern crates, and modules
 
 warning: `#[must_use]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:57:5
@@ -163,7 +163,7 @@ LL |     #[must_use]
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
+   = help: `#[must_use]` can be applied to data types, functions, traits, and unions
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:60:5
@@ -172,7 +172,7 @@ LL |     #[no_implicit_prelude]
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules and crates
+   = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
 warning: `#[path]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:63:5

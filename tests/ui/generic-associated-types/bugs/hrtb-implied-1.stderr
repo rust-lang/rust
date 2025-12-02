@@ -14,6 +14,11 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL |     for<'a> I::Item<'a>: Debug,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/hrtb-implied-1.rs:26:26
+   |
+LL |     for<'a> I::Item<'a>: Debug,
+   |                          ^^^^^
 
 error: aborting due to 1 previous error
 

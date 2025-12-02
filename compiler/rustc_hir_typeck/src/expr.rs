@@ -19,7 +19,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, HirId, QPath, find_attr};
+use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
@@ -48,6 +48,7 @@ use crate::errors::{
     NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
     TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
+use crate::op::contains_let_in_chain;
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, GatherLocalsVisitor, Needs,
     TupleArgumentsFlag, cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct,
@@ -76,6 +77,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             false
         };
+
+        // Special case: range expressions are desugared to struct literals in HIR,
+        // so they would normally return `Unambiguous` precedence in expr.precedence.
+        // we should return `Range` precedence for correct parenthesization in suggestions.
+        if is_range_literal(expr) {
+            return ExprPrecedence::Range;
+        }
+
         expr.precedence(&has_attr)
     }
 
@@ -514,7 +523,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::PatKind::TupleStruct(_, _, _)
             | hir::PatKind::Tuple(_, _)
             | hir::PatKind::Box(_)
-            | hir::PatKind::Ref(_, _)
+            | hir::PatKind::Ref(_, _, _)
             | hir::PatKind::Deref(_)
             | hir::PatKind::Expr(_)
             | hir::PatKind::Range(_, _, _)
@@ -544,9 +553,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Unary(unop, oprnd) => self.check_expr_unop(unop, oprnd, expected, expr),
             ExprKind::AddrOf(kind, mutbl, oprnd) => {
                 self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
-            }
-            ExprKind::Path(QPath::LangItem(lang_item, _)) => {
-                self.check_lang_item_path(lang_item, expr)
             }
             ExprKind::Path(ref qpath) => self.check_expr_path(qpath, expr, None),
             ExprKind::InlineAsm(asm) => {
@@ -685,9 +691,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let ty =
             self.check_expr_with_expectation_and_needs(oprnd, hint, Needs::maybe_mut_place(mutbl));
+        if let Err(guar) = ty.error_reported() {
+            return Ty::new_error(self.tcx, guar);
+        }
 
         match kind {
-            _ if ty.references_error() => Ty::new_misc_error(self.tcx),
             hir::BorrowKind::Raw => {
                 self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)
@@ -746,14 +754,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_lang_item_path(
-        &self,
-        lang_item: hir::LangItem,
-        expr: &'tcx hir::Expr<'tcx>,
-    ) -> Ty<'tcx> {
-        self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id).1
-    }
-
     pub(crate) fn check_expr_path(
         &self,
         qpath: &'tcx hir::QPath<'tcx>,
@@ -761,6 +761,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
+
+        if let Some((_, [arg])) = call_expr_and_args
+            && let QPath::Resolved(_, path) = qpath
+            && let Res::Def(_, def_id) = path.res
+            && let Some(lang_item) = tcx.lang_items().from_def_id(def_id)
+        {
+            let code = match lang_item {
+                LangItem::IntoFutureIntoFuture
+                    if expr.span.is_desugaring(DesugaringKind::Await) =>
+                {
+                    Some(ObligationCauseCode::AwaitableExpr(arg.hir_id))
+                }
+                LangItem::IntoIterIntoIter | LangItem::IteratorNext
+                    if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
+                {
+                    Some(ObligationCauseCode::ForLoopIterator)
+                }
+                LangItem::TryTraitFromOutput
+                    if expr.span.is_desugaring(DesugaringKind::TryBlock) =>
+                {
+                    // FIXME it's a try block, not a question mark
+                    Some(ObligationCauseCode::QuestionMark)
+                }
+                LangItem::TryTraitBranch | LangItem::TryTraitFromResidual
+                    if expr.span.is_desugaring(DesugaringKind::QuestionMark) =>
+                {
+                    Some(ObligationCauseCode::QuestionMark)
+                }
+                _ => None,
+            };
+            if let Some(code) = code {
+                let args = self.fresh_args_for_item(expr.span, def_id);
+                self.add_required_obligations_with_code(expr.span, def_id, args, |_, _| {
+                    code.clone()
+                });
+                return tcx.type_of(def_id).instantiate(tcx, args);
+            }
+        }
+
         let (res, opt_ty, segs) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
@@ -1247,6 +1286,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
+        // Skip suggestion if LHS contains a let-chain at this would likely be spurious
+        // cc: https://github.com/rust-lang/rust/issues/147664
+        if contains_let_in_chain(lhs) {
+            return;
+        }
+
         let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
         err.code(code);
         err.span_label(lhs.span, "cannot assign to this expression");
@@ -1633,8 +1678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(rcvr);
-        // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolve_type(rcvr.span, rcvr_t);
+        let rcvr_t = self.try_structurally_resolve_type(rcvr.span, rcvr_t);
 
         match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args) {
             Ok(method) => {
@@ -1818,12 +1862,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let element_ty = if !args.is_empty() {
+            // This shouldn't happen unless there's another error
+            // (e.g., never patterns in inappropriate contexts).
+            if self.diverges.get() != Diverges::Maybe {
+                self.dcx()
+                    .struct_span_err(expr.span, "unexpected divergence state in checking array")
+                    .delay_as_bug();
+            }
+
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| self.try_structurally_resolve_type(expr.span, uty).builtin_index())
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
-            assert_eq!(self.diverges.get(), Diverges::Maybe);
+
             for e in args {
                 let e_ty = self.check_expr_with_hint(e, coerce_to);
                 let cause = self.misc(e.span);
@@ -2018,7 +2070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
                 ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
-                if !ocx.select_where_possible().is_empty() {
+                if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(TypeError::Mismatch);
                 }
                 Ok(self.resolve_vars_if_possible(adt_ty))
@@ -2474,9 +2526,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         mut err: Diag<'_>,
     ) {
-        // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
-        if let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), [range_start, range_end], _) =
-            last_expr_field.expr.kind
+        if is_range_literal(last_expr_field.expr)
+            && let ExprKind::Struct(&qpath, [range_start, range_end], _) = last_expr_field.expr.kind
+            && self.tcx.qpath_is_lang_item(qpath, LangItem::Range)
             && let variant_field =
                 variant.fields.iter().find(|field| field.ident(self.tcx) == last_expr_field.ident)
             && let range_def_id = self.tcx.lang_items().range_struct()
@@ -2500,11 +2552,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .sess
                 .source_map()
-                .span_extend_while_whitespace(range_start.span)
+                .span_extend_while_whitespace(range_start.expr.span)
                 .shrink_to_hi()
-                .to(range_end.span);
+                .to(range_end.expr.span);
 
-            err.subdiagnostic(TypeMismatchFruTypo { expr_span: range_start.span, fru_span, expr });
+            err.subdiagnostic(TypeMismatchFruTypo {
+                expr_span: range_start.expr.span,
+                fru_span,
+                expr,
+            });
 
             // Suppress any range expr type mismatches
             self.dcx().try_steal_replace_and_emit_err(
@@ -2603,7 +2659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let suggestion = |name, args| {
                 format!(
                     "::{name}({})",
-                    std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+                    std::iter::repeat_n("_", args).collect::<Vec<_>>().join(", ")
                 )
             };
             match &items[..] {
@@ -3552,34 +3608,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     // Try to give some advice about indexing tuples.
                     if let ty::Tuple(types) = base_t.kind() {
-                        let mut needs_note = true;
-                        // If the index is an integer, we can show the actual
-                        // fixed expression:
+                        err.help(
+                            "tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.",
+                        );
+                        // If index is an unsuffixed integer, show the fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
                             && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i.get()
-                                < types
-                                    .len()
-                                    .try_into()
-                                    .expect("expected tuple index to be < usize length")
+                            && i.get() < types.len().try_into().expect("tuple length fits in u128")
                         {
                             err.span_suggestion(
                                 brackets_span,
-                                "to access tuple elements, use",
+                                format!("to access tuple element `{i}`, use"),
                                 format!(".{i}"),
                                 Applicability::MachineApplicable,
-                            );
-                            needs_note = false;
-                        } else if let ExprKind::Path(..) = idx.peel_borrows().kind {
-                            err.span_label(
-                                idx.span,
-                                "cannot access tuple elements at a variable index",
-                            );
-                        }
-                        if needs_note {
-                            err.help(
-                                "to access tuple elements, use tuple indexing \
-                                        syntax (e.g., `tuple.0`)",
                             );
                         }
                     }
@@ -3635,7 +3676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
             let impl_args = self.fresh_args_for_item(base_expr.span, impl_def_id);
             let impl_trait_ref =
-                self.tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(self.tcx, impl_args);
+                self.tcx.impl_trait_ref(impl_def_id).instantiate(self.tcx, impl_args);
             let cause = self.misc(base_expr.span);
 
             // Match the impl self type against the base ty. If this fails,
@@ -3679,7 +3720,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ),
             );
 
-            let true_errors = ocx.select_where_possible();
+            let true_errors = ocx.try_evaluate_obligations();
 
             // Do a leak check -- we can't really report a useful error here,
             // but it at least avoids an ICE when the error has to do with higher-ranked
@@ -3687,7 +3728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.leak_check(outer_universe, Some(snapshot))?;
 
             // Bail if we have ambiguity errors, which we can't report in a useful way.
-            let ambiguity_errors = ocx.select_all_or_error();
+            let ambiguity_errors = ocx.evaluate_obligations_error_on_ambiguity();
             if true_errors.is_empty() && !ambiguity_errors.is_empty() {
                 return Err(NoSolution);
             }
@@ -3843,10 +3884,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let container = self.lower_ty(container).normalized;
-
+        let mut current_container = self.lower_ty(container).normalized;
         let mut field_indices = Vec::with_capacity(fields.len());
-        let mut current_container = container;
         let mut fields = fields.into_iter();
 
         while let Some(&field) = fields.next() {
@@ -3934,7 +3973,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Save the index of all fields regardless of their visibility in case
                     // of error recovery.
-                    field_indices.push((index, subindex));
+                    field_indices.push((current_container, index, subindex));
                     current_container = field_ty;
 
                     continue;
@@ -3969,7 +4008,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
-                        field_indices.push((FIRST_VARIANT, index));
+                        field_indices.push((current_container, FIRST_VARIANT, index));
                         current_container = field_ty;
 
                         continue;
@@ -3990,7 +4029,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 );
                             }
 
-                            field_indices.push((FIRST_VARIANT, index.into()));
+                            field_indices.push((current_container, FIRST_VARIANT, index.into()));
                             current_container = field_ty;
 
                             continue;
@@ -4005,10 +4044,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             break;
         }
 
-        self.typeck_results
-            .borrow_mut()
-            .offset_of_data_mut()
-            .insert(expr.hir_id, (container, field_indices));
+        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, field_indices);
 
         self.tcx.types.usize
     }

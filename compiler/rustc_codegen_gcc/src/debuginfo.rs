@@ -19,7 +19,7 @@ use crate::context::CodegenCx;
 pub(super) const UNKNOWN_LINE_NUMBER: u32 = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: u32 = 0;
 
-impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
     // names (choose between `dbg`, `debug`, `debuginfo`, `debug_info` etc.).
     fn dbg_var_addr(
@@ -29,11 +29,22 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         _variable_alloca: Self::Value,
         _direct_offset: Size,
         _indirect_offsets: &[Size],
-        _fragment: Option<Range<Size>>,
+        _fragment: &Option<Range<Size>>,
     ) {
         // FIXME(tempdragon): Not sure if this is correct, probably wrong but still keep it here.
         #[cfg(feature = "master")]
         _variable_alloca.set_location(_dbg_loc);
+    }
+
+    fn dbg_var_value(
+        &mut self,
+        _dbg_var: Self::DIVariable,
+        _dbg_loc: Self::DILocation,
+        _value: Self::Value,
+        _direct_offset: Size,
+        _indirect_offsets: &[Size],
+        _fragment: &Option<Range<Size>>,
+    ) {
     }
 
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self) {

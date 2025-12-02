@@ -460,6 +460,61 @@ pub struct Crate {
     pub env: Env,
 }
 
+impl Crate {
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
+    pub fn transitive_deps(self, db: &dyn salsa::Database) -> Box<[Crate]> {
+        // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
+        // and removing that is a bit difficult.
+        let mut worklist = vec![self];
+        let mut deps_seen = FxHashSet::default();
+        let mut deps = Vec::new();
+
+        while let Some(krate) = worklist.pop() {
+            if !deps_seen.insert(krate) {
+                continue;
+            }
+            deps.push(krate);
+
+            worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
+        }
+        deps.into_boxed_slice()
+    }
+
+    /// Returns all transitive reverse dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
+    pub fn transitive_rev_deps(self, db: &dyn RootQueryDb) -> Box<[Crate]> {
+        let mut worklist = vec![self];
+        let mut rev_deps = FxHashSet::default();
+        rev_deps.insert(self);
+
+        let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
+        db.all_crates().iter().for_each(|&krate| {
+            krate
+                .data(db)
+                .dependencies
+                .iter()
+                .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
+        });
+
+        while let Some(krate) = worklist.pop() {
+            if let Some(crate_rev_deps) = inverted_graph.get(&krate) {
+                crate_rev_deps
+                    .iter()
+                    .copied()
+                    .filter(|&rev_dep| rev_deps.insert(rev_dep))
+                    .for_each(|rev_dep| worklist.push(rev_dep));
+            }
+        }
+
+        rev_deps.into_iter().collect::<Box<_>>()
+    }
+}
+
 /// The mapping from [`UniqueCrateData`] to their [`Crate`] input.
 #[derive(Debug, Default)]
 pub struct CratesMap(DashMap<UniqueCrateData, Crate, BuildHasherDefault<FxHasher>>);
@@ -802,36 +857,10 @@ impl CrateGraphBuilder {
     }
 }
 
-pub(crate) fn transitive_rev_deps(db: &dyn RootQueryDb, of: Crate) -> FxHashSet<Crate> {
-    let mut worklist = vec![of];
-    let mut rev_deps = FxHashSet::default();
-    rev_deps.insert(of);
-
-    let mut inverted_graph = FxHashMap::<_, Vec<_>>::default();
-    db.all_crates().iter().for_each(|&krate| {
-        krate
-            .data(db)
-            .dependencies
-            .iter()
-            .for_each(|dep| inverted_graph.entry(dep.crate_id).or_default().push(krate))
-    });
-
-    while let Some(krate) = worklist.pop() {
-        if let Some(crate_rev_deps) = inverted_graph.get(&krate) {
-            crate_rev_deps
-                .iter()
-                .copied()
-                .filter(|&rev_dep| rev_deps.insert(rev_dep))
-                .for_each(|rev_dep| worklist.push(rev_dep));
-        }
-    }
-
-    rev_deps
-}
-
-impl BuiltCrateData {
-    pub fn root_file_id(&self, db: &dyn salsa::Database) -> EditionedFileId {
-        EditionedFileId::new(db, self.root_file_id, self.edition)
+impl Crate {
+    pub fn root_file_id(self, db: &dyn salsa::Database) -> EditionedFileId {
+        let data = self.data(db);
+        EditionedFileId::new(db, data.root_file_id, data.edition, self)
     }
 }
 
@@ -866,6 +895,10 @@ impl Env {
 
     pub fn insert(&mut self, k: impl Into<String>, v: impl Into<String>) -> Option<String> {
         self.entries.insert(k.into(), v.into())
+    }
+
+    pub fn contains_key(&self, arg: &str) -> bool {
+        self.entries.contains_key(arg)
     }
 }
 

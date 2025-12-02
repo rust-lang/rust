@@ -16,7 +16,7 @@ fn main() {
         .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
         .arg("--merge=none")
         .run();
-    assert!(parts_out_dir.join("crate-info").exists());
+    assert!(parts_out_dir.join("sierra.json").exists());
 
     let output = rustdoc()
         .arg("-Zunstable-options")
@@ -24,5 +24,5 @@ fn main() {
         .arg(format!("--include-parts-dir={}", parts_out_dir.display()))
         .arg("--merge=finalize")
         .run();
-    output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
+    output.assert_not_ice();
 }

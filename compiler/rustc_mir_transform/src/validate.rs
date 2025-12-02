@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -17,9 +17,10 @@ use rustc_middle::ty::{
     self, CoroutineArgsExt, InstanceKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Upcast, Variance,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
-use crate::util::{self, is_within_packed};
+use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
@@ -77,6 +78,11 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
 
         // Also run the TypeChecker.
         for (location, msg) in validate_types(tcx, typing_env, body, body) {
+            cfg_checker.fail(location, msg);
+        }
+
+        // Ensure that debuginfo records are not emitted for locals that are not in debuginfo.
+        for (location, msg) in validate_debuginfos(body) {
             cfg_checker.fail(location, msg);
         }
 
@@ -313,11 +319,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
             }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
-                }
-            }
             StatementKind::Retag(kind, _) => {
                 // FIXME(JakobDegen) The validator should check that `self.body.phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
@@ -408,7 +409,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                     // The call destination place and Operand::Move place used as an argument might
                     // be passed by a reference to the callee. Consequently they cannot be packed.
-                    if is_within_packed(self.tcx, &self.body.local_decls, destination).is_some() {
+                    if most_packed_projection(self.tcx, &self.body.local_decls, destination)
+                        .is_some()
+                    {
                         // This is bad! The callee will expect the memory to be aligned.
                         self.fail(
                             location,
@@ -422,7 +425,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
                 for arg in args {
                     if let Operand::Move(place) = &arg.node {
-                        if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
+                        if most_packed_projection(self.tcx, &self.body.local_decls, *place)
+                            .is_some()
+                        {
                             // This is bad! The callee will expect the memory to be aligned.
                             self.fail(
                                 location,
@@ -623,7 +628,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             param_env,
             pred,
         ));
-        ocx.select_all_or_error().is_empty()
+        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
     }
 }
 
@@ -654,22 +659,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::OpaqueCast(ty)
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                self.fail(
-                    location,
-                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
-                )
-            }
-            ProjectionElem::Index(index) => {
-                let index_ty = self.body.local_decls[index].ty;
-                if index_ty != self.tcx.types.usize {
-                    self.fail(location, format!("bad index ({index_ty} != usize)"))
-                }
-            }
             ProjectionElem::Deref
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::PostCleanup) =>
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
             {
                 let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
 
@@ -708,6 +699,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, *f_ty);
                     }
+                    // Debug info is allowed to project into pattern types
+                    ty::Pat(base, _) => check_equal(self, location, *base),
                     ty::Adt(adt_def, args) => {
                         // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
                         if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
@@ -814,21 +807,77 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            ProjectionElem::Subtype(ty) => {
-                if !util::sub_types(
-                    self.tcx,
-                    self.typing_env,
-                    ty,
-                    place_ref.ty(&self.body.local_decls, self.tcx).ty,
-                ) {
-                    self.fail(
-                        location,
-                        format!(
-                            "Failed subtyping {ty} and {}",
-                            place_ref.ty(&self.body.local_decls, self.tcx).ty
-                        ),
-                    )
+            ProjectionElem::Index(index) => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) | ty::Slice(_) => {}
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
                 }
+
+                let index_ty = self.body.local_decls[index].ty;
+                if index_ty != self.tcx.types.usize {
+                    self.fail(location, format!("bad index ({index_ty} != usize)"))
+                }
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) => {
+                        if from_end {
+                            self.fail(location, "arrays should not be indexed from end");
+                        }
+                    }
+                    ty::Slice(_) => {}
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
+                }
+
+                if from_end {
+                    if offset > min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset -{offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                } else {
+                    if offset >= min_length {
+                        self.fail(
+                            location,
+                            format!(
+                                "constant index with offset {offset} out of bounds of min length {min_length}"
+                            ),
+                        );
+                    }
+                }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                let indexed_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+                match indexed_ty.kind() {
+                    ty::Array(_, _) => {
+                        if from_end {
+                            self.fail(location, "arrays should not be subsliced from end");
+                        }
+                    }
+                    ty::Slice(_) => {
+                        if !from_end {
+                            self.fail(location, "slices should be subsliced from end");
+                        }
+                    }
+                    _ => self.fail(location, format!("{indexed_ty:?} cannot be indexed")),
+                }
+
+                if !from_end && from > to {
+                    self.fail(location, "backwards subslice {from}..{to}");
+                }
+            }
+            ProjectionElem::OpaqueCast(ty)
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+            {
+                self.fail(
+                    location,
+                    format!("explicit opaque type cast to `{ty}` after `PostAnalysisNormalize`"),
+                )
             }
             ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
                 let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
@@ -922,6 +971,39 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+            self.body.local_decls[place.local].local_info
+            && !place.is_indirect_first_projection()
+        {
+            if cntxt != PlaceContext::MutatingUse(MutatingUseContext::Store)
+                || place.as_local().is_none()
+            {
+                self.fail(
+                    location,
+                    format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
+                );
+            }
+        }
+
+        if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial)
+            && let Some(i) = place
+                .projection
+                .iter()
+                .position(|elem| matches!(elem, ProjectionElem::Subslice { .. }))
+            && let Some(tail) = place.projection.get(i + 1..)
+            && tail.iter().any(|elem| {
+                matches!(
+                    elem,
+                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. }
+                )
+            })
+        {
+            self.fail(
+                location,
+                format!("place {place:?} has `ConstantIndex` or `Subslice` after `Subslice`"),
+            );
+        }
+
         self.super_place(place, cntxt, location);
     }
 
@@ -934,7 +1016,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Use(_) => {}
+            Rvalue::CopyForDeref(_) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
+                }
+            }
             Rvalue::Aggregate(kind, fields) => match **kind {
                 AggregateKind::Tuple => {}
                 AggregateKind::Array(dest) => {
@@ -966,7 +1053,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     assert!(!adt_def.is_union());
                     let variant = &adt_def.variants()[idx];
                     if variant.fields.len() != fields.len() {
-                        self.fail(location, "adt has the wrong number of initialized fields");
+                        self.fail(location, format!(
+                            "adt {def_id:?} has the wrong number of initialized fields, expected {}, found {}",
+                            fields.len(),
+                            variant.fields.len(),
+                        ));
                     }
                     for (src, dest) in std::iter::zip(fields, &variant.fields) {
                         let dest_ty = self
@@ -1169,6 +1260,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::ShallowInitBox(operand, _) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, format!("ShallowInitBox after ElaborateBoxDerefs"))
+                }
+
                 let a = operand.ty(&self.body.local_decls, self.tcx);
                 check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
             }
@@ -1331,47 +1426,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                }
-            }
-            Rvalue::NullaryOp(NullOp::OffsetOf(indices), container) => {
-                let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
-                    this.fail(location, format!("Out of bounds field {field:?} for {ty}"));
-                };
-
-                let mut current_ty = *container;
-
-                for (variant, field) in indices.iter() {
-                    match current_ty.kind() {
-                        ty::Tuple(fields) => {
-                            if variant != FIRST_VARIANT {
-                                self.fail(
-                                    location,
-                                    format!("tried to get variant {variant:?} of tuple"),
-                                );
-                                return;
-                            }
-                            let Some(&f_ty) = fields.get(field.as_usize()) else {
-                                fail_out_of_bounds(self, location, field, current_ty);
-                                return;
-                            };
-
-                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
-                        }
-                        ty::Adt(adt_def, args) => {
-                            let Some(field) = adt_def.variant(variant).fields.get(field) else {
-                                fail_out_of_bounds(self, location, field, current_ty);
-                                return;
-                            };
-
-                            let f_ty = field.ty(self.tcx, args);
-                            current_ty = self.tcx.normalize_erasing_regions(self.typing_env, f_ty);
-                        }
-                        _ => {
+                    CastKind::Subtype => {
+                        if !util::sub_types(self.tcx, self.typing_env, op_ty, *target_type) {
                             self.fail(
                                 location,
-                                format!("Cannot get offset ({variant:?}, {field:?}) from type {current_ty}"),
-                            );
-                            return;
+                                format!("Failed subtyping {op_ty} and {target_type}"),
+                            )
                         }
                     }
                 }
@@ -1379,10 +1439,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::NullaryOp(
-                NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks | NullOp::ContractChecks,
-                _,
-            )
+            | Rvalue::NullaryOp(NullOp::RuntimeChecks(_))
             | Rvalue::Discriminant(_) => {}
 
             Rvalue::WrapUnsafeBinder(op, ty) => {
@@ -1424,13 +1481,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                if let Rvalue::CopyForDeref(place) = rvalue {
-                    if place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_none() {
-                        self.fail(
-                            location,
-                            "`CopyForDeref` should only be used for dereferenceable types",
-                        )
-                    }
+
+                if let Some(local) = dest.as_local()
+                    && let ClearCrossCrate::Set(box LocalInfo::DerefTemp) =
+                        self.body.local_decls[local].local_info
+                    && !matches!(rvalue, Rvalue::CopyForDeref(_))
+                {
+                    self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
                 }
             }
             StatementKind::AscribeUserType(..) => {
@@ -1507,11 +1564,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             "`SetDiscriminant` is only allowed on ADTs and coroutines, not {pty}"
                         ),
                     );
-                }
-            }
-            StatementKind::Deinit(..) => {
-                if self.body.phase < MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(kind, _) => {
@@ -1601,5 +1653,50 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        if let ClearCrossCrate::Set(box LocalInfo::DerefTemp) = local_decl.local_info {
+            if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should have been removed in runtime MIR",
+                );
+            } else if local_decl.ty.builtin_deref(true).is_none() {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should only be used for dereferenceable types",
+                )
+            }
+        }
+
+        self.super_local_decl(local, local_decl);
+    }
+}
+
+pub(super) fn validate_debuginfos<'tcx>(body: &Body<'tcx>) -> Vec<(Location, String)> {
+    let mut debuginfo_checker =
+        DebuginfoChecker { debuginfo_locals: debuginfo_locals(body), failures: Vec::new() };
+    debuginfo_checker.visit_body(body);
+    debuginfo_checker.failures
+}
+
+struct DebuginfoChecker {
+    debuginfo_locals: DenseBitSet<Local>,
+    failures: Vec<(Location, String)>,
+}
+
+impl<'tcx> Visitor<'tcx> for DebuginfoChecker {
+    fn visit_statement_debuginfo(
+        &mut self,
+        stmt_debuginfo: &StmtDebugInfo<'tcx>,
+        location: Location,
+    ) {
+        let local = match stmt_debuginfo {
+            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => *local,
+        };
+        if !self.debuginfo_locals.contains(local) {
+            self.failures.push((location, format!("{local:?} is not in debuginfo")));
+        }
     }
 }

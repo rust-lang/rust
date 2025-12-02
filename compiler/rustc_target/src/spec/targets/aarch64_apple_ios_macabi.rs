@@ -1,8 +1,8 @@
 use crate::spec::base::apple::{Arch, TargetEnv, base};
-use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
+use crate::spec::{Os, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
-    let (opts, llvm_target, arch) = base("ios", Arch::Arm64, TargetEnv::MacCatalyst);
+    let (opts, llvm_target, arch) = base(Os::IOs, Arch::Arm64, TargetEnv::MacCatalyst);
     Target {
         llvm_target,
         metadata: TargetMetadata {
@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             .into(),
         arch,
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a12".into(),
+            features: "+neon,+apple-a12".into(),
             max_atomic_width: Some(128),
             supported_sanitizers: SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::THREAD,
             ..opts

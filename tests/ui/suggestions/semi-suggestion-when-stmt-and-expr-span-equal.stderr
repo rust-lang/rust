@@ -21,9 +21,11 @@ LL |         .collect::<String>();
    |
    = help: the trait `FromIterator<()>` is not implemented for `String`
    = help: the following other types implement trait `FromIterator<A>`:
+             `String` implements `FromIterator<&Char>`
              `String` implements `FromIterator<&char>`
              `String` implements `FromIterator<&str>`
              `String` implements `FromIterator<Box<str, A>>`
+             `String` implements `FromIterator<Char>`
              `String` implements `FromIterator<Cow<'_, str>>`
              `String` implements `FromIterator<String>`
              `String` implements `FromIterator<char>`

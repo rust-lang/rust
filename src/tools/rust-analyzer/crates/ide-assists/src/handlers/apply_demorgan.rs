@@ -6,7 +6,7 @@ use ide_db::{
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
 use syntax::{
-    SyntaxKind, T,
+    NodeOrToken, SyntaxKind, T,
     ast::{
         self, AstNode,
         Expr::BinExpr,
@@ -38,14 +38,26 @@ use crate::{AssistContext, AssistId, Assists, utils::invert_boolean_expression};
 // }
 // ```
 pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let mut bin_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
+    let mut bin_expr = if let Some(not) = ctx.find_token_syntax_at_offset(T![!])
+        && let Some(NodeOrToken::Node(next)) = not.next_sibling_or_token()
+        && let Some(paren) = ast::ParenExpr::cast(next)
+        && let Some(ast::Expr::BinExpr(bin_expr)) = paren.expr()
+    {
+        bin_expr
+    } else {
+        let bin_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
+        let op_range = bin_expr.op_token()?.text_range();
+
+        // Is the cursor on the expression's logical operator?
+        if !op_range.contains_range(ctx.selection_trimmed()) {
+            return None;
+        }
+
+        bin_expr
+    };
+
     let op = bin_expr.op_kind()?;
     let op_range = bin_expr.op_token()?.text_range();
-
-    // Is the cursor on the expression's logical operator?
-    if !op_range.contains_range(ctx.selection_trimmed()) {
-        return None;
-    }
 
     // Walk up the tree while we have the same binary operator
     while let Some(parent_expr) = bin_expr.syntax().parent().and_then(ast::BinExpr::cast) {
@@ -112,40 +124,37 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         op_range,
         |builder| {
             let make = SyntaxFactory::with_mappings();
-            let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
-            let neg_expr = paren_expr
-                .clone()
+            let (target_node, result_expr) = if let Some(neg_expr) = bin_expr
+                .syntax()
+                .parent()
+                .and_then(ast::ParenExpr::cast)
                 .and_then(|paren_expr| paren_expr.syntax().parent())
                 .and_then(ast::PrefixExpr::cast)
                 .filter(|prefix_expr| matches!(prefix_expr.op_kind(), Some(ast::UnaryOp::Not)))
-                .map(ast::Expr::PrefixExpr);
-
-            let mut editor;
-            if let Some(paren_expr) = paren_expr {
-                if let Some(neg_expr) = neg_expr {
-                    cov_mark::hit!(demorgan_double_negation);
-                    let parent = neg_expr.syntax().parent();
-                    editor = builder.make_editor(neg_expr.syntax());
-
-                    if parent.is_some_and(|parent| {
-                        demorganed.needs_parens_in_place_of(&parent, neg_expr.syntax())
-                    }) {
-                        cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
-                        editor.replace(neg_expr.syntax(), make.expr_paren(demorganed).syntax());
-                    } else {
-                        editor.replace(neg_expr.syntax(), demorganed.syntax());
-                    };
-                } else {
-                    cov_mark::hit!(demorgan_double_parens);
-                    editor = builder.make_editor(paren_expr.syntax());
-
-                    editor.replace(paren_expr.syntax(), add_bang_paren(&make, demorganed).syntax());
-                }
+            {
+                cov_mark::hit!(demorgan_double_negation);
+                (ast::Expr::from(neg_expr).syntax().clone(), demorganed)
+            } else if let Some(paren_expr) =
+                bin_expr.syntax().parent().and_then(ast::ParenExpr::cast)
+            {
+                cov_mark::hit!(demorgan_double_parens);
+                (paren_expr.syntax().clone(), add_bang_paren(&make, demorganed))
             } else {
-                editor = builder.make_editor(bin_expr.syntax());
-                editor.replace(bin_expr.syntax(), add_bang_paren(&make, demorganed).syntax());
-            }
+                (bin_expr.syntax().clone(), add_bang_paren(&make, demorganed))
+            };
 
+            let final_expr = if target_node
+                .parent()
+                .is_some_and(|p| result_expr.needs_parens_in_place_of(&p, &target_node))
+            {
+                cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
+                make.expr_paren(result_expr).into()
+            } else {
+                result_expr
+            };
+
+            let mut editor = builder.make_editor(&target_node);
+            editor.replace(&target_node, final_expr.syntax());
             editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
@@ -363,6 +372,15 @@ fn f() { !(S <= S || S < S) }
             apply_demorgan,
             "fn f() { 1 || 3 &&$0 4 || 5 }",
             "fn f() { 1 || !(!3 || !4) || 5 }",
+        )
+    }
+
+    #[test]
+    fn demorgan_on_not() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { $0!(1 || 3 && 4 || 5) }",
+            "fn f() { !1 && !(3 && 4) && !5 }",
         )
     }
 
@@ -613,6 +631,33 @@ fn main() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (x ||$0 !y).then_some(42) }",
+            "fn f() { (!(!x && y)).then_some(42) }",
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver_complex() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a && b ||$0 c && d).then_some(42) }",
+            "fn f() { (!(!(a && b) && !(c && d))).then_some(42) }",
+        );
+    }
+
+    #[test]
+    fn demorgan_method_call_receiver_chained() {
+        check_assist(
+            apply_demorgan,
+            "fn f() { (a ||$0 b).then_some(42).or(Some(0)) }",
+            "fn f() { (!(!a && !b)).then_some(42).or(Some(0)) }",
         );
     }
 }

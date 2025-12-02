@@ -15,14 +15,13 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0"
 crossbeam-channel.workspace = true
-tracing.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 rayon.workspace = true
 fst = { version = "0.4.7", default-features = false }
 rustc-hash.workspace = true
 either.workspace = true
 itertools.workspace = true
 arrayvec.workspace = true
-indexmap.workspace = true
 memchr = "2.7.5"
 salsa.workspace = true
 salsa-macros.workspace = true
@@ -30,6 +29,7 @@ query-group.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
 bitflags.workspace = true
+smallvec.workspace = true
 
 # local deps
 base-db.workspace = true
@@ -42,15 +42,15 @@ vfs.workspace = true
 # ide should depend only on the top-level `hir` package. if you need
 # something from some `hir-xxx` subpackage, reexport the API via `hir`.
 hir.workspace = true
+macros.workspace = true
+
+test-utils.workspace = true
+test-fixture.workspace = true
 
 line-index.workspace = true
 
 [dev-dependencies]
 expect-test = "1.5.1"
-
-# local deps
-test-utils.workspace = true
-test-fixture.workspace = true
 
 [lints]
 workspace = true

@@ -1,7 +1,7 @@
 #![allow(
     clippy::assertions_on_constants,
     clippy::equatable_if_let,
-    clippy::needless_if,
+    clippy::needless_ifs,
     clippy::nonminimal_bool,
     clippy::eq_op,
     clippy::redundant_pattern_matching
@@ -152,6 +152,24 @@ fn layout_check() -> u32 {
         // This is a comment, do not collapse code to it
     }; 3
     //~^^^^^ collapsible_if
+}
+
+fn issue13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+        #[expect(clippy::collapsible_if)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::style)]
+        if true {}
+    }
+
+    if true {
+        #[expect(clippy::all)]
+        if true {}
+    }
 }
 
 fn issue14722() {

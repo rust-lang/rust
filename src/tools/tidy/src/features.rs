@@ -16,7 +16,7 @@ use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 
 #[cfg(test)]
@@ -92,9 +92,9 @@ pub fn check(
     tests_path: &Path,
     compiler_path: &Path,
     lib_path: &Path,
-    diag_ctx: DiagCtx,
+    tidy_ctx: TidyCtx,
 ) -> CollectedFeatures {
-    let mut check = diag_ctx.start_check("features");
+    let mut check = tidy_ctx.start_check("features");
 
     let mut features = collect_lang_features(compiler_path, &mut check);
     assert!(!features.is_empty());

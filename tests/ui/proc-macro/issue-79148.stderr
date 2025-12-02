@@ -1,11 +1,11 @@
 error[E0364]: `Variant` is only public within the crate, and cannot be re-exported outside
-  --> $DIR/issue-79148.rs:8:1
+  --> $DIR/issue-79148.rs:9:1
    |
 LL | cause_ice!();
    | ^^^^^^^^^^^^
    |
 note: consider marking `Variant` as `pub` in the imported module
-  --> $DIR/issue-79148.rs:8:1
+  --> $DIR/issue-79148.rs:9:1
    |
 LL | cause_ice!();
    | ^^^^^^^^^^^^

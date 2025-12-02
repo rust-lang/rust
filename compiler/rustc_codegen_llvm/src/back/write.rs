@@ -6,14 +6,11 @@ use std::sync::Arc;
 use std::{fs, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
-use llvm::{
-    LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
-};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::back::write::{
-    BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
-    TargetMachineFactoryFn,
+    BitcodeSection, CodegenContext, EmitObj, InlineAsmError, ModuleConfig,
+    TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
 use rustc_codegen_ssa::traits::*;
@@ -28,10 +25,11 @@ use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
 use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
-use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{
+    Arch, CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel,
+};
 use tracing::{debug, trace};
 
-use crate::back::command_line_args::quote_command_line_args;
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -44,8 +42,8 @@ use crate::errors::{
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
 use crate::llvm::{self, DiagnosticInfo};
-use crate::type_::Type;
-use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
+use crate::type_::llvm_type_ptr;
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes, base, common, llvm_util};
 
 pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
@@ -111,7 +109,7 @@ pub(crate) fn create_informational_target_machine(
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, false, only_base_features);
+    let features = llvm_util::global_llvm_features(sess, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
 }
@@ -210,7 +208,7 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+    let float_abi = if sess.target.arch == Arch::Arm && sess.opts.cg.soft_float {
         llvm::FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
@@ -253,34 +251,25 @@ pub(crate) fn target_machine_factory(
 
     let use_emulated_tls = matches!(sess.tls_model(), TlsModel::Emulated);
 
-    // Command-line information to be included in the target machine.
-    // This seems to only be used for embedding in PDB debuginfo files.
-    // FIXME(Zalathar): Maybe skip this for non-PDB targets?
-    let argv0 = std::env::current_exe()
-        .unwrap_or_default()
-        .into_os_string()
-        .into_string()
-        .unwrap_or_default();
-    let command_line_args = quote_command_line_args(&sess.expanded_args);
-    // Self-profile counter for the number of bytes produced by command-line quoting.
-    // Values are summed, so the summary result is cumulative across all TM factories.
-    sess.prof.artifact_size("quoted_command_line_args", "-", command_line_args.len() as u64);
-
-    let debuginfo_compression = sess.opts.debuginfo_compression.to_string();
-    match sess.opts.debuginfo_compression {
-        rustc_session::config::DebugInfoCompression::Zlib => {
-            if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
+    let debuginfo_compression = match sess.opts.debuginfo_compression {
+        config::DebugInfoCompression::None => llvm::CompressionKind::None,
+        config::DebugInfoCompression::Zlib => {
+            if llvm::LLVMRustLLVMHasZlibCompression() {
+                llvm::CompressionKind::Zlib
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::Zstd => {
-            if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
+        config::DebugInfoCompression::Zstd => {
+            if llvm::LLVMRustLLVMHasZstdCompression() {
+                llvm::CompressionKind::Zstd
+            } else {
                 sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
+                llvm::CompressionKind::None
             }
         }
-        rustc_session::config::DebugInfoCompression::None => {}
     };
-    let debuginfo_compression = SmallCStr::new(&debuginfo_compression);
 
     let file_name_display_preference =
         sess.filename_display_preference(RemapPathScopeComponents::DEBUGINFO);
@@ -324,10 +313,8 @@ pub(crate) fn target_machine_factory(
             use_init_array,
             &split_dwarf_file,
             &output_obj_file,
-            &debuginfo_compression,
+            debuginfo_compression,
             use_emulated_tls,
-            &argv0,
-            &command_line_args,
             use_wasm_eh,
         )
     })
@@ -358,7 +345,7 @@ fn write_bitcode_to_file(module: &ModuleCodegen<ModuleLlvm>, path: &Path) {
     }
 }
 
-/// In what context is a dignostic handler being attached to a codegen unit?
+/// In what context is a diagnostic handler being attached to a codegen unit?
 pub(crate) enum CodegenDiagnosticsStage {
     /// Prelink optimization stage.
     Opt,
@@ -447,7 +434,7 @@ fn report_inline_asm(
     level: llvm::DiagnosticLevel,
     cookie: u64,
     source: Option<(String, Vec<InnerSpan>)>,
-) {
+) -> InlineAsmError {
     // In LTO build we may get srcloc values from other crates which are invalid
     // since they use a different source map. To be safe we just suppress these
     // in LTO builds.
@@ -466,8 +453,8 @@ fn report_inline_asm(
         llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
-    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-    cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
+    let msg = msg.trim_prefix("error: ").to_string();
+    InlineAsmError { span, msg, level, source }
 }
 
 unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
@@ -479,7 +466,13 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
 
     match unsafe { llvm::diagnostic::Diagnostic::unpack(info) } {
         llvm::diagnostic::InlineAsm(inline) => {
-            report_inline_asm(cgcx, inline.message, inline.level, inline.cookie, inline.source);
+            cgcx.diag_emitter.inline_asm_error(report_inline_asm(
+                cgcx,
+                inline.message,
+                inline.level,
+                inline.cookie,
+                inline.source,
+            ));
         }
 
         llvm::diagnostic::Optimization(opt) => {
@@ -646,6 +639,7 @@ pub(crate) unsafe fn llvm_optimize(
             sanitize_memory: config.sanitizer.contains(SanitizerSet::MEMORY),
             sanitize_memory_recover: config.sanitizer_recover.contains(SanitizerSet::MEMORY),
             sanitize_memory_track_origins: config.sanitizer_memory_track_origins as c_int,
+            sanitize_realtime: config.sanitizer.contains(SanitizerSet::REALTIME),
             sanitize_thread: config.sanitizer.contains(SanitizerSet::THREAD),
             sanitize_hwaddress: config.sanitizer.contains(SanitizerSet::HWADDRESS),
             sanitize_hwaddress_recover: config.sanitizer_recover.contains(SanitizerSet::HWADDRESS),
@@ -657,6 +651,75 @@ pub(crate) unsafe fn llvm_optimize(
     } else {
         None
     };
+
+    fn handle_offload<'ll>(cx: &'ll SimpleCx<'_>, old_fn: &llvm::Value) {
+        let old_fn_ty = cx.get_type_of_global(old_fn);
+        let old_param_types = cx.func_params_types(old_fn_ty);
+        let old_param_count = old_param_types.len();
+        if old_param_count == 0 {
+            return;
+        }
+
+        let first_param = llvm::get_param(old_fn, 0);
+        let c_name = llvm::get_value_name(first_param);
+        let first_arg_name = str::from_utf8(&c_name).unwrap();
+        // We might call llvm_optimize (and thus this code) multiple times on the same IR,
+        // but we shouldn't add this helper ptr multiple times.
+        // FIXME(offload): This could break if the user calls his first argument `dyn_ptr`.
+        if first_arg_name == "dyn_ptr" {
+            return;
+        }
+
+        // Create the new parameter list, with ptr as the first argument
+        let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
+        new_param_types.push(cx.type_ptr());
+        new_param_types.extend(old_param_types);
+
+        // Create the new function type
+        let ret_ty = unsafe { llvm::LLVMGetReturnType(old_fn_ty) };
+        let new_fn_ty = cx.type_func(&new_param_types, ret_ty);
+
+        // Create the new function, with a temporary .offload name to avoid a name collision.
+        let old_fn_name = String::from_utf8(llvm::get_value_name(old_fn)).unwrap();
+        let new_fn_name = format!("{}.offload", &old_fn_name);
+        let new_fn = cx.add_func(&new_fn_name, new_fn_ty);
+        let a0 = llvm::get_param(new_fn, 0);
+        llvm::set_value_name(a0, CString::new("dyn_ptr").unwrap().as_bytes());
+
+        // Here we map the old arguments to the new arguments, with an offset of 1 to make sure
+        // that we don't use the newly added `%dyn_ptr`.
+        unsafe {
+            llvm::LLVMRustOffloadMapper(old_fn, new_fn);
+        }
+
+        llvm::set_linkage(new_fn, llvm::get_linkage(old_fn));
+        llvm::set_visibility(new_fn, llvm::get_visibility(old_fn));
+
+        // Replace all uses of old_fn with new_fn (RAUW)
+        unsafe {
+            llvm::LLVMReplaceAllUsesWith(old_fn, new_fn);
+        }
+        let name = llvm::get_value_name(old_fn);
+        unsafe {
+            llvm::LLVMDeleteFunction(old_fn);
+        }
+        // Now we can re-use the old name, without name collision.
+        llvm::set_value_name(new_fn, &name);
+    }
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
+        // For now we only support up to 10 kernels named kernel_0 ... kernel_9, a follow-up PR is
+        // introducing a proper offload intrinsic to solve this limitation.
+        for func in cx.get_functions() {
+            let offload_kernel = "offload-kernel";
+            if attributes::has_string_attr(func, offload_kernel) {
+                handle_offload(&cx, func);
+            }
+            attributes::remove_string_attr_from_llfn(func, offload_kernel);
+        }
+    }
 
     let mut llvm_profiler = cgcx
         .prof
@@ -709,6 +772,13 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_plugins.len(),
         )
     };
+
+    if cgcx.target_is_like_gpu && config.offload.contains(&config::Offload::Enable) {
+        unsafe {
+            llvm::LLVMRustBundleImages(module.module_llvm.llmod(), module.module_llvm.tm.raw());
+        }
+    }
+
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
@@ -1160,7 +1230,7 @@ fn create_msvc_imps(
     // underscores added in front).
     let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
-    let ptr_ty = Type::ptr_llcx(llcx);
+    let ptr_ty = llvm_type_ptr(llcx);
     let globals = base::iter_globals(llmod)
         .filter(|&val| {
             llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage && !llvm::is_declaration(val)

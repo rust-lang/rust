@@ -7,8 +7,7 @@
 
 fn require<T: const Trait>() {}
 
-#[const_trait]
-trait Trait {
+const trait Trait {
     fn make() -> u32;
 }
 

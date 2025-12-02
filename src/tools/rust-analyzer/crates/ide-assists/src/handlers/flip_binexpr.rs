@@ -1,6 +1,7 @@
 use syntax::{
     SyntaxKind, T,
-    ast::{self, AstNode, BinExpr, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, BinExpr, RangeItem, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -85,6 +86,74 @@ impl From<ast::BinaryOp> for FlipAction {
             _ => FlipAction::Flip,
         }
     }
+}
+
+// Assist: flip_range_expr
+//
+// Flips operands of a range expression.
+//
+// ```
+// fn main() {
+//     let _ = 90..$02;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let _ = 2..90;
+// }
+// ```
+// ---
+// ```
+// fn main() {
+//     let _ = 90..$0;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     let _ = ..90;
+// }
+// ```
+pub(crate) fn flip_range_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let range_expr = ctx.find_node_at_offset::<ast::RangeExpr>()?;
+    let op = range_expr.op_token()?;
+    let start = range_expr.start();
+    let end = range_expr.end();
+
+    if !op.text_range().contains_range(ctx.selection_trimmed()) {
+        return None;
+    }
+    if start.is_none() && end.is_none() {
+        return None;
+    }
+
+    acc.add(
+        AssistId::refactor_rewrite("flip_range_expr"),
+        "Flip range expression",
+        op.text_range(),
+        |builder| {
+            let mut edit = builder.make_editor(range_expr.syntax());
+
+            match (start, end) {
+                (Some(start), Some(end)) => {
+                    edit.replace(start.syntax(), end.syntax());
+                    edit.replace(end.syntax(), start.syntax());
+                }
+                (Some(start), None) => {
+                    edit.delete(start.syntax());
+                    edit.insert(Position::after(&op), start.syntax().clone_for_update());
+                }
+                (None, Some(end)) => {
+                    edit.delete(end.syntax());
+                    edit.insert(Position::before(&op), end.syntax().clone_for_update());
+                }
+                (None, None) => (),
+            }
+
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
+        },
+    )
 }
 
 #[cfg(test)]

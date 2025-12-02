@@ -1,5 +1,4 @@
 //! Things relevant to the next trait solver.
-#![allow(unused, unreachable_pub)]
 
 pub mod abi;
 mod consts;
@@ -12,8 +11,7 @@ pub mod infer;
 pub(crate) mod inspect;
 pub mod interner;
 mod ir_print;
-pub mod mapping;
-mod normalize;
+pub mod normalize;
 pub mod obligation_ctxt;
 mod opaques;
 pub mod predicate;
@@ -32,6 +30,9 @@ pub use predicate::*;
 pub use region::*;
 pub use solver::*;
 pub use ty::*;
+
+pub use crate::lower::ImplTraitIdx;
+pub use rustc_ast_ir::Mutability;
 
 pub type Binder<'db, T> = rustc_type_ir::Binder<DbInterner<'db>, T>;
 pub type EarlyBinder<'db, T> = rustc_type_ir::EarlyBinder<DbInterner<'db>, T>;

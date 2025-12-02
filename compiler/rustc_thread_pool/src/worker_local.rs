@@ -43,7 +43,7 @@ impl<T> WorkerLocal<T> {
         unsafe {
             let worker_thread = WorkerThread::current();
             if worker_thread.is_null()
-                || &*(*worker_thread).registry as *const _ != &*self.registry as *const _
+                || !std::ptr::eq(&*(*worker_thread).registry, &*self.registry)
             {
                 panic!("WorkerLocal can only be used on the thread pool it was created on")
             }
@@ -55,7 +55,7 @@ impl<T> WorkerLocal<T> {
 impl<T> WorkerLocal<Vec<T>> {
     /// Joins the elements of all the worker locals into one Vec
     pub fn join(self) -> Vec<T> {
-        self.into_inner().into_iter().flat_map(|v| v).collect()
+        self.into_inner().into_iter().flatten().collect()
     }
 }
 

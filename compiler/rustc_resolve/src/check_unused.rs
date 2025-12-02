@@ -228,11 +228,15 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 .span
                 .find_ancestor_inside(extern_crate.span)
                 .unwrap_or(extern_crate.ident.span);
+
             self.r.lint_buffer.buffer_lint(
                 UNUSED_EXTERN_CRATES,
                 extern_crate.id,
                 extern_crate.span,
-                BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span },
+                crate::errors::ExternCrateNotIdiomatic {
+                    span: vis_span.between(ident_span),
+                    code: if vis_span.is_empty() { "use " } else { " use " },
+                },
             );
         }
     }
@@ -507,7 +511,7 @@ impl Resolver<'_, '_> {
 
         let unused_imports = visitor.unused_imports;
         let mut check_redundant_imports = FxIndexSet::default();
-        for module in self.arenas.local_modules().iter() {
+        for module in &self.local_modules {
             for (_key, resolution) in self.resolutions(*module).borrow().iter() {
                 if let Some(binding) = resolution.borrow().best_binding()
                     && let NameBindingKind::Import { import, .. } = binding.kind

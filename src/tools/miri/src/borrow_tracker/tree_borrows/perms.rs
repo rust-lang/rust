@@ -1,7 +1,7 @@
 use std::cmp::{Ordering, PartialOrd};
 use std::fmt;
 
-use crate::AccessKind;
+use crate::borrow_tracker::AccessKind;
 use crate::borrow_tracker::tree_borrows::diagnostics::TransitionError;
 use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
 
@@ -53,6 +53,7 @@ enum PermissionPriv {
 }
 use self::PermissionPriv::*;
 use super::foreign_access_skipping::IdempotentForeignAccess;
+use super::wildcard::WildcardAccessLevel;
 
 impl PartialOrd for PermissionPriv {
     /// PermissionPriv is ordered by the reflexive transitive closure of
@@ -372,6 +373,23 @@ impl Permission {
     pub fn strongest_idempotent_foreign_access(&self, prot: bool) -> IdempotentForeignAccess {
         self.inner.strongest_idempotent_foreign_access(prot)
     }
+
+    /// Returns the strongest access allowed from a child to this node without
+    /// causing UB (only considers possible transitions to this permission).
+    pub fn strongest_allowed_child_access(&self, protected: bool) -> WildcardAccessLevel {
+        match self.inner {
+            // Everything except disabled can be accessed by read access.
+            Disabled => WildcardAccessLevel::None,
+            // Frozen references cannot be written to by a child.
+            Frozen => WildcardAccessLevel::Read,
+            // If the `conflicted` flag is set, then there was a foreign read
+            // during the function call that is still ongoing (still `protected`),
+            // this is UB (`noalias` violation).
+            ReservedFrz { conflicted: true } if protected => WildcardAccessLevel::Read,
+            // Everything else allows writes.
+            _ => WildcardAccessLevel::Write,
+        }
+    }
 }
 
 impl PermTransition {
@@ -640,7 +658,7 @@ mod propagation_optimization_checks {
     impl Exhaustive for AccessRelatedness {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
             use AccessRelatedness::*;
-            Box::new(vec![This, StrictChildAccess, AncestorAccess, CousinAccess].into_iter())
+            Box::new(vec![ForeignAccess, LocalAccess].into_iter())
         }
     }
 
@@ -716,13 +734,11 @@ mod propagation_optimization_checks {
                 // We now assert it is idempotent, and never causes UB.
                 // First, if the SIFA includes foreign reads, assert it is idempotent under foreign reads.
                 if access >= IdempotentForeignAccess::Read {
-                    // We use `CousinAccess` here. We could also use `AncestorAccess`, since `transition::perform_access` treats these the same.
-                    // The only place they are treated differently is in protector end accesses, but these are not handled here.
-                    assert_eq!(perm, transition::perform_access(AccessKind::Read, AccessRelatedness::CousinAccess, perm, prot).unwrap());
+                    assert_eq!(perm, transition::perform_access(AccessKind::Read, AccessRelatedness::ForeignAccess, perm, prot).unwrap());
                 }
                 // Then, if the SIFA includes foreign writes, assert it is idempotent under foreign writes.
                 if access >= IdempotentForeignAccess::Write {
-                    assert_eq!(perm, transition::perform_access(AccessKind::Write, AccessRelatedness::CousinAccess, perm, prot).unwrap());
+                    assert_eq!(perm, transition::perform_access(AccessKind::Write, AccessRelatedness::ForeignAccess, perm, prot).unwrap());
                 }
             }
         }
@@ -772,6 +788,34 @@ mod propagation_optimization_checks {
                 le12 == reach12,
                 "`{p1} reach {p2}` ({reach12}) does not match `{p1} <= {p2}` ({le12})"
             );
+        }
+    }
+
+    /// Checks that  `strongest_allowed_child_access` correctly
+    /// represents which transitions are possible.
+    #[test]
+    fn strongest_allowed_child_access() {
+        for (permission, protected) in <(Permission, bool)>::exhaustive() {
+            let strongest_child_access = permission.strongest_allowed_child_access(protected);
+
+            let is_read_valid = Permission::perform_access(
+                AccessKind::Read,
+                AccessRelatedness::LocalAccess,
+                permission,
+                protected,
+            )
+            .is_some();
+
+            let is_write_valid = Permission::perform_access(
+                AccessKind::Write,
+                AccessRelatedness::LocalAccess,
+                permission,
+                protected,
+            )
+            .is_some();
+
+            assert_eq!(is_read_valid, strongest_child_access >= WildcardAccessLevel::Read);
+            assert_eq!(is_write_valid, strongest_child_access >= WildcardAccessLevel::Write);
         }
     }
 }

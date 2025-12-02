@@ -2,20 +2,18 @@
 
 use std::cmp::Ordering;
 
-use intern::Interned;
-use rustc_ast_ir::try_visit;
+use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::{
     self as ty, CollectAndApply, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     PredicatePolarity, TypeFlags, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, Upcast, UpcastFrom, VisitorResult, WithCachedTypeInfo,
+    TypeVisitable, Upcast, UpcastFrom, WithCachedTypeInfo,
     elaborate::Elaboratable,
     error::{ExpectedFound, TypeError},
     inherent::{IntoKind, SliceLike},
-    relate::Relate,
 };
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 
-use crate::next_solver::TraitIdWrapper;
+use crate::next_solver::{GenericArg, InternedWrapperNoDebug, TraitIdWrapper};
 
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty, interned_vec_db};
 
@@ -45,6 +43,7 @@ pub type PolyProjectionPredicate<'db> = Binder<'db, ProjectionPredicate<'db>>;
 pub type PolyTraitRef<'db> = Binder<'db, TraitRef<'db>>;
 pub type PolyExistentialTraitRef<'db> = Binder<'db, ExistentialTraitRef<'db>>;
 pub type PolyExistentialProjection<'db> = Binder<'db, ExistentialProjection<'db>>;
+pub type ArgOutlivesPredicate<'db> = OutlivesPredicate<'db, GenericArg<'db>>;
 
 /// Compares via an ordering that will not change if modules are reordered or other changes are
 /// made to the tree. In particular, this ordering is preserved across incremental compilations.
@@ -55,11 +54,11 @@ fn stable_cmp_existential_predicate<'db>(
     // FIXME: this is actual unstable - see impl in predicate.rs in `rustc_middle`
     match (a, b) {
         (ExistentialPredicate::Trait(_), ExistentialPredicate::Trait(_)) => Ordering::Equal,
-        (ExistentialPredicate::Projection(a), ExistentialPredicate::Projection(b)) => {
+        (ExistentialPredicate::Projection(_a), ExistentialPredicate::Projection(_b)) => {
             // Should sort by def path hash
             Ordering::Equal
         }
-        (ExistentialPredicate::AutoTrait(a), ExistentialPredicate::AutoTrait(b)) => {
+        (ExistentialPredicate::AutoTrait(_a), ExistentialPredicate::AutoTrait(_b)) => {
             // Should sort by def path hash
             Ordering::Equal
         }
@@ -173,9 +172,6 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for BoundExistentialPre
     }
 }
 
-#[derive(PartialEq, Eq, Hash, PartialOrd, Ord, Clone)]
-pub struct InternedWrapperNoDebug<T>(pub(crate) T);
-
 #[salsa::interned(constructor = new_)]
 pub struct Predicate<'db> {
     #[returns(ref)]
@@ -232,13 +228,12 @@ impl<'db> Predicate<'db> {
     }
 
     pub fn inner(&self) -> &WithCachedTypeInfo<Binder<'db, PredicateKind<'db>>> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = &self.kind_(db).0;
             // SAFETY: The caller already has access to a `Predicate<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 
     /// Flips the polarity of a Predicate.
@@ -283,8 +278,6 @@ impl<'db> std::hash::Hash for InternedClausesWrapper<'db> {
     }
 }
 
-type InternedClauses<'db> = Interned<InternedClausesWrapper<'db>>;
-
 #[salsa::interned(constructor = new_)]
 pub struct Clauses<'db> {
     #[returns(ref)]
@@ -303,13 +296,12 @@ impl<'db> Clauses<'db> {
     }
 
     pub fn inner(&self) -> &InternedClausesWrapper<'db> {
-        salsa::with_attached_database(|db| {
+        crate::with_attached_db(|db| {
             let inner = self.inner_(db);
             // SAFETY: The caller already has access to a `Clauses<'db>`, so borrowchecking will
             // make sure that our returned value is valid for the lifetime `'db`.
             unsafe { std::mem::transmute(inner) }
         })
-        .unwrap()
     }
 }
 
@@ -426,7 +418,7 @@ impl<'db> rustc_type_ir::TypeSuperVisitable<DbInterner<'db>> for Clauses<'db> {
 pub struct Clause<'db>(pub(crate) Predicate<'db>);
 
 // We could cram the reveal into the clauses like rustc does, probably
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'db> {
     pub(crate) clauses: Clauses<'db>,
 }
@@ -434,28 +426,6 @@ pub struct ParamEnv<'db> {
 impl<'db> ParamEnv<'db> {
     pub fn empty() -> Self {
         ParamEnv { clauses: Clauses::new_from_iter(DbInterner::conjure(), []) }
-    }
-}
-
-impl<'db> TypeVisitable<DbInterner<'db>> for ParamEnv<'db> {
-    fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
-        &self,
-        visitor: &mut V,
-    ) -> V::Result {
-        try_visit!(self.clauses.visit_with(visitor));
-        V::Result::output()
-    }
-}
-
-impl<'db> TypeFoldable<DbInterner<'db>> for ParamEnv<'db> {
-    fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        Ok(ParamEnv { clauses: self.clauses.try_fold_with(folder)? })
-    }
-    fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(self, folder: &mut F) -> Self {
-        ParamEnv { clauses: self.clauses.fold_with(folder) }
     }
 }
 
@@ -668,6 +638,26 @@ impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Reg
         interner: DbInterner<'db>,
     ) -> Self {
         PredicateKind::Clause(ClauseKind::RegionOutlives(from)).upcast(interner)
+    }
+}
+impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Ty<'db>>>
+    for Clause<'db>
+{
+    fn upcast_from(
+        from: ty::OutlivesPredicate<DbInterner<'db>, Ty<'db>>,
+        interner: DbInterner<'db>,
+    ) -> Self {
+        Clause(from.upcast(interner))
+    }
+}
+impl<'db> UpcastFrom<DbInterner<'db>, ty::OutlivesPredicate<DbInterner<'db>, Region<'db>>>
+    for Clause<'db>
+{
+    fn upcast_from(
+        from: ty::OutlivesPredicate<DbInterner<'db>, Region<'db>>,
+        interner: DbInterner<'db>,
+    ) -> Self {
+        Clause(from.upcast(interner))
     }
 }
 

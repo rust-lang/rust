@@ -179,6 +179,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             hir::ExprKind::AddrOf(..) => Some("borrow"),
             hir::ExprKind::OffsetOf(..) => Some("`offset_of` call"),
             hir::ExprKind::Unary(..) => Some("unary operation"),
+            // The `offset_of` macro wraps its contents inside a `const` block.
+            hir::ExprKind::ConstBlock(block) => {
+                let body = cx.tcx.hir_body(block.body);
+                if let hir::ExprKind::Block(block, _) = body.value.kind
+                    && let Some(expr) = block.expr
+                    && let hir::ExprKind::OffsetOf(..) = expr.kind
+                {
+                    Some("`offset_of` call")
+                } else {
+                    None
+                }
+            }
             _ => None,
         };
 
@@ -273,13 +285,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             expr: &hir::Expr<'_>,
             span: Span,
         ) -> Option<MustUsePath> {
-            if ty.is_unit()
-                || !ty.is_inhabited_from(
-                    cx.tcx,
-                    cx.tcx.parent_module(expr.hir_id).to_def_id(),
-                    cx.typing_env(),
-                )
-            {
+            if ty.is_unit() {
+                return Some(MustUsePath::Suppressed);
+            }
+            let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
+            let is_uninhabited =
+                |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
+            if is_uninhabited(ty) {
                 return Some(MustUsePath::Suppressed);
             }
 
@@ -292,6 +304,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let pinned_ty = args.type_at(0);
                     is_ty_must_use(cx, pinned_ty, expr, span)
                         .map(|inner| MustUsePath::Pinned(Box::new(inner)))
+                }
+                // Suppress warnings on `Result<(), Uninhabited>` (e.g. `Result<(), !>`).
+                ty::Adt(def, args)
+                    if cx.tcx.is_diagnostic_item(sym::Result, def.did())
+                        && args.type_at(0).is_unit()
+                        && is_uninhabited(args.type_at(1)) =>
+                {
+                    Some(MustUsePath::Suppressed)
+                }
+                // Suppress warnings on `ControlFlow<Uninhabited, ()>` (e.g. `ControlFlow<!, ()>`).
+                ty::Adt(def, args)
+                    if cx.tcx.is_diagnostic_item(sym::ControlFlow, def.did())
+                        && args.type_at(1).is_unit()
+                        && is_uninhabited(args.type_at(0)) =>
+                {
+                    Some(MustUsePath::Suppressed)
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
@@ -914,7 +942,16 @@ trait UnusedDelimLint {
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None, true)
             }
 
-            Break(_, Some(ref value)) => {
+            Break(label, Some(ref value)) => {
+                // Don't lint on `break 'label ({...})` - the parens are necessary
+                // to disambiguate from `break 'label {...}` which would be a syntax error.
+                // This avoids conflicts with the `break_with_label_and_loop` lint.
+                if label.is_some()
+                    && matches!(value.kind, ast::ExprKind::Paren(ref inner)
+                        if matches!(inner.kind, ast::ExprKind::Block(..)))
+                {
+                    return;
+                }
                 (value, UnusedDelimsCtx::BreakValue, false, None, None, true)
             }
 
@@ -1007,19 +1044,22 @@ trait UnusedDelimLint {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         use ast::ItemKind::*;
 
-        if let Const(box ast::ConstItem { expr: Some(expr), .. })
-        | Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind
-        {
-            self.check_unused_delims_expr(
-                cx,
-                expr,
-                UnusedDelimsCtx::AssignedValue,
-                false,
-                None,
-                None,
-                false,
-            );
-        }
+        let expr = if let Const(box ast::ConstItem { rhs: Some(rhs), .. }) = &item.kind {
+            rhs.expr()
+        } else if let Static(box ast::StaticItem { expr: Some(expr), .. }) = &item.kind {
+            expr
+        } else {
+            return;
+        };
+        self.check_unused_delims_expr(
+            cx,
+            expr,
+            UnusedDelimsCtx::AssignedValue,
+            false,
+            None,
+            None,
+            false,
+        );
     }
 }
 
@@ -1279,7 +1319,8 @@ impl EarlyLintPass for UnusedParens {
             Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
-            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
+            // FIXME(pin_ergonomics): check pinned patterns
+            Ref(p, _, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
         }
     }
 
@@ -1612,18 +1653,6 @@ impl EarlyLintPass for UnusedBraces {
                     cx,
                     &len.value,
                     UnusedDelimsCtx::ArrayLenExpr,
-                    false,
-                    None,
-                    None,
-                    false,
-                );
-            }
-
-            ast::TyKind::Typeof(ref anon_const) => {
-                self.check_unused_delims_expr(
-                    cx,
-                    &anon_const.value,
-                    UnusedDelimsCtx::AnonConst,
                     false,
                     None,
                     None,

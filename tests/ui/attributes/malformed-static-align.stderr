@@ -25,7 +25,7 @@ error: `#[rustc_align_static]` attribute cannot be used on structs
 LL | #[rustc_align_static(16)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_align_static]` can be applied to statics and foreign statics
+   = help: `#[rustc_align_static]` can be applied to foreign statics and statics
 
 error: `#[repr(align(...))]` is not supported on statics
   --> $DIR/malformed-static-align.rs:13:8

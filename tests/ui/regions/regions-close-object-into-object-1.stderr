@@ -1,5 +1,5 @@
 error[E0515]: cannot return value referencing local data `*v`
-  --> $DIR/regions-close-object-into-object-1.rs:12:5
+  --> $DIR/regions-close-object-into-object-1.rs:13:5
    |
 LL |     Box::new(B(&*v)) as Box<X>
    |     ^^^^^^^^^^^---^^^^^^^^^^^^

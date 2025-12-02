@@ -9,10 +9,6 @@
     feature(stdarch_aarch64_feature_detection)
 )]
 #![cfg_attr(
-    all(target_arch = "s390x", target_os = "linux"),
-    feature(stdarch_s390x_feature_detection)
-)]
-#![cfg_attr(
     all(target_arch = "powerpc", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
@@ -20,6 +16,7 @@
     all(target_arch = "powerpc64", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
+#![cfg_attr(all(target_arch = "s390x", target_os = "linux"), feature(s390x_target_feature))]
 
 #[test]
 #[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
@@ -109,7 +106,6 @@ fn aarch64_linux() {
     println!("sve2: {}", is_aarch64_feature_detected!("sve2"));
     println!("sve2p1: {}", is_aarch64_feature_detected!("sve2p1"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
-    println!("tme: {}", is_aarch64_feature_detected!("tme"));
     println!("wfxt: {}", is_aarch64_feature_detected!("wfxt"));
     // tidy-alphabetical-end
 }

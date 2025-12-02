@@ -137,9 +137,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
                         safety: ast::Safety::Default,
                         polarity: ast::ImplPolarity::Positive,
                         defaultness: ast::Defaultness::Final,
-                        constness: ast::Const::No,
                         trait_ref,
                     })),
+                    constness: ast::Const::No,
                     self_ty: self_type.clone(),
                     items: ThinVec::new(),
                 }),
@@ -160,9 +160,9 @@ pub(crate) fn expand_deriving_coerce_pointee(
                     safety: ast::Safety::Default,
                     polarity: ast::ImplPolarity::Positive,
                     defaultness: ast::Defaultness::Final,
-                    constness: ast::Const::No,
                     trait_ref,
                 })),
+                constness: ast::Const::No,
                 self_ty: self_type.clone(),
                 items: ThinVec::new(),
             }),
@@ -356,21 +356,14 @@ fn contains_maybe_sized_bound(bounds: &[GenericBound]) -> bool {
     bounds.iter().any(is_maybe_sized_bound)
 }
 
-fn path_segment_is_exact_match(path_segments: &[ast::PathSegment], syms: &[Symbol]) -> bool {
-    path_segments.iter().zip(syms).all(|(segment, &symbol)| segment.ident.name == symbol)
-}
-
 fn is_sized_marker(path: &ast::Path) -> bool {
     const CORE_UNSIZE: [Symbol; 3] = [sym::core, sym::marker, sym::Sized];
     const STD_UNSIZE: [Symbol; 3] = [sym::std, sym::marker, sym::Sized];
-    if path.segments.len() == 4 && path.is_global() {
-        path_segment_is_exact_match(&path.segments[1..], &CORE_UNSIZE)
-            || path_segment_is_exact_match(&path.segments[1..], &STD_UNSIZE)
-    } else if path.segments.len() == 3 {
-        path_segment_is_exact_match(&path.segments, &CORE_UNSIZE)
-            || path_segment_is_exact_match(&path.segments, &STD_UNSIZE)
+    let segments = || path.segments.iter().map(|segment| segment.ident.name);
+    if path.is_global() {
+        segments().skip(1).eq(CORE_UNSIZE) || segments().skip(1).eq(STD_UNSIZE)
     } else {
-        *path == sym::Sized
+        segments().eq(CORE_UNSIZE) || segments().eq(STD_UNSIZE) || *path == sym::Sized
     }
 }
 

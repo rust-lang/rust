@@ -11,7 +11,14 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     if arg.layout.is_aggregate() && arg.layout.is_sized() {
         classify_aggregate(arg)
     } else if arg.layout.size.bits() < 32 && arg.layout.is_sized() {
@@ -21,7 +28,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
 
 /// the pass mode used for aggregates in arg and ret position
 fn classify_aggregate<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    let align_bytes = arg.layout.align.abi.bytes();
+    let align_bytes = arg.layout.align.bytes();
     let size = arg.layout.size;
 
     let reg = match align_bytes {
@@ -60,7 +67,7 @@ where
     //     "`extern \"ptx-kernel\"` doesn't allow passing types other than primitives and structs"
     // );
 
-    let align_bytes = arg.layout.align.abi.bytes();
+    let align_bytes = arg.layout.align.bytes();
 
     let unit = match align_bytes {
         1 => Reg::i8(),
@@ -81,7 +88,10 @@ where
     }
 }
 
-pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }
@@ -90,7 +100,7 @@ pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg(arg);
+        classify_arg(cx, arg);
     }
 }
 

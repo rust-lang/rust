@@ -8,6 +8,7 @@ cfg_select! {
         target_os = "openbsd",
         target_os = "dragonfly",
         target_os = "fuchsia",
+        target_os = "motor",
         target_os = "hermit",
     ) => {
         mod futex;
@@ -34,7 +35,10 @@ cfg_select! {
         mod xous;
         pub use xous::Parker;
     }
-    target_family = "unix" => {
+    any(
+        target_family = "unix",
+        target_os = "teeos",
+    ) => {
         mod pthread;
         pub use pthread::Parker;
     }

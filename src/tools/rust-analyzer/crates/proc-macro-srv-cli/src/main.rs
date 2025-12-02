@@ -9,10 +9,10 @@ extern crate rustc_driver as _;
 
 mod version;
 
-#[cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#[cfg(feature = "sysroot-abi")]
 mod main_loop;
 use clap::{Command, ValueEnum};
-#[cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#[cfg(feature = "sysroot-abi")]
 use main_loop::run;
 
 fn main() -> std::io::Result<()> {
@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
             clap::Arg::new("format")
                 .long("format")
                 .action(clap::ArgAction::Set)
-                .default_value("json")
+                .default_value("json-legacy")
                 .value_parser(clap::builder::EnumValueParser::<ProtocolFormat>::new()),
             clap::Arg::new("version")
                 .long("version")
@@ -50,34 +50,33 @@ fn main() -> std::io::Result<()> {
 
 #[derive(Copy, Clone)]
 enum ProtocolFormat {
-    Json,
-    #[cfg(feature = "postcard")]
-    Postcard,
+    JsonLegacy,
+    PostcardLegacy,
 }
 
 impl ValueEnum for ProtocolFormat {
     fn value_variants<'a>() -> &'a [Self] {
-        &[ProtocolFormat::Json]
+        &[ProtocolFormat::JsonLegacy, ProtocolFormat::PostcardLegacy]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         match self {
-            ProtocolFormat::Json => Some(clap::builder::PossibleValue::new("json")),
-            #[cfg(feature = "postcard")]
-            ProtocolFormat::Postcard => Some(clap::builder::PossibleValue::new("postcard")),
+            ProtocolFormat::JsonLegacy => Some(clap::builder::PossibleValue::new("json-legacy")),
+            ProtocolFormat::PostcardLegacy => {
+                Some(clap::builder::PossibleValue::new("postcard-legacy"))
+            }
         }
     }
     fn from_str(input: &str, _ignore_case: bool) -> Result<Self, String> {
         match input {
-            "json" => Ok(ProtocolFormat::Json),
-            #[cfg(feature = "postcard")]
-            "postcard" => Ok(ProtocolFormat::Postcard),
+            "json-legacy" => Ok(ProtocolFormat::JsonLegacy),
+            "postcard-legacy" => Ok(ProtocolFormat::PostcardLegacy),
             _ => Err(format!("unknown protocol format: {input}")),
         }
     }
 }
 
-#[cfg(not(any(feature = "sysroot-abi", rust_analyzer)))]
+#[cfg(not(feature = "sysroot-abi"))]
 fn run(_: ProtocolFormat) -> std::io::Result<()> {
     Err(std::io::Error::new(
         std::io::ErrorKind::Unsupported,

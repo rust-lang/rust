@@ -1,13 +1,13 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
+use crate::spec::{Arch, Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
     Target {
-        arch: "avr".into(),
+        arch: Arch::Avr,
         metadata: crate::spec::TargetMetadata {
             description: None,
-            tier: None,
-            host_tools: None,
-            std: None,
+            tier: Some(3),
+            host_tools: Some(false),
+            std: Some(false),
         },
         data_layout: "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8:16-a:8".into(),
         llvm_target: "avr-unknown-unknown".into(),

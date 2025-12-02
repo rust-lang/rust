@@ -287,6 +287,11 @@ fn classify_arg<'a, Ty, C>(
         // Not touching this...
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        *avail_gprs = (*avail_gprs).saturating_sub(1);
+        return;
+    }
     if !is_vararg {
         match should_use_fp_conv(cx, &arg.layout, xlen, flen) {
             Some(FloatConv::Float(f)) if *avail_fprs >= 1 => {
@@ -322,7 +327,7 @@ fn classify_arg<'a, Ty, C>(
     }
 
     let total = arg.layout.size;
-    let align = arg.layout.align.abi.bits();
+    let align = arg.layout.align.bits();
 
     // "Scalars wider than 2✕XLEN are passed by reference and are replaced in
     // the argument list with the address."

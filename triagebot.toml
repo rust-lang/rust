@@ -38,6 +38,14 @@ allow-unauthenticated = [
     "has-merge-commits",
 ]
 
+[relabel.to-stable]
+add-labels = ["regression-from-stable-to-stable"]
+rem-labels = ["regression-from-stable-to-beta", "regression-from-stable-to-nightly"]
+
+[relabel.to-beta]
+add-labels = ["regression-from-stable-to-beta"]
+rem-labels = ["regression-from-stable-to-stable", "regression-from-stable-to-nightly"]
+
 [review-submitted]
 # This label is added when a "request changes" review is submitted.
 reviewed_label = "S-waiting-on-author"
@@ -61,10 +69,6 @@ required-issue-label = "regression-from-stable-to-beta"
 # if the above conditions matches, the PR will receive these labels
 add-labels = ["beta-nominated"]
 
-[backport.t-compiler-stable-backport]
-required-pr-labels = ["T-compiler"]
-required-issue-label = "regression-from-stable-to-stable"
-add-labels = ["stable-nominated"]
 
 # ------------------------------------------------------------------------------
 # Ping groups
@@ -648,7 +652,7 @@ trigger_files = [
 zulip_stream = 245100 # #t-compiler/prioritization/alerts
 topic = "#{number} {title}"
 message_on_add = """\
-@*WG-prioritization/alerts* issue #{number} has been requested for prioritization.
+Issue #{number} has been requested for prioritization.
 
 # [Procedure](https://forge.rust-lang.org/compiler/prioritization.html)
 - Priority?
@@ -745,10 +749,12 @@ zulip_stream = 474880 # #t-compiler/backports
 topic = "#{number}: beta-nominated"
 message_on_add = [
     """\
-@**channel** PR #{number} "{title}" has been nominated for beta backport.
+PR #{number} "{title}" fixes a regression and has been nominated for backport.
+{recipients}, what do you think about it?
+This topic will help T-compiler getting context about it.
 """,
     """\
-/poll Approve beta backport of #{number}?
+/poll Should #{number} be beta backported?
 approve
 decline
 don't know
@@ -759,7 +765,7 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 [notify-zulip."beta-accepted".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
-# Put it in the same thread as beta-nominated.
+# Put it in the same Zulip topic as beta-nominated.
 topic = "#{number}: beta-nominated"
 message_on_add = "PR #{number} has been **accepted** for **beta** backport."
 
@@ -784,6 +790,55 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 [notify-zulip."stable-accepted".compiler]
 required_labels = ["T-compiler"]
 zulip_stream = 474880 # #t-compiler/backports
+# Put it in the same thread as stable-nominated.
+topic = "#{number}: stable-nominated"
+message_on_add = "PR #{number} has been **accepted** for **stable** backport."
+
+[notify-zulip."beta-nominated".libs]
+required_labels = ["T-libs"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: beta-nominated"
+message_on_add = [
+    """\
+@*T-libs* PR #{number} "{title}" has been nominated for beta backport.
+""",
+    """\
+/poll Should #{number} be beta backported?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."beta-accepted".libs]
+required_labels = ["T-libs"]
+zulip_stream = 542373 # #t-libs/backports
+# Put it in the same Zulip topic as beta-nominated.
+topic = "#{number}: beta-nominated"
+message_on_add = "PR #{number} has been **accepted** for **beta** backport."
+
+[notify-zulip."stable-nominated".libs]
+required_labels = ["T-libs"]
+zulip_stream = 542373 # #t-libs/backports
+topic = "#{number}: stable-nominated"
+message_on_add = [
+    """\
+@**channel** PR #{number} "{title}" has been nominated for stable backport.
+""",
+    """\
+/poll Approve stable backport of #{number}?
+approve
+approve (but does not justify new dot release on its own)
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
+
+[notify-zulip."stable-accepted".libs]
+required_labels = ["T-libs"]
+zulip_stream = 542373 # #t-libs/backports
 # Put it in the same thread as stable-nominated.
 topic = "#{number}: stable-nominated"
 message_on_add = "PR #{number} has been **accepted** for **stable** backport."
@@ -866,9 +921,6 @@ cc = ["@davidtwco", "@wesleywiser"]
 
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
-
-[mentions."compiler/rustc_codegen_ssa"]
-cc = ["@WaffleLapkin"]
 
 [mentions."compiler/rustc_codegen_gcc"]
 cc = ["@antoyo", "@GuillaumeGomez"]
@@ -1018,7 +1070,6 @@ source file via `./x run src/tools/unicode-table-generator` instead of editing \
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
-    "@jsha",
     "@lolbinarycat",
 ]
 
@@ -1051,6 +1102,12 @@ cc = ["@rust-lang/clippy"]
 
 [mentions."src/tools/compiletest"]
 cc = ["@jieyouxu"]
+
+[mentions."src/tools/compiletest/src/directives"]
+message = """
+`compiletest` directives have been modified. Please add or update docs for the
+new or modified directive in `src/doc/rustc-dev-guide/`.
+"""
 
 [mentions."src/tools/miri"]
 message = "The Miri subtree was changed"
@@ -1358,6 +1415,7 @@ compiler_leads = [
 ]
 compiler = [
     "@BoxyUwU",
+    "@chenyukang",
     "@compiler-errors",
     "@davidtwco",
     "@eholk",
@@ -1366,7 +1424,10 @@ compiler = [
     "@jackh726",
     "@jieyouxu",
     "@jdonszelmann",
+    "@JonathanBrouwer",
     "@lcnr",
+    "@madsmtm",
+    "@mati865",
     "@Nadrieril",
     "@nnethercote",
     "@oli-obk",
@@ -1382,6 +1443,7 @@ libs = [
     "@tgross35",
     "@thomcc",
     "@ibraheemdev",
+    "@joboet",
 ]
 infra-ci = [
     "@Mark-Simulacrum",
@@ -1401,6 +1463,7 @@ docs = [
 ]
 codegen = [
     "@dianqk",
+    "@madsmtm",
     "@saethlin",
     "@workingjubilee",
     "@WaffleLapkin",
@@ -1597,7 +1660,7 @@ labels = ["has-merge-commits", "S-waiting-on-author"]
 format = "rustc"
 project-name = "Rust"
 changelog-path = "RELEASES.md"
-changelog-branch = "master"
+changelog-branch = "main"
 
 [shortcut]
 

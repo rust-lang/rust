@@ -404,8 +404,8 @@ impl str {
     /// assert_eq!(closest, 10);
     /// assert_eq!(&s[..closest], "❤️🧡");
     /// ```
-    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -447,8 +447,8 @@ impl str {
     /// assert_eq!(closest, 14);
     /// assert_eq!(&s[..closest], "❤️🧡💛");
     /// ```
-    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "round_char_boundary", since = "1.91.0")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "1.91.0")]
     #[inline]
     pub const fn ceil_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -1251,6 +1251,8 @@ impl str {
     /// ending will return the same lines as an otherwise identical string
     /// without a final line ending.
     ///
+    /// An empty string returns an empty iterator.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1280,6 +1282,15 @@ impl str {
     /// assert_eq!(Some("baz"), lines.next());
     ///
     /// assert_eq!(None, lines.next());
+    /// ```
+    ///
+    /// An empty string returns an empty iterator:
+    ///
+    /// ```
+    /// let text = "";
+    /// let mut lines = text.lines();
+    ///
+    /// assert_eq!(lines.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -1953,6 +1964,7 @@ impl str {
     ///
     /// ```
     /// assert_eq!("cfg".rsplit_once('='), None);
+    /// assert_eq!("cfg=".rsplit_once('='), Some(("cfg", "")));
     /// assert_eq!("cfg=foo".rsplit_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".rsplit_once('='), Some(("cfg=foo", "bar")));
     /// ```
@@ -2447,6 +2459,42 @@ impl str {
         suffix.strip_suffix_of(self)
     }
 
+    /// Returns a string slice with the prefix and suffix removed.
+    ///
+    /// If the string starts with the pattern `prefix` and ends with the pattern `suffix`, returns
+    /// the substring after the prefix and before the suffix, wrapped in `Some`.
+    /// Unlike [`trim_start_matches`] and [`trim_end_matches`], this method removes both the prefix
+    /// and suffix exactly once.
+    ///
+    /// If the string does not start with `prefix` or does not end with `suffix`, returns `None`.
+    ///
+    /// Each [pattern] can be a `&str`, [`char`], a slice of [`char`]s, or a
+    /// function or closure that determines if a character matches.
+    ///
+    /// [`char`]: prim@char
+    /// [pattern]: self::pattern
+    /// [`trim_start_matches`]: Self::trim_start_matches
+    /// [`trim_end_matches`]: Self::trim_end_matches
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(strip_circumfix)]
+    ///
+    /// assert_eq!("bar:hello:foo".strip_circumfix("bar:", ":foo"), Some("hello"));
+    /// assert_eq!("bar:foo".strip_circumfix("foo", "foo"), None);
+    /// assert_eq!("foo:bar;".strip_circumfix("foo:", ';'), Some("bar"));
+    /// ```
+    #[must_use = "this returns the remaining substring as a new slice, \
+                  without modifying the original"]
+    #[unstable(feature = "strip_circumfix", issue = "147946")]
+    pub fn strip_circumfix<P: Pattern, S: Pattern>(&self, prefix: P, suffix: S) -> Option<&str>
+    where
+        for<'a> S::Searcher<'a>: ReverseSearcher<'a>,
+    {
+        self.strip_prefix(prefix)?.strip_suffix(suffix)
+    }
+
     /// Returns a string slice with the optional prefix removed.
     ///
     /// If the string starts with the pattern `prefix`, returns the substring after the prefix.
@@ -2703,6 +2751,8 @@ impl str {
     }
 
     /// Checks if all characters in this string are within the ASCII range.
+    ///
+    /// An empty string returns `true`.
     ///
     /// # Examples
     ///

@@ -11,7 +11,7 @@ use rustc_abi::{FieldIdx, Integer};
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, LangItem, RangeEnd};
+use rustc_hir::{self as hir, ByRef, LangItem, Mutability, Pinnedness, RangeEnd};
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::LitToConstInput;
@@ -97,7 +97,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // adjustments in *reverse order* (last-in-first-out, so that the last `Deref` inserted
         // gets the least-dereferenced type).
         let unadjusted_pat = match pat.kind {
-            hir::PatKind::Ref(inner, _)
+            hir::PatKind::Ref(inner, _, _)
                 if self.typeck_results.skipped_ref_pats().contains(pat.hir_id) =>
             {
                 self.lower_pattern(inner)
@@ -113,6 +113,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 PatAdjust::OverloadedDeref => {
                     let borrow = self.typeck_results.deref_pat_borrow_mode(adjust.source, pat);
                     PatKind::DerefPattern { subpattern: thir_pat, borrow }
+                }
+                PatAdjust::PinDeref => {
+                    let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
+                    PatKind::DerefPattern {
+                        subpattern: thir_pat,
+                        borrow: ByRef::Yes(
+                            Pinnedness::Pinned,
+                            if mutable { Mutability::Mut } else { Mutability::Not },
+                        ),
+                    }
                 }
             };
             Box::new(Pat { span, ty: adjust.source, kind })
@@ -309,7 +319,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let borrow = self.typeck_results.deref_pat_borrow_mode(ty, subpattern);
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), borrow }
             }
-            hir::PatKind::Ref(subpattern, _) => {
+            hir::PatKind::Ref(subpattern, _, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
                 let opt_old_mode_span =
                     self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
@@ -354,11 +364,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
                 let var_ty = ty;
-                if let hir::ByRef::Yes(_) = mode.0 {
-                    if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = *rty;
-                    } else {
-                        bug!("`ref {}` has wrong type {}", ident, ty);
+                if let hir::ByRef::Yes(pinnedness, _) = mode.0 {
+                    match pinnedness {
+                        hir::Pinnedness::Pinned
+                            if let Some(pty) = ty.pinned_ty()
+                                && let &ty::Ref(_, rty, _) = pty.kind() =>
+                        {
+                            ty = rty;
+                        }
+                        hir::Pinnedness::Not if let &ty::Ref(_, rty, _) = ty.kind() => {
+                            ty = rty;
+                        }
+                        _ => bug!("`ref {}` has wrong type {}", ident, ty),
                     }
                 };
 
@@ -369,6 +386,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,
+                    is_shorthand: false,
                 }
             }
 
@@ -386,9 +404,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
                 let subpatterns = fields
                     .iter()
-                    .map(|field| FieldPat {
-                        field: self.typeck_results.field_index(field.hir_id),
-                        pattern: *self.lower_pattern(field.pat),
+                    .map(|field| {
+                        let mut pattern = *self.lower_pattern(field.pat);
+                        if let PatKind::Binding { ref mut is_shorthand, .. } = pattern.kind {
+                            *is_shorthand = field.is_shorthand;
+                        }
+                        let field = self.typeck_results.field_index(field.hir_id);
+                        FieldPat { field, pattern }
                     })
                     .collect();
 

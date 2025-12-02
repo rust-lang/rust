@@ -6,7 +6,7 @@ LL | impl aux::Trait for LocalTy {}
    |
    = note: conflicting implementation in crate `unstable_impl_coherence_aux`:
            - impl<T> Trait for T
-             where unstable feature: `foo`;
+             where feature(foo) is enabled;
 
 error: aborting due to 1 previous error
 

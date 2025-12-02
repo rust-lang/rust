@@ -13,10 +13,6 @@ passes_abi_ne =
 passes_abi_of =
     fn_abi_of({$fn_name}) = {$fn_abi}
 
-passes_macro_only_attribute =
-    attribute should be applied to a macro
-    .label = not a macro
-
 passes_attr_application_enum =
     attribute should be applied to an enum
     .label = not an enum
@@ -37,9 +33,6 @@ passes_attr_crate_level =
     this attribute can only be applied at the crate level
     .suggestion = to apply to the crate, use an inner attribute
     .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
-
-passes_attr_only_in_functions =
-    `{$attr}` attribute can only be used on functions
 
 passes_autodiff_attr =
     `#[autodiff]` should be applied to a function
@@ -93,15 +86,6 @@ passes_dead_codes =
        }
     } never {$participle}
 
-passes_debug_visualizer_invalid =
-    invalid argument
-    .note_1 = expected: `natvis_file = "..."`
-    .note_2 = OR
-    .note_3 = expected: `gdb_script_file = "..."`
-
-passes_debug_visualizer_placement =
-    attribute should be applied to a module
-
 passes_debug_visualizer_unreadable =
     couldn't read {$file}: {$error}
 
@@ -111,6 +95,9 @@ passes_deprecated_annotation_has_no_effect =
 
 passes_deprecated_attribute =
     deprecated attribute must be paired with either stable or unstable attribute
+
+passes_diagnostic_diagnostic_on_const_only_for_trait_impls =
+    `#[diagnostic::on_const]` can only be applied to trait impls
 
 passes_diagnostic_diagnostic_on_unimplemented_only_for_traits =
     `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
@@ -142,6 +129,14 @@ passes_doc_alias_not_string_literal =
 passes_doc_alias_start_end =
     {$attr_str} cannot start or end with ' '
 
+passes_doc_attr_expects_no_value =
+    `doc({$attr_name})` does not accept a value
+    .suggestion = use `doc({$attr_name})`
+
+passes_doc_attr_expects_string =
+    `doc({$attr_name})` expects a string value
+    .suggestion = use `doc({$attr_name} = "...")`
+
 passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
 
@@ -149,8 +144,17 @@ passes_doc_attribute_not_attribute =
     nonexistent builtin attribute `{$attribute}` used in `#[doc(attribute = "...")]`
     .help = only existing builtin attributes are allowed in core/std
 
-passes_doc_cfg_hide_takes_list =
-    `#[doc(cfg_hide(...))]` takes a list of attributes
+passes_doc_auto_cfg_expects_hide_or_show =
+    only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+
+passes_doc_auto_cfg_hide_show_expects_list =
+    `#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items
+
+passes_doc_auto_cfg_hide_show_unexpected_item =
+    `#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items
+
+passes_doc_auto_cfg_wrong_literal =
+    expected boolean for `#[doc(auto_cfg = ...)]`
 
 passes_doc_expect_str =
     doc {$attr_name} attribute expects a string: #[doc({$attr_name} = "a")]
@@ -226,7 +230,6 @@ passes_doc_test_unknown_passes =
     unknown `doc` attribute `{$path}`
     .note = `doc` attribute `{$path}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>
     .label = no longer functions
-    .help = you may want to use `doc(document_private_items)`
     .no_op_note = `doc({$path})` is now a no-op
 
 passes_doc_test_unknown_plugins =
@@ -392,10 +395,12 @@ passes_macro_export_on_decl_macro =
     `#[macro_export]` has no effect on declarative macro definitions
     .note = declarative macros follow the same exporting rules as regular items
 
+passes_macro_only_attribute =
+    attribute should be applied to a macro
+    .label = not a macro
+
 passes_may_dangle =
     `#[may_dangle]` must be applied to a lifetime or type generic parameter in `Drop` impl
-
-passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 
 passes_missing_const_err =
     attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`
@@ -568,8 +573,6 @@ passes_should_be_applied_to_trait =
     attribute should be applied to a trait
     .label = not a trait
 
-passes_string_interpolation_only_works = string interpolation only works in `format!` invocations
-
 passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
 passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...
 passes_trait_impl_const_stability_mismatch_impl_unstable = this impl is unstable...
@@ -619,11 +622,6 @@ passes_unnecessary_partial_stable_feature = the feature `{$feature}` has been pa
 
 passes_unnecessary_stable_feature = the feature `{$feature}` has been stable since {$since} and no longer requires an attribute to enable
 
-passes_unreachable_due_to_uninhabited = unreachable {$descr}
-    .label = unreachable {$descr}
-    .label_orig = any code following this expression is unreachable
-    .note = this expression has type `{$ty}`, which is uninhabited
-
 passes_unrecognized_argument =
     unrecognized argument
 
@@ -640,18 +638,6 @@ passes_unsupported_attributes_in_where =
 passes_unused =
     unused attribute
     .suggestion = remove this attribute
-
-passes_unused_assign = value assigned to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_assign_passed = value passed to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_assign_suggestion =
-    you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
-
-passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
-    .help = did you mean to capture by reference instead?
 
 passes_unused_default_method_body_const_note =
     `default_method_body_is_const` has been replaced with `const` on traits
@@ -675,25 +661,6 @@ passes_unused_multiple =
 
 passes_unused_no_lints_note =
     attribute `{$name}` without any lints has no effect
-
-passes_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
-    .note = consider using `_{$name}` instead
-
-passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
-    .help = did you mean to capture by reference instead?
-
-passes_unused_var_remove_field = unused variable: `{$name}`
-passes_unused_var_remove_field_suggestion = try removing the field
-passes_unused_var_typo = you might have meant to pattern match on the similarly named {$kind} `{$item_name}`
-
-passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
-
-passes_unused_variable_try_ignore = unused variable: `{$name}`
-    .suggestion = try ignoring the field
-
-passes_unused_variable_try_prefix = unused variable: `{$name}`
-    .label = unused variable
-    .suggestion = if this is intentional, prefix it with an underscore
 
 passes_useless_assignment =
     useless assignment of {$is_field_assign ->

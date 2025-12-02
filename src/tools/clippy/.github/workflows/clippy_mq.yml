@@ -25,8 +25,6 @@ jobs:
           host: i686-unknown-linux-gnu
         - os: windows-latest
           host: x86_64-pc-windows-msvc
-        - os: macos-13
-          host: x86_64-apple-darwin
         - os: macos-latest
           host: aarch64-apple-darwin
 
@@ -36,7 +34,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -96,7 +94,7 @@ jobs:
     steps:
      # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -114,7 +112,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -170,7 +168,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         persist-credentials: false
 
@@ -181,7 +179,7 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v6
       with:
         name: binaries
         path: target/debug

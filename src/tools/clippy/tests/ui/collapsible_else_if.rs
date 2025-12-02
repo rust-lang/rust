@@ -1,4 +1,4 @@
-#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_if)]
+#![allow(clippy::assertions_on_constants, clippy::equatable_if_let, clippy::needless_ifs)]
 #![warn(clippy::collapsible_if, clippy::collapsible_else_if)]
 
 #[rustfmt::skip]
@@ -101,6 +101,33 @@ fn issue_7318() {
         if false {}
     }
     //~^^^ collapsible_else_if
+}
+
+fn issue_13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+    } else {
+        #[expect(clippy::collapsible_else_if)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::style)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::all)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(warnings)]
+        if false {}
+    }
 }
 
 fn issue14799() {

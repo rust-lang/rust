@@ -140,6 +140,9 @@ session_unleashed_feature_help_unnamed = skipping check that does not even have 
 
 session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination` requires `-Clto`
 
+session_unsupported_crate_type_for_codegen_backend =
+    dropping unsupported crate type `{$crate_type}` for codegen backend `{$codegen_backend}`
+
 session_unsupported_crate_type_for_target =
     dropping unsupported crate type `{$crate_type}` for target `{$target_triple}`
 

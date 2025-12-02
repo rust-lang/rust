@@ -19,7 +19,7 @@
 // implementations, so, we'll have to add more doc(hidden)s anyway
 #![doc(hidden)]
 
-use crate::char::{MAX_LEN_UTF16, encode_utf16_raw};
+use crate::char::{EscapeDebugExtArgs, encode_utf16_raw};
 use crate::clone::CloneToUninit;
 use crate::fmt::{self, Write};
 use crate::hash::{Hash, Hasher};
@@ -144,14 +144,20 @@ impl AsRef<[u8]> for Wtf8 {
 impl fmt::Debug for Wtf8 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn write_str_escaped(f: &mut fmt::Formatter<'_>, s: &str) -> fmt::Result {
-            use crate::fmt::Write;
-            for c in s.chars().flat_map(|c| c.escape_debug()) {
+            use crate::fmt::Write as _;
+            for c in s.chars().flat_map(|c| {
+                c.escape_debug_ext(EscapeDebugExtArgs {
+                    escape_grapheme_extended: true,
+                    escape_single_quote: false,
+                    escape_double_quote: true,
+                })
+            }) {
                 f.write_char(c)?
             }
             Ok(())
         }
 
-        formatter.write_str("\"")?;
+        formatter.write_char('"')?;
         let mut pos = 0;
         while let Some((surrogate_pos, surrogate)) = self.next_surrogate(pos) {
             // SAFETY: next_surrogate provides an index for a range of valid UTF-8 bytes.
@@ -164,7 +170,7 @@ impl fmt::Debug for Wtf8 {
 
         // SAFETY: after next_surrogate returns None, the remainder is valid UTF-8.
         write_str_escaped(formatter, unsafe { str::from_utf8_unchecked(&self.bytes[pos..]) })?;
-        formatter.write_str("\"")
+        formatter.write_char('"')
     }
 }
 
@@ -541,7 +547,7 @@ impl Iterator for EncodeWide<'_> {
             return Some(tmp);
         }
 
-        let mut buf = [0; MAX_LEN_UTF16];
+        let mut buf = [0; char::MAX_LEN_UTF16];
         self.code_points.next().map(|code_point| {
             let n = encode_utf16_raw(code_point.to_u32(), &mut buf).len();
             if n == 2 {
@@ -562,14 +568,35 @@ impl Iterator for EncodeWide<'_> {
     }
 }
 
-impl fmt::Debug for EncodeWide<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("EncodeWide").finish_non_exhaustive()
-    }
-}
-
 #[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
 impl FusedIterator for EncodeWide<'_> {}
+
+#[stable(feature = "encode_wide_debug", since = "1.92.0")]
+impl fmt::Debug for EncodeWide<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct CodeUnit(u16);
+        impl fmt::Debug for CodeUnit {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                // This output attempts to balance readability with precision.
+                // Render characters which take only one WTF-16 code unit using
+                // `char` syntax and everything else as code units with hex
+                // integer syntax (including paired and unpaired surrogate
+                // halves). Since Rust has no `char`-like type for WTF-16, this
+                // isn't perfect, so if this output isn't suitable, it is open
+                // to being changed (see #140153).
+                match char::from_u32(self.0 as u32) {
+                    Some(c) => write!(f, "{c:?}"),
+                    None => write!(f, "0x{:04X}", self.0),
+                }
+            }
+        }
+
+        write!(f, "EncodeWide(")?;
+        f.debug_list().entries(self.clone().map(CodeUnit)).finish()?;
+        write!(f, ")")?;
+        Ok(())
+    }
+}
 
 impl Hash for CodePoint {
     #[inline]

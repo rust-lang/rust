@@ -15,13 +15,13 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
-use rustc_target::spec::RelocModel;
 #[cfg(feature = "master")]
 use rustc_target::spec::SymbolVisibility;
+use rustc_target::spec::{Arch, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{GccContext, LockedTargetInfo, SyncContext, gcc_util, new_context};
+use crate::{GccContext, LockedTargetInfo, LtoMode, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
 pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
@@ -74,6 +74,7 @@ pub fn compile_codegen_unit(
     tcx: TyCtxt<'_>,
     cgu_name: Symbol,
     target_info: LockedTargetInfo,
+    lto_supported: bool,
 ) -> (ModuleCodegen<GccContext>, u64) {
     let prof_timer = tcx.prof.generic_activity("codegen_module");
     let start_time = Instant::now();
@@ -82,7 +83,7 @@ pub fn compile_codegen_unit(
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        (cgu_name, target_info),
+        (cgu_name, target_info, lto_supported),
         module_codegen,
         Some(dep_graph::hash_result),
     );
@@ -95,7 +96,7 @@ pub fn compile_codegen_unit(
 
     fn module_codegen(
         tcx: TyCtxt<'_>,
-        (cgu_name, target_info): (Symbol, LockedTargetInfo),
+        (cgu_name, target_info, lto_supported): (Symbol, LockedTargetInfo, bool),
     ) -> ModuleCodegen<GccContext> {
         let cgu = tcx.codegen_unit(cgu_name);
         // Instantiate monomorphizations without filling out definitions yet...
@@ -116,7 +117,7 @@ pub fn compile_codegen_unit(
             .map(|string| &string[1..])
             .collect();
 
-        if !disabled_features.contains("avx") && tcx.sess.target.arch == "x86_64" {
+        if !disabled_features.contains("avx") && tcx.sess.target.arch == Arch::X86_64 {
             // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
             // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
             // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.
@@ -247,7 +248,8 @@ pub fn compile_codegen_unit(
             GccContext {
                 context: Arc::new(SyncContext::new(context)),
                 relocation_model: tcx.sess.relocation_model(),
-                should_combine_object_files: false,
+                lto_supported,
+                lto_mode: LtoMode::None,
                 temp_dir: None,
             },
         )

@@ -1,34 +1,67 @@
-use std::io::Read;
+use std::collections::BTreeSet;
 
 use camino::Utf8Path;
 use semver::Version;
 
-use super::{
-    DirectivesCache, EarlyProps, extract_llvm_version, extract_version_range, iter_directives,
-    parse_normalize_rule,
-};
 use crate::common::{Config, Debugger, TestMode};
-use crate::executor::{CollectedTestDesc, ShouldPanic};
+use crate::directives::{
+    self, AuxProps, DIRECTIVE_HANDLERS_MAP, DirectivesCache, EarlyProps, Edition, EditionRange,
+    FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, extract_llvm_version, extract_version_range,
+    line_directive, parse_edition, parse_normalize_rule,
+};
+use crate::executor::{CollectedTestDesc, ShouldFail};
 
-fn make_test_description<R: Read>(
+/// All directive handlers should have a name that is also in `KNOWN_DIRECTIVE_NAMES_SET`.
+#[test]
+fn handler_names() {
+    let unknown_names = DIRECTIVE_HANDLERS_MAP
+        .keys()
+        .copied()
+        .filter(|name| !KNOWN_DIRECTIVE_NAMES_SET.contains(name))
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive handler names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
+
+#[test]
+fn external_ignores() {
+    let unknown_names = directives::cfg::EXTERNAL_IGNORES_SET
+        .difference(&KNOWN_DIRECTIVE_NAMES_SET)
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        unknown_names.is_empty(),
+        "Directive names not in `directive_names.rs`: {unknown_names:#?}"
+    );
+}
+
+fn make_test_description(
     config: &Config,
     name: String,
     path: &Utf8Path,
     filterable_path: &Utf8Path,
-    src: R,
+    file_contents: &str,
     revision: Option<&str>,
 ) -> CollectedTestDesc {
     let cache = DirectivesCache::load(config);
     let mut poisoned = false;
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+
+    let mut aux_props = AuxProps::default();
     let test = crate::directives::make_test_description(
         config,
         &cache,
         name,
         path,
         filterable_path,
-        src,
+        &file_directives,
         revision,
         &mut poisoned,
+        &mut aux_props,
     );
     if poisoned {
         panic!("poisoned!");
@@ -73,6 +106,7 @@ fn test_parse_normalize_rule() {
 struct ConfigBuilder {
     mode: Option<String>,
     channel: Option<String>,
+    edition: Option<Edition>,
     host: Option<String>,
     target: Option<String>,
     stage: Option<u32>,
@@ -93,6 +127,11 @@ impl ConfigBuilder {
 
     fn channel(&mut self, s: &str) -> &mut Self {
         self.channel = Some(s.to_owned());
+        self
+    }
+
+    fn edition(&mut self, e: Edition) -> &mut Self {
+        self.edition = Some(e);
         self
     }
 
@@ -183,6 +222,10 @@ impl ConfigBuilder {
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
+        if let Some(edition) = &self.edition {
+            args.push(format!("--edition={edition}"));
+        }
+
         if let Some(ref llvm_version) = self.llvm_version {
             args.push("--llvm-version".to_owned());
             args.push(llvm_version.clone());
@@ -215,15 +258,15 @@ fn cfg() -> ConfigBuilder {
     ConfigBuilder::default()
 }
 
-fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Utf8Path::new("a.rs"), bytes)
+fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
+    let file_directives = FileDirectives::from_file_contents(Utf8Path::new("a.rs"), contents);
+    EarlyProps::from_file_directives(config, &file_directives)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new(contents), None);
+    let d = make_test_description(&config, tn, p, p, contents, None);
     d.ignore
 }
 
@@ -233,35 +276,17 @@ fn should_fail() {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
 
-    let d = make_test_description(&config, tn.clone(), p, p, std::io::Cursor::new(""), None);
-    assert_eq!(d.should_panic, ShouldPanic::No);
-    let d = make_test_description(&config, tn, p, p, std::io::Cursor::new("//@ should-fail"), None);
-    assert_eq!(d.should_panic, ShouldPanic::Yes);
+    let d = make_test_description(&config, tn.clone(), p, p, "", None);
+    assert_eq!(d.should_fail, ShouldFail::No);
+    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None);
+    assert_eq!(d.should_fail, ShouldFail::Yes);
 }
 
 #[test]
 fn revisions() {
     let config: Config = cfg().build();
 
-    assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-}
-
-#[test]
-fn aux_build() {
-    let config: Config = cfg().build();
-
-    assert_eq!(
-        parse_rs(
-            &config,
-            r"
-        //@ aux-build: a.rs
-        //@ aux-build: b.rs
-        "
-        )
-        .aux
-        .builds,
-        vec!["a.rs", "b.rs"],
-    );
+    assert_eq!(parse_early_props(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
 }
 
 #[test]
@@ -540,7 +565,7 @@ fn test_extract_version_range() {
 #[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
-    parse_rs(&config, "//@ revisions: rpass1 rpass1");
+    parse_early_props(&config, "//@ revisions: rpass1 rpass1");
 }
 
 #[test]
@@ -549,14 +574,14 @@ fn test_duplicate_revisions() {
 )]
 fn test_assembly_mode_forbidden_revisions() {
     let config = cfg().mode("assembly").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
 #[should_panic(expected = "revision name `true` is not permitted")]
 fn test_forbidden_revisions() {
     let config = cfg().mode("ui").build();
-    parse_rs(&config, "//@ revisions: true");
+    parse_early_props(&config, "//@ revisions: true");
 }
 
 #[test]
@@ -565,7 +590,7 @@ fn test_forbidden_revisions() {
 )]
 fn test_codegen_mode_forbidden_revisions() {
     let config = cfg().mode("codegen").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
@@ -574,7 +599,7 @@ fn test_codegen_mode_forbidden_revisions() {
 )]
 fn test_miropt_mode_forbidden_revisions() {
     let config = cfg().mode("mir-opt").build();
-    parse_rs(&config, "//@ revisions: CHECK");
+    parse_early_props(&config, "//@ revisions: CHECK");
 }
 
 #[test]
@@ -598,7 +623,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
         let content = format!("//@ revisions: {rev}");
         for mode in modes {
             let config = cfg().mode(mode).build();
-            parse_rs(&config, &content);
+            parse_early_props(&config, &content);
         }
     }
 }
@@ -610,6 +635,8 @@ fn ignore_arch() {
         ("i686-unknown-linux-gnu", "x86"),
         ("nvptx64-nvidia-cuda", "nvptx64"),
         ("thumbv7m-none-eabi", "thumb"),
+        ("i586-unknown-linux-gnu", "x86"),
+        ("i586-unknown-linux-gnu", "i586"),
     ];
     for (target, arch) in archs {
         let config: Config = cfg().target(target).build();
@@ -694,20 +721,16 @@ fn pointer_width() {
 #[test]
 fn wasm_special() {
     let ignores = [
-        ("wasm32-unknown-unknown", "emscripten", true),
+        ("wasm32-unknown-unknown", "emscripten", false),
         ("wasm32-unknown-unknown", "wasm32", true),
-        ("wasm32-unknown-unknown", "wasm32-bare", true),
         ("wasm32-unknown-unknown", "wasm64", false),
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
-        ("wasm32-unknown-emscripten", "wasm32-bare", false),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
-        ("wasm32-wasip1", "wasm32-bare", false),
         ("wasm32-wasip1", "wasi", true),
         ("wasm64-unknown-unknown", "emscripten", false),
         ("wasm64-unknown-unknown", "wasm32", false),
-        ("wasm64-unknown-unknown", "wasm32-bare", false),
         ("wasm64-unknown-unknown", "wasm64", true),
     ];
     for (target, pattern, ignore) in ignores {
@@ -715,8 +738,13 @@ fn wasm_special() {
         assert_eq!(
             check_ignore(&config, &format!("//@ ignore-{pattern}")),
             ignore,
-            "{target} {pattern}"
+            "target `{target}` vs `//@ ignore-{pattern}`"
         );
+        assert_eq!(
+            check_ignore(&config, &format!("//@ only-{pattern}")),
+            !ignore,
+            "target `{target}` vs `//@ only-{pattern}`"
+        )
     }
 }
 
@@ -752,6 +780,29 @@ fn ignore_coverage() {
 }
 
 #[test]
+fn only_ignore_elf() {
+    let cases = &[
+        ("aarch64-apple-darwin", false),
+        ("aarch64-unknown-linux-gnu", true),
+        ("powerpc64-ibm-aix", false),
+        ("wasm32-unknown-unknown", false),
+        ("wasm32-wasip1", false),
+        ("x86_64-apple-darwin", false),
+        ("x86_64-pc-windows-msvc", false),
+        ("x86_64-unknown-freebsd", true),
+        ("x86_64-unknown-illumos", true),
+        ("x86_64-unknown-linux-gnu", true),
+        ("x86_64-unknown-none", true),
+        ("x86_64-unknown-uefi", false),
+    ];
+    for &(target, is_elf) in cases {
+        let config = &cfg().target(target).build();
+        assert_eq!(is_elf, check_ignore(config, "//@ ignore-elf"), "`//@ ignore-elf` for {target}");
+        assert_eq!(is_elf, !check_ignore(config, "//@ only-elf"), "`//@ only-elf` for {target}");
+    }
+}
+
+#[test]
 fn threads_support() {
     let threads = [
         ("x86_64-unknown-linux-gnu", true),
@@ -768,9 +819,12 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
-    let rdr = std::io::Cursor::new(&buf);
-    iter_directives(TestMode::Ui, poisoned, path, rdr, &mut |_| {});
+fn run_path(poisoned: &mut bool, path: &Utf8Path, file_contents: &str) {
+    let file_directives = FileDirectives::from_file_contents(path, file_contents);
+    let result = directives::do_early_directives_check(TestMode::Ui, &file_directives);
+    if result.is_err() {
+        *poisoned = true;
+    }
 }
 
 #[test]
@@ -779,7 +833,7 @@ fn test_unknown_directive_check() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/unknown_directive.rs"),
+        include_str!("./test-auxillary/unknown_directive.rs"),
     );
     assert!(poisoned);
 }
@@ -790,7 +844,7 @@ fn test_known_directive_check_no_error() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/known_directive.rs"),
+        include_str!("./test-auxillary/known_directive.rs"),
     );
     assert!(!poisoned);
 }
@@ -801,7 +855,7 @@ fn test_error_annotation_no_error() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.rs"),
-        include_bytes!("./test-auxillary/error_annotation.rs"),
+        include_str!("./test-auxillary/error_annotation.rs"),
     );
     assert!(!poisoned);
 }
@@ -812,7 +866,7 @@ fn test_non_rs_unknown_directive_not_checked() {
     run_path(
         &mut poisoned,
         Utf8Path::new("a.Makefile"),
-        include_bytes!("./test-auxillary/not_rs.Makefile"),
+        include_str!("./test-auxillary/not_rs.Makefile"),
     );
     assert!(!poisoned);
 }
@@ -820,21 +874,21 @@ fn test_non_rs_unknown_directive_not_checked() {
 #[test]
 fn test_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86 only-arm");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86 only-arm");
     assert!(poisoned);
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ only-x86   only-arm with comment");
     assert!(poisoned);
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ revisions: incremental");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), "//@ revisions: incremental");
     assert!(!poisoned);
 }
 
@@ -940,4 +994,145 @@ fn test_needs_target_std() {
     assert!(check_ignore(&config, "//@ needs-target-std"));
     let config = cfg().target("x86_64-unknown-linux-gnu").build();
     assert!(!check_ignore(&config, "//@ needs-target-std"));
+}
+
+fn parse_edition_range(line: &str) -> Option<EditionRange> {
+    let config = cfg().build();
+
+    let line_with_comment = format!("//@ {line}");
+    let line = line_directive(Utf8Path::new("tmp.rs"), 0, &line_with_comment).unwrap();
+
+    super::parse_edition_range(&config, &line)
+}
+
+#[test]
+fn edition_order() {
+    let editions = &[
+        Edition::Year(2015),
+        Edition::Year(2018),
+        Edition::Year(2021),
+        Edition::Year(2024),
+        Edition::Future,
+    ];
+    assert!(editions.is_sorted(), "{editions:#?}");
+}
+
+#[test]
+fn test_parse_edition_range() {
+    assert_eq!(None, parse_edition_range("hello-world"));
+    assert_eq!(None, parse_edition_range("edition"));
+
+    assert_eq!(Some(EditionRange::Exact(2018.into())), parse_edition_range("edition: 2018"));
+    assert_eq!(Some(EditionRange::Exact(2021.into())), parse_edition_range("edition:2021"));
+    assert_eq!(Some(EditionRange::Exact(2024.into())), parse_edition_range("edition: 2024 "));
+    assert_eq!(Some(EditionRange::Exact(Edition::Future)), parse_edition_range("edition: future"));
+
+    assert_eq!(Some(EditionRange::RangeFrom(2018.into())), parse_edition_range("edition: 2018.."));
+    assert_eq!(Some(EditionRange::RangeFrom(2021.into())), parse_edition_range("edition:2021 .."));
+    assert_eq!(
+        Some(EditionRange::RangeFrom(2024.into())),
+        parse_edition_range("edition: 2024 .. ")
+    );
+    assert_eq!(
+        Some(EditionRange::RangeFrom(Edition::Future)),
+        parse_edition_range("edition: future.. ")
+    );
+
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() }),
+        parse_edition_range("edition: 2018..2024")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2015.into(), upper_bound: 2021.into() }),
+        parse_edition_range("edition:2015 .. 2021 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: 2027.into() }),
+        parse_edition_range("edition: 2021 .. 2027 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { lower_bound: 2021.into(), upper_bound: Edition::Future }),
+        parse_edition_range("edition: 2021..future")
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_empty() {
+    parse_edition_range("edition:");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_invalid_edition() {
+    parse_edition_range("edition: hello");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_double_dots() {
+    parse_edition_range("edition: ..");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_inverted_range() {
+    parse_edition_range("edition: 2021..2015");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_inverted_range_future() {
+    parse_edition_range("edition: future..2015");
+}
+
+#[test]
+#[should_panic]
+fn test_parse_edition_range_empty_range() {
+    parse_edition_range("edition: 2021..2021");
+}
+
+#[track_caller]
+fn assert_edition_to_test(
+    expected: impl Into<Edition>,
+    range: EditionRange,
+    default: Option<Edition>,
+) {
+    let mut cfg = cfg();
+    if let Some(default) = default {
+        cfg.edition(default);
+    }
+    assert_eq!(expected.into(), range.edition_to_test(cfg.build().edition));
+}
+
+#[test]
+fn test_edition_range_edition_to_test() {
+    let e2015 = parse_edition("2015");
+    let e2018 = parse_edition("2018");
+    let e2021 = parse_edition("2021");
+    let e2024 = parse_edition("2024");
+    let efuture = parse_edition("future");
+
+    let exact = EditionRange::Exact(2021.into());
+    assert_edition_to_test(2021, exact, None);
+    assert_edition_to_test(2021, exact, Some(e2018));
+    assert_edition_to_test(2021, exact, Some(efuture));
+
+    assert_edition_to_test(Edition::Future, EditionRange::Exact(Edition::Future), None);
+
+    let greater_equal_than = EditionRange::RangeFrom(2021.into());
+    assert_edition_to_test(2021, greater_equal_than, None);
+    assert_edition_to_test(2021, greater_equal_than, Some(e2015));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2018));
+    assert_edition_to_test(2021, greater_equal_than, Some(e2021));
+    assert_edition_to_test(2024, greater_equal_than, Some(e2024));
+    assert_edition_to_test(Edition::Future, greater_equal_than, Some(efuture));
+
+    let range = EditionRange::Range { lower_bound: 2018.into(), upper_bound: 2024.into() };
+    assert_edition_to_test(2018, range, None);
+    assert_edition_to_test(2018, range, Some(e2015));
+    assert_edition_to_test(2018, range, Some(e2018));
+    assert_edition_to_test(2021, range, Some(e2021));
+    assert_edition_to_test(2018, range, Some(e2024));
+    assert_edition_to_test(2018, range, Some(efuture));
 }

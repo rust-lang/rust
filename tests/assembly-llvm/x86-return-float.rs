@@ -1,16 +1,13 @@
 //@ assembly-output: emit-asm
 // FIXME(#114479): LLVM miscompiles loading and storing `f32` and `f64` when SSE is disabled.
-// There's no compiletest directive to ignore a test on i586 only, so just always explicitly enable
-// SSE2.
-// Use the same target CPU as `i686` so that LLVM orders the instructions in the same order.
-//@ compile-flags: -Ctarget-feature=+sse2 -Ctarget-cpu=pentium4
+// (As of #136758, this test cross-compiles to selected i686 targets only, which have SSE.)
 // Force frame pointers to make ASM more consistent between targets
 //@ compile-flags: -C force-frame-pointers
 // At opt-level=3, LLVM can merge two movss into one movsd, and we aren't testing for that.
 //@ compile-flags: -Copt-level=2
 //@ filecheck-flags: --implicit-check-not fld --implicit-check-not fst
 //@ revisions: linux win
-//@ add-core-stubs
+//@ add-minicore
 //@[linux] needs-llvm-components: x86
 //@[win] needs-llvm-components: x86
 //@[linux] compile-flags: --target i686-unknown-linux-gnu

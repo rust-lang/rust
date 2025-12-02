@@ -1,5 +1,5 @@
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:32:5
+  --> tests/ui/manual_assert.rs:30:5
    |
 LL | /     if !a.is_empty() {
 LL | |
@@ -9,17 +9,14 @@ LL | |     }
    |
    = note: `-D clippy::manual-assert` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::manual_assert)]`
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if !a.is_empty() {
-LL -
-LL -         panic!("qaqaq{:?}", a);
-LL -     }
+LL ~
 LL +     assert!(a.is_empty(), "qaqaq{:?}", a);
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:36:5
+  --> tests/ui/manual_assert.rs:34:5
    |
 LL | /     if !a.is_empty() {
 LL | |
@@ -27,17 +24,14 @@ LL | |         panic!("qwqwq");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if !a.is_empty() {
-LL -
-LL -         panic!("qwqwq");
-LL -     }
+LL ~
 LL +     assert!(a.is_empty(), "qwqwq");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:54:5
+  --> tests/ui/manual_assert.rs:52:5
    |
 LL | /     if b.is_empty() {
 LL | |
@@ -45,17 +39,14 @@ LL | |         panic!("panic1");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if b.is_empty() {
-LL -
-LL -         panic!("panic1");
-LL -     }
+LL ~
 LL +     assert!(!b.is_empty(), "panic1");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:58:5
+  --> tests/ui/manual_assert.rs:56:5
    |
 LL | /     if b.is_empty() && a.is_empty() {
 LL | |
@@ -63,17 +54,14 @@ LL | |         panic!("panic2");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if b.is_empty() && a.is_empty() {
-LL -
-LL -         panic!("panic2");
-LL -     }
+LL ~
 LL +     assert!(!(b.is_empty() && a.is_empty()), "panic2");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:62:5
+  --> tests/ui/manual_assert.rs:60:5
    |
 LL | /     if a.is_empty() && !b.is_empty() {
 LL | |
@@ -81,17 +69,14 @@ LL | |         panic!("panic3");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if a.is_empty() && !b.is_empty() {
-LL -
-LL -         panic!("panic3");
-LL -     }
+LL ~
 LL +     assert!(!(a.is_empty() && !b.is_empty()), "panic3");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:66:5
+  --> tests/ui/manual_assert.rs:64:5
    |
 LL | /     if b.is_empty() || a.is_empty() {
 LL | |
@@ -99,17 +84,14 @@ LL | |         panic!("panic4");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if b.is_empty() || a.is_empty() {
-LL -
-LL -         panic!("panic4");
-LL -     }
+LL ~
 LL +     assert!(!(b.is_empty() || a.is_empty()), "panic4");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:70:5
+  --> tests/ui/manual_assert.rs:68:5
    |
 LL | /     if a.is_empty() || !b.is_empty() {
 LL | |
@@ -117,17 +99,14 @@ LL | |         panic!("panic5");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if a.is_empty() || !b.is_empty() {
-LL -
-LL -         panic!("panic5");
-LL -     }
+LL ~
 LL +     assert!(!(a.is_empty() || !b.is_empty()), "panic5");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:74:5
+  --> tests/ui/manual_assert.rs:72:5
    |
 LL | /     if a.is_empty() {
 LL | |
@@ -135,17 +114,14 @@ LL | |         panic!("with expansion {}", one!())
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if a.is_empty() {
-LL -
-LL -         panic!("with expansion {}", one!())
-LL -     }
+LL ~
 LL +     assert!(!a.is_empty(), "with expansion {}", one!());
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:87:5
+  --> tests/ui/manual_assert.rs:85:5
    |
 LL | /     if a > 2 {
 LL | |
@@ -156,22 +132,20 @@ LL | |         panic!("panic with comment") // comment after `panic!`
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if a > 2 {
-LL -
-LL -         // comment
-LL -         /* this is a
-LL -         multiline
-LL -         comment */
-LL -         /// Doc comment
-LL -         panic!("panic with comment") // comment after `panic!`
-LL -     }
+LL ~
+LL +     // comment
+LL +     /* this is a
+LL +             multiline
+LL +             comment */
+LL +     /// Doc comment
+LL +     // comment after `panic!`
 LL +     assert!(a <= 2, "panic with comment");
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:102:25
+  --> tests/ui/manual_assert.rs:100:25
    |
 LL |           const BAR: () = if N == 0 {
    |  _________________________^
@@ -180,17 +154,14 @@ LL | |             panic!()
 LL | |         };
    | |_________^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -         const BAR: () = if N == 0 {
-LL -
-LL -             panic!()
-LL -         };
-LL +         const BAR: () = assert!(N != 0, );
+LL ~         const BAR: () =
+LL ~         assert!(N != 0, );
    |
 
 error: only a `panic!` in `if`-then statement
-  --> tests/ui/manual_assert.rs:116:5
+  --> tests/ui/manual_assert.rs:114:5
    |
 LL | /     if !is_x86_feature_detected!("ssse3") {
 LL | |
@@ -198,12 +169,9 @@ LL | |         panic!("SSSE3 is not supported");
 LL | |     }
    | |_____^
    |
-help: try instead
+help: replace `if`-then-`panic!` with `assert!`
    |
-LL -     if !is_x86_feature_detected!("ssse3") {
-LL -
-LL -         panic!("SSSE3 is not supported");
-LL -     }
+LL ~
 LL +     assert!(is_x86_feature_detected!("ssse3"), "SSSE3 is not supported");
    |
 

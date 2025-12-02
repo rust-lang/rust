@@ -5,14 +5,11 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-#![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![doc(rust_logo)]
 #![feature(decl_macro)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
-#![feature(rustdoc_internals)]
+#![feature(trim_prefix_suffix)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
@@ -269,7 +266,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
-        expanded_args: args,
     };
 
     callbacks.config(&mut config);
@@ -467,7 +463,7 @@ pub enum Compilation {
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    if let Ok(code) = upper_cased_code.strip_prefix('E').unwrap_or(&upper_cased_code).parse::<u32>()
+    if let Ok(code) = upper_cased_code.trim_prefix('E').parse::<u32>()
         && code <= ErrCode::MAX_AS_U32
         && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
     {
@@ -521,11 +517,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     };
 
     // Try to prettify the raw markdown text. The result can be used by the pager or on stdout.
-    let pretty_data = {
+    let mut pretty_data = {
         let mdstream = markdown::MdStream::parse_str(content);
         let bufwtr = markdown::create_stdout_bufwtr();
-        let mut mdbuf = bufwtr.buffer();
-        if mdstream.write_termcolor_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
+        let mut mdbuf = Vec::new();
+        if mdstream.write_anstream_buf(&mut mdbuf).is_ok() { Some((bufwtr, mdbuf)) } else { None }
     };
 
     // Try to print via the pager, pretty output if possible.
@@ -546,8 +542,8 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
-    if let Some((bufwtr, mdbuf)) = &pretty_data
-        && bufwtr.print(mdbuf).is_ok()
+    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+        && bufwtr.write_all(&mdbuf).is_ok()
     {
         return;
     }
@@ -687,7 +683,12 @@ fn print_crate_info(
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let crate_name = passes::get_crate_name(sess, attrs);
-                let crate_types = collect_crate_types(sess, attrs);
+                let crate_types = collect_crate_types(
+                    sess,
+                    &codegen_backend.supported_crate_types(sess),
+                    codegen_backend.name(),
+                    attrs,
+                );
                 for &style in &crate_types {
                     let fname = rustc_session::output::filename_for_input(
                         sess, style, crate_name, &t_outputs,
@@ -1263,7 +1264,7 @@ fn warn_on_confusing_output_filename_flag(
     if let Some(name) = matches.opt_str("o")
         && let Some(suspect) = args.iter().find(|arg| arg.starts_with("-o") && *arg != "-o")
     {
-        let filename = suspect.strip_prefix("-").unwrap_or(suspect);
+        let filename = suspect.trim_prefix("-");
         let optgroups = config::rustc_optgroups();
         let fake_args = ["optimize", "o0", "o1", "o2", "o3", "ofast", "og", "os", "oz"];
 

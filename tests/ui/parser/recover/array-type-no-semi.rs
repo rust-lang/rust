@@ -14,4 +14,6 @@ fn main() {
     //~| ERROR attempt to use a non-constant value in a constant [E0435]
     let e: [i32 5];
     //~^ ERROR expected `;` or `]`, found `5`
+    let f: [i32: 1 - 1];
+    //~^ ERROR expected `;` or `]`, found `:`
 }

@@ -74,9 +74,9 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             }
 
             // delete comparison statement if it the value being switched on was moved, which means
-            // it can not be user later on
+            // it can not be used later on
             if opt.can_remove_bin_op_stmt {
-                bb.statements[opt.bin_op_stmt_idx].make_nop();
+                bb.statements[opt.bin_op_stmt_idx].make_nop(true);
             } else {
                 // if the integer being compared to a const integral is being moved into the
                 // comparison, e.g `_2 = Eq(move _3, const 'x');`
@@ -136,7 +136,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {
-            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop();
+            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop(true);
         }
 
         for (idx, stmt) in storage_deads_to_insert {

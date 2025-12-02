@@ -1382,10 +1382,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// The constraints we get from equating the hidden type of each use of an opaque
-    /// with its final concrete type may end up getting preferred over other, potentially
+    /// with its final hidden type may end up getting preferred over other, potentially
     /// longer constraint paths.
     ///
-    /// Given that we compute the final concrete type by relying on this existing constraint
+    /// Given that we compute the final hidden type by relying on this existing constraint
     /// path, this can easily end up hiding the actual reason for why we require these regions
     /// to be equal.
     ///

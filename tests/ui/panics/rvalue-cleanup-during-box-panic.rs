@@ -21,6 +21,7 @@
 // scenario worth testing.
 
 //@ needs-threads
+//@ ignore-backends: gcc
 
 use std::thread;
 

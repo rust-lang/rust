@@ -1,5 +1,6 @@
 //@ revisions: rpass1 rpass2
 //@ aux-build:invalid-span-helper-lib.rs
+//@ ignore-backends: gcc
 
 // This issue has several different parts. The high level idea is:
 // 1. We create an 'invalid' span with the help of the `respan` proc-macro,

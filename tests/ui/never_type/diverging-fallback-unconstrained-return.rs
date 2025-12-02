@@ -4,12 +4,10 @@
 // in the objc crate, where changing the fallback from `!` to `()`
 // resulted in unsoundness.
 //
-//@ check-pass
-
 //@ revisions: nofallback fallback
+//@[fallback] edition: 2024
 
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
-#![allow(unit_bindings)]
+#![expect(unit_bindings)]
 
 fn make_unit() {}
 
@@ -26,7 +24,7 @@ fn unconstrained_return<T: UnitReturn>() -> T {
 }
 
 fn main() {
-    //[nofallback]~^ warn: this function depends on never type fallback being `()`
+    //[nofallback]~^ error: this function depends on never type fallback being `()`
     //[nofallback]~| warn: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
 
     // In Ye Olde Days, the `T` parameter of `unconstrained_return`
@@ -36,5 +34,5 @@ fn main() {
     // idea was to change that fallback to `!`, but that would have resulted
     // in this code no longer compiling (or worse, in some cases it injected
     // unsound results).
-    let _ = if true { unconstrained_return() } else { panic!() };
+    let _ = if true { unconstrained_return() } else { panic!() }; //[fallback]~ error: the trait bound `!: UnitReturn` is not satisfied
 }

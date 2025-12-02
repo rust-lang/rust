@@ -353,8 +353,16 @@ pub fn write_mir_pretty<'tcx>(
             // are shared between mir_for_ctfe and optimized_mir
             writer.write_mir_fn(tcx.mir_for_ctfe(def_id), w)?;
         } else {
-            let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
-            render_body(w, instance_mir)?;
+            if let Some((val, ty)) = tcx.trivial_const(def_id) {
+                ty::print::with_forced_impl_filename_line! {
+                    // see notes on #41697 elsewhere
+                    write!(w, "const {}", tcx.def_path_str(def_id))?
+                }
+                writeln!(w, ": {} = const {};", ty, Const::Val(val, ty))?;
+            } else {
+                let instance_mir = tcx.instance_mir(ty::InstanceKind::Item(def_id));
+                render_body(w, instance_mir)?;
+            }
         }
     }
     Ok(())
@@ -719,6 +727,11 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
         let mut current_location = Location { block, statement_index: 0 };
         for statement in &data.statements {
             (self.extra_data)(PassWhere::BeforeLocation(current_location), w)?;
+
+            for debuginfo in statement.debuginfos.iter() {
+                writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
+            }
+
             let indented_body = format!("{INDENT}{INDENT}{statement:?};");
             if self.options.include_extra_comments {
                 writeln!(
@@ -747,6 +760,10 @@ impl<'de, 'tcx> MirWriter<'de, 'tcx> {
             (self.extra_data)(PassWhere::AfterLocation(current_location), w)?;
 
             current_location.statement_index += 1;
+        }
+
+        for debuginfo in data.after_last_stmt_debuginfos.iter() {
+            writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
         }
 
         // Terminator at the bottom.
@@ -809,7 +826,6 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }
-            Deinit(ref place) => write!(fmt, "Deinit({place:?})"),
             PlaceMention(ref place) => {
                 write!(fmt, "PlaceMention({place:?})")
             }
@@ -824,6 +840,19 @@ impl Debug for Statement<'_> {
                 // For now, we don't record the reason because there is only one use case,
                 // which is to report breaking change in drop order by Edition 2024
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
+            }
+        }
+    }
+}
+
+impl Debug for StmtDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StmtDebugInfo::AssignRef(local, place) => {
+                write!(fmt, "{local:?} = &{place:?}")
+            }
+            StmtDebugInfo::InvalidAssign(local) => {
+                write!(fmt, "{local:?} = &?")
             }
         }
     }
@@ -1068,16 +1097,15 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{op:?}({a:?}, {b:?})"),
             UnaryOp(ref op, ref a) => write!(fmt, "{op:?}({a:?})"),
             Discriminant(ref place) => write!(fmt, "discriminant({place:?})"),
-            NullaryOp(ref op, ref t) => {
-                let t = with_no_trimmed_paths!(format!("{}", t));
-                match op {
-                    NullOp::SizeOf => write!(fmt, "SizeOf({t})"),
-                    NullOp::AlignOf => write!(fmt, "AlignOf({t})"),
-                    NullOp::OffsetOf(fields) => write!(fmt, "OffsetOf({t}, {fields:?})"),
-                    NullOp::UbChecks => write!(fmt, "UbChecks()"),
-                    NullOp::ContractChecks => write!(fmt, "ContractChecks()"),
+            NullaryOp(ref op) => match op {
+                NullOp::RuntimeChecks(RuntimeChecks::UbChecks) => write!(fmt, "UbChecks()"),
+                NullOp::RuntimeChecks(RuntimeChecks::ContractChecks) => {
+                    write!(fmt, "ContractChecks()")
                 }
-            }
+                NullOp::RuntimeChecks(RuntimeChecks::OverflowChecks) => {
+                    write!(fmt, "OverflowChecks()")
+                }
+            },
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();
                 write!(fmt, "&/*tls*/ {}{}", muta, tcx.def_path_str(did))
@@ -1274,7 +1302,6 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
     for &elem in projection.iter().rev() {
         match elem {
             ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::Subtype(_)
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::Field(_, _) => {
                 write!(fmt, "(")?;
@@ -1299,9 +1326,6 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
         match elem {
             ProjectionElem::OpaqueCast(ty) => {
                 write!(fmt, " as {ty})")?;
-            }
-            ProjectionElem::Subtype(ty) => {
-                write!(fmt, " as subtype {ty})")?;
             }
             ProjectionElem::Downcast(Some(name), _index) => {
                 write!(fmt, " as {name})")?;
@@ -1763,7 +1787,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if let Some((prov, idx)) = alloc.provenance().get_byte(i, &tcx) {
+        } else if let Some(frag) = alloc.provenance().get_byte(i, &tcx) {
             // Memory with provenance must be defined
             assert!(
                 alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
@@ -1773,7 +1797,8 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼")?;
+            // FIXME: Find a way to print `frag.offset` that does not look terrible...
+            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼", prov = frag.prov, idx = frag.idx)?;
             i += Size::from_bytes(1);
         } else if alloc
             .init_mask()
@@ -1841,6 +1866,13 @@ fn pretty_print_const_value_tcx<'tcx>(
 
     if tcx.sess.verbose_internals() {
         fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
+        return Ok(());
+    }
+
+    // Printing [MaybeUninit<u8>::uninit(); N] or any other aggregate where all fields are uninit
+    // becomes very verbose. This special case makes the dump terse and clear.
+    if ct.all_bytes_uninit(tcx) {
+        fmt.write_str("<uninit>")?;
         return Ok(());
     }
 

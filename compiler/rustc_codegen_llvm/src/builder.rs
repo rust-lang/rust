@@ -1,11 +1,12 @@
 use std::borrow::{Borrow, Cow};
+use std::iter;
 use std::ops::Deref;
-use std::{iter, ptr};
 
+use rustc_ast::expand::typetree::FncTree;
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
-use libc::{c_char, c_uint, size_t};
+use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
@@ -15,8 +16,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature, TargetFeatureKind};
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     TyAndLayout,
@@ -26,7 +26,7 @@ use rustc_sanitizers::{cfi, kcfi};
 use rustc_session::config::OptLevel;
 use rustc_span::Span;
 use rustc_target::callconv::{FnAbi, PassMode};
-use rustc_target::spec::{HasTargetSpec, SanitizerSet, Target};
+use rustc_target::spec::{Arch, HasTargetSpec, SanitizerSet, Target};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -35,11 +35,10 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, FromGeneric, GEPNoWrapFlags, Metadata, TRUE,
+    ToLlvmBool, Type, Value,
 };
-use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
-use crate::value::Value;
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -395,10 +394,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             md.push(weight(is_cold));
         }
 
-        unsafe {
-            let md_node = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len() as size_t);
-            self.cx.set_metadata(switch, llvm::MD_prof, md_node);
-        }
+        self.cx.set_metadata_node(switch, llvm::MD_prof, &md);
     }
 
     fn invoke(
@@ -642,13 +638,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         size: Size,
     ) -> &'ll Value {
         unsafe {
-            let load = llvm::LLVMRustBuildAtomicLoad(
-                self.llbuilder,
-                ty,
-                ptr,
-                UNNAMED,
-                AtomicOrdering::from_generic(order),
-            );
+            let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            // Set atomic ordering
+            llvm::LLVMSetOrdering(load, AtomicOrdering::from_generic(order));
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
             load
@@ -759,7 +751,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             OperandValue::Ref(place.val)
         };
 
-        OperandRef { val, layout: place.layout }
+        OperandRef { val, layout: place.layout, move_annotation: None }
     }
 
     fn write_operand_repeatedly(
@@ -768,30 +760,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) {
-        let zero = self.const_usize(0);
-        let count = self.const_usize(count);
-
-        let header_bb = self.append_sibling_block("repeat_loop_header");
-        let body_bb = self.append_sibling_block("repeat_loop_body");
-        let next_bb = self.append_sibling_block("repeat_loop_next");
-
-        self.br(header_bb);
-
-        let mut header_bx = Self::build(self.cx, header_bb);
-        let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
-
-        let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
-        header_bx.cond_br(keep_going, body_bb, next_bb);
-
-        let mut body_bx = Self::build(self.cx, body_bb);
-        let dest_elem = dest.project_index(&mut body_bx, i);
-        cg_elem.val.store(&mut body_bx, dest_elem);
-
-        let next = body_bx.unchecked_uadd(i, self.const_usize(1));
-        body_bx.br(header_bb);
-        header_bx.add_incoming_to_phi(i, next, body_bb);
-
-        *self = Self::build(self.cx, next_bb);
+        if self.cx.sess().opts.optimize == OptLevel::No {
+            // To let debuggers single-step over lines like
+            //
+            //     let foo = ["bar"; 42];
+            //
+            // we need the debugger-friendly LLVM IR that `_unoptimized()`
+            // provides. The `_optimized()` version generates trickier LLVM IR.
+            // See PR #148058 for a failed attempt at handling that.
+            self.write_operand_repeatedly_unoptimized(cg_elem, count, dest);
+        } else {
+            self.write_operand_repeatedly_optimized(cg_elem, count, dest);
+        }
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -800,22 +780,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        unsafe {
-            let llty = self.cx.val_ty(load);
-            let md = [
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
-                llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
-            ];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_range, md);
-        }
+        let llty = self.cx.val_ty(load);
+        let md = [
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.start)),
+            llvm::LLVMValueAsMetadata(self.cx.const_uint_big(llty, range.end.wrapping_add(1))),
+        ];
+        self.set_metadata_node(load, llvm::MD_range, &md);
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_nonnull, md);
-        }
+        self.set_metadata_node(load, llvm::MD_nonnull, &[]);
     }
 
     fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
@@ -853,19 +827,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 // operation. But it's not clear how to do that with LLVM.)
                 // For more context, see <https://github.com/rust-lang/rust/issues/114582> and
                 // <https://github.com/llvm/llvm-project/issues/64521>.
-                const WELL_BEHAVED_NONTEMPORAL_ARCHS: &[&str] =
-                    &["aarch64", "arm", "riscv32", "riscv64"];
-
-                let use_nontemporal =
-                    WELL_BEHAVED_NONTEMPORAL_ARCHS.contains(&&*self.cx.tcx.sess.target.arch);
+                let use_nontemporal = matches!(
+                    self.cx.tcx.sess.target.arch,
+                    Arch::AArch64 | Arch::Arm | Arch::RiscV32 | Arch::RiscV64
+                );
                 if use_nontemporal {
                     // According to LLVM [1] building a nontemporal store must
                     // *always* point to a metadata value of the integer 1.
                     //
                     // [1]: https://llvm.org/docs/LangRef.html#store-instruction
                     let one = llvm::LLVMValueAsMetadata(self.cx.const_i32(1));
-                    let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, &one, 1);
-                    self.set_metadata(store, llvm::MD_nontemporal, md);
+                    self.set_metadata_node(store, llvm::MD_nontemporal, &[one]);
                 }
             }
             store
@@ -882,12 +854,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("Store {:?} -> {:?}", val, ptr);
         assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
-            let store = llvm::LLVMRustBuildAtomicStore(
-                self.llbuilder,
-                val,
-                ptr,
-                AtomicOrdering::from_generic(order),
-            );
+            let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            // Set atomic ordering
+            llvm::LLVMSetOrdering(store, AtomicOrdering::from_generic(order));
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
         }
@@ -1107,11 +1076,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         src_align: Align,
         size: &'ll Value,
         flags: MemFlags,
+        tt: Option<FncTree>,
     ) {
         assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        unsafe {
+        let memcpy = unsafe {
             llvm::LLVMRustBuildMemCpy(
                 self.llbuilder,
                 dst,
@@ -1120,7 +1090,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src_align.bytes() as c_uint,
                 size,
                 is_volatile,
-            );
+            )
+        };
+
+        // TypeTree metadata for memcpy is especially important: when Enzyme encounters
+        // a memcpy during autodiff, it needs to know the structure of the data being
+        // copied to properly track derivatives. For example, copying an array of floats
+        // vs. copying a struct with mixed types requires different derivative handling.
+        // The TypeTree tells Enzyme exactly what memory layout to expect.
+        if let Some(tt) = tt {
+            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
         }
     }
 
@@ -1370,10 +1349,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_invariant_load(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_invariant_load, md);
-        }
+        self.set_metadata_node(load, llvm::MD_invariant_load, &[]);
     }
 
     fn lifetime_start(&mut self, ptr: &'ll Value, size: Size) {
@@ -1429,14 +1405,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // Attributes on the function definition being called
             let fn_defn_attrs = self.cx.tcx.codegen_fn_attrs(instance.def_id());
             if let Some(fn_call_attrs) = fn_call_attrs
-                && !fn_call_attrs.target_features.is_empty()
                 // If there is an inline attribute and a target feature that matches
                 // we will add the attribute to the callsite otherwise we'll omit
                 // this and not add the attribute to prevent soundness issues.
-                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, instance)
+                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, self.cx.tcx, instance)
                 && self.cx.tcx.is_target_feature_call_safe(
-                    &fn_call_attrs.target_features,
                     &fn_defn_attrs.target_features,
+                    &fn_call_attrs.target_features.iter().cloned().chain(
+                        self.cx.tcx.sess.target_features.iter().map(|feat| TargetFeature {
+                            name: *feat,
+                            kind: TargetFeatureKind::Implied,
+                        })
+                    ).collect::<Vec<_>>(),
                 )
             {
                 attributes::apply_to_callsite(
@@ -1468,10 +1448,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         match &fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => self.ret_void(),
-            PassMode::Direct(_) | PassMode::Pair { .. } => self.ret(call),
-            mode @ PassMode::Cast { .. } => {
-                bug!("Encountered `PassMode::{mode:?}` during codegen")
-            }
+            PassMode::Direct(_) | PassMode::Pair { .. } | PassMode::Cast { .. } => self.ret(call),
         }
     }
 
@@ -1517,34 +1494,96 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 }
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn align_metadata(&mut self, load: &'ll Value, align: Align) {
-        unsafe {
-            let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, md.as_ptr(), md.len());
-            self.set_metadata(load, llvm::MD_align, md);
-        }
+        let md = [llvm::LLVMValueAsMetadata(self.cx.const_u64(align.bytes()))];
+        self.set_metadata_node(load, llvm::MD_align, &md);
     }
 
     fn noundef_metadata(&mut self, load: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(load, llvm::MD_noundef, md);
-        }
+        self.set_metadata_node(load, llvm::MD_noundef, &[]);
     }
 
     pub(crate) fn set_unpredictable(&mut self, inst: &'ll Value) {
-        unsafe {
-            let md = llvm::LLVMMDNodeInContext2(self.cx.llcx, ptr::null(), 0);
-            self.set_metadata(inst, llvm::MD_unpredictable, md);
-        }
+        self.set_metadata_node(inst, llvm::MD_unpredictable, &[]);
     }
-}
-impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+
+    fn write_operand_repeatedly_optimized(
+        &mut self,
+        cg_elem: OperandRef<'tcx, &'ll Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, &'ll Value>,
+    ) {
+        let zero = self.const_usize(0);
+        let count = self.const_usize(count);
+
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
+
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
+        let i = header_bx.phi(self.val_ty(zero), &[zero], &[self.llbb()]);
+
+        let keep_going = header_bx.icmp(IntPredicate::IntULT, i, count);
+        header_bx.cond_br(keep_going, body_bb, next_bb);
+
+        let mut body_bx = Self::build(self.cx, body_bb);
+        let dest_elem = dest.project_index(&mut body_bx, i);
+        cg_elem.val.store(&mut body_bx, dest_elem);
+
+        let next = body_bx.unchecked_uadd(i, self.const_usize(1));
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(i, next, body_bb);
+
+        *self = Self::build(self.cx, next_bb);
+    }
+
+    fn write_operand_repeatedly_unoptimized(
+        &mut self,
+        cg_elem: OperandRef<'tcx, &'ll Value>,
+        count: u64,
+        dest: PlaceRef<'tcx, &'ll Value>,
+    ) {
+        let zero = self.const_usize(0);
+        let count = self.const_usize(count);
+        let start = dest.project_index(self, zero).val.llval;
+        let end = dest.project_index(self, count).val.llval;
+
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
+
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
+        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+
+        let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
+        header_bx.cond_br(keep_going, body_bb, next_bb);
+
+        let mut body_bx = Self::build(self.cx, body_bb);
+        let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        cg_elem
+            .val
+            .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
+
+        let next = body_bx.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current,
+            &[self.const_usize(1)],
+        );
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(current, next, body_bb);
+
+        *self = Self::build(self.cx, next_bb);
+    }
+
     pub(crate) fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs) }
+        self.call_intrinsic("llvm.minnum", &[self.val_ty(lhs)], &[lhs, rhs])
     }
 
     pub(crate) fn maxnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs) }
+        self.call_intrinsic("llvm.maxnum", &[self.val_ty(lhs)], &[lhs, rhs])
     }
 
     pub(crate) fn insert_element(
@@ -1566,10 +1605,10 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     }
 
     pub(crate) fn vector_reduce_fadd(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src) }
+        self.call_intrinsic("llvm.vector.reduce.fadd", &[self.val_ty(src)], &[acc, src])
     }
     pub(crate) fn vector_reduce_fmul(&mut self, acc: &'ll Value, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src) }
+        self.call_intrinsic("llvm.vector.reduce.fmul", &[self.val_ty(src)], &[acc, src])
     }
     pub(crate) fn vector_reduce_fadd_reassoc(
         &mut self,
@@ -1577,7 +1616,8 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         src: &'ll Value,
     ) -> &'ll Value {
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fadd", &[self.val_ty(src)], &[acc, src]);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
@@ -1588,43 +1628,49 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         src: &'ll Value,
     ) -> &'ll Value {
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
+            let instr =
+                self.call_intrinsic("llvm.vector.reduce.fmul", &[self.val_ty(src)], &[acc, src]);
             llvm::LLVMRustSetAllowReassoc(instr);
             instr
         }
     }
     pub(crate) fn vector_reduce_add(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.add", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_mul(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.mul", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_and(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.and", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_or(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.or", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_xor(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src) }
+        self.call_intrinsic("llvm.vector.reduce.xor", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_fmin(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false)
-        }
+        self.call_intrinsic("llvm.vector.reduce.fmin", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_fmax(&mut self, src: &'ll Value) -> &'ll Value {
-        unsafe {
-            llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false)
-        }
+        self.call_intrinsic("llvm.vector.reduce.fmax", &[self.val_ty(src)], &[src])
     }
     pub(crate) fn vector_reduce_min(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed) }
+        self.call_intrinsic(
+            if is_signed { "llvm.vector.reduce.smin" } else { "llvm.vector.reduce.umin" },
+            &[self.val_ty(src)],
+            &[src],
+        )
     }
     pub(crate) fn vector_reduce_max(&mut self, src: &'ll Value, is_signed: bool) -> &'ll Value {
-        unsafe { llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed) }
+        self.call_intrinsic(
+            if is_signed { "llvm.vector.reduce.smax" } else { "llvm.vector.reduce.umax" },
+            &[self.val_ty(src)],
+            &[src],
+        )
     }
-
+}
+impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     pub(crate) fn add_clause(&mut self, landing_pad: &'ll Value, clause: &'ll Value) {
         unsafe {
             llvm::LLVMAddClause(landing_pad, clause);
@@ -1816,7 +1862,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::CFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::CFI)
             {
                 return;
             }
@@ -1874,7 +1920,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             && is_indirect_call
         {
             if let Some(fn_attrs) = fn_attrs
-                && fn_attrs.no_sanitize.contains(SanitizerSet::KCFI)
+                && fn_attrs.sanitizers.disabled.contains(SanitizerSet::KCFI)
             {
                 return None;
             }

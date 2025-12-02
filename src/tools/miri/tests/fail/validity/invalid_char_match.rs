@@ -20,7 +20,7 @@ fn switch_int(ptr: *const char) {
     }
 }
 
-pub fn main() {
+fn main() {
     let v = u32::MAX;
     switch_int(&v as *const u32 as *const char);
 }

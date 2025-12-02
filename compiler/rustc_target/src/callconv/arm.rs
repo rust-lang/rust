@@ -65,6 +65,10 @@ where
         // Not touching this...
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(32);
         return;
@@ -77,7 +81,7 @@ where
         }
     }
 
-    let align = arg.layout.align.abi.bytes();
+    let align = arg.layout.align.bytes();
     let total = arg.layout.size;
     arg.cast_to(Uniform::consecutive(if align <= 4 { Reg::i32() } else { Reg::i64() }, total));
 }

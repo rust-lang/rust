@@ -1,6 +1,6 @@
 #![warn(clippy::match_overlapping_arm)]
 #![allow(clippy::redundant_pattern_matching)]
-#![allow(clippy::if_same_then_else, clippy::equatable_if_let, clippy::needless_if)]
+#![allow(clippy::if_same_then_else, clippy::equatable_if_let, clippy::needless_ifs)]
 
 fn overlapping() {
     const FOO: u64 = 2;

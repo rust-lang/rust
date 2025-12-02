@@ -23,13 +23,13 @@ if let ExprKind::Block(block, None) = expr.kind
     && let StmtKind::Let(local) = block.stmts[0].kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
-    && is_path_diagnostic_item(cx, func, sym::string_new)
+    && func.res(cx).is_diag_item(cx, sym::string_new)
     && args.is_empty()
     && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "expr"
     && let Some(trailing_expr) = block.expr
     && let ExprKind::Call(func1, args1) = trailing_expr.kind
-    && is_path_diagnostic_item(cx, func1, sym::mem_drop)
+    && func1.res(cx).is_diag_item(cx, sym::mem_drop)
     && args1.len() == 1
 {
     // report your lint here

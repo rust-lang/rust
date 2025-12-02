@@ -50,7 +50,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
             Some(sm),
             translator,
             true, // pretty
-            HumanReadableErrorType::Short,
+            HumanReadableErrorType::Default { short: true },
             ColorConfig::Never,
         );
 

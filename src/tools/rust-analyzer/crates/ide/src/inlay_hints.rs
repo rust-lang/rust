@@ -9,10 +9,11 @@ use hir::{
     HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
 use ide_db::{
-    FileRange, RootDatabase, base_db::salsa, famous_defs::FamousDefs, text_edit::TextEditBuilder,
+    FileRange, MiniCore, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder,
 };
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use syntax::{
@@ -39,6 +40,8 @@ mod implicit_static;
 mod implied_dyn_trait;
 mod lifetime;
 mod param_name;
+mod placeholders;
+mod ra_fixture;
 mod range_exclusive;
 
 // Feature: Inlay Hints
@@ -82,13 +85,11 @@ pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     range_limit: Option<TextRange>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
 ) -> Vec<InlayHint> {
     let _p = tracing::info_span!("inlay_hints").entered();
     let sema = Semantics::new(db);
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let file_id = sema.attach_first_edition(file_id);
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -107,7 +108,7 @@ pub(crate) fn inlay_hints(
         }
     };
     let mut preorder = file.preorder();
-    salsa::attach(sema.db, || {
+    hir::attach_db(sema.db, || {
         while let Some(event) = preorder.next() {
             if matches!((&event, range_limit), (WalkEvent::Enter(node), Some(range)) if range.intersect(node.text_range()).is_none())
             {
@@ -134,14 +135,12 @@ pub(crate) fn inlay_hints_resolve(
     file_id: FileId,
     resolve_range: TextRange,
     hash: u64,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     hasher: impl Fn(&InlayHint) -> u64,
 ) -> Option<InlayHint> {
     let _p = tracing::info_span!("inlay_hints_resolve").entered();
     let sema = Semantics::new(db);
-    let file_id = sema
-        .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+    let file_id = sema.attach_first_edition(file_id);
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -210,7 +209,7 @@ fn hints(
     hints: &mut Vec<InlayHint>,
     ctx: &mut InlayHintCtx,
     famous_defs @ FamousDefs(sema, _krate): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     file_id: EditionedFileId,
     display_target: DisplayTarget,
     node: SyntaxNode,
@@ -241,6 +240,7 @@ fn hints(
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, it),
+                    ast::Expr::Literal(it) => ra_fixture::hints(hints, famous_defs.0, file_id, config, it),
                     _ => Some(()),
                 }
             },
@@ -288,6 +288,10 @@ fn hints(
                     implied_dyn_trait::hints(hints, famous_defs, config, Either::Right(dyn_));
                     Some(())
                 },
+                ast::Type::InferType(placeholder) => {
+                    placeholders::type_hints(hints, famous_defs, config, display_target, placeholder);
+                    Some(())
+                },
                 _ => Some(()),
             },
             ast::GenericParamList(it) => bounds::hints(hints, famous_defs, config,  it),
@@ -296,8 +300,8 @@ fn hints(
     };
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InlayHintsConfig {
+#[derive(Clone, Debug)]
+pub struct InlayHintsConfig<'a> {
     pub render_colons: bool,
     pub type_hints: bool,
     pub sized_bound: bool,
@@ -313,6 +317,7 @@ pub struct InlayHintsConfig {
     pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
     pub implicit_drop_hints: bool,
+    pub implied_dyn_trait_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
@@ -323,9 +328,10 @@ pub struct InlayHintsConfig {
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
+    pub minicore: MiniCore<'a>,
 }
 
-impl InlayHintsConfig {
+impl InlayHintsConfig<'_> {
     fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> LazyProperty<TextEdit> {
         if self.fields_to_resolve.resolve_text_edits {
             LazyProperty::Lazy
@@ -468,7 +474,7 @@ pub enum InlayHintPosition {
     After,
 }
 
-#[derive(Debug)]
+#[derive(Debug, UpmapFromRaFixture)]
 pub struct InlayHint {
     /// The text range this inlay hint applies to.
     pub range: TextRange,
@@ -487,9 +493,10 @@ pub struct InlayHint {
 }
 
 /// A type signaling that a value is either computed, or is available for computation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, UpmapFromRaFixture)]
 pub enum LazyProperty<T> {
     Computed(T),
+    #[default]
     Lazy,
 }
 
@@ -539,7 +546,7 @@ pub enum InlayTooltip {
     Markdown(String),
 }
 
-#[derive(Default, Hash)]
+#[derive(Default, Hash, UpmapFromRaFixture)]
 pub struct InlayHintLabel {
     pub parts: SmallVec<[InlayHintLabelPart; 1]>,
 }
@@ -625,6 +632,7 @@ impl fmt::Debug for InlayHintLabel {
     }
 }
 
+#[derive(UpmapFromRaFixture)]
 pub struct InlayHintLabelPart {
     pub text: String,
     /// Source location represented by this label part. The client will use this to fetch the part's
@@ -726,7 +734,7 @@ impl InlayHintLabelBuilder<'_> {
 
 fn label_of_ty(
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     ty: &hir::Type<'_>,
     display_target: DisplayTarget,
 ) -> Option<InlayHintLabel> {
@@ -736,10 +744,10 @@ fn label_of_ty(
         mut max_length: Option<usize>,
         ty: &hir::Type<'_>,
         label_builder: &mut InlayHintLabelBuilder<'_>,
-        config: &InlayHintsConfig,
+        config: &InlayHintsConfig<'_>,
         display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
-        salsa::attach(sema.db, || {
+        hir::attach_db(sema.db, || {
             let iter_item_type = hint_iterator(sema, famous_defs, ty);
             match iter_item_type {
                 Some((iter_trait, item, ty)) => {
@@ -831,7 +839,7 @@ fn hint_iterator<'db>(
 
 fn ty_to_text_edit(
     sema: &Semantics<'_, RootDatabase>,
-    config: &InlayHintsConfig,
+    config: &InlayHintsConfig<'_>,
     node_for_hint: &SyntaxNode,
     ty: &hir::Type<'_>,
     offset_to_insert_ty: TextSize,
@@ -862,6 +870,7 @@ mod tests {
 
     use expect_test::Expect;
     use hir::ClosureStyle;
+    use ide_db::MiniCore;
     use itertools::Itertools;
     use test_utils::extract_annotations;
 
@@ -871,7 +880,7 @@ mod tests {
 
     use super::{ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve};
 
-    pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
+    pub(super) const DISABLED_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
         render_colons: false,
         type_hints: false,
@@ -900,9 +909,11 @@ mod tests {
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
         implicit_drop_hints: false,
+        implied_dyn_trait_hints: false,
         range_exclusive_hints: false,
+        minicore: MiniCore::default(),
     };
-    pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
+    pub(super) const TEST_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
@@ -919,7 +930,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_with_config(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
@@ -938,7 +949,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_expect(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {
@@ -953,7 +964,7 @@ mod tests {
     /// expect test.
     #[track_caller]
     pub(super) fn check_edit(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {
@@ -976,7 +987,7 @@ mod tests {
 
     #[track_caller]
     pub(super) fn check_no_edit(
-        config: InlayHintsConfig,
+        config: InlayHintsConfig<'_>,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);

@@ -197,7 +197,7 @@ fn main() {
 
         // Include path contains host directory, replace it with target
         if is_crossed && flag.starts_with("-I") {
-            cfg.flag(&flag.replace(&host, &target));
+            cfg.flag(flag.replace(&host, &target));
             continue;
         }
 
@@ -212,6 +212,10 @@ fn main() {
 
     if tracked_env_var_os("LLVM_ENZYME").is_some() {
         cfg.define("ENZYME", None);
+    }
+
+    if tracked_env_var_os("LLVM_OFFLOAD").is_some() {
+        cfg.define("OFFLOAD", None);
     }
 
     if tracked_env_var_os("LLVM_RUSTLLVM").is_some() {

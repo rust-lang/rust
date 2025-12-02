@@ -77,7 +77,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
 
-                let cfg = ctx.config.find_path_confg(ctx.sema.is_nightly(current_module.krate()));
+                let cfg = ctx.config.find_path_config(ctx.sema.is_nightly(current_module.krate()));
                 let type_path = current_module.find_path(
                     ctx.sema.db,
                     item_for_path_search(ctx.sema.db, item_in_ns)?,

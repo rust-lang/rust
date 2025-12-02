@@ -33,6 +33,7 @@ fn main() {
         // armv7s-apple-ios and i386-apple-ios only supports iOS 10.0
         "ios" if target() == "armv7s-apple-ios" || target() == "i386-apple-ios" => ("10.0", "10.0"),
         "ios" => ("15.0", "16.0"),
+        "watchos" if target() == "aarch64-apple-watchos" => ("28.0", "30.0"),
         "watchos" => ("7.0", "9.0"),
         "tvos" => ("14.0", "15.0"),
         "visionos" => ("1.1", "1.2"),

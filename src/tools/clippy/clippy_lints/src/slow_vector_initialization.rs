@@ -1,10 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{
-    SpanlessEq, get_enclosing_block, is_integer_literal, is_path_diagnostic_item, path_to_local, path_to_local_id,
-    span_contains_comment, sym,
-};
+use clippy_utils::{SpanlessEq, get_enclosing_block, is_integer_literal, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
@@ -102,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
         if let ExprKind::Assign(left, right, _) = expr.kind
-            && let Some(local_id) = path_to_local(left)
+            && let Some(local_id) = left.res_local_id()
             && let Some(size_expr) = Self::as_vec_initializer(cx, right)
         {
             let vi = VecAllocation {
@@ -149,10 +147,10 @@ impl SlowVectorInit {
         }
 
         if let ExprKind::Call(func, [len_expr]) = expr.kind
-            && is_path_diagnostic_item(cx, func, sym::vec_with_capacity)
+            && func.ty_rel_def(cx).is_diag_item(cx, sym::vec_with_capacity)
         {
             Some(InitializedSize::Initialized(len_expr))
-        } else if matches!(expr.kind, ExprKind::Call(func, []) if is_path_diagnostic_item(cx, func, sym::vec_new)) {
+        } else if matches!(expr.kind, ExprKind::Call(func, []) if func.ty_rel_def(cx).is_diag_item(cx, sym::vec_new)) {
             Some(InitializedSize::Uninitialized)
         } else {
             None
@@ -246,7 +244,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind
-            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && self_arg.res_local_id() == Some(self.vec_alloc.local_id)
             && path.ident.name == sym::extend
             && self.is_repeat_take(extend_arg)
         {
@@ -258,7 +256,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'tcx>) {
         if self.initialization_found
             && let ExprKind::MethodCall(path, self_arg, [len_arg, fill_arg], _) = expr.kind
-            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && self_arg.res_local_id() == Some(self.vec_alloc.local_id)
             && path.ident.name == sym::resize
             // Check that is filled with 0
             && is_integer_literal(fill_arg, 0)
@@ -301,7 +299,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
     /// Returns `true` if given expression is `repeat(0)`
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
         if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind
-            && is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat)
+            && fn_expr.basic_res().is_diag_item(self.cx, sym::iter_repeat)
             && is_integer_literal(repeat_arg, 0)
         {
             true

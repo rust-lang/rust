@@ -1232,6 +1232,7 @@ impl<'a> State<'a> {
                     self.print_expr_anon_const(end, &[]);
                 }
             }
+            rustc_ast::TyPatKind::NotNull => self.word("!null"),
             rustc_ast::TyPatKind::Or(variants) => {
                 let mut first = true;
                 for pat in variants {
@@ -1323,11 +1324,6 @@ impl<'a> State<'a> {
                 self.word("; ");
                 self.print_expr(&length.value, FixupContext::default());
                 self.word("]");
-            }
-            ast::TyKind::Typeof(e) => {
-                self.word("typeof(");
-                self.print_expr(&e.value, FixupContext::default());
-                self.word(")");
             }
             ast::TyKind::Infer => {
                 self.word("_");
@@ -1711,10 +1707,15 @@ impl<'a> State<'a> {
                 if mutbl.is_mut() {
                     self.word_nbsp("mut");
                 }
-                if let ByRef::Yes(rmutbl) = by_ref {
+                if let ByRef::Yes(pinnedness, rmutbl) = by_ref {
                     self.word_nbsp("ref");
+                    if pinnedness.is_pinned() {
+                        self.word_nbsp("pin");
+                    }
                     if rmutbl.is_mut() {
                         self.word_nbsp("mut");
+                    } else if pinnedness.is_pinned() {
+                        self.word_nbsp("const");
                     }
                 }
                 self.print_ident(*ident);
@@ -1801,8 +1802,14 @@ impl<'a> State<'a> {
                 self.print_pat(inner);
                 self.pclose();
             }
-            PatKind::Ref(inner, mutbl) => {
+            PatKind::Ref(inner, pinned, mutbl) => {
                 self.word("&");
+                if pinned.is_pinned() {
+                    self.word("pin ");
+                    if mutbl.is_not() {
+                        self.word("const ");
+                    }
+                }
                 if mutbl.is_mut() {
                     self.word("mut ");
                 }

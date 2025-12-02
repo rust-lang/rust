@@ -1,5 +1,6 @@
 //@ proc-macro:macro_helpers.rs
 //@ compile-flags: --crate-type=lib
+//@ ignore-backends: gcc
 
 /* There are 5 preludes and 3 namespaces. Test the order in which they are resolved.
  * See https://doc.rust-lang.org/nightly/reference/names/preludes.html.

@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=3 --target x86_64-unknown-linux-gnu
 //@ needs-llvm-components: x86
 

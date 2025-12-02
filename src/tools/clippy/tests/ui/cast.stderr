@@ -764,5 +764,11 @@ error: casting `u8` to `i8` may wrap around the value
 LL |         _ = 1u8 as i8;
    |             ^^^^^^^^^
 
-error: aborting due to 94 previous errors
+error: casting `u8` to `i8` may wrap around the value
+  --> tests/ui/cast.rs:589:13
+   |
+LL |         _ = val? as i8;
+   |             ^^^^^^^^^^ help: if this is intentional, use `cast_signed()` instead: `val?.cast_signed()`
+
+error: aborting due to 95 previous errors
 

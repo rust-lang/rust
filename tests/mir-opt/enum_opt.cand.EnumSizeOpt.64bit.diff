@@ -44,7 +44,6 @@
 +         _9 = copy _8 as *mut u8 (PtrToPtr);
 +         _10 = &raw const _2;
 +         _11 = copy _10 as *const u8 (PtrToPtr);
-+         Deinit(_8);
 +         copy_nonoverlapping(dst = copy _9, src = copy _11, count = copy _7);
 +         StorageDead(_4);
 +         nop;
@@ -59,7 +58,6 @@
 +         _17 = copy _16 as *mut u8 (PtrToPtr);
 +         _18 = &raw const _1;
 +         _19 = copy _18 as *const u8 (PtrToPtr);
-+         Deinit(_16);
 +         copy_nonoverlapping(dst = copy _17, src = copy _19, count = copy _15);
 +         StorageDead(_12);
 +         nop;

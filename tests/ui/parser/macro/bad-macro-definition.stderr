@@ -52,5 +52,11 @@ error: macros must contain at least one rule
 LL | macro_rules! f {}
    | ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: `unsafe` is only supported on `attr` rules
+  --> $DIR/bad-macro-definition.rs:24:18
+   |
+LL | macro_rules! g { unsafe {} => {} }
+   |                  ^^^^^^
+
+error: aborting due to 10 previous errors
 

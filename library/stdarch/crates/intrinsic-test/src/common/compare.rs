@@ -14,15 +14,14 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
     let intrinsics = intrinsic_name_list
         .par_iter()
         .filter_map(|intrinsic_name| {
-
             let c = runner_command(runner)
-                .arg("intrinsic-test-programs")
+                .arg("./intrinsic-test-programs")
                 .arg(intrinsic_name)
                 .current_dir("c_programs")
                 .output();
 
             let rust = runner_command(runner)
-                .arg(format!("target/{target}/release/intrinsic-test-programs"))
+                .arg(format!("./target/{target}/release/intrinsic-test-programs"))
                 .arg(intrinsic_name)
                 .current_dir("rust_programs")
                 .output();
@@ -87,6 +86,10 @@ pub fn compare_outputs(intrinsic_name_list: &Vec<String>, runner: &str, target: 
             println!("Failed to run rust program for intrinsic {intrinsic}")
         }
     });
-    println!("{} differences found", intrinsics.len());
+    println!(
+        "{} differences found (tested {} intrinsics)",
+        intrinsics.len(),
+        intrinsic_name_list.len()
+    );
     intrinsics.is_empty()
 }

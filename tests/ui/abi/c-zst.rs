@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
 /*!
 C doesn't have zero-sized types... except it does.
@@ -51,6 +51,7 @@ extern "C" fn(i32, (), i32);
 //@ revisions: x86_64-pc-windows-gnu
 //@[x86_64-pc-windows-gnu] compile-flags: --target x86_64-pc-windows-gnu
 //@[x86_64-pc-windows-gnu] needs-llvm-components: x86
+//@ ignore-backends: gcc
 
 
 #![feature(no_core, rustc_attrs)]

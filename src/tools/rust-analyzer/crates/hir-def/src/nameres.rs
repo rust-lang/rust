@@ -77,7 +77,7 @@ use tt::TextRange;
 
 use crate::{
     AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, FxIndexMap,
-    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    LocalModuleId, Lookup, MacroCallStyles, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::TreeId,
@@ -391,19 +391,14 @@ pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefM
     )
     .entered();
 
-    let module_data = ModuleData::new(
-        ModuleOrigin::CrateRoot { definition: krate.root_file_id(db) },
-        Visibility::Public,
-    );
+    let root_file_id = crate_id.root_file_id(db);
+    let module_data =
+        ModuleData::new(ModuleOrigin::CrateRoot { definition: root_file_id }, Visibility::Public);
 
     let def_map =
         DefMap::empty(crate_id, Arc::new(DefMapCrateData::new(krate.edition)), module_data, None);
-    let (def_map, local_def_map) = collector::collect_defs(
-        db,
-        def_map,
-        TreeId::new(krate.root_file_id(db).into(), None),
-        None,
-    );
+    let (def_map, local_def_map) =
+        collector::collect_defs(db, def_map, TreeId::new(root_file_id.into(), None), None);
 
     DefMapPair::new(db, def_map, local_def_map)
 }
@@ -602,7 +597,7 @@ impl DefMap {
         let mut arc;
         let mut current_map = self;
         while let Some(block) = current_map.block {
-            go(&mut buf, db, current_map, "block scope", Self::ROOT);
+            go(&mut buf, db, current_map, "(block scope)", Self::ROOT);
             buf.push('\n');
             arc = block.parent.def_map(db, self.krate);
             current_map = arc;
@@ -813,26 +808,25 @@ pub enum MacroSubNs {
     Attr,
 }
 
-impl MacroSubNs {
-    fn from_id(db: &dyn DefDatabase, macro_id: MacroId) -> Self {
-        let expander = match macro_id {
-            MacroId::Macro2Id(it) => it.lookup(db).expander,
-            MacroId::MacroRulesId(it) => it.lookup(db).expander,
-            MacroId::ProcMacroId(it) => {
-                return match it.lookup(db).kind {
-                    ProcMacroKind::CustomDerive | ProcMacroKind::Attr => Self::Attr,
-                    ProcMacroKind::Bang => Self::Bang,
-                };
-            }
-        };
-
-        // Eager macros aren't *guaranteed* to be bang macros, but they *are* all bang macros currently.
-        match expander {
-            MacroExpander::Declarative
-            | MacroExpander::BuiltIn(_)
-            | MacroExpander::BuiltInEager(_) => Self::Bang,
-            MacroExpander::BuiltInAttr(_) | MacroExpander::BuiltInDerive(_) => Self::Attr,
+pub(crate) fn macro_styles_from_id(db: &dyn DefDatabase, macro_id: MacroId) -> MacroCallStyles {
+    let expander = match macro_id {
+        MacroId::Macro2Id(it) => it.lookup(db).expander,
+        MacroId::MacroRulesId(it) => it.lookup(db).expander,
+        MacroId::ProcMacroId(it) => {
+            return match it.lookup(db).kind {
+                ProcMacroKind::CustomDerive => MacroCallStyles::DERIVE,
+                ProcMacroKind::Bang => MacroCallStyles::FN_LIKE,
+                ProcMacroKind::Attr => MacroCallStyles::ATTR,
+            };
         }
+    };
+
+    match expander {
+        MacroExpander::Declarative { styles } => styles,
+        // Eager macros aren't *guaranteed* to be bang macros, but they *are* all bang macros currently.
+        MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroCallStyles::FN_LIKE,
+        MacroExpander::BuiltInAttr(_) => MacroCallStyles::ATTR,
+        MacroExpander::BuiltInDerive(_) => MacroCallStyles::DERIVE,
     }
 }
 
@@ -842,9 +836,19 @@ impl MacroSubNs {
 /// We ignore resolutions from one sub-namespace when searching names in scope for another.
 ///
 /// [rustc]: https://github.com/rust-lang/rust/blob/1.69.0/compiler/rustc_resolve/src/macros.rs#L75
-fn sub_namespace_match(candidate: Option<MacroSubNs>, expected: Option<MacroSubNs>) -> bool {
-    match (candidate, expected) {
-        (Some(candidate), Some(expected)) => candidate == expected,
-        _ => true,
+fn sub_namespace_match(
+    db: &dyn DefDatabase,
+    macro_id: MacroId,
+    expected: Option<MacroSubNs>,
+) -> bool {
+    let candidate = macro_styles_from_id(db, macro_id);
+    match expected {
+        Some(MacroSubNs::Bang) => candidate.contains(MacroCallStyles::FN_LIKE),
+        Some(MacroSubNs::Attr) => {
+            candidate.contains(MacroCallStyles::ATTR) || candidate.contains(MacroCallStyles::DERIVE)
+        }
+        // If we aren't expecting a specific sub-namespace
+        // (e.g. in `use` declarations), match any macro.
+        None => true,
     }
 }

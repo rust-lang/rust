@@ -11,13 +11,16 @@ use rustc_llvm::RustString;
 
 pub(crate) use self::CallConv::*;
 pub(crate) use self::CodeGenOptSize::*;
-pub(crate) use self::MetadataType::*;
+pub(crate) use self::conversions::*;
 pub(crate) use self::ffi::*;
+pub(crate) use self::metadata_kind::*;
 use crate::common::AsCCharPtr;
 
+mod conversions;
 pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
 mod ffi;
+mod metadata_kind;
 
 pub(crate) use self::enzyme_ffi::*;
 
@@ -38,6 +41,14 @@ pub(crate) fn AddFunctionAttributes<'ll>(
     unsafe {
         LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
+}
+
+pub(crate) fn HasStringAttribute<'ll>(llfn: &'ll Value, name: &str) -> bool {
+    unsafe { LLVMRustHasFnAttribute(llfn, name.as_c_char_ptr(), name.len()) }
+}
+
+pub(crate) fn RemoveStringAttrFromFn<'ll>(llfn: &'ll Value, name: &str) {
+    unsafe { LLVMRustRemoveFnAttribute(llfn, name.as_c_char_ptr(), name.len()) }
 }
 
 pub(crate) fn AddCallSiteAttributes<'ll>(

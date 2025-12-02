@@ -1,6 +1,6 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: BTI GCS PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
 //@ needs-llvm-components: aarch64
 //@ [BTI] compile-flags: -Z branch-protection=bti

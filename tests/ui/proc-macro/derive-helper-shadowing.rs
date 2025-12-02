@@ -1,6 +1,9 @@
-//@ edition:2018
+//@revisions: edition2015 edition2018
+//@[edition2015] edition:2015
+//@[edition2018] edition:2018
 //@ proc-macro: test-macros.rs
 //@ proc-macro: derive-helper-shadowing.rs
+//@ ignore-backends: gcc
 
 #[macro_use]
 extern crate test_macros;
@@ -39,7 +42,7 @@ struct S {
             struct Owo;
 
             use empty_helper as renamed;
-            #[renamed] //~ ERROR cannot use a derive helper attribute through an import
+            #[renamed] //[edition2018]~ ERROR cannot use a derive helper attribute through an import
             struct Wow;
         }
 

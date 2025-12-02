@@ -58,7 +58,7 @@
 use crate::cell::Cell;
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
-use crate::sync::poison::once::ExclusiveState;
+use crate::sync::once::OnceExclusiveState;
 use crate::thread::{self, Thread};
 use crate::{fmt, ptr, sync as public};
 
@@ -131,21 +131,21 @@ impl Once {
     }
 
     #[inline]
-    pub(crate) fn state(&mut self) -> ExclusiveState {
+    pub(crate) fn state(&mut self) -> OnceExclusiveState {
         match self.state_and_queue.get_mut().addr() {
-            INCOMPLETE => ExclusiveState::Incomplete,
-            POISONED => ExclusiveState::Poisoned,
-            COMPLETE => ExclusiveState::Complete,
+            INCOMPLETE => OnceExclusiveState::Incomplete,
+            POISONED => OnceExclusiveState::Poisoned,
+            COMPLETE => OnceExclusiveState::Complete,
             _ => unreachable!("invalid Once state"),
         }
     }
 
     #[inline]
-    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+    pub(crate) fn set_state(&mut self, new_state: OnceExclusiveState) {
         *self.state_and_queue.get_mut() = match new_state {
-            ExclusiveState::Incomplete => ptr::without_provenance_mut(INCOMPLETE),
-            ExclusiveState::Poisoned => ptr::without_provenance_mut(POISONED),
-            ExclusiveState::Complete => ptr::without_provenance_mut(COMPLETE),
+            OnceExclusiveState::Incomplete => ptr::without_provenance_mut(INCOMPLETE),
+            OnceExclusiveState::Poisoned => ptr::without_provenance_mut(POISONED),
+            OnceExclusiveState::Complete => ptr::without_provenance_mut(COMPLETE),
         };
     }
 

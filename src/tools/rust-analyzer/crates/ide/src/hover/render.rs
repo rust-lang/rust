@@ -1,5 +1,5 @@
 //! Logic for rendering the different hover messages
-use std::{env, mem, ops::Not};
+use std::{borrow::Cow, env, mem, ops::Not};
 
 use either::Either;
 use hir::{
@@ -11,7 +11,7 @@ use hir::{
 use ide_db::{
     RootDatabase,
     defs::{Definition, find_std_module},
-    documentation::{DocsRangeMap, HasDocs},
+    documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     syntax_helpers::prettify_macro_expansion,
@@ -35,7 +35,7 @@ use crate::{
 
 pub(super) fn type_info_of(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
     edition: Edition,
     display_target: DisplayTarget,
@@ -49,7 +49,7 @@ pub(super) fn type_info_of(
 
 pub(super) fn closure_expr(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     c: ast::ClosureExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -60,7 +60,7 @@ pub(super) fn closure_expr(
 
 pub(super) fn try_expr(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     try_expr: &ast::TryExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -155,7 +155,7 @@ pub(super) fn try_expr(
 
 pub(super) fn deref_expr(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     deref_expr: &ast::PrefixExpr,
     edition: Edition,
     display_target: DisplayTarget,
@@ -219,7 +219,7 @@ pub(super) fn deref_expr(
 
 pub(super) fn underscore(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     token: &SyntaxToken,
     edition: Edition,
     display_target: DisplayTarget,
@@ -263,7 +263,7 @@ pub(super) fn underscore(
 
 pub(super) fn keyword(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     token: &SyntaxToken,
     edition: Edition,
     display_target: DisplayTarget,
@@ -278,9 +278,9 @@ pub(super) fn keyword(
         keyword_hints(sema, token, parent, edition, display_target);
 
     let doc_owner = find_std_module(&famous_defs, &keyword_mod, edition)?;
-    let (docs, range_map) = doc_owner.docs_with_rangemap(sema.db)?;
+    let docs = doc_owner.docs_with_rangemap(sema.db)?;
     let (markup, range_map) =
-        markup(Some(docs.into()), Some(range_map), description, None, None, String::new());
+        markup(Some(Either::Left(docs)), description, None, None, String::new());
     let markup = process_markup(sema.db, Definition::Module(doc_owner), &markup, range_map, config);
     Some(HoverResult { markup, actions })
 }
@@ -290,7 +290,7 @@ pub(super) fn keyword(
 /// i.e. `let S {a, ..} = S {a: 1, b: 2}`
 pub(super) fn struct_rest_pat(
     sema: &Semantics<'_, RootDatabase>,
-    _config: &HoverConfig,
+    _config: &HoverConfig<'_>,
     pattern: &ast::RecordPat,
     edition: Edition,
     display_target: DisplayTarget,
@@ -370,12 +370,12 @@ pub(super) fn process_markup(
     db: &RootDatabase,
     def: Definition,
     markup: &Markup,
-    markup_range_map: Option<DocsRangeMap>,
-    config: &HoverConfig,
+    markup_range_map: Option<hir::Docs>,
+    config: &HoverConfig<'_>,
 ) -> Markup {
     let markup = markup.as_str();
     let markup = if config.links_in_hover {
-        rewrite_links(db, markup, def, markup_range_map)
+        rewrite_links(db, markup, def, markup_range_map.as_ref())
     } else {
         remove_links(markup)
     };
@@ -481,10 +481,10 @@ pub(super) fn definition(
     macro_arm: Option<u32>,
     render_extras: bool,
     subst_types: Option<&Vec<(Symbol, Type<'_>)>>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     edition: Edition,
     display_target: DisplayTarget,
-) -> (Markup, Option<DocsRangeMap>) {
+) -> (Markup, Option<hir::Docs>) {
     let mod_path = definition_path(db, &def, edition);
     let label = match def {
         Definition::Trait(trait_) => trait_
@@ -520,12 +520,7 @@ pub(super) fn definition(
         }
         _ => def.label(db, display_target),
     };
-    let (docs, range_map) =
-        if let Some((docs, doc_range)) = def.docs_with_rangemap(db, famous_defs, display_target) {
-            (Some(docs), doc_range)
-        } else {
-            (None, None)
-        };
+    let docs = def.docs_with_rangemap(db, famous_defs, display_target);
     let value = || match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -692,14 +687,14 @@ pub(super) fn definition(
         }
         let drop_info = match def {
             Definition::Field(field) => {
-                DropInfo { drop_glue: field.ty(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: field.ty(db).to_type(db).drop_glue(db), has_dtor: None }
             }
             Definition::Adt(Adt::Struct(strukt)) => {
-                let struct_drop_glue = strukt.ty_placeholders(db).drop_glue(db);
+                let struct_drop_glue = strukt.ty_params(db).drop_glue(db);
                 let mut fields_drop_glue = strukt
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).drop_glue(db))
+                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 let has_dtor = match (fields_drop_glue, struct_drop_glue) {
@@ -716,10 +711,10 @@ pub(super) fn definition(
             // Unions cannot have fields with drop glue.
             Definition::Adt(Adt::Union(union)) => DropInfo {
                 drop_glue: DropGlue::None,
-                has_dtor: Some(union.ty_placeholders(db).drop_glue(db) != DropGlue::None),
+                has_dtor: Some(union.ty_params(db).drop_glue(db) != DropGlue::None),
             },
             Definition::Adt(Adt::Enum(enum_)) => {
-                let enum_drop_glue = enum_.ty_placeholders(db).drop_glue(db);
+                let enum_drop_glue = enum_.ty_params(db).drop_glue(db);
                 let fields_drop_glue = enum_
                     .variants(db)
                     .iter()
@@ -727,7 +722,7 @@ pub(super) fn definition(
                         variant
                             .fields(db)
                             .iter()
-                            .map(|field| field.ty(db).drop_glue(db))
+                            .map(|field| field.ty(db).to_type(db).drop_glue(db))
                             .max()
                             .unwrap_or(DropGlue::None)
                     })
@@ -742,13 +737,13 @@ pub(super) fn definition(
                 let fields_drop_glue = variant
                     .fields(db)
                     .iter()
-                    .map(|field| field.ty(db).drop_glue(db))
+                    .map(|field| field.ty(db).to_type(db).drop_glue(db))
                     .max()
                     .unwrap_or(DropGlue::None);
                 DropInfo { drop_glue: fields_drop_glue, has_dtor: None }
             }
             Definition::TypeAlias(type_alias) => {
-                DropInfo { drop_glue: type_alias.ty_placeholders(db).drop_glue(db), has_dtor: None }
+                DropInfo { drop_glue: type_alias.ty_params(db).drop_glue(db), has_dtor: None }
             }
             Definition::Local(local) => {
                 DropInfo { drop_glue: local.ty(db).drop_glue(db), has_dtor: None }
@@ -842,14 +837,7 @@ pub(super) fn definition(
         }
     };
 
-    markup(
-        docs.map(Into::into),
-        range_map,
-        desc,
-        extra.is_empty().not().then_some(extra),
-        mod_path,
-        subst_types,
-    )
+    markup(docs, desc, extra.is_empty().not().then_some(extra), mod_path, subst_types)
 }
 
 #[derive(Debug)]
@@ -979,7 +967,7 @@ fn render_notable_trait(
 
 fn type_info(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     ty: TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
@@ -1038,7 +1026,7 @@ fn type_info(
 
 fn closure_ty(
     sema: &Semantics<'_, RootDatabase>,
-    config: &HoverConfig,
+    config: &HoverConfig<'_>,
     TypeInfo { original, adjusted }: &TypeInfo<'_>,
     edition: Edition,
     display_target: DisplayTarget,
@@ -1083,8 +1071,8 @@ fn closure_ty(
     };
     let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, display_target));
 
-    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
-        push_new_def(hir::Trait::from(trait_).into())
+    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db)) {
+        push_new_def(trait_.into())
     }
     if let Some(layout) = render_memory_layout(
         config.memory_layout,
@@ -1124,13 +1112,12 @@ fn definition_path(db: &RootDatabase, &def: &Definition, edition: Edition) -> Op
 }
 
 fn markup(
-    docs: Option<String>,
-    range_map: Option<DocsRangeMap>,
+    docs: Option<Either<Cow<'_, hir::Docs>, Documentation<'_>>>,
     rust: String,
     extra: Option<String>,
     mod_path: Option<String>,
     subst_types: String,
-) -> (Markup, Option<DocsRangeMap>) {
+) -> (Markup, Option<hir::Docs>) {
     let mut buf = String::new();
 
     if let Some(mod_path) = mod_path
@@ -1151,10 +1138,21 @@ fn markup(
     if let Some(doc) = docs {
         format_to!(buf, "\n___\n\n");
         let offset = TextSize::new(buf.len() as u32);
-        let buf_range_map = range_map.map(|range_map| range_map.shift_docstring_line_range(offset));
-        format_to!(buf, "{}", doc);
+        let docs_str = match &doc {
+            Either::Left(docs) => docs.docs(),
+            Either::Right(docs) => docs.as_str(),
+        };
+        format_to!(buf, "{}", docs_str);
+        let range_map = match doc {
+            Either::Left(range_map) => {
+                let mut range_map = range_map.into_owned();
+                range_map.shift_by(offset);
+                Some(range_map)
+            }
+            Either::Right(_) => None,
+        };
 
-        (buf.into(), buf_range_map)
+        (buf.into(), range_map)
     } else {
         (buf.into(), None)
     }

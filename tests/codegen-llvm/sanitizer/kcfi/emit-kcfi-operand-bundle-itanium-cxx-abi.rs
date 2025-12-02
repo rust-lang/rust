@@ -1,6 +1,6 @@
 // Verifies that KCFI type metadata for functions are emitted.
 //
-//@ add-core-stubs
+//@ add-minicore
 //@ revisions: aarch64 x86_64
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64

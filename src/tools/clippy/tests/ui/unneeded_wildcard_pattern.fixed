@@ -1,7 +1,7 @@
 //@aux-build:proc_macros.rs
 #![feature(stmt_expr_attributes)]
 #![deny(clippy::unneeded_wildcard_pattern)]
-#![allow(clippy::needless_if)]
+#![allow(clippy::needless_ifs)]
 
 #[macro_use]
 extern crate proc_macros;

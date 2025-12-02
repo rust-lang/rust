@@ -33,9 +33,11 @@ pub(crate) mod allow_unstable;
 pub(crate) mod body;
 pub(crate) mod cfg;
 pub(crate) mod cfg_old;
+pub(crate) mod cfg_select;
 pub(crate) mod codegen_attrs;
 pub(crate) mod confusables;
 pub(crate) mod crate_level;
+pub(crate) mod debugger;
 pub(crate) mod deprecation;
 pub(crate) mod dummy;
 pub(crate) mod inline;
@@ -47,6 +49,7 @@ pub(crate) mod must_use;
 pub(crate) mod no_implicit_prelude;
 pub(crate) mod non_exhaustive;
 pub(crate) mod path;
+pub(crate) mod pin_v2;
 pub(crate) mod proc_macro_attrs;
 pub(crate) mod prototype;
 pub(crate) mod repr;
@@ -301,7 +304,7 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     type Item;
     /// A function that converts individual items (of type [`Item`](Self::Item)) into the final attribute.
     ///
-    /// For example, individual representations fomr `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
+    /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
 

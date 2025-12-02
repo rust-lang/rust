@@ -1,33 +1,14 @@
 #![warn(clippy::needless_doctest_main)]
-//! issue 10491:
-//! ```rust,no_test
-//! use std::collections::HashMap;
-//!
-//! fn main() {
-//!     let mut m = HashMap::new();
-//!     m.insert(1u32, 2u32);
-//! }
-//! ```
 
-/// some description here
-/// ```rust,no_test
-/// fn main() {
-///     foo()
-/// }
-/// ```
-fn foo() {}
-
-#[rustfmt::skip]
 /// Description
 /// ```rust
 /// fn main() {
-//~^ error: needless `fn main` in doctest
+//~^ needless_doctest_main
 ///     let a = 0;
 /// }
 /// ```
 fn mulpipulpi() {}
 
-#[rustfmt::skip]
 /// With a `#[no_main]`
 /// ```rust
 /// #[no_main]
@@ -45,7 +26,6 @@ fn pulpimulpi() {}
 /// ```
 fn plumilupi() {}
 
-#[rustfmt::skip]
 /// Additional function, shouldn't trigger
 /// ```rust
 /// fn additional_function() {
@@ -58,7 +38,6 @@ fn plumilupi() {}
 /// ```
 fn mlupipupi() {}
 
-#[rustfmt::skip]
 /// Additional function AFTER main, shouldn't trigger
 /// ```rust
 /// fn main() {
@@ -71,22 +50,19 @@ fn mlupipupi() {}
 /// ```
 fn lumpimupli() {}
 
-#[rustfmt::skip]
 /// Ignore code block, should not lint at all
 /// ```rust, ignore
 /// fn main() {
-//~^ error: needless `fn main` in doctest
 ///     // Hi!
 ///     let _ = 0;
 /// }
 /// ```
 fn mpulpilumi() {}
 
-#[rustfmt::skip]
 /// Spaces in weird positions (including an \u{A0} after `main`)
 /// ```rust
 /// fn     main (){
-//~^ error: needless `fn main` in doctest
+//~^ needless_doctest_main
 ///     let _ = 0;
 /// }
 /// ```

@@ -2,6 +2,7 @@
 
 //@ check-pass
 //@ proc-macro: gen-macro-rules.rs
+//@ ignore-backends: gcc
 
 extern crate gen_macro_rules as repro;
 

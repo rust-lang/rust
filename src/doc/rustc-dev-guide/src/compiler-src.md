@@ -32,23 +32,23 @@ The repository consists of three main directories:
 - [`src/`] contains the source code for [`rustdoc`], [`clippy`], [`cargo`], the build system,
   language docs, etc.
 
-[`alloc`]: https://github.com/rust-lang/rust/tree/master/library/alloc
+[`alloc`]: https://github.com/rust-lang/rust/tree/HEAD/library/alloc
 [`backtrace`]: https://github.com/rust-lang/backtrace-rs/
 [`cargo`]: https://github.com/rust-lang/cargo
-[`clippy`]: https://github.com/rust-lang/rust/tree/master/src/tools/clippy
-[`compiler/`]: https://github.com/rust-lang/rust/tree/master/compiler
-[`core`]: https://github.com/rust-lang/rust/tree/master/library/core
-[`etc`]: https://github.com/rust-lang/rust/tree/master/src/etc
-[`lang_start`]: https://github.com/rust-lang/rust/blob/master/library/std/src/rt.rs
-[`library/`]: https://github.com/rust-lang/rust/tree/master/library
-[`proc_macro`]: https://github.com/rust-lang/rust/tree/master/library/proc_macro
-[`rtstartup`]: https://github.com/rust-lang/rust/tree/master/library/rtstartup
+[`clippy`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/clippy
+[`compiler/`]: https://github.com/rust-lang/rust/tree/HEAD/compiler
+[`core`]: https://github.com/rust-lang/rust/tree/HEAD/library/core
+[`etc`]: https://github.com/rust-lang/rust/tree/HEAD/src/etc
+[`lang_start`]: https://github.com/rust-lang/rust/blob/HEAD/library/std/src/rt.rs
+[`library/`]: https://github.com/rust-lang/rust/tree/HEAD/library
+[`proc_macro`]: https://github.com/rust-lang/rust/tree/HEAD/library/proc_macro
+[`rtstartup`]: https://github.com/rust-lang/rust/tree/HEAD/library/rtstartup
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
-[`rustdoc`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
-[`src/`]: https://github.com/rust-lang/rust/tree/master/src
-[`std`]: https://github.com/rust-lang/rust/tree/master/library/std
-[`test`]: https://github.com/rust-lang/rust/tree/master/library/test
-[`tests/`]: https://github.com/rust-lang/rust/tree/master/tests
+[`rustdoc`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
+[`src/`]: https://github.com/rust-lang/rust/tree/HEAD/src
+[`std`]: https://github.com/rust-lang/rust/tree/HEAD/library/std
+[`test`]: https://github.com/rust-lang/rust/tree/HEAD/library/test
+[`tests/`]: https://github.com/rust-lang/rust/tree/HEAD/tests
 
 ## Compiler
 
@@ -99,9 +99,9 @@ compiler can interface with it.
 Most of this book is about the compiler, so we won't have any further
 explanation of these crates here.
 
-[`compiler/rustc_llvm`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm
-[`src/llvm-project`]: https://github.com/rust-lang/rust/tree/master/src/
-[`Cargo.toml`]: https://github.com/rust-lang/rust/blob/master/Cargo.toml
+[`compiler/rustc_llvm`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_llvm
+[`src/llvm-project`]: https://github.com/rust-lang/rust/tree/HEAD/src/
+[`Cargo.toml`]: https://github.com/rust-lang/rust/blob/HEAD/Cargo.toml
 
 ### Big picture
 
@@ -160,10 +160,10 @@ You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 
 [`librustdoc`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/index.html
 [`rustdoc::main`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc/fn.main.html
-[`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-js
-[`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc-themes
-[`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/master/src/tools/rustdoc
-[`src/rustdoc-json-types`]: https://github.com/rust-lang/rust/tree/master/src/rustdoc-json-types
+[`src/tools/rustdoc-js`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc-js
+[`src/tools/rustdoc-themes`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc-themes
+[`src/tools/rustdoc`]:  https://github.com/rust-lang/rust/tree/HEAD/src/tools/rustdoc
+[`src/rustdoc-json-types`]: https://github.com/rust-lang/rust/tree/HEAD/src/rustdoc-json-types
 [rustdoc-chapter]: ./rustdoc.md
 
 ## Tests
@@ -173,7 +173,7 @@ about the test suite [in this chapter][testsch].
 
 The test harness is in [`src/tools/compiletest/`][`compiletest/`].
 
-[`tests/`]: https://github.com/rust-lang/rust/tree/master/tests
+[`tests/`]: https://github.com/rust-lang/rust/tree/HEAD/tests
 [testsch]: ./tests/intro.md
 
 ## Build System
@@ -186,10 +186,10 @@ One of the primary tools is [`src/bootstrap/`]. You can read more about
 bootstrapping [in this chapter][bootstch]. The process may also use other tools
 from [`src/tools/`], such as [`tidy/`] or [`compiletest/`].
 
-[`compiletest/`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest
-[`src/bootstrap/`]: https://github.com/rust-lang/rust/tree/master/src/bootstrap
-[`src/tools/`]: https://github.com/rust-lang/rust/tree/master/src/tools
-[`tidy/`]: https://github.com/rust-lang/rust/tree/master/src/tools/tidy
+[`compiletest/`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest
+[`src/bootstrap/`]: https://github.com/rust-lang/rust/tree/HEAD/src/bootstrap
+[`src/tools/`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools
+[`tidy/`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/tidy
 [bootstch]: ./building/bootstrapping/intro.md
 
 ## Standard library
@@ -213,6 +213,6 @@ These include:
 - [`src/etc`]: Miscellaneous utilities.
 - And more...
 
-[`src/ci`]: https://github.com/rust-lang/rust/tree/master/src/ci
-[`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
-[`src/etc`]: https://github.com/rust-lang/rust/tree/master/src/etc
+[`src/ci`]: https://github.com/rust-lang/rust/tree/HEAD/src/ci
+[`src/doc`]: https://github.com/rust-lang/rust/tree/HEAD/src/doc
+[`src/etc`]: https://github.com/rust-lang/rust/tree/HEAD/src/etc

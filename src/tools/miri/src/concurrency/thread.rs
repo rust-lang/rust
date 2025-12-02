@@ -5,16 +5,17 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
-use either::Either;
 use rand::seq::IteratorRandom;
 use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Span;
+use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
 use crate::shims::tls;
@@ -110,6 +111,9 @@ pub enum BlockReason {
     Eventfd,
     /// Blocked on unnamed_socket.
     UnnamedSocket,
+    /// Blocked for any reason related to GenMC, such as `assume` statements (GenMC mode only).
+    /// Will be implicitly unblocked when GenMC schedules this thread again.
+    Genmc,
 }
 
 /// The state of a thread.
@@ -178,7 +182,6 @@ pub struct Thread<'tcx> {
 
     /// The index of the topmost user-relevant frame in `stack`. This field must contain
     /// the value produced by `get_top_user_relevant_frame`.
-    /// The `None` state here represents
     /// This field is a cache to reduce how often we call that method. The cache is manually
     /// maintained inside `MiriMachine::after_stack_push` and `MiriMachine::after_stack_pop`.
     top_user_relevant_frame: Option<usize>,
@@ -229,12 +232,21 @@ impl<'tcx> Thread<'tcx> {
     /// justifying the optimization that only pushes of user-relevant frames require updating the
     /// `top_user_relevant_frame` field.
     fn compute_top_user_relevant_frame(&self, skip: usize) -> Option<usize> {
-        self.stack
-            .iter()
-            .enumerate()
-            .rev()
-            .skip(skip)
-            .find_map(|(idx, frame)| if frame.extra.is_user_relevant { Some(idx) } else { None })
+        // We are search for the frame with maximum relevance.
+        let mut best = None;
+        for (idx, frame) in self.stack.iter().enumerate().rev().skip(skip) {
+            let relevance = frame.extra.user_relevance;
+            if relevance == u8::MAX {
+                // We can short-circuit this search.
+                return Some(idx);
+            }
+            if best.is_none_or(|(_best_idx, best_relevance)| best_relevance < relevance) {
+                // The previous best frame has strictly worse relevance, so despite us being lower
+                // in the stack, we win.
+                best = Some((idx, relevance));
+            }
+        }
+        best.map(|(idx, _relevance)| idx)
     }
 
     /// Re-compute the top user-relevant frame from scratch. `skip` indicates how many top frames
@@ -253,14 +265,20 @@ impl<'tcx> Thread<'tcx> {
     /// Returns the topmost frame that is considered user-relevant, or the
     /// top of the stack if there is no such frame, or `None` if the stack is empty.
     pub fn top_user_relevant_frame(&self) -> Option<usize> {
-        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         // This can be called upon creation of an allocation. We create allocations while setting up
         // parts of the Rust runtime when we do not have any stack frames yet, so we need to handle
         // empty stacks.
         self.top_user_relevant_frame.or_else(|| self.stack.len().checked_sub(1))
     }
 
-    pub fn current_span(&self) -> Span {
+    pub fn current_user_relevance(&self) -> u8 {
+        self.top_user_relevant_frame()
+            .map(|frame_idx| self.stack[frame_idx].extra.user_relevance)
+            .unwrap_or(0)
+    }
+
+    pub fn current_user_relevant_span(&self) -> Span {
+        debug_assert_eq!(self.top_user_relevant_frame, self.compute_top_user_relevant_frame(0));
         self.top_user_relevant_frame()
             .map(|frame_idx| self.stack[frame_idx].current_span())
             .unwrap_or(rustc_span::DUMMY_SP)
@@ -454,7 +472,7 @@ impl<'tcx> ThreadManager<'tcx> {
     ) {
         ecx.machine.threads.threads[ThreadId::MAIN_THREAD].on_stack_empty =
             Some(on_main_stack_empty);
-        if ecx.tcx.sess.target.os.as_ref() != "windows" {
+        if ecx.tcx.sess.target.os != Os::Windows {
             // The main thread can *not* be joined on except on windows.
             ecx.machine.threads.threads[ThreadId::MAIN_THREAD].join_status =
                 ThreadJoinStatus::Detached;
@@ -497,10 +515,13 @@ impl<'tcx> ThreadManager<'tcx> {
         &mut self.threads[self.active_thread].stack
     }
 
-    pub fn all_stacks(
+    pub fn all_blocked_stacks(
         &self,
     ) -> impl Iterator<Item = (ThreadId, &[Frame<'tcx, Provenance, FrameExtra<'tcx>>])> {
-        self.threads.iter_enumerated().map(|(id, t)| (id, &t.stack[..]))
+        self.threads
+            .iter_enumerated()
+            .filter(|(_id, t)| matches!(t.state, ThreadState::Blocked { .. }))
+            .map(|(id, t)| (id, &t.stack[..]))
     }
 
     /// Create a new thread and returns its id.
@@ -572,6 +593,7 @@ impl<'tcx> ThreadManager<'tcx> {
     /// See <https://docs.microsoft.com/en-us/windows/win32/procthread/thread-handles-and-identifiers>:
     /// > The handle is valid until closed, even after the thread it represents has been terminated.
     fn detach_thread(&mut self, id: ThreadId, allow_terminated_joined: bool) -> InterpResult<'tcx> {
+        // NOTE: In GenMC mode, we treat detached threads like regular threads that are never joined, so there is no special handling required here.
         trace!("detaching {:?}", id);
 
         let is_ub = if allow_terminated_joined && self.threads[id].state.is_terminated() {
@@ -704,14 +726,31 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // In GenMC mode, we let GenMC do the scheduling.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let next_thread_id = genmc_ctx.schedule_thread(this)?;
-
-            let thread_manager = &mut this.machine.threads;
-            thread_manager.active_thread = next_thread_id;
-
-            assert!(thread_manager.threads[thread_manager.active_thread].state.is_enabled());
-            return interp_ok(SchedulingAction::ExecuteStep);
+        if this.machine.data_race.as_genmc_ref().is_some() {
+            loop {
+                let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
+                let Some(next_thread_id) = genmc_ctx.schedule_thread(this)? else {
+                    return interp_ok(SchedulingAction::ExecuteStep);
+                };
+                // If a thread is blocked on GenMC, we have to implicitly unblock it when it gets scheduled again.
+                if this.machine.threads.threads[next_thread_id]
+                    .state
+                    .is_blocked_on(BlockReason::Genmc)
+                {
+                    info!(
+                        "GenMC: scheduling blocked thread {next_thread_id:?}, so we unblock it now."
+                    );
+                    this.unblock_thread(next_thread_id, BlockReason::Genmc)?;
+                }
+                // The thread we just unblocked may have been blocked again during the unblocking callback.
+                // In that case, we need to ask for a different thread to run next.
+                let thread_manager = &mut this.machine.threads;
+                if thread_manager.threads[next_thread_id].state.is_enabled() {
+                    // Set the new active thread.
+                    thread_manager.active_thread = next_thread_id;
+                    return interp_ok(SchedulingAction::ExecuteStep);
+                }
+            }
         }
 
         // We are not in GenMC mode, so we control the scheduling.
@@ -856,7 +895,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let mut state = tls::TlsDtorsState::default();
             Box::new(move |m| state.on_stack_empty(m))
         });
-        let current_span = this.machine.current_span();
+        let current_span = this.machine.current_user_relevant_span();
         match &mut this.machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Vclocks(data_race) =>

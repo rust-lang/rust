@@ -1,13 +1,14 @@
 //@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
 //@ compile-flags:-g
+//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command: run
+//@ gdb-command: run
 
-// gdb-command: print vec
-// gdb-check:$1 = Vec(size=[...])[...]
+//@ gdb-command: print vec
+//@ gdb-check:$1 = Vec(size=[...])[...]
 
 
 #![allow(unused_variables)]

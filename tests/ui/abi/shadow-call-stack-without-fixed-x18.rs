@@ -1,6 +1,7 @@
 //@ compile-flags: --target aarch64-unknown-none -Zsanitizer=shadow-call-stack
 //@ dont-check-compiler-stderr
 //@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 
 #![allow(internal_features)]
 #![crate_type = "rlib"]

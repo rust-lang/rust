@@ -16,16 +16,12 @@ doctest = false
 cov-mark = "2.0.0"
 itertools.workspace = true
 arrayvec.workspace = true
-bitflags.workspace = true
 smallvec.workspace = true
 ena = "0.14.3"
 either.workspace = true
 oorandom = "11.1.5"
-tracing.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 rustc-hash.workspace = true
-scoped-tls = "1.0.1"
-chalk-ir.workspace = true
-chalk-derive.workspace = true
 la-arena.workspace = true
 triomphe.workspace = true
 typed-arena = "2.0.2"
@@ -34,6 +30,7 @@ rustc_apfloat = "0.2.3"
 query-group.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
+petgraph.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
@@ -49,12 +46,14 @@ tracing-tree.workspace = true
 
 # local deps
 stdx.workspace = true
+macros.workspace = true
 intern.workspace = true
 hir-def.workspace = true
 hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
 span.workspace = true
+thin-vec = "0.2.14"
 
 [dev-dependencies]
 expect-test = "1.5.1"

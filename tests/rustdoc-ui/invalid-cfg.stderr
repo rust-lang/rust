@@ -10,5 +10,41 @@ error: multiple `cfg` predicates are specified
 LL | #[doc(cfg(x, y))]
    |              ^
 
-error: aborting due to 2 previous errors
+error: `cfg` is not followed by parentheses
+  --> $DIR/invalid-cfg.rs:7:7
+   |
+LL | #[doc(cfg = "x")]
+   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/invalid-cfg.rs:8:14
+   |
+LL | #[doc(cfg(x, y))]
+   |              ^
+
+error: `cfg` is not followed by parentheses
+  --> $DIR/invalid-cfg.rs:12:7
+   |
+LL | #[doc(cfg = "x")]
+   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/invalid-cfg.rs:13:14
+   |
+LL | #[doc(cfg(x, y))]
+   |              ^
+
+error: `cfg` is not followed by parentheses
+  --> $DIR/invalid-cfg.rs:18:7
+   |
+LL | #[doc(cfg = "x")]
+   |       ^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+
+error: multiple `cfg` predicates are specified
+  --> $DIR/invalid-cfg.rs:19:14
+   |
+LL | #[doc(cfg(x, y))]
+   |              ^
+
+error: aborting due to 8 previous errors
 

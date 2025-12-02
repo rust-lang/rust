@@ -9,7 +9,8 @@ use crate::ub_checks;
 ///
 /// (Normal `Range` code needs to handle degenerate ranges like `10..0`,
 ///  which takes extra checks compared to only handling the canonical form.)
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Debug)]
+#[derive_const(Clone, Eq, PartialEq)]
 pub(crate) struct IndexRange {
     start: usize,
     end: usize,
@@ -54,7 +55,7 @@ impl IndexRange {
     /// # Safety
     /// - Can only be called when `start < end`, aka when `len > 0`.
     #[inline]
-    unsafe fn next_unchecked(&mut self) -> usize {
+    const unsafe fn next_unchecked(&mut self) -> usize {
         debug_assert!(self.start < self.end);
 
         let value = self.start;
@@ -66,7 +67,7 @@ impl IndexRange {
     /// # Safety
     /// - Can only be called when `start < end`, aka when `len > 0`.
     #[inline]
-    unsafe fn next_back_unchecked(&mut self) -> usize {
+    const unsafe fn next_back_unchecked(&mut self) -> usize {
         debug_assert!(self.start < self.end);
 
         // SAFETY: The range isn't empty, so this cannot overflow
@@ -116,7 +117,7 @@ impl IndexRange {
     }
 
     #[inline]
-    fn assume_range(&self) {
+    const fn assume_range(&self) {
         // SAFETY: This is the type invariant
         unsafe { crate::hint::assert_unchecked(self.start <= self.end) }
     }

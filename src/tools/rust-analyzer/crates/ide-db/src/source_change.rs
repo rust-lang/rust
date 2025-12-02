@@ -10,6 +10,7 @@ use crate::text_edit::{TextEdit, TextEditBuilder};
 use crate::{SnippetCap, assists::Command, syntax_helpers::tree_diff::diff};
 use base_db::AnchoredPathBuf;
 use itertools::Itertools;
+use macros::UpmapFromRaFixture;
 use nohash_hasher::IntMap;
 use rustc_hash::FxHashMap;
 use span::FileId;
@@ -20,7 +21,7 @@ use syntax::{
 };
 
 /// An annotation ID associated with an indel, to describe changes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, UpmapFromRaFixture)]
 pub struct ChangeAnnotationId(u32);
 
 impl fmt::Display for ChangeAnnotationId {

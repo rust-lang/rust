@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Span, kw};
+use rustc_span::{Span, SyntaxContext, kw};
 
 use super::IDENTITY_OP;
 
@@ -41,42 +41,43 @@ pub(crate) fn check<'tcx>(
         (span, is_coerced)
     };
 
+    let ctxt = expr.span.ctxt();
     match op {
         BinOpKind::Add | BinOpKind::BitOr | BinOpKind::BitXor => {
-            if is_redundant_op(cx, left, 0) {
+            if is_redundant_op(cx, left, 0, ctxt) {
                 let paren = needs_parenthesis(cx, expr, right);
                 span_ineffective_operation(cx, expr.span, peeled_right_span, paren, right_is_coerced_to_value);
-            } else if is_redundant_op(cx, right, 0) {
+            } else if is_redundant_op(cx, right, 0, ctxt) {
                 let paren = needs_parenthesis(cx, expr, left);
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::Shl | BinOpKind::Shr | BinOpKind::Sub => {
-            if is_redundant_op(cx, right, 0) {
+            if is_redundant_op(cx, right, 0, ctxt) {
                 let paren = needs_parenthesis(cx, expr, left);
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::Mul => {
-            if is_redundant_op(cx, left, 1) {
+            if is_redundant_op(cx, left, 1, ctxt) {
                 let paren = needs_parenthesis(cx, expr, right);
                 span_ineffective_operation(cx, expr.span, peeled_right_span, paren, right_is_coerced_to_value);
-            } else if is_redundant_op(cx, right, 1) {
+            } else if is_redundant_op(cx, right, 1, ctxt) {
                 let paren = needs_parenthesis(cx, expr, left);
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::Div => {
-            if is_redundant_op(cx, right, 1) {
+            if is_redundant_op(cx, right, 1, ctxt) {
                 let paren = needs_parenthesis(cx, expr, left);
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
         },
         BinOpKind::BitAnd => {
-            if is_redundant_op(cx, left, -1) {
+            if is_redundant_op(cx, left, -1, ctxt) {
                 let paren = needs_parenthesis(cx, expr, right);
                 span_ineffective_operation(cx, expr.span, peeled_right_span, paren, right_is_coerced_to_value);
-            } else if is_redundant_op(cx, right, -1) {
+            } else if is_redundant_op(cx, right, -1, ctxt) {
                 let paren = needs_parenthesis(cx, expr, left);
                 span_ineffective_operation(cx, expr.span, peeled_left_span, paren, left_is_coerced_to_value);
             }
@@ -184,14 +185,17 @@ fn is_allowed<'tcx>(
 
     // This lint applies to integers and their references
     cx.typeck_results().expr_ty(left).peel_refs().is_integral()
-        && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
+    && cx.typeck_results().expr_ty(right).peel_refs().is_integral()
         // `1 << 0` is a common pattern in bit manipulation code
-        && !(cmp == BinOpKind::Shl && is_zero_integer_const(cx, right) && integer_const(cx, left) == Some(1))
+        && !(cmp == BinOpKind::Shl
+            && is_zero_integer_const(cx, right, expr.span.ctxt())
+            && integer_const(cx, left, expr.span.ctxt()) == Some(1))
 }
 
 fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
     let ecx = ConstEvalCtxt::new(cx);
-    if match (ecx.eval_full_int(left), ecx.eval_full_int(right)) {
+    let ctxt = span.ctxt();
+    if match (ecx.eval_full_int(left, ctxt), ecx.eval_full_int(right, ctxt)) {
         (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv.abs(),
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
@@ -200,8 +204,8 @@ fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span
     }
 }
 
-fn is_redundant_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8) -> bool {
-    if let Some(Constant::Int(v)) = ConstEvalCtxt::new(cx).eval_simple(e).map(Constant::peel_refs) {
+fn is_redundant_op(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, ctxt: SyntaxContext) -> bool {
+    if let Some(Constant::Int(v)) = ConstEvalCtxt::new(cx).eval_local(e, ctxt).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
             ty::Int(ity) => unsext(cx.tcx, -1_i128, ity),
             ty::Uint(uty) => clip(cx.tcx, !0, uty),

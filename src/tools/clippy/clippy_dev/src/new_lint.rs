@@ -1,4 +1,5 @@
-use crate::utils::{RustSearcher, Token, Version};
+use crate::parse::cursor::{self, Capture, Cursor};
+use crate::utils::Version;
 use clap::ValueEnum;
 use indoc::{formatdoc, writedoc};
 use std::fmt::{self, Write as _};
@@ -156,18 +157,19 @@ fn add_lint(lint: &LintData<'_>, enable_msrv: bool) -> io::Result<()> {
     let path = "clippy_lints/src/lib.rs";
     let mut lib_rs = fs::read_to_string(path).context("reading")?;
 
-    let comment_start = lib_rs.find("// add lints here,").expect("Couldn't find comment");
-    let ctor_arg = if lint.pass == Pass::Late { "_" } else { "" };
-    let lint_pass = lint.pass;
+    let (comment, ctor_arg) = if lint.pass == Pass::Late {
+        ("// add late passes here", "_")
+    } else {
+        ("// add early passes here", "")
+    };
+    let comment_start = lib_rs.find(comment).expect("Couldn't find comment");
     let module_name = lint.name;
     let camel_name = to_camel_case(lint.name);
 
     let new_lint = if enable_msrv {
-        format!(
-            "store.register_{lint_pass}_pass(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(conf)));\n    ",
-        )
+        format!("Box::new(move |{ctor_arg}| Box::new({module_name}::{camel_name}::new(conf))),\n        ",)
     } else {
-        format!("store.register_{lint_pass}_pass(|{ctor_arg}| Box::new({module_name}::{camel_name}));\n    ",)
+        format!("Box::new(|{ctor_arg}| Box::new({module_name}::{camel_name})),\n        ",)
     };
 
     lib_rs.insert_str(comment_start, &new_lint);
@@ -443,7 +445,6 @@ fn create_lint_for_ty(lint: &LintData<'_>, enable_msrv: bool, ty: &str) -> io::R
     Ok(())
 }
 
-#[allow(clippy::too_many_lines)]
 fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> {
     let lint_name_upper = lint.name.to_uppercase();
 
@@ -517,22 +518,22 @@ fn setup_mod_file(path: &Path, lint: &LintData<'_>) -> io::Result<&'static str> 
 // Find both the last lint declaration (declare_clippy_lint!) and the lint pass impl
 fn parse_mod_file(path: &Path, contents: &str) -> (&'static str, usize) {
     #[allow(clippy::enum_glob_use)]
-    use Token::*;
+    use cursor::Pat::*;
 
     let mut context = None;
     let mut decl_end = None;
-    let mut searcher = RustSearcher::new(contents);
-    while let Some(name) = searcher.find_capture_token(CaptureIdent) {
-        match name {
+    let mut cursor = Cursor::new(contents);
+    let mut captures = [Capture::EMPTY];
+    while let Some(name) = cursor.find_any_ident() {
+        match cursor.get_text(name) {
             "declare_clippy_lint" => {
-                if searcher.match_tokens(&[Bang, OpenBrace], &mut []) && searcher.find_token(CloseBrace) {
-                    decl_end = Some(searcher.pos());
+                if cursor.match_all(&[Bang, OpenBrace], &mut []) && cursor.find_pat(CloseBrace) {
+                    decl_end = Some(cursor.pos());
                 }
             },
             "impl" => {
-                let mut capture = "";
-                if searcher.match_tokens(&[Lt, Lifetime, Gt, CaptureIdent], &mut [&mut capture]) {
-                    match capture {
+                if cursor.match_all(&[Lt, Lifetime, Gt, CaptureIdent], &mut captures) {
+                    match cursor.get_text(captures[0]) {
                         "LateLintPass" => context = Some("LateContext"),
                         "EarlyLintPass" => context = Some("EarlyContext"),
                         _ => {},

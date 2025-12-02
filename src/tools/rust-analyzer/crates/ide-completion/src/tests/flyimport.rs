@@ -1,4 +1,3 @@
-use base_db::salsa;
 use expect_test::{Expect, expect};
 
 use crate::{
@@ -17,10 +16,11 @@ fn check_with_config(
     expect: Expect,
 ) {
     let (db, position) = crate::tests::position(ra_fixture);
-    let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
+    let (ctx, analysis) =
+        crate::context::CompletionContext::new(&db, position, &config, None).unwrap();
 
     let mut acc = crate::completions::Completions::default();
-    salsa::attach(ctx.db, || {
+    hir::attach_db(ctx.db, || {
         if let CompletionAnalysis::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
             &analysis
         {
@@ -780,9 +780,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
-            fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
         "#]],
     );
 }
@@ -1951,5 +1951,27 @@ fn foo() {
 }
         "#,
         expect![""],
+    );
+}
+
+#[test]
+fn multiple_matches_with_qualifier() {
+    check(
+        r#"
+//- /foo.rs crate:foo
+pub mod env {
+    pub fn var() {}
+    pub fn _var() {}
+}
+
+//- /bar.rs crate:bar deps:foo
+fn main() {
+    env::var$0
+}
+    "#,
+        expect![[r#"
+            fn _var() (use foo::env) fn()
+            fn var() (use foo::env)  fn()
+        "#]],
     );
 }

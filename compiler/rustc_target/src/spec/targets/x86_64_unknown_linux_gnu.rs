@@ -1,5 +1,5 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+    Arch, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
 };
 
 pub(crate) fn target() -> Target {
@@ -17,15 +17,9 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::LEAK
         | SanitizerSet::MEMORY
         | SanitizerSet::SAFESTACK
-        | SanitizerSet::THREAD;
+        | SanitizerSet::THREAD
+        | SanitizerSet::REALTIME;
     base.supports_xray = true;
-
-    // When we're asked to use the `rust-lld` linker by default, set the appropriate lld-using
-    // linker flavor, and self-contained linker component.
-    if option_env!("CFG_USE_SELF_CONTAINED_LINKER").is_some() {
-        base.linker_flavor = LinkerFlavor::Gnu(Cc::Yes, Lld::Yes);
-        base.link_self_contained = crate::spec::LinkSelfContainedDefault::with_linker();
-    }
 
     Target {
         llvm_target: "x86_64-unknown-linux-gnu".into(),
@@ -38,7 +32,7 @@ pub(crate) fn target() -> Target {
         pointer_width: 64,
         data_layout:
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128".into(),
-        arch: "x86_64".into(),
+        arch: Arch::X86_64,
         options: base,
     }
 }

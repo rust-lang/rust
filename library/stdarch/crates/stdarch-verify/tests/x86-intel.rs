@@ -164,7 +164,7 @@ fn verify_all_signatures() {
     // Open up the network console and you'll see an xml file was downloaded
     // (currently called data-3.6.9.xml). That's the file we downloaded
     // here.
-    let xml = include_bytes!("../x86-intel.xml");
+    let xml = include_bytes!("../../../intrinsics_data/x86-intel.xml");
 
     let xml = &xml[..];
     let data: Data = quick_xml::de::from_reader(xml).expect("failed to deserialize xml");
@@ -302,6 +302,14 @@ fn verify_all_signatures() {
         // these are all AMD-specific intrinsics
         if let Some(feature) = rust.target_feature {
             if feature.contains("sse4a") || feature.contains("tbm") {
+                continue;
+            }
+
+            // FIXME: these have not been added to Intrinsics Guide yet
+            if ["amx-avx512", "amx-fp8", "amx-movrs", "amx-tf32"]
+                .iter()
+                .any(|f| feature.contains(f))
+            {
                 continue;
             }
         }

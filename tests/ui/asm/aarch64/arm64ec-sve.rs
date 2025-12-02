@@ -1,7 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: --target arm64ec-pc-windows-msvc
-//@ needs-asm-support
 //@ needs-llvm-components: aarch64
+//@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
 #![feature(no_core)]

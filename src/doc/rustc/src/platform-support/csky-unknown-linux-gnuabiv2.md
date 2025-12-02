@@ -65,7 +65,7 @@ To test cross-compiled binaries on a `x86_64` system, you can use the `qemu-csky
 
 To use:
 
-* Install `qemu-cskyv2` (If you don't already have a qemu, you can download from [here](https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1689324918932/xuantie-qemu-x86_64-Ubuntu-18.04-20230714-0202.tar.gz"), and unpack it into a directory.)
+* Install `qemu-cskyv2` (If you don't already have a qemu, you can download from [here](https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1689324918932/xuantie-qemu-x86_64-Ubuntu-18.04-20230714-0202.tar.gz), and unpack it into a directory.)
 * Link your built toolchain via:
   * `rustup toolchain link stage2 ${RUST}/build/x86_64-unknown-linux-gnu/stage2`
 * Create a test program

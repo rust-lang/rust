@@ -1,4 +1,4 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ compile-flags: -Copt-level=3 --target=avr-none -C target-cpu=atmega328p --crate-type=rlib -C panic=abort
 //@ needs-llvm-components: avr
 

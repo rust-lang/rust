@@ -159,6 +159,7 @@ pub struct Command {
     startupinfo_fullscreen: bool,
     startupinfo_untrusted_source: bool,
     startupinfo_force_feedback: Option<bool>,
+    inherit_handles: bool,
 }
 
 pub enum Stdio {
@@ -187,6 +188,7 @@ impl Command {
             startupinfo_fullscreen: false,
             startupinfo_untrusted_source: false,
             startupinfo_force_feedback: None,
+            inherit_handles: true,
         }
     }
 
@@ -248,8 +250,16 @@ impl Command {
         self.env.iter()
     }
 
+    pub fn get_env_clear(&self) -> bool {
+        self.env.does_clear()
+    }
+
     pub fn get_current_dir(&self) -> Option<&Path> {
         self.cwd.as_ref().map(Path::new)
+    }
+
+    pub fn inherit_handles(&mut self, inherit_handles: bool) {
+        self.inherit_handles = inherit_handles;
     }
 
     pub fn spawn(
@@ -310,6 +320,7 @@ impl Command {
             flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
         }
 
+        let inherit_handles = self.inherit_handles as c::BOOL;
         let (envp, _data) = make_envp(maybe_env)?;
         let (dirp, _data) = make_dirp(self.cwd.as_ref())?;
         let mut pi = zeroed_process_information();
@@ -401,7 +412,7 @@ impl Command {
                 cmd_str.as_mut_ptr(),
                 ptr::null_mut(),
                 ptr::null_mut(),
-                c::TRUE,
+                inherit_handles,
                 flags,
                 envp,
                 dirp,

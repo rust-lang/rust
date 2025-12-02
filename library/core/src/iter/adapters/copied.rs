@@ -24,6 +24,12 @@ impl<I> Copied<I> {
     pub(in crate::iter) fn new(it: I) -> Copied<I> {
         Copied { it }
     }
+
+    #[doc(hidden)]
+    #[unstable(feature = "copied_into_inner", issue = "none")]
+    pub fn into_inner(self) -> I {
+        self.it
+    }
 }
 
 fn copy_fold<T: Copy, Acc>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, &T) -> Acc {

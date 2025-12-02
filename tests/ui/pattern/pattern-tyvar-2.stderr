@@ -6,10 +6,10 @@ LL | fn foo(t: Bar) -> isize { match t { Bar::T1(_, Some(x)) => { return x * 3; 
    |                                                                     |
    |                                                                     Vec<isize>
    |
-note: the foreign item type `Vec<isize>` doesn't implement `Mul<{integer}>`
+note: `Vec<isize>` does not implement `Mul<{integer}>`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
-   = note: not implement `Mul<{integer}>`
+   = note: `Vec<isize>` is defined in another crate
 
 error: aborting due to 1 previous error
 

@@ -1,4 +1,6 @@
-// Regression test for #122561
+// Regression test for <https://github.com/rust-lang/rust/issues/122561>.
+//
+// Tests suggestions for type mismatch of loop expressions.
 
 fn for_infinite() -> bool {
     for i in 0.. {

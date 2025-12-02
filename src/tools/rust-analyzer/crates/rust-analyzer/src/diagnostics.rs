@@ -1,5 +1,5 @@
 //! Book keeping for keeping diagnostics easily in sync with the client.
-pub(crate) mod to_proto;
+pub(crate) mod flycheck_to_proto;
 
 use std::mem;
 
@@ -8,6 +8,7 @@ use ide::FileId;
 use ide_db::{FxHashMap, base_db::DbPanicContext};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use smallvec::SmallVec;
 use stdx::iter_eq_by;
 use triomphe::Arc;
 
@@ -57,7 +58,7 @@ pub(crate) struct DiagnosticCollection {
 #[derive(Debug, Clone)]
 pub(crate) struct Fix {
     // Fixes may be triggerable from multiple ranges.
-    pub(crate) ranges: Vec<lsp_types::Range>,
+    pub(crate) ranges: SmallVec<[lsp_types::Range; 1]>,
     pub(crate) action: lsp_ext::CodeAction,
 }
 
@@ -117,6 +118,29 @@ impl DiagnosticCollection {
                     fixes.remove(&package);
                 }
             }
+        }
+    }
+
+    pub(crate) fn clear_check_older_than_for_package(
+        &mut self,
+        flycheck_id: usize,
+        package_id: Arc<PackageId>,
+        generation: DiagnosticsGeneration,
+    ) {
+        let Some(check) = self.check.get_mut(flycheck_id) else {
+            return;
+        };
+        let package_id = Some(package_id);
+        let Some((_, checks)) = check
+            .per_package
+            .extract_if(|k, v| *k == package_id && v.generation < generation)
+            .next()
+        else {
+            return;
+        };
+        self.changes.extend(checks.per_file.into_keys());
+        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(flycheck_id) {
+            fixes.remove(&package_id);
         }
     }
 

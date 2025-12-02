@@ -12,7 +12,7 @@ LL |   impl<T> Trait for Box<T> {}
    |   ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<_>`
    |
    = note: downstream crates may implement trait `WithAssoc<'a>` for type `std::boxed::Box<_>`
-   = note: downstream crates may implement trait `WhereBound` for type `std::boxed::Box<_>`
+   = note: downstream crates may implement trait `WhereBound` for type `std::boxed::Box<<std::boxed::Box<_> as WithAssoc<'a>>::Assoc>`
 
 error: aborting due to 1 previous error
 

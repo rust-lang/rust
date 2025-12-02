@@ -1,13 +1,13 @@
 use std::ops::Range;
 
-use pulldown_cmark::{
-    BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, OffsetIter, Parser, Tag,
-};
 use rustc_ast::NodeId;
 use rustc_errors::SuggestionStyle;
 use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, DocLinkResMap, Namespace, Res};
 use rustc_lint_defs::Applicability;
+use rustc_resolve::rustdoc::pulldown_cmark::{
+    BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, OffsetIter, Parser, Tag,
+};
 use rustc_resolve::rustdoc::{prepare_to_doc_link_resolution, source_span_for_markdown_range};
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
@@ -46,13 +46,13 @@ fn check_redundant_explicit_link_for_did(
         return;
     };
 
-    let is_hidden = !cx.render_options.document_hidden
+    let is_hidden = !cx.document_hidden()
         && (item.is_doc_hidden() || inherits_doc_hidden(cx.tcx, local_item_id, None));
     if is_hidden {
         return;
     }
-    let is_private = !cx.render_options.document_private
-        && !cx.cache.effective_visibilities.is_directly_public(cx.tcx, did);
+    let is_private =
+        !cx.document_private() && !cx.cache.effective_visibilities.is_directly_public(cx.tcx, did);
     if is_private {
         return;
     }

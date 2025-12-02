@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
-use clippy_utils::{ExprUseNode, expr_use_ctxt, is_diag_item_method, is_diag_trait_item, path_to_local_id, sym};
+use clippy_utils::{ExprUseNode, expr_use_ctxt, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
@@ -18,9 +19,10 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
     if let ExprKind::Closure(c) = arg.kind
         && matches!(c.kind, ClosureKind::Closure)
         && let typeck = cx.typeck_results()
-        && let Some(fn_id) = typeck.type_dependent_def_id(expr.hir_id)
-        && (is_diag_trait_item(cx, fn_id, sym::Iterator)
-            || ((is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))
+        && let Some(fn_def) = typeck.type_dependent_def(expr.hir_id)
+        && (fn_def.opt_parent(cx).is_diag_item(cx, sym::Iterator)
+            || ((fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Option)
+                || fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Result))
                 && msrv.meets(cx, msrvs::OPTION_RESULT_INSPECT)))
         && let body = cx.tcx.hir_body(c.body)
         && let [param] = body.params
@@ -29,7 +31,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         && let ExprKind::Block(block, _) = body.value.kind
         && let Some(final_expr) = block.expr
         && !block.stmts.is_empty()
-        && path_to_local_id(final_expr, arg_id)
+        && final_expr.res_local_id() == Some(arg_id)
         && typeck.expr_adjustments(final_expr).is_empty()
     {
         let mut requires_copy = false;
@@ -46,7 +48,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             if let ExprKind::Closure(c) = e.kind {
                 // Nested closures don't need to treat returns specially.
                 let _: Option<!> = for_each_expr(cx, cx.tcx.hir_body(c.body).value, |e| {
-                    if path_to_local_id(e, arg_id) {
+                    if e.res_local_id() == Some(arg_id) {
                         let (kind, same_ctxt) = check_use(cx, e);
                         match (kind, same_ctxt && e.span.ctxt() == ctxt) {
                             (_, false) | (UseKind::Deref | UseKind::Return(..), true) => {
@@ -64,7 +66,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 });
             } else if matches!(e.kind, ExprKind::Ret(_)) {
                 ret_count += 1;
-            } else if path_to_local_id(e, arg_id) {
+            } else if e.res_local_id() == Some(arg_id) {
                 let (kind, same_ctxt) = check_use(cx, e);
                 match (kind, same_ctxt && e.span.ctxt() == ctxt) {
                     (UseKind::Return(..), false) => {

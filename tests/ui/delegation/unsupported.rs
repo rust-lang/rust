@@ -1,3 +1,11 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@ check-fail
+
+// Next solver revision included because of trait-system-refactor-initiative#234.
+// If we end up in a query cycle, it should be okay as long as results are the same.
+
 #![feature(const_trait_impl)]
 #![feature(c_variadic)]
 #![feature(fn_delegation)]
@@ -40,8 +48,7 @@ mod recursive {
 }
 
 mod effects {
-    #[const_trait]
-    trait Trait {
+    const trait Trait {
         fn foo();
     }
 

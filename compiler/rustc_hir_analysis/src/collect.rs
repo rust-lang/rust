@@ -19,7 +19,7 @@ use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
-use rustc_abi::ExternAbi;
+use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
@@ -96,6 +96,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         rendered_precise_capturing_args,
         const_param_default,
         anon_const_kind,
+        const_of_item,
         ..*providers
     };
 }
@@ -590,7 +591,7 @@ fn get_new_lifetime_name<'tcx>(
     let a_to_z_repeat_n = |n| {
         (b'a'..=b'z').map(move |c| {
             let mut s = '\''.to_string();
-            s.extend(std::iter::repeat(char::from(c)).take(n));
+            s.extend(std::iter::repeat_n(char::from(c), n));
             s
         })
     };
@@ -605,32 +606,70 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     tcx.ensure_ok().predicates_of(def_id);
 }
 
-pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
+pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
+    // Some of the logic below relies on `i128` being able to hold all c_int and c_uint values.
+    assert!(tcx.sess.target.c_int_width < 128);
+    let mut min_discr = i128::MAX;
+    let mut max_discr = i128::MIN;
 
     // fill the discriminant values and field types
     for variant in def.variants() {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
-        prev_discr = Some(
-            if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
-                def.eval_explicit_discr(tcx, const_def_id).ok()
-            } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
-                Some(discr)
-            } else {
+        let cur_discr = if let ty::VariantDiscr::Explicit(const_def_id) = variant.discr {
+            def.eval_explicit_discr(tcx, const_def_id).ok()
+        } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
+            Some(discr)
+        } else {
+            let span = tcx.def_span(variant.def_id);
+            tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+                span,
+                discr: prev_discr.unwrap().to_string(),
+                item_name: tcx.item_ident(variant.def_id),
+                wrapped_discr: wrapped_discr.to_string(),
+            });
+            None
+        }
+        .unwrap_or(wrapped_discr);
+
+        if def.repr().c() {
+            let c_int = Size::from_bits(tcx.sess.target.c_int_width);
+            let c_uint_max = i128::try_from(c_int.unsigned_int_max()).unwrap();
+            // c_int is a signed type, so get a proper signed version of the discriminant
+            let discr_size = cur_discr.ty.int_size_and_signed(tcx).0;
+            let discr_val = discr_size.sign_extend(cur_discr.val);
+            min_discr = min_discr.min(discr_val);
+            max_discr = max_discr.max(discr_val);
+
+            // The discriminant range must either fit into c_int or c_uint.
+            if !(min_discr >= c_int.signed_int_min() && max_discr <= c_int.signed_int_max())
+                && !(min_discr >= 0 && max_discr <= c_uint_max)
+            {
                 let span = tcx.def_span(variant.def_id);
-                tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
+                let msg = if discr_val < c_int.signed_int_min() || discr_val > c_uint_max {
+                    "`repr(C)` enum discriminant does not fit into C `int` nor into C `unsigned int`"
+                } else if discr_val < 0 {
+                    "`repr(C)` enum discriminant does not fit into C `unsigned int`, and a previous discriminant does not fit into C `int`"
+                } else {
+                    "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
+                };
+                tcx.node_span_lint(
+                    rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
+                    tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    discr: prev_discr.unwrap().to_string(),
-                    item_name: tcx.item_ident(variant.def_id),
-                    wrapped_discr: wrapped_discr.to_string(),
-                });
-                None
+                    |d| {
+                        d.primary_message(msg)
+                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
+                    }
+                );
             }
-            .unwrap_or(wrapped_discr),
-        );
+        }
+
+        prev_discr = Some(cur_discr);
 
         for f in &variant.fields {
             tcx.ensure_ok().generics_of(f.did);
@@ -847,20 +886,11 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
             (constness, false, is_auto == hir::IsAuto::Yes, safety)
         }
-        hir::ItemKind::TraitAlias(..) => (hir::Constness::NotConst, true, false, hir::Safety::Safe),
+        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
     let attrs = tcx.get_all_attrs(def_id);
-    // Only regular traits can be const.
-    // FIXME(const_trait_impl): remove this
-    let constness = if constness == hir::Constness::Const
-        || !is_alias && find_attr!(attrs, AttributeKind::ConstTrait(_))
-    {
-        hir::Constness::Const
-    } else {
-        hir::Constness::NotConst
-    };
 
     let paren_sugar = find_attr!(attrs, AttributeKind::ParenSugar(_));
     if paren_sugar && !tcx.features().unboxed_closures() {
@@ -1140,7 +1170,7 @@ fn recover_infer_ret_ty<'tcx>(
     // recursive function definition to leak out into the fn sig.
     let mut recovered_ret_ty = None;
     if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with the correct return type",
             suggestable_ret_ty,
@@ -1152,7 +1182,7 @@ fn recover_infer_ret_ty<'tcx>(
         tcx.param_env(def_id),
         ret_ty,
     ) {
-        diag.span_suggestion(
+        diag.span_suggestion_verbose(
             infer_ret_ty.span,
             "replace with an appropriate return type",
             sugg,
@@ -1226,6 +1256,21 @@ pub fn suggest_impl_trait<'tcx>(
             format_as_assoc,
         ),
         (
+            infcx.tcx.lang_items().async_fn_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_mut_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
+            infcx.tcx.lang_items().async_fn_once_trait(),
+            infcx.tcx.lang_items().async_fn_once_output(),
+            format_as_parenthesized,
+        ),
+        (
             infcx.tcx.lang_items().fn_trait(),
             infcx.tcx.lang_items().fn_once_output(),
             format_as_parenthesized,
@@ -1267,7 +1312,7 @@ pub fn suggest_impl_trait<'tcx>(
                 Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args),
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
-            if ocx.select_where_possible().is_empty()
+            if ocx.try_evaluate_obligations().is_empty()
                 && let item_ty = infcx.resolve_vars_if_possible(item_ty)
                 && let Some(item_ty) = item_ty.make_suggestable(infcx.tcx, false, None)
                 && let Some(sugg) = formatter(
@@ -1291,28 +1336,26 @@ pub fn suggest_impl_trait<'tcx>(
     None
 }
 
-fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTraitHeader<'_>> {
+fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir_expect_item(def_id);
     let impl_ = item.expect_impl();
+    let of_trait = impl_
+        .of_trait
+        .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
+    let selfty = tcx.type_of(def_id).instantiate_identity();
     let is_rustc_reservation = tcx.has_attr(def_id, sym::rustc_reservation_impl);
-    if is_rustc_reservation && impl_.of_trait.is_none() {
-        tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
+
+    check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
+
+    let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
+
+    ty::ImplTraitHeader {
+        trait_ref: ty::EarlyBinder::bind(trait_ref),
+        safety: of_trait.safety,
+        polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
+        constness: impl_.constness,
     }
-    impl_.of_trait.map(|of_trait| {
-        let selfty = tcx.type_of(def_id).instantiate_identity();
-
-        check_impl_constness(tcx, of_trait.constness, &of_trait.trait_ref);
-
-        let trait_ref = icx.lowerer().lower_impl_trait_ref(&of_trait.trait_ref, selfty);
-
-        ty::ImplTraitHeader {
-            trait_ref: ty::EarlyBinder::bind(trait_ref),
-            safety: of_trait.safety,
-            polarity: polarity_of_impl(tcx, of_trait, is_rustc_reservation),
-            constness: of_trait.constness,
-        }
-    })
 }
 
 fn check_impl_constness(
@@ -1330,22 +1373,27 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
-    let (local_trait_span, suggestion_pre) =
-        match (trait_def_id.is_local(), tcx.sess.is_nightly_build()) {
-            (true, true) => (
-                Some(tcx.def_span(trait_def_id).shrink_to_lo()),
+    let (suggestion, suggestion_pre) = match (trait_def_id.as_local(), tcx.sess.is_nightly_build())
+    {
+        (Some(trait_def_id), true) => {
+            let span = tcx.hir_expect_item(trait_def_id).vis_span;
+            let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+            (
+                Some(span.shrink_to_hi()),
                 if tcx.features().const_trait_impl() {
                     ""
                 } else {
                     "enable `#![feature(const_trait_impl)]` in your crate and "
                 },
-            ),
-            (false, _) | (_, false) => (None, ""),
-        };
+            )
+        }
+        (None, _) | (_, false) => (None, ""),
+    };
     tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
-        local_trait_span,
+        suggestion,
         suggestion_pre,
         marking: (),
         adding: (),
@@ -1526,6 +1574,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
     let const_arg_id = tcx.parent_hir_id(hir_id);
     match tcx.hir_node(const_arg_id) {
         hir::Node::ConstArg(_) => {
+            let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
             } else if tcx.features().min_generic_const_args() {
@@ -1533,7 +1582,7 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             } else if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Repeat(_, repeat_count),
                 ..
-            }) = tcx.hir_node(tcx.parent_hir_id(const_arg_id))
+            }) = parent_hir_node
                 && repeat_count.hir_id == const_arg_id
             {
                 ty::AnonConstKind::RepeatExprCount
@@ -1542,5 +1591,44 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             }
         }
         _ => ty::AnonConstKind::NonTypeSystem,
+    }
+}
+
+#[instrument(level = "debug", skip(tcx), ret)]
+fn const_of_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+    let ct_rhs = match tcx.hir_node_by_def_id(def_id) {
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(.., ct), .. }) => *ct,
+        hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(.., ct), ..
+        }) => ct.expect("no default value for trait assoc const"),
+        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(.., ct), .. }) => *ct,
+        _ => {
+            span_bug!(tcx.def_span(def_id), "`const_of_item` expected a const or assoc const item")
+        }
+    };
+    let ct_arg = match ct_rhs {
+        hir::ConstItemRhs::TypeConst(ct_arg) => ct_arg,
+        hir::ConstItemRhs::Body(_) => {
+            let e = tcx.dcx().span_delayed_bug(
+                tcx.def_span(def_id),
+                "cannot call const_of_item on a non-type_const",
+            );
+            return ty::EarlyBinder::bind(Const::new_error(tcx, e));
+        }
+    };
+    let icx = ItemCtxt::new(tcx, def_id);
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    let ct = icx
+        .lowerer()
+        .lower_const_arg(ct_arg, FeedConstTy::Param(def_id.to_def_id(), identity_args));
+    if let Err(e) = icx.check_tainted_by_errors()
+        && !ct.references_error()
+    {
+        ty::EarlyBinder::bind(Const::new_error(tcx, e))
+    } else {
+        ty::EarlyBinder::bind(ct)
     }
 }

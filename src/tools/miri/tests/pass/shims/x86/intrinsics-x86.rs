@@ -7,17 +7,13 @@ mod x86 {
 
     fn adc(c_in: u8, a: u32, b: u32) -> (u8, u32) {
         let mut sum = 0;
-        // SAFETY: There are no safety requirements for calling `_addcarry_u32`.
-        // It's just unsafe for API consistency with other intrinsics.
-        let c_out = unsafe { arch::_addcarry_u32(c_in, a, b, &mut sum) };
+        let c_out = arch::_addcarry_u32(c_in, a, b, &mut sum);
         (c_out, sum)
     }
 
     fn sbb(b_in: u8, a: u32, b: u32) -> (u8, u32) {
         let mut sum = 0;
-        // SAFETY: There are no safety requirements for calling `_subborrow_u32`.
-        // It's just unsafe for API consistency with other intrinsics.
-        let b_out = unsafe { arch::_subborrow_u32(b_in, a, b, &mut sum) };
+        let b_out = arch::_subborrow_u32(b_in, a, b, &mut sum);
         (b_out, sum)
     }
 
@@ -52,17 +48,13 @@ mod x86_64 {
 
     fn adc(c_in: u8, a: u64, b: u64) -> (u8, u64) {
         let mut sum = 0;
-        // SAFETY: There are no safety requirements for calling `_addcarry_u64`.
-        // It's just unsafe for API consistency with other intrinsics.
-        let c_out = unsafe { arch::_addcarry_u64(c_in, a, b, &mut sum) };
+        let c_out = arch::_addcarry_u64(c_in, a, b, &mut sum);
         (c_out, sum)
     }
 
     fn sbb(b_in: u8, a: u64, b: u64) -> (u8, u64) {
         let mut sum = 0;
-        // SAFETY: There are no safety requirements for calling `_subborrow_u64`.
-        // It's just unsafe for API consistency with other intrinsics.
-        let b_out = unsafe { arch::_subborrow_u64(b_in, a, b, &mut sum) };
+        let b_out = arch::_subborrow_u64(b_in, a, b, &mut sum);
         (b_out, sum)
     }
 

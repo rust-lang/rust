@@ -1,6 +1,5 @@
 //! This is a regression test for <https://github.com/rust-lang/miri/issues/3947>: we had some
 //! faulty logic around `release_clock` that led to this code not reporting a data race.
-//~^^ERROR: deadlock
 //@ignore-target: windows # no libc socketpair on Windows
 //@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock

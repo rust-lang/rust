@@ -18,6 +18,11 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
    |           ^^^^^^^^^^^^^^
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:20:22
+   |
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |                      ^^^
 
 error: implementation of `Fn` is not general enough
   --> $DIR/location-insensitive-scopes-issue-117146.rs:13:5

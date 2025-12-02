@@ -18,6 +18,8 @@ rustc-hash.workspace = true
 smallvec.workspace = true
 arrayvec.workspace = true
 ra-ap-rustc_lexer.workspace = true
+salsa.workspace = true
+bitflags.workspace = true
 
 # local deps
 parser.workspace = true

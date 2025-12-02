@@ -501,7 +501,7 @@ fn handle_segfault(
 
     // Move the instr ptr into the deprotection code.
     #[expect(clippy::as_conversions)]
-    new_regs.set_ip(mempr_off as usize);
+    new_regs.set_ip(mempr_off as *const () as usize);
     // Don't mess up the stack by accident!
     new_regs.set_sp(stack_ptr);
 
@@ -530,7 +530,18 @@ fn handle_segfault(
     // Don't use wait_for_signal here since 1 instruction doesn't give room
     // for any uncertainty + we don't want it `cont()`ing randomly by accident
     // Also, don't let it continue with unprotected memory if something errors!
-    let _ = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
+    let stat = wait::waitid(wait::Id::Pid(pid), WAIT_FLAGS).map_err(|_| ExecEnd(None))?;
+    match stat {
+        wait::WaitStatus::Signaled(_, s, _)
+        | wait::WaitStatus::Stopped(_, s)
+        | wait::WaitStatus::PtraceEvent(_, s, _) =>
+            assert!(
+                !matches!(s, signal::SIGSEGV),
+                "native code segfaulted when re-trying memory access\n\
+                is the native code trying to call a Rust function?"
+            ),
+        _ => (),
+    }
 
     // Zero out again to be safe
     for a in (ch_stack..ch_stack.strict_add(CALLBACK_STACK_SIZE)).step_by(ARCH_WORD_SIZE) {
@@ -542,7 +553,7 @@ fn handle_segfault(
 
     // Reprotect everything and continue.
     #[expect(clippy::as_conversions)]
-    new_regs.set_ip(mempr_on as usize);
+    new_regs.set_ip(mempr_on as *const () as usize);
     new_regs.set_sp(stack_ptr);
     ptrace::setregs(pid, new_regs).unwrap();
     wait_for_signal(Some(pid), signal::SIGSTOP, InitialCont::Yes)?;

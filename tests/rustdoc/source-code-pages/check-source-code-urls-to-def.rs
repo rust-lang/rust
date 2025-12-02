@@ -34,7 +34,7 @@ fn babar() {}
 // The 5 links to line 23 and the line 23 itself.
 //@ count - '//pre[@class="rust"]//a[@href="#23"]' 6
 //@ has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' \
-//        'source_code::SourceCode'
+//        'SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
     let x = 12;
     let y: Foo = Foo;

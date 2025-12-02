@@ -41,7 +41,6 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
@@ -75,7 +74,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
-    PredefinedOpaquesData, QueryResult, inspect,
+    QueryResult, inspect,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -102,6 +101,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type CoroutineId = DefId;
     type AdtId = DefId;
     type ImplId = DefId;
+    type UnevaluatedConstId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -116,7 +116,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn mk_predefined_opaques_in_body(
         self,
-        data: PredefinedOpaquesData<Self>,
+        data: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
@@ -207,8 +207,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         from_entry(entry)
     }
 
-    fn evaluation_is_concurrent(&self) -> bool {
-        self.sess.threads() > 1
+    fn assert_evaluation_is_concurrent(&self) {
+        // Turns out, the assumption for this function isn't perfect.
+        // See trait-system-refactor-initiative#234.
     }
 
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
@@ -240,6 +241,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
     fn type_of_opaque_hir_typeck(self, def_id: LocalDefId) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
         self.type_of_opaque_hir_typeck(def_id)
+    }
+    fn const_of_item(self, def_id: DefId) -> ty::EarlyBinder<'tcx, Const<'tcx>> {
+        self.const_of_item(def_id)
     }
 
     type AdtDef = ty::AdtDef<'tcx>;
@@ -520,6 +524,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_default_trait(def_id)
     }
 
+    fn is_sizedness_trait(self, def_id: DefId) -> bool {
+        self.is_sizedness_trait(def_id)
+    }
+
     fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
         lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
     }
@@ -581,13 +589,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Never
             | ty::Tuple(_)
             | ty::UnsafeBinder(_) => {
-                let simp = ty::fast_reject::simplify_type(
+                if let Some(simp) = ty::fast_reject::simplify_type(
                     tcx,
                     self_ty,
                     ty::fast_reject::TreatParams::AsRigid,
-                )
-                .unwrap();
-                consider_impls_for_simplified_type(simp);
+                ) {
+                    consider_impls_for_simplified_type(simp);
+                }
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -674,7 +682,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn impl_trait_ref(self, impl_def_id: DefId) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
-        self.impl_trait_ref(impl_def_id).unwrap()
+        self.impl_trait_ref(impl_def_id)
     }
 
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {
@@ -848,6 +856,7 @@ bidirectional_lang_item_map! {
     PointeeTrait,
     Sized,
     TransmuteTrait,
+    TrivialClone,
     Tuple,
     Unpin,
     Unsize,
@@ -941,11 +950,10 @@ pub struct CtxtInterners<'tcx> {
     layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
     adt_def: InternedSet<'tcx, AdtDefData>,
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
-    predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<TyCtxt<'tcx>>>,
+    predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
     local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
-    offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
@@ -983,7 +991,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             fields: InternedSet::with_capacity(N * 4),
             local_def_ids: InternedSet::with_capacity(N),
             captures: InternedSet::with_capacity(N),
-            offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
@@ -1110,6 +1117,15 @@ const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
 const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
+
+// From general profiling of the *max vars during canonicalization* of a value:
+// - about 90% of the time, there are no canonical vars
+// - about 9% of the time, there is only one canonical var
+// - there are rarely more than 3-5 canonical vars (with exceptions in particularly pathological cases)
+// This may not match the number of bound vars found in `for`s.
+// Given that this is all heap interned, it seems likely that interning fewer
+// vars here won't make an appreciable difference. Though, if we were to inline the data (in an array),
+// we may want to consider reducing the number for canonicalized vars down to 4 or so.
 const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
 // This number may seem high, but it is reached in all but the smallest crates.
@@ -1160,9 +1176,14 @@ pub struct CommonTypes<'tcx> {
     pub fresh_float_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon})`
+    /// `Bound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundTy { var: v, kind: BoundTyKind::Anon})`
     /// for small values of `i` and `v`.
     pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
+
+    // Pre-interned values of the form:
+    // `Bound(BoundVarIndexKind::Canonical, BoundTy { var: v, kind: BoundTyKind::Anon })`
+    // for small values of `v`.
+    pub anon_canonical_bound_tys: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -1176,9 +1197,14 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    /// `ReBound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
     pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
+
+    // Pre-interned values of the form:
+    // `ReBound(BoundVarIndexKind::Canonical, BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    // for small values of `v`.
+    pub anon_re_canonical_bounds: Vec<Region<'tcx>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -1211,11 +1237,20 @@ impl<'tcx> CommonTypes<'tcx> {
                 (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
                     .map(|v| {
                         mk(ty::Bound(
-                            ty::DebruijnIndex::from(i),
+                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
                             ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
                         ))
                     })
                     .collect()
+            })
+            .collect();
+
+        let anon_canonical_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+            .map(|v| {
+                mk(ty::Bound(
+                    ty::BoundVarIndexKind::Canonical,
+                    ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
+                ))
             })
             .collect();
 
@@ -1250,6 +1285,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_int_tys,
             fresh_float_tys,
             anon_bound_tys,
+            anon_canonical_bound_tys,
         }
     }
 }
@@ -1270,7 +1306,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
                 (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
                     .map(|v| {
                         mk(ty::ReBound(
-                            ty::DebruijnIndex::from(i),
+                            ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
                             ty::BoundRegion {
                                 var: ty::BoundVar::from(v),
                                 kind: ty::BoundRegionKind::Anon,
@@ -1281,11 +1317,21 @@ impl<'tcx> CommonLifetimes<'tcx> {
             })
             .collect();
 
+        let anon_re_canonical_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
+            .map(|v| {
+                mk(ty::ReBound(
+                    ty::BoundVarIndexKind::Canonical,
+                    ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BoundRegionKind::Anon },
+                ))
+            })
+            .collect();
+
         CommonLifetimes {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
             anon_re_bounds,
+            anon_re_canonical_bounds,
         }
     }
 }
@@ -1742,9 +1788,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn is_default_trait(self, def_id: DefId) -> bool {
-        self.default_traits()
-            .iter()
-            .any(|&default_trait| self.lang_items().get(default_trait) == Some(def_id))
+        self.default_traits().iter().any(|&default_trait| self.is_lang_item(def_id, default_trait))
+    }
+
+    pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Sized | LangItem::MetaSized))
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -2012,7 +2060,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if stable_crate_id == self.stable_crate_id(LOCAL_CRATE) {
             Some(self.untracked.definitions.read().local_def_path_hash_to_def_id(hash)?.to_def_id())
         } else {
-            Some(self.def_path_hash_to_def_id_extern(hash, stable_crate_id))
+            self.def_path_hash_to_def_id_extern(hash, stable_crate_id)
         }
     }
 
@@ -2042,6 +2090,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.dcx()
     }
 
+    /// Checks to see if the caller (`body_features`) has all the features required by the callee
+    /// (`callee_features`).
     pub fn is_target_feature_call_safe(
         self,
         callee_features: &[TargetFeature],
@@ -2342,7 +2392,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(self) -> bool {
-        self.sess.target.arch.contains("nvptx")
+        self.sess.target.llvm_target.starts_with("nvptx")
     }
 
     /// Returns `&'static core::panic::Location<'static>`.
@@ -2748,8 +2798,6 @@ direct_interners! {
     adt_def: pub mk_adt_def_from_data(AdtDefData): AdtDef -> AdtDef<'tcx>,
     external_constraints: pub mk_external_constraints(ExternalConstraintsData<TyCtxt<'tcx>>):
         ExternalConstraints -> ExternalConstraints<'tcx>,
-    predefined_opaques_in_body: pub mk_predefined_opaques_in_body(PredefinedOpaquesData<TyCtxt<'tcx>>):
-        PredefinedOpaques -> PredefinedOpaques<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2783,9 +2831,9 @@ slice_interners!(
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
-    offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
     outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
+    predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -3129,6 +3177,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_poly_existential_predicates(xs))
     }
 
+    pub fn mk_predefined_opaques_in_body_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>), PredefinedOpaques<'tcx>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_predefined_opaques_in_body(xs))
+    }
+
     pub fn mk_clauses_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -3175,14 +3231,6 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<FieldIdx, &'tcx List<FieldIdx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_fields(xs))
-    }
-
-    pub fn mk_offset_of_from_iter<I, T>(self, iter: I) -> T::Output
-    where
-        I: Iterator<Item = T>,
-        T: CollectAndApply<(VariantIdx, FieldIdx), &'tcx List<(VariantIdx, FieldIdx)>>,
-    {
-        T::collect_and_apply(iter, |xs| self.mk_offset_of(xs))
     }
 
     pub fn mk_args_trait(
@@ -3417,7 +3465,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Whether the trait impl is marked const. This does not consider stability or feature gates.
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
-            && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
+            && self.impl_trait_header(def_id).constness == hir::Constness::Const
     }
 
     pub fn is_sdylib_interface_build(self) -> bool {
@@ -3475,19 +3523,6 @@ impl<'tcx> TyCtxt<'tcx> {
         crate::dep_graph::make_metadata(self)
     }
 
-    /// Given an `impl_id`, return the trait it implements.
-    /// Return `None` if this is an inherent impl.
-    pub fn impl_trait_ref(
-        self,
-        def_id: impl IntoQueryParam<DefId>,
-    ) -> Option<ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>> {
-        Some(self.impl_trait_header(def_id)?.trait_ref)
-    }
-
-    pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
-        self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
-    }
-
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
@@ -3505,6 +3540,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
 
+    pub fn is_trivial_const<P>(self, def_id: P) -> bool
+    where
+        P: IntoQueryParam<DefId>,
+    {
+        self.trivial_const(def_id).is_some()
+    }
+
     /// Whether this def is one of the special bin crate entrypoint functions that must have a
     /// monomorphization and also not be internalized in the bin crate.
     pub fn is_entrypoint(self, def_id: DefId) -> bool {
@@ -3518,21 +3560,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         false
     }
-}
-
-/// Parameter attributes that can only be determined by examining the body of a function instead
-/// of just its signature.
-///
-/// These can be useful for optimization purposes when a function is directly called. We compute
-/// them and store them into the crate metadata so that downstream crates can make use of them.
-///
-/// Right now, we only have `read_only`, but `no_capture` and `no_alias` might be useful in the
-/// future.
-#[derive(Clone, Copy, PartialEq, Debug, Default, TyDecodable, TyEncodable, HashStable)]
-pub struct DeducedParamAttrs {
-    /// The parameter is marked immutable in the function and contains no `UnsafeCell` (i.e. its
-    /// type is freeze).
-    pub read_only: bool,
 }
 
 pub fn provide(providers: &mut Providers) {

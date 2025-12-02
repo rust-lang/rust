@@ -42,7 +42,7 @@ fn custom_panic_hook(default_hook: &PanicHook, info: &panic::PanicHookInfo<'_>) 
 
     let thread = thread::current().name().unwrap_or("(test runner)").to_owned();
     let location = get_location(info);
-    let payload = payload_as_str(info).unwrap_or("Box<dyn Any>");
+    let payload = info.payload_as_str().unwrap_or("Box<dyn Any>");
     let backtrace = Backtrace::capture();
 
     writeln!(out, "\nthread '{thread}' panicked at {location}:\n{payload}").unwrap();
@@ -69,19 +69,6 @@ fn get_location<'a>(info: &'a PanicHookInfo<'_>) -> &'a dyn Display {
     match info.location() {
         Some(location) => location,
         None => &"(unknown)",
-    }
-}
-
-/// FIXME(Zalathar): Replace with `PanicHookInfo::payload_as_str` when that's
-/// stable in beta.
-fn payload_as_str<'a>(info: &'a PanicHookInfo<'_>) -> Option<&'a str> {
-    let payload = info.payload();
-    if let Some(s) = payload.downcast_ref::<&str>() {
-        Some(s)
-    } else if let Some(s) = payload.downcast_ref::<String>() {
-        Some(s)
-    } else {
-        None
     }
 }
 

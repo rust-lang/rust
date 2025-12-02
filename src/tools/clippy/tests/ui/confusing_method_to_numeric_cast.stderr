@@ -1,5 +1,5 @@
 error: casting function pointer `u16::max` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:5:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:6:13
    |
 LL |     let _ = u16::max as usize;
    |             ^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     let _ = u16::MAX as usize;
    |
 
 error: casting function pointer `u16::min` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:6:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:7:13
    |
 LL |     let _ = u16::min as usize;
    |             ^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     let _ = u16::MIN as usize;
    |
 
 error: casting function pointer `u16::max_value` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:7:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:8:13
    |
 LL |     let _ = u16::max_value as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = u16::MAX as usize;
    |
 
 error: casting function pointer `u16::min_value` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:8:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:9:13
    |
 LL |     let _ = u16::min_value as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     let _ = u16::MIN as usize;
    |
 
 error: casting function pointer `f32::maximum` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:10:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:11:13
    |
 LL |     let _ = f32::maximum as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     let _ = f32::MAX as usize;
    |
 
 error: casting function pointer `f32::max` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:11:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:12:13
    |
 LL |     let _ = f32::max as usize;
    |             ^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     let _ = f32::MAX as usize;
    |
 
 error: casting function pointer `f32::minimum` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:12:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:13:13
    |
 LL |     let _ = f32::minimum as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     let _ = f32::MIN as usize;
    |
 
 error: casting function pointer `f32::min` to `usize`
-  --> tests/ui/confusing_method_to_numeric_cast.rs:13:13
+  --> tests/ui/confusing_method_to_numeric_cast.rs:14:13
    |
 LL |     let _ = f32::min as usize;
    |             ^^^^^^^^^^^^^^^^^

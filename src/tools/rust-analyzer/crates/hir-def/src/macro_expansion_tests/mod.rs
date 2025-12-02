@@ -245,6 +245,21 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         }
     }
 
+    for (_, module) in def_map.modules() {
+        let Some(src) = module.declaration_source(&db) else {
+            continue;
+        };
+        if let Some(macro_file) = src.file_id.macro_file() {
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(macro_file.into()).as_ref(),
+                false,
+                false,
+            );
+            format_to!(expanded_text, "\n{}", pp)
+        }
+    }
+
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if let Some(macro_file) = src.file_id.macro_file()
@@ -372,7 +387,6 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
             subtree,
             syntax_bridge::TopEntryPoint::MacroItems,
             &mut |_| span::Edition::CURRENT,
-            span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {
             Ok(subtree.clone())
@@ -413,10 +427,7 @@ fn regression_20171() {
         #dollar_crate::panic::panic_2021!();
     }}
         };
-    token_tree_to_syntax_node(
-        &tt,
-        syntax_bridge::TopEntryPoint::MacroStmts,
-        &mut |_| Edition::CURRENT,
-        Edition::CURRENT,
-    );
+    token_tree_to_syntax_node(&tt, syntax_bridge::TopEntryPoint::MacroStmts, &mut |_| {
+        Edition::CURRENT
+    });
 }

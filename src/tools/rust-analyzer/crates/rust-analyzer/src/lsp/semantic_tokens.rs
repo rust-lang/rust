@@ -91,6 +91,7 @@ define_semantic_token_types![
         (LIFETIME, "lifetime"),
         (LOGICAL, "logical") => OPERATOR,
         (MACRO_BANG, "macroBang") => MACRO,
+        (NEGATION, "negation") => OPERATOR,
         (PARENTHESIS, "parenthesis"),
         (PROC_MACRO, "procMacro") => MACRO,
         (PUNCTUATION, "punctuation"),
@@ -142,6 +143,7 @@ define_semantic_token_modifiers![
         DECLARATION,
         STATIC,
         DEFAULT_LIBRARY,
+        DEPRECATED,
     }
     custom {
         (ASSOCIATED, "associated"),

@@ -372,6 +372,13 @@ struct BinaryFloatLiteralNotSupported {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_unsupported_crate_type_for_codegen_backend)]
+pub(crate) struct UnsupportedCrateTypeForCodegenBackend {
+    pub(crate) crate_type: CrateType,
+    pub(crate) codegen_backend: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(session_unsupported_crate_type_for_target)]
 pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
     pub(crate) crate_type: CrateType,

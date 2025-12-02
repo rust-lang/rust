@@ -44,7 +44,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_early_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -55,7 +55,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
@@ -66,7 +66,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_early_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
@@ -77,7 +77,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         term: &'mir mir::Terminator<'tcx>,
         loc: Location,
@@ -92,7 +92,7 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 
     fn apply_call_return_effect(
-        &mut self,
+        &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -533,7 +533,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_early_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -542,7 +542,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_primary_statement_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
@@ -577,7 +577,6 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::SetDiscriminant { .. }
-            | mir::StatementKind::Deinit(..)
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::Retag { .. }
             | mir::StatementKind::PlaceMention(..)
@@ -591,7 +590,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_early_terminator_effect(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -600,7 +599,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
     }
 
     fn apply_primary_terminator_effect<'mir>(
-        &mut self,
+        &self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,

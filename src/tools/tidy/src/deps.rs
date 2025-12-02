@@ -9,7 +9,7 @@ use build_helper::ci::CiEnv;
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
 
-use crate::diagnostics::{DiagCtx, RunningCheck};
+use crate::diagnostics::{RunningCheck, TidyCtx};
 
 #[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
 mod proc_macro_deps;
@@ -19,32 +19,54 @@ mod proc_macro_deps;
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
-    "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
-    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
     "0BSD OR MIT OR Apache-2.0",                           // adler2 license
-    "0BSD",
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
-    "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
+    "BSD-2-Clause OR MIT OR Apache-2.0",
+    "BSD-3-Clause/MIT",
+    "CC0-1.0 OR MIT-0 OR Apache-2.0",
     "ISC",
     "MIT / Apache-2.0",
     "MIT AND (MIT OR Apache-2.0)",
     "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)", // compiler-builtins
-    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
+    "MIT OR Apache-2.0 OR BSD-1-Clause",
+    "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc; LGPL is not acceptable, but we use it under MIT OR Apache-2.0
     "MIT OR Apache-2.0 OR Zlib",                           // tinyvec_macros
     "MIT OR Apache-2.0",
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
     "MIT",
     "MIT/Apache-2.0",
-    "Unicode-3.0",                                         // icu4x
-    "Unicode-DFS-2016",                                    // tinystr
     "Unlicense OR MIT",
     "Unlicense/MIT",
+    "Zlib",                                                // foldhash (FIXME: see PERMITTED_STDLIB_DEPENDENCIES)
+    // tidy-alphabetical-end
+];
+
+/// These are licenses that are allowed for rustc, tools, etc. But not for the runtime!
+#[rustfmt::skip]
+const LICENSES_TOOLS: &[&str] = &[
+    // tidy-alphabetical-start
+    "(Apache-2.0 OR MIT) AND BSD-3-Clause",
+    "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
+    "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
+    "0BSD",
+    "Apache-2.0 AND ISC",
+    "Apache-2.0 OR BSL-1.0",  // BSL is not acceptable, but we use it under Apache-2.0
+    "Apache-2.0 OR GPL-2.0-only",
+    "Apache-2.0 WITH LLVM-exception",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+    "CC0-1.0",
+    "Unicode-3.0",                                         // icu4x
+    "Unicode-DFS-2016",                                    // tinystr
     "Zlib OR Apache-2.0 OR MIT",                           // tinyvec
+    "Zlib",
     // tidy-alphabetical-end
 ];
 
@@ -89,17 +111,15 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         )),
         submodules: &[],
     },
-    {
-        WorkspaceInfo {
-            path: "compiler/rustc_codegen_cranelift",
-            exceptions: EXCEPTIONS_CRANELIFT,
-            crates_and_deps: Some((
-                &["rustc_codegen_cranelift"],
-                PERMITTED_CRANELIFT_DEPENDENCIES,
-                PERMITTED_CRANELIFT_DEPS_LOCATION,
-            )),
-            submodules: &[],
-        }
+    WorkspaceInfo {
+        path: "compiler/rustc_codegen_cranelift",
+        exceptions: EXCEPTIONS_CRANELIFT,
+        crates_and_deps: Some((
+            &["rustc_codegen_cranelift"],
+            PERMITTED_CRANELIFT_DEPENDENCIES,
+            PERMITTED_CRANELIFT_DEPS_LOCATION,
+        )),
+        submodules: &[],
     },
     WorkspaceInfo {
         path: "compiler/rustc_codegen_gcc",
@@ -149,12 +169,6 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         submodules: &["src/tools/rustc-perf"],
     },
     WorkspaceInfo {
-        path: "src/tools/test-float-parse",
-        exceptions: EXCEPTIONS,
-        crates_and_deps: None,
-        submodules: &[],
-    },
-    WorkspaceInfo {
         path: "tests/run-make-cargo/uefi-qemu/uefi_qemu_test",
         exceptions: EXCEPTIONS_UEFI_QEMU_TEST,
         crates_and_deps: None,
@@ -169,19 +183,8 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
 #[rustfmt::skip]
 const EXCEPTIONS: ExceptionList = &[
     // tidy-alphabetical-start
-    ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
-    ("arrayref", "BSD-2-Clause"),                            // rustc
-    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),  // rustc
     ("colored", "MPL-2.0"),                                  // rustfmt
-    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),  // rustc
-    ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
-    ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
-    ("foldhash", "Zlib"),                                    // rustc
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
-    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
-    ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
-    ("wasi-preview1-component-adapter-provider", "Apache-2.0 WITH LLVM-exception"), // rustc
     // tidy-alphabetical-end
 ];
 
@@ -198,57 +201,22 @@ const EXCEPTIONS_STDLIB: ExceptionList = &[
 
 const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
-    ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
-    ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
-    ("ciborium", "Apache-2.0"),
-    ("ciborium-io", "Apache-2.0"),
-    ("ciborium-ll", "Apache-2.0"),
-    ("constant_time_eq", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
-    ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
-    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
-    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
-    ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
-    ("libz-rs-sys", "Zlib"),
-    ("normalize-line-endings", "Apache-2.0"),
-    ("openssl", "Apache-2.0"),
-    ("ring", "Apache-2.0 AND ISC"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
-    ("subtle", "BSD-3-Clause"),
-    ("supports-hyperlinks", "Apache-2.0"),
-    ("unicode-bom", "Apache-2.0"),
-    ("zlib-rs", "Zlib"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("dissimilar", "Apache-2.0"),
-    ("foldhash", "Zlib"),
-    ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("pulldown-cmark-to-cmark", "Apache-2.0"),
-    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
-    ("scip", "Apache-2.0"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
     // tidy-alphabetical-start
-    ("alloc-no-stdlib", "BSD-3-Clause"),
-    ("alloc-stdlib", "BSD-3-Clause"),
-    ("brotli", "BSD-3-Clause/MIT"),
-    ("brotli-decompressor", "BSD-3-Clause/MIT"),
-    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("inferno", "CDDL-1.0"),
     ("option-ext", "MPL-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
-    ("snap", "BSD-3-Clause"),
-    ("subtle", "BSD-3-Clause"),
     // tidy-alphabetical-end
 ];
 
@@ -258,36 +226,10 @@ const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     ("cssparser-macros", "MPL-2.0"),
     ("dtoa-short", "MPL-2.0"),
     ("mdbook", "MPL-2.0"),
-    ("ryu", "Apache-2.0 OR BSL-1.0"),
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_CRANELIFT: ExceptionList = &[
-    // tidy-alphabetical-start
-    ("cranelift-assembler-x64", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-assembler-x64-meta", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-bitset", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-control", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-jit", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
-    ("cranelift-srcgen", "Apache-2.0 WITH LLVM-exception"),
-    ("foldhash", "Zlib"),
-    ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
-    ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
-    ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
-    ("wasmtime-jit-icache-coherence", "Apache-2.0 WITH LLVM-exception"),
-    ("wasmtime-math", "Apache-2.0 WITH LLVM-exception"),
-    // tidy-alphabetical-end
-];
+const EXCEPTIONS_CRANELIFT: ExceptionList = &[];
 
 const EXCEPTIONS_GCC: ExceptionList = &[
     // tidy-alphabetical-start
@@ -296,13 +238,9 @@ const EXCEPTIONS_GCC: ExceptionList = &[
     // tidy-alphabetical-end
 ];
 
-const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[
-    ("ryu", "Apache-2.0 OR BSL-1.0"), // through serde. BSL is not acceptble, but we use it under Apache-2.0
-];
+const EXCEPTIONS_BOOTSTRAP: ExceptionList = &[];
 
-const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
-    ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
-];
+const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[];
 
 #[derive(Clone, Copy)]
 struct ListLocation {
@@ -329,18 +267,23 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
+    "anstream",
     "anstyle",
+    "anstyle-parse",
+    "anstyle-query",
+    "anstyle-wincon",
     "ar_archive_writer",
     "arrayref",
     "arrayvec",
-    "autocfg",
     "bitflags",
     "blake3",
     "block-buffer",
+    "block2",
     "bstr",
     "cc",
     "cfg-if",
     "cfg_aliases",
+    "colorchoice",
     "constant_time_eq",
     "cpufeatures",
     "crc32fast",
@@ -356,6 +299,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "derive-where",
     "derive_setters",
     "digest",
+    "dispatch2",
     "displaydoc",
     "dissimilar",
     "dyn-clone",
@@ -390,6 +334,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "indexmap",
     "intl-memoizer",
     "intl_pluralrules",
+    "is_terminal_polyfill",
     "itertools",
     "itoa",
     "jiff",
@@ -411,10 +356,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "miniz_oxide",
     "nix",
     "nu-ansi-term",
+    "objc2",
+    "objc2-encode",
     "object",
     "odht",
     "once_cell",
-    "overload",
+    "once_cell_polyfill",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
@@ -458,6 +405,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scopeguard",
     "self_cell",
     "serde",
+    "serde_core",
     "serde_derive",
     "serde_derive_internals",
     "serde_json",
@@ -466,6 +414,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "sha2",
     "sharded-slab",
     "shlex",
+    "simd-adler32",
     "smallvec",
     "stable_deref_trait",
     "stacker",
@@ -474,7 +423,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "syn",
     "synstructure",
     "tempfile",
-    "termcolor",
     "termize",
     "thin-vec",
     "thiserror",
@@ -506,15 +454,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-security",
     "unicode-width",
     "unicode-xid",
+    "utf8parse",
     "valuable",
     "version_check",
     "wasi",
     "wasm-encoder",
     "wasmparser",
-    "winapi",
-    "winapi-i686-pc-windows-gnu",
-    "winapi-util",
-    "winapi-x86_64-pc-windows-gnu",
     "windows",
     "windows-collections",
     "windows-core",
@@ -560,6 +505,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "compiler_builtins",
     "dlmalloc",
+    "foldhash", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "fortanix-sgx-abi",
     "getopts",
     "gimli",
@@ -568,6 +514,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "libc",
     "memchr",
     "miniz_oxide",
+    "moto-rt",
     "object",
     "r-efi",
     "r-efi-alloc",
@@ -578,7 +525,9 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rustc-literal-escaper",
     "shlex",
     "unwinding",
+    "vex-sdk",
     "wasi",
+    "windows-link",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -625,6 +574,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "foldhash",
     "gimli",
     "hashbrown",
+    "heck",
     "indexmap",
     "libc",
     "libloading",
@@ -645,8 +595,9 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "syn",
     "target-lexicon",
     "unicode-ident",
-    "wasmtime-jit-icache-coherence",
-    "wasmtime-math",
+    "wasmtime-internal-jit-icache-coherence",
+    "wasmtime-internal-math",
+    "windows-link",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
@@ -664,8 +615,9 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
 /// to the cargo executable.
-pub fn check(root: &Path, cargo: &Path, bless: bool, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check("deps");
+pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("deps");
+    let bless = tidy_ctx.is_bless_enabled();
 
     let mut checked_runtime_licenses = false;
 
@@ -864,6 +816,11 @@ fn check_license_exceptions(
                 }
             }
         }
+        if LICENSES.contains(license) || LICENSES_TOOLS.contains(license) {
+            check.error(format!(
+                "dependency exception `{name}` is not necessary. `{license}` is an allowed license"
+            ));
+        }
     }
 
     let exception_names: Vec<_> = exceptions.iter().map(|(name, _license)| *name).collect();
@@ -887,7 +844,7 @@ fn check_license_exceptions(
                 continue;
             }
         };
-        if !LICENSES.contains(&license.as_str()) {
+        if !LICENSES.contains(&license.as_str()) && !LICENSES_TOOLS.contains(&license.as_str()) {
             check.error(format!(
                 "invalid license `{}` for package `{}` in workspace `{workspace}`",
                 license, pkg.id

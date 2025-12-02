@@ -54,7 +54,7 @@ impl<'db> OpaqueTypeStorage<'db> {
         assert!(entry.is_some());
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
         opaque_types.is_empty() && duplicate_entries.is_empty()
     }
@@ -66,14 +66,14 @@ impl<'db> OpaqueTypeStorage<'db> {
         std::mem::take(opaque_types).into_iter().chain(std::mem::take(duplicate_entries))
     }
 
-    pub fn num_entries(&self) -> OpaqueTypeStorageEntries {
+    pub(crate) fn num_entries(&self) -> OpaqueTypeStorageEntries {
         OpaqueTypeStorageEntries {
             opaque_types: self.opaque_types.len(),
             duplicate_entries: self.duplicate_entries.len(),
         }
     }
 
-    pub fn opaque_types_added_since(
+    pub(crate) fn opaque_types_added_since(
         &self,
         prev_entries: OpaqueTypeStorageEntries,
     ) -> impl Iterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
@@ -89,7 +89,7 @@ impl<'db> OpaqueTypeStorage<'db> {
     ///
     /// Outside of canonicalization one should generally use `iter_opaque_types`
     /// to also consider duplicate entries.
-    pub fn iter_lookup_table(
+    pub(crate) fn iter_lookup_table(
         &self,
     ) -> impl Iterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
         self.opaque_types.iter().map(|(k, v)| (*k, *v))
@@ -100,13 +100,13 @@ impl<'db> OpaqueTypeStorage<'db> {
     /// These have to considered when checking all opaque type uses but are e.g.
     /// irrelevant for canonical inputs as nested queries never meaningfully
     /// accesses them.
-    pub fn iter_duplicate_entries(
+    pub(crate) fn iter_duplicate_entries(
         &self,
     ) -> impl Iterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
         self.duplicate_entries.iter().copied()
     }
 
-    pub fn iter_opaque_types(
+    pub(crate) fn iter_opaque_types(
         &self,
     ) -> impl Iterator<Item = (OpaqueTypeKey<'db>, OpaqueHiddenType<'db>)> {
         let OpaqueTypeStorage { opaque_types, duplicate_entries } = self;
@@ -119,14 +119,6 @@ impl<'db> OpaqueTypeStorage<'db> {
         undo_log: &'a mut InferCtxtUndoLogs<'db>,
     ) -> OpaqueTypeTable<'a, 'db> {
         OpaqueTypeTable { storage: self, undo_log }
-    }
-}
-
-impl<'db> Drop for OpaqueTypeStorage<'db> {
-    fn drop(&mut self) {
-        if !self.opaque_types.is_empty() {
-            panic!("{:?}", self.opaque_types)
-        }
     }
 }
 
@@ -144,7 +136,7 @@ impl<'db> Deref for OpaqueTypeTable<'_, 'db> {
 
 impl<'a, 'db> OpaqueTypeTable<'a, 'db> {
     #[instrument(skip(self), level = "debug")]
-    pub fn register(
+    pub(crate) fn register(
         &mut self,
         key: OpaqueTypeKey<'db>,
         hidden_type: OpaqueHiddenType<'db>,
@@ -159,7 +151,11 @@ impl<'a, 'db> OpaqueTypeTable<'a, 'db> {
         None
     }
 
-    pub fn add_duplicate(&mut self, key: OpaqueTypeKey<'db>, hidden_type: OpaqueHiddenType<'db>) {
+    pub(crate) fn add_duplicate(
+        &mut self,
+        key: OpaqueTypeKey<'db>,
+        hidden_type: OpaqueHiddenType<'db>,
+    ) {
         self.storage.duplicate_entries.push((key, hidden_type));
         self.undo_log.push(UndoLog::DuplicateOpaqueType);
     }

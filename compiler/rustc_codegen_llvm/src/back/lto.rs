@@ -26,7 +26,7 @@ use crate::back::write::{
 };
 use crate::errors::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx};
+use crate::{LlvmCodegenBackend, ModuleLlvm};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
@@ -76,6 +76,9 @@ fn prepare_lto(
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
     // should have default visibility.
     symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
+
+    // LTO seems to discard this otherwise under certain circumstances.
+    symbols_below_threshold.push(c"rust_eh_personality".to_owned());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -563,6 +566,8 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
             config::AutoDiff::Enable => {}
             // We handle this below
             config::AutoDiff::NoPostopt => {}
+            // Disables TypeTree generation
+            config::AutoDiff::NoTT => {}
         }
     }
     // This helps with handling enums for now.
@@ -596,7 +601,6 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
-    let enable_gpu = config.offload.contains(&config::Offload::Enable);
     let stage = if thin {
         write::AutodiffStage::PreAD
     } else {
@@ -609,12 +613,6 @@ pub(crate) fn run_pass_manager(
 
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage);
-    }
-
-    if enable_gpu && !thin {
-        let cx =
-            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
-        crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
     }
 
     if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {

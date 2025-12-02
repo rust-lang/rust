@@ -4,6 +4,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::sym;
+use rustc_target::spec::Arch;
 
 use super::FunctionCx;
 use super::operand::OperandRef;
@@ -30,7 +31,7 @@ fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if allow_overlap {
         bx.memmove(dst, align, src, align, size, flags);
     } else {
-        bx.memcpy(dst, align, src, align, size, flags);
+        bx.memcpy(dst, align, src, align, size, flags, None);
     }
 }
 
@@ -79,7 +80,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // reinterpretation of values as (chunkable) byte arrays, and the loop in the
                 // block optimization in `ptr::swap_nonoverlapping` is hard to rewrite back
                 // into the (unoptimized) direct swapping implementation, so we disable it.
-                || bx.sess().target.arch == "spirv"
+                || bx.sess().target.arch == Arch::SpirV
             {
                 let align = pointee_layout.align.abi;
                 let x_place = args[0].val.deref(align);
@@ -120,8 +121,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_singlethreadfence
                 | sym::caller_location => {}
                 _ => {
-                    span_bug!(span, "nullary intrinsic {name} must either be in a const block or explicitly opted out because it is inherently a runtime intrinsic
-");
+                    span_bug!(
+                        span,
+                        "Nullary intrinsic {name} must be called in a const block. \
+                        If you are seeing this message from code outside the standard library, the \
+                        unstable implementation details of the relevant intrinsic may have changed. \
+                        Consider using stable APIs instead. \
+                        If you are adding a new nullary intrinsic that is inherently a runtime \
+                        intrinsic, update this check."
+                    );
                 }
             }
         }

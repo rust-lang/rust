@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use miropt_test_tools::PanicStrategy;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::walk_no_read;
 
 fn check_unused_files(path: &Path, bless: bool, check: &mut RunningCheck) {
@@ -74,8 +74,9 @@ fn check_dash_files(path: &Path, bless: bool, check: &mut RunningCheck) {
     }
 }
 
-pub fn check(path: &Path, bless: bool, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("mir_opt_tests").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("mir_opt_tests").path(path));
+    let bless = tidy_ctx.is_bless_enabled();
 
     check_unused_files(path, bless, &mut check);
     check_dash_files(path, bless, &mut check);

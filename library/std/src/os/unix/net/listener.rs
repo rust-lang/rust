@@ -71,7 +71,7 @@ impl UnixListener {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         unsafe {
-            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
             #[cfg(any(
                 target_os = "windows",
@@ -136,7 +136,7 @@ impl UnixListener {
     #[stable(feature = "unix_socket_abstract", since = "1.70.0")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
-            let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+            let inner = Socket::new(libc::AF_UNIX, libc::SOCK_STREAM)?;
             #[cfg(target_os = "linux")]
             const backlog: core::ffi::c_int = -1;
             #[cfg(not(target_os = "linux"))]

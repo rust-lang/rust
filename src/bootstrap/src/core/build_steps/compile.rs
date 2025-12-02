@@ -26,6 +26,7 @@ use crate::core::builder;
 use crate::core::builder::{
     Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
+use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
@@ -112,10 +113,12 @@ impl Step for Std {
     /// Build stamp of std, if it was indeed built or uplifted.
     type Output = Option<BuildStamp>;
 
-    const DEFAULT: bool = true;
-
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.crate_or_deps("sysroot").path("library")
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -266,10 +269,7 @@ impl Step for Std {
                 target,
                 Kind::Build,
             );
-            std_cargo(builder, target, &mut cargo);
-            for krate in &*self.crates {
-                cargo.arg("-p").arg(krate);
-            }
+            std_cargo(builder, target, &mut cargo, &self.crates);
             cargo
         };
 
@@ -430,6 +430,16 @@ fn copy_self_contained_objects(
                 target.triple
             )
         });
+
+        // wasm32-wasip3 doesn't exist in wasi-libc yet, so instead use libs
+        // from the wasm32-wasip2 target. Once wasi-libc supports wasip3 this
+        // should be deleted and the native objects should be used.
+        let srcdir = if target == "wasm32-wasip3" {
+            assert!(!srcdir.exists(), "wasip3 support is in wasi-libc, this should be updated now");
+            builder.wasi_libdir(TargetSelection::from_user("wasm32-wasip2")).unwrap()
+        } else {
+            srcdir
+        };
         for &obj in &["libc.a", "crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
@@ -440,7 +450,7 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
-    } else if target.is_windows_gnu() {
+    } else if target.is_windows_gnu() || target.is_windows_gnullvm() {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
             let src = compiler_file(builder, &builder.cc(target), target, CLang::C, obj);
             let dst = libdir_self_contained.join(obj);
@@ -497,7 +507,12 @@ fn compiler_rt_for_profiler(builder: &Builder<'_>) -> PathBuf {
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Cargo) {
+pub fn std_cargo(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    cargo: &mut Cargo,
+    crates: &[String],
+) {
     // rustc already ensures that it builds with the minimum deployment
     // target, so ideally we shouldn't need to do anything here.
     //
@@ -519,7 +534,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         // Query rustc for the deployment target, and the associated env var.
         // The env var is one of the standard `*_DEPLOYMENT_TARGET` vars, i.e.
         // `MACOSX_DEPLOYMENT_TARGET`, `IPHONEOS_DEPLOYMENT_TARGET`, etc.
-        let mut cmd = command(builder.rustc(cargo.compiler()));
+        let mut cmd = builder.rustc_cmd(cargo.compiler());
         cmd.arg("--target").arg(target.rustc_target_arg());
         cmd.arg("--print=deployment-target");
         let output = cmd.run_capture_stdout(builder).stdout();
@@ -590,7 +605,12 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
                 ),
             );
             let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-            assert!(compiler_builtins_root.exists());
+            if !builder.config.dry_run() {
+                // This assertion would otherwise trigger during tests if `llvm-project` is not
+                // checked out.
+                assert!(compiler_builtins_root.exists());
+            }
+
             // The path to `compiler-rt` is also used by `profiler_builtins` (above),
             // so if you're changing something here please also change that as appropriate.
             cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -605,6 +625,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
 
+    for krate in crates {
+        cargo.args(["-p", krate]);
+    }
+
     let mut features = String::new();
 
     if builder.no_std(target) == Some(true) {
@@ -614,8 +638,10 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         }
 
         // for no-std targets we only compile a few no_std crates
+        if crates.is_empty() {
+            cargo.args(["-p", "alloc"]);
+        }
         cargo
-            .args(["-p", "alloc"])
             .arg("--manifest-path")
             .arg(builder.src.join("library/alloc/Cargo.toml"))
             .arg("--features")
@@ -895,6 +921,8 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) -> Vec<(PathBuf, DependencyType)> {
         let for_compiler = self.compiler;
         let target = self.target;
+        // Even though no longer necessary on x86_64, they are kept for now to
+        // avoid potential issues in downstream crates.
         if !target.is_windows_gnu() {
             return vec![];
         }
@@ -985,9 +1013,7 @@ impl Rustc {
 
 impl Step for Rustc {
     type Output = BuiltRustc;
-
     const IS_HOST: bool = true;
-    const DEFAULT: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut crates = run.builder.in_tree_crates("rustc-main", None);
@@ -1000,6 +1026,10 @@ impl Step for Rustc {
             }
         }
         run.crates(crates)
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1219,7 +1249,7 @@ pub fn rustc_cargo(
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
     // with direct references to protected symbols, so for now we only use protected symbols if
     // linking with LLD is enabled.
-    if builder.build.config.lld_mode.is_used() {
+    if builder.build.config.bootstrap_override_lld.is_used() {
         cargo.rustflag("-Zdefault-visibility=protected");
     }
 
@@ -1256,7 +1286,7 @@ pub fn rustc_cargo(
     // is already on by default in MSVC optimized builds, which is interpreted as --icf=all:
     // https://github.com/llvm/llvm-project/blob/3329cec2f79185bafd678f310fafadba2a8c76d2/lld/COFF/Driver.cpp#L1746
     // https://github.com/rust-lang/rust/blob/f22819bcce4abaff7d1246a56eec493418f9f4ee/compiler/rustc_codegen_ssa/src/back/linker.rs#L827
-    if builder.config.lld_mode.is_used() && !build_compiler.host.is_msvc() {
+    if builder.config.bootstrap_override_lld.is_used() && !build_compiler.host.is_msvc() {
         cargo.rustflag("-Clink-args=-Wl,--icf=all");
     }
 
@@ -1348,9 +1378,14 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
 
-    // Enable rustc's env var for `rust-lld` when requested.
-    if builder.config.lld_enabled {
-        cargo.env("CFG_USE_SELF_CONTAINED_LINKER", "1");
+    // Enable rustc's env var to use a linker override on Linux when requested.
+    if let Some(linker) = target_config.map(|c| c.default_linker_linux_override) {
+        match linker {
+            DefaultLinuxLinkerOverride::Off => {}
+            DefaultLinuxLinkerOverride::SelfContainedLldCc => {
+                cargo.env("CFG_DEFAULT_LINKER_SELF_CONTAINED_LLD_CC", "1");
+            }
+        }
     }
 
     if builder.config.rust_verify_llvm_ir {
@@ -1404,6 +1439,9 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
+    }
+    if builder.config.llvm_offload {
+        cargo.env("LLVM_OFFLOAD", "1");
     }
     let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     cargo.env("LLVM_CONFIG", &host_llvm_config);
@@ -1832,8 +1870,9 @@ impl Step for Sysroot {
         let sysroot = sysroot_dir(compiler.stage);
         trace!(stage = ?compiler.stage, ?sysroot);
 
-        builder
-            .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
+        builder.do_if_verbose(|| {
+            println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
+        });
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1902,12 +1941,7 @@ impl Step for Sysroot {
                 if !path.parent().is_none_or(|p| p.ends_with(&suffix)) {
                     return true;
                 }
-                if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
-                    false
-                } else {
-                    true
-                }
+                filtered_files.iter().all(|f| f != path.file_name().unwrap())
             });
         }
 
@@ -2596,7 +2630,7 @@ pub fn stream_cargo(
         cmd.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.do_if_verbose(|| println!("running: {cmd:?}"));
 
     let streaming_command = cmd.stream_capture_stdout(&builder.config.exec_ctx);
 

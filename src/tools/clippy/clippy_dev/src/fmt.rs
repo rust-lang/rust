@@ -268,7 +268,7 @@ fn run_rustfmt(update_mode: UpdateMode) {
     .expect("invalid rustfmt path");
     rustfmt_path.truncate(rustfmt_path.trim_end().len());
 
-    let args: Vec<_> = walk_dir_no_dot_or_target()
+    let args: Vec<_> = walk_dir_no_dot_or_target(".")
         .filter_map(|e| {
             let e = expect_action(e, ErrAction::Read, ".");
             e.path()

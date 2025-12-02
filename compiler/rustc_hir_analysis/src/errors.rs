@@ -191,7 +191,7 @@ pub(crate) struct LifetimesOrBoundsMismatchOnTrait {
     #[label]
     pub span: Span,
     #[label(hir_analysis_generics_label)]
-    pub generics_span: Option<Span>,
+    pub generics_span: Span,
     #[label(hir_analysis_where_label)]
     pub where_span: Option<Span>,
     #[label(hir_analysis_bounds_label)]
@@ -379,17 +379,6 @@ pub(crate) struct ParenthesizedFnTraitExpansion {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_typeof_reserved_keyword_used, code = E0516)]
-pub(crate) struct TypeofReservedKeywordUsed<'tcx> {
-    pub ty: Ty<'tcx>,
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[suggestion(style = "verbose", code = "{ty}")]
-    pub opt_sugg: Option<(Span, Applicability)>,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_value_of_associated_struct_already_specified, code = E0719)]
 pub(crate) struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
@@ -500,13 +489,8 @@ pub(crate) struct ConstImplForNonConstTrait {
     #[label]
     pub trait_ref_span: Span,
     pub trait_name: String,
-    #[suggestion(
-        applicability = "machine-applicable",
-        // FIXME(const_trait_impl) fix this suggestion
-        code = "#[const_trait] ",
-        style = "verbose"
-    )]
-    pub local_trait_span: Option<Span>,
+    #[suggestion(applicability = "machine-applicable", code = "const ", style = "verbose")]
+    pub suggestion: Option<Span>,
     pub suggestion_pre: &'static str,
     #[note]
     pub marking: (),
@@ -523,14 +507,9 @@ pub(crate) struct ConstBoundForNonConstTrait {
     pub modifier: &'static str,
     #[note]
     pub def_span: Option<Span>,
-    pub suggestion_pre: &'static str,
-    #[suggestion(
-        applicability = "machine-applicable",
-        // FIXME(const_trait_impl) fix this suggestion
-        code = "#[const_trait] ",
-        style = "verbose"
-    )]
+    #[suggestion(applicability = "machine-applicable", code = "const ", style = "verbose")]
     pub suggestion: Option<Span>,
+    pub suggestion_pre: &'static str,
     pub trait_name: String,
 }
 
@@ -1259,6 +1238,16 @@ pub(crate) struct CoerceUnsizedNonStruct {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_same_pat_kind)]
+pub(crate) struct CoerceSamePatKind {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+    pub pat_a: String,
+    pub pat_b: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
 pub(crate) struct CoerceSameStruct {
     #[primary_span]
@@ -1616,8 +1605,7 @@ pub(crate) struct InvalidGenericReceiverTy<'tcx> {
 pub(crate) struct CmseInputsStackSpill {
     #[primary_span]
     #[label]
-    pub span: Span,
-    pub plural: bool,
+    pub spans: Vec<Span>,
     pub abi: ExternAbi,
 }
 
@@ -1633,22 +1621,24 @@ pub(crate) struct CmseOutputStackSpill {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_cmse_call_generic, code = E0798)]
-pub(crate) struct CmseCallGeneric {
+#[diag(hir_analysis_cmse_generic, code = E0798)]
+pub(crate) struct CmseGeneric {
     #[primary_span]
     pub span: Span,
+    pub abi: ExternAbi,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cmse_impl_trait, code = E0798)]
+pub(crate) struct CmseImplTrait {
+    #[primary_span]
+    pub span: Span,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_bad_return_type_notation_position)]
 pub(crate) struct BadReturnTypeNotation {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_cmse_entry_generic, code = E0798)]
-pub(crate) struct CmseEntryGeneric {
     #[primary_span]
     pub span: Span,
 }

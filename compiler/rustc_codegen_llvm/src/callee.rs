@@ -7,11 +7,11 @@
 use rustc_codegen_ssa::common;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
+use rustc_target::spec::{Arch, Env};
 use tracing::debug;
 
 use crate::context::CodegenCx;
-use crate::llvm;
-use crate::value::Value;
+use crate::llvm::{self, Value};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -36,7 +36,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         llfn
     } else {
         let instance_def_id = instance.def_id();
-        let llfn = if tcx.sess.target.arch == "x86"
+        let llfn = if tcx.sess.target.arch == Arch::X86
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
             // When calling functions in generated import libraries, MSVC needs
@@ -145,7 +145,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         if cx.use_dll_storage_attrs
             && let Some(library) = tcx.native_library(instance_def_id)
             && library.kind.is_dllimport()
-            && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
+            && !matches!(tcx.sess.target.env, Env::Gnu | Env::Uclibc)
         {
             llvm::set_dllimport_storage_class(llfn);
         }

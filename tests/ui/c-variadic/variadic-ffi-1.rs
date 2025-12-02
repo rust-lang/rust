@@ -1,6 +1,7 @@
-//@ add-core-stubs
+//@ add-minicore
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
+//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, lang_items)]
 

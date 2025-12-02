@@ -1,5 +1,4 @@
-//@ add-core-stubs
-//@ needs-asm-support
+//@ add-minicore
 //@ revisions: riscv32i riscv32imafc riscv32gc riscv32e riscv64imac riscv64gc
 //@[riscv32i] compile-flags: --target riscv32i-unknown-none-elf
 //@[riscv32i] needs-llvm-components: riscv
@@ -13,6 +12,7 @@
 //@[riscv64imac] needs-llvm-components: riscv
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@[riscv64gc] needs-llvm-components: riscv
+//@ ignore-backends: gcc
 
 // Unlike riscv32e-registers.rs, this tests if the rustc can reject invalid registers
 // usage in the asm! API (in, out, inout, etc.).

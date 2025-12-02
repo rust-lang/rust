@@ -6,7 +6,8 @@ LL |     foo(&mut bref);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `std::io::Write` is implemented for `&mut [u8]`
+help: the trait `std::io::Write` is implemented for `&mut [u8]`
+  --> $SRC_DIR/std/src/io/impls.rs:LL:COL
 note: required by a bound in `foo`
   --> $DIR/issue-105645.rs:8:21
    |

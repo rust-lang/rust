@@ -750,12 +750,6 @@ pub(crate) struct MultipleMainFunctions {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_windows_subsystem)]
-pub(crate) struct InvalidWindowsSubsystem {
-    pub subsystem: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_shuffle_indices_evaluation)]
 pub(crate) struct ShuffleIndicesEvaluation {
     #[primary_span]
@@ -1282,14 +1276,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag.arg("features", self.features.join(", "));
         diag
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_no_mangle_nameless)]
-pub(crate) struct NoMangleNameless {
-    #[primary_span]
-    pub span: Span,
-    pub definition: String,
 }
 
 #[derive(Diagnostic)]

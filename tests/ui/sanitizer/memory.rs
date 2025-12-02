@@ -12,6 +12,7 @@
 //@ error-pattern: MemorySanitizer: use-of-uninitialized-value
 //@ error-pattern: Uninitialized value was created by an allocation
 //@ error-pattern: in the stack frame
+//@ ignore-backends: gcc
 //
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.

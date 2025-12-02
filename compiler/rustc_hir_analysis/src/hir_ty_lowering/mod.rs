@@ -27,9 +27,10 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, struct_span_code_err,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
+use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId, find_attr};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -55,6 +56,19 @@ use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
+
+/// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
+/// trait or a default trait)
+#[derive(Clone, Copy)]
+pub(crate) enum ImpliedBoundsContext<'tcx> {
+    /// An implied bound is added to a trait definition (i.e. a new supertrait), used when adding
+    /// a default `MetaSized` supertrait
+    TraitDef(LocalDefId),
+    /// An implied bound is added to a type parameter
+    TyParam(LocalDefId, &'tcx [hir::WherePredicate<'tcx>]),
+    /// An implied bound being added in any other context
+    AssociatedTypeOrImplTrait,
+}
 
 /// A path segment that is semantically allowed to have generic arguments.
 #[derive(Debug)]
@@ -330,6 +344,15 @@ pub(crate) enum GenericArgPosition {
     Type,
     Value, // e.g., functions
     MethodCall,
+}
+
+/// Whether to allow duplicate associated iten constraints in a trait ref, e.g.
+/// `Trait<Assoc = Ty, Assoc = Ty>`. This is forbidden in `dyn Trait<...>`
+/// but allowed everywhere else.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum OverlappingAsssocItemConstraints {
+    Allowed,
+    Forbidden,
 }
 
 /// A marker denoting that the generic arguments that were
@@ -708,16 +731,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_ref: &hir::TraitRef<'tcx>,
         self_ty: Ty<'tcx>,
     ) -> ty::TraitRef<'tcx> {
-        let _ = self.prohibit_generic_args(
-            trait_ref.path.segments.split_last().unwrap().1.iter(),
-            GenericsArgsErrExtend::None,
-        );
+        let [leading_segments @ .., segment] = trait_ref.path.segments else { bug!() };
+
+        let _ = self.prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
 
         self.lower_mono_trait_ref(
             trait_ref.path.span,
             trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise()),
             self_ty,
-            trait_ref.path.segments.last().unwrap(),
+            segment,
             true,
         )
     }
@@ -748,58 +770,81 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "debug", skip(self, bounds))]
     pub(crate) fn lower_poly_trait_ref(
         &self,
-        poly_trait_ref: &hir::PolyTraitRef<'tcx>,
+        &hir::PolyTraitRef {
+            bound_generic_params,
+            modifiers: hir::TraitBoundModifiers { constness, polarity },
+            trait_ref,
+            span,
+        }: &hir::PolyTraitRef<'tcx>,
         self_ty: Ty<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
+        overlapping_assoc_item_constraints: OverlappingAsssocItemConstraints,
     ) -> GenericArgCountResult {
         let tcx = self.tcx();
 
         // We use the *resolved* bound vars later instead of the HIR ones since the former
         // also include the bound vars of the overarching predicate if applicable.
-        let hir::PolyTraitRef { bound_generic_params: _, modifiers, ref trait_ref, span } =
-            *poly_trait_ref;
-        let hir::TraitBoundModifiers { constness, polarity } = modifiers;
+        let _ = bound_generic_params;
 
         let trait_def_id = trait_ref.trait_def_id().unwrap_or_else(|| FatalError.raise());
 
-        // Relaxed bounds `?Trait` and `PointeeSized` bounds aren't represented in the `middle::ty` IR
+        // Relaxed bounds `?Trait` and `PointeeSized` bounds aren't represented in the middle::ty IR
         // as they denote the *absence* of a default bound. However, we can't bail out early here since
         // we still need to perform several validation steps (see below). Instead, simply "pour" all
         // resulting bounds "down the drain", i.e., into a new `Vec` that just gets dropped at the end.
-        let (polarity, bounds) = match polarity {
-            rustc_ast::BoundPolarity::Positive
-                if tcx.is_lang_item(trait_def_id, hir::LangItem::PointeeSized) =>
-            {
+        let transient = match polarity {
+            hir::BoundPolarity::Positive => {
                 // To elaborate on the comment directly above, regarding `PointeeSized` specifically,
                 // we don't "reify" such bounds to avoid trait system limitations -- namely,
                 // non-global where-clauses being preferred over item bounds (where `PointeeSized`
                 // bounds would be proven) -- which can result in errors when a `PointeeSized`
                 // supertrait / bound / predicate is added to some items.
-                (ty::PredicatePolarity::Positive, &mut Vec::new())
+                tcx.is_lang_item(trait_def_id, hir::LangItem::PointeeSized)
             }
-            rustc_ast::BoundPolarity::Positive => (ty::PredicatePolarity::Positive, bounds),
-            rustc_ast::BoundPolarity::Negative(_) => (ty::PredicatePolarity::Negative, bounds),
-            rustc_ast::BoundPolarity::Maybe(_) => {
-                (ty::PredicatePolarity::Positive, &mut Vec::new())
+            hir::BoundPolarity::Negative(_) => false,
+            hir::BoundPolarity::Maybe(_) => {
+                self.require_bound_to_relax_default_trait(trait_ref, span);
+                true
             }
         };
+        let bounds = if transient { &mut Vec::new() } else { bounds };
 
-        let trait_segment = trait_ref.path.segments.last().unwrap();
+        let polarity = match polarity {
+            hir::BoundPolarity::Positive | hir::BoundPolarity::Maybe(_) => {
+                ty::PredicatePolarity::Positive
+            }
+            hir::BoundPolarity::Negative(_) => ty::PredicatePolarity::Negative,
+        };
 
-        let _ = self.prohibit_generic_args(
-            trait_ref.path.segments.split_last().unwrap().1.iter(),
-            GenericsArgsErrExtend::None,
-        );
-        self.report_internal_fn_trait(span, trait_def_id, trait_segment, false);
+        let [leading_segments @ .., segment] = trait_ref.path.segments else { bug!() };
+
+        let _ = self.prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+        self.report_internal_fn_trait(span, trait_def_id, segment, false);
 
         let (generic_args, arg_count) = self.lower_generic_args_of_path(
             trait_ref.path.span,
             trait_def_id,
             &[],
-            trait_segment,
+            segment,
             Some(self_ty),
         );
+
+        let constraints = segment.args().constraints;
+
+        if transient && (!generic_args[1..].is_empty() || !constraints.is_empty()) {
+            // Since the bound won't be present in the middle::ty IR as established above, any
+            // arguments or constraints won't be checked for well-formedness in later passes.
+            //
+            // This is only an issue if the trait ref is otherwise valid which can only happen if
+            // the corresponding default trait has generic parameters or associated items. Such a
+            // trait would be degenerate. We delay a bug to detect and guard us against these.
+            //
+            // E.g: Given `/*default*/ trait Bound<'a: 'static, T, const N: usize> {}`,
+            // `?Bound<Vec<str>, { panic!() }>` won't be wfchecked.
+            self.dcx()
+                .span_delayed_bug(span, "transient bound should not have args or constraints");
+        }
 
         let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
         debug!(?bound_vars);
@@ -836,28 +881,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if let hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) = constness
-            && !self.tcx().is_const_trait(trait_def_id)
+            && !tcx.is_const_trait(trait_def_id)
         {
             let (def_span, suggestion, suggestion_pre) =
-                match (trait_def_id.is_local(), self.tcx().sess.is_nightly_build()) {
-                    (true, true) => (
-                        None,
-                        Some(tcx.def_span(trait_def_id).shrink_to_lo()),
-                        if self.tcx().features().const_trait_impl() {
-                            ""
-                        } else {
-                            "enable `#![feature(const_trait_impl)]` in your crate and "
-                        },
-                    ),
-                    (false, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
+                match (trait_def_id.as_local(), tcx.sess.is_nightly_build()) {
+                    (Some(trait_def_id), true) => {
+                        let span = tcx.hir_expect_item(trait_def_id).vis_span;
+                        let span = tcx.sess.source_map().span_extend_while_whitespace(span);
+
+                        (
+                            None,
+                            Some(span.shrink_to_hi()),
+                            if self.tcx().features().const_trait_impl() {
+                                ""
+                            } else {
+                                "enable `#![feature(const_trait_impl)]` in your crate and "
+                            },
+                        )
+                    }
+                    (None, _) | (_, false) => (Some(tcx.def_span(trait_def_id)), None, ""),
                 };
             self.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
                 span,
                 modifier: constness.as_str(),
                 def_span,
-                trait_name: self.tcx().def_path_str(trait_def_id),
-                suggestion_pre,
+                trait_name: tcx.def_path_str(trait_def_id),
                 suggestion,
+                suggestion_pre,
             });
         } else {
             match predicate_filter {
@@ -908,8 +958,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut dup_constraints = FxIndexMap::default();
-        for constraint in trait_segment.args().constraints {
+        let mut dup_constraints = (overlapping_assoc_item_constraints
+            == OverlappingAsssocItemConstraints::Forbidden)
+            .then_some(FxIndexMap::default());
+
+        for constraint in constraints {
             // Don't register any associated item constraints for negative bounds,
             // since we should have emitted an error for them earlier, and they
             // would not be well-formed!
@@ -927,7 +980,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 poly_trait_ref,
                 constraint,
                 bounds,
-                &mut dup_constraints,
+                dup_constraints.as_mut(),
                 constraint.span,
                 predicate_filter,
             );
@@ -1231,7 +1284,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerTypeRelativePathMode::Const,
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
-                if !tcx.associated_item(def_id).is_type_const_capable(tcx) {
+                if !find_attr!(self.tcx().get_all_attrs(def_id), AttributeKind::TypeConst(_)) {
                     let mut err = self.dcx().struct_span_err(
                         span,
                         "use of trait associated const without `#[type_const]`",
@@ -1374,10 +1427,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
-                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
-                    // A cycle error occurred, most likely.
-                    self.dcx().span_bug(span, "expected cycle error");
-                };
+                let trait_ref = tcx.impl_trait_ref(impl_def_id);
 
                 self.probe_single_bound_for_assoc_item(
                     || {
@@ -1437,11 +1487,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match assoc_tag {
                 // Don't attempt to look up inherent associated types when the feature is not
                 // enabled. Theoretically it'd be fine to do so since we feature-gate their
-                // definition site. However, due to current limitations of the implementation
-                // (caused by us performing selection during HIR ty lowering instead of in the
-                // trait solver), IATs can lead to cycle errors (#108491) which mask the
-                // feature-gate error, needlessly confusing users who use IATs by accident
-                // (#113265).
+                // definition site. However, the current implementation of inherent associated
+                // items is somewhat brittle, so let's not run it by default.
                 ty::AssocTag::Type => return Ok(None),
                 ty::AssocTag::Const => {
                     // We also gate the mgca codepath for type-level uses of inherent consts
@@ -1470,9 +1517,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .collect();
 
+        // At the moment, we actually bail out with a hard error if the selection of an inherent
+        // associated item fails (see below). This means we never consider trait associated items
+        // as potential fallback candidates (#142006). To temporarily mask that issue, let's not
+        // select at all if there are no early inherent candidates.
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+
         let (applicable_candidates, fulfillment_errors) =
             self.select_inherent_assoc_candidates(span, self_ty, candidates.clone());
 
+        // FIXME(#142006): Don't eagerly error here, there might be applicable trait candidates.
         let InherentAssocCandidate { impl_, assoc_item, scope: def_scope } =
             match &applicable_candidates[..] {
                 &[] => Err(self.report_unresolved_inherent_assoc_item(
@@ -1493,6 +1549,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )),
             }?;
 
+        // FIXME(#142006): Don't eagerly validate here, there might be trait candidates that are
+        // accessible (visible and stable) contrary to the inherent candidate.
         self.check_assoc_item(assoc_item, name, def_scope, block, span);
 
         // FIXME(fmease): Currently creating throwaway `parent_args` to please
@@ -1605,7 +1663,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .is_accessible_from(self.item_def_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
-                            let header = tcx.impl_trait_header(impl_def_id).unwrap();
+                            let header = tcx.impl_trait_header(impl_def_id);
                             let trait_ref = header.trait_ref.instantiate(
                                 tcx,
                                 infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
@@ -1672,6 +1730,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ty::AssocTag::Const,
         ) {
             Ok((item_def_id, item_args)) => {
+                if !find_attr!(self.tcx().get_all_attrs(item_def_id), AttributeKind::TypeConst(_)) {
+                    let mut err = self.dcx().struct_span_err(
+                        span,
+                        "use of `const` in the type system without `#[type_const]`",
+                    );
+                    err.note("the declaration must be marked with `#[type_const]`");
+                    return Const::new_error(self.tcx(), err.emit());
+                }
+
                 let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
                 Const::new_unevaluated(self.tcx(), uv)
             }
@@ -1901,10 +1968,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             Res::Def(DefKind::OpaqueTy, did) => {
                 // Check for desugared `impl Trait`.
                 assert_matches!(tcx.opaque_ty_origin(did), hir::OpaqueTyOrigin::TyAlias { .. });
-                let item_segment = path.segments.split_last().unwrap();
-                let _ = self
-                    .prohibit_generic_args(item_segment.1.iter(), GenericsArgsErrExtend::OpaqueTy);
-                let args = self.lower_generic_args_of_path_segment(span, did, item_segment.0);
+                let [leading_segments @ .., segment] = path.segments else { bug!() };
+                let _ = self.prohibit_generic_args(
+                    leading_segments.iter(),
+                    GenericsArgsErrExtend::OpaqueTy,
+                );
+                let args = self.lower_generic_args_of_path_segment(span, did, segment);
                 Ty::new_opaque(tcx, did, args)
             }
             Res::Def(
@@ -1916,11 +1985,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 did,
             ) => {
                 assert_eq!(opt_self_ty, None);
-                let _ = self.prohibit_generic_args(
-                    path.segments.split_last().unwrap().1.iter(),
-                    GenericsArgsErrExtend::None,
-                );
-                self.lower_path_segment(span, did, path.segments.last().unwrap())
+                let [leading_segments @ .., segment] = path.segments else { bug!() };
+                let _ = self
+                    .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+                self.lower_path_segment(span, did, segment)
             }
             Res::Def(kind @ DefKind::Variant, def_id)
                 if let PermitVariants::Yes = permit_variants =>
@@ -1940,8 +2008,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericsArgsErrExtend::DefVariant(&path.segments),
                 );
 
-                let GenericPathSegment(def_id, index) = generic_segments.last().unwrap();
-                self.lower_path_segment(span, *def_id, &path.segments[*index])
+                let &GenericPathSegment(def_id, index) = generic_segments.last().unwrap();
+                self.lower_path_segment(span, def_id, &path.segments[index])
             }
             Res::Def(DefKind::TyParam, def_id) => {
                 assert_eq!(opt_self_ty, None);
@@ -2195,15 +2263,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
-            hir::ConstArgKind::Path(qpath @ hir::QPath::LangItem(..)) => {
-                ty::Const::new_error_with_message(
-                    tcx,
-                    qpath.span(),
-                    format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
-                )
-            }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
+            hir::ConstArgKind::Error(_, e) => ty::Const::new_error(tcx, e),
         }
     }
 
@@ -2227,15 +2289,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Res::Def(DefKind::Const | DefKind::Ctor(_, CtorKind::Const), did) => {
                 assert_eq!(opt_self_ty, None);
-                let _ = self.prohibit_generic_args(
-                    path.segments.split_last().unwrap().1.iter(),
-                    GenericsArgsErrExtend::None,
-                );
-                let args = self.lower_generic_args_of_path_segment(
-                    span,
-                    did,
-                    path.segments.last().unwrap(),
-                );
+                let [leading_segments @ .., segment] = path.segments else { bug!() };
+                let _ = self
+                    .prohibit_generic_args(leading_segments.iter(), GenericsArgsErrExtend::None);
+                let args = self.lower_generic_args_of_path_segment(span, did, segment);
                 ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
             }
             Res::Def(DefKind::AssocConst, did) => {
@@ -2484,13 +2541,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &mut bounds,
                     ty::List::empty(),
                     PredicateFilter::All,
+                    OverlappingAsssocItemConstraints::Allowed,
                 );
-                self.add_sizedness_bounds(
+                self.add_implicit_sizedness_bounds(
                     &mut bounds,
                     self_ty,
                     hir_bounds,
-                    None,
-                    None,
+                    ImpliedBoundsContext::AssociatedTypeOrImplTrait,
                     hir_ty.span,
                 );
                 self.register_trait_ascription_bounds(bounds, hir_ty.hir_id, hir_ty.span);
@@ -2521,22 +2578,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|(ty, _, _)| ty)
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
             }
-            &hir::TyKind::Path(hir::QPath::LangItem(lang_item, span)) => {
-                let def_id = tcx.require_lang_item(lang_item, span);
-                let (args, _) = self.lower_generic_args_of_path(
-                    span,
-                    def_id,
-                    &[],
-                    &hir::PathSegment::invalid(),
-                    None,
-                );
-                tcx.at(span).type_of(def_id).instantiate(tcx, args)
-            }
             hir::TyKind::Array(ty, length) => {
                 let length = self.lower_const_arg(length, FeedConstTy::No);
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
-            hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
             hir::TyKind::Infer(()) => {
                 // Infer also appears as the type of arguments or return
                 // values in an ExprKind::Closure, or as
@@ -2583,6 +2628,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .span_delayed_bug(ty_span, "invalid base type for range pattern")),
                 }
             }
+            hir::TyPatKind::NotNull => Ok(ty::PatternKind::NotNull),
             hir::TyPatKind::Or(patterns) => {
                 self.tcx()
                     .mk_patterns_from_iter(patterns.iter().map(|pat| {

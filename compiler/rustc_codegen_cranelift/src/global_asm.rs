@@ -42,7 +42,10 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
 impl<'tcx> LayoutOfHelpers<'tcx> for GlobalAsmContext<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
-        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+        if let LayoutError::SizeOverflow(_)
+        | LayoutError::InvalidSimd { .. }
+        | LayoutError::ReferencesError(_) = err
+        {
             self.tcx.sess.dcx().span_fatal(span, err.to_string())
         } else {
             self.tcx
@@ -168,7 +171,7 @@ impl GlobalAsmConfig {
 pub(crate) fn compile_global_asm(
     config: &GlobalAsmConfig,
     cgu_name: &str,
-    global_asm: &str,
+    global_asm: String,
     invocation_temp: Option<&str>,
 ) -> Result<Option<PathBuf>, String> {
     if global_asm.is_empty() {
@@ -202,6 +205,9 @@ pub(crate) fn compile_global_asm(
             return Err(format!("Failed to assemble `{}`", global_asm));
         }
     } else {
+        // Escape { and }
+        let global_asm = global_asm.replace('{', "{{").replace('}', "}}");
+
         let mut child = Command::new(std::env::current_exe().unwrap())
             // Avoid a warning about the jobserver fd not being passed
             .env_remove("CARGO_MAKEFLAGS")

@@ -13,7 +13,7 @@ LL +         val if val == tmp[0] => {}
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = tmp[0];
-LL ~     match z {
+LL |     match z {
 LL ~         VAL => {}
    |
 

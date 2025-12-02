@@ -4,6 +4,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
+#![feature(array_try_map)]
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
@@ -15,15 +16,21 @@
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
+#![feature(clamp_magnitude)]
 #![feature(clone_to_uninit)]
+#![feature(const_array)]
+#![feature(const_cell_traits)]
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_destruct)]
+#![feature(const_drop_in_place)]
 #![feature(const_eval_select)]
+#![feature(const_mul_add)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]
 #![feature(const_result_trait_fn)]
+#![feature(const_select_unpredictable)]
 #![feature(const_trait_impl)]
 #![feature(control_flow_ok)]
 #![feature(core_float_math)]
@@ -38,7 +45,6 @@
 #![feature(drop_guard)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
-#![feature(duration_from_nanos_u128)]
 #![feature(error_generic_member_access)]
 #![feature(exact_div)]
 #![feature(exact_size_is_empty)]
@@ -78,9 +84,9 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_fill)]
 #![feature(maybe_uninit_uninit_array_transpose)]
-#![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(new_range_api)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(numfmt)]
@@ -93,9 +99,11 @@
 #![feature(ptr_metadata)]
 #![feature(result_option_map_or_default)]
 #![feature(slice_from_ptr_range)]
+#![feature(slice_index_methods)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_split_once)]
+#![feature(sliceindex_wrappers)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
@@ -109,6 +117,7 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(uint_bit_width)]
+#![feature(uint_gather_scatter_bits)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
@@ -173,6 +182,7 @@ mod fmt;
 mod future;
 mod hash;
 mod hint;
+mod index;
 mod intrinsics;
 mod io;
 mod iter;

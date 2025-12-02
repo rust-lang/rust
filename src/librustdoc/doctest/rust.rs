@@ -5,7 +5,6 @@ use std::env;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -15,7 +14,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::{Attributes, extract_cfg_from_attrs};
+use crate::clean::{Attributes, CfgInfo, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
@@ -121,7 +120,7 @@ impl HirCollector<'_> {
     ) {
         let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) =
-            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &FxHashSet::default())
+            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &mut CfgInfo::default())
             && !cfg.matches(&self.tcx.sess.psess)
         {
             return;

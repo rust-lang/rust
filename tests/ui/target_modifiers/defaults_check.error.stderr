@@ -1,5 +1,5 @@
 error: mixing `-Zreg-struct-return` will cause an ABI mismatch in crate `defaults_check`
-  --> $DIR/defaults_check.rs:15:1
+  --> $DIR/defaults_check.rs:16:1
    |
 LL | #![feature(no_core)]
    | ^

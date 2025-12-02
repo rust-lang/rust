@@ -7,15 +7,12 @@ use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{
-    self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, fold_regions,
-};
+use rustc_middle::ty::{self, DefiningScopeKind, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::check::wfcheck::check_static_item;
-use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
@@ -47,21 +44,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
         Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
             tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
-        }
-        // Sort of affects the type system, but only for the purpose of diagnostics
-        // so no need for ConstArg.
-        Node::Ty(&hir::Ty { kind: TyKind::Typeof(ref e), span, .. }) if e.hir_id == hir_id => {
-            let ty = tcx.typeck(def_id).node_type(tcx.local_def_id_to_hir_id(def_id));
-            let ty = fold_regions(tcx, ty, |r, _| {
-                if r.is_erased() { ty::Region::new_error_misc(tcx) } else { r }
-            });
-            let (ty, opt_sugg) = if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                (ty, Some((span, Applicability::MachineApplicable)))
-            } else {
-                (ty, None)
-            };
-            tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
-            return ty;
         }
 
         Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })
@@ -158,14 +140,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body_id) => body_id
-                .and_then(|body_id| {
+            TraitItemKind::Const(ty, rhs) => rhs
+                .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
                             icx.lowerer(),
                             def_id,
-                            body_id,
+                            rhs.hir_id(),
                             ty.span,
+                            rhs.span(tcx),
                             item.ident,
                             "associated constant",
                         )
@@ -183,13 +166,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, body_id) => {
+            ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        rhs.hir_id(),
                         ty.span,
+                        rhs.span(tcx),
                         item.ident,
                         "associated constant",
                     )
@@ -212,8 +196,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        body_id.hir_id,
                         ty.span,
+                        tcx.hir_body(body_id).value.span,
                         ident,
                         "static variable",
                     )
@@ -229,13 +214,14 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     }
                 }
             }
-            ItemKind::Const(ident, _, ty, body_id) => {
+            ItemKind::Const(ident, _, ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
                         def_id,
-                        body_id,
+                        rhs.hir_id(),
                         ty.span,
+                        rhs.span(tcx),
                         ident,
                         "constant",
                     )
@@ -345,7 +331,7 @@ pub(super) fn type_of_opaque(
     def_id: DefId,
 ) -> Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     if let Some(def_id) = def_id.as_local() {
-        Ok(ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+        Ok(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
             hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
                 opaque::find_opaque_ty_constraints_for_tait(
                     tcx,
@@ -378,7 +364,7 @@ pub(super) fn type_of_opaque(
                     DefiningScopeKind::MirBorrowck,
                 )
             }
-        }))
+        })
     } else {
         // Foreign opaque type will go through the foreign provider
         // and load the type from metadata.
@@ -390,7 +376,7 @@ pub(super) fn type_of_opaque_hir_typeck(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'_, Ty<'_>> {
-    ty::EarlyBinder::bind(match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
+    match tcx.hir_node_by_def_id(def_id).expect_opaque_ty().origin {
         hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
             opaque::find_opaque_ty_constraints_for_tait(tcx, def_id, DefiningScopeKind::HirTypeck)
         }
@@ -419,19 +405,20 @@ pub(super) fn type_of_opaque_hir_typeck(
                 DefiningScopeKind::HirTypeck,
             )
         }
-    })
+    }
 }
 
 fn infer_placeholder_type<'tcx>(
     cx: &dyn HirTyLowerer<'tcx>,
     def_id: LocalDefId,
-    body_id: hir::BodyId,
-    span: Span,
+    hir_id: HirId,
+    ty_span: Span,
+    body_span: Span,
     item_ident: Ident,
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
+    let ty = tcx.typeck(def_id).node_type(hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -439,10 +426,10 @@ fn infer_placeholder_type<'tcx>(
     // us to improve in typeck so we do that now.
     let guar = cx
         .dcx()
-        .try_steal_modify_and_emit_err(span, StashKey::ItemNoType, |err| {
+        .try_steal_modify_and_emit_err(ty_span, StashKey::ItemNoType, |err| {
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic).
-                let colon = if span == item_ident.span.shrink_to_hi() { ":" } else { "" };
+                let colon = if ty_span == item_ident.span.shrink_to_hi() { ":" } else { "" };
 
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
@@ -452,14 +439,14 @@ fn infer_placeholder_type<'tcx>(
 
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     err.span_suggestion(
-                        span,
+                        ty_span,
                         format!("provide a type for the {kind}"),
                         format!("{colon} {ty}"),
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
@@ -473,7 +460,7 @@ fn infer_placeholder_type<'tcx>(
             }
             // If we didn't find any infer tys, then just fallback to `span`.
             if visitor.spans.is_empty() {
-                visitor.spans.push(span);
+                visitor.spans.push(ty_span);
             }
             let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
@@ -482,20 +469,20 @@ fn infer_placeholder_type<'tcx>(
             // same span. If this happens, we will fall through to this arm, so
             // we need to suppress the suggestion since it's invalid. Ideally we
             // would suppress the duplicated error too, but that's really hard.
-            if span.is_empty() && span.from_expansion() {
+            if ty_span.is_empty() && ty_span.from_expansion() {
                 // An approximately better primary message + no suggestion...
                 diag.primary_message("missing type for item");
             } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion_verbose(
-                        span,
+                        ty_span,
                         "replace this with a fully-specified type",
                         ty,
                         Applicability::MachineApplicable,
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
-                        tcx.hir_body(body_id).value.span,
+                        body_span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }

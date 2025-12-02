@@ -1,5 +1,6 @@
 //@ run-pass
 
+#[allow(unused)]
 pub fn main() {
     struct A {
         a: isize,

@@ -1,21 +1,21 @@
+// make sure quoted search works both for items and and without generics
 // ignore-order
 
 const FILTER_CRATE = 'std';
 
 const EXPECTED = {
-    'query': '"error"',
+    'query': '"result"',
     'others': [
-        { 'path': 'std', 'name': 'error' },
-        { 'path': 'std::fmt', 'name': 'Error' },
-        { 'path': 'std::io', 'name': 'Error' },
+        { 'path': 'std', 'name': 'result' },
+        { 'path': 'std::result', 'name': 'Result' },
+        { 'path': 'std::fmt', 'name': 'Result' },
     ],
     'in_args': [
-        { 'path': 'std::fmt::Error', 'name': 'eq' },
-        { 'path': 'std::fmt::Error', 'name': 'cmp' },
-        { 'path': 'std::fmt::Error', 'name': 'partial_cmp' },
-
+        { 'path': 'std::result::Result', 'name': 'branch' },
+        { 'path': 'std::result::Result', 'name': 'ok' },
+        { 'path': 'std::result::Result', 'name': 'unwrap' },
     ],
     'returned': [
-        { 'path': 'std::fmt::LowerExp', 'name': 'fmt' },
+        { 'path': 'std::bool', 'name': 'try_into' },
     ],
 };

@@ -23,11 +23,10 @@ indexmap.workspace = true
 itertools.workspace = true
 la-arena.workspace = true
 rustc-hash.workspace = true
-tracing.workspace = true
+tracing = { workspace = true, features = ["attributes"] }
 smallvec.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.3"
-text-size.workspace = true
 salsa.workspace = true
 salsa-macros.workspace = true
 query-group.workspace = true
@@ -45,7 +44,8 @@ mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 span.workspace = true
-thin-vec = "0.2.14"
+thin-vec.workspace = true
+syntax-bridge.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
@@ -53,7 +53,6 @@ expect-test.workspace = true
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
-syntax-bridge.workspace = true
 
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]

@@ -1,11 +1,11 @@
-use rustc_abi::{BackendRepr, Size};
+use rustc_abi::Size;
 use rustc_middle::mir::{Mutability, RetagKind};
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty};
 
 use self::foreign_access_skipping::IdempotentForeignAccess;
 use self::tree::LocationState;
-use crate::borrow_tracker::{GlobalState, GlobalStateInner, ProtectorKind};
+use crate::borrow_tracker::{AccessKind, GlobalState, GlobalStateInner, ProtectorKind};
 use crate::concurrency::data_race::NaReadType;
 use crate::*;
 
@@ -14,6 +14,7 @@ mod foreign_access_skipping;
 mod perms;
 mod tree;
 mod unimap;
+mod wildcard;
 
 #[cfg(test)]
 mod exhaustive;
@@ -33,7 +34,7 @@ impl<'tcx> Tree {
         machine: &MiriMachine<'tcx>,
     ) -> Self {
         let tag = state.root_ptr_tag(id, machine); // Fresh tag for the root
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         Tree::new(tag, size, span)
     }
 
@@ -54,16 +55,10 @@ impl<'tcx> Tree {
             interpret::Pointer::new(alloc_id, range.start),
             range.size.bytes(),
         );
-        // TODO: for now we bail out on wildcard pointers. Eventually we should
-        // handle them as much as we can.
-        let tag = match prov {
-            ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return interp_ok(()),
-        };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         self.perform_access(
-            tag,
+            prov,
             Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
             global,
             alloc_id,
@@ -79,19 +74,9 @@ impl<'tcx> Tree {
         size: Size,
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
-        // TODO: for now we bail out on wildcard pointers. Eventually we should
-        // handle them as much as we can.
-        let tag = match prov {
-            ProvenanceExtra::Concrete(tag) => tag,
-            ProvenanceExtra::Wildcard => return interp_ok(()),
-        };
         let global = machine.borrow_tracker.as_ref().unwrap();
-        let span = machine.current_span();
-        self.dealloc(tag, alloc_range(Size::ZERO, size), global, alloc_id, span)
-    }
-
-    pub fn expose_tag(&mut self, _tag: BorTag) {
-        // TODO
+        let span = machine.current_user_relevant_span();
+        self.dealloc(prov, alloc_range(Size::ZERO, size), global, alloc_id, span)
     }
 
     /// A tag just lost its protector.
@@ -107,9 +92,13 @@ impl<'tcx> Tree {
         tag: BorTag,
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
-        let span = machine.current_span();
+        let span = machine.current_user_relevant_span();
         // `None` makes it the magic on-protector-end operation
-        self.perform_access(tag, None, global, alloc_id, span)
+        self.perform_access(ProvenanceExtra::Concrete(tag), None, global, alloc_id, span)?;
+
+        self.update_exposure_for_protector_release(tag);
+
+        interp_ok(())
     }
 }
 
@@ -239,21 +228,22 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 assert_eq!(ptr_size, Size::ZERO); // we did the deref check above, size has to be 0 here
                 // This pointer doesn't come with an AllocId, so there's no
                 // memory to do retagging in.
+                let new_prov = place.ptr().provenance;
                 trace!(
-                    "reborrow of size 0: reference {:?} derived from {:?} (pointee {})",
-                    new_tag,
+                    "reborrow of size 0: reusing {:?} (pointee {})",
                     place.ptr(),
                     place.layout.ty,
                 );
                 log_creation(this, None)?;
                 // Keep original provenance.
-                return interp_ok(place.ptr().provenance);
+                return interp_ok(new_prov);
             }
         };
+
         log_creation(this, Some((alloc_id, base_offset, parent_prov)))?;
 
         let orig_tag = match parent_prov {
-            ProvenanceExtra::Wildcard => return interp_ok(place.ptr().provenance), // TODO: handle wildcard pointers
+            ProvenanceExtra::Wildcard => return interp_ok(place.ptr().provenance), // TODO: handle retagging wildcard pointers
             ProvenanceExtra::Concrete(tag) => tag,
         };
 
@@ -356,17 +346,17 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 tree_borrows.perform_access(
-                    orig_tag,
+                    parent_prov,
                     Some((range_in_alloc, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
-                    this.machine.current_span(),
+                    this.machine.current_user_relevant_span(),
                 )?;
 
                 // Also inform the data race model (but only if any bytes are actually affected).
                 if range_in_alloc.size.bytes() > 0 {
                     if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
-                        data_race.read(
+                        data_race.read_non_atomic(
                             alloc_id,
                             range_in_alloc,
                             NaReadType::Retag,
@@ -386,7 +376,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             inside_perms,
             new_perm.outside_perm,
             protected,
-            this.machine.current_span(),
+            this.machine.current_user_relevant_span(),
         )?;
         drop(tree_borrows);
 
@@ -468,16 +458,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let options = this.machine.borrow_tracker.as_mut().unwrap().get_mut();
-        let retag_fields = options.retag_fields;
-        let mut visitor = RetagVisitor { ecx: this, kind, retag_fields };
+        let mut visitor = RetagVisitor { ecx: this, kind };
         return visitor.visit_value(place);
 
         // The actual visitor.
         struct RetagVisitor<'ecx, 'tcx> {
             ecx: &'ecx mut MiriInterpCx<'tcx>,
             kind: RetagKind,
-            retag_fields: RetagFields,
         }
         impl<'ecx, 'tcx> RetagVisitor<'ecx, 'tcx> {
             #[inline(always)] // yes this helps in our benchmarks
@@ -545,22 +532,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         self.walk_value(place)?;
                     }
                     _ => {
-                        // Not a reference/pointer/box. Only recurse if configured appropriately.
-                        let recurse = match self.retag_fields {
-                            RetagFields::No => false,
-                            RetagFields::Yes => true,
-                            RetagFields::OnlyScalar => {
-                                // Matching `ArgAbi::new` at the time of writing, only fields of
-                                // `Scalar` and `ScalarPair` ABI are considered.
-                                matches!(
-                                    place.layout.backend_repr,
-                                    BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)
-                                )
-                            }
-                        };
-                        if recurse {
-                            self.walk_value(place)?;
-                        }
+                        // Not a reference/pointer/box. Recurse.
+                        self.walk_value(place)?;
                     }
                 }
                 interp_ok(())
@@ -606,7 +579,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // uncovers a non-supported `extern static`.
                 let alloc_extra = this.get_alloc_extra(alloc_id)?;
                 trace!("Tree Borrows tag {tag:?} exposed in {alloc_id:?}");
-                alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag);
+
+                let global = this.machine.borrow_tracker.as_ref().unwrap();
+                let protected_tags = &global.borrow().protected_tags;
+                let protected = protected_tags.contains_key(&tag);
+                alloc_extra.borrow_tracker_tb().borrow_mut().expose_tag(tag, protected);
             }
             AllocKind::Function | AllocKind::VTable | AllocKind::TypeId | AllocKind::Dead => {
                 // No tree borrows on these allocations.

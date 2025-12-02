@@ -8,9 +8,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
-    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeKind,
-    Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, ByRef, Closure, ConstArg, ConstArgKind, Expr,
+    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
+    LifetimeKind, Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
     StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -290,8 +290,10 @@ impl HirEqInterExpr<'_, '_, '_> {
         if let Some((typeck_lhs, typeck_rhs)) = self.inner.maybe_typeck_results
             && typeck_lhs.expr_ty(left) == typeck_rhs.expr_ty(right)
             && let (Some(l), Some(r)) = (
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs).eval_simple(left),
-                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs).eval_simple(right),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_lhs)
+                    .eval_local(left, self.left_ctxt),
+                ConstEvalCtxt::with_env(self.inner.cx.tcx, self.inner.cx.typing_env(), typeck_rhs)
+                    .eval_local(right, self.right_ctxt),
             )
             && l == r
         {
@@ -478,8 +480,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             // Use explicit match for now since ConstArg is undergoing flux.
             (ConstArgKind::Path(..), ConstArgKind::Anon(..))
             | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
-            | (ConstArgKind::Infer(..), _)
-            | (_, ConstArgKind::Infer(..)) => false,
+            | (ConstArgKind::Infer(..) | ConstArgKind::Error(..), _)
+            | (_, ConstArgKind::Infer(..) | ConstArgKind::Error(..)) => false,
         }
     }
 
@@ -534,7 +536,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && both(le.as_ref(), re.as_ref(), |a, b| self.eq_pat_expr(a, b))
                     && (li == ri)
             },
-            (PatKind::Ref(le, lm), PatKind::Ref(re, rm)) => lm == rm && self.eq_pat(le, re),
+            (PatKind::Ref(le, lp, lm), PatKind::Ref(re, rp, rm)) => lp == rp && lm == rm && self.eq_pat(le, re),
             (PatKind::Slice(ls, li, le), PatKind::Slice(rs, ri, re)) => {
                 over(ls, rs, |l, r| self.eq_pat(l, r))
                     && over(le, re, |l, r| self.eq_pat(l, r))
@@ -553,7 +555,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (QPath::TypeRelative(lty, lseg), QPath::TypeRelative(rty, rseg)) => {
                 self.eq_ty(lty, rty) && self.eq_path_segment(lseg, rseg)
             },
-            (QPath::LangItem(llang_item, ..), QPath::LangItem(rlang_item, ..)) => llang_item == rlang_item,
             _ => false,
         }
     }
@@ -842,7 +843,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     #[expect(clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr<'_>) {
         let simple_const = self.maybe_typeck_results.and_then(|typeck_results| {
-            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_simple(e)
+            ConstEvalCtxt::with_env(self.cx.tcx, self.cx.typing_env(), typeck_results).eval_local(e, e.span.ctxt())
         });
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
@@ -1090,9 +1091,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             QPath::TypeRelative(_, path) => {
                 self.hash_name(path.ident.name);
             },
-            QPath::LangItem(lang_item, ..) => {
-                std::mem::discriminant(lang_item).hash(&mut self.s);
-            },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
@@ -1121,7 +1119,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty_pat(variant);
                 }
             },
-            TyPatKind::Err(_) => {},
+            TyPatKind::NotNull | TyPatKind::Err(_) => {},
         }
     }
 
@@ -1131,6 +1129,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             PatKind::Missing => unreachable!(),
             PatKind::Binding(BindingMode(by_ref, mutability), _, _, pat) => {
                 std::mem::discriminant(by_ref).hash(&mut self.s);
+                if let ByRef::Yes(pi, mu) = by_ref {
+                    std::mem::discriminant(pi).hash(&mut self.s);
+                    std::mem::discriminant(mu).hash(&mut self.s);
+                }
                 std::mem::discriminant(mutability).hash(&mut self.s);
                 if let Some(pat) = pat {
                     self.hash_pat(pat);
@@ -1152,8 +1154,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 std::mem::discriminant(i).hash(&mut self.s);
             },
-            PatKind::Ref(pat, mu) => {
+            PatKind::Ref(pat, pi, mu) => {
                 self.hash_pat(pat);
+                std::mem::discriminant(pi).hash(&mut self.s);
                 std::mem::discriminant(mu).hash(&mut self.s);
             },
             PatKind::Guard(pat, guard) => {
@@ -1306,9 +1309,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
-            TyKind::Typeof(anon_const) => {
-                self.hash_body(anon_const.body);
-            },
             TyKind::UnsafeBinder(binder) => {
                 self.hash_ty(binder.inner_ty);
             },
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         match &const_arg.kind {
             ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
-            ConstArgKind::Infer(..) => {},
+            ConstArgKind::Infer(..) | ConstArgKind::Error(..) => {},
         }
     }
 

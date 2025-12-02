@@ -54,6 +54,7 @@ pub struct TransparentLifetime<'a>(*const u8, PhantomData<&'a ()>);
 pub struct TransparentUnit<U>(f32, PhantomData<U>);
 
 #[repr(transparent)]
+#[allow(repr_transparent_non_zst_fields)]
 pub struct TransparentCustomZst(i32, ZeroSize);
 
 #[repr(C)]

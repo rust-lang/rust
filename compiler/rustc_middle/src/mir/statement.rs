@@ -1,5 +1,7 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
+use std::ops;
+
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -15,17 +17,28 @@ use crate::ty::CoroutineArgsExt;
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
+    /// Some debuginfos appearing before the primary statement.
+    pub debuginfos: StmtDebugInfos<'tcx>,
 }
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self) {
-        self.kind = StatementKind::Nop
+    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+        if matches!(self.kind, StatementKind::Nop) {
+            return;
+        }
+        let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
+        if !drop_debuginfo {
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("debuginfo is not yet supported.")
+            };
+            self.debuginfos.push(debuginfo);
+        }
     }
 
     pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
-        Statement { source_info, kind }
+        Statement { source_info, kind, debuginfos: StmtDebugInfos::default() }
     }
 }
 
@@ -37,7 +50,6 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::Assign(..) => "Assign",
             StatementKind::FakeRead(..) => "FakeRead",
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
-            StatementKind::Deinit(..) => "Deinit",
             StatementKind::StorageLive(..) => "StorageLive",
             StatementKind::StorageDead(..) => "StorageDead",
             StatementKind::Retag(..) => "Retag",
@@ -60,6 +72,17 @@ impl<'tcx> StatementKind<'tcx> {
     pub fn as_assign(&self) -> Option<&(Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
+        match self {
+            StatementKind::Assign(box (place, Rvalue::Ref(_, _, ref_place)))
+                if let Some(local) = place.as_local() =>
+            {
+                Some(StmtDebugInfo::AssignRef(local, *ref_place))
+            }
             _ => None,
         }
     }
@@ -222,7 +245,6 @@ impl<'tcx> PlaceTy<'tcx> {
                 fty,
             )),
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
-            ProjectionElem::Subtype(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
             ProjectionElem::UnwrapUnsafeBinder(ty) => {
@@ -237,14 +259,13 @@ impl<'tcx> PlaceTy<'tcx> {
 impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
-    fn is_indirect(&self) -> bool {
+    pub fn is_indirect(&self) -> bool {
         match self {
             Self::Deref => true,
 
             Self::Field(_, _)
             | Self::Index(_)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
@@ -259,7 +280,6 @@ impl<V, T> ProjectionElem<V, T> {
             Self::Deref | Self::Index(_) => false,
             Self::Field(_, _)
             | Self::OpaqueCast(_)
-            | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
@@ -286,7 +306,6 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Field(_, _) => true,
             Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
-            | Self::Subtype(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
 
@@ -319,7 +338,6 @@ impl<V, T> ProjectionElem<V, T> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(t(ty)),
             ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
             ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
         })
@@ -508,6 +526,20 @@ impl<'tcx> PlaceRef<'tcx> {
         })
     }
 
+    /// Return the place accessed locals that include the base local.
+    pub fn accessed_locals(self) -> impl Iterator<Item = Local> {
+        std::iter::once(self.local).chain(self.projection.iter().filter_map(|proj| match proj {
+            ProjectionElem::Index(local) => Some(*local),
+            ProjectionElem::Deref
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::OpaqueCast(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+        }))
+    }
+
     /// Generates a new place by appending `more_projections` to the existing ones
     /// and interning the result.
     pub fn project_deeper(
@@ -563,6 +595,18 @@ impl<'tcx> Operand<'tcx> {
             user_ty: None,
             const_: Const::Val(ConstValue::ZeroSized, ty),
         }))
+    }
+
+    /// Convenience helper to make a constant that refers to the given `DefId` and args. Since this
+    /// is used to synthesize MIR, assumes `user_ty` is None.
+    pub fn unevaluated_constant(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: &[GenericArg<'tcx>],
+        span: Span,
+    ) -> Self {
+        let const_ = Const::from_unevaluated(tcx, def_id).instantiate(tcx, args);
+        Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
     }
 
     pub fn is_move(&self) -> bool {
@@ -706,12 +750,13 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
-                | CastKind::Transmute,
+                | CastKind::Transmute
+                | CastKind::Subtype,
                 _,
                 _,
             )
             | Rvalue::BinaryOp(_, _)
-            | Rvalue::NullaryOp(_, _)
+            | Rvalue::NullaryOp(_)
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
@@ -749,11 +794,7 @@ impl<'tcx> Rvalue<'tcx> {
                 op.ty(tcx, arg_ty)
             }
             Rvalue::Discriminant(ref place) => place.ty(local_decls, tcx).ty.discriminant_ty(tcx),
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
-                tcx.types.usize
-            }
-            Rvalue::NullaryOp(NullOp::ContractChecks, _)
-            | Rvalue::NullaryOp(NullOp::UbChecks, _) => tcx.types.bool,
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(_)) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -817,11 +858,10 @@ impl BorrowKind {
     }
 }
 
-impl<'tcx> NullOp<'tcx> {
-    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+impl NullOp {
+    pub fn ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
-            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) => tcx.types.usize,
-            NullOp::UbChecks | NullOp::ContractChecks => tcx.types.bool,
+            NullOp::RuntimeChecks(_) => tcx.types.bool,
         }
     }
 }
@@ -970,4 +1010,72 @@ impl RawPtrKind {
             RawPtrKind::FakeForPtrMetadata => "const (fake)",
         }
     }
+}
+
+#[derive(Default, Debug, Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct StmtDebugInfos<'tcx>(Vec<StmtDebugInfo<'tcx>>);
+
+impl<'tcx> StmtDebugInfos<'tcx> {
+    pub fn push(&mut self, debuginfo: StmtDebugInfo<'tcx>) {
+        self.0.push(debuginfo);
+    }
+
+    pub fn drop_debuginfo(&mut self) {
+        self.0.clear();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn prepend(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        debuginfos.0.append(self);
+        std::mem::swap(debuginfos, self);
+    }
+
+    pub fn append(&mut self, debuginfos: &mut Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.append(debuginfos);
+    }
+
+    pub fn extend(&mut self, debuginfos: &Self) {
+        if debuginfos.is_empty() {
+            return;
+        };
+        self.0.extend_from_slice(debuginfos);
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&StmtDebugInfo<'tcx>) -> bool,
+    {
+        self.0.retain(f);
+    }
+}
+
+impl<'tcx> ops::Deref for StmtDebugInfos<'tcx> {
+    type Target = Vec<StmtDebugInfo<'tcx>>;
+
+    #[inline]
+    fn deref(&self) -> &Vec<StmtDebugInfo<'tcx>> {
+        &self.0
+    }
+}
+
+impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Vec<StmtDebugInfo<'tcx>> {
+        &mut self.0
+    }
+}
+
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub enum StmtDebugInfo<'tcx> {
+    AssignRef(Local, Place<'tcx>),
+    InvalidAssign(Local),
 }

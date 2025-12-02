@@ -401,7 +401,19 @@ fn expand_var(
                     let sub = sub.strip_invisible();
                     let mut span = id;
                     marker(&mut span);
-                    let wrap_in_parens = !matches!(sub.flat_tokens(), [tt::TokenTree::Leaf(_)])
+
+                    // Check if this is a simple negative literal (MINUS + LITERAL)
+                    // that should not be wrapped in parentheses
+                    let is_negative_literal = matches!(
+                        sub.flat_tokens(),
+                        [
+                            tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '-', .. })),
+                            tt::TokenTree::Leaf(tt::Leaf::Literal(_))
+                        ]
+                    );
+
+                    let wrap_in_parens = !is_negative_literal
+                        && !matches!(sub.flat_tokens(), [tt::TokenTree::Leaf(_)])
                         && sub.try_into_subtree().is_none_or(|it| {
                             it.top_subtree().delimiter.kind == tt::DelimiterKind::Invisible
                         });

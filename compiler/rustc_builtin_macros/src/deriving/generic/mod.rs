@@ -225,6 +225,12 @@ pub(crate) struct TraitDef<'a> {
     pub is_const: bool,
 
     pub is_staged_api_crate: bool,
+
+    /// The safety of the `impl`.
+    pub safety: Safety,
+
+    /// Whether the added `impl` should appear in rustdoc output.
+    pub document: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -610,7 +616,7 @@ impl<'a> TraitDef<'a> {
                     defaultness: ast::Defaultness::Final,
                     ident,
                     generics: Generics::default(),
-                    where_clauses: ast::TyAliasWhereClauses::default(),
+                    after_where_clause: ast::WhereClause::default(),
                     bounds: Vec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
@@ -826,22 +832,22 @@ impl<'a> TraitDef<'a> {
             )
         }
 
+        if !self.document {
+            attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
+        }
+
         cx.item(
             self.span,
             attrs,
             ast::ItemKind::Impl(ast::Impl {
                 generics: trait_generics,
                 of_trait: Some(Box::new(ast::TraitImplHeader {
-                    safety: ast::Safety::Default,
+                    safety: self.safety,
                     polarity: ast::ImplPolarity::Positive,
                     defaultness: ast::Defaultness::Final,
-                    constness: if self.is_const {
-                        ast::Const::Yes(DUMMY_SP)
-                    } else {
-                        ast::Const::No
-                    },
                     trait_ref,
                 })),
+                constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
                 self_ty: self_type,
                 items: methods.into_iter().chain(associated_types).collect(),
             }),
@@ -1507,7 +1513,7 @@ impl<'a> TraitDef<'a> {
         struct_def: &'a VariantData,
         prefixes: &[String],
         by_ref: ByRef,
-    ) -> ThinVec<Box<ast::Pat>> {
+    ) -> ThinVec<ast::Pat> {
         prefixes
             .iter()
             .map(|prefix| {
@@ -1543,7 +1549,7 @@ impl<'a> TraitDef<'a> {
                                     attrs: ast::AttrVec::new(),
                                     id: ast::DUMMY_NODE_ID,
                                     span: pat.span.with_ctxt(self.span.ctxt()),
-                                    pat,
+                                    pat: Box::new(pat),
                                     is_placeholder: false,
                                 }
                             })

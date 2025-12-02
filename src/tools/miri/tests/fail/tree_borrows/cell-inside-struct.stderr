@@ -18,8 +18,6 @@ help: the accessed tag <TAG> was created here, in the initial state Cell
    |
 LL |         let a = &root;
    |                 ^^^^^
-   = note: BACKTRACE (of the first span):
-   = note: inside `main` at tests/fail/tree_borrows/cell-inside-struct.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

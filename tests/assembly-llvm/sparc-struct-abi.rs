@@ -2,7 +2,7 @@
 // - float structure members are passes in floating point registers
 // (#86163)
 
-//@ add-core-stubs
+//@ add-minicore
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: sparc
 //@ compile-flags: --target=sparcv9-sun-solaris -Copt-level=3

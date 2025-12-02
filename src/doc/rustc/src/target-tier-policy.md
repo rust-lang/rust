@@ -133,9 +133,9 @@ target's existence, and add `std` support as a follow-up once you've added
 support for the target in `cc` and `libc`.
 
 [tier3example]: https://github.com/rust-lang/rust/pull/94872
-[platform_template]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/TEMPLATE.md
-[summary]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/SUMMARY.md
-[platformsupport]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support.md
+[platform_template]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support/TEMPLATE.md
+[summary]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/SUMMARY.md
+[platformsupport]: https://github.com/rust-lang/rust/blob/HEAD/src/doc/rustc/src/platform-support.md
 [rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
 [`rust-lang/rust`]: https://github.com/rust-lang/rust
 [rustc_dev_guide_add_target]: https://rustc-dev-guide.rust-lang.org/building/new-target.html

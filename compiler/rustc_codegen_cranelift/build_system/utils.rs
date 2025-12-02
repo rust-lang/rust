@@ -162,7 +162,7 @@ impl CargoProject {
 pub(crate) fn try_hard_link(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     let src = src.as_ref();
     let dst = dst.as_ref();
-    if let Err(_) = fs::hard_link(src, dst) {
+    if fs::hard_link(src, dst).is_err() {
         fs::copy(src, dst).unwrap(); // Fallback to copying if hardlinking failed
     }
 }
@@ -179,7 +179,7 @@ pub(crate) fn spawn_and_wait(mut cmd: Command) {
 /// Create the specified directory if it doesn't exist yet and delete all contents.
 pub(crate) fn ensure_empty_dir(path: &Path) {
     fs::create_dir_all(path).unwrap();
-    let read_dir = match fs::read_dir(&path) {
+    let read_dir = match fs::read_dir(path) {
         Ok(read_dir) => read_dir,
         Err(err) if err.kind() == io::ErrorKind::NotFound => {
             return;

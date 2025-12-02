@@ -54,6 +54,9 @@ pub struct Cli {
     /// Set the sysroot for the C++ compiler
     #[arg(long)]
     pub cxx_toolchain_dir: Option<String>,
+
+    #[arg(long, default_value_t = 100u8)]
+    pub sample_percentage: u8,
 }
 
 pub struct ProcessedCli {
@@ -65,6 +68,7 @@ pub struct ProcessedCli {
     pub linker: Option<String>,
     pub cxx_toolchain_dir: Option<String>,
     pub skip: Vec<String>,
+    pub sample_percentage: u8,
 }
 
 impl ProcessedCli {
@@ -74,6 +78,7 @@ impl ProcessedCli {
         let target = cli_options.target;
         let linker = cli_options.linker;
         let cxx_toolchain_dir = cli_options.cxx_toolchain_dir;
+        let sample_percentage = cli_options.sample_percentage;
 
         let skip = if let Some(filename) = cli_options.skip {
             let data = std::fs::read_to_string(&filename).expect("Failed to open file");
@@ -108,6 +113,7 @@ impl ProcessedCli {
             cxx_toolchain_dir,
             skip,
             filename,
+            sample_percentage,
         }
     }
 }

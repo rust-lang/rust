@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_from_proc_macro, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind};
@@ -20,7 +21,7 @@ pub(super) fn check<'tcx>(
     msrv: Msrv,
 ) {
     if !fold_span.in_external_macro(cx.sess().source_map())
-        && is_trait_method(cx, expr, sym::Iterator)
+        && cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         && let init_ty = cx.typeck_results().expr_ty(init)
         && let Some(try_trait) = cx.tcx.lang_items().try_trait()
         && implements_trait(cx, init_ty, try_trait, &[])

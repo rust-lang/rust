@@ -26,6 +26,9 @@ LL | const CR: &'static mut i32 = &mut C;
 error[E0596]: cannot borrow immutable static item `X` as mutable
   --> $DIR/E0017.rs:11:39
    |
+LL | static X: i32 = 1;
+   | ------------- this `static` cannot be borrowed as mutable
+...
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ cannot borrow as mutable
 

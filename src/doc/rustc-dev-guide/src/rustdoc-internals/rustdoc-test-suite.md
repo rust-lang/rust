@@ -14,7 +14,7 @@ Internally, [`compiletest`] invokes the supplementary checker script [`htmldocck
 
 [Rustdoc test suites]: ../tests/compiletest.md#rustdoc-test-suites
 [`compiletest`]: ../tests/compiletest.md
-[`htmldocck.py`]: https://github.com/rust-lang/rust/blob/master/src/etc/htmldocck.py
+[`htmldocck.py`]: https://github.com/rust-lang/rust/blob/HEAD/src/etc/htmldocck.py
 
 ## HtmlDocCk Directives
 

@@ -18,8 +18,8 @@ use syntax::{
 use syntax_bridge::syntax_node_to_token_tree;
 
 use crate::{
-    EditionedFileId, ExpandError, ExpandResult, Lookup as _, MacroCallId,
-    builtin::quote::{WithDelimiter, dollar_crate, quote},
+    EditionedFileId, ExpandError, ExpandResult, MacroCallId,
+    builtin::quote::{WithDelimiter, dollar_crate},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
@@ -230,9 +230,9 @@ fn assert_expand(
     let mut iter = tt.iter();
 
     let cond = expect_fragment(
+        db,
         &mut iter,
         parser::PrefixEntryPoint::Expr,
-        id.lookup(db).krate.data(db).edition,
         tt.top_subtree().delimiter.delim_span(),
     );
     _ = iter.expect_char(',');
@@ -772,7 +772,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(err_span, format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition))
+        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition, lookup.krate))
     }
 }
 
@@ -786,7 +786,8 @@ fn parse_string(tt: &tt::TopSubtree) -> Result<(Symbol, Span), ExpandError> {
             && let DelimiterKind::Parenthesis | DelimiterKind::Invisible = sub.delimiter.kind
         {
             tt =
-                tt_iter.exactly_one().map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
+                // FIXME: rewrite in terms of `#![feature(exact_length_collection)]`. See: #149266
+                Itertools::exactly_one(tt_iter).map_err(|_| sub.delimiter.open.cover(sub.delimiter.close))?;
         }
 
         match tt {

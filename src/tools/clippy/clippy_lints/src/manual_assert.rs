@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call};
+use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::{higher, is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -50,32 +51,32 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             // Should this have a config value?
             && !is_else_clause(cx.tcx, expr)
         {
-            let mut applicability = Applicability::MachineApplicable;
-            let mut comments = span_extract_comment(cx.sess().source_map(), expr.span);
-            if !comments.is_empty() {
-                comments += "\n";
-            }
-            let cond_sugg = !sugg::Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "..", &mut applicability);
-            let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
-            let sugg = format!("assert!({cond_sugg}, {format_args_snip}){semicolon}");
-            // we show to the user the suggestion without the comments, but when applying the fix, include the
-            // comments in the block
             span_lint_and_then(
                 cx,
                 MANUAL_ASSERT,
                 expr.span,
                 "only a `panic!` in `if`-then statement",
                 |diag| {
-                    // comments can be noisy, do not show them to the user
+                    let mut applicability = Applicability::MachineApplicable;
+                    let mut comments = span_extract_comment(cx.sess().source_map(), expr.span);
                     if !comments.is_empty() {
-                        diag.tool_only_span_suggestion(
-                            expr.span.shrink_to_lo(),
-                            "add comments back",
-                            comments,
-                            applicability,
-                        );
+                        comments += "\n";
                     }
-                    diag.span_suggestion(expr.span, "try instead", sugg, applicability);
+                    let cond_sugg = !sugg::Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "..", &mut applicability);
+                    let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
+
+                    let indent = indent_of(cx, expr.span);
+                    let full_sugg = reindent_multiline(
+                        format!("{comments}assert!({cond_sugg}, {format_args_snip}){semicolon}").as_str(),
+                        true,
+                        indent,
+                    );
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        "replace `if`-then-`panic!` with `assert!`",
+                        full_sugg,
+                        applicability,
+                    );
                 },
             );
         }

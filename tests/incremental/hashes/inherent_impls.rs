@@ -11,6 +11,7 @@
 //@ [cfail1]compile-flags: -Zincremental-ignore-spans
 //@ [cfail2]compile-flags: -Zincremental-ignore-spans
 //@ [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ ignore-backends: gcc
 
 
 #![allow(warnings)]
@@ -71,15 +72,9 @@ impl Foo {
 // This should affect the method itself, but not the impl.
 #[cfg(any(cfail1,cfail4))]
 impl Foo {
-    //------------
-    //---------------
-    //----------------------------------------------------------------
-    //
+    //-----------------------------------------------------------------------------
     //--------------------------
-    //------------
-    //---------------
-    //----------------------------------------------------------------
-    //
+    //-----------------------------------------------------------------------------
     //--------------------------
     #[inline]
     pub fn method_body_inlined() {
@@ -93,15 +88,9 @@ impl Foo {
 #[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
-    #[rustc_clean(
-        cfg="cfail2",
-        except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
-        cfg="cfail5",
-        except="opt_hir_owner_nodes,optimized_mir,promoted_mir,typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
     #[inline]
     pub fn method_body_inlined() {

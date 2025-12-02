@@ -720,6 +720,40 @@ fn test_replace_range_evil_end_bound() {
 }
 
 #[test]
+fn test_replace_first() {
+    let mut s = String::from("~ First ❌ Middle ❌ Last ❌ ~");
+    s.replace_first("❌", "✅✅");
+    assert_eq!(s, "~ First ✅✅ Middle ❌ Last ❌ ~");
+    s.replace_first("🦀", "😳");
+    assert_eq!(s, "~ First ✅✅ Middle ❌ Last ❌ ~");
+
+    let mut s = String::from("❌");
+    s.replace_first('❌', "✅✅");
+    assert_eq!(s, "✅✅");
+
+    let mut s = String::from("");
+    s.replace_first('🌌', "❌");
+    assert_eq!(s, "");
+}
+
+#[test]
+fn test_replace_last() {
+    let mut s = String::from("~ First ❌ Middle ❌ Last ❌ ~");
+    s.replace_last("❌", "✅✅");
+    assert_eq!(s, "~ First ❌ Middle ❌ Last ✅✅ ~");
+    s.replace_last("🦀", "😳");
+    assert_eq!(s, "~ First ❌ Middle ❌ Last ✅✅ ~");
+
+    let mut s = String::from("❌");
+    s.replace_last::<char>('❌', "✅✅");
+    assert_eq!(s, "✅✅");
+
+    let mut s = String::from("");
+    s.replace_last::<char>('🌌', "❌");
+    assert_eq!(s, "");
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = "foo".to_string();
     a.extend(&['b', 'a', 'r']);

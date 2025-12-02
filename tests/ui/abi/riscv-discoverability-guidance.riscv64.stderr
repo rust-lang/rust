@@ -1,5 +1,9 @@
+warning: unstable feature specified for `-Ctarget-feature`: `unaligned-scalar-mem`
+   |
+   = note: this feature is not stably supported; its behavior can change in the future
+
 error[E0703]: invalid ABI: found `riscv-interrupt`
-  --> $DIR/riscv-discoverability-guidance.rs:15:8
+  --> $DIR/riscv-discoverability-guidance.rs:19:8
    |
 LL | extern "riscv-interrupt" fn isr() {}
    |        ^^^^^^^^^^^^^^^^^ invalid ABI
@@ -11,7 +15,7 @@ LL | extern "riscv-interrupt-m" fn isr() {}
    |                        ++
 
 error[E0703]: invalid ABI: found `riscv-interrupt-u`
-  --> $DIR/riscv-discoverability-guidance.rs:20:8
+  --> $DIR/riscv-discoverability-guidance.rs:24:8
    |
 LL | extern "riscv-interrupt-u" fn isr_U() {}
    |        ^^^^^^^^^^^^^^^^^^^ invalid ABI
@@ -23,6 +27,6 @@ LL - extern "riscv-interrupt-u" fn isr_U() {}
 LL + extern "riscv-interrupt-m" fn isr_U() {}
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 2 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0703`.

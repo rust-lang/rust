@@ -1,7 +1,7 @@
 // Verifies that when compiling with -Zsanitizer=option,
 // the `#[cfg(sanitize = "option")]` attribute is configured.
 
-//@ add-core-stubs
+//@ add-minicore
 //@ check-pass
 //@ revisions: address cfi kcfi leak memory thread
 //@compile-flags: -Ctarget-feature=-crt-static
@@ -19,8 +19,9 @@
 //@[memory]compile-flags:  -Zsanitizer=memory
 //@[thread]needs-sanitizer-thread
 //@[thread]compile-flags:  -Zsanitizer=thread
+//@ ignore-backends: gcc
 
-#![feature(cfg_sanitize, no_core, lang_items)]
+#![feature(cfg_sanitize, no_core)]
 #![crate_type="lib"]
 #![no_core]
 

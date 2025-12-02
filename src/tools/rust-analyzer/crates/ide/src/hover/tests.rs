@@ -1,5 +1,5 @@
 use expect_test::{Expect, expect};
-use ide_db::{FileRange, base_db::SourceDatabase};
+use ide_db::{FileRange, MiniCore, base_db::SourceDatabase};
 use syntax::TextRange;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
 
 use hir::setup_tracing;
 
-const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
+const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
     links_in_hover: false,
     memory_layout: Some(MemoryLayoutHoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
@@ -25,6 +25,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
     show_drop_glue: true,
+    minicore: MiniCore::default(),
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -349,7 +350,7 @@ fn main() {
 fn hover_closure() {
     check(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;
@@ -3279,7 +3280,7 @@ fn test_hover_no_memory_layout() {
 
     check_hover_no_memory_layout(
         r#"
-//- minicore: copy
+//- minicore: copy, add, builtin_impls
 fn main() {
     let x = 2;
     let y = $0|z| x + z;
@@ -4797,6 +4798,48 @@ fn main() {
 }
 
 #[test]
+fn const_generic_negative_literal_macro_expansion() {
+    // Test that negative literals work correctly in const generics
+    // when used through macro expansion. This ensures the transcriber
+    // doesn't wrap negative literals in parentheses, which would create
+    // invalid syntax like Foo::<(-1)> instead of Foo::<-1>.
+    check(
+        r#"
+struct Foo<const I: i16> {
+    pub value: i16,
+}
+
+impl<const I: i16> Foo<I> {
+    pub fn new(value: i16) -> Self {
+        Self { value }
+    }
+}
+
+macro_rules! create_foo {
+    ($val:expr) => {
+        Foo::<$val>::new($val)
+    };
+}
+
+fn main() {
+    let v$0alue = create_foo!(-1);
+}
+"#,
+        expect![[r#"
+            *value*
+
+            ```rust
+            let value: Foo<-1>
+            ```
+
+            ---
+
+            size = 2, align = 2, no Drop
+        "#]],
+    );
+}
+
+#[test]
 fn hover_self_param_shows_type() {
     check(
         r#"
@@ -6264,6 +6307,8 @@ const FOO$0: (&str, &str) = {
     );
 }
 
+// FIXME(next-solver): this fails to normalize the const, probably due to the solver
+// refusing to give the impl because of the error type.
 #[test]
 fn hover_const_eval_in_generic_trait() {
     // Doesn't compile, but we shouldn't crash.
@@ -6285,12 +6330,16 @@ fn test() {
             *FOO*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::Trait
             ```
 
             ```rust
-            const FOO: bool = true
+            const FOO: bool = false
             ```
+
+            ---
+
+            `Self` = `S<{unknown}>`
         "#]],
     );
 }
@@ -10760,7 +10809,7 @@ type Foo$0 = impl Sized;
 
             ---
 
-            needs Drop
+            no Drop
         "#]],
     );
     check(

@@ -8,7 +8,7 @@ use super::UNNEEDED_WILDCARD_PATTERN;
 
 pub(super) fn check(cx: &EarlyContext<'_>, pat: &Pat) {
     if let PatKind::TupleStruct(_, _, ref patterns) | PatKind::Tuple(ref patterns) = pat.kind
-        && let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest())
+        && let Some(rest_index) = patterns.iter().position(Pat::is_rest)
     {
         if let Some((left_index, left_pat)) = patterns[..rest_index]
             .iter()

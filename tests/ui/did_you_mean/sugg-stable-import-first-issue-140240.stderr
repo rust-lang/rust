@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Range` in this scope
-  --> $DIR/sugg-stable-import-first-issue-140240.rs:2:14
+  --> $DIR/sugg-stable-import-first-issue-140240.rs:3:14
    |
 LL |     const _: Range = 0..1;
    |              ^^^^^ not found in this scope

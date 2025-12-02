@@ -52,7 +52,7 @@ impl<'tcx> At<'_, 'tcx> {
             );
 
             fulfill_cx.register_predicate_obligation(self.infcx, obligation);
-            let errors = fulfill_cx.select_where_possible(self.infcx);
+            let errors = fulfill_cx.try_evaluate_obligations(self.infcx);
             if !errors.is_empty() {
                 return Err(errors);
             }

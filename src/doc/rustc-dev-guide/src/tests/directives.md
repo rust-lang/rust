@@ -38,7 +38,7 @@ sections that describe the command in more detail if available. This list may
 not be exhaustive. Directives can generally be found by browsing the
 `TestProps` structure found in [`directives.rs`] from the compiletest source.
 
-[`directives.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
+[`directives.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/directives.rs
 
 ### Assembly
 
@@ -141,8 +141,6 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - OS: `android`, `emscripten`, `freebsd`, `ios`, `linux`, `macos`, `windows`,
   ...
 - Environment (fourth word of the target triple): `gnu`, `msvc`, `musl`
-- WASM: `wasm32-bare` matches `wasm32-unknown-unknown`. `emscripten` also
-  matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
 - Stage: `stage1`, `stage2`
@@ -163,8 +161,10 @@ Some examples of `X` in `ignore-X` or `only-X`:
 The following directives will check rustc build settings and target
 settings:
 
-- `needs-asm-support` — ignores if it is running on a target that doesn't have
-  stable support for `asm!`
+- `needs-asm-support` — ignores if the **host** architecture doesn't have
+  stable support for `asm!`. For tests that cross-compile to explicit targets
+  via `--target`, use `needs-llvm-components` instead to ensure the appropriate
+  backend is available.
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target
   (`build.profiler = true` in rustc's `bootstrap.toml`)
@@ -205,7 +205,9 @@ settings:
   on `wasm32-unknown-unknown` target because the target does not support the
   `proc-macro` crate type.
 - `needs-target-std` — ignores if target platform does not have std support.
-- `ignore-backends` — ignores the listed backends, separated by whitespace characters.
+- `ignore-backends` — ignores the listed backends, separated by whitespace characters. Please note
+  that this directive can be overriden with the `--bypass-ignore-backends=[BACKEND]` command line
+  flag. 
 - `needs-backends` — only runs the test if current codegen backend is listed.
 
 The following directives will check LLVM support:
@@ -261,6 +263,28 @@ must instead use the `//@ incremental` directive.
 Consider writing the test as a proper incremental test instead.
 
 </div>
+
+#### The edition directive
+
+The `//@ edition` directive can take an exact edition, a bounded range of editions,
+or a left-bounded half-open range of editions.
+This affects which edition is used by `./x test` to run the test.
+
+For example:
+
+- A test with the `//@ edition: 2018` directive will only run under the 2018 edition.
+- A test with the `//@ edition: 2015..2021` directive can be run under the 2015, 2018, and 2021 editions.
+  However, CI will only run the test with the lowest edition in the range (which is 2015 in this example).
+- A test with the `//@ edition: 2018..` directive will run under 2018 edition or greater.
+  However, CI will only run the test with the lowest edition in the range (which is 2018 in this example).
+
+You can also force `./x test` to use a specific edition by passing the `-- --edition=` argument.
+However, tests with the `//@ edition` directive will clamp the value passed to the argument.
+For example, if we run `./x test -- --edition=2015`:
+
+- A test with the `//@ edition: 2018` will run with the 2018 edition. 
+- A test with the `//@ edition: 2015..2021` will be run with the 2015 edition. 
+- A test with the `//@ edition: 2018..` will run with the 2018 edition. 
 
 ### Rustdoc
 
@@ -359,7 +383,7 @@ described below:
   - Example: `x86_64-unknown-linux-gnu`
 
 See
-[`tests/ui/argfile/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/master/tests/ui/argfile/commandline-argfile.rs)
+[`tests/ui/argfile/commandline-argfile.rs`](https://github.com/rust-lang/rust/blob/HEAD/tests/ui/argfile/commandline-argfile.rs)
 for an example of a test that uses this substitution.
 
 [output normalization]: ui.md#normalization
@@ -508,6 +532,6 @@ example, `//@ failure-status: 1`, `self.props.failure_status` will evaluate to
 1, as `parse_failure_status()` will have overridden the `TestProps` default
 value, for that test specifically.
 
-[`src/tools/compiletest/src/directives.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
-[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
-[`src/tools/compiletest/src/runtest.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/runtest.rs
+[`src/tools/compiletest/src/directives.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/directives.rs
+[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/common.rs
+[`src/tools/compiletest/src/runtest.rs`]: https://github.com/rust-lang/rust/tree/HEAD/src/tools/compiletest/src/runtest.rs

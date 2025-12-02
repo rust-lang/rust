@@ -224,7 +224,7 @@ keep in mind while going through them:
 
 [rust-lang/llvm-project repository]: https://github.com/rust-lang/llvm-project
 [llvm/llvm-project repository]: https://github.com/llvm/llvm-project
-[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_llvm/llvm-wrapper
+[`llvm-wrapper`]: https://github.com/rust-lang/rust/tree/HEAD/compiler/rustc_llvm/llvm-wrapper
 [wg-llvm]: https://rust-lang.zulipchat.com/#narrow/stream/187780-t-compiler.2Fwg-llvm
 [Dev Desktops]: https://forge.rust-lang.org/infra/docs/dev-desktop.html
 [backport process]: https://llvm.org/docs/GitHub.html#backporting-fixes-to-the-release-branches

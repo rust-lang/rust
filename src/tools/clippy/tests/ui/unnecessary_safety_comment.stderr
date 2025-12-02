@@ -5,10 +5,10 @@ LL |     const CONST: u32 = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:5:5
+  --> tests/ui/unnecessary_safety_comment.rs:5:8
    |
 LL |     // SAFETY:
-   |     ^^^^^^^^^^
+   |        ^^^^^^^
    = note: `-D clippy::unnecessary-safety-comment` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_safety_comment)]`
 
@@ -19,10 +19,10 @@ LL |     static STATIC: u32 = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:9:5
+  --> tests/ui/unnecessary_safety_comment.rs:9:8
    |
 LL |     // SAFETY:
-   |     ^^^^^^^^^^
+   |        ^^^^^^^
 
 error: struct has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:14:5
@@ -31,10 +31,10 @@ LL |     struct Struct;
    |     ^^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:13:5
+  --> tests/ui/unnecessary_safety_comment.rs:13:8
    |
 LL |     // SAFETY:
-   |     ^^^^^^^^^^
+   |        ^^^^^^^
 
 error: enum has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:18:5
@@ -43,10 +43,10 @@ LL |     enum Enum {}
    |     ^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:17:5
+  --> tests/ui/unnecessary_safety_comment.rs:17:8
    |
 LL |     // SAFETY:
-   |     ^^^^^^^^^^
+   |        ^^^^^^^
 
 error: module has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:22:5
@@ -55,10 +55,10 @@ LL |     mod module {}
    |     ^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:21:5
+  --> tests/ui/unnecessary_safety_comment.rs:21:8
    |
 LL |     // SAFETY:
-   |     ^^^^^^^^^^
+   |        ^^^^^^^
 
 error: impl has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:42:13
@@ -70,10 +70,10 @@ LL |     with_safety_comment!(i32);
    |     ------------------------- in this macro invocation
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:41:13
+  --> tests/ui/unnecessary_safety_comment.rs:41:16
    |
 LL |             // Safety: unnecessary
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^
    = note: this error originates in the macro `with_safety_comment` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expression has unnecessary safety comment
@@ -83,10 +83,10 @@ LL |     24
    |     ^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:59:5
+  --> tests/ui/unnecessary_safety_comment.rs:59:8
    |
 LL |     // SAFETY: unnecessary
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
 error: statement has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:52:5
@@ -95,10 +95,10 @@ LL |     let num = 42;
    |     ^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:51:5
+  --> tests/ui/unnecessary_safety_comment.rs:51:8
    |
 LL |     // SAFETY: unnecessary
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
 error: statement has unnecessary safety comment
   --> tests/ui/unnecessary_safety_comment.rs:56:5
@@ -107,10 +107,10 @@ LL |     if num > 24 {}
    |     ^^^^^^^^^^^^^^
    |
 help: consider removing the safety comment
-  --> tests/ui/unnecessary_safety_comment.rs:55:5
+  --> tests/ui/unnecessary_safety_comment.rs:55:8
    |
 LL |     // SAFETY: unnecessary
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors
 

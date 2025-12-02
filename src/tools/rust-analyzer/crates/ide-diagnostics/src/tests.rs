@@ -6,7 +6,7 @@ use hir::setup_tracing;
 use ide_db::{
     LineIndexDatabase, RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
-    base_db::{SourceDatabase, salsa},
+    base_db::SourceDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
@@ -74,7 +74,7 @@ fn check_nth_fix_with_config(
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let diagnostic = salsa::attach(&db, || {
+    let diagnostic = hir::attach_db(&db, || {
         super::full_diagnostics(
             &db,
             &config,
@@ -129,7 +129,7 @@ pub(crate) fn check_has_fix(
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
     let mut conf = DiagnosticsConfig::test_sample();
     conf.expr_fill_default = ExprFillDefaultMode::Default;
-    let fix = salsa::attach(&db, || {
+    let fix = hir::attach_db(&db, || {
         super::full_diagnostics(
             &db,
             &conf,
@@ -170,7 +170,7 @@ pub(crate) fn check_has_fix(
 /// Checks that there's a diagnostic *without* fix at `$0`.
 pub(crate) fn check_no_fix(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
-    let diagnostic = salsa::attach(&db, || {
+    let diagnostic = hir::attach_db(&db, || {
         super::full_diagnostics(
             &db,
             &DiagnosticsConfig::test_sample(),
@@ -212,7 +212,7 @@ pub(crate) fn check_diagnostics_with_config(
         .iter()
         .copied()
         .flat_map(|file_id| {
-            salsa::attach(&db, || {
+            hir::attach_db(&db, || {
                 super::full_diagnostics(
                     &db,
                     &config,
@@ -288,12 +288,12 @@ fn test_disabled_diagnostics() {
     let (db, file_id) = RootDatabase::with_single_file(r#"mod foo;"#);
     let file_id = file_id.file_id(&db);
 
-    let diagnostics = salsa::attach(&db, || {
+    let diagnostics = hir::attach_db(&db, || {
         super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id)
     });
     assert!(diagnostics.is_empty());
 
-    let diagnostics = salsa::attach(&db, || {
+    let diagnostics = hir::attach_db(&db, || {
         super::full_diagnostics(
             &db,
             &DiagnosticsConfig::test_sample(),
@@ -311,7 +311,7 @@ fn minicore_smoke_test() {
     }
 
     fn check(minicore: MiniCore) {
-        let source = minicore.source_code();
+        let source = minicore.source_code(MiniCore::RAW_SOURCE);
         let mut config = DiagnosticsConfig::test_sample();
         // This should be ignored since we conditionally remove code which creates single item use with braces
         config.disabled.insert("unused_braces".to_owned());
@@ -321,7 +321,7 @@ fn minicore_smoke_test() {
     }
 
     // Checks that there is no diagnostic in minicore for each flag.
-    for flag in MiniCore::available_flags() {
+    for flag in MiniCore::available_flags(MiniCore::RAW_SOURCE) {
         if flag == "clone" {
             // Clone without copy has `moved-out-of-ref`, so ignoring.
             // FIXME: Maybe we should merge copy and clone in a single flag?
@@ -332,5 +332,5 @@ fn minicore_smoke_test() {
     }
     // And one time for all flags, to check codes which are behind multiple flags + prevent name collisions
     eprintln!("Checking all minicore flags");
-    check(MiniCore::from_flags(MiniCore::available_flags()))
+    check(MiniCore::from_flags(MiniCore::available_flags(MiniCore::RAW_SOURCE)))
 }

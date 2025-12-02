@@ -7,7 +7,7 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::BinaryFormat;
+use rustc_target::spec::{Arch, BinaryFormat};
 
 use crate::common;
 use crate::mir::AsmCodegenMethods;
@@ -125,7 +125,7 @@ fn prefix_and_suffix<'tcx>(
 
     let asm_binary_format = &tcx.sess.target.binary_format;
 
-    let is_arm = tcx.sess.target.arch == "arm";
+    let is_arm = tcx.sess.target.arch == Arch::Arm;
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
 
     let attrs = tcx.codegen_instance_attrs(instance.def);

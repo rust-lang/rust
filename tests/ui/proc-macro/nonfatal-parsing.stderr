@@ -1,0 +1,215 @@
+error: prefix `r` is unknown
+  --> <proc-macro source code>:1:1
+   |
+LL | r'r'
+   | ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL | r 'r'
+   |  +
+
+error: prefix `c` is unknown
+  --> <proc-macro source code>:1:1
+   |
+LL | c'r'
+   | ^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+help: consider inserting whitespace here
+   |
+LL | c 'r'
+   |  +
+
+error: prefix `r` is unknown
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: prefix `c` is unknown
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unknown prefix
+   |
+   = note: prefixed identifiers and literals are reserved since Rust 2021
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected closing delimiter: `)`
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unexpected closing delimiter
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected closing delimiter: `]`
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     -^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the nearest open delimiter
+   |     missing open `(` for this delimiter
+   |     unexpected closing delimiter
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid digit for a base 2 literal
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0768]: no valid digits found for number
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: binary float literal is not supported
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: character constant must be escaped: `'`
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: escape the character
+   |
+LL -     nonfatal_parsing::run!();
+LL +     nonfatal_parsing::run!(\';
+   |
+
+error: character constant must be escaped: `\n`
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: escape the character
+   |
+LL -     nonfatal_parsing::run!();
+LL +     nonfatal_parsing::run!(\n;
+   |
+
+error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid digit for a base 2 literal
+  --> $DIR/nonfatal-parsing.rs:15:5
+   |
+LL |     nonfatal_parsing::run!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `nonfatal_parsing::run` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unexpected closing delimiter: `)`
+  --> <proc-macro source code>:1:3
+   |
+LL | 1 ) 2
+   |   ^ unexpected closing delimiter
+
+error: unexpected closing delimiter: `]`
+  --> <proc-macro source code>:1:10
+   |
+LL | ( x  [ ) ]
+   |      - - ^ unexpected closing delimiter
+   |      | |
+   |      | missing open `(` for this delimiter
+   |      the nearest open delimiter
+
+error: found invalid character; only `#` is allowed in raw string delimitation: \u{0}
+  --> <proc-macro source code>:1:1
+   |
+LL | r#
+   | ^^
+
+error: invalid digit for a base 2 literal
+  --> <proc-macro source code>:1:3
+   |
+LL | 0b2
+   |   ^
+
+error[E0768]: no valid digits found for number
+  --> <proc-macro source code>:1:1
+   |
+LL | 0bf32
+   | ^^
+
+error: binary float literal is not supported
+  --> <proc-macro source code>:1:1
+   |
+LL | 0b0.0f32
+   | ^^^^^
+
+error: character constant must be escaped: `'`
+  --> <proc-macro source code>:1:2
+   |
+LL | '''
+   |  ^
+   |
+help: escape the character
+   |
+LL | '\''
+   |  +
+
+error: character constant must be escaped: `\n`
+  --> <proc-macro source code>:1:2
+   |
+LL |   '
+   |  __^
+LL | | '
+   | |_^
+   |
+help: escape the character
+   |
+LL | '\n'
+   |  ++
+
+error: too many `#` symbols: raw strings may be delimited by up to 255 `#` symbols, but found 256
+  --> <proc-macro source code>:1:1
+   |
+LL | r#######################################...##################################################
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^...^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid digit for a base 2 literal
+  --> <proc-macro source code>:1:9
+   |
+LL | /*a*/ 0b2 //
+   |         ^
+
+error: aborting due to 24 previous errors
+
+For more information about this error, try `rustc --explain E0768`.

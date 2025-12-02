@@ -30,7 +30,7 @@ use crate::next_solver::{
     AliasTy, Binder, Const, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Region, Span, Ty,
     TyKind,
     infer::{
-        DefineOpaqueTypes, InferCtxt, TypeTrace,
+        InferCtxt, TypeTrace,
         relate::RelateResult,
         traits::{Obligation, PredicateObligations},
     },
@@ -92,10 +92,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for LatticeOp<'_, 'db> {
         match variance {
             Variance::Invariant => {
                 self.obligations.extend(
-                    self.infcx
-                        .at(&self.trace.cause, self.param_env)
-                        .eq_trace(DefineOpaqueTypes::Yes, self.trace.clone(), a, b)?
-                        .into_obligations(),
+                    self.infcx.at(&self.trace.cause, self.param_env).eq(a, b)?.into_obligations(),
                 );
                 Ok(a)
             }
@@ -213,12 +210,12 @@ impl<'infcx, 'db> LatticeOp<'infcx, 'db> {
         let at = self.infcx.at(&self.trace.cause, self.param_env);
         match self.kind {
             LatticeOpKind::Glb => {
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, a)?.into_obligations());
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, v, b)?.into_obligations());
+                self.obligations.extend(at.sub(v, a)?.into_obligations());
+                self.obligations.extend(at.sub(v, b)?.into_obligations());
             }
             LatticeOpKind::Lub => {
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, a, v)?.into_obligations());
-                self.obligations.extend(at.sub(DefineOpaqueTypes::Yes, b, v)?.into_obligations());
+                self.obligations.extend(at.sub(a, v)?.into_obligations());
+                self.obligations.extend(at.sub(b, v)?.into_obligations());
             }
         }
         Ok(())

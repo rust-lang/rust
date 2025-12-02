@@ -1,5 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
-#![allow(clippy::uninlined_format_args, clippy::useless_vec)]
+#![allow(clippy::useless_vec)]
 //@no-rustfix: suggestion does not remove the `+= 1`
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -89,13 +89,13 @@ mod issue_1219 {
         for _v in &vec {
             index += 1
         }
-        println!("index: {}", index);
+        println!("index: {index}");
 
         // should not trigger the lint because the count is conditional #1219
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
-            println!("{}", count);
+            println!("{count}");
             if ch == 'a' {
                 continue;
             }
@@ -106,7 +106,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
-            println!("{}", count);
+            println!("{count}");
             if ch == 'a' {
                 count += 1;
             }
@@ -118,7 +118,7 @@ mod issue_1219 {
         for ch in text.chars() {
             //~^ explicit_counter_loop
 
-            println!("{}", count);
+            println!("{count}");
             count += 1;
             if ch == 'a' {
                 continue;
@@ -131,7 +131,7 @@ mod issue_1219 {
         for ch in text.chars() {
             //~^ explicit_counter_loop
 
-            println!("{}", count);
+            println!("{count}");
             count += 1;
             for i in 0..2 {
                 let _ = 123;
@@ -142,7 +142,7 @@ mod issue_1219 {
         let text = "banana";
         let mut count = 0;
         for ch in text.chars() {
-            println!("{}", count);
+            println!("{count}");
             count += 1;
             for i in 0..2 {
                 count += 1;
@@ -157,7 +157,7 @@ mod issue_3308 {
         let mut skips = 0;
         let erasures = vec![];
         for i in 0..10 {
-            println!("{}", skips);
+            println!("{skips}");
             while erasures.contains(&(i + skips)) {
                 skips += 1;
             }
@@ -166,7 +166,7 @@ mod issue_3308 {
         // should not trigger the lint because the count is incremented multiple times
         let mut skips = 0;
         for i in 0..10 {
-            println!("{}", skips);
+            println!("{skips}");
             let mut j = 0;
             while j < 5 {
                 skips += 1;
@@ -177,7 +177,7 @@ mod issue_3308 {
         // should not trigger the lint because the count is incremented multiple times
         let mut skips = 0;
         for i in 0..10 {
-            println!("{}", skips);
+            println!("{skips}");
             for j in 0..5 {
                 skips += 1;
             }
@@ -205,7 +205,7 @@ mod issue_4732 {
         for _v in slice {
             index += 1
         }
-        let _closure = || println!("index: {}", index);
+        let _closure = || println!("index: {index}");
     }
 }
 
@@ -217,7 +217,7 @@ mod issue_4677 {
         let mut count = 0;
         for _i in slice {
             count += 1;
-            println!("{}", count);
+            println!("{count}");
         }
     }
 }

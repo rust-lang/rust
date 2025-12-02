@@ -3,6 +3,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Arch;
 
 use crate::*;
 
@@ -431,7 +432,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => unreachable!(),
                 };
 
-                if bit_size == 64 && this.tcx.sess.target.arch != "x86_64" {
+                if bit_size == 64 && this.tcx.sess.target.arch != Arch::X86_64 {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 

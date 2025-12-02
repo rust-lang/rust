@@ -1,6 +1,7 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[old] check-pass
+//@ check-pass
 
 // cc #119820
 
@@ -24,8 +25,11 @@ where
     // but are able to successfully use the impl candidate. Without
     // the leak check both candidates may apply and we prefer the
     // `param_env` candidate in winnowing.
+    //
+    // By doing the leak check for each candidate, we discard the `param_env`
+    // candidate and use the impl candidate instead, allowing this to
+    // compile.
     hr_bound::<&T>();
-    //[next]~^ ERROR the trait bound `for<'a> &'a &T: Trait` is not satisfied
 }
 
 fn main() {}

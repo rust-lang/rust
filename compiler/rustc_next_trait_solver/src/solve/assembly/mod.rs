@@ -9,7 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
@@ -26,11 +26,6 @@ use crate::solve::{
     MaybeCause, NoSolution, OpaqueTypesJank, ParamEnvSource, QueryResult,
     has_no_inference_or_external_constraints,
 };
-
-enum AliasBoundKind {
-    SelfBounds,
-    NonSelfBounds,
-}
 
 /// A candidate is a possible way to prove a goal.
 ///
@@ -79,6 +74,8 @@ where
     /// Consider a clause specifically for a `dyn Trait` self type. This requires
     /// additionally checking all of the supertraits and object bounds to hold,
     /// since they're not implied by the well-formedness of the object type.
+    /// `NormalizesTo` overrides this to not check the supertraits for backwards
+    /// compatibility with the old solver. cc trait-system-refactor-initiative#245.
     fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         source: CandidateSource<I>,
@@ -451,7 +448,7 @@ where
                         matches!(
                             c.source,
                             CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound
+                                | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
                     })
                 {
@@ -459,7 +456,16 @@ where
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 }
             }
-            AssembleCandidatesFrom::EnvAndBounds => {}
+            AssembleCandidatesFrom::EnvAndBounds => {
+                // This is somewhat inconsistent and may make #57893 slightly easier to exploit.
+                // However, it matches the behavior of the old solver. See
+                // `tests/ui/traits/next-solver/normalization-shadowing/use_object_if_empty_env.rs`.
+                if matches!(normalized_self_ty.kind(), ty::Dynamic(..))
+                    && !candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                {
+                    self.assemble_object_bound_candidates(goal, &mut candidates);
+                }
+            }
         }
 
         (candidates, failed_candidate_info)
@@ -473,7 +479,10 @@ where
         // fails to reach a fixpoint but ends up getting an error after
         // running for some additional step.
         //
-        // cc trait-system-refactor-initiative#105
+        // FIXME(@lcnr): While I believe an error here to be possible, we
+        // currently don't have any test which actually triggers it. @lqd
+        // created a minimization for an ICE in typenum, but that one no
+        // longer fails here. cc trait-system-refactor-initiative#105.
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
         let certainty = Certainty::Maybe { cause, opaque_types_jank: OpaqueTypesJank::AllGood };
         self.probe_trait_candidate(source)
@@ -540,9 +549,11 @@ where
                 Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
                 }
-                Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
-                    G::consider_builtin_copy_clone_candidate(self, goal)
-                }
+                Some(
+                    SolverTraitLangItem::Copy
+                    | SolverTraitLangItem::Clone
+                    | SolverTraitLangItem::TrivialClone,
+                ) => G::consider_builtin_copy_clone_candidate(self, goal),
                 Some(SolverTraitLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
@@ -708,7 +719,7 @@ where
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
                     candidates.push(Candidate {
-                        source: CandidateSource::AliasBound,
+                        source: CandidateSource::AliasBound(consider_self_bounds),
                         result,
                         head_usages: CandidateHeadUsages::default(),
                     });
@@ -732,7 +743,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound,
+                        CandidateSource::AliasBound(consider_self_bounds),
                         goal,
                         assumption,
                         [],
@@ -747,7 +758,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound,
+                        CandidateSource::AliasBound(consider_self_bounds),
                         goal,
                         assumption,
                         [],
@@ -1027,7 +1038,7 @@ where
                     item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
                 candidates.extend(G::probe_and_match_goal_against_assumption(
                     self,
-                    CandidateSource::AliasBound,
+                    CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
                     goal,
                     assumption,
                     |ecx| {
@@ -1116,11 +1127,12 @@ where
     /// treat the alias as rigid.
     ///
     /// See trait-system-refactor-initiative#124 for more details.
-    #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
+    #[instrument(level = "debug", skip_all, fields(proven_via, goal), ret)]
     pub(super) fn assemble_and_merge_candidates<G: GoalKind<D>>(
         &mut self,
         proven_via: Option<TraitGoalProvenVia>,
         goal: Goal<I, G>,
+        inject_forced_ambiguity_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> Option<QueryResult<I>>,
         inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         let Some(proven_via) = proven_via else {
@@ -1140,15 +1152,24 @@ where
                 // `tests/ui/next-solver/alias-bound-shadowed-by-env.rs`.
                 let (mut candidates, _) = self
                     .assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::EnvAndBounds);
+                debug!(?candidates);
+
+                // If the trait goal has been proven by using the environment, we want to treat
+                // aliases as rigid if there are no applicable projection bounds in the environment.
+                if candidates.is_empty() {
+                    return inject_normalize_to_rigid_candidate(self);
+                }
+
+                // If we're normalizing an GAT, we bail if using a where-bound would constrain
+                // its generic arguments.
+                if let Some(result) = inject_forced_ambiguity_candidate(self) {
+                    return result;
+                }
 
                 // We still need to prefer where-bounds over alias-bounds however.
                 // See `tests/ui/winnowing/norm-where-bound-gt-alias-bound.rs`.
                 if candidates.iter().any(|c| matches!(c.source, CandidateSource::ParamEnv(_))) {
                     candidates.retain(|c| matches!(c.source, CandidateSource::ParamEnv(_)));
-                } else if candidates.is_empty() {
-                    // If the trait goal has been proven by using the environment, we want to treat
-                    // aliases as rigid if there are no applicable projection bounds in the environment.
-                    return inject_normalize_to_rigid_candidate(self);
                 }
 
                 if let Some((response, _)) = self.try_merge_candidates(&candidates) {

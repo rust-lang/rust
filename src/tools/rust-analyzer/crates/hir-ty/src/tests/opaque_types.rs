@@ -115,6 +115,7 @@ fn foo() {
     );
 }
 
+#[ignore = "FIXME(next-solver): TAIT support was removed, need to rework it to work with `#[define_opaque]`"]
 #[test]
 fn type_alias_impl_trait_simple() {
     check_no_mismatches(
@@ -134,9 +135,6 @@ static ALIAS: AliasTy = {
 "#,
     );
 
-    // FIXME(next-solver): This should emit type mismatch error but leaving it for now
-    // as we should fully migrate into next-solver without chalk-ir and TAIT should be
-    // reworked on r-a to handle `#[define_opaque(T)]`
     check_infer_with_mismatches(
         r#"
 trait Trait {}

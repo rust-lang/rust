@@ -67,6 +67,8 @@ pub enum HlMod {
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
+    /// Used for things with the `#[deprecated]` attribute.
+    Deprecated,
     /// Doc-strings like this one.
     Documentation,
     /// Highlighting injection like rust code in doc strings or ra_fixture.
@@ -124,8 +126,10 @@ pub enum HlOperator {
     Bitwise,
     /// +, -, *, /, +=, -=, *=, /=
     Arithmetic,
-    /// &&, ||, !
+    /// &&, ||
     Logical,
+    /// !
+    Negation,
     /// >, <, ==, >=, <=, !=
     Comparison,
     /// Other operators
@@ -194,6 +198,7 @@ impl HlTag {
                 HlOperator::Arithmetic => "arithmetic",
                 HlOperator::Logical => "logical",
                 HlOperator::Comparison => "comparison",
+                HlOperator::Negation => "negation",
                 HlOperator::Other => "operator",
             },
             HlTag::StringLiteral => "string_literal",
@@ -221,6 +226,7 @@ impl HlMod {
         HlMod::CrateRoot,
         HlMod::DefaultLibrary,
         HlMod::Definition,
+        HlMod::Deprecated,
         HlMod::Documentation,
         HlMod::Injected,
         HlMod::IntraDocLink,
@@ -247,6 +253,7 @@ impl HlMod {
             HlMod::CrateRoot => "crate_root",
             HlMod::DefaultLibrary => "default_library",
             HlMod::Definition => "declaration",
+            HlMod::Deprecated => "deprecated",
             HlMod::Documentation => "documentation",
             HlMod::Injected => "injected",
             HlMod::IntraDocLink => "intra_doc_link",

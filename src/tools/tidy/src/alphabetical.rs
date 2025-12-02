@@ -24,7 +24,7 @@ use std::fmt::Display;
 use std::iter::Peekable;
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, DiagCtx, RunningCheck};
+use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[cfg(test)]
@@ -130,8 +130,8 @@ fn check_lines<'a>(
     }
 }
 
-pub fn check(path: &Path, diag_ctx: DiagCtx) {
-    let mut check = diag_ctx.start_check(CheckId::new("alphabetical").path(path));
+pub fn check(path: &Path, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check(CheckId::new("alphabetical").path(path));
 
     let skip =
         |path: &_, _is_dir| filter_dirs(path) || path.ends_with("tidy/src/alphabetical/tests.rs");

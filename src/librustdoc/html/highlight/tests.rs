@@ -1,6 +1,7 @@
 use expect_test::expect_file;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_span::create_default_session_globals_then;
+use test::Bencher;
 
 use super::{DecorationInfo, write_code};
 
@@ -79,5 +80,18 @@ let a = 4;";
         let mut html = String::new();
         write_code(&mut html, src, None, Some(&DecorationInfo(decorations)), None);
         expect_file!["fixtures/decorations.html"].assert_eq(&html);
+    });
+}
+
+#[bench]
+fn bench_html_highlighting(b: &mut Bencher) {
+    let src = include_str!("../../../../compiler/rustc_ast/src/visit.rs");
+
+    create_default_session_globals_then(|| {
+        b.iter(|| {
+            let mut out = String::new();
+            write_code(&mut out, src, None, None, None);
+            out
+        });
     });
 }

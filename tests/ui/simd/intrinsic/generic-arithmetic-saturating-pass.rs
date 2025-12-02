@@ -1,8 +1,9 @@
 //@ run-pass
 //@ ignore-emscripten
+//@ compile-flags: --cfg minisimd_const
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, core_intrinsics, const_trait_impl, const_cmp, const_index)]
 
 #[path = "../../../auxiliary/minisimd.rs"]
 mod minisimd;
@@ -12,7 +13,7 @@ use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
 
 type I32<const N: usize> = Simd<i32, N>;
 
-fn main() {
+const fn saturating() {
     // unsigned
     {
         const M: u32 = u32::MAX;
@@ -83,4 +84,9 @@ fn main() {
             assert_eq!(simd_saturating_sub(min1, b), min);
         }
     }
+}
+
+fn main() {
+    const { saturating() };
+    saturating();
 }

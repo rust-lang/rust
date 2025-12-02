@@ -6,6 +6,7 @@
 //@ normalize-stderr: "`, `[A-Za-z0-9-:]*`" -> "`, `normalized data layout`"
 //@ normalize-stderr: "layout, `[A-Za-z0-9-:]*`" -> "layout, `normalized data layout`"
 //@ normalize-stderr: "`mismatched-data-layout-\d+`" -> "`mismatched-data-layout-<hash>`"
+//@ ignore-backends: gcc
 
 #![feature(lang_items, no_core, auto_traits)]
 #![no_core]

@@ -12,6 +12,12 @@ fn test_lifetime() {
     let a = format_args!("hello {a} {a:?}");
     assert_eq!(a.to_string(), "hello hello hello hello hello hello hello");
 
+    // Check that temporaries as arguments are extended.
+    let b = format_args!("{}", String::new());
+    let c = format_args!("{}{}", String::new(), String::new());
+    assert_eq!(b.to_string(), "");
+    assert_eq!(c.to_string(), "");
+
     // Without arguments, it should also work in consts.
     const A: std::fmt::Arguments<'static> = format_args!("hello");
     assert_eq!(A.to_string(), "hello");

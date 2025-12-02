@@ -85,10 +85,7 @@ impl PerNs {
         db: &dyn DefDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
-        self.macros = self.macros.filter(|def| {
-            let this = MacroSubNs::from_id(db, def.def);
-            sub_namespace_match(Some(this), expected)
-        });
+        self.macros = self.macros.filter(|def| sub_namespace_match(db, def.def, expected));
 
         self
     }
@@ -668,9 +665,7 @@ impl DefMap {
             // FIXME: shadowing
             .and_then(|it| it.last())
             .copied()
-            .filter(|&id| {
-                sub_namespace_match(Some(MacroSubNs::from_id(db, id)), expected_macro_subns)
-            })
+            .filter(|&id| sub_namespace_match(db, id, expected_macro_subns))
             .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public, None));
         let from_scope = self[module].scope.get(name).filter_macro(db, expected_macro_subns);
         let from_builtin = match self.block {

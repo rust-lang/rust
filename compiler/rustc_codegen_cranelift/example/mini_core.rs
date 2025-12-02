@@ -6,6 +6,7 @@
     extern_types,
     decl_macro,
     rustc_attrs,
+    rustc_private,
     transparent_unions,
     auto_traits,
     freeze_impls,
@@ -545,7 +546,7 @@ fn panic_in_cleanup() -> ! {
 
 #[cfg(all(unix, not(target_vendor = "apple")))]
 #[link(name = "gcc_s")]
-extern "C" {
+unsafe extern "C" {
     fn _Unwind_Resume(exc: *mut ()) -> !;
 }
 
@@ -554,7 +555,9 @@ extern "C" {
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     // Code here does not matter - this is replaced by the
     // real drop glue by the compiler.
-    drop_in_place(to_drop);
+    unsafe {
+        drop_in_place(to_drop);
+    }
 }
 
 #[lang = "unpin"]
@@ -594,7 +597,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 impl<T> Box<T> {
     pub fn new(val: T) -> Box<T> {
         unsafe {
-            let size = intrinsics::size_of::<T>();
+            let size = size_of::<T>();
             let ptr = libc::malloc(size);
             intrinsics::copy(&val as *const T as *const u8, ptr, size);
             Box(Unique { pointer: NonNull(ptr as *const T), _marker: PhantomData }, Global)
@@ -621,7 +624,7 @@ impl<T: ?Sized> Deref for Box<T> {
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    libc::malloc(size)
+    unsafe { libc::malloc(size) }
 }
 
 #[lang = "drop"]
@@ -646,13 +649,13 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub fn abort() -> !;
     #[rustc_intrinsic]
-    pub fn size_of<T>() -> usize;
+    pub const fn size_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn size_of_val<T: ?crate::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub fn align_of<T>() -> usize;
+    pub const fn align_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn align_of_val<T: ?::Sized>(val: *const T) -> usize;
+    pub unsafe fn align_of_val<T: ?crate::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
@@ -660,7 +663,7 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
     #[rustc_intrinsic]
-    pub const fn needs_drop<T: ?::Sized>() -> bool;
+    pub const fn needs_drop<T: ?crate::Sized>() -> bool;
     #[rustc_intrinsic]
     pub fn bitreverse<T>(x: T) -> T;
     #[rustc_intrinsic]
@@ -677,13 +680,13 @@ pub mod libc {
     // symbols to link against.
     #[cfg_attr(unix, link(name = "c"))]
     #[cfg_attr(target_env = "msvc", link(name = "legacy_stdio_definitions"))]
-    extern "C" {
+    unsafe extern "C" {
         pub fn printf(format: *const i8, ...) -> i32;
     }
 
     #[cfg_attr(unix, link(name = "c"))]
     #[cfg_attr(target_env = "msvc", link(name = "msvcrt"))]
-    extern "C" {
+    unsafe extern "C" {
         pub fn puts(s: *const i8) -> i32;
         pub fn malloc(size: usize) -> *mut u8;
         pub fn free(ptr: *mut u8);
@@ -715,7 +718,24 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern "C" {
+pub const fn size_of<T>() -> usize {
+    <T as SizedTypeProperties>::SIZE
+}
+
+pub const fn align_of<T>() -> usize {
+    <T as SizedTypeProperties>::ALIGN
+}
+
+trait SizedTypeProperties: Sized {
+    #[lang = "mem_size_const"]
+    const SIZE: usize = intrinsics::size_of::<Self>();
+
+    #[lang = "mem_align_const"]
+    const ALIGN: usize = intrinsics::align_of::<Self>();
+}
+impl<T> SizedTypeProperties for T {}
+
+unsafe extern "C" {
     type VaListImpl;
 }
 
@@ -774,7 +794,7 @@ struct PanicLocation {
     column: u32,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg(not(all(windows, target_env = "gnu")))]
 pub fn get_tls() -> u8 {
     #[thread_local]

@@ -209,12 +209,7 @@ pub(super) fn to_casted_value<'tcx>(
     cast_target_to_abi_params(cast)
         .into_iter()
         .map(|(offset, param)| {
-            let val = ptr.offset_i64(fx, offset.bytes() as i64).load(
-                fx,
-                param.value_type,
-                MemFlags::new(),
-            );
-            val
+            ptr.offset_i64(fx, offset.bytes() as i64).load(fx, param.value_type, MemFlags::new())
         })
         .collect()
 }
@@ -233,7 +228,7 @@ pub(super) fn from_casted_value<'tcx>(
         // It may also be smaller for example when the type is a wrapper around an integer with a
         // larger alignment than the integer.
         std::cmp::max(abi_param_size, layout_size),
-        u32::try_from(layout.align.abi.bytes()).unwrap(),
+        u32::try_from(layout.align.bytes()).unwrap(),
     );
     let mut block_params_iter = block_params.iter().copied();
     for (offset, _) in abi_params {

@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use std::{fmt, iter, mem};
+use std::{fmt, iter};
 
 use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, lis
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath};
+use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath, is_range_literal};
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
@@ -72,16 +72,13 @@ pub(crate) enum DivergingBlockBehavior {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn check_casts(&mut self) {
-        // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
-        // when writing to `self.param_env`.
-        let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
-
+        let mut deferred_cast_checks = self.root_ctxt.deferred_cast_checks.borrow_mut();
         debug!("FnCtxt::check_casts: {} deferred checks", deferred_cast_checks.len());
         for cast in deferred_cast_checks.drain(..) {
+            let body_id = std::mem::replace(&mut self.body_id, cast.body_id);
             cast.check(self);
+            self.body_id = body_id;
         }
-
-        *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
     pub(in super::super) fn check_asms(&self) {
@@ -246,6 +243,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
+                // FIXME(#149379): This operation results in expected input
+                // types which are potentially not well-formed or for whom the
+                // function where-bounds don't actually hold. This results
+                // in weird bugs when later treating these expectations as if
+                // they were actually correct.
                 self.fudge_inference_if_ok(|| {
                     let ocx = ObligationCtxt::new(self);
 
@@ -255,7 +257,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // No argument expectations are produced if unification fails.
                     let origin = self.misc(call_span);
                     ocx.sup(&origin, self.param_env, expected_output, formal_output)?;
-                    if !ocx.select_where_possible().is_empty() {
+
+                    let formal_input_tys_ns;
+                    let formal_input_tys = if self.next_trait_solver() {
+                        // In the new solver, the normalizations are done lazily.
+                        // Because of this, if we encounter unnormalized alias types inside this
+                        // fudge scope, we might lose the relationships between them and other vars
+                        // when fudging inference variables created here.
+                        // So, we utilize generalization to normalize aliases by adding a new
+                        // inference var and equating it with the type we want to pull out of the
+                        // fudge scope.
+                        formal_input_tys_ns = formal_input_tys
+                            .iter()
+                            .map(|&ty| {
+                                // If we replace a (unresolved) inference var with a new inference
+                                // var, it will be eventually resolved to itself and this will
+                                // weaken type inferences as the new inference var will be fudged
+                                // out and lose all relationships with other vars while the former
+                                // will not be fudged.
+                                if ty.is_ty_var() {
+                                    return ty;
+                                }
+
+                                let generalized_ty = self.next_ty_var(call_span);
+                                ocx.eq(&origin, self.param_env, ty, generalized_ty).unwrap();
+                                generalized_ty
+                            })
+                            .collect_vec();
+
+                        formal_input_tys_ns.as_slice()
+                    } else {
+                        formal_input_tys
+                    };
+
+                    if !ocx.try_evaluate_obligations().is_empty() {
                         return Err(TypeError::Mismatch);
                     }
 
@@ -780,10 +815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => bug!("unexpected type: {:?}", ty.normalized),
             },
-            Res::Def(
-                DefKind::Struct | DefKind::Union | DefKind::TyAlias { .. } | DefKind::AssocTy,
-                _,
-            )
+            Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTyParam { .. }
             | Res::SelfTyAlias { .. } => match ty.normalized.ty_adt_def() {
                 Some(adt) if !adt.is_enum() => {
@@ -871,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let decl_ty = self.local_ty(decl.span, decl.hir_id);
 
         // Type check the initializer.
-        if let Some(ref init) = decl.init {
+        if let Some(init) = decl.init {
             let init_ty = self.check_decl_initializer(decl.hir_id, decl.pat, init);
             self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, init_ty);
         }
@@ -935,7 +967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // Ignore for now.
             hir::StmtKind::Item(_) => {}
-            hir::StmtKind::Expr(ref expr) => {
+            hir::StmtKind::Expr(expr) => {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if self.is_next_stmt_expr_continuation(stmt.hir_id)
@@ -1112,8 +1144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 hir::Stmt {
                                                     kind:
                                                         hir::StmtKind::Let(hir::LetStmt {
-                                                            source:
-                                                                hir::LocalSource::AssignDesugar(_),
+                                                            source: hir::LocalSource::AssignDesugar,
                                                             ..
                                                         }),
                                                     ..
@@ -1290,10 +1321,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_resolution(hir_id, result);
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
-            }
-            QPath::LangItem(lang_item, span) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
-                (res, LoweredTy::from_raw(self, path_span, ty))
             }
         }
     }
@@ -1774,10 +1801,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let params =
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
-                Some((
-                    fn_inputs.zip(params.iter().map(|param| FnParam::Param(param))).collect(),
-                    generics,
-                ))
+                Some((fn_inputs.zip(params.iter().map(FnParam::Param)).collect(), generics))
             }
             (None, Some(params)) => {
                 let params =
@@ -2052,8 +2076,9 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
     fn detect_dotdot(&self, err: &mut Diag<'_>, ty: Ty<'tcx>, expr: &hir::Expr<'tcx>) {
         if let ty::Adt(adt, _) = ty.kind()
             && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
-            && let hir::ExprKind::Struct(hir::QPath::LangItem(hir::LangItem::RangeFull, _), [], _) =
-                expr.kind
+            && is_range_literal(expr)
+            && let hir::ExprKind::Struct(&path, [], _) = expr.kind
+            && self.tcx().qpath_is_lang_item(path, hir::LangItem::RangeFull)
         {
             // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
             // from default field values, which is not supported on tuples.
@@ -2639,7 +2664,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
         suggestions: Vec<(Span, String)>,
         suggestion_text: SuggestionText,
     ) -> Option<String> {
-        let suggestion_text = match suggestion_text {
+        match suggestion_text {
             SuggestionText::None => None,
             SuggestionText::Provide(plural) => {
                 Some(format!("provide the argument{}", if plural { "s" } else { "" }))
@@ -2655,8 +2680,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
             SuggestionText::Swap => Some("swap these arguments".to_string()),
             SuggestionText::Reorder => Some("reorder these arguments".to_string()),
             SuggestionText::DidYouMean => Some("did you mean".to_string()),
-        };
-        suggestion_text
+        }
     }
 
     fn arguments_formatting(&self, suggestion_span: Span) -> ArgumentsFormatting {
@@ -2803,9 +2827,7 @@ impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
         if let Some((assoc, fn_sig)) = self.similar_assoc(call_name)
             && fn_sig.inputs()[1..]
                 .iter()
-                .zip(input_types.iter())
-                .all(|(expected, found)| self.may_coerce(*expected, *found))
-            && fn_sig.inputs()[1..].len() == input_types.len()
+                .eq_by(input_types, |expected, found| self.may_coerce(*expected, found))
         {
             let assoc_name = assoc.name();
             err.span_suggestion_verbose(
@@ -2956,7 +2978,7 @@ impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
                     .fn_ctxt
                     .typeck_results
                     .borrow()
-                    .expr_ty_adjusted_opt(*expr)
+                    .expr_ty_adjusted_opt(expr)
                     .unwrap_or_else(|| Ty::new_misc_error(self.call_ctxt.fn_ctxt.tcx));
                 (
                     self.call_ctxt.fn_ctxt.resolve_vars_if_possible(ty),

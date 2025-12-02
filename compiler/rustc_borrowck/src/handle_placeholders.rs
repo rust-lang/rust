@@ -344,7 +344,7 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     }
 }
 
-fn rewrite_placeholder_outlives<'tcx>(
+pub(crate) fn rewrite_placeholder_outlives<'tcx>(
     sccs: &Sccs<RegionVid, ConstraintSccIndex>,
     annotations: &SccAnnotations<'_, '_, RegionTracker>,
     fr_static: RegionVid,

@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
-use clippy_utils::{is_in_const_context, path_to_local, sym};
+use clippy_utils::{is_in_const_context, sym};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -29,7 +30,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => arm.pat.span,
             };
@@ -48,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             && !pat_contains_disallowed_or(cx, let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
-                (PatKind::Ref(pat, _), Some(_)) => pat.span,
+                (PatKind::Ref(pat, _, _), Some(_)) => pat.span,
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => let_expr.pat.span,
             };
@@ -164,7 +165,7 @@ fn get_pat_binding<'tcx>(
     guard_expr: &Expr<'_>,
     outer_arm: &Arm<'tcx>,
 ) -> Option<PatBindingInfo> {
-    if let Some(local) = path_to_local(guard_expr)
+    if let Some(local) = guard_expr.res_local_id()
         && !is_local_used(cx, outer_arm.body, local)
     {
         let mut span = None;
@@ -175,7 +176,7 @@ fn get_pat_binding<'tcx>(
             if let PatKind::Binding(bind_annot, hir_id, ident, _) = pat.kind
                 && hir_id == local
             {
-                if matches!(bind_annot.0, rustc_ast::ByRef::Yes(_)) {
+                if matches!(bind_annot.0, rustc_ast::ByRef::Yes(..)) {
                     let _ = byref_ident.insert(ident);
                 }
                 // the second call of `replace()` returns a `Some(span)`, meaning a multi-binding pattern

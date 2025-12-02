@@ -72,7 +72,7 @@ fn from_mut_split() {
     assert_eq!(x_lo_atomic.load(Relaxed), u16::from_be(0xfafa));
 }
 
-pub fn main() {
+fn main() {
     get_mut_write();
     from_mut_split();
     assign_to_mut();

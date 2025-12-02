@@ -17,8 +17,8 @@ LL |     y.set(1);
 help: the protected tag <TAG> was created here, in the initial state Frozen
   --> tests/fail/both_borrows/aliasing_mut4.rs:LL:CC
    |
-LL | pub fn safe(x: &i32, y: &mut Cell<i32>) {
-   |             ^
+LL | fn safe(x: &i32, y: &mut Cell<i32>) {
+   |         ^
    = note: BACKTRACE (of the first span):
    = note: inside `std::mem::replace::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
    = note: inside `std::cell::Cell::<i32>::replace` at RUSTLIB/core/src/cell.rs:LL:CC

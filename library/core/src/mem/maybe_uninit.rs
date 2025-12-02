@@ -1,4 +1,6 @@
 use crate::any::type_name;
+use crate::clone::TrivialClone;
+use crate::marker::Destruct;
 use crate::mem::ManuallyDrop;
 use crate::{fmt, intrinsics, ptr, slice};
 
@@ -252,6 +254,89 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///     std::process::exit(*code); // UB! Accessing uninitialized memory.
 /// }
 /// ```
+///
+/// # Validity
+///
+/// `MaybeUninit<T>` has no validity requirements –- any sequence of [bytes] of
+/// the appropriate length, initialized or uninitialized, are a valid
+/// representation.
+///
+/// Moving or copying a value of type `MaybeUninit<T>` (i.e., performing a
+/// "typed copy") will exactly preserve the contents, including the
+/// [provenance], of all non-padding bytes of type `T` in the value's
+/// representation.
+///
+/// Therefore `MaybeUninit` can be used to perform a round trip of a value from
+/// type `T` to type `MaybeUninit<U>` then back to type `T`, while preserving
+/// the original value, if two conditions are met. One, type `U` must have the
+/// same size as type `T`. Two, for all byte offsets where type `U` has padding,
+/// the corresponding bytes in the representation of the value must be
+/// uninitialized.
+///
+/// For example, due to the fact that the type `[u8; size_of::<T>]` has no
+/// padding, the following is sound for any type `T` and will return the
+/// original value:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// # struct T;
+/// fn identity(t: T) -> T {
+///     unsafe {
+///         let u: MaybeUninit<[u8; size_of::<T>()]> = transmute(t);
+///         transmute(u) // OK.
+///     }
+/// }
+/// ```
+///
+/// Note: Copying a value that contains references may implicitly reborrow them
+/// causing the provenance of the returned value to differ from that of the
+/// original. This applies equally to the trivial identity function:
+///
+/// ```rust,no_run
+/// fn trivial_identity<T>(t: T) -> T { t }
+/// ```
+///
+/// Note: Moving or copying a value whose representation has initialized bytes
+/// at byte offsets where the type has padding may lose the value of those
+/// bytes, so while the original value will be preserved, the original
+/// *representation* of that value as bytes may not be. Again, this applies
+/// equally to `trivial_identity`.
+///
+/// Note: Performing this round trip when type `U` has padding at byte offsets
+/// where the representation of the original value has initialized bytes may
+/// produce undefined behavior or a different value. For example, the following
+/// is unsound since `T` requires all bytes to be initialized:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// #[repr(C)] struct T([u8; 4]);
+/// #[repr(C)] struct U(u8, u16);
+/// fn unsound_identity(t: T) -> T {
+///     unsafe {
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u) // UB.
+///     }
+/// }
+/// ```
+///
+/// Conversely, the following is sound since `T` allows uninitialized bytes in
+/// the representation of a value, but the round trip may alter the value:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// #[repr(C)] struct T(MaybeUninit<[u8; 4]>);
+/// #[repr(C)] struct U(u8, u16);
+/// fn non_identity(t: T) -> T {
+///     unsafe {
+///         // May lose an initialized byte.
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u)
+///     }
+/// }
+/// ```
+///
+/// [bytes]: ../../reference/memory-model.html#bytes
+/// [provenance]: crate::ptr#provenance
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
@@ -271,6 +356,11 @@ impl<T: Copy> Clone for MaybeUninit<T> {
         *self
     }
 }
+
+// SAFETY: the clone implementation is a copy, see above.
+#[doc(hidden)]
+#[unstable(feature = "trivial_clone", issue = "none")]
+unsafe impl<T> TrivialClone for MaybeUninit<T> where MaybeUninit<T>: Clone {}
 
 #[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
 impl<T> fmt::Debug for MaybeUninit<T> {
@@ -714,7 +804,11 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
-    pub unsafe fn assume_init_drop(&mut self) {
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn assume_init_drop(&mut self)
+    where
+        T: [const] Destruct,
+    {
         // SAFETY: the caller must guarantee that `self` is initialized and
         // satisfies all invariants of `T`.
         // Dropping the value in place is safe if that is the case.
@@ -953,7 +1047,7 @@ impl<T> MaybeUninit<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
     /// let val = 0x12345678_i32;
@@ -1003,20 +1097,6 @@ impl<T> MaybeUninit<T> {
             )
         }
     }
-
-    /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_ptr(this: &[MaybeUninit<T>]) -> *const T {
-        this.as_ptr() as *const T
-    }
-
-    /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[inline(always)]
-    pub const fn slice_as_mut_ptr(this: &mut [MaybeUninit<T>]) -> *mut T {
-        this.as_mut_ptr() as *mut T
-    }
 }
 
 impl<T> [MaybeUninit<T>] {
@@ -1034,7 +1114,6 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut dst = [MaybeUninit::uninit(); 32];
@@ -1046,8 +1125,6 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = [0; 16];
     ///
@@ -1063,7 +1140,8 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,
@@ -1094,7 +1172,6 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut dst = [const { MaybeUninit::uninit() }; 5];
@@ -1109,8 +1186,6 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// ```
-    /// #![feature(maybe_uninit_write_slice)]
-    ///
     /// let mut vec = Vec::with_capacity(32);
     /// let src = ["rust", "is", "a", "pretty", "cool", "language"].map(|s| s.to_string());
     ///
@@ -1126,7 +1201,7 @@ impl<T> [MaybeUninit<T>] {
     /// ```
     ///
     /// [`write_copy_of_slice`]: slice::write_copy_of_slice
-    #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
+    #[stable(feature = "maybe_uninit_write_slice", since = "CURRENT_RUSTC_VERSION")]
     pub fn write_clone_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Clone,
@@ -1321,7 +1396,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
     /// let uninit = [MaybeUninit::new(0x1234u16), MaybeUninit::new(0x5678u16)];
@@ -1348,7 +1423,7 @@ impl<T> [MaybeUninit<T>] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(maybe_uninit_as_bytes, maybe_uninit_write_slice, maybe_uninit_slice)]
+    /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
     /// let mut uninit = [MaybeUninit::<u16>::uninit(), MaybeUninit::<u16>::uninit()];
@@ -1388,9 +1463,13 @@ impl<T> [MaybeUninit<T>] {
     /// requirement the compiler knows about it is that the data pointer must be
     /// non-null. Dropping such a `Vec<T>` however will cause undefined
     /// behaviour.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
-    pub unsafe fn assume_init_drop(&mut self) {
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn assume_init_drop(&mut self)
+    where
+        T: [const] Destruct,
+    {
         if !self.is_empty() {
             // SAFETY: the caller must guarantee that every element of `self`
             // is initialized and satisfies all invariants of `T`.
@@ -1406,7 +1485,8 @@ impl<T> [MaybeUninit<T>] {
     /// Calling this when the content is not yet fully initialized causes undefined
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in
     /// the slice really is in an initialized state.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &[T] {
         // SAFETY: casting `slice` to a `*const [T]` is safe since the caller guarantees that
@@ -1424,7 +1504,8 @@ impl<T> [MaybeUninit<T>] {
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in the
     /// slice really is in an initialized state. For instance, `.assume_init_mut()` cannot
     /// be used to initialize a `MaybeUninit` slice.
-    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
+    #[stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "maybe_uninit_slice", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut [T] {
         // SAFETY: similar to safety notes for `slice_get_ref`, but we have a
@@ -1507,8 +1588,12 @@ impl<T: Clone> SpecFill<T> for [MaybeUninit<T>] {
     }
 }
 
-impl<T: Copy> SpecFill<T> for [MaybeUninit<T>] {
+impl<T: TrivialClone> SpecFill<T> for [MaybeUninit<T>] {
     fn spec_fill(&mut self, value: T) {
-        self.fill(MaybeUninit::new(value));
+        // SAFETY: because `T` is `TrivialClone`, this is equivalent to calling
+        // `T::clone` for every element. Notably, `TrivialClone` also implies
+        // that the `clone` implementation will not panic, so we can avoid
+        // initialization guards and such.
+        self.fill_with(|| MaybeUninit::new(unsafe { ptr::read(&value) }));
     }
 }

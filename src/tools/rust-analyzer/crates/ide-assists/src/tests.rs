@@ -5,7 +5,7 @@ use hir::{Semantics, db::HirDatabase, setup_tracing};
 use ide_db::{
     EditionedFileId, FileRange, RootDatabase, SnippetCap,
     assists::ExprFillDefaultMode,
-    base_db::{SourceDatabase, salsa},
+    base_db::SourceDatabase,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
 };
@@ -109,7 +109,7 @@ fn assists(
     resolve: AssistResolveStrategy,
     range: ide_db::FileRange,
 ) -> Vec<Assist> {
-    salsa::attach(db, || {
+    hir::attach_db(db, || {
         HirDatabase::zalsa_register_downcaster(db);
         crate::assists(db, config, resolve, range)
     })
@@ -321,18 +321,21 @@ fn check_with_config(
     let _tracing = setup_tracing();
     let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
     db.enable_proc_attr_macros();
+    let sema = Semantics::new(&db);
+    let file_with_caret_id = sema
+        .attach_first_edition_opt(file_with_caret_id.file_id(&db))
+        .unwrap_or(file_with_caret_id);
     let text_without_caret = db.file_text(file_with_caret_id.file_id(&db)).text(&db).to_string();
 
     let frange = hir::FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
-    let sema = Semantics::new(&db);
     let ctx = AssistContext::new(sema, &config, frange);
     let resolve = match expected {
         ExpectedResult::Unresolved => AssistResolveStrategy::None,
         _ => AssistResolveStrategy::All,
     };
     let mut acc = Assists::new(&ctx, resolve);
-    salsa::attach(&db, || {
+    hir::attach_db(&db, || {
         HirDatabase::zalsa_register_downcaster(&db);
         handler(&mut acc, &ctx);
     });

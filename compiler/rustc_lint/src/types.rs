@@ -10,7 +10,7 @@ use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
-mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
+mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
 
 use crate::lints::{
@@ -25,7 +25,6 @@ use crate::lints::{
 use crate::{LateContext, LateLintPass, LintContext};
 
 mod literal;
-
 use literal::{int_ty_range, lint_literal, uint_ty_range};
 
 declare_lint! {
@@ -758,6 +757,7 @@ fn pat_ty_is_known_nonnull<'tcx>(
                     // to ensure we aren't wrapping over zero.
                     start > 0 && end >= start
                 }
+                ty::PatternKind::NotNull => true,
                 ty::PatternKind::Or(patterns) => {
                     patterns.iter().all(|pat| pat_ty_is_known_nonnull(tcx, typing_env, pat))
                 }
@@ -814,7 +814,7 @@ fn get_nullable_type<'tcx>(
 
 /// A type is niche-optimization candidate iff:
 /// - Is a zero-sized type with alignment 1 (a “1-ZST”).
-/// - Has no fields.
+/// - Is either a struct/tuple with no fields, or an enum with no variants.
 /// - Does not have the `#[non_exhaustive]` attribute.
 fn is_niche_optimization_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -828,7 +828,7 @@ fn is_niche_optimization_candidate<'tcx>(
     match ty.kind() {
         ty::Adt(ty_def, _) => {
             let non_exhaustive = ty_def.is_variant_list_non_exhaustive();
-            let empty = (ty_def.is_struct() && ty_def.all_fields().next().is_none())
+            let empty = (ty_def.is_struct() && ty_def.non_enum_variant().fields.is_empty())
                 || (ty_def.is_enum() && ty_def.variants().is_empty());
 
             !non_exhaustive && empty
@@ -918,7 +918,9 @@ fn get_nullable_type_from_pat<'tcx>(
     pat: ty::Pattern<'tcx>,
 ) -> Option<Ty<'tcx>> {
     match *pat {
-        ty::PatternKind::Range { .. } => get_nullable_type(tcx, typing_env, base),
+        ty::PatternKind::NotNull | ty::PatternKind::Range { .. } => {
+            get_nullable_type(tcx, typing_env, base)
+        }
         ty::PatternKind::Or(patterns) => {
             let first = get_nullable_type_from_pat(tcx, typing_env, base, patterns[0])?;
             for &pat in &patterns[1..] {
@@ -1020,7 +1022,8 @@ declare_lint! {
     ///
     /// - Passing `Ordering::Release` or `Ordering::AcqRel` as the failure
     ///   ordering for any of `AtomicType::compare_exchange`,
-    ///   `AtomicType::compare_exchange_weak`, or `AtomicType::fetch_update`.
+    ///   `AtomicType::compare_exchange_weak`, `AtomicType::update`, or
+    ///   `AtomicType::try_update`.
     INVALID_ATOMIC_ORDERING,
     Deny,
     "usage of invalid atomic ordering in atomic operations and memory fences"
@@ -1116,13 +1119,19 @@ impl InvalidAtomicOrdering {
         let Some((method, args)) = Self::inherent_atomic_method_call(
             cx,
             expr,
-            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+            &[
+                sym::update,
+                sym::try_update,
+                sym::fetch_update,
+                sym::compare_exchange,
+                sym::compare_exchange_weak,
+            ],
         ) else {
             return;
         };
 
         let fail_order_arg = match method {
-            sym::fetch_update => &args[1],
+            sym::update | sym::try_update | sym::fetch_update => &args[1],
             sym::compare_exchange | sym::compare_exchange_weak => &args[3],
             _ => return,
         };

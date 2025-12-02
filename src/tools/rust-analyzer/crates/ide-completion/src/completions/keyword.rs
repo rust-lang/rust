@@ -532,6 +532,146 @@ fn main() {
     }
 
     #[test]
+    fn if_completion_in_format() {
+        check_edit(
+            "if",
+            r#"
+//- minicore: fmt
+fn main() {
+    format_args!("{}", $0);
+}
+"#,
+            r#"
+fn main() {
+    format_args!("{}", if $1 {
+    $2
+} else {
+    $0
+});
+}
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+//- minicore: fmt
+fn main() {
+    format_args!("{}", if$0);
+}
+"#,
+            r#"
+fn main() {
+    format_args!("{}", if $1 {
+    $2
+} else {
+    $0
+});
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn if_completion_in_value_expected_expressions() {
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    2 + $0;
+}
+"#,
+            r#"
+fn main() {
+    2 + if $1 {
+    $2
+} else {
+    $0
+};
+}
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    -$0;
+}
+"#,
+            r#"
+fn main() {
+    -if $1 {
+    $2
+} else {
+    $0
+};
+}
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    return $0;
+}
+"#,
+            r#"
+fn main() {
+    return if $1 {
+    $2
+} else {
+    $0
+};
+}
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    loop {
+        break $0;
+    }
+}
+"#,
+            r#"
+fn main() {
+    loop {
+        break if $1 {
+    $2
+} else {
+    $0
+};
+    }
+}
+"#,
+        );
+
+        check_edit(
+            "if",
+            r#"
+struct Foo { x: i32 }
+fn main() {
+    Foo { x: $0 }
+}
+"#,
+            r#"
+struct Foo { x: i32 }
+fn main() {
+    Foo { x: if $1 {
+    $2
+} else {
+    $0
+} }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn completes_let_in_block() {
         check_edit(
             "let",

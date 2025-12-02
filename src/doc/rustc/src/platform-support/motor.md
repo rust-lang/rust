@@ -15,27 +15,35 @@ This target is cross-compiled. There are no special requirements for the host.
 
 Motor OS uses the ELF file format.
 
-## Building the target
+## Building the target toolchain
 
-The target can be built by enabling it for a `rustc` build, for example:
+Motor OS target toolchain can be
+[built using `x.py`](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html):
+
+The bootstrap file:
 
 ```toml
 [build]
-build-stage = 2
-target = ["x86_64-unknown-motor"]
+host = ["x86_64-unknown-linux-gnu"]
+target = ["x86_64-unknown-linux-gnu", "x86_64-unknown-motor"]
+```
+
+The build command:
+
+```sh
+./x.py build --stage 2 clippy library
 ```
 
 ## Building Rust programs
 
-Rust standard library is fully supported/implemented, but is not yet part of
-the official Rust repo, so an out-of-tree building process should be
-followed, as described in the
-[build doc](https://github.com/moturus/motor-os/blob/main/docs/build.md).
+See the [Hello Motor OS](https://github.com/moturus/motor-os/blob/main/docs/recipes/hello-motor-os.md)
+example.
 
 ## Testing
 
 Cross-compiled Rust binaries and test artifacts can be executed in Motor OS VMs,
-as described in e.g.
+as described in the [build doc](https://github.com/moturus/motor-os/blob/main/docs/build.md)
+and the
 [Hello Motor OS](https://github.com/moturus/motor-os/blob/main/docs/recipes/hello-motor-os.md)
 example.
 
