@@ -1,5 +1,5 @@
 error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 type parameters
-  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:19:12
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:20:12
    |
 LL |     fn foo(self);
    |           - expected 0 type parameters
@@ -8,13 +8,13 @@ LL |     fn foo<T>(self) {
    |            ^ found 1 type parameter
 
 error[E0015]: cannot call non-const method `<() as Trait>::foo` in constant functions
-  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:26:8
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:27:8
    |
 LL |     ().foo();
    |        ^^^^^
    |
 note: method `foo` is not const because trait `Trait` is not const
-  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:13:1
+  --> $DIR/inline-incorrect-early-bound-in-ctfe.rs:14:1
    |
 LL | trait Trait {
    | ^^^^^^^^^^^ this trait is not const

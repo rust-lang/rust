@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/regions-name-undeclared.rs:16:24
+  --> $DIR/regions-name-undeclared.rs:17:24
    |
 LL |     fn m4(&self, arg: &'b isize) { }
    |                        ^^ undeclared lifetime
@@ -14,7 +14,7 @@ LL | impl<'b, 'a> Foo<'a> {
    |      +++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/regions-name-undeclared.rs:17:12
+  --> $DIR/regions-name-undeclared.rs:18:12
    |
 LL |     fn m5(&'b self) { }
    |            ^^ undeclared lifetime
@@ -29,7 +29,7 @@ LL | impl<'b, 'a> Foo<'a> {
    |      +++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/regions-name-undeclared.rs:18:27
+  --> $DIR/regions-name-undeclared.rs:19:27
    |
 LL |     fn m6(&self, arg: Foo<'b>) { }
    |                           ^^ undeclared lifetime
@@ -44,7 +44,7 @@ LL | impl<'b, 'a> Foo<'a> {
    |      +++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/regions-name-undeclared.rs:26:22
+  --> $DIR/regions-name-undeclared.rs:27:22
    |
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
@@ -58,7 +58,7 @@ LL |     type X<'a> = Option<&'a isize>;
    |           ++++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/regions-name-undeclared.rs:28:13
+  --> $DIR/regions-name-undeclared.rs:29:13
    |
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
@@ -72,7 +72,7 @@ LL |     enum E<'a> {
    |           ++++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/regions-name-undeclared.rs:31:13
+  --> $DIR/regions-name-undeclared.rs:32:13
    |
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
@@ -86,7 +86,7 @@ LL |     struct S<'a> {
    |             ++++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/regions-name-undeclared.rs:33:14
+  --> $DIR/regions-name-undeclared.rs:34:14
    |
 LL | fn bar<'a>(x: &'a isize) {
    |        -- lifetime parameter from outer item
@@ -100,7 +100,7 @@ LL |     fn f<'a>(a: &'a isize) { }
    |         ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:41:17
+  --> $DIR/regions-name-undeclared.rs:42:17
    |
 LL | fn fn_types(a: &'a isize,
    |                 ^^ undeclared lifetime
@@ -111,7 +111,7 @@ LL | fn fn_types<'a>(a: &'a isize,
    |            ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/regions-name-undeclared.rs:43:36
+  --> $DIR/regions-name-undeclared.rs:44:36
    |
 LL | ...                   &'b isize,
    |                        ^^ undeclared lifetime
@@ -127,7 +127,7 @@ LL | fn fn_types<'b>(a: &'a isize,
    |            ++++
 
 error[E0261]: use of undeclared lifetime name `'b`
-  --> $DIR/regions-name-undeclared.rs:46:36
+  --> $DIR/regions-name-undeclared.rs:47:36
    |
 LL | ...                   &'b isize)>,
    |                        ^^ undeclared lifetime
@@ -142,7 +142,7 @@ LL | fn fn_types<'b>(a: &'a isize,
    |            ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:47:17
+  --> $DIR/regions-name-undeclared.rs:48:17
    |
 LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
@@ -153,7 +153,7 @@ LL | fn fn_types<'a>(a: &'a isize,
    |            ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
-  --> $DIR/regions-name-undeclared.rs:53:31
+  --> $DIR/regions-name-undeclared.rs:54:31
    |
 LL |     async fn buggy(&self) -> &'a str {
    |                               ^^ undeclared lifetime

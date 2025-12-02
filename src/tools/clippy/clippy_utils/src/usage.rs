@@ -11,6 +11,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
+use rustc_span::sym as rsym;
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {
@@ -146,7 +147,7 @@ impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
 pub fn is_todo_unimplemented_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     root_macro_call_first_node(cx, expr)
         .and_then(|macro_call| cx.tcx.get_diagnostic_name(macro_call.def_id))
-        .is_some_and(|macro_name| matches!(macro_name, sym::todo_macro | sym::unimplemented_macro))
+        .is_some_and(|macro_name| matches!(macro_name, rsym::todo_macro | sym::unimplemented_macro))
 }
 
 /// Checks if the given expression is a stub, i.e., a `todo!()` or `unimplemented!()` expression,

@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:34:24
+  --> $DIR/suggest-blanket-impl-local-trait.rs:35:24
    |
 LL | impl LocalTraitOne for fmt::Display {}
    |                        ^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL + impl<T: fmt::Display> LocalTraitOne for T {}
    |
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:40:24
+  --> $DIR/suggest-blanket-impl-local-trait.rs:41:24
    |
 LL | impl LocalTraitOne for fmt::Display + Send {}
    |                        ^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL + impl<T: fmt::Display + Send> LocalTraitOne for T {}
    |
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:13:24
+  --> $DIR/suggest-blanket-impl-local-trait.rs:14:24
    |
 LL | impl LocalTraitTwo for LocalTraitOne {}
    |                        ^^^^^^^^^^^^^
@@ -47,7 +47,7 @@ LL + impl<T: LocalTraitOne> LocalTraitTwo for T {}
    |
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:46:29
+  --> $DIR/suggest-blanket-impl-local-trait.rs:47:29
    |
 LL | impl<E> GenericTrait<E> for LocalTraitOne {}
    |                             ^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL + impl<E, T: LocalTraitOne> GenericTrait<E> for T {}
    |
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:18:23
+  --> $DIR/suggest-blanket-impl-local-trait.rs:19:23
    |
 LL | impl fmt::Display for LocalTraitOne {
    |                       ^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL | impl fmt::Display for dyn LocalTraitOne {
    |                       +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
+  --> $DIR/suggest-blanket-impl-local-trait.rs:27:23
    |
 LL | impl fmt::Display for LocalTraitTwo + Send {
    |                       ^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL | impl fmt::Display for dyn LocalTraitTwo + Send {
    |                       +++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/suggest-blanket-impl-local-trait.rs:53:35
+  --> $DIR/suggest-blanket-impl-local-trait.rs:54:35
    |
 LL | impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
    |                                   ^^^^^^^^^^^^^^^

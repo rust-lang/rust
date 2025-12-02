@@ -32,6 +32,7 @@ fn check_unop(op: mir::UnOp) -> bool {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn recurse_build<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &thir::Thir<'tcx>,
@@ -248,6 +249,7 @@ fn maybe_supported_error(
 }
 
 impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
         if expr.ty.has_non_region_param() {
             return true;

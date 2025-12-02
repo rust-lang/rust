@@ -4,7 +4,7 @@
 //@ check-pass
 
 #![feature(async_drop)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn Future<Output = T>>>;
 fn main() {}

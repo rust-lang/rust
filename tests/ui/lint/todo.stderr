@@ -1,0 +1,31 @@
+error: `todo!()` macro used
+  --> $DIR/todo.rs:10:5
+   |
+LL |     todo!();
+   |     ^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/todo.rs:3:9
+   |
+LL | #![deny(todo_macro_calls)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: `todo!()` macro used
+  --> $DIR/todo.rs:11:5
+   |
+LL |     todo!("whatever");
+   |     ^^^^^^^^^^^^^^^^^
+
+error: `todo!()` macro used
+  --> $DIR/todo.rs:17:9
+   |
+LL |         todo!("who'd have thunk?")
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     locally_expanded_todo!();
+   |     ------------------------ in this macro invocation
+   |
+   = note: this error originates in the macro `locally_expanded_todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

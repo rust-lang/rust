@@ -1,11 +1,11 @@
 error[E0220]: associated type `Value` not found for `R`
-  --> $DIR/normalize-conflicting-impls.rs:10:8
+  --> $DIR/normalize-conflicting-impls.rs:11:8
    |
 LL |     R::Value: DimName,
    |        ^^^^^ associated type `Value` not found
 
 error[E0119]: conflicting implementations of trait `Allocator<_, ()>` for type `DefaultAllocator`
-  --> $DIR/normalize-conflicting-impls.rs:14:1
+  --> $DIR/normalize-conflicting-impls.rs:15:1
    |
 LL | / impl<N, R> Allocator<N, R> for DefaultAllocator
 LL | | where

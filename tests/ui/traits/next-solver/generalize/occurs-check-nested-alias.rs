@@ -5,7 +5,7 @@
 
 // case 3 of https://github.com/rust-lang/trait-system-refactor-initiative/issues/8.
 #![crate_type = "lib"]
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 trait Unnormalizable {
     type Assoc;
 }

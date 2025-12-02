@@ -1,11 +1,11 @@
 error[E0061]: this method takes 1 argument but 2 arguments were supplied
-  --> $DIR/wrong_argument_ice-3.rs:9:16
+  --> $DIR/wrong_argument_ice-3.rs:10:16
    |
 LL |         groups.push(new_group, vec![process]);
    |                ^^^^            ------------- unexpected argument #2 of type `Vec<&Process>`
    |
 note: expected `(Vec<String>, Vec<Process>)`, found `Vec<String>`
-  --> $DIR/wrong_argument_ice-3.rs:9:21
+  --> $DIR/wrong_argument_ice-3.rs:10:21
    |
 LL |         groups.push(new_group, vec![process]);
    |                     ^^^^^^^^^

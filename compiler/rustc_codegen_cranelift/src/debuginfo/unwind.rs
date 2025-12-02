@@ -25,6 +25,7 @@ pub(crate) struct UnwindContext {
 }
 
 impl UnwindContext {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub(crate) fn new(module: &mut dyn Module, pic_eh_frame: bool) -> Self {
         let endian = match module.isa().endianness() {
             Endianness::Little => RunTimeEndian::Little,

@@ -1,5 +1,5 @@
 error[E0615]: attempted to take value of method `chat_template` on type `LlamaModel`
-  --> $DIR/suggest-method-name-with-maybe-ty-mismatch-146008.rs:13:30
+  --> $DIR/suggest-method-name-with-maybe-ty-mismatch-146008.rs:14:30
    |
 LL |     template_from_str(&model.chat_template);
    |                              ^^^^^^^^^^^^^ method, not a field

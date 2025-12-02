@@ -1,5 +1,5 @@
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/foreign-dyn-error.rs:6:17
+  --> $DIR/foreign-dyn-error.rs:7:17
    |
 LL |     let _: &dyn rpitit::Foo = todo!();
    |                 ^^^^^^^^^^^ `Foo` is not dyn compatible

@@ -1,5 +1,5 @@
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:7:16
+  --> $DIR/attribute-on-empty.rs:8:16
    |
 LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          -     ^^^^^^^^^^^^^ attributes are not allowed here
@@ -7,43 +7,43 @@ LL |     let _: Baz<#[cfg(false)]> = todo!();
    |          while parsing the type for `_`
 
 error: attributes cannot be applied to a function parameter's type
-  --> $DIR/attribute-on-empty.rs:11:14
+  --> $DIR/attribute-on-empty.rs:12:14
    |
 LL | fn f(_param: #[attr]) {}
    |              ^^^^^^^ attributes are not allowed here
 
 error: expected type, found `)`
-  --> $DIR/attribute-on-empty.rs:11:21
+  --> $DIR/attribute-on-empty.rs:12:21
    |
 LL | fn f(_param: #[attr]) {}
    |                     ^ expected type
 
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:15:11
+  --> $DIR/attribute-on-empty.rs:16:11
    |
 LL | fn g() -> #[attr] { 0 }
    |           ^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:19:12
+  --> $DIR/attribute-on-empty.rs:20:12
    |
 LL |     field: #[attr],
    |            ^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:21:14
+  --> $DIR/attribute-on-empty.rs:22:14
    |
 LL |     field1: (#[attr], i32),
    |              ^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:25:15
+  --> $DIR/attribute-on-empty.rs:26:15
    |
 LL | type Tuple = (#[attr], String);
    |               ^^^^^^^ attributes are not allowed here
 
 error: attributes cannot be applied here
-  --> $DIR/attribute-on-empty.rs:28:6
+  --> $DIR/attribute-on-empty.rs:29:6
    |
 LL | impl #[attr] {}
    |      ^^^^^^^ attributes are not allowed here

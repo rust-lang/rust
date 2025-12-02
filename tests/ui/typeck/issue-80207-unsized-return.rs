@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 trait Foo {
     fn do_stuff() -> Self;

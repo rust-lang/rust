@@ -1,4 +1,5 @@
 // Regression test for the ICE described in #89088.
+#![allow(todo_macro_calls)]
 
 use std::borrow::Cow;
 

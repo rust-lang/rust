@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 struct TestClient;
 
 impl TestClient {

@@ -1,11 +1,11 @@
 warning: unnecessary parentheses around function argument
-  --> $DIR/try-block-unused-delims.rs:11:13
+  --> $DIR/try-block-unused-delims.rs:12:13
    |
 LL |     consume((try {}));
    |             ^      ^
    |
 note: the lint level is defined here
-  --> $DIR/try-block-unused-delims.rs:6:9
+  --> $DIR/try-block-unused-delims.rs:7:9
    |
 LL | #![warn(unused_parens, unused_braces)]
    |         ^^^^^^^^^^^^^
@@ -16,13 +16,13 @@ LL +     consume(try {});
    |
 
 warning: unnecessary braces around function argument
-  --> $DIR/try-block-unused-delims.rs:14:13
+  --> $DIR/try-block-unused-delims.rs:15:13
    |
 LL |     consume({ try {} });
    |             ^^      ^^
    |
 note: the lint level is defined here
-  --> $DIR/try-block-unused-delims.rs:6:24
+  --> $DIR/try-block-unused-delims.rs:7:24
    |
 LL | #![warn(unused_parens, unused_braces)]
    |                        ^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL +     consume(try {});
    |
 
 warning: unnecessary parentheses around `match` scrutinee expression
-  --> $DIR/try-block-unused-delims.rs:17:11
+  --> $DIR/try-block-unused-delims.rs:18:11
    |
 LL |     match (try {}) {
    |           ^      ^
@@ -45,7 +45,7 @@ LL +     match try {} {
    |
 
 warning: unnecessary parentheses around `let` scrutinee expression
-  --> $DIR/try-block-unused-delims.rs:22:22
+  --> $DIR/try-block-unused-delims.rs:23:22
    |
 LL |     if let Err(()) = (try {}) {}
    |                      ^      ^
@@ -57,7 +57,7 @@ LL +     if let Err(()) = try {} {}
    |
 
 warning: unnecessary parentheses around `match` scrutinee expression
-  --> $DIR/try-block-unused-delims.rs:25:11
+  --> $DIR/try-block-unused-delims.rs:26:11
    |
 LL |     match (try {}) {
    |           ^      ^

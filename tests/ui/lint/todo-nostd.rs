@@ -1,0 +1,13 @@
+//@ compile-flags:-C panic=abort
+
+#![no_std]
+#![deny(todo_macro_calls)]
+
+#[panic_handler]
+fn panic_handler(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
+pub fn main() {
+    todo!(); //~ ERROR `todo!()` macro used
+}

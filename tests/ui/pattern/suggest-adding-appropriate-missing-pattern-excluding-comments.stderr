@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `None` not covered
-  --> $DIR/suggest-adding-appropriate-missing-pattern-excluding-comments.rs:4:11
+  --> $DIR/suggest-adding-appropriate-missing-pattern-excluding-comments.rs:5:11
    |
 LL |     match Some(1) {
    |           ^^^^^^^ pattern `None` not covered

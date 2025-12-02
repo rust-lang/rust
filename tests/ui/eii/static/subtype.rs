@@ -3,6 +3,7 @@
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
 // Tests that mismatching types of the declaration and definition are rejected
+#![allow(todo_macro_calls)]
 #![feature(extern_item_impls)]
 
 use std::ptr;

@@ -1,4 +1,5 @@
 // Tests to make sure that we reject polymorphic dyn trait.
+#![allow(todo_macro_calls)]
 
 #![feature(non_lifetime_binders)]
 

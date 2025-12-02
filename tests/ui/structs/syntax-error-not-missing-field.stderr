@@ -1,5 +1,5 @@
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`
-  --> $DIR/syntax-error-not-missing-field.rs:16:30
+  --> $DIR/syntax-error-not-missing-field.rs:17:30
    |
 LL |     let f = Foo { a: make_a(); b: 2 };
    |             ---              ^
@@ -9,7 +9,7 @@ LL |     let f = Foo { a: make_a(); b: 2 };
    |             while parsing this struct
 
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `b`
-  --> $DIR/syntax-error-not-missing-field.rs:20:31
+  --> $DIR/syntax-error-not-missing-field.rs:21:31
    |
 LL |     let f = Foo { a: make_a() b: 2 };
    |             ---              -^ expected one of `,`, `.`, `?`, `}`, or an operator
@@ -18,7 +18,7 @@ LL |     let f = Foo { a: make_a() b: 2 };
    |             while parsing this struct
 
 error: cannot use a comma after the base struct
-  --> $DIR/syntax-error-not-missing-field.rs:24:32
+  --> $DIR/syntax-error-not-missing-field.rs:25:32
    |
 LL |     let f = Foo { a: make_a(), ..todo!(), };
    |                                ^^^^^^^^^
@@ -31,7 +31,7 @@ LL +     let f = Foo { a: make_a(), ..todo!() };
    |
 
 error: expected one of `,`, `:`, or `}`, found `(`
-  --> $DIR/syntax-error-not-missing-field.rs:28:25
+  --> $DIR/syntax-error-not-missing-field.rs:29:25
    |
 LL |     let f = Foo { make_a(), b: 2, };
    |             ---   ------^ expected one of `,`, `:`, or `}`
@@ -45,7 +45,7 @@ LL |     let f = Foo { make_a: make_a(), b: 2, };
    |                   +++++++
 
 error: expected `,`
-  --> $DIR/syntax-error-not-missing-field.rs:31:31
+  --> $DIR/syntax-error-not-missing-field.rs:32:31
    |
 LL | fn pat_wrong_separator(Foo { a; b }: Foo) {
    |                        ---    ^
@@ -53,7 +53,7 @@ LL | fn pat_wrong_separator(Foo { a; b }: Foo) {
    |                        while parsing the fields for this pattern
 
 error: expected `,`
-  --> $DIR/syntax-error-not-missing-field.rs:35:34
+  --> $DIR/syntax-error-not-missing-field.rs:36:34
    |
 LL | fn pat_missing_separator(Foo { a b }: Foo) {
    |                          ---     ^
@@ -61,7 +61,7 @@ LL | fn pat_missing_separator(Foo { a b }: Foo) {
    |                          while parsing the fields for this pattern
 
 error: expected `}`, found `,`
-  --> $DIR/syntax-error-not-missing-field.rs:39:39
+  --> $DIR/syntax-error-not-missing-field.rs:40:39
    |
 LL | fn pat_rest_trailing_comma(Foo { a, .., }: Foo) {
    |                                     --^
@@ -71,7 +71,7 @@ LL | fn pat_rest_trailing_comma(Foo { a, .., }: Foo) {
    |                                     `..` must be at the end and cannot have a trailing comma
 
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `;`
-  --> $DIR/syntax-error-not-missing-field.rs:43:35
+  --> $DIR/syntax-error-not-missing-field.rs:44:35
    |
 LL |     let e = Bar::Baz { a: make_a(); b: 2 };
    |             --------              ^
@@ -81,7 +81,7 @@ LL |     let e = Bar::Baz { a: make_a(); b: 2 };
    |             while parsing this struct
 
 error: expected one of `,`, `.`, `?`, `}`, or an operator, found `b`
-  --> $DIR/syntax-error-not-missing-field.rs:47:36
+  --> $DIR/syntax-error-not-missing-field.rs:48:36
    |
 LL |     let e = Bar::Baz { a: make_a() b: 2 };
    |             --------              -^ expected one of `,`, `.`, `?`, `}`, or an operator
@@ -90,7 +90,7 @@ LL |     let e = Bar::Baz { a: make_a() b: 2 };
    |             while parsing this struct
 
 error: expected identifier, found `,`
-  --> $DIR/syntax-error-not-missing-field.rs:57:37
+  --> $DIR/syntax-error-not-missing-field.rs:58:37
    |
 LL |     static A: MyStruct = MyStruct { ,s: TheStruct };
    |                          --------   ^ expected identifier
@@ -104,7 +104,7 @@ LL +     static A: MyStruct = MyStruct { s: TheStruct };
    |
 
 error: expected identifier, found `,`
-  --> $DIR/syntax-error-not-missing-field.rs:64:36
+  --> $DIR/syntax-error-not-missing-field.rs:65:36
    |
 LL |     static A: MyStruct = MyStruct {,};
    |                          --------  ^ expected identifier

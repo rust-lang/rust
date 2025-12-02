@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`
-  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:50
+  --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:28:50
    |
 LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
    |                                                  ^^^^^^^^^^ cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`

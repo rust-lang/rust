@@ -88,6 +88,7 @@ enum PointerKind<'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns the kind of unsize information of t, or None
     /// if t is unknown.
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn pointer_kind(
         &self,
         t: Ty<'tcx>,

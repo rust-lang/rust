@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 #![feature(return_type_notation)]
 
 trait Foo {

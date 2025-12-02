@@ -1,4 +1,5 @@
 // issue: 113760
+#![allow(todo_macro_calls)]
 
 union W { s: dyn Iterator<Item = Missing> }
 //~^ ERROR cannot find type `Missing` in this scope

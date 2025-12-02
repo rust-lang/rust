@@ -1,11 +1,11 @@
 error: generic `Self` types are currently not permitted in anonymous constants
-  --> $DIR/selftyalias-containing-param.rs:7:37
+  --> $DIR/selftyalias-containing-param.rs:8:37
    |
 LL |     fn foo() -> [(); const { let _: Self = loop {}; 1 }] {
    |                                     ^^^^
    |
 note: not a concrete type
-  --> $DIR/selftyalias-containing-param.rs:6:22
+  --> $DIR/selftyalias-containing-param.rs:7:22
    |
 LL | impl<const N: usize> S<N> {
    |                      ^^^^

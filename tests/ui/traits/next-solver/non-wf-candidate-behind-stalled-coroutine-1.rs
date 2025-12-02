@@ -3,6 +3,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ edition:2021
+#![allow(todo_macro_calls)]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/140577>.
 //

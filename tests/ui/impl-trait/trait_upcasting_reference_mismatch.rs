@@ -1,4 +1,5 @@
 //! Show an uninformative diagnostic that we could possibly improve in the future
+#![allow(todo_macro_calls)]
 
 trait Trait<T> {}
 

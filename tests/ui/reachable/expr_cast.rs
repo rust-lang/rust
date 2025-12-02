@@ -3,6 +3,7 @@
 //
 // Check that we don't warn on `as` casts of never to any as unreachable.
 // While they *are* unreachable, sometimes they are required to appeal typeck.
+#![allow(todo_macro_calls)]
 #![deny(unreachable_code)]
 
 fn a() {

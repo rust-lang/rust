@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated constant
-  --> $DIR/ambiguous-assoc-const.rs:10:20
+  --> $DIR/ambiguous-assoc-const.rs:11:20
    |
 LL | fn foo() -> Blah<{ Tr::N }> {
    |                    ^^^^^

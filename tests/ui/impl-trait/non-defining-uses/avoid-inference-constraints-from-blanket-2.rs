@@ -2,6 +2,7 @@
 //@[next] compile-flags: -Znext-solver
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[current] check-pass
+#![allow(todo_macro_calls)]
 
 // Regression test for trait-system-refactor-initiative#205. Avoid
 // constraining other impl arguments when applying blanket impls.

@@ -1,6 +1,7 @@
 // -Zunstable-options added as test for ICE #97725 (left == right)`
 // left: `Binder(<[u8; _] as std::default::Default>, [])`,
 // right: `Binder(<[u8; 4] as std::default::Default>, [])
+#![allow(todo_macro_calls)]
 
 //@ compile-flags: -Zunstable-options
 //@ check-pass

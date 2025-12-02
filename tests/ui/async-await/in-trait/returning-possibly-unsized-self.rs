@@ -1,5 +1,6 @@
 //@ check-pass
 //@ edition:2021
+#![allow(todo_macro_calls)]
 
 #![deny(opaque_hidden_inferred_bound)]
 

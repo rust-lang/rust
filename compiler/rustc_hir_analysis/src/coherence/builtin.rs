@@ -625,7 +625,7 @@ pub(crate) fn coerce_shared_info<'tcx>(
         span,
         Unnormalized::new_wip(trait_ref.args.type_at(1)),
     ) else {
-        todo!("something went wrong with structurally_normalize_ty");
+        panic!("something went wrong with structurally_normalize_ty");
     };
 
     let param_env = tcx.param_env(impl_did);

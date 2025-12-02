@@ -4,7 +4,7 @@
 //@ ignore-parallel-frontend post-monomorphization errors
 #![feature(portable_simd)]
 #![feature(simd_ffi)]
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_ctypes_definitions, todo_macro_calls)]
 
 use std::arch::x86_64::*;
 

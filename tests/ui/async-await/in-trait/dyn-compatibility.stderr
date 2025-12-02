@@ -1,12 +1,12 @@
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/dyn-compatibility.rs:9:17
+  --> $DIR/dyn-compatibility.rs:10:17
    |
 LL |     let x: &dyn Foo = todo!();
    |                 ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dyn-compatibility.rs:5:14
+  --> $DIR/dyn-compatibility.rs:6:14
    |
 LL | trait Foo {
    |       --- this trait is not dyn compatible...
