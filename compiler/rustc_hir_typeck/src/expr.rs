@@ -322,7 +322,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            let diverges = if self.tcx.is_expanded_by(expr.span, sym::todo_macro) {
+                // We don't warn for `todo!()` that diverges to avoid flooding the
+                // user with warnings while they are still working on their code.
+                Diverges::WarnedAlways
+            } else {
+                Diverges::always(expr.span)
+            };
+            self.diverges.set(self.diverges.get() | diverges);
         }
 
         // Record the type, which applies it effects.

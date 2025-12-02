@@ -2115,6 +2115,21 @@ impl<'tcx> TyCtxt<'tcx> {
             None => Err(VarError::NotPresent),
         }
     }
+
+    /// Returns whether this context was expanded by the macro with the given name.
+    pub fn is_expanded_by(self, span: Span, mac: Symbol) -> bool {
+        let mut ctxt = span.ctxt();
+        while !ctxt.is_root() {
+            let data = ctxt.outer_expn_data();
+            if let Some(def_id) = data.macro_def_id
+                && self.is_diagnostic_item(mac, def_id)
+            {
+                return true;
+            }
+            ctxt = data.call_site.ctxt();
+        }
+        false
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
