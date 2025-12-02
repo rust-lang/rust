@@ -1,3 +1,8 @@
+//! This tests that `next` skips over macro invocations correctly.
+//! The `#locN` markers have no meaning for compiletest, we include them just
+//! so that the debugger prints them when printing the current source location,
+//! and we can match on them for testing purposes.
+
 //@ ignore-android
 //@ min-lldb-version: 1800
 //@ min-gdb-version: 13.0
@@ -68,6 +73,7 @@ extern crate macro_stepping; // exports new_scope!()
 //@ lldb-command:next
 //@ lldb-command:frame select
 //@ lldb-check:[...] #loc5 [...]
+// FIXME: what about loc6?
 
 //@ lldb-command:continue
 //@ lldb-command:step

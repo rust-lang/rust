@@ -1,12 +1,30 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, LazyLock};
 
 use crate::common::{CompareMode, Config, Debugger};
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
 
-pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "ignore-");
+const EXTERNAL_IGNORES_LIST: &[&str] = &[
+    // tidy-alphabetical-start
+    "ignore-backends",
+    "ignore-gdb-version",
+    "ignore-llvm-version",
+    "ignore-pass",
+    // tidy-alphabetical-end
+];
+
+/// Directive names that begin with `ignore-`, but are disregarded by this
+/// module because they are handled elsewhere.
+pub(crate) static EXTERNAL_IGNORES_SET: LazyLock<HashSet<&str>> =
+    LazyLock::new(|| EXTERNAL_IGNORES_LIST.iter().copied().collect());
+
+pub(super) fn handle_ignore(
+    conditions: &PreparedConditions,
+    line: &DirectiveLine<'_>,
+) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(conditions, line, "ignore-");
     let line = line.display();
 
     match parsed.outcome {
@@ -18,13 +36,15 @@ pub(super) fn handle_ignore(config: &Config, line: &DirectiveLine<'_>) -> Ignore
             },
         },
         MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
-        MatchOutcome::External => IgnoreDecision::Continue,
-        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+        MatchOutcome::NotHandledHere => IgnoreDecision::Continue,
     }
 }
 
-pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    let parsed = parse_cfg_name_directive(config, line, "only-");
+pub(super) fn handle_only(
+    conditions: &PreparedConditions,
+    line: &DirectiveLine<'_>,
+) -> IgnoreDecision {
+    let parsed = parse_cfg_name_directive(conditions, line, "only-");
     let line = line.display();
 
     match parsed.outcome {
@@ -38,278 +58,208 @@ pub(super) fn handle_only(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDe
             },
         },
         MatchOutcome::Invalid => IgnoreDecision::Error { message: format!("invalid line: {line}") },
-        MatchOutcome::External => IgnoreDecision::Continue,
-        MatchOutcome::NotADirective => IgnoreDecision::Continue,
+        MatchOutcome::NotHandledHere => IgnoreDecision::Continue,
     }
 }
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
 /// or `only-windows`.
 fn parse_cfg_name_directive<'a>(
-    config: &Config,
+    conditions: &PreparedConditions,
     line: &'a DirectiveLine<'a>,
     prefix: &str,
 ) -> ParsedNameDirective<'a> {
     let Some(name) = line.name.strip_prefix(prefix) else {
-        return ParsedNameDirective::not_a_directive();
+        return ParsedNameDirective::not_handled_here();
     };
+
+    if prefix == "ignore-" && EXTERNAL_IGNORES_SET.contains(line.name) {
+        return ParsedNameDirective::not_handled_here();
+    }
 
     // FIXME(Zalathar): This currently allows either a space or a colon, and
     // treats any "value" after a colon as though it were a remark.
     // We should instead forbid the colon syntax for these directives.
-    let comment = line.remark_after_space().or_else(|| line.value_after_colon());
+    let comment = line
+        .remark_after_space()
+        .or_else(|| line.value_after_colon())
+        .map(|c| c.trim().trim_start_matches('-').trim());
 
-    // Some of the matchers might be "" depending on what the target information is. To avoid
-    // problems we outright reject empty directives.
-    if name.is_empty() {
-        return ParsedNameDirective::not_a_directive();
+    if let Some(cond) = conditions.conds.get(name) {
+        ParsedNameDirective {
+            pretty_reason: Some(Arc::clone(&cond.message_when_ignored)),
+            comment,
+            outcome: if cond.value { MatchOutcome::Match } else { MatchOutcome::NoMatch },
+        }
+    } else {
+        ParsedNameDirective { pretty_reason: None, comment, outcome: MatchOutcome::Invalid }
     }
+}
 
-    let mut outcome = MatchOutcome::Invalid;
-    let mut message = None;
+/// Uses information about the current target (and all targets) to pre-compute
+/// a value (true or false) for a number of "conditions". Those conditions can
+/// then be used by `ignore-*` and `only-*` directives.
+pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
+    let cfgs = config.target_cfgs();
+    let current = &cfgs.current;
 
-    macro_rules! condition {
-        (
-            name: $name:expr,
-            $(allowed_names: $allowed_names:expr,)?
-            $(condition: $condition:expr,)?
-            message: $($message:tt)*
-        ) => {{
-            // This is not inlined to avoid problems with macro repetitions.
-            let format_message = || format!($($message)*);
+    let mut builder = ConditionsBuilder::new();
 
-            if outcome != MatchOutcome::Invalid {
-                // Ignore all other matches if we already found one
-            } else if $name.custom_matches(name) {
-                message = Some(format_message());
-                if true $(&& $condition)? {
-                    outcome = MatchOutcome::Match;
-                } else {
-                    outcome = MatchOutcome::NoMatch;
-                }
-            }
-            $(else if $allowed_names.custom_contains(name) {
-                message = Some(format_message());
-                outcome = MatchOutcome::NoMatch;
-            })?
-        }};
-    }
+    // Some condition names overlap (e.g. "macabi" is both an env and an ABI),
+    // so the order in which conditions are added is significant.
+    // Whichever condition registers that name _first_ will take precedence.
+    // (See `ConditionsBuilder::build`.)
 
-    let target_cfgs = config.target_cfgs();
-    let target_cfg = config.target_cfg();
+    builder.cond("test", true, "always");
+    builder.cond("auxiliary", true, "used by another main test file");
 
-    condition! {
-        name: "test",
-        message: "always"
+    for target in &cfgs.all_targets {
+        builder.cond(target, *target == config.target, &format!("when the target is {target}"));
     }
-    condition! {
-        name: "auxiliary",
-        message: "used by another main test file"
+    for os in &cfgs.all_oses {
+        builder.cond(os, *os == current.os, &format!("when the operating system is {os}"));
     }
-    condition! {
-        name: &config.target,
-        allowed_names: &target_cfgs.all_targets,
-        message: "when the target is {name}"
+    for env in &cfgs.all_envs {
+        builder.cond(env, *env == current.env, &format!("when the target environment is {env}"));
     }
-    condition! {
-        name: &target_cfg.os,
-        allowed_names: &target_cfgs.all_oses,
-        message: "when the operating system is {name}"
+    for os_and_env in &cfgs.all_oses_and_envs {
+        builder.cond(
+            os_and_env,
+            *os_and_env == current.os_and_env(),
+            &format!("when the operating system and target environment are {os_and_env}"),
+        );
     }
-    condition! {
-        name: &target_cfg.env,
-        allowed_names: &target_cfgs.all_envs,
-        message: "when the target environment is {name}"
+    for abi in &cfgs.all_abis {
+        builder.cond(abi, *abi == current.abi, &format!("when the ABI is {abi}"));
     }
-    condition! {
-        name: &target_cfg.os_and_env(),
-        allowed_names: &target_cfgs.all_oses_and_envs,
-        message: "when the operating system and target environment are {name}"
+    for arch in cfgs.all_archs.iter().map(String::as_str).chain(EXTRA_ARCHS.iter().copied()) {
+        builder.cond(arch, *arch == current.arch, &format!("when the architecture is {arch}"));
     }
-    condition! {
-        name: &target_cfg.abi,
-        allowed_names: &target_cfgs.all_abis,
-        message: "when the ABI is {name}"
+    for n_bit in &cfgs.all_pointer_widths {
+        builder.cond(
+            n_bit,
+            *n_bit == format!("{}bit", current.pointer_width),
+            &format!("when the pointer width is {n_bit}"),
+        );
     }
-    condition! {
-        name: &target_cfg.arch,
-        allowed_names: ContainsEither { a: &target_cfgs.all_archs, b: &EXTRA_ARCHS },
-        message: "when the architecture is {name}"
-    }
-    condition! {
-        name: format!("{}bit", target_cfg.pointer_width),
-        allowed_names: &target_cfgs.all_pointer_widths,
-        message: "when the pointer width is {name}"
-    }
-    condition! {
-        name: &*target_cfg.families,
-        allowed_names: &target_cfgs.all_families,
-        message: "when the target family is {name}"
+    for family in &cfgs.all_families {
+        builder.cond(
+            family,
+            current.families.contains(family),
+            &format!("when the target family is {family}"),
+        )
     }
 
-    condition! {
-        name: "thumb",
-        condition: config.target.starts_with("thumb"),
-        message: "when the architecture is part of the Thumb family"
-    }
+    builder.cond(
+        "thumb",
+        config.target.starts_with("thumb"),
+        "when the architecture is part of the Thumb family",
+    );
 
     // The "arch" of `i586-` targets is "x86", so for more specific matching
     // we have to resort to a string-prefix check.
-    condition! {
-        name: "i586",
-        condition: config.matches_arch("i586"),
-        message: "when the subarchitecture is i586",
-    }
-
-    condition! {
-        name: "apple",
-        condition: config.target.contains("apple"),
-        message: "when the target vendor is Apple"
-    }
-
-    condition! {
-        name: "elf",
-        condition: target_cfg.binary_format == "elf",
-        message: "when the target binary format is ELF"
-    }
-
-    condition! {
-        name: "enzyme",
-        condition: config.has_enzyme,
-        message: "when rustc is built with LLVM Enzyme"
-    }
+    builder.cond("i586", config.matches_arch("i586"), "when the subarchitecture is i586");
+    // FIXME(Zalathar): Use proper target vendor information instead?
+    builder.cond("apple", config.target.contains("apple"), "when the target vendor is Apple");
+    // FIXME(Zalathar): Support all known binary formats, not just ELF?
+    builder.cond("elf", current.binary_format == "elf", "when the target binary format is ELF");
+    builder.cond("enzyme", config.has_enzyme, "when rustc is built with LLVM Enzyme");
 
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
     // treat the "dev" channel as the "nightly" channel when processing the directive.
-    condition! {
-        name: if config.channel == "dev" { "nightly" } else { &config.channel },
-        allowed_names: &["stable", "beta", "nightly"],
-        message: "when the release channel is {name}",
+    for channel in ["stable", "beta", "nightly"] {
+        let curr_channel = match config.channel.as_str() {
+            "dev" => "nightly",
+            ch => ch,
+        };
+        builder.cond(
+            channel,
+            channel == curr_channel,
+            &format!("when the release channel is {channel}"),
+        );
     }
 
-    condition! {
-        name: "cross-compile",
-        condition: config.target != config.host,
-        message: "when cross-compiling"
+    builder.cond("cross-compile", config.target != config.host, "when cross-compiling");
+    builder.cond("endian-big", config.is_big_endian(), "on big-endian targets");
+
+    for stage in ["stage0", "stage1", "stage2"] {
+        builder.cond(
+            stage,
+            stage == format!("stage{}", config.stage),
+            &format!("when the bootstrapping stage is {stage}"),
+        );
     }
-    condition! {
-        name: "endian-big",
-        condition: config.is_big_endian(),
-        message: "on big-endian targets",
+
+    builder.cond("remote", config.remote_test_client.is_some(), "when running tests remotely");
+    builder.cond(
+        "rustc-debug-assertions",
+        config.with_rustc_debug_assertions,
+        "when rustc is built with debug assertions",
+    );
+    builder.cond(
+        "std-debug-assertions",
+        config.with_std_debug_assertions,
+        "when std is built with debug assertions",
+    );
+
+    for &debugger in Debugger::STR_VARIANTS {
+        builder.cond(
+            debugger,
+            Some(debugger) == config.debugger.as_ref().map(Debugger::to_str),
+            &format!("when the debugger is {debugger}"),
+        );
     }
-    condition! {
-        name: format!("stage{}", config.stage).as_str(),
-        allowed_names: &["stage0", "stage1", "stage2"],
-        message: "when the bootstrapping stage is {name}",
+
+    for &compare_mode in CompareMode::STR_VARIANTS {
+        builder.cond(
+            &format!("compare-mode-{compare_mode}"),
+            Some(compare_mode) == config.compare_mode.as_ref().map(CompareMode::to_str),
+            &format!("when comparing with compare-mode-{compare_mode}"),
+        );
     }
-    condition! {
-        name: "remote",
-        condition: config.remote_test_client.is_some(),
-        message: "when running tests remotely",
-    }
-    condition! {
-        name: "rustc-debug-assertions",
-        condition: config.with_rustc_debug_assertions,
-        message: "when rustc is built with debug assertions",
-    }
-    condition! {
-        name: "std-debug-assertions",
-        condition: config.with_std_debug_assertions,
-        message: "when std is built with debug assertions",
-    }
-    condition! {
-        name: config.debugger.as_ref().map(|d| d.to_str()),
-        allowed_names: &Debugger::STR_VARIANTS,
-        message: "when the debugger is {name}",
-    }
-    condition! {
-        name: config.compare_mode
-            .as_ref()
-            .map(|d| format!("compare-mode-{}", d.to_str())),
-        allowed_names: ContainsPrefixed {
-            prefix: "compare-mode-",
-            inner: CompareMode::STR_VARIANTS,
-        },
-        message: "when comparing with {name}",
-    }
+
     // Coverage tests run the same test file in multiple modes.
     // If a particular test should not be run in one of the modes, ignore it
     // with "ignore-coverage-map" or "ignore-coverage-run".
-    condition! {
-        name: config.mode.to_str(),
-        allowed_names: ["coverage-map", "coverage-run"],
-        message: "when the test mode is {name}",
-    }
-    condition! {
-        name: target_cfg.rustc_abi.as_ref().map(|abi| format!("rustc_abi-{abi}")).unwrap_or_default(),
-        allowed_names: ContainsPrefixed {
-            prefix: "rustc_abi-",
-            inner: target_cfgs.all_rustc_abis.clone(),
-        },
-        message: "when the target `rustc_abi` is {name}",
+    for test_mode in ["coverage-map", "coverage-run"] {
+        builder.cond(
+            test_mode,
+            test_mode == config.mode.to_str(),
+            &format!("when the test mode is {test_mode}"),
+        );
     }
 
-    condition! {
-        name: "dist",
-        condition: std::env::var("COMPILETEST_ENABLE_DIST_TESTS") == Ok("1".to_string()),
-        message: "when performing tests on dist toolchain"
+    for rustc_abi in &cfgs.all_rustc_abis {
+        builder.cond(
+            &format!("rustc_abi-{rustc_abi}"),
+            Some(rustc_abi) == current.rustc_abi.as_ref(),
+            &format!("when the target `rustc_abi` is rustc_abi-{rustc_abi}"),
+        );
     }
 
-    if prefix == "ignore-" && outcome == MatchOutcome::Invalid {
-        // Don't error out for ignore-tidy-* diretives, as those are not handled by compiletest.
-        if name.starts_with("tidy-") {
-            outcome = MatchOutcome::External;
-        }
+    // FIXME(Zalathar): Ideally this should be configured by a command-line
+    // flag, not an environment variable.
+    builder.cond(
+        "dist",
+        std::env::var("COMPILETEST_ENABLE_DIST_TESTS").as_deref() == Ok("1"),
+        "when performing tests on dist toolchain",
+    );
 
-        // Don't error out for ignore-pass, as that is handled elsewhere.
-        if name == "pass" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
-        // elsewhere.
-        if name == "llvm-version" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-llvm-version, that has a custom syntax and is handled
-        // elsewhere.
-        if name == "gdb-version" {
-            outcome = MatchOutcome::External;
-        }
-
-        // Don't error out for ignore-backends,as it is handled elsewhere.
-        if name == "backends" {
-            outcome = MatchOutcome::External;
-        }
-    }
-
-    ParsedNameDirective {
-        name: Some(name),
-        comment: comment.map(|c| c.trim().trim_start_matches('-').trim()),
-        outcome,
-        pretty_reason: message,
-    }
+    builder.build()
 }
 
 /// The result of parse_cfg_name_directive.
 #[derive(Clone, PartialEq, Debug)]
 pub(super) struct ParsedNameDirective<'a> {
-    pub(super) name: Option<&'a str>,
-    pub(super) pretty_reason: Option<String>,
+    pub(super) pretty_reason: Option<Arc<str>>,
     pub(super) comment: Option<&'a str>,
     pub(super) outcome: MatchOutcome,
 }
 
 impl ParsedNameDirective<'_> {
-    fn not_a_directive() -> Self {
-        Self {
-            name: None,
-            pretty_reason: None,
-            comment: None,
-            outcome: MatchOutcome::NotADirective,
-        }
+    fn not_handled_here() -> Self {
+        Self { pretty_reason: None, comment: None, outcome: MatchOutcome::NotHandledHere }
     }
 }
 
@@ -321,92 +271,59 @@ pub(super) enum MatchOutcome {
     Match,
     /// The directive was invalid.
     Invalid,
-    /// The directive is handled by other parts of our tooling.
-    External,
-    /// The line is not actually a directive.
-    NotADirective,
+    /// The directive should be ignored by this module, because it is handled elsewhere.
+    NotHandledHere,
 }
 
-trait CustomContains {
-    fn custom_contains(&self, item: &str) -> bool;
+#[derive(Debug)]
+pub(crate) struct PreparedConditions {
+    /// Maps the "bare" name of each condition to a structure indicating
+    /// whether the condition is true or false for the target being tested.
+    conds: HashMap<Arc<str>, Cond>,
 }
 
-impl CustomContains for HashSet<String> {
-    fn custom_contains(&self, item: &str) -> bool {
-        self.contains(item)
+#[derive(Debug)]
+struct Cond {
+    /// Bare condition name without an ignore/only prefix, e.g. `aarch64` or `windows`.
+    bare_name: Arc<str>,
+
+    /// Is this condition true or false for the target being tested, based on
+    /// the config that was used to prepare these conditions?
+    ///
+    /// For example, the condition `windows` is true on Windows targets.
+    value: bool,
+
+    /// Message fragment to show when a test is ignored based on this condition
+    /// being true or false, e.g. "when the architecture is aarch64".
+    message_when_ignored: Arc<str>,
+}
+
+struct ConditionsBuilder {
+    conds: Vec<Cond>,
+}
+
+impl ConditionsBuilder {
+    fn new() -> Self {
+        Self { conds: vec![] }
     }
-}
 
-impl CustomContains for &[&str] {
-    fn custom_contains(&self, item: &str) -> bool {
-        self.contains(&item)
+    fn cond(&mut self, bare_name: &str, value: bool, message_when_ignored: &str) {
+        self.conds.push(Cond {
+            bare_name: Arc::<str>::from(bare_name),
+            value,
+            message_when_ignored: Arc::<str>::from(message_when_ignored),
+        });
     }
-}
 
-impl<const N: usize> CustomContains for [&str; N] {
-    fn custom_contains(&self, item: &str) -> bool {
-        self.contains(&item)
-    }
-}
-
-struct ContainsPrefixed<T: CustomContains> {
-    prefix: &'static str,
-    inner: T,
-}
-
-impl<T: CustomContains> CustomContains for ContainsPrefixed<T> {
-    fn custom_contains(&self, item: &str) -> bool {
-        match item.strip_prefix(self.prefix) {
-            Some(stripped) => self.inner.custom_contains(stripped),
-            None => false,
-        }
-    }
-}
-
-struct ContainsEither<'a, A: CustomContains, B: CustomContains> {
-    a: &'a A,
-    b: &'a B,
-}
-
-impl<A: CustomContains, B: CustomContains> CustomContains for ContainsEither<'_, A, B> {
-    fn custom_contains(&self, item: &str) -> bool {
-        self.a.custom_contains(item) || self.b.custom_contains(item)
-    }
-}
-
-trait CustomMatches {
-    fn custom_matches(&self, name: &str) -> bool;
-}
-
-impl CustomMatches for &str {
-    fn custom_matches(&self, name: &str) -> bool {
-        name == *self
-    }
-}
-
-impl CustomMatches for String {
-    fn custom_matches(&self, name: &str) -> bool {
-        name == self
-    }
-}
-
-impl<T: CustomMatches> CustomMatches for &[T] {
-    fn custom_matches(&self, name: &str) -> bool {
-        self.iter().any(|m| m.custom_matches(name))
-    }
-}
-
-impl<const N: usize, T: CustomMatches> CustomMatches for [T; N] {
-    fn custom_matches(&self, name: &str) -> bool {
-        self.iter().any(|m| m.custom_matches(name))
-    }
-}
-
-impl<T: CustomMatches> CustomMatches for Option<T> {
-    fn custom_matches(&self, name: &str) -> bool {
-        match self {
-            Some(inner) => inner.custom_matches(name),
-            None => false,
-        }
+    fn build(self) -> PreparedConditions {
+        let conds = self
+            .conds
+            .into_iter()
+            // Build the map in reverse order, so that conditions declared
+            // earlier have priority over ones declared later.
+            .rev()
+            .map(|cond| (Arc::clone(&cond.bare_name), cond))
+            .collect::<HashMap<_, _>>();
+        PreparedConditions { conds }
     }
 }
