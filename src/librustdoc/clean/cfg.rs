@@ -25,6 +25,9 @@ use crate::html::escape::Escape;
 mod tests;
 
 #[derive(Clone, Debug, Hash)]
+// Because `CfgEntry` includes `Span`, we must NEVER use `==`/`!=` operators on `Cfg` and instead
+// use `is_equivalent_to`.
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct Cfg(CfgEntry);
 
 #[derive(PartialEq, Debug)]
