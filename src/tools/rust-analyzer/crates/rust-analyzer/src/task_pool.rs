@@ -6,7 +6,7 @@ use std::panic::UnwindSafe;
 use crossbeam_channel::Sender;
 use stdx::thread::{Pool, ThreadIntent};
 
-use crate::main_loop::QueuedTask;
+use crate::main_loop::DeferredTask;
 
 pub(crate) struct TaskPool<T> {
     sender: Sender<T>,
@@ -45,11 +45,11 @@ impl<T> TaskPool<T> {
     }
 }
 
-/// `TaskQueue`, like its name suggests, queues tasks.
+/// `DeferredTaskQueue` holds deferred tasks.
 ///
-/// This should only be used if a task must run after [`GlobalState::process_changes`]
-/// has been called.
-pub(crate) struct TaskQueue {
-    pub(crate) sender: crossbeam_channel::Sender<QueuedTask>,
-    pub(crate) receiver: crossbeam_channel::Receiver<QueuedTask>,
+/// These are tasks that must be run after
+/// [`GlobalState::process_changes`] has been called.
+pub(crate) struct DeferredTaskQueue {
+    pub(crate) sender: crossbeam_channel::Sender<DeferredTask>,
+    pub(crate) receiver: crossbeam_channel::Receiver<DeferredTask>,
 }

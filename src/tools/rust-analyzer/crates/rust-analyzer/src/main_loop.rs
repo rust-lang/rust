@@ -74,7 +74,7 @@ pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
 enum Event {
     Lsp(lsp_server::Message),
     Task(Task),
-    QueuedTask(QueuedTask),
+    DeferredTask(DeferredTask),
     Vfs(vfs::loader::Message),
     Flycheck(FlycheckMessage),
     TestResult(CargoTestMessage),
@@ -89,7 +89,7 @@ impl fmt::Display for Event {
             Event::Task(_) => write!(f, "Event::Task"),
             Event::Vfs(_) => write!(f, "Event::Vfs"),
             Event::Flycheck(_) => write!(f, "Event::Flycheck"),
-            Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
+            Event::DeferredTask(_) => write!(f, "Event::DeferredTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
             Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
@@ -98,7 +98,7 @@ impl fmt::Display for Event {
 }
 
 #[derive(Debug)]
-pub(crate) enum QueuedTask {
+pub(crate) enum DeferredTask {
     CheckIfIndexed(lsp_types::Url),
     CheckProcMacroSources(Vec<FileId>),
 }
@@ -164,7 +164,7 @@ impl fmt::Debug for Event {
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
-            Event::QueuedTask(it) => fmt::Debug::fmt(it, f),
+            Event::DeferredTask(it) => fmt::Debug::fmt(it, f),
             Event::Vfs(it) => fmt::Debug::fmt(it, f),
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
             Event::TestResult(it) => fmt::Debug::fmt(it, f),
@@ -279,7 +279,7 @@ impl GlobalState {
                 task.map(Event::Task),
 
             recv(self.deferred_task_queue.receiver) -> task =>
-                task.map(Event::QueuedTask),
+                task.map(Event::DeferredTask),
 
             recv(self.fmt_pool.receiver) -> task =>
                 task.map(Event::Task),
@@ -323,12 +323,12 @@ impl GlobalState {
                 lsp_server::Message::Notification(not) => self.on_notification(not),
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
-            Event::QueuedTask(task) => {
+            Event::DeferredTask(task) => {
                 let _p = tracing::info_span!("GlobalState::handle_event/queued_task").entered();
-                self.handle_queued_task(task);
-                // Coalesce multiple task events into one loop turn
+                self.handle_deferred_task(task);
+                // Coalesce multiple deferred task events into one loop turn
                 while let Ok(task) = self.deferred_task_queue.receiver.try_recv() {
-                    self.handle_queued_task(task);
+                    self.handle_deferred_task(task);
                 }
             }
             Event::Task(task) => {
@@ -981,9 +981,9 @@ impl GlobalState {
         }
     }
 
-    fn handle_queued_task(&mut self, task: QueuedTask) {
+    fn handle_deferred_task(&mut self, task: DeferredTask) {
         match task {
-            QueuedTask::CheckIfIndexed(uri) => {
+            DeferredTask::CheckIfIndexed(uri) => {
                 let snap = self.snapshot();
 
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
@@ -1007,7 +1007,7 @@ impl GlobalState {
                     }
                 });
             }
-            QueuedTask::CheckProcMacroSources(modified_rust_files) => {
+            DeferredTask::CheckProcMacroSources(modified_rust_files) => {
                 let analysis = AssertUnwindSafe(self.snapshot().analysis);
                 self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
                     move |sender| {
