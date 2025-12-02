@@ -1,11 +1,11 @@
 error[E0404]: expected trait, found associated function `Iterator::advance_by`
-  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:30
+  --> $DIR/missing-associated_item_or_field_def_ids.rs:4:30
    |
 LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
 
 error: relaxed bounds are not permitted in trait object types
-  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:29
+  --> $DIR/missing-associated_item_or_field_def_ids.rs:4:29
    |
 LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,6 @@
 //@ run-rustfix
 // https://github.com/rust-lang/rust/issues/79076
+#![allow(todo_macro_calls)]
 
 #[derive(Clone, Eq)]
 pub struct Struct<T>(T); //~ ERROR [E0277]

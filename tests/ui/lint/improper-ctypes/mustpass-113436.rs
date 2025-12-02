@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 #![deny(improper_ctypes_definitions)]
 
 #[repr(C)]

@@ -1,4 +1,5 @@
 //! Test that we allow unsizing `Trait<Concrete>` to `Trait<Opaque>` and vice versa
+#![allow(todo_macro_calls)]
 
 //@ check-pass
 

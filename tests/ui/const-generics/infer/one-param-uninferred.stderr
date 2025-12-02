@@ -1,11 +1,11 @@
 error[E0284]: type annotations needed
-  --> $DIR/one-param-uninferred.rs:9:23
+  --> $DIR/one-param-uninferred.rs:10:23
    |
 LL |     let _: [u8; 17] = foo();
    |                       ^^^ cannot infer the value of the const parameter `M` declared on the function `foo`
    |
 note: required by a const generic parameter in `foo`
-  --> $DIR/one-param-uninferred.rs:2:24
+  --> $DIR/one-param-uninferred.rs:3:24
    |
 LL | fn foo<const N: usize, const M: usize>() -> [u8; N] {
    |                        ^^^^^^^^^^^^^^ required by this const generic parameter in `foo`

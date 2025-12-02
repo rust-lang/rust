@@ -426,6 +426,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
 
 impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
     type T = crate::ty::TyKind;
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
@@ -511,6 +512,7 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
     type T = crate::ty::Pattern;
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
@@ -765,6 +767,7 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
 impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
     type T = crate::ty::ClauseKind;
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,

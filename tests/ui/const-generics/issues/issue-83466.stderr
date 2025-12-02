@@ -1,5 +1,5 @@
 warning: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
-  --> $DIR/issue-83466.rs:11:14
+  --> $DIR/issue-83466.rs:12:14
    |
 LL |     fn func<'a, U>(self) -> U {
    |             -- the late bound lifetime parameter is introduced here
@@ -12,7 +12,7 @@ LL |     S.func::<'a, 10_u32>()
    = note: `#[warn(late_bound_lifetime_arguments)]` (part of `#[warn(future_incompatible)]`) on by default
 
 error[E0747]: constant provided when a type was expected
-  --> $DIR/issue-83466.rs:11:18
+  --> $DIR/issue-83466.rs:12:18
    |
 LL |     S.func::<'a, 10_u32>()
    |                  ^^^^^^

@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![feature(type_alias_impl_trait)]
 
 mod lifetime_params {

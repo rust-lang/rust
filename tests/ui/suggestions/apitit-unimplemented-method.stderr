@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `foo`, `bar`, `baz`, `quux`
-  --> $DIR/apitit-unimplemented-method.rs:8:1
+  --> $DIR/apitit-unimplemented-method.rs:9:1
    |
 LL | impl Trait for Local {}
    | ^^^^^^^^^^^^^^^^^^^^ missing `foo`, `bar`, `baz`, `quux` in implementation

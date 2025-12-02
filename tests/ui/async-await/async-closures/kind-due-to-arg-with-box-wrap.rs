@@ -1,4 +1,5 @@
 //@ edition: 2024
+#![allow(todo_macro_calls)]
 
 // Regression test for <https://github.com/rust-lang/rust/issues/140292>.
 

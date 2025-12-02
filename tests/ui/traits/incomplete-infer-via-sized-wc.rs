@@ -1,6 +1,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 // Exercises change in <https://github.com/rust-lang/rust/pull/138176>.
 

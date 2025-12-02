@@ -2,7 +2,7 @@
 // issue: rust-lang/rust#88421
 #![feature(adt_const_params)]
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 use std::ops::Index;
 

@@ -3,6 +3,7 @@
 //@ compile-flags: -Z threads=45
 //@ edition: 2021
 //@ compare-output-by-lines
+#![allow(todo_macro_calls)]
 
 type BoxFuture<T> = std::pin::Pin<Box<dyn std::future::Future<Output = T>>>;
 

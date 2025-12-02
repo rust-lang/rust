@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/global-cache-and-parallel-frontend.rs:16:12
+  --> $DIR/global-cache-and-parallel-frontend.rs:17:12
    |
 LL | #[derive(Clone, Eq)]
    |                 -- in this derive macro expansion
@@ -7,7 +7,7 @@ LL | pub struct Struct<T>(T);
    |            ^^^^^^ the trait `Clone` is not implemented for `T`
    |
 note: required for `Struct<T>` to implement `PartialEq`
-  --> $DIR/global-cache-and-parallel-frontend.rs:18:19
+  --> $DIR/global-cache-and-parallel-frontend.rs:19:19
    |
 LL | impl<T: Clone, U> PartialEq<U> for Struct<T>
    |         -----     ^^^^^^^^^^^^     ^^^^^^^^^

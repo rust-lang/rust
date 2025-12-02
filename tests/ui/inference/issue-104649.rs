@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 type Result<T, E = Error> = ::std::result::Result<T, E>;
 struct Error;
 

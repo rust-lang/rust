@@ -1,5 +1,5 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/issue-100075.rs:13:37
+  --> $DIR/issue-100075.rs:14:37
    |
 LL | fn _g<T>(t: &'static T) -> &'static impl Marker {
    |                                     ^^^^^^^^^^^

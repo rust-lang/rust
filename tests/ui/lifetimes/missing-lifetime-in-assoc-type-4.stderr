@@ -1,5 +1,5 @@
 error: missing lifetime in associated type
-  --> $DIR/missing-lifetime-in-assoc-type-4.rs:5:17
+  --> $DIR/missing-lifetime-in-assoc-type-4.rs:6:17
    |
 LL |     type Item = &T;
    |                 ^ this lifetime must come from the implemented type
@@ -13,7 +13,7 @@ LL ~     type Item = &'a T;
    |
 
 error[E0195]: lifetime parameters or bounds on associated type `IntoIter` do not match the trait declaration
-  --> $DIR/missing-lifetime-in-assoc-type-4.rs:7:18
+  --> $DIR/missing-lifetime-in-assoc-type-4.rs:8:18
    |
 LL |     type IntoIter<'a> = std::collections::btree_map::Values<'a, i32, T>;
    |                  ^^^^ lifetimes do not match associated type in trait

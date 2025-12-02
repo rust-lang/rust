@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `baz`
-  --> $DIR/issue-98562.rs:7:1
+  --> $DIR/issue-98562.rs:8:1
    |
 LL | impl TraitA<u8, u16, u32> for X {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `baz` in implementation

@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 use std::ops::Deref;
 
 trait Bar<T> {}

@@ -1,4 +1,5 @@
 //! Check that pattern types can only have specific base types
+#![allow(todo_macro_calls)]
 
 #![feature(pattern_types, const_trait_impl, pattern_type_range_trait)]
 #![feature(pattern_type_macro)]

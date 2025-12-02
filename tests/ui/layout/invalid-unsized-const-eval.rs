@@ -1,4 +1,5 @@
 // issue: #124182
+#![allow(todo_macro_calls)]
 
 //! This test used to trip an assertion in const eval, because `layout_of(LazyLock)`
 //! returned `Ok` with an unsized layout when a sized layout was expected.

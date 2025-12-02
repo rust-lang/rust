@@ -1,5 +1,5 @@
 error: unknown start of token: \u{ff06}
-  --> $DIR/fullwidth-ampersand.rs:3:10
+  --> $DIR/fullwidth-ampersand.rs:4:10
    |
 LL | fn f(_: &＆()) -> &() { todo!() }
    |          ^^
@@ -11,7 +11,7 @@ LL + fn f(_: &&()) -> &() { todo!() }
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/fullwidth-ampersand.rs:3:18
+  --> $DIR/fullwidth-ampersand.rs:4:18
    |
 LL | fn f(_: &＆()) -> &() { todo!() }
    |         -----     ^ expected named lifetime parameter
