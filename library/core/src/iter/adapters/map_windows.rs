@@ -97,9 +97,26 @@ impl<I: Iterator, const N: usize> MapWindowsInner<I, N> {
             (lo, hi)
         } else {
             // If the first `N` items are not yet yielded by the inner iterator,
-            // the first `N` elements should be counted as one window, so both bounds
-            // should subtract `N - 1`.
+            // the first `N` elements should be counted as one window, so `N - 1` should
+            // subtracted from both bounds.
             (lo.saturating_sub(N - 1), hi.map(|hi| hi.saturating_sub(N - 1)))
+        }
+    }
+}
+
+impl<I: ExactSizeIterator, const N: usize> MapWindowsInner<I, N> {
+    fn len(&self) -> usize {
+        let Some(ref iter) = self.iter else { return 0 };
+        let n = iter.len();
+        if self.buffer.is_some() {
+            // If the first `N` items are already yielded by the inner iterator,
+            // the length is then equal to the that of the inner iterator's.
+            n
+        } else {
+            // If the first `N` items are not yet yielded by the inner iterator,
+            // the first `N` elements should be counted as one window, so `N - 1` should
+            // be subtracted from the length.
+            n.saturating_sub(N - 1)
         }
     }
 }
@@ -269,6 +286,9 @@ where
     I: ExactSizeIterator,
     F: FnMut(&[I::Item; N]) -> R,
 {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
 }
 
 #[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
