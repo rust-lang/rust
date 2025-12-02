@@ -293,6 +293,7 @@ fn register_builtins(store: &mut LintStore) {
         UNUSED_VARIABLES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
+        UNCONSTRUCTABLE_PUB_STRUCT,
         UNUSED_MUT,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
