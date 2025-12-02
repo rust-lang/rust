@@ -300,9 +300,10 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 // }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(Cow::Borrowed(&n.item.path)));
+                    let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
 
                     self.check_attribute_safety(
-                        &AttrPath::from_ast(&n.item.path),
+                        &attr_path,
                         lower_span(n.item.span()),
                         n.item.unsafety,
                         &mut emit_lint,
@@ -321,7 +322,6 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         ) else {
                             continue;
                         };
-                        let path = parser.path();
                         let args = parser.args();
                         for accept in accepts {
                             let mut cx: AcceptContext<'_, 'sess, S> = AcceptContext {
@@ -336,7 +336,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 attr_style: attr.style,
                                 parsed_description: ParsedDescription::Attribute,
                                 template: &accept.template,
-                                attr_path: path.get_attribute_path(),
+                                attr_path: attr_path.clone(),
                             };
 
                             (accept.accept_fn)(&mut cx, args);
@@ -361,7 +361,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         // );
 
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
-                            path: AttrPath::from_ast(&n.item.path),
+                            path: attr_path.clone(),
                             args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,

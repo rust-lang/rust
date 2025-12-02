@@ -1,5 +1,6 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
+use std::convert::identity;
 use std::slice;
 
 use rustc_ast::token::Delimiter;
@@ -163,7 +164,7 @@ pub fn check_builtin_meta_item(
     if deny_unsafety && let Safety::Unsafe(unsafe_span) = meta.unsafety {
         psess.dcx().emit_err(errors::InvalidAttrUnsafe {
             span: unsafe_span,
-            name: AttrPath::from_ast(&meta.path),
+            name: AttrPath::from_ast(&meta.path, identity),
         });
     }
 }

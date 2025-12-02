@@ -1193,10 +1193,15 @@ impl IntoDiagArg for AttrPath {
 }
 
 impl AttrPath {
-    pub fn from_ast(path: &ast::Path) -> Self {
+    pub fn from_ast(path: &ast::Path, lower_span: impl Copy + Fn(Span) -> Span) -> Self {
         AttrPath {
-            segments: path.segments.iter().map(|i| i.ident).collect::<Vec<_>>().into_boxed_slice(),
-            span: path.span,
+            segments: path
+                .segments
+                .iter()
+                .map(|i| Ident { name: i.ident.name, span: lower_span(i.ident.span) })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+            span: lower_span(path.span),
         }
     }
 }
