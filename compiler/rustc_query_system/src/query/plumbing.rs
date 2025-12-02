@@ -296,7 +296,7 @@ fn wait_for_query<Q, Qcx>(
     qcx: Qcx,
     span: Span,
     key: Q::Key,
-    latch: QueryLatch<Qcx::QueryInfo>,
+    latch: &QueryLatch<Qcx::QueryInfo>,
     current: Option<QueryJobId>,
 ) -> (Q::Value, Option<DepNodeIndex>)
 where
@@ -394,7 +394,7 @@ where
 
                         // Only call `wait_for_query` if we're using a Rayon thread pool
                         // as it will attempt to mark the worker thread as blocked.
-                        return wait_for_query(query, qcx, span, key, latch, current_job_id);
+                        return wait_for_query(query, qcx, span, key, &latch, current_job_id);
                     }
 
                     let id = job.id;

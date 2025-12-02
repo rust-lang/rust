@@ -75,6 +75,7 @@ impl_dyn_send!(
     [std::sync::Mutex<T> where T: ?Sized+ DynSend]
     [std::sync::mpsc::Sender<T> where T: DynSend]
     [std::sync::Arc<T> where T: ?Sized + DynSync + DynSend]
+    [std::sync::Weak<T> where T: ?Sized + DynSync + DynSend]
     [std::sync::LazyLock<T, F> where T: DynSend, F: DynSend]
     [std::collections::HashSet<K, S> where K: DynSend, S: DynSend]
     [std::collections::HashMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]

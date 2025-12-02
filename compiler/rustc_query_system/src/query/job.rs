@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::io::Write;
 use std::iter;
 use std::num::NonZero;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -54,8 +54,8 @@ impl QueryJobId {
         map.get(&self).unwrap().job.parent
     }
 
-    fn latch<I>(self, map: &QueryMap<I>) -> Option<&QueryLatch<I>> {
-        map.get(&self).unwrap().job.latch.as_ref()
+    fn latch<I>(self, map: &QueryMap<I>) -> &Weak<QueryLatch<I>> {
+        &map.get(&self).unwrap().job.latch
     }
 }
 
@@ -77,7 +77,7 @@ pub struct QueryJob<I> {
     pub parent: Option<QueryJobId>,
 
     /// The latch that is used to wait on this job.
-    latch: Option<QueryLatch<I>>,
+    latch: Weak<QueryLatch<I>>,
 }
 
 impl<I> Clone for QueryJob<I> {
@@ -90,14 +90,17 @@ impl<I> QueryJob<I> {
     /// Creates a new query job.
     #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
-        QueryJob { id, span, parent, latch: None }
+        QueryJob { id, span, parent, latch: Weak::new() }
     }
 
-    pub(super) fn latch(&mut self) -> QueryLatch<I> {
-        if self.latch.is_none() {
-            self.latch = Some(QueryLatch::new());
+    pub(super) fn latch(&mut self) -> Arc<QueryLatch<I>> {
+        if let Some(latch) = self.latch.upgrade() {
+            latch
+        } else {
+            let latch = Arc::new(QueryLatch::new());
+            self.latch = Arc::downgrade(&latch);
+            latch
         }
-        self.latch.as_ref().unwrap().clone()
     }
 
     /// Signals to waiters that the query is complete.
@@ -106,7 +109,7 @@ impl<I> QueryJob<I> {
     /// as there are no concurrent jobs which could be waiting on us
     #[inline]
     pub fn signal_complete(self) {
-        if let Some(latch) = self.latch {
+        if let Some(latch) = self.latch.upgrade() {
             latch.set();
         }
     }
@@ -187,19 +190,13 @@ struct QueryLatchInfo<I> {
 
 #[derive(Debug)]
 pub(super) struct QueryLatch<I> {
-    info: Arc<Mutex<QueryLatchInfo<I>>>,
-}
-
-impl<I> Clone for QueryLatch<I> {
-    fn clone(&self) -> Self {
-        Self { info: Arc::clone(&self.info) }
-    }
+    info: Mutex<QueryLatchInfo<I>>,
 }
 
 impl<I> QueryLatch<I> {
     fn new() -> Self {
         QueryLatch {
-            info: Arc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
+            info: Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() }),
         }
     }
 
@@ -296,7 +293,7 @@ where
     }
 
     // Visit the explicit waiters which use condvars and are resumable
-    if let Some(latch) = query.latch(query_map) {
+    if let Some(latch) = query.latch(query_map).upgrade() {
         for (i, waiter) in latch.info.lock().waiters.iter().enumerate() {
             if let Some(waiter_query) = waiter.query {
                 if visit(waiter.span, waiter_query).is_some() {
@@ -486,7 +483,7 @@ fn remove_cycle<I: Clone>(
         let (waitee_query, waiter_idx) = waiter.unwrap();
 
         // Extract the waiter we want to resume
-        let waiter = waitee_query.latch(query_map).unwrap().extract_waiter(waiter_idx);
+        let waiter = waitee_query.latch(query_map).upgrade().unwrap().extract_waiter(waiter_idx);
 
         // Set the cycle error so it will be picked up when resumed
         *waiter.cycle.lock() = Some(error);
