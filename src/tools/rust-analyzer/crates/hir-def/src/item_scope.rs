@@ -16,8 +16,8 @@ use syntax::ast;
 use thin_vec::ThinVec;
 
 use crate::{
-    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
-    Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinDeriveImplId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap,
+    HasModule, ImplId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
@@ -159,6 +159,7 @@ pub struct ItemScope {
     declarations: ThinVec<ModuleDefId>,
 
     impls: ThinVec<ImplId>,
+    builtin_derive_impls: ThinVec<BuiltinDeriveImplId>,
     extern_blocks: ThinVec<ExternBlockId>,
     unnamed_consts: ThinVec<ConstId>,
     /// Traits imported via `use Trait as _;`.
@@ -329,6 +330,10 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
+    pub fn builtin_derive_impls(&self) -> impl ExactSizeIterator<Item = BuiltinDeriveImplId> + '_ {
+        self.builtin_derive_impls.iter().copied()
+    }
+
     pub fn all_macro_calls(&self) -> impl Iterator<Item = MacroCallId> + '_ {
         self.macro_invocations.values().copied().chain(self.attr_macros.values().copied()).chain(
             self.derive_macros.values().flat_map(|it| {
@@ -469,6 +474,10 @@ impl ItemScope {
 
     pub(crate) fn define_impl(&mut self, imp: ImplId) {
         self.impls.push(imp);
+    }
+
+    pub(crate) fn define_builtin_derive_impl(&mut self, imp: BuiltinDeriveImplId) {
+        self.builtin_derive_impls.push(imp);
     }
 
     pub(crate) fn define_extern_block(&mut self, extern_block: ExternBlockId) {
@@ -811,6 +820,7 @@ impl ItemScope {
             unresolved,
             declarations,
             impls,
+            builtin_derive_impls,
             unnamed_consts,
             unnamed_trait_imports,
             legacy_macros,
@@ -834,6 +844,7 @@ impl ItemScope {
         unresolved.shrink_to_fit();
         declarations.shrink_to_fit();
         impls.shrink_to_fit();
+        builtin_derive_impls.shrink_to_fit();
         unnamed_consts.shrink_to_fit();
         unnamed_trait_imports.shrink_to_fit();
         legacy_macros.shrink_to_fit();

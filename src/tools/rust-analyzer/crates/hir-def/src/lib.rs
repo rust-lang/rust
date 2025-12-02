@@ -30,6 +30,7 @@ pub mod dyn_map;
 
 pub mod item_tree;
 
+pub mod builtin_derive;
 pub mod lang_item;
 
 pub mod hir;
@@ -80,6 +81,7 @@ pub use hir_expand::{Intern, Lookup, tt};
 
 use crate::{
     attrs::AttrFlags,
+    builtin_derive::BuiltinDeriveImplTrait,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::ExpressionStoreSourceMap,
@@ -329,6 +331,19 @@ impl ImplId {
     pub fn impl_items_with_diagnostics(self, db: &dyn DefDatabase) -> &(ImplItems, DefDiagnostics) {
         ImplItems::of(db, self)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BuiltinDeriveImplLoc {
+    pub adt: AdtId,
+    pub trait_: BuiltinDeriveImplTrait,
+}
+
+#[salsa::interned(debug, no_lifetime)]
+#[derive(PartialOrd, Ord)]
+pub struct BuiltinDeriveImplId {
+    #[returns(ref)]
+    pub loc: BuiltinDeriveImplLoc,
 }
 
 type UseLoc = ItemLoc<ast::Use>;
@@ -1007,6 +1022,20 @@ fn module_for_assoc_item_loc<'db>(
     id: impl Lookup<Database = dyn DefDatabase, Data = AssocItemLoc<impl AstIdNode>>,
 ) -> ModuleId {
     id.lookup(db).container.module(db)
+}
+
+impl HasModule for BuiltinDeriveImplLoc {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.adt.module(db)
+    }
+}
+
+impl HasModule for BuiltinDeriveImplId {
+    #[inline]
+    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+        self.loc(db).module(db)
+    }
 }
 
 impl HasModule for FunctionId {

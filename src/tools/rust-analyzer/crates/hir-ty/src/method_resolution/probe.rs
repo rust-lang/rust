@@ -1001,7 +1001,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         self.with_impl_item(impl_def_id, |this, item| {
             if !this.has_applicable_self(item) {
                 // No receiver declared. Not a candidate.
-                this.record_static_candidate(CandidateSource::Impl(impl_def_id));
+                this.record_static_candidate(CandidateSource::Impl(impl_def_id.into()));
                 return;
             }
             this.push_candidate(
@@ -1490,7 +1490,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
     /// so do not use to make a decision that may lead to a successful compilation.
     fn candidate_source(&self, candidate: &Candidate<'db>, self_ty: Ty<'db>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id),
+            InherentImplCandidate { impl_def_id, .. } => CandidateSource::Impl(impl_def_id.into()),
             ObjectCandidate(trait_ref) | WhereClauseCandidate(trait_ref) => {
                 CandidateSource::Trait(trait_ref.def_id().0)
             }
@@ -1524,7 +1524,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
 
     fn candidate_source_from_pick(&self, pick: &Pick<'db>) -> CandidateSource {
         match pick.kind {
-            InherentImplPick(impl_) => CandidateSource::Impl(impl_),
+            InherentImplPick(impl_) => CandidateSource::Impl(impl_.into()),
             ObjectPick(trait_) | TraitPick(trait_) => CandidateSource::Trait(trait_),
             WhereClausePick(trait_ref) => CandidateSource::Trait(trait_ref.skip_binder().def_id.0),
         }

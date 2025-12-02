@@ -13,11 +13,12 @@ use tracing::{debug, instrument};
 
 use base_db::Crate;
 use hir_def::{
-    AssocItemId, BlockId, ConstId, FunctionId, GenericParamId, HasModule, ImplId, ItemContainerId,
-    ModuleId, TraitId,
+    AssocItemId, BlockId, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
+    ImplId, ItemContainerId, ModuleId, TraitId,
     attrs::AttrFlags,
     expr_store::path::GenericArgs as HirGenericArgs,
     hir::ExprId,
+    lang_item::LangItems,
     nameres::{DefMap, block_def_map, crate_def_map},
     resolver::Resolver,
 };
@@ -37,7 +38,7 @@ use crate::{
     infer::{InferenceContext, unify::InferenceTable},
     lower::GenericPredicates,
     next_solver::{
-        Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
+        AnyImplId, Binder, ClauseKind, DbInterner, FnSig, GenericArgs, ParamEnv, PredicateKind,
         SimplifiedType, SolverDefId, TraitRef, Ty, TyKind, TypingMode,
         infer::{
             BoundRegionConversionTime, DbInternerInferExt, InferCtxt, InferOk,
@@ -132,7 +133,7 @@ pub enum MethodError<'db> {
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum CandidateSource {
-    Impl(ImplId),
+    Impl(AnyImplId),
     Trait(TraitId),
 }
 
@@ -462,6 +463,10 @@ fn lookup_impl_assoc_item_for_trait_ref<'db>(
     name: &Name,
 ) -> Option<(AssocItemId, GenericArgs<'db>)> {
     let (impl_id, impl_subst) = find_matching_impl(infcx, env, trait_ref)?;
+    let AnyImplId::ImplId(impl_id) = impl_id else {
+        // FIXME: Handle resolution to builtin derive.
+        return None;
+    };
     let item =
         impl_id.impl_items(infcx.interner.db).items.iter().find_map(|(n, it)| match *it {
             AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
@@ -475,7 +480,7 @@ pub(crate) fn find_matching_impl<'db>(
     infcx: &InferCtxt<'db>,
     env: ParamEnv<'db>,
     trait_ref: TraitRef<'db>,
-) -> Option<(ImplId, GenericArgs<'db>)> {
+) -> Option<(AnyImplId, GenericArgs<'db>)> {
     let trait_ref = infcx.at(&ObligationCause::dummy(), env).deeply_normalize(trait_ref).ok()?;
 
     let obligation = Obligation::new(infcx.interner, ObligationCause::dummy(), env, trait_ref);
@@ -635,13 +640,13 @@ impl InherentImpls {
 
 #[derive(Debug, PartialEq)]
 struct OneTraitImpls {
-    non_blanket_impls: FxHashMap<SimplifiedType, Box<[ImplId]>>,
+    non_blanket_impls: FxHashMap<SimplifiedType, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
     blanket_impls: Box<[ImplId]>,
 }
 
 #[derive(Default)]
 struct OneTraitImplsBuilder {
-    non_blanket_impls: FxHashMap<SimplifiedType, Vec<ImplId>>,
+    non_blanket_impls: FxHashMap<SimplifiedType, (Vec<ImplId>, Vec<BuiltinDeriveImplId>)>,
     blanket_impls: Vec<ImplId>,
 }
 
@@ -650,7 +655,9 @@ impl OneTraitImplsBuilder {
         let mut non_blanket_impls = self
             .non_blanket_impls
             .into_iter()
-            .map(|(self_ty, impls)| (self_ty, impls.into_boxed_slice()))
+            .map(|(self_ty, (impls, builtin_derive_impls))| {
+                (self_ty, (impls.into_boxed_slice(), builtin_derive_impls.into_boxed_slice()))
+            })
             .collect::<FxHashMap<_, _>>();
         non_blanket_impls.shrink_to_fit();
         let blanket_impls = self.blanket_impls.into_boxed_slice();
@@ -691,8 +698,9 @@ impl TraitImpls {
 
 impl TraitImpls {
     fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap) -> Self {
+        let lang_items = hir_def::lang_item::lang_items(db, def_map.krate());
         let mut map = FxHashMap::default();
-        collect(db, def_map, &mut map);
+        collect(db, def_map, lang_items, &mut map);
         let mut map = map
             .into_iter()
             .map(|(trait_id, trait_map)| (trait_id, trait_map.finish()))
@@ -703,6 +711,7 @@ impl TraitImpls {
         fn collect(
             db: &dyn HirDatabase,
             def_map: &DefMap,
+            lang_items: &LangItems,
             map: &mut FxHashMap<TraitId, OneTraitImplsBuilder>,
         ) {
             for (_module_id, module_data) in def_map.modules() {
@@ -727,10 +736,21 @@ impl TraitImpls {
                     let entry = map.entry(trait_ref.def_id.0).or_default();
                     match simplify_type(interner, self_ty, TreatParams::InstantiateWithInfer) {
                         Some(self_ty) => {
-                            entry.non_blanket_impls.entry(self_ty).or_default().push(impl_id)
+                            entry.non_blanket_impls.entry(self_ty).or_default().0.push(impl_id)
                         }
                         None => entry.blanket_impls.push(impl_id),
                     }
+                }
+
+                for impl_id in module_data.scope.builtin_derive_impls() {
+                    let loc = impl_id.loc(db);
+                    let Some(trait_id) = loc.trait_.get_id(lang_items) else { continue };
+                    let entry = map.entry(trait_id).or_default();
+                    let entry = entry
+                        .non_blanket_impls
+                        .entry(SimplifiedType::Adt(loc.adt.into()))
+                        .or_default();
+                    entry.1.push(impl_id);
                 }
 
                 // To better support custom derives, collect impls in all unnamed const items.
@@ -738,7 +758,7 @@ impl TraitImpls {
                 for konst in module_data.scope.unnamed_consts() {
                     let body = db.body(konst.into());
                     for (_, block_def_map) in body.blocks(db) {
-                        collect(db, block_def_map, map);
+                        collect(db, block_def_map, lang_items, map);
                     }
                 }
             }
@@ -761,11 +781,15 @@ impl TraitImpls {
         })
     }
 
-    pub fn for_trait_and_self_ty(&self, trait_: TraitId, self_ty: &SimplifiedType) -> &[ImplId] {
+    pub fn for_trait_and_self_ty(
+        &self,
+        trait_: TraitId,
+        self_ty: &SimplifiedType,
+    ) -> (&[ImplId], &[BuiltinDeriveImplId]) {
         self.map
             .get(&trait_)
             .and_then(|map| map.non_blanket_impls.get(self_ty))
-            .map(|it| &**it)
+            .map(|it| (&*it.0, &*it.1))
             .unwrap_or_default()
     }
 
@@ -773,7 +797,7 @@ impl TraitImpls {
         if let Some(impls) = self.map.get(&trait_) {
             callback(&impls.blanket_impls);
             for impls in impls.non_blanket_impls.values() {
-                callback(impls);
+                callback(&impls.0);
             }
         }
     }
@@ -781,7 +805,7 @@ impl TraitImpls {
     pub fn for_self_ty(&self, self_ty: &SimplifiedType, mut callback: impl FnMut(&[ImplId])) {
         for for_trait in self.map.values() {
             if let Some(for_ty) = for_trait.non_blanket_impls.get(self_ty) {
-                callback(for_ty);
+                callback(&for_ty.0);
             }
         }
     }

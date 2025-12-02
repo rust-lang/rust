@@ -2,6 +2,7 @@
 //!
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
+use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use stdx::impl_from;
 
@@ -10,7 +11,7 @@ use crate::{
     StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
     db::DefDatabase,
-    nameres::{assoc::TraitItems, crate_def_map, crate_local_def_map},
+    nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,6 +94,10 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
         }
     }
 
+    if matches!(krate.data(db).origin, base_db::CrateOrigin::Lang(base_db::LangCrateOrigin::Core)) {
+        lang_items.fill_non_lang_core_traits(db, crate_def_map);
+    }
+
     if lang_items.is_empty() { None } else { Some(Box::new(lang_items)) }
 }
 
@@ -135,6 +140,31 @@ impl LangItems {
     }
 }
 
+fn resolve_core_trait(
+    db: &dyn DefDatabase,
+    core_def_map: &DefMap,
+    modules: &[Symbol],
+    name: Symbol,
+) -> Option<TraitId> {
+    let mut current = &core_def_map[core_def_map.root];
+    for module in modules {
+        let Some((ModuleDefId::ModuleId(cur), _)) =
+            current.scope.type_(&Name::new_symbol_root(module.clone()))
+        else {
+            return None;
+        };
+        if cur.krate(db) != core_def_map.krate() || cur.block(db) != core_def_map.block_id() {
+            return None;
+        }
+        current = &core_def_map[cur];
+    }
+    let Some((ModuleDefId::TraitId(trait_), _)) = current.scope.type_(&Name::new_symbol_root(name))
+    else {
+        return None;
+    };
+    Some(trait_)
+}
+
 #[salsa::tracked(returns(as_deref))]
 pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
     let mut traits = Vec::new();
@@ -158,6 +188,10 @@ macro_rules! language_item_table {
     (
         $LangItems:ident =>
         $( $(#[$attr:meta])* $lang_item:ident, $module:ident :: $name:ident, $target:ident; )*
+
+        @non_lang_core_traits:
+
+        $( core::$($non_lang_module:ident)::*, $non_lang_trait:ident; )*
     ) => {
         #[allow(non_snake_case)] // FIXME: Should we remove this?
         #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -165,6 +199,9 @@ macro_rules! language_item_table {
             $(
                 $(#[$attr])*
                 pub $lang_item: Option<$target>,
+            )*
+            $(
+                pub $non_lang_trait: Option<TraitId>,
             )*
         }
 
@@ -176,6 +213,7 @@ macro_rules! language_item_table {
             /// Merges `self` with `other`, with preference to `self` items.
             fn merge_prefer_self(&mut self, other: &Self) {
                 $( self.$lang_item = self.$lang_item.or(other.$lang_item); )*
+                $( self.$non_lang_trait = self.$non_lang_trait.or(other.$non_lang_trait); )*
             }
 
             fn assign_lang_item(&mut self, name: Symbol, target: LangItemTarget) {
@@ -189,6 +227,10 @@ macro_rules! language_item_table {
                     )*
                     _ => {}
                 }
+            }
+
+            fn fill_non_lang_core_traits(&mut self, db: &dyn DefDatabase, core_def_map: &DefMap) {
+                $( self.$non_lang_trait = resolve_core_trait(db, core_def_map, &[ $(sym::$non_lang_module),* ], sym::$non_lang_trait); )*
             }
         }
 
@@ -426,4 +468,11 @@ language_item_table! { LangItems =>
     String,                  sym::String,              StructId;
     CStr,                    sym::CStr,                StructId;
     Ordering,                sym::Ordering,            EnumId;
+
+    @non_lang_core_traits:
+    core::default, Default;
+    core::fmt, Debug;
+    core::hash, Hash;
+    core::cmp, Ord;
+    core::cmp, Eq;
 }
