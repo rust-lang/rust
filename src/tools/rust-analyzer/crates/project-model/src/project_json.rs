@@ -221,8 +221,9 @@ impl ProjectJson {
         self.crates
             .iter()
             .filter(|krate| krate.is_workspace_member)
-            .filter_map(|krate| krate.build.clone())
+            .filter_map(|krate| krate.build.as_ref())
             .find(|build| build.build_file.as_std_path() == path)
+            .cloned()
     }
 
     pub fn crate_by_label(&self, label: &str) -> Option<&Crate> {
