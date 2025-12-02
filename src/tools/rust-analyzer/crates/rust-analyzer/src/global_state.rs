@@ -833,6 +833,7 @@ impl GlobalStateSnapshot {
                         label: build.label,
                         target_kind: build.target_kind,
                         shell_runnables: project.runnables().to_owned(),
+                        project_root: project.project_root().to_owned(),
                     }));
                 }
                 ProjectWorkspaceKind::DetachedFile { .. } => {}

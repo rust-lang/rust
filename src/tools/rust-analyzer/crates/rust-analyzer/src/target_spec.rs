@@ -68,6 +68,7 @@ pub(crate) struct ProjectJsonTargetSpec {
     pub(crate) label: String,
     pub(crate) target_kind: TargetKind,
     pub(crate) shell_runnables: Vec<Runnable>,
+    pub(crate) project_root: AbsPathBuf,
 }
 
 impl ProjectJsonTargetSpec {
