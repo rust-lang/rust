@@ -2246,6 +2246,79 @@ where
     pub fn bucket_index(&self) -> usize {
         unsafe { self.table.raw.bucket_index(&self.bucket) }
     }
+
+    /// Provides owned access to the value of the entry and allows to replace or
+    /// remove it based on the value of the returned option.
+    ///
+    /// The hash of the new item should be the same as the old item.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "nightly")]
+    /// # fn test() {
+    /// use hashbrown::{HashTable, DefaultHashBuilder};
+    /// use hashbrown::hash_table::Entry;
+    /// use std::hash::BuildHasher;
+    ///
+    /// let mut table = HashTable::new();
+    /// let hasher = DefaultHashBuilder::default();
+    /// let hasher = |(ref key, _): &_| hasher.hash_one(key);
+    /// table.insert_unique(hasher(&("poneyland", 42)), ("poneyland", 42), hasher);
+    ///
+    /// let entry = match table.entry(hasher(&("poneyland", 42)), |entry| entry.0 == "poneyland", hasher) {
+    ///     Entry::Occupied(e) => unsafe {
+    ///         e.replace_entry_with(|(k, v)| {
+    ///             assert_eq!(k, "poneyland");
+    ///             assert_eq!(v, 42);
+    ///             Some(("poneyland", v + 1))
+    ///         })
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Occupied(e) => {
+    ///         assert_eq!(e.get(), &("poneyland", 43));
+    ///     }
+    ///     Entry::Vacant(_) => panic!(),
+    /// }
+    ///
+    /// let entry = match table.entry(hasher(&("poneyland", 43)), |entry| entry.0 == "poneyland", hasher) {
+    ///     Entry::Occupied(e) => unsafe { e.replace_entry_with(|(_k, _v)| None) },
+    ///     Entry::Vacant(_) => panic!(),
+    /// };
+    ///
+    /// match entry {
+    ///     Entry::Vacant(e) => {
+    ///         // nice!
+    ///     }
+    ///     Entry::Occupied(_) => panic!(),
+    /// }
+    ///
+    /// assert!(table.is_empty());
+    /// # }
+    /// # fn main() {
+    /// #     #[cfg(feature = "nightly")]
+    /// #     test()
+    /// # }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn replace_entry_with<F>(self, f: F) -> Entry<'a, T, A>
+    where
+        F: FnOnce(T) -> Option<T>,
+    {
+        unsafe {
+            match self.table.raw.replace_bucket_with(self.bucket.clone(), f) {
+                None => Entry::Occupied(self),
+                Some(tag) => Entry::Vacant(VacantEntry {
+                    tag,
+                    index: self.bucket_index(),
+                    table: self.table,
+                }),
+            }
+        }
+    }
 }
 
 /// A view into a vacant entry in a `HashTable`.
