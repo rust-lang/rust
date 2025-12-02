@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 struct S<T>(T);
 struct S2;
 

@@ -1,5 +1,5 @@
 error: expected one of `!` or `::`, found `(`
-  --> $DIR/feature-gate-global-registration.rs:1:1
+  --> $DIR/feature-gate-global-registration.rs:2:1
    |
 LL | todo!();
    | ^^^^^^^

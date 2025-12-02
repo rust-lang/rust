@@ -322,7 +322,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
+            // We only check expansion for calls, because `todo!()` either expands to
+            // a call to `::core::panicking::panic` or `::core::panicking::panic_fmt`
+            let diverges = if let ExprKind::Call(..) = expr.kind
+                && let Some(span) = self.tcx.get_local_expansion_by(expr.span, sym::todo_macro)
+            {
+                self.tcx.emit_node_span_lint(
+                    rustc_lint::builtin::TODO_MACRO_CALLS, // ignore-tidy-todo
+                    expr.hir_id,
+                    span,
+                    crate::errors::TodoMacroUse,
+                );
+                // We don't trigger `unreachable_code` for `todo!()` within this crate's code
+                // that diverges to avoid flooding the user with warnings while they are still
+                // working on their code.
+                Diverges::WarnedAlways
+            } else {
+                Diverges::always(expr.span)
+            };
+            self.diverges.set(self.diverges.get() | diverges);
         }
 
         // Record the type, which applies it effects.

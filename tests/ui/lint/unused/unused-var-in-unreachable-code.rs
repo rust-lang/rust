@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![allow(unreachable_code)]
+#![allow(unreachable_code, todo_macro_calls)]
 #![allow(dead_code)]
 #![warn(unused_variables)]
 

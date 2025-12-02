@@ -1,4 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/137554>.
+#![allow(todo_macro_calls)]
 
 fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
     //~^ ERROR expected trait, found associated function `Iterator::advance_by`

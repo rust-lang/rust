@@ -2045,6 +2045,7 @@ symbols! {
         tmm_reg,
         to_string,
         to_vec,
+        todo_macro,
         tool_attributes,
         tool_lints,
         trace_macros,

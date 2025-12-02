@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // Not exactly sure if this is the inference behavior we *want*,
 // but it is a side-effect of the lazy normalization of TAITs.

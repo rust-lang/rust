@@ -44,7 +44,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnData, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
@@ -1387,6 +1387,44 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
             None => Err(VarError::NotPresent),
         }
+    }
+
+    /// Returns whether this context was expanded by the macro with the given name where
+    /// the macro call is local in the current crate.
+    pub fn get_local_expansion_by(self, span: Span, mac: Symbol) -> Option<Span> {
+        let source_map = self.sess.source_map();
+        let mut ctxt = span.ctxt();
+        let Some(mac_def_id) = self.get_diagnostic_item(mac) else {
+            // do not have a def id to search for, so no match is possible
+            return None;
+        };
+        // first, find the `todo!` call site
+        let todo_ctxt = loop {
+            if ctxt.is_root() {
+                return None;
+            }
+            let data = ctxt.outer_expn_data();
+            if let Some(def_id) = data.macro_def_id
+                && mac_def_id == def_id
+            {
+                break ctxt;
+            }
+            ctxt = data.call_site.ctxt();
+        };
+        // get the crate of the root context
+        let crate_num = |data: &ExpnData| source_map.lookup_source_file(data.call_site.lo()).cnum;
+        let root_source_crate_num = crate_num(&SyntaxContext::root().outer_expn_data());
+        // check that all expansions between the `todo!()` call and the root context
+        // are in the same file as the root context
+        let mut ctxt = todo_ctxt;
+        while !ctxt.is_root() {
+            let data = ctxt.outer_expn_data();
+            if crate_num(&data) != root_source_crate_num {
+                return None;
+            }
+            ctxt = data.call_site.ctxt();
+        }
+        Some(todo_ctxt.outer_expn_data().call_site)
     }
 }
 

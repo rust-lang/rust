@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![allow(unused_variables)]
+#![allow(unused_variables, todo_macro_calls)]
 
 fn foo(foo: &mut usize) {
     todo!()

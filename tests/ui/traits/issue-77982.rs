@@ -1,5 +1,6 @@
 //@ ignore-windows FIXME: We get an extra E0283 on Windows
 //@ ignore-arm extra satisfying impls
+#![allow(todo_macro_calls)]
 
 use std::collections::HashMap;
 

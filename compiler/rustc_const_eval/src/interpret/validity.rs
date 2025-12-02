@@ -829,6 +829,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     /// at that type. Return `true` if the type is indeed primitive.
     ///
     /// Note that not all of these have `FieldsShape::Primitive`, e.g. wide references.
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn try_visit_primitive(
         &mut self,
         value: &PlaceTy<'tcx, M::Provenance>,

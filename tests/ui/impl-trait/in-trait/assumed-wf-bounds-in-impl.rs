@@ -1,6 +1,7 @@
 //@ check-pass
 //@ edition: 2021
 // issue: 113796
+#![allow(todo_macro_calls)]
 
 
 trait AsyncLendingIterator {

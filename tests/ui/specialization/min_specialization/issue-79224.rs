@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 #![feature(min_specialization)]
 use std::fmt::{self, Display};
 

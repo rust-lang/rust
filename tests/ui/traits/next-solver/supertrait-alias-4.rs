@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 // Exercises the ambiguity that comes from replacing the associated types within the bounds
 // that are required for a `impl Trait for dyn Trait` built-in object impl to hold.

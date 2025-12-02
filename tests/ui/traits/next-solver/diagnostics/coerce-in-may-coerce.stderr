@@ -1,13 +1,13 @@
 error[E0308]: arguments to this function are incorrect
-  --> $DIR/coerce-in-may-coerce.rs:17:5
+  --> $DIR/coerce-in-may-coerce.rs:18:5
    |
 LL |     arg_error((), || ());
-   |     ^^^^^^^^^ --  ----- expected `()`, found `{closure@$DIR/coerce-in-may-coerce.rs:17:19: 17:21}`
+   |     ^^^^^^^^^ --  ----- expected `()`, found `{closure@$DIR/coerce-in-may-coerce.rs:18:19: 18:21}`
    |               |
    |               expected `fn()`, found `()`
    |
 note: function defined here
-  --> $DIR/coerce-in-may-coerce.rs:12:4
+  --> $DIR/coerce-in-may-coerce.rs:13:4
    |
 LL | fn arg_error(x: <fn() as Mirror>::Assoc, y: ()) { todo!() }
    |    ^^^^^^^^^

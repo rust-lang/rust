@@ -1024,7 +1024,7 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
 pub fn eq_attr_item_kind(l: &AttrItemKind, r: &AttrItemKind) -> bool {
     match (l, r) {
         (AttrItemKind::Unparsed(l), AttrItemKind::Unparsed(r)) => eq_attr_args(l, r),
-        (AttrItemKind::Parsed(_l), AttrItemKind::Parsed(_r)) => todo!(),
+        (AttrItemKind::Parsed(_l), AttrItemKind::Parsed(_r)) => unimplemented!(),
         _ => false,
     }
 }

@@ -1,5 +1,5 @@
 error[E0425]: cannot find type `T` in this scope
-  --> $DIR/refine-err.rs:4:38
+  --> $DIR/refine-err.rs:5:38
    |
 LL |     fn prepare(self) -> impl Fn() -> T;
    |                                      ^ not found in this scope

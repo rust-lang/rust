@@ -4,7 +4,7 @@
 //@ edition: 2021
 
 #![deny(tail_expr_drop_order)] //~ NOTE: the lint level is defined here
-#![allow(dropping_copy_types)]
+#![allow(dropping_copy_types, todo_macro_calls)]
 
 struct LoudDropper;
 impl Drop for LoudDropper {

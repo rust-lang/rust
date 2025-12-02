@@ -1,5 +1,6 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 #![feature(type_alias_impl_trait)]
 

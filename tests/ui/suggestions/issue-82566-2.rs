@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 struct Foo1<const N1: usize>;
 struct Foo2<const N1: usize, const N2: usize>;
 struct Foo3<const N1: usize, const N2: usize, const N3: usize>;

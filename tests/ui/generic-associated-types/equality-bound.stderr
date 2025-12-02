@@ -1,5 +1,5 @@
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:1:51
+  --> $DIR/equality-bound.rs:3:51
    |
 LL | fn sum<I: Iterator<Item = ()>>(i: I) -> i32 where I::Item = i32 {
    |                                                   ^^^^^^^^^^^^^ not supported
@@ -12,7 +12,7 @@ LL + fn sum<I: Iterator<Item = (), Item = i32>>(i: I) -> i32  {
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:5:41
+  --> $DIR/equality-bound.rs:7:41
    |
 LL | fn sum2<I: Iterator>(i: I) -> i32 where I::Item = i32 {
    |                                         ^^^^^^^^^^^^^ not supported
@@ -25,7 +25,7 @@ LL + fn sum2<I: Iterator<Item = i32>>(i: I) -> i32  {
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:9:41
+  --> $DIR/equality-bound.rs:11:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    |                                         ^^^^^^^^^^^^^ not supported
@@ -33,7 +33,7 @@ LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    = note: see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:20:58
+  --> $DIR/equality-bound.rs:22:58
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^ not supported
@@ -46,7 +46,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:31:58
+  --> $DIR/equality-bound.rs:33:58
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
    |                                                          ^^^^^^^^^^^ not supported
@@ -59,7 +59,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:42:55
+  --> $DIR/equality-bound.rs:44:55
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
    |                                                       ^^^^^^^^^^^^^^^^^^^^^^ not supported
@@ -72,7 +72,7 @@ LL +     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:53:55
+  --> $DIR/equality-bound.rs:55:55
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = A,
    |                                                       ^^^^^^^^^^^ not supported
@@ -85,7 +85,7 @@ LL +     fn from_iter<T: IntoIterator<Item = A>>(_: T) -> Self
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:64:41
+  --> $DIR/equality-bound.rs:66:41
    |
 LL |     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = A, T: IntoIterator,
    |                                         ^^^^^^^^^^^^^^^^^^^^^^ not supported
@@ -98,7 +98,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
 error: equality constraints are not yet supported in `where` clauses
-  --> $DIR/equality-bound.rs:75:41
+  --> $DIR/equality-bound.rs:77:41
    |
 LL |     fn from_iter<T>(_: T) -> Self where T::Item = A, T: IntoIterator,
    |                                         ^^^^^^^^^^^ not supported
@@ -111,7 +111,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator<Item = A>,
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:20:79
+  --> $DIR/equality-bound.rs:22:79
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item = A,
    |                                                                               ^
@@ -126,7 +126,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator, IntoIterator::Item
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:31:68
+  --> $DIR/equality-bound.rs:33:68
    |
 LL |     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = A,
    |                                                                    ^
@@ -141,7 +141,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T: IntoIterator, T::Item = K,
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:42:76
+  --> $DIR/equality-bound.rs:44:76
    |
 LL |     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = A,
    |                                                                            ^
@@ -156,7 +156,7 @@ LL +     fn from_iter<T: IntoIterator>(_: T) -> Self where IntoIterator::Item = 
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:53:65
+  --> $DIR/equality-bound.rs:55:65
    |
 LL | struct K {}
    | -------- similarly named struct `K` defined here
@@ -171,7 +171,7 @@ LL +     fn from_iter<T: IntoIterator>(_: T) -> Self where T::Item = K,
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:64:62
+  --> $DIR/equality-bound.rs:66:62
    |
 LL | struct K {}
    | -------- similarly named struct `K` defined here
@@ -186,7 +186,7 @@ LL +     fn from_iter<T>(_: T) -> Self where IntoIterator::Item = K, T: IntoIter
    |
 
 error[E0425]: cannot find type `A` in this scope
-  --> $DIR/equality-bound.rs:75:51
+  --> $DIR/equality-bound.rs:77:51
    |
 LL | struct K {}
    | -------- similarly named struct `K` defined here
@@ -201,7 +201,7 @@ LL +     fn from_iter<T>(_: T) -> Self where T::Item = K, T: IntoIterator,
    |
 
 error[E0433]: cannot find type `I` in this scope
-  --> $DIR/equality-bound.rs:9:41
+  --> $DIR/equality-bound.rs:11:41
    |
 LL | fn sum3<J: Iterator>(i: J) -> i32 where I::Item = i32 {
    |                                         ^ use of undeclared type `I`

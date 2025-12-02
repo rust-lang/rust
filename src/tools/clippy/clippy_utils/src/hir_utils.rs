@@ -19,7 +19,7 @@ use rustc_hir::{
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
-use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext};
+use rustc_span::{BytePos, ExpnKind, MacroKind, sym as rsym, Symbol, SyntaxContext};
 use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::slice;
@@ -454,7 +454,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),
-                Some(sym::todo_macro | sym::unimplemented_macro)
+                Some(rsym::todo_macro | sym::unimplemented_macro)
             )
         })
     }

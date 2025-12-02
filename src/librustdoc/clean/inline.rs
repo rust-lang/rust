@@ -38,6 +38,7 @@ use crate::formats::item_type::ItemType;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 pub(crate) fn try_inline(
     cx: &mut DocContext<'_>,
     res: Res,
@@ -770,6 +771,7 @@ fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::St
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn build_macro(
     tcx: TyCtxt<'_>,
     def_id: DefId,

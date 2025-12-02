@@ -180,6 +180,7 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub(crate) fn value_field(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -520,6 +521,7 @@ impl<'tcx> CPlace<'tcx> {
         self.write_cvalue_maybe_transmute(fx, from, "write_cvalue_transmute");
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn write_cvalue_maybe_transmute(
         self,
         fx: &mut FunctionCx<'_, '_, 'tcx>,
