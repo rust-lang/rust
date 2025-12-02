@@ -1,0 +1,31 @@
+error: expected one of `!` or `::`, found `Result`
+  --> $DIR/recovery.rs:6:10
+   |
+LL | trait Animal {
+   |              - while parsing this item list starting here
+LL |     Type Result = u8;
+   |          ^^^^^^ expected one of `!` or `::`
+LL |
+LL | }
+   | - the item list ends here
+   |
+help: write keyword `type` in lowercase
+   |
+LL -     Type Result = u8;
+LL +     type Result = u8;
+   |
+
+error: expected one of `!` or `::`, found `Foor`
+  --> $DIR/recovery.rs:10:8
+   |
+LL | Struct Foor {
+   |        ^^^^ expected one of `!` or `::`
+   |
+help: write keyword `struct` in lowercase (notice the capitalization)
+   |
+LL - Struct Foor {
+LL + struct Foor {
+   |
+
+error: aborting due to 2 previous errors
+
