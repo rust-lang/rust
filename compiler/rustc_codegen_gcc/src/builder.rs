@@ -943,6 +943,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
         todo!()
     }

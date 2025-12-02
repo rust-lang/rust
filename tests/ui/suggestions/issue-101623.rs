@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 pub struct Stuff {
     inner: *mut (),
 }

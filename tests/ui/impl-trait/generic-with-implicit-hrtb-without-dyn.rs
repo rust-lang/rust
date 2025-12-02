@@ -2,7 +2,7 @@
 //@[pre2021] edition:2015..2021
 //@[edition2021] edition:2021
 
-#![allow(warnings)]
+#![allow(warnings, todo_macro_calls)]
 
 fn ice() -> impl AsRef<Fn(&())> {
     //[pre2021]~^ ERROR: the trait bound `(): AsRef<(dyn for<'a> Fn(&'a ()) + 'static)>` is not satisfied [E0277]

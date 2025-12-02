@@ -1,6 +1,6 @@
 //@ run-rustfix
 // Check that we try to correct `=>` to `>=` in conditions.
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 
 fn main() {
     let a = 0;

@@ -1,7 +1,7 @@
 // Verifies that MIR building for a call expression respects
 // privacy when checking if a call return type is uninhabited.
 //@ run-rustfix
-#![allow(unreachable_code, unused_variables)]
+#![allow(unreachable_code, unused_variables, todo_macro_uses)]
 
 pub mod widget {
     enum Unimplemented {}

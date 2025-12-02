@@ -1704,6 +1704,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Returns the type of metadata for (potentially wide) pointers to this type,
     /// or the struct tail if the metadata type cannot be determined.
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub fn ptr_metadata_ty_or_tail(
         self,
         tcx: TyCtxt<'tcx>,

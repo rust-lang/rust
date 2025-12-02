@@ -1,4 +1,5 @@
 // Test that we emit an error if we cannot properly infer a constant.
+#![allow(todo_macro_calls)]
 fn foo<const N: usize, const M: usize>() -> [u8; N] {
     todo!()
 }

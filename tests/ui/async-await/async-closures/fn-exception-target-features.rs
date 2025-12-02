@@ -1,5 +1,6 @@
 //@ edition: 2021
 //@ only-x86_64
+#![allow(todo_macro_calls)]
 
 use std::future::Future;
 use std::pin::Pin;

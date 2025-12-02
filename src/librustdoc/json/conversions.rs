@@ -555,6 +555,7 @@ impl FromClean<rustc_hir::TraitBoundModifiers> for TraitBoundModifier {
 }
 
 impl FromClean<clean::Type> for Type {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn from_clean(ty: &clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,

@@ -1,3 +1,4 @@
+#![allow(todo_macro_calls)]
 use std::collections::hash_map::{Keys, HashMap};
 use std::marker::PhantomData;
 

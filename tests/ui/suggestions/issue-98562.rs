@@ -1,4 +1,5 @@
 //@ aux-build:extern-issue-98562.rs
+#![allow(todo_macro_calls)]
 
 extern crate extern_issue_98562;
 use extern_issue_98562::TraitA;

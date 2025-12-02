@@ -1,5 +1,6 @@
 //! Since there is only one possible `bar` method, we invoke it and subsequently
 //! constrain `foo`'s RPIT to `u32`.
+#![allow(todo_macro_calls)]
 
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver

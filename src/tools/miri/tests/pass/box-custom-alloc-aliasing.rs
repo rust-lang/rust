@@ -1,6 +1,7 @@
 //! Regression test for <https://github.com/rust-lang/miri/issues/3341>:
 //! If `Box` has a local allocator, then it can't be `noalias` as the allocator
 //! may want to access allocator state based on the data pointer.
+#![allow(todo_macro_calls)]
 
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows

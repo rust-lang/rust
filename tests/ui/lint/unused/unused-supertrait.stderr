@@ -1,12 +1,12 @@
 error: unused implementer of `Iterator` that must be used
-  --> $DIR/unused-supertrait.rs:9:5
+  --> $DIR/unused-supertrait.rs:10:5
    |
 LL |     it();
    |     ^^^^
    |
    = note: iterators are lazy and do nothing unless consumed
 note: the lint level is defined here
-  --> $DIR/unused-supertrait.rs:1:9
+  --> $DIR/unused-supertrait.rs:2:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^

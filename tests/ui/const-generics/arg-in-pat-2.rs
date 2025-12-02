@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 enum Generic<const N: usize> {
     Variant,
 }

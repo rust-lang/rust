@@ -1,5 +1,5 @@
 error: implementation of `Debug` is not general enough
-  --> $DIR/higher-ranked-auto-trait-9.rs:43:50
+  --> $DIR/higher-ranked-auto-trait-9.rs:44:50
    |
 LL |     let fut: &(dyn Future<Output = ()> + Send) = &fut as _;
    |                                                  ^^^^^^^^^ implementation of `Debug` is not general enough

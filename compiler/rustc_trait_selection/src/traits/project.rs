@@ -886,6 +886,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 #[instrument(level = "debug", skip(selcx, obligation, candidate_set))]
 fn assemble_candidates_from_impls<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,

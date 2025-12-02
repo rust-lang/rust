@@ -56,6 +56,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn uncached_gcc_type<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     layout: TyAndLayout<'tcx>,
@@ -177,6 +178,7 @@ pub trait LayoutGccExt<'tcx> {
 }
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn is_gcc_immediate(&self) -> bool {
         match self.backend_repr {
             BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,

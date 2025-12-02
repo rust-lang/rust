@@ -4,7 +4,7 @@ error[E0599]: the method `clone` exists for struct `struct_69725::Struct<A>`, bu
 LL |     let _ = Struct::<A>::new().clone();
    |                                ^^^^^ method cannot be called on `struct_69725::Struct<A>` due to unsatisfied trait bounds
    |
-  ::: $DIR/auxiliary/struct-69725.rs:2:1
+  ::: $DIR/auxiliary/struct-69725.rs:3:1
    |
 LL | pub struct Struct<A>(A);
    | -------------------- doesn't satisfy `struct_69725::Struct<A>: Clone`

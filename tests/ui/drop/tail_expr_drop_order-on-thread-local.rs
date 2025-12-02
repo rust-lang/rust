@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(todo_macro_calls)]
 
 #![feature(thread_local)]
 #![deny(tail_expr_drop_order)]

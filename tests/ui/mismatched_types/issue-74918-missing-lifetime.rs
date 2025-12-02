@@ -1,5 +1,6 @@
 // Regression test for issue #74918
 // Tests that we don't ICE after emitting an error
+#![allow(todo_macro_calls)]
 
 struct ChunkingIterator<T, S: 'static + Iterator<Item = T>> {
     source: S,
