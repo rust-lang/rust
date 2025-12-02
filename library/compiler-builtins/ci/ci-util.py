@@ -49,7 +49,7 @@ USAGE = cleandoc(
 
 REPO_ROOT = Path(__file__).parent.parent
 GIT = ["git", "-C", REPO_ROOT]
-DEFAULT_BRANCH = "master"
+DEFAULT_BRANCH = "main"
 WORKFLOW_NAME = "CI"  # Workflow that generates the benchmark artifacts
 ARTIFACT_PREFIX = "baseline-icount*"
 
@@ -186,7 +186,7 @@ class Context:
 
     def _init_change_list(self):
         """Create a list of files that have been changed. This uses GITHUB_REF if
-        available, otherwise a diff between `HEAD` and `master`.
+        available, otherwise a diff between `HEAD` and `main`.
         """
 
         # For pull requests, GitHub creates a ref `refs/pull/1234/merge` (1234 being

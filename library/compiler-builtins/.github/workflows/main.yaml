@@ -1,6 +1,6 @@
 name: CI
 on:
-  push: { branches: [master] }
+  push: { branches: [main] }
   pull_request:
 
 concurrency:

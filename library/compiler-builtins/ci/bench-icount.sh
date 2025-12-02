@@ -15,7 +15,7 @@ iai_home="iai-home"
 # Use the arch as a tag to disambiguate artifacts
 tag="$(echo "$target" | cut -d'-' -f1)"
 
-# Download the baseline from master
+# Download the baseline from main
 ./ci/ci-util.py locate-baseline --download --extract --tag "$tag"
 
 # Run benchmarks once
