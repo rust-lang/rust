@@ -1181,6 +1181,10 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// If a key from `other` is already present in `self`, the respective
     /// value from `self` will be overwritten with the respective value from `other`.
+    /// Similar to [`insert`], though, the key is not overwritten,
+    /// which matters for types that can be `==` without being identical.
+    ///
+    /// [`insert`]: BTreeMap::insert
     ///
     /// # Examples
     ///
