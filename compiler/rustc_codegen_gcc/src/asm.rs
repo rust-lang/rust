@@ -1,6 +1,7 @@
 // cSpell:ignoreRegExp [afkspqvwy]reg
 
 use std::borrow::Cow;
+use std::fmt::Write;
 
 use gccjit::{LValue, RValue, ToRValue, Type};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -10,6 +11,7 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::ty::Instance;
 use rustc_span::Span;
@@ -73,6 +75,7 @@ use crate::type_of::LayoutGccExt;
 const ATT_SYNTAX_INS: &str = ".att_syntax noprefix\n\t";
 const INTEL_SYNTAX_INS: &str = "\n\t.intel_syntax noprefix";
 
+/// Output operand for GCC Extended Asm.
 struct AsmOutOperand<'a, 'tcx, 'gcc> {
     rust_idx: usize,
     constraint: &'a str,
@@ -83,10 +86,11 @@ struct AsmOutOperand<'a, 'tcx, 'gcc> {
     out_place: Option<PlaceRef<'tcx, RValue<'gcc>>>,
 }
 
-struct AsmInOperand<'a, 'tcx> {
+/// Input operand for GCC Extended Asm.
+struct AsmInOperand<'a, 'gcc> {
     rust_idx: usize,
     constraint: Cow<'a, str>,
-    val: RValue<'tcx>,
+    val: RValue<'gcc>,
 }
 
 impl AsmOutOperand<'_, '_, '_> {
@@ -109,6 +113,25 @@ enum ConstraintOrRegister {
     Register(&'static str),
 }
 
+/// Returns the symbol name for an instance.
+///
+/// TODO(@Amanieu): Additional mangling is needed on some targets to add
+/// a leading underscore (Mach-O) or byte count suffixes (x86 Windows).
+fn get_symbol_name<'tcx>(tcx: rustc_middle::ty::TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx str {
+    tcx.symbol_name(instance).name
+}
+
+/// Returns the symbol name for a static definition.
+///
+/// TODO(@Amanieu): Additional mangling is needed on some targets to add
+/// a leading underscore (Mach-O).
+fn get_static_symbol_name<'tcx>(
+    tcx: rustc_middle::ty::TyCtxt<'tcx>,
+    def_id: rustc_hir::def_id::DefId,
+) -> &'tcx str {
+    tcx.symbol_name(Instance::mono(tcx, def_id)).name
+}
+
 impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_inline_asm(
         &mut self,
@@ -129,19 +152,22 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let is_x86 = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64);
         let att_dialect = is_x86 && options.contains(InlineAsmOptions::ATT_SYNTAX);
 
+        // Pre-allocate vectors with estimated capacity based on operand count
+        let estimated_capacity = rust_operands.len();
+
         // GCC index of an output operand equals its position in the array
-        let mut outputs = vec![];
+        let mut outputs = Vec::with_capacity(estimated_capacity);
 
         // GCC index of an input operand equals its position in the array
         // added to `outputs.len()`
-        let mut inputs = vec![];
+        let mut inputs = Vec::with_capacity(estimated_capacity);
 
         // GCC index of a label equals its position in the array added to
         // `outputs.len() + inputs.len()`.
-        let mut labels = vec![];
+        let mut labels = Vec::with_capacity(estimated_capacity);
 
         // Clobbers collected from `out("explicit register") _` and `inout("explicit_reg") var => _`
-        let mut clobbers = vec![];
+        let mut clobbers = Vec::with_capacity(estimated_capacity);
 
         // We're trying to preallocate space for the template
         let mut constants_len = 0;
@@ -164,13 +190,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Also, we don't emit any asm operands immediately; we save them to
         // the one of the buffers to be emitted later.
 
-        let mut input_registers = vec![];
+        // Use HashSet for O(1) lookup instead of Vec with O(n) contains()
+        let mut input_registers: FxHashSet<&'static str> = FxHashSet::default();
 
         for op in rust_operands {
             if let InlineAsmOperandRef::In { reg, .. } = *op
                 && let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg)
             {
-                input_registers.push(reg_name);
+                input_registers.insert(reg_name);
             }
         }
 
@@ -196,7 +223,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             continue;
                         }
                         (Register(reg_name), None) => {
-                            if input_registers.contains(&reg_name) {
+                            if input_registers.contains(reg_name) {
                                 // the `clobber_abi` operand is converted into a series of
                                 // `lateout("reg") _` operands. Of course, a user could also
                                 // explicitly define such an output operand.
@@ -301,16 +328,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
-                    // TODO(@Amanieu): Additional mangling is needed on
-                    // some targets to add a leading underscore (Mach-O)
-                    // or byte count suffixes (x86 Windows).
-                    constants_len += self.tcx.symbol_name(instance).name.len();
+                    constants_len += get_symbol_name(self.tcx, instance).len();
                 }
                 InlineAsmOperandRef::SymStatic { def_id } => {
-                    // TODO(@Amanieu): Additional mangling is needed on
-                    // some targets to add a leading underscore (Mach-O).
-                    constants_len +=
-                        self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name.len();
+                    constants_len += get_static_symbol_name(self.tcx, def_id).len();
                 }
 
                 InlineAsmOperandRef::Label { label } => {
@@ -447,9 +468,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     }
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier, span: _ } => {
-                    let mut push_to_template = |modifier, gcc_idx| {
-                        use std::fmt::Write;
-
+                    let mut push_to_template = |modifier: Option<char>, gcc_idx: usize| {
                         template_str.push('%');
                         if let Some(modifier) = modifier {
                             template_str.push(modifier);
@@ -463,7 +482,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let gcc_index = outputs
                                 .iter()
                                 .position(|op| operand_idx == op.rust_idx)
-                                .expect("wrong rust index");
+                                .expect("out operand not found in outputs");
                             push_to_template(modifier, gcc_index);
                         }
 
@@ -472,7 +491,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let in_gcc_index = inputs
                                 .iter()
                                 .position(|op| operand_idx == op.rust_idx)
-                                .expect("wrong rust index");
+                                .expect("in operand not found in inputs");
                             let gcc_index = in_gcc_index + outputs.len();
                             push_to_template(modifier, gcc_index);
                         }
@@ -484,23 +503,17 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                             let gcc_index = outputs
                                 .iter()
                                 .position(|op| operand_idx == op.rust_idx)
-                                .expect("wrong rust index");
+                                .expect("inout operand not found in outputs");
                             push_to_template(modifier, gcc_index);
                         }
 
                         InlineAsmOperandRef::SymFn { instance } => {
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O)
-                            // or byte count suffixes (x86 Windows).
-                            let name = self.tcx.symbol_name(instance).name;
+                            let name = get_symbol_name(self.tcx, instance);
                             template_str.push_str(name);
                         }
 
                         InlineAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O).
-                            let instance = Instance::mono(self.tcx, def_id);
-                            let name = self.tcx.symbol_name(instance).name;
+                            let name = get_static_symbol_name(self.tcx, def_id);
                             template_str.push_str(name);
                         }
 
@@ -510,7 +523,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                         InlineAsmOperandRef::Label { label } => {
                             let label_gcc_index =
-                                labels.iter().position(|&l| l == label).expect("wrong rust index");
+                                labels.iter().position(|&l| l == label).expect("label not found in labels");
                             let gcc_index = label_gcc_index + outputs.len() + inputs.len();
                             push_to_template(Some('l'), gcc_index);
                         }
@@ -568,6 +581,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
+            // SAFETY: `get_builtin_function` returns a Function which has the same memory
+            // representation as RValue in gccjit. This transmute is necessary because
+            // the gccjit API doesn't provide a direct conversion method.
             let builtin_unreachable: RValue<'gcc> =
                 unsafe { std::mem::transmute(builtin_unreachable) };
             self.call(self.type_void(), None, None, builtin_unreachable, &[], None, None);
@@ -608,10 +624,9 @@ fn estimate_template_length(
         })
         .sum();
 
-    // increase it by 5% to account for possible '%' signs that'll be duplicated
-    // I pulled the number out of blue, but should be fair enough
-    // as the upper bound
-    let mut res = (len as f32 * 1.05) as usize + constants_len;
+    // Increase by 5% to account for possible '%' signs that'll be duplicated.
+    // Using integer math instead of floating point for better performance.
+    let mut res = len + (len / 20) + constants_len;
 
     if att_dialect {
         res += INTEL_SYNTAX_INS.len() + ATT_SYNTAX_INS.len();
@@ -652,18 +667,20 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
         }
         InlineAsmReg::Arm(reg) => reg.name(),
         InlineAsmReg::AArch64(reg) => reg.name(),
-        _ => unimplemented!(),
+        reg => unimplemented!("explicit register constraint for {:?} is not yet supported", reg),
     }
 }
 
-/// They can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
+/// Converts a register class to its GCC constraint code.
+/// 
+/// Constraint codes can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Machine-Constraints.html
 fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
     match reg_class {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
-            unreachable!("clobber-only")
+            unreachable!("preg is clobber-only and should not appear in constraint generation")
         }
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
@@ -683,7 +700,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
-            unreachable!("clobber-only")
+            unreachable!("preg is clobber-only and should not appear in constraint generation")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
@@ -712,12 +729,12 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             | PowerPCInlineAsmRegClass::lr
             | PowerPCInlineAsmRegClass::xer,
         ) => {
-            unreachable!("clobber-only")
+            unreachable!("cr/ctr/lr/xer are clobber-only and should not appear in constraint generation")
         }
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
-            unreachable!("clobber-only")
+            unreachable!("vreg is clobber-only and should not appear in constraint generation")
         }
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => "Q",
@@ -731,7 +748,7 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
             | X86InlineAsmRegClass::x87_reg
             | X86InlineAsmRegClass::mmx_reg
             | X86InlineAsmRegClass::tmm_reg,
-        ) => unreachable!("clobber-only"),
+        ) => unreachable!("kreg0/x87_reg/mmx_reg/tmm_reg are clobber-only"),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
@@ -741,16 +758,19 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => "v",
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
-            unreachable!("clobber-only")
+            unreachable!("areg is clobber-only and should not appear in constraint generation")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => "r",
-        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
-        InlineAsmRegClass::Err => unreachable!(),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => {
+            unreachable!("yreg is clobber-only and should not appear in constraint generation")
+        }
+        InlineAsmRegClass::Err => unreachable!("InlineAsmRegClass::Err should be caught earlier"),
     }
 }
 
-/// Type to use for outputs that are discarded. It doesn't really matter what
-/// the type is, as long as it is valid for the constraint code.
+/// Returns a type suitable for outputs that are discarded.
+/// 
+/// It doesn't really matter what the type is, as long as it is valid for the constraint code.
 fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegClass) -> Type<'gcc> {
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => cx.type_i32(),
@@ -759,7 +779,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             cx.type_vector(cx.type_i64(), 2)
         }
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
-            unreachable!("clobber-only")
+            unreachable!("preg is clobber-only")
         }
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
@@ -774,7 +794,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         }
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
-            unreachable!("clobber-only")
+            unreachable!("preg is clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
@@ -795,12 +815,12 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             | PowerPCInlineAsmRegClass::lr
             | PowerPCInlineAsmRegClass::xer,
         ) => {
-            unreachable!("clobber-only")
+            unreachable!("cr/ctr/lr/xer are clobber-only")
         }
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
-            unreachable!("clobber-only")
+            unreachable!("vreg is clobber-only")
         }
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => cx.type_i32(),
@@ -813,7 +833,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::mmx_reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg0)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::tmm_reg) => {
-            unreachable!("clobber-only")
+            unreachable!("x87_reg/mmx_reg/kreg0/tmm_reg are clobber-only")
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => cx.type_i32(),
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => cx.type_i64(),
@@ -829,10 +849,10 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i64(), 2),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::areg) => {
-            unreachable!("clobber-only")
+            unreachable!("areg is clobber-only")
         }
         InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::reg) => cx.type_i32(),
-        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("clobber-only"),
+        InlineAsmRegClass::Sparc(SparcInlineAsmRegClass::yreg) => unreachable!("yreg is clobber-only"),
         InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::M68k(M68kInlineAsmRegClass::reg_addr) => cx.type_i32(),
@@ -842,7 +862,7 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("GCC backend does not support SPIR-V")
         }
-        InlineAsmRegClass::Err => unreachable!(),
+        InlineAsmRegClass::Err => unreachable!("InlineAsmRegClass::Err should be caught earlier"),
     }
 }
 
@@ -894,19 +914,13 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAsmOperandRef::SymFn { instance } => {
                             let function = get_fn(self, instance);
                             self.add_used_function(function);
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O)
-                            // or byte count suffixes (x86 Windows).
-                            let name = self.tcx.symbol_name(instance).name;
+                            let name = get_symbol_name(self.tcx, instance);
                             template_str.push_str(name);
                         }
 
                         GlobalAsmOperandRef::SymStatic { def_id } => {
                             // TODO(antoyo): set the global variable as used.
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O).
-                            let instance = Instance::mono(self.tcx, def_id);
-                            let name = self.tcx.symbol_name(instance).name;
+                            let name = get_static_symbol_name(self.tcx, def_id);
                             template_str.push_str(name);
                         }
                     }
@@ -923,20 +937,18 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
-        // TODO(@Amanieu): Additional mangling is needed on
-        // some targets to add a leading underscore (Mach-O)
-        // or byte count suffixes (x86 Windows).
-        self.tcx.symbol_name(instance).name.to_string()
+        get_symbol_name(self.tcx, instance).to_string()
     }
 }
 
+/// Converts Rust inline asm register modifiers to GCC modifiers.
+/// 
+/// Modifiers can be retrieved from https://gcc.gnu.org/onlinedocs/gcc/Modifiers.html#Modifiers
 fn modifier_to_gcc(
     arch: InlineAsmArch,
     reg: InlineAsmRegClass,
     modifier: Option<char>,
 ) -> Option<char> {
-    // The modifiers can be retrieved from
-    // https://gcc.gnu.org/onlinedocs/gcc/Modifiers.html#Modifiers
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => modifier,
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)
@@ -944,7 +956,7 @@ fn modifier_to_gcc(
             if modifier == Some('v') { None } else { modifier }
         }
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
-            unreachable!("clobber-only")
+            unreachable!("preg is clobber-only")
         }
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => None,
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
@@ -976,7 +988,7 @@ fn modifier_to_gcc(
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg)
         | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => None,
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::vreg) => {
-            unreachable!("clobber-only")
+            unreachable!("vreg is clobber-only")
         }
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
         | InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_abcd) => match modifier {
@@ -992,7 +1004,7 @@ fn modifier_to_gcc(
             Some('x') => Some('w'),
             Some('e') => Some('k'),
             Some('r') => Some('q'),
-            _ => unreachable!(),
+            Some(modifier) => unreachable!("unknown x86 reg modifier: {}", modifier),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg_byte) => None,
         InlineAsmRegClass::X86(reg @ X86InlineAsmRegClass::xmm_reg)
@@ -1004,6 +1016,7 @@ fn modifier_to_gcc(
             (_, Some('x')) => Some('x'),
             (_, Some('y')) => Some('t'),
             (_, Some('z')) => Some('g'),
+            (_, Some(modifier)) => unreachable!("unknown x86 vector reg modifier: {}", modifier),
             _ => unreachable!(),
         },
         InlineAsmRegClass::X86(X86InlineAsmRegClass::kreg) => None,
@@ -1013,7 +1026,7 @@ fn modifier_to_gcc(
             | X86InlineAsmRegClass::kreg0
             | X86InlineAsmRegClass::tmm_reg,
         ) => {
-            unreachable!("clobber-only")
+            unreachable!("x87_reg/mmx_reg/kreg0/tmm_reg are clobber-only")
         }
         InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => None,
         InlineAsmRegClass::Bpf(_) => None,
@@ -1031,8 +1044,8 @@ fn modifier_to_gcc(
         InlineAsmRegClass::M68k(_) => None,
         InlineAsmRegClass::CSKY(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
-            bug!("LLVM backend does not support SPIR-V")
+            bug!("GCC backend does not support SPIR-V")
         }
-        InlineAsmRegClass::Err => unreachable!(),
+        InlineAsmRegClass::Err => unreachable!("InlineAsmRegClass::Err should be caught earlier"),
     }
 }
