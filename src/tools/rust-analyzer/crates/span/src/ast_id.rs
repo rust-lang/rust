@@ -700,7 +700,7 @@ impl AstIdMap {
         }
     }
 
-    /// The [`AstId`] of the root node
+    /// The root node.
     pub fn root(&self) -> SyntaxNodePtr {
         self.arena[Idx::from_raw(RawIdx::from_u32(0))].0
     }

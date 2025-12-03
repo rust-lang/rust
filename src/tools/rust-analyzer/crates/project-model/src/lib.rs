@@ -1,7 +1,7 @@
 //! In rust-analyzer, we maintain a strict separation between pure abstract
 //! semantic project model and a concrete model of a particular build system.
 //!
-//! Pure model is represented by the [`base_db::CrateGraph`] from another crate.
+//! Pure model is represented by the `base_db::CrateGraph` from another crate.
 //!
 //! In this crate, we are concerned with "real world" project models.
 //!
@@ -13,7 +13,10 @@
 //! * Project discovery (where's the relevant Cargo.toml for the current dir).
 //! * Custom build steps (`build.rs` code generation and compilation of
 //!   procedural macros).
-//! * Lowering of concrete model to a [`base_db::CrateGraph`]
+//! * Lowering of concrete model to a `base_db::CrateGraph`
+
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 pub mod project_json;
 pub mod toolchain_info {

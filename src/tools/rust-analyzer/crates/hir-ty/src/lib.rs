@@ -2,6 +2,8 @@
 //! information and various assists.
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 // FIXME: We used to import `rustc_*` deps from `rustc_private` with `feature = "in-rust-tree" but
 // temporarily switched to crates.io versions due to hardships that working on them from rustc

@@ -238,7 +238,7 @@ language_item_table! { LangItems =>
     Clone,                   sym::clone,               clone_trait,                TraitId,                GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 TraitId,                GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    TraitId,                GenericRequirement::None;
-    /// The associated item of the [`DiscriminantKind`] trait.
+    /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          TypeAliasId,            GenericRequirement::None;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              TraitId,                GenericRequirement::None;

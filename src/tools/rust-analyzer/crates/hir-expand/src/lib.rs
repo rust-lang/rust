@@ -4,6 +4,8 @@
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+// It's useful to refer to code that is private in doc comments.
+#![allow(rustdoc::private_intra_doc_links)]
 
 pub use intern;
 
@@ -860,7 +862,7 @@ impl ExpansionInfo {
     }
 
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
-    /// Unlike [`map_range_down_exact`], this will consider spans that contain the given span.
+    /// Unlike [`ExpansionInfo::map_range_down_exact`], this will consider spans that contain the given span.
     ///
     /// Note this does a linear search through the entire backing vector of the spanmap.
     pub fn map_range_down(
