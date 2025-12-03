@@ -4,7 +4,6 @@ use rustc_ast::{self as ast};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan,
 };
 use rustc_feature::AttributeTemplate;
 use rustc_hir::AttrPath;
@@ -587,14 +586,6 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
 pub(crate) struct DocAliasDuplicated {
     #[label]
     pub first_defn: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_doc_inline_conflict)]
-#[help]
-pub(crate) struct DocKeywordConflict {
-    #[primary_span]
-    pub spans: MultiSpan,
 }
 
 #[derive(Diagnostic)]

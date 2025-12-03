@@ -107,10 +107,10 @@ passes_diagnostic_item_first_defined =
     the diagnostic item is first defined here
 
 passes_doc_alias_bad_location =
-    doc alias attribute isn't allowed on {$location}
+    `#[doc(alias = "...")]` isn't allowed on {$location}
 
 passes_doc_alias_not_an_alias =
-    {$attr_str} is the same as the item's name
+    `#[doc(alias = "{$attr_str}"]` is the same as the item's name
 
 passes_doc_attr_not_crate_level =
     `#![doc({$attr_name} = "...")]` isn't allowed as a crate-level attribute
@@ -118,7 +118,15 @@ passes_doc_attr_not_crate_level =
 passes_doc_fake_variadic_not_valid =
     `#[doc(fake_variadic)]` must be used on the first of a set of tuple or fn pointer trait impls with varying arity
 
+passes_doc_inline_conflict =
+    conflicting doc inlining attributes
+    .help = remove one of the conflicting attributes
 
+passes_doc_inline_conflict_first =
+    this attribute...
+
+passes_doc_inline_conflict_second =
+    {"."}..conflicts with this attribute
 
 passes_doc_inline_only_use =
     this attribute can only be applied to a `use` item

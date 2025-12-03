@@ -2,7 +2,6 @@
 #![allow(unused_imports)]
 
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_errors::MultiSpan;
 use rustc_feature::template;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -18,7 +17,7 @@ use crate::fluent_generated as fluent;
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttributeNotAttribute,
-    DocKeywordConflict, DocKeywordNotKeyword,
+    DocKeywordNotKeyword,
 };
 
 fn check_keyword<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, keyword: Symbol, span: Span) -> bool {
@@ -204,19 +203,7 @@ impl DocParser {
             return;
         }
 
-        let span = path.span();
-
-        if let Some((prev_inline, prev_span)) = self.attribute.inline {
-            if prev_inline == inline {
-                let mut spans = MultiSpan::from_spans(vec![prev_span, span]);
-                spans.push_span_label(prev_span, fluent::attr_parsing_doc_inline_conflict_first);
-                spans.push_span_label(span, fluent::attr_parsing_doc_inline_conflict_second);
-                cx.emit_err(DocKeywordConflict { spans });
-                return;
-            }
-        }
-
-        self.attribute.inline = Some((inline, span));
+        self.attribute.inline.push((inline, path.span()));
     }
 
     fn parse_cfg<'c, S: Stage>(
