@@ -1,6 +1,6 @@
 use std::{mem, ptr};
 
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, BranchKey};
 
 use super::{GlobalCtxt, TyCtxt};
 use crate::dep_graph::TaskDepsRef;
@@ -23,6 +23,9 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// Used to prevent queries from calling too deeply.
     pub query_depth: usize,
 
+    /// Branch per query, used to calculate deterministic query cycles
+    pub query_branch: BranchKey,
+
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
     pub task_deps: TaskDepsRef<'a>,
@@ -31,7 +34,13 @@ pub struct ImplicitCtxt<'a, 'tcx> {
 impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
     pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
         let tcx = TyCtxt { gcx };
-        ImplicitCtxt { tcx, query: None, query_depth: 0, task_deps: TaskDepsRef::Ignore }
+        ImplicitCtxt {
+            tcx,
+            query: None,
+            query_depth: 0,
+            query_branch: BranchKey::root(),
+            task_deps: TaskDepsRef::Ignore,
+        }
     }
 }
 
