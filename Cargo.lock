@@ -5615,6 +5615,7 @@ dependencies = [
  "semver",
  "serde",
  "similar",
+ "tempfile",
  "termcolor",
  "toml 0.7.8",
  "walkdir",
