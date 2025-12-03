@@ -941,6 +941,8 @@ Contains a single test. It imports a massive amount of very similar types from a
 
 ## `tests/ui/never_type/`
 
+Tests relating to the never type. Most tests are specifically about the never type fallback behavior.
+
 See [Tracking issue for promoting `!` to a type (RFC 1216) #35121](https://github.com/rust-lang/rust/issues/35121).
 
 ## `tests/ui/new-range/`
