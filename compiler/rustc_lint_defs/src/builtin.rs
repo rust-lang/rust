@@ -88,6 +88,7 @@ declare_lint_pass! {
         RENAMED_AND_REMOVED_LINTS,
         REPR_C_ENUMS_LARGER_THAN_INT,
         REPR_TRANSPARENT_NON_ZST_FIELDS,
+        RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
         RTSAN_NONBLOCKING_ASYNC,
         RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
         RUST_2021_INCOMPATIBLE_OR_PATTERNS,
@@ -98,11 +99,10 @@ declare_lint_pass! {
         RUST_2024_PRELUDE_COLLISIONS,
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+        SHADOWING_SUPERTRAIT_ITEMS,
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
-        SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
-        SUPERTRAIT_ITEM_SHADOWING_USAGE,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -4922,15 +4922,16 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `supertrait_item_shadowing_usage` lint detects when the
+    /// The `resolving_to_items_shadowing_supertrait_items` lint detects when the
     /// usage of an item that is provided by both a subtrait and supertrait
     /// is shadowed, preferring the subtrait.
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
     /// #![feature(supertrait_item_shadowing)]
-    /// #![deny(supertrait_item_shadowing_usage)]
+    /// #![deny(resolving_to_items_shadowing_supertrait_items)]
     ///
     /// trait Upstream {
     ///     fn hello(&self) {}
@@ -4944,7 +4945,8 @@ declare_lint! {
     ///
     /// struct MyType;
     /// MyType.hello();
-    /// ```
+    #[cfg_attr(bootstrap, doc = "```")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
     ///
     /// {{produces}}
     ///
@@ -4955,7 +4957,7 @@ declare_lint! {
     /// selection. In order to mitigate side-effects of this happening
     /// silently, this lint detects these cases when users want to deny them
     /// or fix the call sites.
-    pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
+    pub RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
     // FIXME(supertrait_item_shadowing): It is not decided if this should
     // warn by default at the call site.
     Allow,
@@ -4964,15 +4966,16 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `supertrait_item_shadowing_definition` lint detects when the
+    /// The `shadowing_supertrait_items` lint detects when the
     /// definition of an item that is provided by both a subtrait and
     /// supertrait is shadowed, preferring the subtrait.
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    #[cfg_attr(bootstrap, doc = "```ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
     /// #![feature(supertrait_item_shadowing)]
-    /// #![deny(supertrait_item_shadowing_definition)]
+    /// #![deny(shadowing_supertrait_items)]
     ///
     /// trait Upstream {
     ///     fn hello(&self) {}
@@ -4983,7 +4986,8 @@ declare_lint! {
     ///     fn hello(&self) {}
     /// }
     /// impl<T> Downstream for T {}
-    /// ```
+    #[cfg_attr(bootstrap, doc = "```")]
+    #[cfg_attr(not(bootstrap), doc = "```")]
     ///
     /// {{produces}}
     ///
@@ -4994,7 +4998,7 @@ declare_lint! {
     /// selection. In order to mitigate side-effects of this happening
     /// silently, this lint detects these cases when users want to deny them
     /// or fix their trait definitions.
-    pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+    pub SHADOWING_SUPERTRAIT_ITEMS,
     // FIXME(supertrait_item_shadowing): It is not decided if this should
     // warn by default at the usage site.
     Allow,
