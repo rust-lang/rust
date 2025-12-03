@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_middle::mir;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, BranchSpan};
@@ -22,38 +23,6 @@ pub(crate) struct ExpnTree {
 impl ExpnTree {
     pub(crate) fn get(&self, expn_id: ExpnId) -> Option<&ExpnNode> {
         self.nodes.get(&expn_id)
-    }
-
-    /// Yields the tree node for the given expansion ID (if present), followed
-    /// by the nodes of all of its descendants in depth-first order.
-    pub(crate) fn iter_node_and_descendants(
-        &self,
-        root_expn_id: ExpnId,
-    ) -> impl Iterator<Item = &ExpnNode> {
-        gen move {
-            let Some(root_node) = self.get(root_expn_id) else { return };
-            yield root_node;
-
-            // Stack of child-node-ID iterators that drives the depth-first traversal.
-            let mut iter_stack = vec![root_node.child_expn_ids.iter()];
-
-            while let Some(curr_iter) = iter_stack.last_mut() {
-                // Pull the next ID from the top of the stack.
-                let Some(&curr_id) = curr_iter.next() else {
-                    iter_stack.pop();
-                    continue;
-                };
-
-                // Yield this node.
-                let Some(node) = self.get(curr_id) else { continue };
-                yield node;
-
-                // Push the node's children, to be traversed next.
-                if !node.child_expn_ids.is_empty() {
-                    iter_stack.push(node.child_expn_ids.iter());
-                }
-            }
-        }
     }
 }
 
@@ -85,6 +54,10 @@ pub(crate) struct ExpnNode {
     pub(crate) spans: Vec<SpanWithBcb>,
     /// Expansions whose call-site is in this expansion.
     pub(crate) child_expn_ids: FxIndexSet<ExpnId>,
+    /// The "minimum" and "maximum" BCBs (in dominator order) of ordinary spans
+    /// belonging to this tree node and all of its descendants. Used when
+    /// creating a single code mapping representing an entire child expansion.
+    pub(crate) minmax_bcbs: Option<MinMaxBcbs>,
 
     /// Branch spans (recorded during MIR building) belonging to this expansion.
     pub(crate) branch_spans: Vec<BranchSpan>,
@@ -114,6 +87,7 @@ impl ExpnNode {
 
             spans: vec![],
             child_expn_ids: FxIndexSet::default(),
+            minmax_bcbs: None,
 
             branch_spans: vec![],
 
@@ -163,6 +137,17 @@ pub(crate) fn build_expn_tree(
 
     // Sort the tree nodes into depth-first order.
     sort_nodes_depth_first(&mut nodes)?;
+
+    // For each node, determine its "minimum" and "maximum" BCBs, based on its
+    // own spans and its immediate children. This relies on the nodes having
+    // been sorted, so that each node's children are processed before the node
+    // itself.
+    for i in (0..nodes.len()).rev() {
+        // Computing a node's min/max BCBs requires a shared ref to other nodes.
+        let minmax_bcbs = minmax_bcbs_for_expn_tree_node(graph, &nodes, &nodes[i]);
+        // Now we can mutate the current node to set its min/max BCBs.
+        nodes[i].minmax_bcbs = minmax_bcbs;
+    }
 
     // If we have a span for the function signature, associate it with the
     // corresponding expansion tree node.
@@ -224,4 +209,32 @@ fn sort_nodes_depth_first(nodes: &mut FxIndexMap<ExpnId, ExpnNode>) -> Result<()
     }
 
     Ok(())
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct MinMaxBcbs {
+    pub(crate) min: BasicCoverageBlock,
+    pub(crate) max: BasicCoverageBlock,
+}
+
+/// For a single node in the expansion tree, compute its "minimum" and "maximum"
+/// BCBs (in dominator order), from among the BCBs of its immediate spans,
+/// and the min/max of its immediate children.
+fn minmax_bcbs_for_expn_tree_node(
+    graph: &CoverageGraph,
+    nodes: &FxIndexMap<ExpnId, ExpnNode>,
+    node: &ExpnNode,
+) -> Option<MinMaxBcbs> {
+    let immediate_span_bcbs = node.spans.iter().map(|sp: &SpanWithBcb| sp.bcb);
+    let child_minmax_bcbs = node
+        .child_expn_ids
+        .iter()
+        .flat_map(|id| nodes.get(id))
+        .flat_map(|child| child.minmax_bcbs)
+        .flat_map(|MinMaxBcbs { min, max }| [min, max]);
+
+    let (min, max) = Iterator::chain(immediate_span_bcbs, child_minmax_bcbs)
+        .minmax_by(|&a, &b| graph.cmp_in_dominator_order(a, b))
+        .into_option()?;
+    Some(MinMaxBcbs { min, max })
 }
