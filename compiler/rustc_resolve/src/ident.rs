@@ -127,9 +127,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
         let extern_prelude = matches!(scope_set, ScopeSet::ExternPrelude);
         let mut scope = match ns {
-            _ if module_and_extern_prelude => Scope::Module(module, None),
+            _ if module_and_extern_prelude => Scope::ModuleNonGlobs(module, None),
             _ if extern_prelude => Scope::ExternPreludeItems,
-            TypeNS | ValueNS => Scope::Module(module, None),
+            TypeNS | ValueNS => Scope::ModuleNonGlobs(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
         };
         let mut ctxt = ctxt.normalize_to_macros_2_0();
@@ -156,7 +156,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     true
                 }
-                Scope::Module(..) => true,
+                Scope::ModuleNonGlobs(..) | Scope::ModuleGlobs(..) => true,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
                 Scope::ExternPreludeItems | Scope::ExternPreludeFlags => {
@@ -197,20 +197,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     MacroRulesScope::Invocation(invoc_id) => {
                         Scope::MacroRules(self.invocation_parent_scopes[&invoc_id].macro_rules)
                     }
-                    MacroRulesScope::Empty => Scope::Module(module, None),
+                    MacroRulesScope::Empty => Scope::ModuleNonGlobs(module, None),
                 },
-                Scope::Module(..) if module_and_extern_prelude => match ns {
+                Scope::ModuleNonGlobs(module, lint_id) => Scope::ModuleGlobs(module, lint_id),
+                Scope::ModuleGlobs(..) if module_and_extern_prelude => match ns {
                     TypeNS => {
                         ctxt.adjust(ExpnId::root());
                         Scope::ExternPreludeItems
                     }
                     ValueNS | MacroNS => break,
                 },
-                Scope::Module(module, prev_lint_id) => {
+                Scope::ModuleGlobs(module, prev_lint_id) => {
                     use_prelude = !module.no_implicit_prelude;
                     match self.hygienic_lexical_parent(module, &mut ctxt, derive_fallback_lint_id) {
                         Some((parent_module, lint_id)) => {
-                            Scope::Module(parent_module, lint_id.or(prev_lint_id))
+                            Scope::ModuleNonGlobs(parent_module, lint_id.or(prev_lint_id))
                         }
                         None => {
                             ctxt.adjust(ExpnId::root());
@@ -583,7 +584,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 MacroRulesScope::Invocation(_) => Err(Determinacy::Undetermined),
                 _ => Err(Determinacy::Determined),
             },
-            Scope::Module(module, derive_fallback_lint_id) => {
+            Scope::ModuleNonGlobs(module, derive_fallback_lint_id) => {
                 let (adjusted_parent_scope, adjusted_finalize) =
                     if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
                         (parent_scope, finalize)
@@ -593,7 +594,58 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             finalize.map(|f| Finalize { used: Used::Scope, ..f }),
                         )
                     };
-                let binding = self.reborrow().resolve_ident_in_module_unadjusted(
+                let binding = self.reborrow().resolve_ident_in_module_non_globs_unadjusted(
+                    module,
+                    ident,
+                    ns,
+                    adjusted_parent_scope,
+                    Shadowing::Restricted,
+                    adjusted_finalize,
+                    ignore_binding,
+                    ignore_import,
+                );
+                match binding {
+                    Ok(binding) => {
+                        if let Some(lint_id) = derive_fallback_lint_id {
+                            self.get_mut().lint_buffer.buffer_lint(
+                                PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+                                lint_id,
+                                orig_ident.span,
+                                errors::ProcMacroDeriveResolutionFallback {
+                                    span: orig_ident.span,
+                                    ns_descr: ns.descr(),
+                                    ident,
+                                },
+                            );
+                        }
+                        let misc_flags = if module == self.graph_root {
+                            Flags::MISC_SUGGEST_CRATE
+                        } else if module.is_normal() {
+                            Flags::MISC_SUGGEST_SELF
+                        } else {
+                            Flags::empty()
+                        };
+                        Ok((binding, Flags::MODULE | misc_flags))
+                    }
+                    Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
+                    Err(ControlFlow::Break(Determinacy::Undetermined)) => {
+                        return Err(ControlFlow::Break(Determinacy::determined(force)));
+                    }
+                    // Privacy errors, do not happen during in scope resolution.
+                    Err(ControlFlow::Break(Determinacy::Determined)) => unreachable!(),
+                }
+            }
+            Scope::ModuleGlobs(module, derive_fallback_lint_id) => {
+                let (adjusted_parent_scope, adjusted_finalize) =
+                    if matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..)) {
+                        (parent_scope, finalize)
+                    } else {
+                        (
+                            &ParentScope { module, ..*parent_scope },
+                            finalize.map(|f| Finalize { used: Used::Scope, ..f }),
+                        )
+                    };
+                let binding = self.reborrow().resolve_ident_in_module_globs_unadjusted(
                     module,
                     ident,
                     ns,
