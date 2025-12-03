@@ -321,10 +321,10 @@ pub struct Config {
     pub python: String,
 
     /// Path to the `src/tools/jsondocck/` bootstrap tool executable.
-    pub jsondocck_path: Option<String>,
+    pub jsondocck_path: Option<Utf8PathBuf>,
 
     /// Path to the `src/tools/jsondoclint/` bootstrap tool executable.
-    pub jsondoclint_path: Option<String>,
+    pub jsondoclint_path: Option<Utf8PathBuf>,
 
     /// Path to a host LLVM `FileCheck` executable.
     pub llvm_filecheck: Option<Utf8PathBuf>,
@@ -337,7 +337,7 @@ pub struct Config {
 
     /// The path to the **target** `clang` executable to run `clang`-based tests with. If `None`,
     /// then these tests will be ignored.
-    pub run_clang_based_tests_with: Option<String>,
+    pub run_clang_based_tests_with: Option<Utf8PathBuf>,
 
     /// Path to the directory containing the sources. This corresponds to the root folder of a
     /// `rust-lang/rust` checkout.
@@ -530,7 +530,7 @@ pub struct Config {
     ///
     /// FIXME: we are propagating a python from `PYTHONPATH`, not from an explicit config for gdb
     /// debugger script.
-    pub gdb: Option<String>,
+    pub gdb: Option<Utf8PathBuf>,
 
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     ///
@@ -575,7 +575,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_path: String,
+    pub adb_path: Utf8PathBuf,
 
     /// Extra parameter to run test suite on `arm-linux-androideabi`.
     ///
@@ -584,7 +584,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_test_dir: String,
+    pub adb_test_dir: Utf8PathBuf,
 
     /// Status whether android device available or not. When unavailable, this will cause tests to
     /// panic when the test binary is attempted to be run.
@@ -660,7 +660,7 @@ pub struct Config {
     pub llvm_components: String,
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
-    pub nodejs: Option<String>,
+    pub nodejs: Option<Utf8PathBuf>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,

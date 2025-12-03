@@ -384,9 +384,11 @@ fn parse_config(args: Vec<String>) -> Config {
         rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
         python: matches.opt_str("python").unwrap(),
-        jsondocck_path: matches.opt_str("jsondocck-path"),
-        jsondoclint_path: matches.opt_str("jsondoclint-path"),
-        run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
+        jsondocck_path: matches.opt_str("jsondocck-path").map(Utf8PathBuf::from),
+        jsondoclint_path: matches.opt_str("jsondoclint-path").map(Utf8PathBuf::from),
+        run_clang_based_tests_with: matches
+            .opt_str("run-clang-based-tests-with")
+            .map(Utf8PathBuf::from),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(Utf8PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(Utf8PathBuf::from),
 
@@ -441,8 +443,8 @@ fn parse_config(args: Vec<String>) -> Config {
         llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
-        adb_path: opt_str2(matches.opt_str("adb-path")),
-        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
+        adb_path: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-path"))),
+        adb_test_dir: Utf8PathBuf::from(opt_str2(matches.opt_str("adb-test-dir"))),
         adb_device_status: opt_str2(matches.opt_str("target")).contains("android")
             && "(none)" != opt_str2(matches.opt_str("adb-test-dir"))
             && !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
@@ -466,7 +468,7 @@ fn parse_config(args: Vec<String>) -> Config {
         target_linker: matches.opt_str("target-linker"),
         host_linker: matches.opt_str("host-linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
-        nodejs: matches.opt_str("nodejs"),
+        nodejs: matches.opt_str("nodejs").map(Utf8PathBuf::from),
 
         force_rerun: matches.opt_present("force-rerun"),
 
