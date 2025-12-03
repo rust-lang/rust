@@ -28,14 +28,23 @@ runners:
 
   - &job-windows
     os: windows-2025
+    env:
+      # Avoid adding Git for Windows /mingw64/bin dir to PATH
+      MSYSTEM: ""
     <<: *base-job
 
   - &job-windows-8c
     os: windows-2025-8core-32gb
+    env:
+      # Avoid adding Git for Windows /mingw64/bin dir to PATH
+      MSYSTEM: ""
     <<: *base-job
 
   - &job-windows-aarch64
     os: windows-11-arm
+    env:
+      # Avoid adding Git for Windows /mingw64/bin dir to PATH
+      MSYSTEM: ""
     <<: *base-job
 
   - &job-aarch64-linux
