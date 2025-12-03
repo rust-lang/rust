@@ -1,3 +1,5 @@
+// Regression test for #132765
+//
 // We have two function parameters with types:
 // - `&?0`
 // - `Box<for<'a> fn(<?0 as Trait<'a>>::Item)>`

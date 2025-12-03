@@ -9,9 +9,7 @@ fn fndef_lub_leak_check() {
         };
     }
 
-    // These don't currently lub but could in theory one day.
-    // If that happens this test should be adjusted to use
-    // fn ptrs that can't be lub'd.
+    // Unused parameters on FnDefs are considered invariant
     let lhs = foo::<for<'a> fn(&'static (), &'a ())>;
     let rhs = foo::<for<'a> fn(&'a (), &'static ())>;
 
