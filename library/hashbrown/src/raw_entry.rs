@@ -162,7 +162,7 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
 ///
 /// See the [`HashMap::raw_entry_mut`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
+/// [`HashMap::raw_entry_mut`]: HashMap::raw_entry_mut
 ///
 /// # Examples
 ///
@@ -221,13 +221,12 @@ pub struct RawEntryBuilderMut<'a, K, V, S, A: Allocator = Global> {
 ///
 /// This is a lower-level version of [`Entry`].
 ///
+/// [`Entry`]: crate::hash_map::Entry
+///
 /// This `enum` is constructed through the [`raw_entry_mut`] method on [`HashMap`],
 /// then calling one of the methods of that [`RawEntryBuilderMut`].
 ///
-/// [`HashMap`]: struct.HashMap.html
-/// [`Entry`]: enum.Entry.html
-/// [`raw_entry_mut`]: struct.HashMap.html#method.raw_entry_mut
-/// [`RawEntryBuilderMut`]: struct.RawEntryBuilderMut.html
+/// [`raw_entry_mut`]: HashMap::raw_entry_mut
 ///
 /// # Examples
 ///
@@ -335,8 +334,6 @@ pub enum RawEntryMut<'a, K, V, S, A: Allocator = Global> {
 /// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
 ///
-/// [`RawEntryMut`]: enum.RawEntryMut.html
-///
 /// # Examples
 ///
 /// ```
@@ -418,8 +415,6 @@ where
 /// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`RawEntryMut`] enum.
 ///
-/// [`RawEntryMut`]: enum.RawEntryMut.html
-///
 /// # Examples
 ///
 /// ```
@@ -472,7 +467,7 @@ pub struct RawVacantEntryMut<'a, K, V, S, A: Allocator = Global> {
 ///
 /// See the [`HashMap::raw_entry`] docs for usage examples.
 ///
-/// [`HashMap::raw_entry`]: struct.HashMap.html#method.raw_entry
+/// [`HashMap::raw_entry`]: HashMap::raw_entry
 ///
 /// # Examples
 ///

@@ -13,9 +13,8 @@ use rayon::iter::{FromParallelIterator, IntoParallelIterator, ParallelExtend, Pa
 /// (provided by the [`IntoParallelIterator`] trait).
 /// See its documentation for more.
 ///
-/// [`into_par_iter`]: /hashbrown/struct.HashSet.html#method.into_par_iter
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
-/// [`IntoParallelIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelIterator.html
+/// [`into_par_iter`]: rayon::iter::IntoParallelIterator::into_par_iter
+/// [`IntoParallelIterator`]: rayon::iter::IntoParallelIterator
 pub struct IntoParIter<T, A: Allocator = Global> {
     inner: map::IntoParIter<T, (), A>,
 }
@@ -36,8 +35,7 @@ impl<T: Send, A: Allocator + Send> ParallelIterator for IntoParIter<T, A> {
 /// This iterator is created by the [`par_drain`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`par_drain`]: /hashbrown/struct.HashSet.html#method.par_drain
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
+/// [`par_drain`]: HashSet::par_drain
 pub struct ParDrain<'a, T, A: Allocator = Global> {
     inner: map::ParDrain<'a, T, (), A>,
 }
@@ -59,9 +57,8 @@ impl<T: Send, A: Allocator + Send + Sync> ParallelIterator for ParDrain<'_, T, A
 /// (provided by the [`IntoParallelRefIterator`] trait).
 /// See its documentation for more.
 ///
-/// [`par_iter`]: /hashbrown/struct.HashSet.html#method.par_iter
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
-/// [`IntoParallelRefIterator`]: https://docs.rs/rayon/1.0/rayon/iter/trait.IntoParallelRefIterator.html
+/// [`par_iter`]: rayon::iter::IntoParallelRefIterator::par_iter
+/// [`IntoParallelRefIterator`]: rayon::iter::IntoParallelRefIterator
 pub struct ParIter<'a, T> {
     inner: map::ParKeys<'a, T, ()>,
 }
@@ -83,8 +80,7 @@ impl<'a, T: Sync> ParallelIterator for ParIter<'a, T> {
 /// This iterator is created by the [`par_difference`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`par_difference`]: /hashbrown/struct.HashSet.html#method.par_difference
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
+/// [`par_difference`]: HashSet::par_difference
 pub struct ParDifference<'a, T, S, A: Allocator = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
@@ -116,8 +112,7 @@ where
 /// [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`par_symmetric_difference`]: /hashbrown/struct.HashSet.html#method.par_symmetric_difference
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
+/// [`par_symmetric_difference`]: HashSet::par_symmetric_difference
 pub struct ParSymmetricDifference<'a, T, S, A: Allocator = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
@@ -148,8 +143,7 @@ where
 /// This iterator is created by the [`par_intersection`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`par_intersection`]: /hashbrown/struct.HashSet.html#method.par_intersection
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
+/// [`par_intersection`]: HashSet::par_intersection
 pub struct ParIntersection<'a, T, S, A: Allocator = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
@@ -179,8 +173,7 @@ where
 /// This iterator is created by the [`par_union`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`par_union`]: /hashbrown/struct.HashSet.html#method.par_union
-/// [`HashSet`]: /hashbrown/struct.HashSet.html
+/// [`par_union`]: HashSet::par_union
 pub struct ParUnion<'a, T, S, A: Allocator = Global> {
     a: &'a HashSet<T, S, A>,
     b: &'a HashSet<T, S, A>,
