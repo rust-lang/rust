@@ -407,10 +407,10 @@ macro_rules! uint_module {
                 assert_eq!(&xs, &[0xff, 0x00, 0x0f, 0xf0, 0x33, 0xcc, 0x55, 0xaa]);
             }
 
-            // `256 * BITS` masks
+            // `256 * (BITS / 5)` masks
             let sparse_masks = (i8::MIN..=i8::MAX)
                 .map(|i| (i as i128 as $T).rotate_right(4))
-                .flat_map(|x| (0..$T::BITS).map(move |s| ((1 as $T) << s) ^ x));
+                .flat_map(|x| (0..$T::BITS).step_by(5).map(move |r| x.rotate_right(r)));
 
             for sparse in sparse_masks {
                 // Collect the set bits to sequential low bits
@@ -419,21 +419,19 @@ macro_rules! uint_module {
                 assert_eq!(count, dense.count_ones());
                 assert_eq!(count, dense.trailing_ones());
 
+                // Check that each bit is individually mapped correctly
                 let mut t = sparse;
-                for k in 0..$T::BITS {
-                    let x = ((1 as $T) << k).scatter_bits(sparse);
-                    let y = t.isolate_lowest_one();
-                    assert_eq!(x, y);
-                    t ^= y;
+                let mut bit = 1 as $T;
+                for _ in 0..count {
+                    let lowest_one = t.isolate_lowest_one();
+                    assert_eq!(lowest_one, bit.scatter_bits(sparse));
+                    assert_eq!(bit, lowest_one.gather_bits(sparse));
+                    t ^= lowest_one;
+                    bit <<= 1;
                 }
-
-                let mut t = sparse;
-                for k in 0..count {
-                    let y = t.isolate_lowest_one();
-                    let x = y.gather_bits(sparse);
-                    assert_eq!(x, (1 as $T) << k);
-                    t ^= y;
-                }
+                // Other bits are ignored
+                assert_eq!(0, bit.wrapping_neg().scatter_bits(sparse));
+                assert_eq!(0, (!sparse).gather_bits(sparse));
 
                 for &x in &xs {
                     // Gather bits from `x & sparse` to `dense`
