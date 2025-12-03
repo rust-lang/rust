@@ -33,7 +33,7 @@ Options:
                         document private items
         --document-hidden-items 
                         document items that have doc(hidden)
-        --hide-deprecated-items
+        --hide-deprecated-items 
                         Hide items marked deprecated from listings, but pages
                         and links still generated.
         --test          run code examples as tests
