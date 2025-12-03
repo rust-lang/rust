@@ -2,6 +2,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
 use crate::sys::map_motor_error;
+use crate::thread::ThreadInit;
 use crate::time::Duration;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 256;
@@ -14,21 +15,21 @@ unsafe impl Send for Thread {}
 unsafe impl Sync for Thread {}
 
 impl Thread {
-    pub unsafe fn new(
-        stack: usize,
-        _name: Option<&str>,
-        p: Box<dyn FnOnce()>,
-    ) -> io::Result<Thread> {
+    pub unsafe fn new(stack: usize, init: Box<ThreadInit>) -> io::Result<Thread> {
         extern "C" fn __moto_rt_thread_fn(thread_arg: u64) {
             unsafe {
-                Box::from_raw(
-                    core::ptr::with_exposed_provenance::<Box<dyn FnOnce()>>(thread_arg as usize)
-                        .cast_mut(),
-                )();
+                let init = Box::from_raw(core::ptr::with_exposed_provenance_mut::<ThreadInit>(
+                    thread_arg as usize,
+                ));
+                let rust_start = init.init();
+                if let Some(name) = crate::thread::current().name() {
+                    let _ = moto_rt::thread::set_name(name);
+                }
+                rust_start();
             }
         }
 
-        let thread_arg = Box::into_raw(Box::new(p)).expose_provenance() as u64;
+        let thread_arg = Box::into_raw(init).expose_provenance() as u64;
         let sys_thread = moto_rt::thread::spawn(__moto_rt_thread_fn, stack, thread_arg)
             .map_err(map_motor_error)?;
         Ok(Self { sys_thread })
