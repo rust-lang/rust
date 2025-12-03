@@ -357,9 +357,12 @@ pub enum RunnableKind {
     Check,
 
     /// Can run a binary.
+    /// May include {label} which will get the label from the `build` section of a crate.
     Run,
 
     /// Run a single test.
+    /// May include {label} which will get the label from the `build` section of a crate.
+    /// May include {test_id} which will get the test clicked on by the user.
     TestOne,
 
     /// Template for checking a target, emitting rustc JSON diagnostics.

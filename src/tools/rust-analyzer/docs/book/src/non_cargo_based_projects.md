@@ -204,16 +204,25 @@ interface Runnable {
     args: string[];
     /// The current working directory of the runnable.
     cwd: string;
-    /// Used to decide what code lens to offer.
+    /// Maps a runnable to a piece of rust-analyzer functionality.
     ///
-    /// `testOne`: This runnable will be used when the user clicks the 'Run Test'
-    /// CodeLens above a test.
+    /// - `testOne`: This runnable will be used when the user clicks the 'Run Test'
+    ///   CodeLens above a test.
+    /// - `run`: This runnable will be used when the user clicks the 'Run' CodeLens
+    ///    above a main function or triggers a run command.
+    /// - `flycheck`: This is run to provide check-on-save diagnostics when the user
+    ///    saves a file. It must emit rustc JSON diagnostics that rust-analyzer can
+    ///    parse. If this runnable is not specified, we may try to use `cargo check -p`.
+    ///    This is only run for a single crate that the user saved a file in. The
+    ///    {label} syntax is replaced with `BuildInfo::label`.
+    ///    Alternatively, you may use `{saved_file}` and figure out which crate
+    ///    to produce diagnostics for based on that.
     ///
     /// The args for testOne can contain two template strings:
     /// `{label}` and `{test_id}`. `{label}` will be replaced
-    /// with the `Build::label` and `{test_id}` will be replaced
+    /// with the `BuildInfo::label` and `{test_id}` will be replaced
     /// with the test name.
-    kind: 'testOne' | string;
+    kind: 'testOne' | 'run' | 'flycheck' | string;
 }
 ```
 
