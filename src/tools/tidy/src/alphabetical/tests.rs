@@ -29,6 +29,23 @@ fn bad(lines: &str, expected_msg: &str) {
     test(lines, "bad", expected_msg, true);
 }
 
+#[track_caller]
+fn bless_test(before: &str, after: &str) {
+    let tempfile = tempfile::Builder::new().tempfile().unwrap();
+    std::fs::write(tempfile.path(), before).unwrap();
+
+    let tidy_ctx = TidyCtx::new(Path::new("/aaaa"), false, TidyFlags::new(&["--bless".to_owned()]));
+
+    let mut check = tidy_ctx.start_check("alphabetical-test");
+    check_lines(tempfile.path(), before, &tidy_ctx, &mut check);
+
+    assert!(!check.is_bad());
+    let new = std::fs::read_to_string(tempfile.path()).unwrap();
+    assert_eq!(new, after);
+
+    good(&new);
+}
+
 #[test]
 fn test_no_markers() {
     let lines = "\
@@ -395,4 +412,94 @@ fn multiline() {
             'enable incremental compilation'),
     ";
     good(lines);
+}
+
+#[test]
+fn bless_smoke() {
+    let before = "\
+        tidy-alphabetical-start
+        08
+        1
+        11
+        03
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        1
+        03
+        08
+        11
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
+}
+
+#[test]
+fn bless_multiline() {
+    let before = "\
+        tidy-alphabetical-start
+        08 {
+             z}
+        08 {
+           x
+        }
+        1
+        08 {y}
+        02
+        11 (
+          0
+        )
+        03
+            addition
+    notaddition
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        1
+        02
+        03
+            addition
+        08 {
+           x
+        }
+        08 {y}
+        08 {
+             z}
+        11 (
+          0
+        )
+    notaddition
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
+}
+
+#[test]
+fn bless_funny_numbers() {
+    // Because `2` is indented it gets merged into one entry with `1` and gets
+    // interpreted by version sort as `12`, which is greater than `3`.
+    //
+    // This is neither a wanted nor an unwanted behavior, this test just checks
+    // that it hasn't changed.
+
+    let before = "\
+        tidy-alphabetical-start
+        1
+          2
+        3
+        tidy-alphabetical-end
+    ";
+    let after = "\
+        tidy-alphabetical-start
+        3
+        1
+          2
+        tidy-alphabetical-end
+    ";
+
+    bless_test(before, after);
 }
