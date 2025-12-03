@@ -12,7 +12,7 @@ const ALLOWED_SOURCES: &[&str] = &[
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
     // TMP
-    r#""git+https://gitlab.com/notriddle/stringdex?rev=53db6d7331f69f69b0ff86b5cab7401b58948376#53db6d7331f69f69b0ff86b5cab7401b58948376""#,
+    r#""git+https://gitlab.com/notriddle/stringdex?rev=ea78b678a6328cc1c6c32a3727ca49ee558fce87#ea78b678a6328cc1c6c32a3727ca49ee558fce87""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
