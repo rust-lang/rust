@@ -199,7 +199,7 @@ fn generate_item_with_correct_attrs(
             let import_is_inline = find_attr!(
                 inline::load_attrs(cx, import_id.to_def_id()),
                 AttributeKind::Doc(d)
-                if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline)
+                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(cx.tcx, import_id)
                 && (cx.document_hidden() || !cx.tcx.is_doc_hidden(def_id)));
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
@@ -2921,7 +2921,7 @@ fn clean_extern_crate<'tcx>(
             matches!(
             a,
             hir::Attribute::Parsed(AttributeKind::Doc(d))
-            if d.inline.is_some_and(|(i, _)| i == DocInline::Inline))
+            if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline))
         })
         && !cx.is_json_output();
 
@@ -2986,9 +2986,9 @@ fn clean_use_statement_inner<'tcx>(
     let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = find_attr!(
         attrs,
-        AttributeKind::Doc(d) if d.inline.is_some_and(|(i, _)| i == DocInline::Inline) => d
+        AttributeKind::Doc(d) if d.inline.first().is_some_and(|(i, _)| *i == DocInline::Inline) => d
     )
-    .and_then(|d| d.inline);
+    .and_then(|d| d.inline.first());
     let pub_underscore = visibility.is_public() && name == Some(kw::Underscore);
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);
     let import_def_id = import.owner_id.def_id;
@@ -3009,7 +3009,7 @@ fn clean_use_statement_inner<'tcx>(
     if pub_underscore && let Some((_, inline_span)) = inline_attr {
         struct_span_code_err!(
             cx.tcx.dcx(),
-            inline_span,
+            *inline_span,
             E0780,
             "anonymous imports cannot be inlined"
         )
@@ -3026,7 +3026,9 @@ fn clean_use_statement_inner<'tcx>(
         || pub_underscore
         || attrs.iter().any(|a| matches!(
             a,
-            hir::Attribute::Parsed(AttributeKind::Doc(d)) if d.hidden.is_some() || d.inline.is_some_and(|(i, _)| i == DocInline::NoInline)));
+            hir::Attribute::Parsed(AttributeKind::Doc(d))
+            if d.hidden.is_some() || d.inline.first().is_some_and(|(i, _)| *i == DocInline::NoInline)
+        ));
 
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+

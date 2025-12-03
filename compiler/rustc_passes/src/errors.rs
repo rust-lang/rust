@@ -176,6 +176,14 @@ pub(crate) struct DocSearchUnboxInvalid {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_doc_inline_conflict)]
+#[help]
+pub(crate) struct DocInlineConflict {
+    #[primary_span]
+    pub spans: MultiSpan,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_doc_inline_only_use)]
 #[note]

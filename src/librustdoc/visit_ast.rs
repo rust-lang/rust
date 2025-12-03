@@ -247,8 +247,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let document_hidden = self.cx.document_hidden();
         let use_attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
-        let is_no_inline = find_attr!(use_attrs, AttributeKind::Doc(d) if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline))
-            || (document_hidden && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
+        let is_no_inline = find_attr!(
+            use_attrs,
+            AttributeKind::Doc(d)
+            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
+        ) || (document_hidden
+            && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
 
         if is_no_inline {
             return false;
@@ -465,7 +469,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
                     if is_pub && self.inside_public_path {
-                        let please_inline = find_attr!(attrs, AttributeKind::Doc(d) if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline));
+                        let please_inline = find_attr!(
+                            attrs,
+                            AttributeKind::Doc(d)
+                            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                        );
                         let ident = match kind {
                             hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,

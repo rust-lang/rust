@@ -476,7 +476,9 @@ pub struct CfgHideShow {
 pub struct DocAttribute {
     pub aliases: FxIndexMap<Symbol, Span>,
     pub hidden: Option<Span>,
-    pub inline: Option<(DocInline, Span)>,
+    // Because we need to emit the error if there is more than one `inline` attribute on an item
+    // at the same time as the other doc attributes, we store a list instead of using `Option`.
+    pub inline: ThinVec<(DocInline, Span)>,
 
     // unstable
     pub cfg: ThinVec<CfgEntry>,
@@ -511,7 +513,7 @@ impl Default for DocAttribute {
         Self {
             aliases: FxIndexMap::default(),
             hidden: None,
-            inline: None,
+            inline: ThinVec::new(),
             cfg: ThinVec::new(),
             auto_cfg: ThinVec::new(),
             auto_cfg_change: ThinVec::new(),

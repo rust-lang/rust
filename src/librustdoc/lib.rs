@@ -32,6 +32,7 @@
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -75,6 +76,7 @@ use std::process;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::lints::DelayedLint;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -898,6 +900,18 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 // if we ran coverage, bail early, we don't need to also generate docs at this point
                 // (also we didn't load in any of the useful passes)
                 return;
+            }
+
+            for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                    for lint in &delayed_lints.lints {
+                        match lint {
+                            DelayedLint::AttributeParsing(attribute_lint) => {
+                                rustc_attr_parsing::emit_attribute_lint(attribute_lint, tcx)
+                            }
+                        }
+                    }
+                }
             }
 
             if render_opts.dep_info().is_some() {

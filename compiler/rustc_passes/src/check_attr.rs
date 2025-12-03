@@ -13,13 +13,14 @@ use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemKind, ast};
 use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagCtxtHandle, IntoDiagArg, StashKey};
+use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
 use rustc_hir::attrs::{
-    AttributeKind, DocAttribute, InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet,
+    AttributeKind, DocAttribute, DocInline, InlineAttr, MirDialect, MirPhase, ReprAttr,
+    SanitizerSet,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
@@ -881,7 +882,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// already seen an inlining attribute for this item.
     /// If so, `specified_inline` holds the value and the span of
     /// the first `inline`/`no_inline` attribute.
-    fn check_doc_inline(&self, span: Span, hir_id: HirId, target: Target) {
+    fn check_doc_inline(&self, hir_id: HirId, target: Target, inline: &[(DocInline, Span)]) {
+        let span = match inline {
+            [] => return,
+            [(_, span)] => *span,
+            [(inline, span), rest @ ..] => {
+                for (inline2, span2) in rest {
+                    if inline2 != inline {
+                        let mut spans = MultiSpan::from_spans(vec![*span, *span2]);
+                        spans.push_span_label(*span, fluent::passes_doc_inline_conflict_first);
+                        spans.push_span_label(*span2, fluent::passes_doc_inline_conflict_second);
+                        self.dcx().emit_err(errors::DocInlineConflict { spans });
+                        return;
+                    }
+                }
+                *span
+            }
+        };
+
         match target {
             Target::Use | Target::ExternCrate => {}
             _ => {
@@ -1050,9 +1068,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         }
 
-        if let Some((_, span)) = inline {
-            self.check_doc_inline(*span, hir_id, target)
-        }
+        self.check_doc_inline(hir_id, target, inline);
 
         if let Some(span) = rust_logo {
             if self.check_attr_crate_level(*span, hir_id)
