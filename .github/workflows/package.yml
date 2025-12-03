@@ -138,7 +138,7 @@ jobs:
             # Rust toolchain
 
             Download the right toolchain for your OS.
-             - Windows: rust-v810-windows.msi (or rust-v810-windows.tar.tx)
+             - Windows: rust-v810-windows.tar.xz
              - Mac: rust-v810-darwin.tar.xz
              - Linux: rust-v810-linux.tar.xz
 
@@ -148,14 +148,15 @@ jobs:
             3. Navigate to the new directory, and run `./install.sh --prefix=~/.rustup/toolchains/v810`
 
             ## Installation on Windows
-            1. Install (rustup)[https://rustup.rs/]
-            2. Download the installer, and install files to $HOME/.rustup/toolchains/v810`
+            1. Install a posix-compatible shell such as bash
+            2. Install (rustup)[https://rustup.rs/]
+            3. Download the toolchain, and extract the contents with `tar -xvf <thing-you-downloaded>.tar.xz` 
+            4. Navigate to the new directory, and run `./install.sh --prefix=~/.rustup/toolchains/v810`
 
           name: "${{ steps.getDate.outputs.TODAY }}"
           tag_name: "rust-v810-${{ steps.getDate.outputs.TODAY }}"
           files: |
             rust-v810-windows.tar.xz
-            rust-v810-windows.msi
             rust-v810-darwin.tar.xz
             rust-v810-linux.tar.xz
             rust-src-v810.tar.xz
