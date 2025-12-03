@@ -429,10 +429,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             orig_ident.span.ctxt(),
             derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
-                // We can break with an error at this step, it means we cannot determine the
-                // resolution right now, but we must block and wait until we can instead of
-                // considering outer scopes.
-                match this.reborrow().resolve_ident_in_scope(
+                let res = match this.reborrow().resolve_ident_in_scope(
                     orig_ident,
                     ns,
                     scope,
@@ -445,7 +442,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     force,
                     ignore_binding,
                     ignore_import,
-                )? {
+                ) {
+                    Ok(binding) => Ok(binding),
+                    // We can break with an error at this step, it means we cannot determine the
+                    // resolution right now, but we must block and wait until we can, instead of
+                    // considering outer scopes. Although there's no need to do that if we already
+                    // have a better solution.
+                    Err(ControlFlow::Break(determinacy)) if innermost_results.is_empty() => {
+                        return ControlFlow::Break(Err(determinacy));
+                    }
+                    Err(determinacy) => Err(determinacy.into_value()),
+                };
+                match res {
                     Ok(binding) if sub_namespace_match(binding.macro_kinds(), macro_kind) => {
                         // Below we report various ambiguity errors.
                         // We do not need to report them if we are either in speculative resolution,
@@ -504,8 +512,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         force: bool,
         ignore_binding: Option<NameBinding<'ra>>,
         ignore_import: Option<Import<'ra>>,
-    ) -> ControlFlow<Result<NameBinding<'ra>, Determinacy>, Result<NameBinding<'ra>, Determinacy>>
-    {
+    ) -> Result<NameBinding<'ra>, ControlFlow<Determinacy, Determinacy>> {
         let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
         let ret = match scope {
             Scope::DeriveHelpers(expn_id) => {
@@ -591,7 +598,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Err(ControlFlow::Continue(determinacy)) => Err(determinacy),
                     Err(ControlFlow::Break(Determinacy::Undetermined)) => {
-                        return ControlFlow::Break(Err(Determinacy::determined(force)));
+                        return Err(ControlFlow::Break(Determinacy::determined(force)));
                     }
                     // Privacy errors, do not happen during in scope resolution.
                     Err(ControlFlow::Break(Determinacy::Determined)) => unreachable!(),
@@ -680,7 +687,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
         };
 
-        ControlFlow::Continue(ret)
+        ret.map_err(ControlFlow::Continue)
     }
 
     fn maybe_push_ambiguity(
