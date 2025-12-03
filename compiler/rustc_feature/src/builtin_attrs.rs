@@ -1414,6 +1414,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_no_mir_inline]` prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(
+        rustc_no_ubchecks, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "#[rustc_no_ubchecks] asks the compiler to delete UB checks from a function"
+    ),
+    rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_force_inline]` forces a free function to be inlined"
     ),

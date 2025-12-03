@@ -1964,6 +1964,7 @@ symbols! {
         rustc_no_implicit_autorefs,
         rustc_no_implicit_bounds,
         rustc_no_mir_inline,
+        rustc_no_ubchecks,
         rustc_nonnull_optimization_guaranteed,
         rustc_nounwind,
         rustc_objc_class,
