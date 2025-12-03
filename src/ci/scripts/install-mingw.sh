@@ -47,6 +47,12 @@ if isWindows && isKnownToBeMingwBuild; then
             ;;
     esac
 
+    # Stop /msys64/bin from being prepended to PATH by adding the bin directory manually.
+    # Note that this intentionally uses a Windows style path instead of the msys2 path to
+    # avoid being auto-translated into `/usr/bin`, which will not have the desired effect.
+    msys2Path="c:/msys64"
+    ciCommandAddPath "${msys2Path}/usr/bin"
+
     case "${mingw_archive}" in
         *.7z)
             curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
@@ -67,4 +73,12 @@ if isWindows && isKnownToBeMingwBuild; then
     esac
 
     ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
+
+    # MSYS2 is not installed on AArch64 runners
+    if [[ "${CI_JOB_NAME}" != *aarch64-llvm* ]]; then
+        # Initialize mingw for the user.
+        # This should be done by github but isn't for some reason.
+        # (see https://github.com/actions/runner-images/issues/12600)
+        /c/msys64/usr/bin/bash -lc ' '
+    fi
 fi
