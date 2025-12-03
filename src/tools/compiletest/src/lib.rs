@@ -376,7 +376,7 @@ fn parse_config(args: Vec<String>) -> Config {
             || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
 
         host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
-        run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
+        target_run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
         stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
@@ -688,7 +688,7 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
 
     stamp.add_dir(&src_root.join("src/etc/natvis"));
 
-    stamp.add_dir(&config.run_lib_path);
+    stamp.add_dir(&config.target_run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         stamp.add_path(&rustdoc_path);

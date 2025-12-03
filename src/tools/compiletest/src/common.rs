@@ -260,13 +260,10 @@ pub struct Config {
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/lib/rustlib/i686-unknown-linux-gnu/lib`
     ///
-    /// FIXME: maybe rename this to reflect (1) which target platform (target, not host), and (2)
-    /// what "run libraries" are against.
-    ///
     /// FIXME: this is very under-documented in conjunction with the `remote-test-client` scheme and
     /// `RUNNER` scheme to actually run the target executable under the target platform environment,
     /// cf. [`Self::remote_test_client`] and [`Self::runner`].
-    pub run_lib_path: Utf8PathBuf,
+    pub target_run_lib_path: Utf8PathBuf,
 
     /// Path to the *staged*  `rustc`-under-test. Unless forced, this `rustc` is *staged*, and must
     /// not be confused with [`Self::stage0_rustc_path`].

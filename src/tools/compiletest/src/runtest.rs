@@ -1060,7 +1060,7 @@ impl<'test> TestCx<'test> {
         rustdoc.current_dir(current_dir);
         rustdoc
             .arg("-L")
-            .arg(self.config.run_lib_path.as_path())
+            .arg(self.config.target_run_lib_path.as_path())
             .arg("-L")
             .arg(aux_dir)
             .arg("-o")
@@ -1151,7 +1151,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     test_client,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
@@ -1166,7 +1166,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     wr_run,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
@@ -1181,7 +1181,7 @@ impl<'test> TestCx<'test> {
 
                 self.compose_and_run(
                     program,
-                    self.config.run_lib_path.as_path(),
+                    self.config.target_run_lib_path.as_path(),
                     Some(aux_dir.as_path()),
                     None,
                 )
