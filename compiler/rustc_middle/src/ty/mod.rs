@@ -2224,11 +2224,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.trait_def(def_id).constness == hir::Constness::Const
     }
 
-    #[inline]
-    pub fn is_const_default_method(self, def_id: DefId) -> bool {
-        matches!(self.trait_of_assoc(def_id), Some(trait_id) if self.is_const_trait(trait_id))
-    }
-
     pub fn impl_method_has_trait_impl_trait_tys(self, def_id: DefId) -> bool {
         if self.def_kind(def_id) != DefKind::AssocFn {
             return false;
