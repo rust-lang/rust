@@ -1349,6 +1349,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 if ident.name == kw::Underscore
                     && !matches!(item.vis.kind, VisibilityKind::Inherited)
+                    && ident.span.eq_ctxt(item.vis.span)
                 {
                     self.lint_buffer.buffer_lint(
                         UNUSED_VISIBILITIES,

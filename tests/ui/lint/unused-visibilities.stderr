@@ -16,5 +16,16 @@ warning: visibility qualifiers have no effect on `const _` declarations
 LL | pub(self) const _: () = {};
    | ^^^^^^^^^ help: remove the qualifier
 
-warning: 2 warnings emitted
+warning: visibility qualifiers have no effect on `const _` declarations
+  --> $DIR/unused-visibilities.rs:14:9
+   |
+LL |         pub const _: () = {};
+   |         ^^^ help: remove the qualifier
+...
+LL | foo!();
+   | ------ in this macro invocation
+   |
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 3 warnings emitted
 
