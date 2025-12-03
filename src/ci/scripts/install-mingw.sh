@@ -66,5 +66,5 @@ if isWindows && isKnownToBeMingwBuild; then
             ;;
     esac
 
-    ciCommandAddPath "$(pwd)/${mingw_dir}/bin)"
+    ciCommandAddPath "$(cygpath -m "$(pwd)/${mingw_dir}/bin")"
 fi
