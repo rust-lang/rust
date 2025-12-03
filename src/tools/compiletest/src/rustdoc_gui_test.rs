@@ -130,7 +130,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         target_cfgs: Default::default(),
         builtin_cfg_names: Default::default(),
         supported_crate_types: Default::default(),
-        nocapture: Default::default(),
+        capture: Default::default(),
         nightly_branch: Default::default(),
         git_merge_commit_email: Default::default(),
         profiler_runtime: Default::default(),

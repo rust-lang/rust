@@ -687,9 +687,12 @@ pub struct Config {
     pub builtin_cfg_names: OnceLock<HashSet<String>>,
     pub supported_crate_types: OnceLock<HashSet<String>>,
 
-    /// FIXME: rename this to the more canonical `no_capture`, or better, invert this to `capture`
-    /// to avoid `!nocapture` double-negatives.
-    pub nocapture: bool,
+    /// Should we capture console output that would be printed by test runners via their `stdout`
+    /// and `stderr` trait objects, or via the custom panic hook.
+    ///
+    /// The default is `true`. This can be disabled via the compiletest cli flag `--no-capture`
+    /// (which mirrors the libtest `--no-capture` flag).
+    pub capture: bool,
 
     /// Needed both to construct [`build_helper::git::GitConfig`].
     pub nightly_branch: String,

@@ -476,7 +476,7 @@ fn parse_config(args: Vec<String>) -> Config {
         builtin_cfg_names: OnceLock::new(),
         supported_crate_types: OnceLock::new(),
 
-        nocapture: matches.opt_present("no-capture"),
+        capture: !matches.opt_present("no-capture"),
 
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
