@@ -5,20 +5,22 @@ use std::{
     mem,
 };
 
-use either::Either;
 use hir_def::{
+    HasModule, VariantId,
     expr_store::ExpressionStore,
     hir::BindingId,
     signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
 };
 use hir_expand::{Lookup, name::Name};
 use la_arena::ArenaMap;
+use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
     InferBodyId,
     db::{HirDatabase, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
-    mir::{PlaceElem, ProjectionElem, StatementKind, TerminatorKind},
+    mir::{PlaceElem, PlaceTy, ProjectionElem, StatementKind, TerminatorKind},
+    next_solver::{DbInterner, TyKind, infer::DbInternerInferExt},
 };
 
 use super::{
@@ -330,34 +332,56 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                     f(this, local, head);
                     w!(this, ")");
                 }
-                ProjectionElem::Field(Either::Left(field)) => {
-                    let variant_fields = field.parent.fields(this.db);
-                    let name = &variant_fields.fields()[field.local_id].name;
-                    match field.parent {
-                        hir_def::VariantId::EnumVariantId(e) => {
-                            w!(this, "(");
-                            f(this, local, head);
-                            let loc = e.lookup(this.db);
-                            w!(
-                                this,
-                                " as {}).{}",
-                                loc.name.display(this.db, this.display_target.edition),
-                                name.display(this.db, this.display_target.edition)
-                            );
-                        }
-                        hir_def::VariantId::StructId(_) | hir_def::VariantId::UnionId(_) => {
-                            f(this, local, head);
-                            w!(this, ".{}", name.display(this.db, this.display_target.edition));
-                        }
+                ProjectionElem::Downcast(variant_id) => match variant_id {
+                    hir_def::VariantId::EnumVariantId(e) => {
+                        w!(this, "(");
+                        f(this, local, head);
+                        let loc = e.lookup(this.db);
+                        w!(this, " as {})", loc.name.display(this.db, this.display_target.edition),);
                     }
-                }
-                ProjectionElem::Field(Either::Right(field)) => {
+                    _ => {
+                        f(this, local, head);
+                        w!(this, ".{:?}", last);
+                    }
+                },
+                ProjectionElem::Field(field) => {
                     f(this, local, head);
-                    w!(this, ".{}", field.index);
-                }
-                ProjectionElem::ClosureField(it) => {
-                    f(this, local, head);
-                    w!(this, ".{}", it);
+
+                    // we need to get the base type to decide how to display the field / get the field name
+                    let infcx = DbInterner::new_with(this.db, this.body.owner.krate(this.db))
+                        .infer_ctxt()
+                        .build(rustc_type_ir::TypingMode::PostAnalysis);
+                    let env = this.db.trait_environment(this.body.owner.generic_def(this.db));
+                    let place_ty = PlaceTy::from_ty(this.body.locals[local].ty.as_ref())
+                        .multi_projection_ty(&infcx, env, projections);
+                    if let Some(variant_id) = place_ty.variant_id {
+                        let variant_fields = variant_id.fields(this.db);
+                        w!(
+                            this,
+                            ".{}",
+                            variant_fields.fields()[field.to_local_field_id()]
+                                .name
+                                .display(this.db, this.display_target.edition)
+                        );
+                    } else {
+                        match place_ty.ty.kind() {
+                            TyKind::Adt(adt_def, _) if !adt_def.is_enum() => {
+                                let variant_id = VariantId::from_non_enum(adt_def.def_id()).unwrap();
+                                let fields = variant_id.fields(this.db);
+                                w!(
+                                    this,
+                                    ".{}",
+                                    fields.fields()[field.to_local_field_id()]
+                                        .name
+                                        .display(this.db, this.display_target.edition)
+                                );
+                            }
+                            TyKind::Tuple(_) | TyKind::Closure(..) => w!(this, ".{}", field.0),
+                            _ => {
+                                w!(this, ".{:?}", last);
+                            }
+                        }
+                    };
                 }
                 ProjectionElem::Index(l) => {
                     f(this, local, head);
