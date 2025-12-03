@@ -1831,9 +1831,10 @@ where
 ///
 /// # Safety
 ///
-/// If this type implements `Deref`, then the concrete type returned by `deref`
-/// and `deref_mut` must not change without a modification. The following
-/// operations are not considered modifications:
+/// Given a pointer of this type, the concrete type returned by its
+/// `deref` method and (if it implements `DerefMut`) its `deref_mut` method
+/// must be the same type and must not change without a modification.
+/// The following operations are not considered modifications:
 ///
 /// * Moving the pointer.
 /// * Performing unsizing coercions on the pointer.
