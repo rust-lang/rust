@@ -912,12 +912,12 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
-        let hash = make_hash(&self.map.hash_builder, &value);
-        let bucket = match self.map.find_or_find_insert_index(hash, &value) {
-            Ok(bucket) => bucket,
-            Err(index) => unsafe { self.map.table.insert_at_index(hash, index, (value, ())) },
-        };
-        unsafe { &bucket.as_ref().0 }
+        match self.map.entry(value) {
+            map::Entry::Occupied(entry) => entry,
+            map::Entry::Vacant(entry) => entry.insert_entry(()),
+        }
+        .into_entry()
+        .0
     }
 
     /// Inserts a value computed from `f` into the set if the given `value` is
@@ -951,16 +951,12 @@ where
         Q: Hash + Equivalent<T> + ?Sized,
         F: FnOnce(&Q) -> T,
     {
-        let hash = make_hash(&self.map.hash_builder, value);
-        let bucket = match self.map.find_or_find_insert_index(hash, value) {
-            Ok(bucket) => bucket,
-            Err(index) => {
-                let new = f(value);
-                assert!(value.equivalent(&new), "new value is not equivalent");
-                unsafe { self.map.table.insert_at_index(hash, index, (new, ())) }
-            }
-        };
-        unsafe { &bucket.as_ref().0 }
+        match self.map.entry_ref(value) {
+            map::EntryRef::Occupied(entry) => entry,
+            map::EntryRef::Vacant(entry) => entry.insert_entry_with_key(f(value), ()),
+        }
+        .into_entry()
+        .0
     }
 
     /// Gets the given value's corresponding entry in the set for in-place manipulation.
@@ -1585,16 +1581,13 @@ where
     /// ```
     fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
         for item in rhs {
-            let hash = make_hash(&self.map.hash_builder, item);
-            match self.map.find_or_find_insert_index(hash, item) {
-                Ok(bucket) => unsafe {
-                    self.map.table.remove(bucket);
-                },
-                Err(index) => unsafe {
-                    self.map
-                        .table
-                        .insert_at_index(hash, index, (item.clone(), ()));
-                },
+            match self.map.entry_ref(item) {
+                map::EntryRef::Occupied(entry) => {
+                    entry.remove();
+                }
+                map::EntryRef::Vacant(entry) => {
+                    entry.insert(());
+                }
             }
         }
     }
