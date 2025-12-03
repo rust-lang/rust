@@ -22,4 +22,5 @@ mac!();
 fn main() {
     A!();
     //~^ ERROR `A` is ambiguous
+    //~| ERROR `A` is ambiguous
 }
