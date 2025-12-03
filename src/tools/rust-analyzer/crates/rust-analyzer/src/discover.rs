@@ -67,7 +67,7 @@ impl DiscoverCommand {
         cmd.args(args);
 
         Ok(DiscoverHandle {
-            _handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
+            handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
             span: info_span!("discover_command").entered(),
         })
     }
@@ -76,7 +76,7 @@ impl DiscoverCommand {
 /// A handle to a spawned [Discover].
 #[derive(Debug)]
 pub(crate) struct DiscoverHandle {
-    _handle: CommandHandle<DiscoverProjectMessage>,
+    pub(crate) handle: CommandHandle<DiscoverProjectMessage>,
     #[allow(dead_code)] // not accessed, but used to log on drop.
     span: EnteredSpan,
 }
