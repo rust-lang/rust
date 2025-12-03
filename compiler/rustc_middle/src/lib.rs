@@ -80,6 +80,7 @@ pub mod lint;
 pub mod metadata;
 pub mod middle;
 pub mod mir;
+pub mod sync;
 pub mod thir;
 pub mod traits;
 pub mod ty;

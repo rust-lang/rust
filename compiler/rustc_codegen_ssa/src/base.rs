@@ -11,7 +11,6 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::attrs::{AttributeKind, DebuggerVisualizerType, OptimizeAttr};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
@@ -26,6 +25,7 @@ use rustc_middle::mir::BinOp;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
+use rustc_middle::sync::{IntoDynSyncSend, par_map};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
