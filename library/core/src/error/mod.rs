@@ -8,9 +8,9 @@ mod provide;
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 pub use provide::{
-    ChainRefMultiRequestBuilder, ChainValMultiRequestBuilder, EmptyMultiRequestBuilder,
-    IntoMultiRequest, MultiRequestBuilder, MultiResponse, MultiResponseChainRef,
-    MultiResponseChainVal, Request, request_ref, request_value,
+    ChainRefMultiRequestBuilder, ChainRefMultiResponse, ChainValMultiRequestBuilder,
+    ChainValMultiResponse, EmptyMultiRequestBuilder, IntoMultiRequest, MultiRequestBuilder,
+    MultiResponse, Request, request_ref, request_value,
 };
 
 /// `Error` is a trait representing the basic expectations for error values,
