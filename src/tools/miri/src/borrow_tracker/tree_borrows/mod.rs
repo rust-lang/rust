@@ -13,6 +13,7 @@ pub mod diagnostics;
 mod foreign_access_skipping;
 mod perms;
 mod tree;
+mod tree_visitor;
 mod unimap;
 mod wildcard;
 
