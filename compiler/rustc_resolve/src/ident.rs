@@ -824,9 +824,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(AmbiguityKind::GlobVsOuter)
         } else if innermost_binding.may_appear_after(parent_scope.expansion, binding) {
             Some(AmbiguityKind::MoreExpandedVsOuter)
+        } else if innermost_binding.expansion != LocalExpnId::ROOT
+            && binding.is_glob_import()
+            && !innermost_binding.is_glob_import()
+            && self.binding_parent_modules.get(&innermost_binding)
+                == Some(&self.binding_parent_modules[&binding])
+        {
+            // FIXME: this error is too conservative and technically unnecessary now when module
+            // scope is split into two scopes, remove it with lang team approval.
+            Some(AmbiguityKind::GlobVsExpanded)
         } else {
             None
         };
+
         if let Some(kind) = ambiguity_error_kind {
             // Skip ambiguity errors for extern flag bindings "overridden"
             // by extern item bindings.
@@ -834,7 +844,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let issue_145575_hack = Some(binding) == extern_prelude_flag_binding
                 && extern_prelude_item_binding.is_some()
                 && extern_prelude_item_binding != Some(innermost_binding);
-
             if issue_145575_hack {
                 self.issue_145575_hack_applied = true;
             } else {
@@ -1059,7 +1068,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.get_mut().finalize_module_binding(
                 ident,
                 binding,
-                if resolution.non_glob_binding.is_some() { resolution.glob_binding } else { None },
                 parent_scope,
                 module,
                 finalize,
@@ -1121,7 +1129,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return self.get_mut().finalize_module_binding(
                 ident,
                 binding,
-                if resolution.non_glob_binding.is_some() { resolution.glob_binding } else { None },
                 parent_scope,
                 module,
                 finalize,
@@ -1233,7 +1240,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         ident: Ident,
         binding: Option<NameBinding<'ra>>,
-        shadowed_glob: Option<NameBinding<'ra>>,
         parent_scope: &ParentScope<'ra>,
         module: Module<'ra>,
         finalize: Finalize,
@@ -1259,24 +1265,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else {
                 return Err(ControlFlow::Break(Determined));
             }
-        }
-
-        // Forbid expanded shadowing to avoid time travel.
-        if let Some(shadowed_glob) = shadowed_glob
-            && shadowing == Shadowing::Restricted
-            && finalize.stage == Stage::Early
-            && binding.expansion != LocalExpnId::ROOT
-            && binding.res() != shadowed_glob.res()
-        {
-            self.ambiguity_errors.push(AmbiguityError {
-                kind: AmbiguityKind::GlobVsExpanded,
-                ident,
-                b1: binding,
-                b2: shadowed_glob,
-                warning: false,
-                misc1: AmbiguityErrorMisc::None,
-                misc2: AmbiguityErrorMisc::None,
-            });
         }
 
         if shadowing == Shadowing::Unrestricted
