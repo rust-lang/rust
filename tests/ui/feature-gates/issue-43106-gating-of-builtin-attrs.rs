@@ -33,7 +33,6 @@
 
 //@ check-pass
 
-#![feature(test)]
 #![warn(unused_attributes, unknown_lints)]
 //~^ NOTE the lint level is defined here
 //~| NOTE the lint level is defined here
