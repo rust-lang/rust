@@ -21,7 +21,7 @@ tools = [
     "analysis",
     "rust-src",
     "rust-std",
-    "llvm-components"
+    "llvm-tools"
 ]
 compiletest-use-stage0-libtest = false
 
