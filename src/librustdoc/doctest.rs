@@ -123,8 +123,13 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     Ok(())
 }
 
-fn get_doctest_dir() -> io::Result<TempDir> {
-    TempFileBuilder::new().prefix("rustdoctest").tempdir()
+fn get_doctest_dir(opts: &RustdocOptions) -> io::Result<TempDir> {
+    let mut builder = TempFileBuilder::new();
+    builder.prefix("rustdoctest");
+    if opts.codegen_options.save_temps {
+        builder.disable_cleanup(true);
+    }
+    builder.tempdir()
 }
 
 pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
@@ -197,7 +202,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
-    let temp_dir = match get_doctest_dir()
+    let temp_dir = match get_doctest_dir(&options)
         .map_err(|error| format!("failed to create temporary directory: {error:?}"))
     {
         Ok(temp_dir) => temp_dir,
@@ -207,6 +212,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
     let extract_doctests = options.output_format == OutputFormat::Doctest;
+    let save_temps = options.codegen_options.save_temps;
     let result = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
@@ -259,7 +265,9 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             eprintln!("{error}");
             // Since some files in the temporary folder are still owned and alive, we need
             // to manually remove the folder.
-            let _ = std::fs::remove_dir_all(temp_dir.path());
+            if !save_temps {
+                let _ = std::fs::remove_dir_all(temp_dir.path());
+            }
             std::process::exit(1);
         }
     };
