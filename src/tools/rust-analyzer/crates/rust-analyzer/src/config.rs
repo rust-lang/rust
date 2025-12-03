@@ -480,8 +480,8 @@ config_data! {
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
         ///
-        /// [`DiscoverWorkspaceConfig`] also requires setting `progress_label` and `files_to_watch`.
-        /// `progress_label` is used for the title in progress indicators, whereas `files_to_watch`
+        /// [`DiscoverWorkspaceConfig`] also requires setting `progressLabel` and `filesToWatch`.
+        /// `progressLabel` is used for the title in progress indicators, whereas `filesToWatch`
         /// is used to determine which build system-specific files should be watched in order to
         /// reload rust-analyzer.
         ///
@@ -490,9 +490,10 @@ config_data! {
         /// "rust-analyzer.workspace.discoverConfig": {
         ///     "command": [
         ///         "rust-project",
-        ///         "develop-json"
+        ///         "develop-json",
+        ///         "{arg}"
         ///     ],
-        ///     "progressLabel": "rust-analyzer",
+        ///     "progressLabel": "buck2/rust-project",
         ///     "filesToWatch": [
         ///         "BUCK"
         ///     ]

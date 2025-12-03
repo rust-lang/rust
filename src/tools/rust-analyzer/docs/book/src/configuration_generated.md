@@ -1623,9 +1623,10 @@ Below is an example of a valid configuration:
 "rust-analyzer.workspace.discoverConfig": {
     "command": [
         "rust-project",
-        "develop-json"
+        "develop-json",
+        "{arg}"
     ],
-    "progressLabel": "rust-analyzer",
+    "progressLabel": "buck2/rust-project",
     "filesToWatch": [
         "BUCK"
     ]
