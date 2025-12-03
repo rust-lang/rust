@@ -1793,6 +1793,55 @@ impl<'hir> Pat<'hir> {
         });
         is_never_pattern
     }
+
+    /// Whether this pattern constitutes a read of value of the scrutinee that
+    /// it is matching against. This is used to determine whether we should
+    /// perform `NeverToAny` coercions.
+    ///
+    /// See [`expr_guaranteed_to_constitute_read_for_never`][m] for the nuances of
+    /// what happens when this returns true.
+    ///
+    /// [m]: ../../rustc_middle/ty/struct.TyCtxt.html#method.expr_guaranteed_to_constitute_read_for_never
+    pub fn is_guaranteed_to_constitute_read_for_never(&self) -> bool {
+        match self.kind {
+            // Does not constitute a read.
+            PatKind::Wild => false,
+
+            // The guard cannot affect if we make a read or not (it runs after the inner pattern
+            // has matched), therefore it's irrelevant.
+            PatKind::Guard(pat, _) => pat.is_guaranteed_to_constitute_read_for_never(),
+
+            // This is unnecessarily restrictive when the pattern that doesn't
+            // constitute a read is unreachable.
+            //
+            // For example `match *never_ptr { value => {}, _ => {} }` or
+            // `match *never_ptr { _ if false => {}, value => {} }`.
+            //
+            // It is however fine to be restrictive here; only returning `true`
+            // can lead to unsoundness.
+            PatKind::Or(subpats) => {
+                subpats.iter().all(|pat| pat.is_guaranteed_to_constitute_read_for_never())
+            }
+
+            // Does constitute a read, since it is equivalent to a discriminant read.
+            PatKind::Never => true,
+
+            // All of these constitute a read, or match on something that isn't `!`,
+            // which would require a `NeverToAny` coercion.
+            PatKind::Missing
+            | PatKind::Binding(_, _, _, _)
+            | PatKind::Struct(_, _, _)
+            | PatKind::TupleStruct(_, _, _)
+            | PatKind::Tuple(_, _)
+            | PatKind::Box(_)
+            | PatKind::Ref(_, _, _)
+            | PatKind::Deref(_)
+            | PatKind::Expr(_)
+            | PatKind::Range(_, _, _)
+            | PatKind::Slice(_, _, _)
+            | PatKind::Err(_) => true,
+        }
+    }
 }
 
 /// A single field in a struct pattern.
