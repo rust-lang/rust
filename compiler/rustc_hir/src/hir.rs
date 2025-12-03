@@ -1807,8 +1807,9 @@ impl<'hir> Pat<'hir> {
             // Does not constitute a read.
             PatKind::Wild => false,
 
-            // Might not constitute a read, since the condition might be false.
-            PatKind::Guard(_, _) => true,
+            // The guard cannot affect if we make a read or not (it runs after the inner pattern
+            // has matched), therefore it's irrelevant.
+            PatKind::Guard(pat, _) => pat.is_guaranteed_to_constitute_read_for_never(),
 
             // This is unnecessarily restrictive when the pattern that doesn't
             // constitute a read is unreachable.

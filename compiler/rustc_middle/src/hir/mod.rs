@@ -259,7 +259,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         expr.hir_id != lhs.hir_id
                     }
 
-                    // See note on `PatKind::Or` below for why this is `all`.
+                    // See note on `PatKind::Or` in `Pat::is_guaranteed_to_constitute_read_for_never`
+                    // for why this is `all`.
                     ExprKind::Match(scrutinee, arms, _) => {
                         assert_eq!(scrutinee.hir_id, expr.hir_id);
                         arms.iter().all(|arm| arm.pat.is_guaranteed_to_constitute_read_for_never())
