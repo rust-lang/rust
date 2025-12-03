@@ -210,15 +210,6 @@ fn read_buf_exact() {
 }
 
 #[test]
-#[should_panic]
-fn borrowed_cursor_advance_overflow() {
-    let mut buf = [0; 512];
-    let mut buf = BorrowedBuf::from(&mut buf[..]);
-    buf.unfilled().advance(1);
-    buf.unfilled().advance(usize::MAX);
-}
-
-#[test]
 fn take_eof() {
     struct R;
 

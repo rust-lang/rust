@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         stack_probes: StackProbeType::Inline,
         panic_strategy: PanicStrategy::Abort,
+        default_uwtable: true,
         ..Default::default()
     };
     Target {
