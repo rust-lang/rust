@@ -185,7 +185,7 @@ mod tests {
 
     use super::*;
 
-    fn fixture_token_tree() -> TopSubtree<Span> {
+    fn fixture_token_tree_top_many_none() -> TopSubtree<Span> {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -201,7 +201,7 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
             close: Span {
-                range: TextRange::empty(TextSize::new(19)),
+                range: TextRange::empty(TextSize::new(0)),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
@@ -259,10 +259,18 @@ mod tests {
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
         );
+        builder.open(
+            DelimiterKind::Bracket,
+            Span {
+                range: TextRange::at(TextSize::new(15), TextSize::of('[')),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+        );
         builder.push(Leaf::Literal(Literal {
             symbol: sym::INTEGER_0,
             span: Span {
-                range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
+                range: TextRange::at(TextSize::new(16), TextSize::of("0u32")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
@@ -270,7 +278,13 @@ mod tests {
             suffix: Some(sym::u32),
         }));
         builder.close(Span {
-            range: TextRange::at(TextSize::new(19), TextSize::of('}')),
+            range: TextRange::at(TextSize::new(20), TextSize::of(']')),
+            anchor,
+            ctx: SyntaxContext::root(Edition::CURRENT),
+        });
+
+        builder.close(Span {
+            range: TextRange::at(TextSize::new(21), TextSize::of('}')),
             anchor,
             ctx: SyntaxContext::root(Edition::CURRENT),
         });
@@ -278,37 +292,126 @@ mod tests {
         builder.build()
     }
 
+    fn fixture_token_tree_top_empty_none() -> TopSubtree<Span> {
+        let anchor = SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        };
+
+        let builder = TopSubtreeBuilder::new(Delimiter {
+            open: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            close: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            kind: DelimiterKind::Invisible,
+        });
+
+        builder.build()
+    }
+
+    fn fixture_token_tree_top_empty_brace() -> TopSubtree<Span> {
+        let anchor = SpanAnchor {
+            file_id: span::EditionedFileId::new(
+                span::FileId::from_raw(0xe4e4e),
+                span::Edition::CURRENT,
+            ),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        };
+
+        let builder = TopSubtreeBuilder::new(Delimiter {
+            open: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            close: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContext::root(Edition::CURRENT),
+            },
+            kind: DelimiterKind::Brace,
+        });
+
+        builder.build()
+    }
+
     #[test]
     fn test_proc_macro_rpc_works() {
-        let tt = fixture_token_tree();
-        for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
-            let mut span_data_table = Default::default();
-            let task = ExpandMacro {
-                data: ExpandMacroData {
-                    macro_body: FlatTree::from_subtree(tt.view(), v, &mut span_data_table),
-                    macro_name: Default::default(),
-                    attributes: None,
-                    has_global_spans: ExpnGlobals {
-                        serialize: true,
-                        def_site: 0,
-                        call_site: 0,
-                        mixed_site: 0,
+        for tt in [
+            fixture_token_tree_top_many_none,
+            fixture_token_tree_top_empty_none,
+            fixture_token_tree_top_empty_brace,
+        ] {
+            for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
+                let tt = tt();
+                let mut span_data_table = Default::default();
+                let task = ExpandMacro {
+                    data: ExpandMacroData {
+                        macro_body: FlatTree::from_subtree(tt.view(), v, &mut span_data_table),
+                        macro_name: Default::default(),
+                        attributes: None,
+                        has_global_spans: ExpnGlobals {
+                            serialize: true,
+                            def_site: 0,
+                            call_site: 0,
+                            mixed_site: 0,
+                        },
+                        span_data_table: Vec::new(),
                     },
-                    span_data_table: Vec::new(),
-                },
-                lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
-                env: Default::default(),
-                current_dir: Default::default(),
-            };
+                    lib: Utf8PathBuf::from_path_buf(std::env::current_dir().unwrap()).unwrap(),
+                    env: Default::default(),
+                    current_dir: Default::default(),
+                };
 
-            let json = serde_json::to_string(&task).unwrap();
-            // println!("{}", json);
-            let back: ExpandMacro = serde_json::from_str(&json).unwrap();
+                let json = serde_json::to_string(&task).unwrap();
+                // println!("{}", json);
+                let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-            assert!(
-                tt == back.data.macro_body.to_subtree_resolved(v, &span_data_table),
-                "version: {v}"
-            );
+                assert_eq!(
+                    tt,
+                    back.data.macro_body.to_subtree_resolved(v, &span_data_table),
+                    "version: {v}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "sysroot-abi")]
+    fn test_proc_macro_rpc_works_ts() {
+        for tt in [
+            fixture_token_tree_top_many_none,
+            fixture_token_tree_top_empty_none,
+            fixture_token_tree_top_empty_brace,
+        ] {
+            let tt = tt();
+            for v in version::RUST_ANALYZER_SPAN_SUPPORT..=version::CURRENT_API_VERSION {
+                let mut span_data_table = Default::default();
+                let flat_tree = FlatTree::from_subtree(tt.view(), v, &mut span_data_table);
+                assert_eq!(
+                    tt,
+                    flat_tree.clone().to_subtree_resolved(v, &span_data_table),
+                    "version: {v}"
+                );
+                let ts = flat_tree.to_tokenstream_resolved(v, &span_data_table, |a, b| a.cover(b));
+                let call_site = *span_data_table.first().unwrap();
+                let mut span_data_table = Default::default();
+                assert_eq!(
+                    tt,
+                    FlatTree::from_tokenstream(ts.clone(), v, call_site, &mut span_data_table)
+                        .to_subtree_resolved(v, &span_data_table),
+                    "version: {v}, ts:\n{ts:#?}"
+                );
+            }
         }
     }
 }

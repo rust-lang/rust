@@ -85,7 +85,7 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
         .collect()
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FlatTree {
     subtree: Vec<u32>,
     literal: Vec<u32>,
@@ -615,14 +615,17 @@ impl<'a, T: SpanTransformer>
         root: &'a proc_macro_srv::TokenStream<T::Span>,
     ) {
         let call_site = self.token_id_of(call_site);
-        self.subtree.push(SubtreeRepr {
-            open: call_site,
-            close: call_site,
-            kind: tt::DelimiterKind::Invisible,
-            tt: [!0, !0],
-        });
-        self.work.push_back((0, root.len(), Some(root.iter())));
-
+        if let Some(group) = root.as_single_group() {
+            self.enqueue(group);
+        } else {
+            self.subtree.push(SubtreeRepr {
+                open: call_site,
+                close: call_site,
+                kind: tt::DelimiterKind::Invisible,
+                tt: [!0, !0],
+            });
+            self.work.push_back((0, root.len(), Some(root.iter())));
+        }
         while let Some((idx, len, group)) = self.work.pop_front() {
             self.group(idx, len, group);
         }
@@ -962,6 +965,11 @@ impl<T: SpanTransformer> Reader<'_, T> {
             };
             res[i] = Some(g);
         }
-        res[0].take().unwrap().stream.unwrap_or_default()
+        let group = res[0].take().unwrap();
+        if group.delimiter == proc_macro_srv::Delimiter::None {
+            group.stream.unwrap_or_default()
+        } else {
+            TokenStream::new(vec![proc_macro_srv::TokenTree::Group(group)])
+        }
     }
 }
