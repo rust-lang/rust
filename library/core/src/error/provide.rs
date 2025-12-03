@@ -538,16 +538,18 @@ pub struct ChainRefMultiRequestBuilder<T: ?Sized, NEXT>(PhantomData<(*const T, N
 /// There is no need to use this trait directly, use [MultiRequestBuilder] instead.
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 #[allow(private_bounds)]
-pub trait IntoMultiRequest<'a>: private::IntoMultiRequestInner<'a> + 'static {}
+pub trait IntoMultiRequest: private::IntoMultiRequestInner + 'static {}
 
 mod private {
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
     #[allow(private_bounds)]
-    pub trait IntoMultiRequestInner<'a> {
+    pub trait IntoMultiRequestInner {
         #[unstable(feature = "error_generic_member_access", issue = "99301")]
-        type Request: super::Erased<'a> + MultiResponseInner<'a>;
+        type Request<'a>: super::Erased<'a> + MultiResponseInner<'a>
+        where
+            Self: 'a;
         #[unstable(feature = "error_generic_member_access", issue = "99301")]
-        fn get_request() -> Self::Request;
+        fn get_request<'a>() -> Self::Request<'a>;
     }
 
     #[unstable(feature = "error_generic_member_access", issue = "99301")]
@@ -560,58 +562,58 @@ mod private {
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a> IntoMultiRequest<'a> for EmptyMultiRequestBuilder {}
+impl IntoMultiRequest for EmptyMultiRequestBuilder {}
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a> private::IntoMultiRequestInner<'a> for EmptyMultiRequestBuilder {
-    type Request = EmptyMultiResponse;
+impl private::IntoMultiRequestInner for EmptyMultiRequestBuilder {
+    type Request<'a> = EmptyMultiResponse;
 
-    fn get_request() -> Self::Request {
+    fn get_request<'a>() -> Self::Request<'a> {
         EmptyMultiResponse
     }
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> IntoMultiRequest<'a> for ChainValMultiRequestBuilder<T, NEXT>
+impl<T, NEXT> IntoMultiRequest for ChainValMultiRequestBuilder<T, NEXT>
 where
     T: 'static,
-    NEXT: IntoMultiRequest<'a>,
+    NEXT: IntoMultiRequest,
 {
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> private::IntoMultiRequestInner<'a> for ChainValMultiRequestBuilder<T, NEXT>
+impl<T, NEXT> private::IntoMultiRequestInner for ChainValMultiRequestBuilder<T, NEXT>
 where
     T: 'static,
-    NEXT: IntoMultiRequest<'a>,
+    NEXT: IntoMultiRequest,
 {
-    type Request = MultiResponseChainVal<'a, T, NEXT::Request>;
+    type Request<'a> = ChainValMultiResponse<'a, T, NEXT::Request<'a>>;
 
-    fn get_request() -> Self::Request {
-        MultiResponseChainVal {
-            inner: MultiResponseChain { cur: None, next: NEXT::get_request(), marker: PhantomData },
+    fn get_request<'a>() -> Self::Request<'a> {
+        ChainValMultiResponse {
+            inner: ChainMultiResponse { cur: None, next: NEXT::get_request(), marker: PhantomData },
         }
     }
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> IntoMultiRequest<'a> for ChainRefMultiRequestBuilder<T, NEXT>
+impl<T, NEXT> IntoMultiRequest for ChainRefMultiRequestBuilder<T, NEXT>
 where
     T: ?Sized + 'static,
-    NEXT: IntoMultiRequest<'a>,
+    NEXT: IntoMultiRequest,
 {
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> private::IntoMultiRequestInner<'a> for ChainRefMultiRequestBuilder<T, NEXT>
+impl<T, NEXT> private::IntoMultiRequestInner for ChainRefMultiRequestBuilder<T, NEXT>
 where
     T: ?Sized + 'static,
-    NEXT: IntoMultiRequest<'a>,
+    NEXT: IntoMultiRequest,
 {
-    type Request = MultiResponseChainRef<'a, T, NEXT::Request>;
+    type Request<'a> = ChainRefMultiResponse<'a, T, NEXT::Request<'a>>;
 
-    fn get_request() -> Self::Request {
-        MultiResponseChainRef {
-            inner: MultiResponseChain { cur: None, next: NEXT::get_request(), marker: PhantomData },
+    fn get_request<'a>() -> Self::Request<'a> {
+        ChainRefMultiResponse {
+            inner: ChainMultiResponse { cur: None, next: NEXT::get_request(), marker: PhantomData },
         }
     }
 }
@@ -626,7 +628,7 @@ where
 pub struct EmptyMultiResponse;
 
 #[derive(Debug)]
-struct MultiResponseChain<'a, I, NEXT>
+struct ChainMultiResponse<'a, I, NEXT>
 where
     I: tags::Type<'a>,
 {
@@ -643,11 +645,11 @@ where
     issue = "none"
 )]
 #[derive(Debug)]
-pub struct MultiResponseChainVal<'a, T, NEXT>
+pub struct ChainValMultiResponse<'a, T, NEXT>
 where
     T: 'static,
 {
-    inner: MultiResponseChain<'a, tags::Value<T>, NEXT>,
+    inner: ChainMultiResponse<'a, tags::Value<T>, NEXT>,
 }
 
 /// A response from a [MultiRequestBuilder::request] after calling [MultiRequestBuilder::with_ref].
@@ -657,11 +659,11 @@ where
     issue = "none"
 )]
 #[derive(Debug)]
-pub struct MultiResponseChainRef<'a, T, NEXT>
+pub struct ChainRefMultiResponse<'a, T, NEXT>
 where
     T: 'static + ?Sized,
 {
-    inner: MultiResponseChain<'a, tags::Ref<tags::MaybeSizedValue<T>>, NEXT>,
+    inner: ChainMultiResponse<'a, tags::Ref<tags::MaybeSizedValue<T>>, NEXT>,
 }
 
 /// A response from a [MultiRequestBuilder]. The types returned from
@@ -758,7 +760,7 @@ impl<'a> private::MultiResponseInner<'a> for EmptyMultiResponse {
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, J, NEXT> private::MultiResponseInner<'a> for MultiResponseChain<'a, J, NEXT>
+impl<'a, J, NEXT> private::MultiResponseInner<'a> for ChainMultiResponse<'a, J, NEXT>
 where
     J: tags::Type<'a>,
     NEXT: private::MultiResponseInner<'a>,
@@ -785,7 +787,7 @@ where
     }
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> private::MultiResponseInner<'a> for MultiResponseChainVal<'a, T, NEXT>
+impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainValMultiResponse<'a, T, NEXT>
 where
     T: 'static,
     NEXT: private::MultiResponseInner<'a>,
@@ -801,7 +803,7 @@ where
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 // SAFETY: delegates to inner impl
-unsafe impl<'a, T, NEXT> Erased<'a> for MultiResponseChainVal<'a, T, NEXT>
+unsafe impl<'a, T, NEXT> Erased<'a> for ChainValMultiResponse<'a, T, NEXT>
 where
     T: 'static,
     NEXT: Erased<'a>,
@@ -811,7 +813,7 @@ where
         type_id: TypeId,
     ) -> Option<NonNull<()>> {
         // SAFETY: delegation
-        unsafe { MultiResponseChain::consume_closure(move || &raw const (*this()).inner, type_id) }
+        unsafe { ChainMultiResponse::consume_closure(move || &raw const (*this()).inner, type_id) }
     }
 
     unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
@@ -821,7 +823,7 @@ where
 }
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
-impl<'a, T, NEXT> private::MultiResponseInner<'a> for MultiResponseChainRef<'a, T, NEXT>
+impl<'a, T, NEXT> private::MultiResponseInner<'a> for ChainRefMultiResponse<'a, T, NEXT>
 where
     T: 'static + ?Sized,
     NEXT: private::MultiResponseInner<'a>,
@@ -837,7 +839,7 @@ where
 }
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 // SAFETY: delegates to inner impl
-unsafe impl<'a, T, NEXT> Erased<'a> for MultiResponseChainRef<'a, T, NEXT>
+unsafe impl<'a, T, NEXT> Erased<'a> for ChainRefMultiResponse<'a, T, NEXT>
 where
     T: 'static + ?Sized,
     NEXT: Erased<'a>,
@@ -847,7 +849,7 @@ where
         type_id: TypeId,
     ) -> Option<NonNull<()>> {
         // SAFETY: delegation
-        unsafe { MultiResponseChain::consume_closure(move || &raw const (*this()).inner, type_id) }
+        unsafe { ChainMultiResponse::consume_closure(move || &raw const (*this()).inner, type_id) }
     }
 
     unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
@@ -870,7 +872,7 @@ unsafe impl<'a> Erased<'a> for EmptyMultiResponse {
     }
 }
 
-unsafe impl<'a, I, NEXT> Erased<'a> for MultiResponseChain<'a, I, NEXT>
+unsafe impl<'a, I, NEXT> Erased<'a> for ChainMultiResponse<'a, I, NEXT>
 where
     I: tags::Type<'a>,
     NEXT: Erased<'a>,
@@ -967,7 +969,7 @@ where
 ///     assert_eq!(string_val, None);
 /// }
 /// ```
-pub struct MultiRequestBuilder<INNER: for<'a> IntoMultiRequest<'a>> {
+pub struct MultiRequestBuilder<INNER: IntoMultiRequest> {
     inner: PhantomData<INNER>,
 }
 
@@ -979,7 +981,7 @@ impl MultiRequestBuilder<EmptyMultiRequestBuilder> {
     }
 }
 
-impl<INNER: for<'a> IntoMultiRequest<'a>> MultiRequestBuilder<INNER> {
+impl<INNER: IntoMultiRequest> MultiRequestBuilder<INNER> {
     /// Create a [MultiRequestBuilder] that requests a value.
     ///
     /// # Examples

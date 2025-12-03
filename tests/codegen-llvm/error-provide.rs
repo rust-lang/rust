@@ -78,7 +78,7 @@ pub fn provide_multi(
 
 // Check that the virtual function generated has a switch
 
-// CHECK: define {{.*}}4core5error7provide{{.*}}21MultiResponseChainRef
+// CHECK: define {{.*}}4core5error7provide{{.*}}21ChainRefMultiResponse
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[SCRUTINEE:[^ ]+]] = load i128, ptr
 // CHECK-NEXT: switch i128 %[[SCRUTINEE]], label %{{.*}} [
