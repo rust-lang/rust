@@ -313,8 +313,16 @@ impl<'tcx> Context<'tcx> {
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
 
+        let hide_deprecated = self.shared.cache.hide_deprecated;
+        let tcx = self.tcx();
+
         for item in &m.items {
             if item.is_stripped() {
+                continue;
+            }
+
+            if hide_deprecated && item.deprecation(tcx).is_some() {
+                // Hide deprecated items from sidebar listings.
                 continue;
             }
 
@@ -866,7 +874,11 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.shared.fs.write(joint_dst, buf)?;
 
             if !self.info.render_redirect_pages {
-                self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
+                let hide_deprecated = self.shared.cache.hide_deprecated;
+                let is_deprecated = item.deprecation(self.tcx()).is_some();
+                if !(hide_deprecated && is_deprecated) {
+                    self.shared.all.borrow_mut().append(full_path(self, item), &item_type);
+                }
             }
             // If the item is a macro, redirect from the old macro URL (with !)
             // to the new one (without).

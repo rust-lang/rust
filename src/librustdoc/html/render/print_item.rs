@@ -412,6 +412,30 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             )?;
 
             for (_, myitem) in &not_stripped_items[&type_] {
+                // Skip deprecated items in module listings when the flag is enabled.
+                if cx.shared.cache.hide_deprecated {
+                    // Direct deprecation on the item
+                    if myitem.deprecation(tcx).is_some() {
+                        continue;
+                    }
+                    // Deprecated reexports/imports
+                    match myitem.kind {
+                        clean::ImportItem(ref import) => {
+                            if let Some(import_def_id) = import.source.did {
+                                if tcx.lookup_deprecation(import_def_id).is_some() {
+                                    continue;
+                                }
+                            }
+                        }
+                        clean::ExternCrateItem { .. } => {
+                            let def_id = myitem.item_id.expect_def_id();
+                            if tcx.lookup_deprecation(def_id).is_some() {
+                                continue;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
                 match myitem.kind {
                     clean::ExternCrateItem { ref src } => {
                         use crate::html::format::print_anchor;

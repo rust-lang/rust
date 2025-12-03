@@ -1584,6 +1584,10 @@ fn render_deref_methods(
 }
 
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
+    if item.deprecation(tcx).is_some() {
+        return false;
+    }
+
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
         clean::RequiredMethodItem(ref method) => method.decl.receiver_type(),

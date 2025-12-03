@@ -147,10 +147,6 @@ impl<'tcx> DocContext<'tcx> {
     pub(crate) fn document_hidden(&self) -> bool {
         self.cache.document_hidden
     }
-    /// If `--exclude-deprecated-items` was passed to rustdoc.
-    pub(crate) fn exclude_deprecated(&self) -> bool {
-        self.cache.exclude_deprecated
-    }
 }
 
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
@@ -391,7 +387,7 @@ pub(crate) fn run_global_ctxt(
         cache: Cache::new(
             render_options.document_private,
             render_options.document_hidden,
-            render_options.exclude_deprecated,
+            render_options.hide_deprecated,
         ),
         inlined: FxHashSet::default(),
         output_format,
@@ -442,7 +438,6 @@ pub(crate) fn run_global_ctxt(
             WhenDocumentPrivate => ctxt.document_private(),
             WhenNotDocumentPrivate => !ctxt.document_private(),
             WhenNotDocumentHidden => !ctxt.document_hidden(),
-            WhenExcludeDeprecated => ctxt.exclude_deprecated(),
         };
         if run {
             debug!("running pass {}", p.pass.name);
