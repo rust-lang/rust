@@ -31,6 +31,10 @@ help: you might have meant to use the associated type
    |
 LL |         let _: Self::Type;
    |                ++++++
+help: consider importing this struct
+   |
+LL + use std::mem::type_info::Type;
+   |
 
 error[E0531]: cannot find tuple struct or tuple variant `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:25:13

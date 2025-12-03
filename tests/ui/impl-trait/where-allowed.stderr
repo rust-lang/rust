@@ -384,11 +384,11 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
    |
    = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
            - impl<A, F> Fn<A> for &F
-             where A: Tuple, F: Fn<A>, F: ?Sized;
+             where A: std::marker::Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
-             where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
+             where Args: std::marker::Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
            - impl<F, Args> Fn<Args> for Exclusive<F>
-             where F: Sync, F: Fn<Args>, Args: Tuple;
+             where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
 
 error[E0118]: no nominal type found for inherent implementation
   --> $DIR/where-allowed.rs:241:1
