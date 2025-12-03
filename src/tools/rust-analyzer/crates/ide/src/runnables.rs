@@ -1679,11 +1679,11 @@ mod r#mod {
                 [
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 1..461, focus_range: 5..10, name: \"mod\", kind: Module, description: \"mod r#mod\" })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 17..41, focus_range: 32..36, name: \"r#fn\", kind: Function })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 47..84, name: \"r#for\", container_name: \"mod\" })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 90..146, name: \"r#struct\", container_name: \"mod\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 47..84, name: \"for\", container_name: \"mod\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 90..146, name: \"struct\", container_name: \"mod\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 152..266, focus_range: 189..205, name: \"impl\", kind: Impl })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 216..260, name: \"r#fn\" })",
-                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 323..367, name: \"r#fn\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 216..260, name: \"fn\" })",
+                    "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 323..367, name: \"fn\" })",
                     "(DocTest, NavigationTarget { file_id: FileId(0), full_range: 401..459, focus_range: 445..456, name: \"impl\", kind: Impl })",
                 ]
             "#]],

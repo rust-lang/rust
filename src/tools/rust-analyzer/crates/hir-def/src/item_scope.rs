@@ -9,7 +9,7 @@ use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use span::Edition;
 use stdx::format_to;
 use syntax::ast;
@@ -531,12 +531,13 @@ impl ItemScope {
         adt: AstId<ast::Adt>,
         attr_id: AttrId,
         attr_call_id: MacroCallId,
-        len: usize,
+        mut derive_call_ids: SmallVec<[Option<MacroCallId>; 4]>,
     ) {
+        derive_call_ids.shrink_to_fit();
         self.derive_macros.entry(adt).or_default().push(DeriveMacroInvocation {
             attr_id,
             attr_call_id,
-            derive_call_ids: smallvec![None; len],
+            derive_call_ids,
         });
     }
 

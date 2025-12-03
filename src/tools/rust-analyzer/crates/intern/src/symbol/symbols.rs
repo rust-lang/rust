@@ -526,6 +526,9 @@ define_symbols! {
     arbitrary_self_types_pointers,
     supertrait_item_shadowing,
     hash,
+    partial_cmp,
     cmp,
+    CoerceUnsized,
+    DispatchFromDyn,
     define_opaque,
 }

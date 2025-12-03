@@ -693,21 +693,24 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
-        for &body_id in bodies {
+        for &body in bodies {
             bar.set_message(move || {
-                format!("mir lowering: {}", full_name(db, body_id, body_id.module(db)))
+                format!("mir lowering: {}", full_name(db, body, body.module(db)))
             });
             bar.inc(1);
-            if matches!(body_id, DefWithBody::Variant(_)) {
+            if matches!(body, DefWithBody::Variant(_)) {
                 continue;
             }
-            let module = body_id.module(db);
-            if !self.should_process(db, body_id, module) {
+            let module = body.module(db);
+            if !self.should_process(db, body, module) {
                 continue;
             }
 
             all += 1;
-            let Err(e) = db.mir_body(body_id.into()) else {
+            let Ok(body_id) = body.try_into() else {
+                continue;
+            };
+            let Err(e) = db.mir_body(body_id) else {
                 continue;
             };
             if verbosity.is_spammy() {
@@ -716,7 +719,7 @@ impl flags::AnalysisStats {
                     .into_iter()
                     .rev()
                     .filter_map(|it| it.name(db))
-                    .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
+                    .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
                 bar.println(format!("Mir body for {full_name} failed due {e:?}"));
@@ -747,11 +750,12 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
+            let bodies = bodies.iter().filter_map(|&body| body.try_into().ok()).collect::<Vec<_>>();
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    snap.body(body.into());
-                    InferenceResult::for_body(snap, body.into());
+                    snap.body(body);
+                    InferenceResult::for_body(snap, body);
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -769,6 +773,7 @@ impl flags::AnalysisStats {
         let mut num_pat_type_mismatches = 0;
         let mut panics = 0;
         for &body_id in bodies {
+            let Ok(body_def_id) = body_id.try_into() else { continue };
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate(db).to_display_target(db);
@@ -807,9 +812,9 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            let body = db.body(body_id.into());
+            let body = db.body(body_def_id);
             let inference_result =
-                catch_unwind(AssertUnwindSafe(|| InferenceResult::for_body(db, body_id.into())));
+                catch_unwind(AssertUnwindSafe(|| InferenceResult::for_body(db, body_def_id)));
             let inference_result = match inference_result {
                 Ok(inference_result) => inference_result,
                 Err(p) => {
@@ -826,7 +831,7 @@ impl flags::AnalysisStats {
                 }
             };
             // This query is LRU'd, so actually calling it will skew the timing results.
-            let sm = || db.body_with_source_map(body_id.into()).1;
+            let sm = || db.body_with_source_map(body_def_id).1;
 
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
@@ -1081,6 +1086,7 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
         bar.tick();
         for &body_id in bodies {
+            let Ok(body_def_id) = body_id.try_into() else { continue };
             let module = body_id.module(db);
             if !self.should_process(db, body_id, module) {
                 continue;
@@ -1114,7 +1120,7 @@ impl flags::AnalysisStats {
                 bar.println(msg());
             }
             bar.set_message(msg);
-            db.body(body_id.into());
+            db.body(body_def_id);
             bar.inc(1);
         }
 

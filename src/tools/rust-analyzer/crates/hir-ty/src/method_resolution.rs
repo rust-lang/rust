@@ -16,6 +16,7 @@ use hir_def::{
     AssocItemId, BlockId, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
     ImplId, ItemContainerId, ModuleId, TraitId,
     attrs::AttrFlags,
+    builtin_derive::BuiltinDeriveImplMethod,
     expr_store::path::GenericArgs as HirGenericArgs,
     hir::ExprId,
     lang_item::LangItems,
@@ -372,9 +373,13 @@ pub fn lookup_impl_const<'db>(
     };
 
     lookup_impl_assoc_item_for_trait_ref(infcx, trait_ref, env, name)
-        .and_then(
-            |assoc| if let (AssocItemId::ConstId(id), s) = assoc { Some((id, s)) } else { None },
-        )
+        .and_then(|assoc| {
+            if let (Either::Left(AssocItemId::ConstId(id)), s) = assoc {
+                Some((id, s))
+            } else {
+                None
+            }
+        })
         .unwrap_or((const_id, subs))
 }
 
@@ -420,12 +425,12 @@ pub(crate) fn lookup_impl_method_query<'db>(
     env: ParamEnvAndCrate<'db>,
     func: FunctionId,
     fn_subst: GenericArgs<'db>,
-) -> (FunctionId, GenericArgs<'db>) {
+) -> (Either<FunctionId, (BuiltinDeriveImplId, BuiltinDeriveImplMethod)>, GenericArgs<'db>) {
     let interner = DbInterner::new_with(db, env.krate);
     let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
 
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
-        return (func, fn_subst);
+        return (Either::Left(func), fn_subst);
     };
     let trait_params = db.generic_params(trait_id.into()).len();
     let trait_ref = TraitRef::new_from_args(
@@ -435,16 +440,19 @@ pub(crate) fn lookup_impl_method_query<'db>(
     );
 
     let name = &db.function_signature(func).name;
-    let Some((impl_fn, impl_subst)) = lookup_impl_assoc_item_for_trait_ref(
-        &infcx,
-        trait_ref,
-        env.param_env,
-        name,
-    )
-    .and_then(|assoc| {
-        if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
-    }) else {
-        return (func, fn_subst);
+    let Some((impl_fn, impl_subst)) =
+        lookup_impl_assoc_item_for_trait_ref(&infcx, trait_ref, env.param_env, name).and_then(
+            |(assoc, impl_args)| {
+                let assoc = match assoc {
+                    Either::Left(AssocItemId::FunctionId(id)) => Either::Left(id),
+                    Either::Right(it) => Either::Right(it),
+                    _ => return None,
+                };
+                Some((assoc, impl_args))
+            },
+        )
+    else {
+        return (Either::Left(func), fn_subst);
     };
 
     (
@@ -461,11 +469,18 @@ fn lookup_impl_assoc_item_for_trait_ref<'db>(
     trait_ref: TraitRef<'db>,
     env: ParamEnv<'db>,
     name: &Name,
-) -> Option<(AssocItemId, GenericArgs<'db>)> {
+) -> Option<(Either<AssocItemId, (BuiltinDeriveImplId, BuiltinDeriveImplMethod)>, GenericArgs<'db>)>
+{
     let (impl_id, impl_subst) = find_matching_impl(infcx, env, trait_ref)?;
-    let AnyImplId::ImplId(impl_id) = impl_id else {
-        // FIXME: Handle resolution to builtin derive.
-        return None;
+    let impl_id = match impl_id {
+        AnyImplId::ImplId(it) => it,
+        AnyImplId::BuiltinDeriveImplId(impl_) => {
+            return impl_
+                .loc(infcx.interner.db)
+                .trait_
+                .get_method(name.symbol())
+                .map(|method| (Either::Right((impl_, method)), impl_subst));
+        }
     };
     let item =
         impl_id.impl_items(infcx.interner.db).items.iter().find_map(|(n, it)| match *it {
@@ -473,7 +488,7 @@ fn lookup_impl_assoc_item_for_trait_ref<'db>(
             AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
             AssocItemId::TypeAliasId(_) => None,
         })?;
-    Some((item, impl_subst))
+    Some((Either::Left(item), impl_subst))
 }
 
 pub(crate) fn find_matching_impl<'db>(
@@ -793,19 +808,29 @@ impl TraitImpls {
             .unwrap_or_default()
     }
 
-    pub fn for_trait(&self, trait_: TraitId, mut callback: impl FnMut(&[ImplId])) {
+    pub fn for_trait(
+        &self,
+        trait_: TraitId,
+        mut callback: impl FnMut(Either<&[ImplId], &[BuiltinDeriveImplId]>),
+    ) {
         if let Some(impls) = self.map.get(&trait_) {
-            callback(&impls.blanket_impls);
+            callback(Either::Left(&impls.blanket_impls));
             for impls in impls.non_blanket_impls.values() {
-                callback(&impls.0);
+                callback(Either::Left(&impls.0));
+                callback(Either::Right(&impls.1));
             }
         }
     }
 
-    pub fn for_self_ty(&self, self_ty: &SimplifiedType, mut callback: impl FnMut(&[ImplId])) {
+    pub fn for_self_ty(
+        &self,
+        self_ty: &SimplifiedType,
+        mut callback: impl FnMut(Either<&[ImplId], &[BuiltinDeriveImplId]>),
+    ) {
         for for_trait in self.map.values() {
             if let Some(for_ty) = for_trait.non_blanket_impls.get(self_ty) {
-                callback(&for_ty.0);
+                callback(Either::Left(&for_ty.0));
+                callback(Either::Right(&for_ty.1));
             }
         }
     }

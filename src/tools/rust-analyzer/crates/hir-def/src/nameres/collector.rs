@@ -224,6 +224,8 @@ struct DeferredBuiltinDerive {
     module_id: ModuleId,
     depth: usize,
     container: ItemContainerId,
+    derive_attr_id: AttrId,
+    derive_index: u32,
 }
 
 /// Walks the tree of module recursively
@@ -1479,10 +1481,10 @@ impl<'db> DefCollector<'db> {
 
                         let ast_id = ast_id.with_value(ast_adt_id);
 
+                        let mut derive_call_ids = SmallVec::new();
                         match attr.parse_path_comma_token_tree(self.db) {
                             Some(derive_macros) => {
                                 let call_id = call_id();
-                                let mut len = 0;
                                 for (idx, (path, call_site, _)) in derive_macros.enumerate() {
                                     let ast_id = AstIdWithPath::new(
                                         file_id,
@@ -1505,14 +1507,7 @@ impl<'db> DefCollector<'db> {
                                     );
 
                                     if let Ok((macro_id, def_id, call_id)) = id {
-                                        self.def_map.modules[directive.module_id]
-                                            .scope
-                                            .set_derive_macro_invoc(
-                                                ast_id.ast_id,
-                                                call_id,
-                                                *attr_id,
-                                                idx,
-                                            );
+                                        derive_call_ids.push(Some(call_id));
                                         // Record its helper attributes.
                                         if def_id.krate != self.def_map.krate {
                                             let def_map = crate_def_map(self.db, def_id.krate);
@@ -1543,11 +1538,14 @@ impl<'db> DefCollector<'db> {
                                                     module_id: directive.module_id,
                                                     container: directive.container,
                                                     depth: directive.depth,
+                                                    derive_attr_id: *attr_id,
+                                                    derive_index: idx as u32,
                                                 });
                                         } else {
                                             push_resolved(&mut resolved, directive, call_id);
                                         }
                                     } else {
+                                        derive_call_ids.push(None);
                                         self.unresolved_macros.push(MacroDirective {
                                             module_id: directive.module_id,
                                             depth: directive.depth + 1,
@@ -1561,7 +1559,6 @@ impl<'db> DefCollector<'db> {
                                             container: directive.container,
                                         });
                                     }
-                                    len = idx;
                                 }
 
                                 // We treat the #[derive] macro as an attribute call, but we do not resolve it for nameres collection.
@@ -1570,7 +1567,12 @@ impl<'db> DefCollector<'db> {
                                 // Check the comment in [`builtin_attr_macro`].
                                 self.def_map.modules[directive.module_id]
                                     .scope
-                                    .init_derive_attribute(ast_id, *attr_id, call_id, len + 1);
+                                    .init_derive_attribute(
+                                        ast_id,
+                                        *attr_id,
+                                        call_id,
+                                        derive_call_ids,
+                                    );
                             }
                             None => {
                                 let diag = DefDiagnostic::malformed_derive(
@@ -1863,8 +1865,15 @@ impl ModCollector<'_, '_> {
                 let module = &mut def_map.modules[module_id];
                 for deferred_derive in deferred_derives {
                     crate::builtin_derive::with_derive_traits(deferred_derive.derive, |trait_| {
-                        let impl_id =
-                            BuiltinDeriveImplId::new(db, BuiltinDeriveImplLoc { adt: id, trait_ });
+                        let impl_id = BuiltinDeriveImplId::new(
+                            db,
+                            BuiltinDeriveImplLoc {
+                                adt: id,
+                                trait_,
+                                derive_attr_id: deferred_derive.derive_attr_id,
+                                derive_index: deferred_derive.derive_index,
+                            },
+                        );
                         module.scope.define_builtin_derive_impl(impl_id);
                     });
                 }

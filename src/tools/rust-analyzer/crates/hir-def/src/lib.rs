@@ -64,6 +64,7 @@ use base_db::{Crate, impl_intern_key};
 use hir_expand::{
     AstId, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallStyles,
     MacroDefId, MacroDefKind,
+    attrs::AttrId,
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
@@ -337,6 +338,8 @@ impl ImplId {
 pub struct BuiltinDeriveImplLoc {
     pub adt: AdtId,
     pub trait_: BuiltinDeriveImplTrait,
+    pub derive_attr_id: AttrId,
+    pub derive_index: u32,
 }
 
 #[salsa::interned(debug, no_lifetime)]
@@ -674,6 +677,18 @@ impl_from!(
     BuiltinType
     for ModuleDefId
 );
+
+impl From<DefWithBodyId> for ModuleDefId {
+    #[inline]
+    fn from(value: DefWithBodyId) -> Self {
+        match value {
+            DefWithBodyId::FunctionId(id) => id.into(),
+            DefWithBodyId::StaticId(id) => id.into(),
+            DefWithBodyId::ConstId(id) => id.into(),
+            DefWithBodyId::VariantId(id) => id.into(),
+        }
+    }
+}
 
 /// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.

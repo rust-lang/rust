@@ -539,7 +539,7 @@ impl SomeStruct {
                 "AttrFlags::query_",
                 "AttrFlags::query_",
                 "AttrFlags::query_",
-                "impl_trait_with_diagnostics_shim",
+                "impl_trait_with_diagnostics_query",
                 "impl_signature_shim",
                 "impl_signature_with_source_map_shim",
                 "impl_self_ty_with_diagnostics_query",
