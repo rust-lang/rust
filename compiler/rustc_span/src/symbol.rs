@@ -2143,6 +2143,7 @@ symbols! {
         sparc,
         sparc64,
         sparc_target_feature,
+        spe_acc,
         specialization,
         speed,
         spirv,
