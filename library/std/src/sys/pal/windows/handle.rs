@@ -121,7 +121,7 @@ impl Handle {
             Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
-                    cursor.advance_unchecked(read);
+                    cursor.advance(read);
                 }
                 Ok(())
             }
@@ -144,7 +144,7 @@ impl Handle {
 
         // SAFETY: `read` bytes were written to the initialized portion of the buffer
         unsafe {
-            cursor.advance_unchecked(read);
+            cursor.advance(read);
         }
         Ok(())
     }
