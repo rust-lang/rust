@@ -2496,7 +2496,9 @@ impl BookTest {
         let path = builder.src.join(&self.path);
         // Books often have feature-gated example text.
         rustbook_cmd.env("RUSTC_BOOTSTRAP", "1");
-        rustbook_cmd.env("PATH", new_path).arg("test").arg(path);
+        rustbook_cmd.env("PATH", new_path).arg("test").arg(&path);
+        // The reference has a nested `cargo run` in `preprocessor.spec` which uses relative paths.
+        rustbook_cmd.current_dir(&path);
 
         // Books may also need to build dependencies. For example, `TheBook` has
         // code samples which use the `trpl` crate. For the `rustdoc` invocation
