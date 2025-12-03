@@ -265,13 +265,23 @@ pub struct Config {
     /// cf. [`Self::remote_test_client`] and [`Self::runner`].
     pub target_run_lib_path: Utf8PathBuf,
 
-    /// Path to the *staged*  `rustc`-under-test. Unless forced, this `rustc` is *staged*, and must
-    /// not be confused with [`Self::stage0_rustc_path`].
+    /// Path to the `rustc`-under-test.
+    ///
+    /// For `ui-fulldeps` test suite specifically:
+    ///
+    /// - This is the **stage 0** compiler when testing `ui-fulldeps` under `--stage=1`.
+    /// - This is the **stage 2** compiler when testing `ui-fulldeps` under `--stage=2`.
+    ///
+    /// See [`Self::query_rustc_path`] for the `--stage=1` `ui-fulldeps` scenario where a separate
+    /// in-tree `rustc` is used for querying target information.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/rustc`
     ///
-    /// FIXME: maybe rename this to reflect that this is the `rustc`-under-test.
+    /// # Note on forced stage0
+    ///
+    /// It is possible for this `rustc` to be a stage 0 `rustc` if explicitly configured with the
+    /// bootstrap option `build.compiletest-allow-stage0=true` and specifying `--stage=0`.
     pub rustc_path: Utf8PathBuf,
 
     /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
