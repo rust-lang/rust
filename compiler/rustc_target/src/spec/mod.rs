@@ -1925,6 +1925,24 @@ impl Arch {
             Self::Other(name) => rustc_span::Symbol::intern(name),
         }
     }
+
+    pub fn supports_c_variadic_definitions(&self) -> bool {
+        use Arch::*;
+
+        match self {
+            // These targets just do not support c-variadic definitions.
+            Bpf | SpirV => false,
+
+            // We don't know if the target supports c-variadic definitions, but we don't want
+            // to needlessly restrict custom target.json configurations.
+            Other(_) => true,
+
+            AArch64 | AmdGpu | Arm | Arm64EC | Avr | CSky | Hexagon | LoongArch32 | LoongArch64
+            | M68k | Mips | Mips32r6 | Mips64 | Mips64r6 | Msp430 | Nvptx64 | PowerPC
+            | PowerPC64 | PowerPC64LE | RiscV32 | RiscV64 | S390x | Sparc | Sparc64 | Wasm32
+            | Wasm64 | X86 | X86_64 | Xtensa => true,
+        }
+    }
 }
 
 crate::target_spec_enum! {
