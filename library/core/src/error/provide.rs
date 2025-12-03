@@ -3,6 +3,8 @@
 use crate::any::TypeId;
 use crate::error::Error;
 use crate::fmt::{self, Debug, Formatter};
+use crate::marker::PhantomData;
+use crate::ptr::NonNull;
 
 /// Requests a value of type `T` from the given `impl Error`.
 ///
@@ -55,7 +57,7 @@ fn request_by_type_tag<'a, I>(err: &'a (impl Error + ?Sized)) -> Option<I::Reifi
 where
     I: tags::Type<'a>,
 {
-    let mut tagged = Tagged { tag_id: TypeId::of::<I>(), value: TaggedOption::<'a, I>(None) };
+    let mut tagged = <Tagged<TaggedOption<'a, I>>>::new_concrete();
     err.provide(tagged.as_request());
     tagged.value.0
 }
@@ -308,9 +310,7 @@ impl<'a> Request<'a> {
     where
         I: tags::Type<'a>,
     {
-        if let Some(res @ TaggedOption(None)) = self.0.downcast_mut::<I>() {
-            res.0 = Some(value);
-        }
+        self.0.provide::<I>(value);
         self
     }
 
@@ -319,9 +319,7 @@ impl<'a> Request<'a> {
     where
         I: tags::Type<'a>,
     {
-        if let Some(res @ TaggedOption(None)) = self.0.downcast_mut::<I>() {
-            res.0 = Some(fulfil());
-        }
+        self.0.provide_with::<I>(fulfil);
         self
     }
 
@@ -504,7 +502,7 @@ impl<'a> Request<'a> {
     where
         I: tags::Type<'a>,
     {
-        matches!(self.0.downcast::<I>(), Some(TaggedOption(None)))
+        self.0.would_be_satisfied_by::<I>()
     }
 }
 
@@ -514,6 +512,533 @@ impl<'a> Debug for Request<'a> {
         f.debug_struct("Request").finish_non_exhaustive()
     }
 }
+
+/// Base case for [IntoMultiRequest].
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[derive(Copy, Clone, Debug)]
+pub struct EmptyMultiRequestBuilder;
+
+/// Case of [IntoMultiRequest] that retrieves a type by value.
+///
+/// Create via [MultiRequestBuilder::with_value].
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[derive(Copy, Clone, Debug)]
+pub struct ChainValMultiRequestBuilder<T, NEXT>(PhantomData<(T, NEXT)>);
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[derive(Copy, Clone, Debug)]
+/// Case of [IntoMultiRequest] that retrieves a type by value.
+///
+/// Create via [MultiRequestBuilder::with_ref].
+pub struct ChainRefMultiRequestBuilder<T: ?Sized, NEXT>(PhantomData<(*const T, NEXT)>);
+
+/// Internal trait for types that represent a request for multiple provided
+/// traits in parallel.
+///
+/// There is no need to use this trait directly, use [MultiRequestBuilder] instead.
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[allow(private_bounds)]
+pub trait IntoMultiRequest<'a>: private::IntoMultiRequestInner<'a> + 'static {}
+
+mod private {
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[allow(private_bounds)]
+    pub trait IntoMultiRequestInner<'a> {
+        #[unstable(feature = "error_generic_member_access", issue = "99301")]
+        type Request: super::Erased<'a> + MultiResponseInner<'a>;
+        #[unstable(feature = "error_generic_member_access", issue = "99301")]
+        fn get_request() -> Self::Request;
+    }
+
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    #[allow(private_bounds)]
+    pub trait MultiResponseInner<'a> {
+        fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+        where
+            I: super::tags::Type<'a>;
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a> IntoMultiRequest<'a> for EmptyMultiRequestBuilder {}
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a> private::IntoMultiRequestInner<'a> for EmptyMultiRequestBuilder {
+    type Request = EmptyMultiResponse;
+
+    fn get_request() -> Self::Request {
+        EmptyMultiResponse
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> IntoMultiRequest<'a> for ChainValMultiRequestBuilder<T, NEXT>
+where
+    T: 'static,
+    NEXT: IntoMultiRequest<'a>,
+{
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> private::IntoMultiRequestInner<'a> for ChainValMultiRequestBuilder<T, NEXT>
+where
+    T: 'static,
+    NEXT: IntoMultiRequest<'a>,
+{
+    type Request = MultiResponseChainVal<'a, T, NEXT::Request>;
+
+    fn get_request() -> Self::Request {
+        MultiResponseChainVal {
+            inner: MultiResponseChain { cur: None, next: NEXT::get_request(), marker: PhantomData },
+        }
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> IntoMultiRequest<'a> for ChainRefMultiRequestBuilder<T, NEXT>
+where
+    T: ?Sized + 'static,
+    NEXT: IntoMultiRequest<'a>,
+{
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> private::IntoMultiRequestInner<'a> for ChainRefMultiRequestBuilder<T, NEXT>
+where
+    T: ?Sized + 'static,
+    NEXT: IntoMultiRequest<'a>,
+{
+    type Request = MultiResponseChainRef<'a, T, NEXT::Request>;
+
+    fn get_request() -> Self::Request {
+        MultiResponseChainRef {
+            inner: MultiResponseChain { cur: None, next: NEXT::get_request(), marker: PhantomData },
+        }
+    }
+}
+
+/// A response from an empty [MultiRequestBuilder::request]
+#[unstable(
+    feature = "error_generic_member_access_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+#[derive(Debug)]
+pub struct EmptyMultiResponse;
+
+#[derive(Debug)]
+struct MultiResponseChain<'a, I, NEXT>
+where
+    I: tags::Type<'a>,
+{
+    cur: Option<I::Reified>,
+    next: NEXT,
+    // Lifetime is invariant because it is used in an associated type
+    marker: PhantomData<*mut &'a ()>,
+}
+
+/// A response from a [MultiRequestBuilder::request] after calling [MultiRequestBuilder::with_value].
+#[unstable(
+    feature = "error_generic_member_access_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+#[derive(Debug)]
+pub struct MultiResponseChainVal<'a, T, NEXT>
+where
+    T: 'static,
+{
+    inner: MultiResponseChain<'a, tags::Value<T>, NEXT>,
+}
+
+/// A response from a [MultiRequestBuilder::request] after calling [MultiRequestBuilder::with_ref].
+#[unstable(
+    feature = "error_generic_member_access_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+#[derive(Debug)]
+pub struct MultiResponseChainRef<'a, T, NEXT>
+where
+    T: 'static + ?Sized,
+{
+    inner: MultiResponseChain<'a, tags::Ref<tags::MaybeSizedValue<T>>, NEXT>,
+}
+
+/// A response from a [MultiRequestBuilder]. The types returned from
+/// [MultiRequestBuilder::request] implement this trait.
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[allow(private_bounds)]
+pub trait MultiResponse<'a> {
+    /// Retrieve a reference with the type `R` from this multi response,
+    ///
+    /// The reference will be passed to `fulfil` if present. This function
+    /// consumes the reference, so the next call to `retrieve_ref`
+    /// with the same type will not call `fulfil`.
+    ///
+    /// This function returns `self` to allow easy chained use.
+    ///
+    /// # Examples
+    ///
+    /// When requesting only a single type, it is better to use
+    /// [request_ref] - this is only an example.
+    ///
+    /// ```
+    /// #![feature(error_generic_member_access)]
+    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    ///
+    /// fn get_str(e: &dyn Error) -> Option<&str> {
+    ///     let mut result = None;
+    ///     MultiRequestBuilder::new()
+    ///         .with_ref::<str>()
+    ///         .request(e)
+    ///         .retrieve_ref(|res| result = Some(res));
+    ///     result
+    /// }
+    /// ```
+    fn retrieve_ref<R>(&mut self, fulfil: impl FnOnce(&'a R)) -> &mut Self
+    where
+        R: ?Sized + 'static;
+
+    /// Retrieve a value with the type `V` from this multi response,
+    ///
+    /// The value will be passed to `fulfil` if present. This function
+    /// consumes the value, so the next call to `retrieve_value`
+    /// with the same type will not call `fulfil`.
+    ///
+    /// This function returns `self` to allow easy chained use.
+    ///
+    /// # Examples
+    ///
+    /// When requesting only a single type, it is better to use
+    /// [request_value] - this is only an example.
+    ///
+    /// ```
+    /// #![feature(error_generic_member_access)]
+    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    ///
+    /// fn get_string(e: &dyn Error) -> Option<String> {
+    ///     let mut result = None;
+    ///     MultiRequestBuilder::new()
+    ///         .with_value::<String>()
+    ///         .request(e)
+    ///         .retrieve_value(|res| result = Some(res));
+    ///     result
+    /// }
+    /// ```
+    fn retrieve_value<V>(&mut self, fulfil: impl FnOnce(V)) -> &mut Self
+    where
+        V: 'static;
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T: private::MultiResponseInner<'a>> MultiResponse<'a> for T {
+    fn retrieve_ref<R>(&mut self, fulfil: impl FnOnce(&'a R)) -> &mut Self
+    where
+        R: ?Sized + 'static,
+    {
+        self.consume_with::<tags::Ref<tags::MaybeSizedValue<R>>>(fulfil)
+    }
+
+    fn retrieve_value<V>(&mut self, fulfil: impl FnOnce(V)) -> &mut Self
+    where
+        V: 'static,
+    {
+        self.consume_with::<tags::Value<V>>(fulfil)
+    }
+}
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a> private::MultiResponseInner<'a> for EmptyMultiResponse {
+    #[allow(private_bounds)]
+    fn consume_with<I>(&mut self, _fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    where
+        I: tags::Type<'a>,
+    {
+        self
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, J, NEXT> private::MultiResponseInner<'a> for MultiResponseChain<'a, J, NEXT>
+where
+    J: tags::Type<'a>,
+    NEXT: private::MultiResponseInner<'a>,
+{
+    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    where
+        I: tags::Type<'a>,
+    {
+        // SAFETY: cast is safe because type ids are equal implies types are equal
+        unsafe {
+            // this `if` is const. Equality is always decidable for tag types, but we can't prove that to the type system.
+            if TypeId::of::<I>() == TypeId::of::<J>() {
+                // cast is safe because type ids are equal
+                let cur =
+                    &mut *(&mut self.cur as *mut Option<J::Reified> as *mut Option<I::Reified>);
+                if let Some(val) = cur.take() {
+                    fulfil(val);
+                    return self;
+                }
+            }
+        }
+        self.next.consume_with::<I>(fulfil);
+        self
+    }
+}
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> private::MultiResponseInner<'a> for MultiResponseChainVal<'a, T, NEXT>
+where
+    T: 'static,
+    NEXT: private::MultiResponseInner<'a>,
+{
+    #[allow(private_bounds)]
+    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    where
+        I: tags::Type<'a>,
+    {
+        self.inner.consume_with::<I>(fulfil);
+        self
+    }
+}
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+// SAFETY: delegates to inner impl
+unsafe impl<'a, T, NEXT> Erased<'a> for MultiResponseChainVal<'a, T, NEXT>
+where
+    T: 'static,
+    NEXT: Erased<'a>,
+{
+    unsafe fn consume_closure(
+        this: impl FnOnce() -> *const Self,
+        type_id: TypeId,
+    ) -> Option<NonNull<()>> {
+        // SAFETY: delegation
+        unsafe { MultiResponseChain::consume_closure(move || &raw const (*this()).inner, type_id) }
+    }
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
+        // SAFETY: same safety conditions
+        unsafe { Self::consume_closure(move || self, type_id) }
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+impl<'a, T, NEXT> private::MultiResponseInner<'a> for MultiResponseChainRef<'a, T, NEXT>
+where
+    T: 'static + ?Sized,
+    NEXT: private::MultiResponseInner<'a>,
+{
+    #[allow(private_bounds)]
+    fn consume_with<I>(&mut self, fulfil: impl FnOnce(I::Reified)) -> &mut Self
+    where
+        I: tags::Type<'a>,
+    {
+        self.inner.consume_with::<I>(fulfil);
+        self
+    }
+}
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+// SAFETY: delegates to inner impl
+unsafe impl<'a, T, NEXT> Erased<'a> for MultiResponseChainRef<'a, T, NEXT>
+where
+    T: 'static + ?Sized,
+    NEXT: Erased<'a>,
+{
+    unsafe fn consume_closure(
+        this: impl FnOnce() -> *const Self,
+        type_id: TypeId,
+    ) -> Option<NonNull<()>> {
+        // SAFETY: delegation
+        unsafe { MultiResponseChain::consume_closure(move || &raw const (*this()).inner, type_id) }
+    }
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
+        // SAFETY: same safety conditions
+        unsafe { Self::consume_closure(move || self, type_id) }
+    }
+}
+
+unsafe impl<'a> Erased<'a> for EmptyMultiResponse {
+    unsafe fn consume_closure(
+        _this: impl FnOnce() -> *const Self,
+        _type_id: TypeId,
+    ) -> Option<NonNull<()>> {
+        None
+    }
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
+        // SAFETY: same safety conditions
+        unsafe { Self::consume_closure(move || self, type_id) }
+    }
+}
+
+unsafe impl<'a, I, NEXT> Erased<'a> for MultiResponseChain<'a, I, NEXT>
+where
+    I: tags::Type<'a>,
+    NEXT: Erased<'a>,
+{
+    unsafe fn consume_closure(
+        this: impl FnOnce() -> *const Self,
+        type_id: TypeId,
+    ) -> Option<NonNull<()>> {
+        // SAFETY: dereferencing *this guaranteed to be valid.
+        unsafe {
+            if type_id == TypeId::of::<I>() {
+                // SAFETY: returning an Option<I::Reified> as requested
+                Some(
+                    NonNull::new_unchecked((&raw const (*this()).cur) as *mut Option<I::Reified>)
+                        .cast(),
+                )
+            } else {
+                // SAFETY: safe to delegate consume_closure
+                NEXT::consume_closure(move || &raw const (*this()).next, type_id)
+            }
+        }
+    }
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
+        // SAFETY: same safety conditions
+        unsafe { Self::consume_closure(move || self, type_id) }
+    }
+}
+
+#[unstable(feature = "error_generic_member_access", issue = "99301")]
+#[derive(Copy, Clone, Debug)]
+/// A [MultiRequestBuilder] is used to request multiple types from an [Error] at once.
+///
+/// Requesting a type from an [Error] is fairly fast - normally faster than formatting
+/// an error - but if you need to request many different error types, it is better
+/// to use this API to request them at once.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(error_generic_member_access)]
+/// use core::fmt;
+/// use core::error::{Error, MultiResponse, Request};
+///
+/// #[derive(Debug)]
+/// struct MyError {
+///     str_field: &'static str,
+///     val_field: MyExitCode,
+/// }
+///
+/// #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// struct MyExitCode(u32);
+///
+/// impl fmt::Display for MyError {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "Example Error")
+///     }
+/// }
+///
+/// impl Error for MyError {
+///     fn provide<'a>(&'a self, request: &mut Request<'a>) {
+///         request
+///             .provide_ref::<str>(self.str_field)
+///             .provide_value::<MyExitCode>(self.val_field);
+///     }
+/// }
+///
+/// fn main() {
+///     let e = MyError {
+///         str_field: "hello",
+///         val_field: MyExitCode(3),
+///     };
+///
+///     let mut str_val = None;
+///     let mut exit_code_val = None;
+///     let mut string_val = None;
+///     let mut value = core::error::MultiRequestBuilder::new()
+///         // request by reference
+///         .with_ref::<str>()
+///         // and by value
+///         .with_value::<MyExitCode>()
+///         // and some type that isn't in the error
+///         .with_value::<String>()
+///         .request(&e)
+///         // The error has str by reference
+///         .retrieve_ref::<str>(|val| str_val = Some(val))
+///         // The error has MyExitCode by value
+///         .retrieve_value::<MyExitCode>(|val| exit_code_val = Some(val))
+///         // The error does not have a string field, consume will not be called
+///         .retrieve_value::<String>(|val| string_val = Some(val));
+///
+///     assert_eq!(exit_code_val, Some(MyExitCode(3)));
+///     assert_eq!(str_val, Some("hello"));
+///     assert_eq!(string_val, None);
+/// }
+/// ```
+pub struct MultiRequestBuilder<INNER: for<'a> IntoMultiRequest<'a>> {
+    inner: PhantomData<INNER>,
+}
+
+impl MultiRequestBuilder<EmptyMultiRequestBuilder> {
+    /// Create a new [MultiRequestBuilder]
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn new() -> Self {
+        MultiRequestBuilder { inner: PhantomData }
+    }
+}
+
+impl<INNER: for<'a> IntoMultiRequest<'a>> MultiRequestBuilder<INNER> {
+    /// Create a [MultiRequestBuilder] that requests a value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(error_generic_member_access)]
+    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    ///
+    /// fn get_string(e: &dyn Error) -> Option<String> {
+    ///     let mut result = None;
+    ///     MultiRequestBuilder::new()
+    ///         .with_value::<String>()
+    ///         .request(e)
+    ///         .retrieve_value(|res| result = Some(res));
+    ///     result
+    /// }
+    /// ```
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn with_value<V: 'static>(
+        self,
+    ) -> MultiRequestBuilder<ChainValMultiRequestBuilder<V, INNER>> {
+        MultiRequestBuilder { inner: PhantomData }
+    }
+
+    /// Create a [MultiRequestBuilder] that requests a reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(error_generic_member_access)]
+    /// use core::error::{Error, MultiRequestBuilder, MultiResponse};
+    ///
+    /// fn get_string(e: &dyn Error) -> Option<String> {
+    ///     let mut result = None;
+    ///     MultiRequestBuilder::new()
+    ///         .with_value::<String>()
+    ///         .request(e)
+    ///         .retrieve_value(|res| result = Some(res));
+    ///     result
+    /// }
+    /// ```
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn with_ref<R: 'static + ?Sized>(
+        self,
+    ) -> MultiRequestBuilder<ChainRefMultiRequestBuilder<R, INNER>> {
+        MultiRequestBuilder { inner: PhantomData }
+    }
+
+    /// Request provided values from a given error.
+    #[unstable(feature = "error_generic_member_access", issue = "99301")]
+    pub fn request<'a>(self, err: &'a (impl Error + ?Sized)) -> impl MultiResponse<'a> {
+        let mut tagged = Tagged::new_virtual(INNER::get_request());
+        err.provide(tagged.as_request());
+        tagged.value
+    }
+}
+
+// special type id, used to mark a `Tagged` where calls should be done virtually
+struct ErasedMarker;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Type tags
@@ -527,7 +1052,9 @@ pub(crate) mod tags {
     //! Request API with more complex types (typically those including lifetime parameters), you
     //! will need to write your own tags.
 
+    use crate::any::TypeId;
     use crate::marker::PhantomData;
+    use crate::ptr::NonNull;
 
     /// This trait is implemented by specific tag types in order to allow
     /// describing a type which can be requested for a given lifetime `'a`.
@@ -535,10 +1062,18 @@ pub(crate) mod tags {
     /// A few example implementations for type-driven tags can be found in this
     /// module, although crates may also implement their own tags for more
     /// complex types with internal lifetimes.
-    pub(crate) trait Type<'a>: Sized + 'static {
+    pub(crate) unsafe trait Type<'a>: Sized + 'static {
         /// The type of values which may be tagged by this tag for the given
         /// lifetime.
         type Reified: 'a;
+
+        // This requires `sink` to be a valid pointer, and if `type_id == TypeId::of::<T>`` and
+        // the function returns Some, returns a pointer with the same lifetime and
+        // mutability as `sink` to `Option<<T as Type<'a>>::Reified>`.
+        unsafe fn consume(
+            sink: *const super::TaggedOption<'a, Self>,
+            type_id: TypeId,
+        ) -> Option<NonNull<()>>;
     }
 
     /// Similar to the [`Type`] trait, but represents a type which may be unsized (i.e., has a
@@ -555,8 +1090,22 @@ pub(crate) mod tags {
     #[derive(Debug)]
     pub(crate) struct Value<T: 'static>(PhantomData<T>);
 
-    impl<'a, T: 'static> Type<'a> for Value<T> {
+    unsafe impl<'a, T: 'static> Type<'a> for Value<T> {
         type Reified = T;
+
+        unsafe fn consume(
+            sink: *const super::TaggedOption<'a, Self>,
+            type_id: TypeId,
+        ) -> Option<NonNull<()>> {
+            // SAFETY: sink is a valid pointer
+            unsafe {
+                if (*sink).0.is_none() && type_id == TypeId::of::<Self>() {
+                    Some(NonNull::new_unchecked(&raw const (*sink).0 as *mut Self::Reified).cast())
+                } else {
+                    None
+                }
+            }
+        }
     }
 
     /// Type-based tag similar to [`Value`] but which may be unsized (i.e., has a `?Sized` bound).
@@ -572,8 +1121,25 @@ pub(crate) mod tags {
     #[derive(Debug)]
     pub(crate) struct Ref<I>(PhantomData<I>);
 
-    impl<'a, I: MaybeSizedType<'a>> Type<'a> for Ref<I> {
+    unsafe impl<'a, I: MaybeSizedType<'a>> Type<'a> for Ref<I>
+    where
+        I::Reified: 'static,
+    {
         type Reified = &'a I::Reified;
+
+        unsafe fn consume(
+            sink: *const super::TaggedOption<'a, Self>,
+            type_id: TypeId,
+        ) -> Option<NonNull<()>> {
+            // SAFETY: sink is a valid pointer
+            unsafe {
+                if (*sink).0.is_none() && type_id == TypeId::of::<Self>() {
+                    Some(NonNull::new_unchecked(&raw const (*sink).0 as *mut Self::Reified).cast())
+                } else {
+                    None
+                }
+            }
+        }
     }
 }
 
@@ -586,6 +1152,18 @@ pub(crate) mod tags {
 pub(crate) struct TaggedOption<'a, I: tags::Type<'a>>(pub Option<I::Reified>);
 
 impl<'a, I: tags::Type<'a>> Tagged<TaggedOption<'a, I>> {
+    fn new_concrete() -> Self {
+        Tagged { tag_id: TypeId::of::<I>(), value: TaggedOption::<'a, I>(None) }
+    }
+}
+
+impl<'a, T: Erased<'a>> Tagged<T> {
+    fn new_virtual(value: T) -> Self {
+        Tagged { tag_id: TypeId::of::<ErasedMarker>(), value }
+    }
+}
+
+impl<'a, T: Erased<'a>> Tagged<T> {
     pub(crate) fn as_request(&mut self) -> &mut Request<'a> {
         let erased = self as &mut Tagged<dyn Erased<'a> + 'a>;
         // SAFETY: transmuting `&mut Tagged<dyn Erased<'a> + 'a>` to `&mut Request<'a>` is safe since
@@ -597,9 +1175,39 @@ impl<'a, I: tags::Type<'a>> Tagged<TaggedOption<'a, I>> {
 /// Represents a type-erased but identifiable object.
 ///
 /// This trait is exclusively implemented by the `TaggedOption` type.
-unsafe trait Erased<'a>: 'a {}
+unsafe trait Erased<'a>: 'a {
+    // This requires `self` to be a valid pointer, and if `type_id == TypeId::of::<T>`` and
+    // the function returns Some, returns a pointer with the same lifetime and
+    // mutability as `self` to `Option<<T as Type<'a>>::Reified>`.
 
-unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {}
+    // in consume_closure, `self = this()`.
+    // The optimizer does not do the branch table optimization if your function takes
+    // a self pointer, do the closure hack to work around it
+    unsafe fn consume_closure(
+        this: impl FnOnce() -> *const Self,
+        type_id: TypeId,
+    ) -> Option<NonNull<()>>
+    where
+        Self: Sized;
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>>;
+}
+
+unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
+    // This impl is not really used since TaggedOptions are not virtual, but leave it here
+    unsafe fn consume_closure(
+        this: impl FnOnce() -> *const Self,
+        type_id: TypeId,
+    ) -> Option<NonNull<()>> {
+        // SAFETY: this is a valid pointer
+        unsafe { I::consume(&*this(), type_id) }
+    }
+
+    unsafe fn consume(self: *const Self, type_id: TypeId) -> Option<NonNull<()>> {
+        // SAFETY: same safety conditions
+        unsafe { Self::consume_closure(move || self, type_id) }
+    }
+}
 
 struct Tagged<E: ?Sized> {
     tag_id: TypeId,
@@ -607,6 +1215,68 @@ struct Tagged<E: ?Sized> {
 }
 
 impl<'a> Tagged<dyn Erased<'a> + 'a> {
+    fn is_virtual(&self) -> bool {
+        self.tag_id == TypeId::of::<ErasedMarker>()
+    }
+
+    #[inline]
+    fn would_be_satisfied_by<I>(&self) -> bool
+    where
+        I: tags::Type<'a>,
+    {
+        if self.is_virtual() {
+            // consume returns None if the space is not satisfied
+            // SAFETY: `&raw const self.value` is valid
+            unsafe { (&raw const self.value).consume(TypeId::of::<I>()).is_some() }
+        } else {
+            matches!(self.downcast::<I>(), Some(TaggedOption(None)))
+        }
+    }
+
+    #[inline]
+    fn provide<I>(&mut self, value: I::Reified)
+    where
+        I: tags::Type<'a>,
+    {
+        if self.is_virtual() {
+            // SAFETY: consume_mut is defined to return either None or Some(I::Reified)
+            unsafe {
+                if let Some(res) = (&raw const self.value).consume(TypeId::of::<I>()) {
+                    let mut ptr: NonNull<Option<I::Reified>> = res.cast();
+                    // cast is fine since consume_mut returns a pointer to an Option<I::Reified>
+                    // could use `ptr::write` here, but this is not expected to be important enough
+                    *ptr.as_mut() = Some(value);
+                }
+            }
+        } else {
+            if let Some(res @ TaggedOption(None)) = self.downcast_mut::<I>() {
+                res.0 = Some(value);
+            }
+        }
+    }
+
+    #[inline]
+    fn provide_with<I>(&mut self, fulfil: impl FnOnce() -> I::Reified)
+    where
+        I: tags::Type<'a>,
+    {
+        if self.is_virtual() {
+            // SAFETY: consume_mut is defined to return either None or Some(I::Reified)
+            unsafe {
+                if let Some(res) = (&raw const self.value).consume(TypeId::of::<I>()) {
+                    let mut ptr: NonNull<Option<I::Reified>> = res.cast();
+                    // cast is fine since consume_mut returns a pointer to an Option<I::Reified>
+                    // could use `ptr::write` here, but this is not expected to be important enough
+                    *ptr.as_mut() = Some(fulfil());
+                }
+            }
+        } else {
+            if let Some(res @ TaggedOption(None)) = self.downcast_mut::<I>() {
+                res.0 = Some(fulfil());
+            }
+        }
+    }
+
     /// Returns some reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
     #[inline]
