@@ -20,6 +20,7 @@ use rustc_middle::query::Key;
 use rustc_middle::query::on_disk_cache::{
     AbsoluteBytePos, CacheDecoder, CacheEncoder, EncodedDepNodeIndex,
 };
+use rustc_middle::sync::BranchKey;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::print::with_reduced_queries;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -162,6 +163,7 @@ impl<'tcx> QueryContext for QueryCtxt<'tcx> {
                 tcx: self.tcx,
                 query: Some(token),
                 query_depth: current_icx.query_depth + depth_limit as usize,
+                query_branch: BranchKey::root(),
                 task_deps: current_icx.task_deps,
             };
 
