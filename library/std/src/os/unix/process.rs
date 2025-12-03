@@ -8,6 +8,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
+use crate::sys::process::ChildPipe;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
 
@@ -511,7 +512,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     /// Takes ownership of a [`ChildStdin`](crate::process::ChildStdin)'s file descriptor.
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedFd {
-        child_stdin.into_inner().into_inner().into_inner()
+        child_stdin.into_inner().into_inner()
     }
 }
 
@@ -523,8 +524,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
 impl From<OwnedFd> for process::ChildStdin {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStdin {
-        let fd = sys::fd::FileDesc::from_inner(fd);
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = ChildPipe::from_inner(fd);
         process::ChildStdin::from_inner(pipe)
     }
 }
@@ -542,7 +542,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     /// Takes ownership of a [`ChildStdout`](crate::process::ChildStdout)'s file descriptor.
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedFd {
-        child_stdout.into_inner().into_inner().into_inner()
+        child_stdout.into_inner().into_inner()
     }
 }
 
@@ -554,8 +554,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
 impl From<OwnedFd> for process::ChildStdout {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStdout {
-        let fd = sys::fd::FileDesc::from_inner(fd);
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = ChildPipe::from_inner(fd);
         process::ChildStdout::from_inner(pipe)
     }
 }
@@ -573,7 +572,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
     /// Takes ownership of a [`ChildStderr`](crate::process::ChildStderr)'s file descriptor.
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {
-        child_stderr.into_inner().into_inner().into_inner()
+        child_stderr.into_inner().into_inner()
     }
 }
 
@@ -585,8 +584,7 @@ impl From<crate::process::ChildStderr> for OwnedFd {
 impl From<OwnedFd> for process::ChildStderr {
     #[inline]
     fn from(fd: OwnedFd) -> process::ChildStderr {
-        let fd = sys::fd::FileDesc::from_inner(fd);
-        let pipe = sys::pipe::AnonPipe::from_inner(fd);
+        let pipe = ChildPipe::from_inner(fd);
         process::ChildStderr::from_inner(pipe)
     }
 }

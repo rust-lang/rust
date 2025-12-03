@@ -23,10 +23,13 @@ use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, utf16};
 use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
-use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
 use crate::sys_common::IntoInner;
 use crate::{cmp, env, fmt, ptr};
+
+mod child_pipe;
+
+pub use self::child_pipe::{ChildPipe, read_output};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -167,7 +170,7 @@ pub enum Stdio {
     InheritSpecific { from_stdio_id: u32 },
     Null,
     MakePipe,
-    Pipe(AnonPipe),
+    Pipe(ChildPipe),
     Handle(Handle),
 }
 
@@ -596,7 +599,7 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 }
 
 impl Stdio {
-    fn to_handle(&self, stdio_id: u32, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
+    fn to_handle(&self, stdio_id: u32, pipe: &mut Option<ChildPipe>) -> io::Result<Handle> {
         let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
             Ok(io) => unsafe {
                 let io = Handle::from_raw_handle(io);
@@ -613,14 +616,15 @@ impl Stdio {
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                let pipes = pipe::anon_pipe(ours_readable, true)?;
+                let pipes = child_pipe::child_pipe(ours_readable, true)?;
                 *pipe = Some(pipes.ours);
                 Ok(pipes.theirs.into_handle())
             }
 
             Stdio::Pipe(ref source) => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                pipe::spawn_pipe_relay(source, ours_readable, true).map(AnonPipe::into_handle)
+                child_pipe::spawn_pipe_relay(source, ours_readable, true)
+                    .map(ChildPipe::into_handle)
             }
 
             Stdio::Handle(ref handle) => handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS),
@@ -639,8 +643,8 @@ impl Stdio {
     }
 }
 
-impl From<AnonPipe> for Stdio {
-    fn from(pipe: AnonPipe) -> Stdio {
+impl From<ChildPipe> for Stdio {
+    fn from(pipe: ChildPipe) -> Stdio {
         Stdio::Pipe(pipe)
     }
 }
