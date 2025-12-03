@@ -195,9 +195,7 @@ pub(super) struct QueryLatch<I> {
 
 impl<I> QueryLatch<I> {
     fn new() -> Self {
-        QueryLatch {
-            info: Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() }),
-        }
+        QueryLatch { info: Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() }) }
     }
 
     /// Awaits for the query job to complete.

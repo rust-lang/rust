@@ -11,7 +11,10 @@ impl BranchKey {
     pub fn bit_branch(self) -> [Self; 2] {
         let trailing_zeroes = self.0.trailing_zeros();
         assert!(trailing_zeroes >= 1, "query branch space is exhausted");
-        [BranchKey(self.0 ^ (0b11 << (trailing_zeroes - 1))), BranchKey(self.0 ^ (0b01 << (trailing_zeroes - 1)))]
+        [
+            BranchKey(self.0 ^ (0b11 << (trailing_zeroes - 1))),
+            BranchKey(self.0 ^ (0b01 << (trailing_zeroes - 1))),
+        ]
     }
 
     pub fn bits_branch_iter(self, bits: u32) -> impl Iterator<Item = Self> {
@@ -21,9 +24,7 @@ impl BranchKey {
             .unwrap_or_else(|| panic!("query branch space is exhausted to fit {bits} bits"));
         let step = 1 << (allocated_shift + 1);
         let zero = self.0 & !(1 << trailing_zeroes) | (1 << allocated_shift);
-        (0..1 << bits).map(move |n| {
-            BranchKey(zero + step * n)
-        })
+        (0..1 << bits).map(move |n| BranchKey(zero + step * n))
     }
 
     pub fn n_branch_iter(self, n: u32) -> impl Iterator<Item = Self> {
@@ -35,5 +36,3 @@ impl BranchKey {
         self.0.cmp(&other.0)
     }
 }
-
-
