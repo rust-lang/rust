@@ -13,6 +13,8 @@
 //@ [cfail3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
 
+#![allow(unconstructable_pub_struct)]
+
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]

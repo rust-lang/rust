@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 pub static mut DROPPED: bool = false;
 
 pub struct S {

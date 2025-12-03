@@ -1,12 +1,14 @@
-#[attr = MacroUse {arguments: UseAll}]
-extern crate std;
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 //@ pretty-compare-only
 //@ pretty-mode:hir,typed
 //@ pp-exact:issue-4264.pp
 
 // #4264 fixed-length vector types
+
+#![allow(unconstructable_pub_struct)]
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 
 fn foo(_: [i32; (3 as usize)]) ({ } as ())
 

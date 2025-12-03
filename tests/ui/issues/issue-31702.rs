@@ -4,6 +4,8 @@
 
 // this test is actually entirely in the linked library crates
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate issue_31702_1;
 extern crate issue_31702_2;
 

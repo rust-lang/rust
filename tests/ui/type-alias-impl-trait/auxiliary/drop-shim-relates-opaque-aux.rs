@@ -1,6 +1,7 @@
 // crate foo
 
 #![feature(type_alias_impl_trait)]
+#![allow(unconstructable_pub_struct)]
 
 type Tait = impl Sized;
 #[define_opaque(Tait)]

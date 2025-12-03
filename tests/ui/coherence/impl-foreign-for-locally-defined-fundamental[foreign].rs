@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![feature(fundamental)]
 
 //@ compile-flags:--crate-name=test

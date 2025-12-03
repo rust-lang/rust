@@ -1,4 +1,6 @@
 //@ aux-build:uninhabited.rs
+#![allow(unconstructable_pub_struct)]
+
 #![feature(never_type)]
 
 extern crate uninhabited;

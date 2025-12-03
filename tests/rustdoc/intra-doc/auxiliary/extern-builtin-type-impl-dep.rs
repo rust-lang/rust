@@ -4,6 +4,8 @@
 #![crate_type = "rlib"]
 #![no_std]
 
+#![allow(unconstructable_pub_struct)]
+
 pub struct DerefsToF64(f64);
 
 impl core::ops::Deref for DerefsToF64 {

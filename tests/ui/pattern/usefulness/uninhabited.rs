@@ -4,6 +4,8 @@
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `Ty::is_inhabited_from` function.
+#![allow(unconstructable_pub_struct)]
+
 #![feature(never_type)]
 #![deny(unreachable_patterns)]
 

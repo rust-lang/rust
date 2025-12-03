@@ -10,6 +10,7 @@
 #![no_std]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
+#![allow(unconstructable_pub_struct)]
 
 // Test that `core::intrinsics::simd::{simd_extract_dyn, simd_insert_dyn}`
 // lower to an LLVM extractelement or insertelement operation.

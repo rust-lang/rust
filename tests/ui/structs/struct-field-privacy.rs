@@ -1,5 +1,7 @@
 //@ aux-build:struct_field_privacy.rs
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate struct_field_privacy as xc;
 
 struct A {

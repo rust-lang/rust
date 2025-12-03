@@ -1,5 +1,7 @@
 //@ compile-flags: -g
 
+#![allow(unconstructable_pub_struct)]
+
 extern crate issue_31702_1;
 
 use std::collections::HashMap;

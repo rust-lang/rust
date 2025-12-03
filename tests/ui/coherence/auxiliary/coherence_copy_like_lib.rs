@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![crate_type = "rlib"]
 #![feature(fundamental)]
 

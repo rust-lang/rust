@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedEnum` is non-empty
-  --> $DIR/match.rs:14:11
+  --> $DIR/match.rs:16:11
    |
 LL |     match x {}
    |           ^
    |
 note: `uninhabited::UninhabitedEnum` defined here
-  --> $DIR/auxiliary/uninhabited.rs:5:1
+  --> $DIR/auxiliary/uninhabited.rs:7:1
    |
 LL | pub enum UninhabitedEnum {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,13 +18,13 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::PrivatelyUninhabitedStruct` is non-empty
-  --> $DIR/match.rs:22:11
+  --> $DIR/match.rs:24:11
    |
 LL |     match x {}
    |           ^
    |
 note: `uninhabited::PrivatelyUninhabitedStruct` defined here
-  --> $DIR/auxiliary/uninhabited.rs:15:1
+  --> $DIR/auxiliary/uninhabited.rs:17:1
    |
 LL | pub struct PrivatelyUninhabitedStruct {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

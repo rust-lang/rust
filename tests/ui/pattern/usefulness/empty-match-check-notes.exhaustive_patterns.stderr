@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/empty-match-check-notes.rs:17:9
+  --> $DIR/empty-match-check-notes.rs:19:9
    |
 LL |         _ => {}
    |         ^------
@@ -9,13 +9,13 @@ LL |         _ => {}
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/empty-match-check-notes.rs:7:9
+  --> $DIR/empty-match-check-notes.rs:9:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/empty-match-check-notes.rs:22:9
+  --> $DIR/empty-match-check-notes.rs:24:9
    |
 LL |         _ if false => {}
    |         ^---------------
@@ -26,7 +26,7 @@ LL |         _ if false => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-match-check-notes.rs:31:9
+  --> $DIR/empty-match-check-notes.rs:33:9
    |
 LL |         _ => {}
    |         ^------
@@ -37,7 +37,7 @@ LL |         _ => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error: unreachable pattern
-  --> $DIR/empty-match-check-notes.rs:36:9
+  --> $DIR/empty-match-check-notes.rs:38:9
    |
 LL |         _ if false => {}
    |         ^---------------
@@ -48,7 +48,7 @@ LL |         _ if false => {}
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/empty-match-check-notes.rs:43:9
+  --> $DIR/empty-match-check-notes.rs:45:9
    |
 LL |     let None = *x;
    |         ^^^^ pattern `Some(_)` not covered
@@ -63,7 +63,7 @@ LL |     if let None = *x { todo!() };
    |     ++               +++++++++++
 
 error[E0004]: non-exhaustive patterns: `0_u8..=u8::MAX` not covered
-  --> $DIR/empty-match-check-notes.rs:53:11
+  --> $DIR/empty-match-check-notes.rs:55:11
    |
 LL |     match 0u8 {
    |           ^^^ pattern `0_u8..=u8::MAX` not covered

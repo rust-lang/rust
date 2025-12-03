@@ -1,3 +1,5 @@
+#![allow(unconstructable_pub_struct)]
+
 #![feature(auto_traits, core)]
 #![crate_type = "rlib"]
 
