@@ -34,7 +34,8 @@ Options:
         --document-hidden-items 
                         document items that have doc(hidden)
         --hide-deprecated-items
-                        Hide items marked deprecated from listings, but pages and links still generated.
+                        Hide items marked deprecated from listings, but pages
+                        and links still generated.
         --test          run code examples as tests
         --test-args ARGS
                         arguments to pass to the test runner
