@@ -156,21 +156,22 @@ impl<'a> BuildDocTestBuilder<'a> {
 
         // Up until now, we've been dealing with settings for the whole crate.
         // Now, infer settings for this particular test.
+        //
+        // Avoid tests with incompatible attributes.
+        let opt_out = lang_str.is_some_and(|lang_str| {
+            lang_str.compile_fail || lang_str.test_harness || lang_str.standalone_crate
+        });
         let can_be_merged = if can_merge_doctests == MergeDoctests::Auto {
-            let mut can_merge = false;
-            // Avoid tests with incompatible attributes.
-            can_merge |= lang_str.is_some_and(|lang_str| {
-                !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
-            });
-            // If it contains `#[feature]` or `#[no_std]`, we don't want it to be merged either.
-            can_merge &= !has_global_allocator
-                && crate_attrs.is_empty()
+            // We try to look at the contents of the test to detect whether it should be merged.
+            // This is not a complete list of possible failures, but it catches many cases.
+            let will_probably_fail = has_global_allocator
+                || !crate_attrs.is_empty()
                 // If this is a merged doctest and a defined macro uses `$crate`, then the path will
                 // not work, so better not put it into merged doctests.
-                && !(has_macro_def && everything_else.contains("$crate"));
-            can_merge
+                || (has_macro_def && everything_else.contains("$crate"));
+            !opt_out && !will_probably_fail
         } else {
-            can_merge_doctests != MergeDoctests::Never
+            can_merge_doctests != MergeDoctests::Never && !opt_out
         };
         DocTestBuilder {
             supports_color,
