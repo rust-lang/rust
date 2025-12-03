@@ -828,7 +828,9 @@ impl<'tcx> Tree {
     ) -> InterpResult<'tcx> {
         self.perform_access(
             prov,
-            Some((access_range, AccessKind::Write, diagnostics::AccessCause::Dealloc)),
+            access_range,
+            AccessKind::Write,
+            diagnostics::AccessCause::Dealloc,
             global,
             alloc_id,
             span,
@@ -903,14 +905,6 @@ impl<'tcx> Tree {
     /// to each location of the first component of `access_range_and_kind`,
     /// on every tag of the allocation.
     ///
-    /// If `access_range_and_kind` is `None`, this is interpreted as the special
-    /// access that is applied on protector release:
-    /// - the access will be applied only to accessed locations of the allocation,
-    /// - it will not be visible to children,
-    /// - it will be recorded as a `FnExit` diagnostic access
-    /// - and it will be a read except if the location is `Unique`, i.e. has been written to,
-    ///   in which case it will be a write.
-    ///
     /// `LocationState::perform_access` will take care of raising transition
     /// errors and updating the `accessed` status of each location,
     /// this traversal adds to that:
@@ -920,7 +914,9 @@ impl<'tcx> Tree {
     pub fn perform_access(
         &mut self,
         prov: ProvenanceExtra,
-        access_range_and_kind: Option<(AllocRange, AccessKind, diagnostics::AccessCause)>,
+        access_range: AllocRange,
+        access_kind: AccessKind,
+        access_cause: AccessCause, // diagnostics
         global: &GlobalState,
         alloc_id: AllocId, // diagnostics
         span: Span,        // diagnostics
@@ -934,60 +930,74 @@ impl<'tcx> Tree {
             ProvenanceExtra::Concrete(tag) => Some(self.tag_mapping.get(&tag).unwrap()),
             ProvenanceExtra::Wildcard => None,
         };
-        if let Some((access_range, access_kind, access_cause)) = access_range_and_kind {
-            // Default branch: this is a "normal" access through a known range.
-            // We iterate over affected locations and traverse the tree for each of them.
-            for (loc_range, loc) in self.locations.iter_mut(access_range.start, access_range.size) {
+        // We iterate over affected locations and traverse the tree for each of them.
+        for (loc_range, loc) in self.locations.iter_mut(access_range.start, access_range.size) {
+            loc.perform_access(
+                self.roots.iter().copied(),
+                &mut self.nodes,
+                source_idx,
+                loc_range,
+                Some(access_range),
+                access_kind,
+                access_cause,
+                global,
+                alloc_id,
+                span,
+                ChildrenVisitMode::VisitChildrenOfAccessed,
+            )?;
+        }
+        interp_ok(())
+    }
+    /// This is the special access that is applied on protector release:
+    /// - the access will be applied only to accessed locations of the allocation,
+    /// - it will not be visible to children,
+    /// - it will be recorded as a `FnExit` diagnostic access
+    /// - and it will be a read except if the location is `Unique`, i.e. has been written to,
+    ///   in which case it will be a write.
+    /// - otherwise identical to `Tree::perform_access`
+    pub fn perform_protector_end_access(
+        &mut self,
+        tag: BorTag,
+        global: &GlobalState,
+        alloc_id: AllocId, // diagnostics
+        span: Span,        // diagnostics
+    ) -> InterpResult<'tcx> {
+        #[cfg(feature = "expensive-consistency-checks")]
+        if self.roots.len() > 1 {
+            self.verify_wildcard_consistency(global);
+        }
+
+        let source_idx = self.tag_mapping.get(&tag).unwrap();
+
+        // This is a special access through the entire allocation.
+        // It actually only affects `accessed` locations, so we need
+        // to filter on those before initiating the traversal.
+        //
+        // In addition this implicit access should not be visible to children,
+        // thus the use of `traverse_nonchildren`.
+        // See the test case `returned_mut_is_usable` from
+        // `tests/pass/tree_borrows/tree-borrows.rs` for an example of
+        // why this is important.
+        for (loc_range, loc) in self.locations.iter_mut_all() {
+            // Only visit accessed permissions
+            if let Some(p) = loc.perms.get(source_idx)
+                && let Some(access_kind) = p.permission.protector_end_access()
+                && p.accessed
+            {
+                let access_cause = diagnostics::AccessCause::FnExit(access_kind);
                 loc.perform_access(
                     self.roots.iter().copied(),
                     &mut self.nodes,
-                    source_idx,
+                    Some(source_idx),
                     loc_range,
-                    Some(access_range),
+                    None,
                     access_kind,
                     access_cause,
                     global,
                     alloc_id,
                     span,
-                    ChildrenVisitMode::VisitChildrenOfAccessed,
+                    ChildrenVisitMode::SkipChildrenOfAccessed,
                 )?;
-            }
-        } else {
-            // This is a special access through the entire allocation.
-            // It actually only affects `accessed` locations, so we need
-            // to filter on those before initiating the traversal.
-            //
-            // In addition this implicit access should not be visible to children,
-            // thus the use of `traverse_nonchildren`.
-            // See the test case `returned_mut_is_usable` from
-            // `tests/pass/tree_borrows/tree-borrows.rs` for an example of
-            // why this is important.
-
-            // Wildcard references are never protected. So this can never be
-            // called with a wildcard reference.
-            let source_idx = source_idx.unwrap();
-
-            for (loc_range, loc) in self.locations.iter_mut_all() {
-                // Only visit accessed permissions
-                if let Some(p) = loc.perms.get(source_idx)
-                    && let Some(access_kind) = p.permission.protector_end_access()
-                    && p.accessed
-                {
-                    let access_cause = diagnostics::AccessCause::FnExit(access_kind);
-                    loc.perform_access(
-                        self.roots.iter().copied(),
-                        &mut self.nodes,
-                        Some(source_idx),
-                        loc_range,
-                        None,
-                        access_kind,
-                        access_cause,
-                        global,
-                        alloc_id,
-                        span,
-                        ChildrenVisitMode::SkipChildrenOfAccessed,
-                    )?;
-                }
             }
         }
         interp_ok(())

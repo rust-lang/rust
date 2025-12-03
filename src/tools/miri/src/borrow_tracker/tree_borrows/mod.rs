@@ -59,7 +59,9 @@ impl<'tcx> Tree {
         let span = machine.current_user_relevant_span();
         self.perform_access(
             prov,
-            Some((range, access_kind, diagnostics::AccessCause::Explicit(access_kind))),
+            range,
+            access_kind,
+            diagnostics::AccessCause::Explicit(access_kind),
             global,
             alloc_id,
             span,
@@ -93,8 +95,7 @@ impl<'tcx> Tree {
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
         let span = machine.current_user_relevant_span();
-        // `None` makes it the magic on-protector-end operation
-        self.perform_access(ProvenanceExtra::Concrete(tag), None, global, alloc_id, span)?;
+        self.perform_protector_end_access(tag, global, alloc_id, span)?;
 
         self.update_exposure_for_protector_release(tag);
 
@@ -343,7 +344,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 tree_borrows.perform_access(
                     parent_prov,
-                    Some((range_in_alloc, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
+                    range_in_alloc,
+                    AccessKind::Read,
+                    diagnostics::AccessCause::Reborrow,
                     this.machine.borrow_tracker.as_ref().unwrap(),
                     alloc_id,
                     this.machine.current_user_relevant_span(),
